@@ -1,0 +1,101 @@
+Feb 16 00:38:36.843092 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:38:36.843171 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:38:36.843330 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:38:36.970952 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:37.201979 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:37.391977 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:37.672419 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:37.756034 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:38.149530 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:38.357488 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:38.546138 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:39.283432 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:39.383729 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:38:39.383871 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:38:39.384730 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:38:40.027137 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.ProvisionalOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 00:38:41.938487 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:38:41.938795 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:38:41.939013 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:38:41.965955 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:42.202465 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:42.383780 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:42.668759 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:42.756030 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:43.147538 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+    "fyi.ticketless.app",
+Feb 16 00:38:43.181934 symptomsd(SymptomEvaluator)[142] <Debug>: Skip flush origin ledger, name fyi.ticketless.app duration 206.072 extensions (null) delegates (null) bitmaps {
+Feb 16 00:38:43.181953 symptomsd(SymptomEvaluator)[142] <Debug>: Skip flush top level origin ledger fyi.ticketless.app -> FlowOriginLedger for fyi.ticketless.app at 0x794e55540, current direct flows {
+Feb 16 00:38:43.355164 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:43.545916 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:44.283519 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:44.496810 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:38:44.497069 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:38:44.497153 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:38:46.714633 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.ProvisionalOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 00:38:46.795615 backboardd(CoreMotion)[71] <Debug>: AOO update: <private>
+Feb 16 00:38:46.795652 SpringBoard(CoreMotion)[35] <Debug>: AOO update: <private>
+Feb 16 00:38:46.795745 SpringBoard(CoreMotion)[35] <Debug>: New orientation,5,Prev orientation,1
+Feb 16 00:38:46.795772 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:38:46.795809 backboardd(CoreMotion)[71] <Notice>: Received orientation. (Portrait to FaceUp) Timestamp 344859.953214
+Feb 16 00:38:46.795821 backboardd(CoreMotion)[71] <Notice>: Updating client handler: Orientation FaceUp, Callback mode: -1
+Feb 16 00:38:46.795902 backboardd[71] <Notice>: Updating device orientation from CoreMotion to: faceUp (5)
+Feb 16 00:38:46.796353 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.DeviceOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 00:38:46.966526 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:47.050348 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:38:47.050385 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:38:47.050572 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:38:47.083397 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.ProvisionalOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 00:38:47.202107 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:47.353594 backboardd(CoreMotion)[71] <Debug>: AOO update: <private>
+Feb 16 00:38:47.353697 backboardd(CoreMotion)[71] <Notice>: Received orientation. (FaceUp to Portrait) Timestamp 344860.512184
+Feb 16 00:38:47.353724 backboardd(CoreMotion)[71] <Notice>: Updating client handler: Orientation Portrait, Callback mode: -1
+Feb 16 00:38:47.353849 backboardd[71] <Notice>: Updating device orientation from CoreMotion to: portrait (1)
+Feb 16 00:38:47.354074 SpringBoard(CoreMotion)[35] <Debug>: AOO update: <private>
+Feb 16 00:38:47.355071 SpringBoard(CoreMotion)[35] <Debug>: New orientation,1,Prev orientation,1
+Feb 16 00:38:47.355440 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:38:47.357930 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.DeviceOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 00:38:47.384524 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:47.669723 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:47.756434 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:48.147488 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:48.355254 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:48.546808 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:48.735621 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.CompassCalibration" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 00:38:48.832890 backboardd(CoreMotion)[71] <Debug>: AOO update: <private>
+Feb 16 00:38:48.832916 backboardd(CoreMotion)[71] <Notice>: Received orientation. (Portrait to FaceUp) Timestamp 344861.989465
+Feb 16 00:38:48.832940 backboardd(CoreMotion)[71] <Notice>: Updating client handler: Orientation FaceUp, Callback mode: -1
+Feb 16 00:38:48.832983 backboardd[71] <Notice>: Updating device orientation from CoreMotion to: faceUp (5)
+Feb 16 00:38:48.833546 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.DeviceOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 00:38:48.833605 SpringBoard(CoreMotion)[35] <Debug>: AOO update: <private>
+Feb 16 00:38:48.834291 SpringBoard(CoreMotion)[35] <Debug>: New orientation,5,Prev orientation,1
+Feb 16 00:38:48.835194 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:38:49.283475 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:49.589383 backboardd(CoreMotion)[71] <Debug>: AOO update: <private>
+Feb 16 00:38:49.589434 backboardd(CoreMotion)[71] <Notice>: Received orientation. (FaceUp to Portrait) Timestamp 344862.748069
+Feb 16 00:38:49.589461 backboardd(CoreMotion)[71] <Notice>: Updating client handler: Orientation Portrait, Callback mode: -1
+Feb 16 00:38:49.589475 backboardd[71] <Notice>: Updating device orientation from CoreMotion to: portrait (1)
+Feb 16 00:38:49.589872 SpringBoard(CoreMotion)[35] <Debug>: AOO update: <private>
+Feb 16 00:38:49.589924 SpringBoard(CoreMotion)[35] <Debug>: New orientation,1,Prev orientation,1
+Feb 16 00:38:49.589936 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:38:49.600418 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.DeviceOrientationChanged" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 00:38:49.603491 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:38:49.603604 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:38:49.603642 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:38:51.970864 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:52.165294 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:38:52.166290 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:38:52.166401 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:38:52.201505 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:52.384482 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:52.669814 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:52.756459 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:53.147599 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:53.355281 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:53.545936 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:53.994933 locationd(BiomeStreams)[60844] <Debug>: BMComputeSourceClient not notifying biomed because there are no downstream subscriptions for Device.Wireless.WiFiAvailabilityStatus found in storage domain: User
+Feb 16 00:38:54.283513 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:38:54.703487 locationd[60844] <Notice>: LocationController,notifying clients,kNotificationRecentLocationsRevised,applicable_mct_sec,451353.905,start_mct_sec,450453.905,end_mct_sec,451053.905,
+Feb 16 00:38:54.720245 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:38:54.720631 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:38:54.720851 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}

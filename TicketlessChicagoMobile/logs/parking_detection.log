@@ -13561,3 +13561,83 @@
 [2026-02-15 22:26:40.790] CoreMotion update: automotive=false stationary=false walking=false confidence=high
 [2026-02-15 22:26:49.735] CoreMotion update: automotive=false stationary=true walking=false confidence=low
 [2026-02-15 22:26:50.054] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:32:46.465] === Log file opened ===
+[2026-02-16 00:32:46.466] Log path: /var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA/Documents/parking_detection.log
+[2026-02-16 00:32:46.467] BackgroundLocationModule initialized
+[2026-02-16 00:32:46.480] Auth changed: 3
+[2026-02-16 00:32:48.018] Cleared persisted parking state from UserDefaults
+[2026-02-16 00:32:48.018] Monitoring stopped
+[2026-02-16 00:32:48.023] CoreMotion available: true
+[2026-02-16 00:32:48.024] CoreMotion activity monitoring started
+[2026-02-16 00:32:48.024] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
+[2026-02-16 00:32:48.035] GPS speed > threshold (12.2 m/s) but CoreMotion not automotive — waiting for CoreMotion
+[2026-02-16 00:32:48.037] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:32:48.043] Recovery check: no missed parking (drove: false, stationary: false, duration: 0s)
+[2026-02-16 00:32:48.044] CoreMotion already active, skipping restart
+[2026-02-16 00:33:02.423] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:33:03.382] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:33:13.284] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:33:13.602] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:33:16.154] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:33:16.858] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:33:18.396] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:33:18.713] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:33:20.309] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:33:20.944] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:33:32.873] === Log file opened ===
+[2026-02-16 00:33:32.873] Log path: /var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA/Documents/parking_detection.log
+[2026-02-16 00:33:32.874] BackgroundLocationModule initialized
+[2026-02-16 00:33:32.885] Auth changed: 3
+[2026-02-16 00:33:33.993] Cleared persisted parking state from UserDefaults
+[2026-02-16 00:33:33.993] Monitoring stopped
+[2026-02-16 00:33:34.007] GPS speed > threshold (12.2 m/s) but CoreMotion not automotive — waiting for CoreMotion
+[2026-02-16 00:33:34.007] CoreMotion available: true
+[2026-02-16 00:33:34.008] CoreMotion activity monitoring started
+[2026-02-16 00:33:34.008] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
+[2026-02-16 00:33:34.019] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:33:43.627] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:33:43.942] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:33:44.266] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:33:45.229] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:09.184] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:09.500] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:17.807] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:18.444] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:19.403] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:19.722] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:22.597] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:22.919] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:26.110] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:26.434] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:28.030] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:28.348] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:29.304] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:29.623] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:32.499] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:34.099] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:36.330] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:36.970] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:37.289] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:37.609] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:41.443] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:41.766] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:45.596] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:45.919] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:48.470] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:48.786] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:54.549] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:54.859] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:34:58.052] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:34:58.372] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:35:02.778] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:35:02.828] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:35:03.476] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:35:03.528] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:35:06.038] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:35:06.994] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:35:07.321] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:35:08.276] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:35:09.232] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:35:11.145] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 00:35:15.302] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 00:35:16.260] CoreMotion update: automotive=false stationary=false walking=false confidence=high
