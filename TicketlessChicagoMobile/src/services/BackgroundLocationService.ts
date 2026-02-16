@@ -64,6 +64,10 @@ export interface BackgroundLocationStatus {
   lastDrivingLat?: number;
   lastDrivingLng?: number;
   lastLocationCallbackAgeSec?: number | null;
+  lastParkingDecisionConfidence?: number;
+  lastParkingDecisionHoldReason?: string;
+  lastParkingDecisionSource?: string;
+  lastParkingDecisionTs?: number;
 }
 
 class BackgroundLocationServiceClass {

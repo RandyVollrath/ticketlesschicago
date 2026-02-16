@@ -1,5 +1,29 @@
 # Parking Detection Reliability Analysis - Ticketless Chicago Mobile
 
+## 2026-02-16 Reliability Update
+
+Implemented and now active in code:
+
+- Multi-signal parking confidence gate in iOS native flow (`BackgroundLocationModule.swift`) to suppress weak red-light stop candidates before confirmation.
+- Intersection-risk awareness (camera-proximity proxy) added to confidence scoring for conservative decisions near signalized corridors.
+- Decision observability added to status payloads:
+  - `lastParkingDecisionConfidence`
+  - `lastParkingDecisionHoldReason`
+  - `lastParkingDecisionSource`
+  - `lastParkingDecisionTs`
+- In-app ground-truth correction banner added on Home screen so users can immediately mark false parking detections or confirm true ones.
+- New synthetic camera validation harness: `scripts/camera-drive-harness.js`.
+- New daily tuning report generator: `scripts/daily-parking-camera-report.js`.
+- New npm script entry points:
+  - `npm run harness:camera-drive`
+  - `npm run report:parking-camera`
+
+Purpose of this update:
+
+- Reduce false-positive parking detections at red lights.
+- Preserve true parking detection by requiring stronger, multi-signal evidence.
+- Improve root-cause speed by logging explicit decision confidence, hold reasons, and summary metrics.
+
 ## Executive Summary
 
 The parking detection system has **solid architecture with good recovery mechanisms**, but there are **several critical gaps** that can cause missed parking detections, particularly around app death, force-kill, and Android lifecycle events.
@@ -447,4 +471,3 @@ See end of document.
 
 ### iOS CoreMotion Fix
 See end of document.
-

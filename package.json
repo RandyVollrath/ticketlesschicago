@@ -11,7 +11,9 @@
     "deploy": "vercel --prod",
     "deploy:staging": "vercel",
     "analyze:parking": "node scripts/analyze-parking-decisions.js",
-    "replay:parking-camera": "node scripts/replay-parking-camera-log.js"
+    "replay:parking-camera": "node scripts/replay-parking-camera-log.js",
+    "harness:camera-drive": "node scripts/camera-drive-harness.js",
+    "report:parking-camera": "node scripts/daily-parking-camera-report.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
