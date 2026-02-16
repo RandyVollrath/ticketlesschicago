@@ -13544,3 +13544,20 @@
 [2026-02-15 22:21:24.068] Continuous GPS OFF (saving battery, distanceFilter=10m)
 [2026-02-15 22:21:24.076] Accelerometer recording stopped
 [2026-02-15 22:21:24.076] Keeping CoreMotion active for departure detection (low power)
+[2026-02-15 22:26:28.200] === Log file opened ===
+[2026-02-15 22:26:28.202] Log path: /var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA/Documents/parking_detection.log
+[2026-02-15 22:26:28.203] Restored persisted parking location: 41.92606831439038, -87.66380726367949 ±172.54424241715594m (age: 373s)
+[2026-02-15 22:26:28.203] Restored hasConfirmedParkingThisSession = true from UserDefaults
+[2026-02-15 22:26:28.203] BackgroundLocationModule initialized
+[2026-02-15 22:26:28.214] Auth changed: 3
+[2026-02-15 22:26:29.322] Cleared persisted parking state from UserDefaults
+[2026-02-15 22:26:29.323] Monitoring stopped
+[2026-02-15 22:26:29.332] GPS speed > threshold (12.2 m/s) but CoreMotion not automotive — waiting for CoreMotion
+[2026-02-15 22:26:29.333] CoreMotion available: true
+[2026-02-15 22:26:29.333] CoreMotion activity monitoring started
+[2026-02-15 22:26:29.334] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
+[2026-02-15 22:26:29.345] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-15 22:26:40.153] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-15 22:26:40.790] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-15 22:26:49.735] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-15 22:26:50.054] CoreMotion update: automotive=false stationary=false walking=false confidence=high
