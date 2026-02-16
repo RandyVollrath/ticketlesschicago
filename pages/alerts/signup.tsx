@@ -19,6 +19,8 @@ const COLORS = {
 
 export default function AlertsSignup() {
   const router = useRouter();
+  const queryString = (value: string | string[] | undefined): string =>
+    Array.isArray(value) ? (value[0] || '') : (value || '');
   const [loading, setLoading] = useState(false);
   const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -47,36 +49,36 @@ export default function AlertsSignup() {
   useEffect(() => {
     if (!pageViewTrackedRef.current) {
       pageViewTrackedRef.current = true;
-      const source = (router.query.ref as string) || (router.query.utm_source as string) || 'direct';
-      const hasPrefillToken = !!router.query.token;
+      const source = queryString(router.query.ref as string | string[] | undefined) || queryString(router.query.utm_source as string | string[] | undefined) || 'direct';
+      const hasPrefillToken = !!queryString(router.query.token as string | string[] | undefined);
       analytics.signupPageViewed(source, hasPrefillToken);
     }
-  }, [router.query]);
+  }, [router.query, router.isReady]);
 
   useEffect(() => {
-    const error = router.query.error as string;
+    const error = queryString(router.query.error as string | string[] | undefined);
     if (error === 'data_lost') {
       setMessage('Your session data was lost during sign-in. Please fill out the form again.');
     } else if (error === 'signup_failed') {
       setMessage('Sign up failed. Please try again.');
     }
-  }, [router.query.error]);
+  }, [router.query.error, router.isReady]);
 
   useEffect(() => {
-    const flow = router.query.flow as string;
-    const email = router.query.email as string;
+    const flow = queryString(router.query.flow as string | string[] | undefined);
+    const email = queryString(router.query.email as string | string[] | undefined);
 
     if (flow === 'oauth' && email) {
       setFormData(prev => ({ ...prev, email: email }));
       setMessage('Welcome! Please complete your profile below to get started with free alerts.');
     }
-  }, [router.query.flow, router.query.email]);
+  }, [router.query.flow, router.query.email, router.isReady]);
 
   useEffect(() => {
-    const token = router.query.token as string;
+    const token = queryString(router.query.token as string | string[] | undefined);
     if (token && !prefilledData) {
       setLoadingToken(true);
-      fetch(`/api/email/get-token?token=${token}`)
+      fetch(`/api/email/get-token?token=${encodeURIComponent(token)}`)
         .then(res => res.json())
         .then(data => {
           if (data.data) {
@@ -104,7 +106,7 @@ export default function AlertsSignup() {
         })
         .finally(() => setLoadingToken(false));
     }
-  }, [router.query.token, prefilledData]);
+  }, [router.query.token, prefilledData, router.isReady]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     // Track form started on first interaction
@@ -171,7 +173,7 @@ export default function AlertsSignup() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          token: router.query.token || undefined
+          token: queryString(router.query.token as string | string[] | undefined) || undefined
         })
       });
 
@@ -189,7 +191,11 @@ export default function AlertsSignup() {
         hasVehicleInfo: !!(formData.licensePlate && formData.make && formData.model)
       });
 
-      sessionStorage.setItem('expectedGoogleEmail', formData.email);
+      try {
+        sessionStorage.setItem('expectedGoogleEmail', formData.email);
+      } catch (storageError) {
+        console.warn('Unable to persist expectedGoogleEmail in sessionStorage', storageError);
+      }
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -233,7 +239,7 @@ export default function AlertsSignup() {
     setMessage('');
 
     try {
-      const token = router.query.token as string;
+      const token = queryString(router.query.token as string | string[] | undefined);
       const response = await fetch('/api/alerts/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

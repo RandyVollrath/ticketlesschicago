@@ -19,8 +19,11 @@ const COLORS = {
 
 export default function AlertsSuccess() {
   const router = useRouter();
-  const isProtection = router.query.protection === 'true';
-  const isExistingUser = router.query.existing === 'true';
+  const queryString = (value: string | string[] | undefined): string =>
+    Array.isArray(value) ? (value[0] || '') : (value || '');
+  const isProtection = queryString(router.query.protection as string | string[] | undefined) === 'true';
+  const isExistingUser = queryString(router.query.existing as string | string[] | undefined) === 'true';
+  const signupEmail = queryString(router.query.email as string | string[] | undefined);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkError, setMagicLinkError] = useState('');
 
@@ -870,7 +873,7 @@ export default function AlertsSuccess() {
                 lineHeight: '1.6',
                 margin: 0
               }}>
-                We've sent a secure login link to <strong style={{ color: COLORS.graphite }}>{router.query.email}</strong>.
+                We've sent a secure login link to <strong style={{ color: COLORS.graphite }}>{signupEmail || 'your email'}</strong>.
                 Click the link to access your account and verify your information.
               </p>
               <p style={{

@@ -12,6 +12,11 @@ Implemented and now active in code:
   - `lastParkingDecisionSource`
   - `lastParkingDecisionTs`
 - In-app ground-truth correction banner added on Home screen so users can immediately mark false parking detections or confirm true ones.
+- Intersection dwell guard added:
+  - near-intersection short stops without walking/car-disconnect evidence are blocked before parking confirmation.
+  - quick resume from an intersection dwell now auto-adds hotspot signal and extends temporary lockout.
+- Post-confirm unwind added:
+  - if rapid real driving movement shortly after a low-confidence/risky parking confirm indicates false positive, native logic auto-unwinds parking assumptions and applies lockout/hotspot learning.
 - New synthetic camera validation harness: `scripts/camera-drive-harness.js`.
 - New daily tuning report generator: `scripts/daily-parking-camera-report.js`.
 - New npm script entry points:
