@@ -21,6 +21,16 @@ export default function AlertsSignup() {
   const router = useRouter();
   const queryString = (value: string | string[] | undefined): string =>
     Array.isArray(value) ? (value[0] || '') : (value || '');
+  const formatDateSafe = (raw: unknown): string => {
+    if (!raw || typeof raw !== 'string') return '';
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return '';
+    try {
+      return parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } catch {
+      return '';
+    }
+  };
   const [loading, setLoading] = useState(false);
   const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -81,7 +91,7 @@ export default function AlertsSignup() {
       fetch(`/api/email/get-token?token=${encodeURIComponent(token)}`)
         .then(res => res.json())
         .then(data => {
-          if (data.data) {
+          if (data && typeof data === 'object' && data.data && typeof data.data === 'object') {
             setPrefilledData(data.data);
             const nameParts = (data.data.name || '').split(' ');
             const firstName = nameParts[0] || '';
@@ -450,8 +460,12 @@ export default function AlertsSignup() {
                     </p>
                     <div style={{ fontSize: '14px', color: COLORS.graphite, lineHeight: '1.8' }}>
                       <strong>{prefilledData.make} {prefilledData.model}</strong> - Plate: {prefilledData.plate}
-                      <br />
-                      City Sticker Renewal: {new Date(prefilledData.renewalDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      {formatDateSafe(prefilledData?.renewalDate) ? (
+                        <>
+                          <br />
+                          City Sticker Renewal: {formatDateSafe(prefilledData?.renewalDate)}
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </div>
