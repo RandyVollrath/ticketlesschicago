@@ -29,6 +29,12 @@ Implemented and now active in code:
   - Parking rejection logs now include drive session linkage for cross-event debugging.
 - Camera runtime heartbeat:
   - Added minute-level heartbeat checks while camera alerts are active; if GPS update flow stalls, the app logs/surfaces a diagnostic signal.
+- Ground-truth loop foundation:
+  - Mobile now queues and flushes parking/camera ground-truth events (`GroundTruthService`) to `/api/mobile/ground-truth`.
+  - Added API ingestion route for `mobile_ground_truth_events` so user feedback can be used for recurring threshold tuning.
+- Auto-tuning + release gates:
+  - Added `scripts/auto-tune-reliability.js` to produce threshold recommendations from recent logs.
+  - Added `scripts/reliability-release-gate.js` to fail releases when miss/unwind/fallback rates exceed configured limits.
 - New npm script entry points:
   - `npm run harness:camera-drive`
   - `npm run report:parking-camera`

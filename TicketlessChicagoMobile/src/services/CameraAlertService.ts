@@ -30,6 +30,7 @@ import { CHICAGO_CAMERAS, CameraLocation } from '../data/chicago-cameras';
 import CameraPassHistoryService from './CameraPassHistoryService';
 import RedLightReceiptService, { RedLightTracePoint } from './RedLightReceiptService';
 import BackgroundLocationService from './BackgroundLocationService';
+import GroundTruthService from './GroundTruthService';
 import { distanceMeters, toRad } from '../utils/geo';
 import Logger from '../utils/Logger';
 
@@ -312,12 +313,25 @@ interface CameraPassTracking {
   sawBehindHeading: boolean;
 }
 
+type CameraConfidenceTier = 'high' | 'medium' | 'low';
+
+interface CameraCandidate {
+  index: number;
+  camera: CameraLocation;
+  distance: number;
+  confidenceScore: number;
+  confidenceTier: CameraConfidenceTier;
+}
+
 interface CameraTripSummary {
   sessionId: string;
   startedAtMs: number;
   durationMs: number;
   gpsUpdates: number;
   alertsFired: number;
+  highConfidenceAlerts: number;
+  mediumConfidenceAlerts: number;
+  lowConfidenceSuppressed: number;
   audioSpeakAttempts: number;
   audioSpeakSuccess: number;
   audioSpeakFailures: number;
@@ -383,6 +397,9 @@ class CameraAlertServiceClass {
     reason: string;
     message: string;
     attempt: number;
+    mode: 'fallback_audio' | 'proactive_medium';
+    confidenceScore: number;
+    confidenceTier: CameraConfidenceTier;
   }) => void) | null = null;
   /** Diagnostic: only fire first red-light rejection notification per drive */
   private hasNotifiedRedlightRejection = false;
@@ -390,6 +407,9 @@ class CameraAlertServiceClass {
   private tripStartedAt = 0;
   private tripAlertsFired = 0;
   private tripAlertCandidatesSeen = 0;
+  private tripHighConfidenceAlerts = 0;
+  private tripMediumConfidenceAlerts = 0;
+  private tripLowConfidenceSuppressed = 0;
   private tripTypeFiltered = 0;
   private tripSpeedFiltered = 0;
   private tripBboxFiltered = 0;
@@ -404,6 +424,7 @@ class CameraAlertServiceClass {
   private driveSessionId = '';
   private lastAlertDeliveryFailureReason = '';
   private lastAudioFallbackAt = 0;
+  private recentOpportunityDigestAt = 0;
   private tripNearestRedlightDistance = Infinity;
   private tripNearestSpeedDistance = Infinity;
 
@@ -692,6 +713,9 @@ class CameraAlertServiceClass {
       reason: string;
       message: string;
       attempt: number;
+      mode: 'fallback_audio' | 'proactive_medium';
+      confidenceScore: number;
+      confidenceTier: CameraConfidenceTier;
     }) => void) | null
   ): void {
     this.alertDeliveryCallback = cb;
@@ -710,6 +734,9 @@ class CameraAlertServiceClass {
     this.tripStartedAt = Date.now();
     this.tripAlertsFired = 0;
     this.tripAlertCandidatesSeen = 0;
+    this.tripHighConfidenceAlerts = 0;
+    this.tripMediumConfidenceAlerts = 0;
+    this.tripLowConfidenceSuppressed = 0;
     this.tripTypeFiltered = 0;
     this.tripSpeedFiltered = 0;
     this.tripBboxFiltered = 0;
@@ -726,6 +753,7 @@ class CameraAlertServiceClass {
     this.driveSessionId = this.makeDriveSessionId();
     this.lastAlertDeliveryFailureReason = '';
     this.lastAudioFallbackAt = 0;
+    this.recentOpportunityDigestAt = 0;
     this.lastRejectLogAt = 0;
     this.alertedCameras.clear();
     this.passTrackingByCamera.clear();
@@ -754,6 +782,9 @@ class CameraAlertServiceClass {
         durationMs: Date.now() - this.tripStartedAt,
         gpsUpdates: this.gpsUpdateCount,
         alertsFired: this.tripAlertsFired,
+        highConfidenceAlerts: this.tripHighConfidenceAlerts,
+        mediumConfidenceAlerts: this.tripMediumConfidenceAlerts,
+        lowConfidenceSuppressed: this.tripLowConfidenceSuppressed,
         audioSpeakAttempts: this.tripAudioSpeakAttempts,
         audioSpeakSuccess: this.tripAudioSpeakSuccess,
         audioSpeakFailures: this.tripAudioSpeakFailures,
@@ -840,12 +871,73 @@ class CameraAlertServiceClass {
       const now = Date.now();
       if (now - this.lastAnnounceTime < MIN_ANNOUNCE_INTERVAL_MS) return;
 
-      for (const { index, camera, distance } of nearbyCameras) {
+      for (const { index, camera, distance, confidenceScore, confidenceTier } of nearbyCameras) {
         if (this.alertedCameras.has(index)) continue;
 
-        // New camera in range - speak alert
-        void this.announceCamera(camera, distance, speed);
-        this.tripAlertsFired += 1;
+        // Confidence-tiered delivery:
+        // high   -> audio (with retry + fallback notification)
+        // medium -> notification only (no audio spam)
+        // low    -> suppress
+        if (confidenceTier === 'low') {
+          this.tripLowConfidenceSuppressed += 1;
+          this.lastAlertDeliveryFailureReason = 'suppressed_low_confidence';
+          void GroundTruthService.recordEvent({
+            type: 'camera_alert_suppressed_low_confidence',
+            timestamp: Date.now(),
+            driveSessionId: this.driveSessionId,
+            latitude,
+            longitude,
+            metadata: {
+              cameraType: camera.type,
+              address: camera.address,
+              distanceMeters: Math.round(distance),
+              confidenceScore,
+              confidenceTier,
+            },
+          });
+          continue;
+        }
+
+        if (confidenceTier === 'medium') {
+          this.tripMediumConfidenceAlerts += 1;
+          this.tripAlertsFired += 1;
+          this.lastAlertDeliveryFailureReason = 'medium_confidence_notification_only';
+          if (this.alertDeliveryCallback) {
+            this.alertDeliveryCallback({
+              title: camera.type === 'redlight' ? 'Red-light camera ahead' : 'Speed camera ahead',
+              body: `${camera.address}`,
+              cameraType: camera.type,
+              address: camera.address,
+              distanceMeters: distance,
+              sessionId: this.driveSessionId,
+              reason: 'medium_confidence_notification_only',
+              message: camera.type === 'redlight' ? 'Red-light camera ahead.' : 'Speed camera ahead.',
+              attempt: 0,
+              mode: 'proactive_medium',
+              confidenceScore,
+              confidenceTier,
+            });
+          }
+          void GroundTruthService.recordEvent({
+            type: 'camera_alert_medium_confidence',
+            timestamp: Date.now(),
+            driveSessionId: this.driveSessionId,
+            latitude,
+            longitude,
+            metadata: {
+              cameraType: camera.type,
+              address: camera.address,
+              distanceMeters: Math.round(distance),
+              confidenceScore,
+              confidenceTier,
+            },
+          });
+        } else {
+          this.tripHighConfidenceAlerts += 1;
+          this.tripAlertsFired += 1;
+          void this.announceCamera(camera, distance, speed, confidenceScore, confidenceTier);
+        }
+
         this.alertedCameras.set(index, { index, alertedAt: now });
         const bearingOffHeadingDegrees = this.getBearingOffHeadingDegrees(
           latitude,
@@ -1078,8 +1170,8 @@ class CameraAlertServiceClass {
     heading: number = -1,
     alertRadius: number = BASE_ALERT_RADIUS_METERS,
     speed: number = -1
-  ): Array<{ index: number; camera: CameraLocation; distance: number }> {
-    const results: Array<{ index: number; camera: CameraLocation; distance: number }> = [];
+  ): CameraCandidate[] {
+    const results: CameraCandidate[] = [];
 
     // Diagnostic counters
     let typeFiltered = 0;
@@ -1171,7 +1263,16 @@ class CameraAlertServiceClass {
           continue;
         }
 
-        results.push({ index: i, camera: cam, distance });
+        const confidenceScore = this.computeCameraConfidenceScore(cam, distance, speed, heading, alertRadius);
+        const confidenceTier: CameraConfidenceTier =
+          confidenceScore >= 75 ? 'high' : confidenceScore >= 55 ? 'medium' : 'low';
+        results.push({
+          index: i,
+          camera: cam,
+          distance,
+          confidenceScore,
+          confidenceTier,
+        });
       } else {
         distanceFiltered++;
         if (distance <= rejectDebugRadius && (!nearestRejected || distance < nearestRejected.distance)) {
@@ -1242,6 +1343,47 @@ class CameraAlertServiceClass {
     return top && top[1] > 0 ? top[0] : 'no_rejections_recorded';
   }
 
+  private computeCameraConfidenceScore(
+    camera: CameraLocation,
+    distanceMetersToCamera: number,
+    speedMps: number,
+    heading: number,
+    alertRadius: number
+  ): number {
+    let score = 50;
+
+    // Nearer cameras are more likely to be relevant.
+    const distanceRatio = Math.max(0, Math.min(1, distanceMetersToCamera / Math.max(alertRadius, 1)));
+    score += Math.round((1 - distanceRatio) * 28);
+
+    // Valid heading/bearing context improves certainty.
+    if (heading >= 0) {
+      const bearingOff = this.getBearingOffHeadingDegrees(
+        this.lastLat,
+        this.lastLng,
+        camera.latitude,
+        camera.longitude,
+        heading
+      );
+      if (bearingOff !== null) {
+        if (bearingOff <= 12) score += 14;
+        else if (bearingOff <= 22) score += 8;
+        else if (bearingOff <= 30) score += 3;
+      }
+    } else {
+      score -= 6;
+    }
+
+    // Slightly boost red-light awareness, since low-speed approaches still matter.
+    if (camera.type === 'redlight') score += 4;
+
+    // Unknown/very low speed slightly reduces certainty.
+    if (speedMps < 0) score -= 8;
+    else if (speedMps < 1.2) score -= 6;
+
+    return Math.max(0, Math.min(100, score));
+  }
+
   /**
    * Remove cooldowns for cameras the user has moved far from.
    * This allows re-alerting if the user drives past the same camera again.
@@ -1261,7 +1403,13 @@ class CameraAlertServiceClass {
   // TTS Announcement
   // --------------------------------------------------------------------------
 
-  private async announceCamera(camera: CameraLocation, distanceMeters: number, speed: number = -1): Promise<void> {
+  private async announceCamera(
+    camera: CameraLocation,
+    distanceMeters: number,
+    speed: number = -1,
+    confidenceScore: number = 100,
+    confidenceTier: CameraConfidenceTier = 'high'
+  ): Promise<void> {
     // Just awareness — no speed advice (school vs park zone ambiguity)
     // and no action advice (braking at the speed limit is dangerous).
     const message = camera.type === 'redlight'
@@ -1271,7 +1419,7 @@ class CameraAlertServiceClass {
     // Log with speed context for debugging alert timing
     const speedMph = speed >= 0 ? Math.round(speed * 2.237) : -1;
     const secondsToCamera = speed > 0 ? (distanceMeters / speed).toFixed(1) : '?';
-    log.info(`CAMERA ALERT: ${message} - ${camera.address} (session=${this.driveSessionId}, speed: ${speedMph} mph, ~${secondsToCamera}s away, alertRadius: ${this.getAlertRadius(speed)}m)`);
+    log.info(`CAMERA ALERT: ${message} - ${camera.address} (session=${this.driveSessionId}, tier=${confidenceTier}, score=${confidenceScore}, speed: ${speedMph} mph, ~${secondsToCamera}s away, alertRadius: ${this.getAlertRadius(speed)}m)`);
 
     this.tripAudioSpeakAttempts += 1;
     const firstSuccess = await speak(message);
@@ -1297,6 +1445,21 @@ class CameraAlertServiceClass {
     }
     this.lastAudioFallbackAt = Date.now();
     this.tripAudioFallbackNotifications += 1;
+    void GroundTruthService.recordEvent({
+      type: 'camera_alert_fallback',
+      timestamp: Date.now(),
+      driveSessionId: this.driveSessionId,
+      latitude: this.lastLat || undefined,
+      longitude: this.lastLng || undefined,
+      metadata: {
+        cameraType: camera.type,
+        address: camera.address,
+        distanceMeters: Math.round(distanceMeters),
+        reason: this.lastAlertDeliveryFailureReason,
+        confidenceScore,
+        confidenceTier,
+      },
+    });
 
     if (this.alertDeliveryCallback) {
       this.alertDeliveryCallback({
@@ -1309,6 +1472,9 @@ class CameraAlertServiceClass {
         reason: this.lastAlertDeliveryFailureReason,
         message,
         attempt: 2,
+        mode: 'fallback_audio',
+        confidenceScore,
+        confidenceTier,
       });
     }
   }
@@ -1452,6 +1618,9 @@ class CameraAlertServiceClass {
     redlightCameraCount: number;
     gpsUpdateCount: number;
     alertedCount: number;
+    highConfidenceAlerts: number;
+    mediumConfidenceAlerts: number;
+    lowConfidenceSuppressed: number;
     audioSpeakAttempts: number;
     audioSpeakSuccess: number;
     audioSpeakFailures: number;
@@ -1478,6 +1647,9 @@ class CameraAlertServiceClass {
       redlightCameraCount: redlightCount,
       gpsUpdateCount: this.gpsUpdateCount,
       alertedCount: this.alertedCameras.size,
+      highConfidenceAlerts: this.tripHighConfidenceAlerts,
+      mediumConfidenceAlerts: this.tripMediumConfidenceAlerts,
+      lowConfidenceSuppressed: this.tripLowConfidenceSuppressed,
       audioSpeakAttempts: this.tripAudioSpeakAttempts,
       audioSpeakSuccess: this.tripAudioSpeakSuccess,
       audioSpeakFailures: this.tripAudioSpeakFailures,

@@ -24,6 +24,7 @@ import PushNotificationService from './PushNotificationService';
 import AuthService from './AuthService';
 import { ParkingHistoryService } from '../screens/HistoryScreen';
 import CameraAlertService from './CameraAlertService';
+import GroundTruthService from './GroundTruthService';
 import { fetchCameraLocations } from '../data/chicago-cameras';
 import AppEvents from './AppEvents';
 import { distanceMeters as haversineDistance } from '../utils/geo';
@@ -157,6 +158,7 @@ class BackgroundTaskServiceClass {
 
       // Initialize camera alert service (TTS for speed/red light cameras)
       await CameraAlertService.initialize();
+      void GroundTruthService.flushQueue();
 
       // Wire up diagnostic callback so CameraAlertService can surface
       // filter rejections as visible notifications
@@ -2471,6 +2473,9 @@ class BackgroundTaskServiceClass {
     reason: string;
     message: string;
     attempt: number;
+    mode: 'fallback_audio' | 'proactive_medium';
+    confidenceScore: number;
+    confidenceTier: 'high' | 'medium' | 'low';
   }): Promise<void> {
     try {
       const now = Date.now();
@@ -2489,13 +2494,13 @@ class BackgroundTaskServiceClass {
           sound: 'default',
         },
         ios: {
-          sound: 'default',
-          interruptionLevel: 'timeSensitive',
+          sound: payload.mode === 'fallback_audio' ? 'default' : undefined,
+          interruptionLevel: payload.mode === 'fallback_audio' ? 'timeSensitive' : 'active',
         },
       });
 
       log.warn(
-        `[CameraAudioFallback] session=${payload.sessionId} type=${payload.cameraType} reason=${payload.reason} ` +
+        `[CameraDeliveryFallback] mode=${payload.mode} session=${payload.sessionId} type=${payload.cameraType} tier=${payload.confidenceTier} score=${payload.confidenceScore} reason=${payload.reason} ` +
         `distance=${Math.round(payload.distanceMeters)}m address=${payload.address}`
       );
     } catch (error) {
