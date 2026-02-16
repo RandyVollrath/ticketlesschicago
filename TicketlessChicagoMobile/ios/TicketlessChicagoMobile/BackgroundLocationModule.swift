@@ -246,10 +246,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   // The gps_coremotion_agree path requires CoreMotion to have been non-automotive
   // for at least coreMotionStabilitySec continuously, not just at one timer tick.
   private var coreMotionNotAutomotiveSince: Date? = nil
+  private var coreMotionUnknownSince: Date? = nil
+  private var coreMotionStateLabel: String = "unknown"
   private let coreMotionStabilitySec: TimeInterval = 6  // CoreMotion must stay non-automotive for 6s
   private let minZeroSpeedForAgreeSec: TimeInterval = 10  // GPS speed≈0 for 10s before gps_coremotion_agree can fire
   private let minWalkingEvidenceSec: TimeInterval = 4
   private let minZeroSpeedNoWalkingSec: TimeInterval = 20
+  private let unknownFallbackZeroSpeedSec: TimeInterval = 45
+  private let unknownFallbackMaxSpeedMps: Double = 0.9
+  private let unknownFallbackMinDrivingSec: TimeInterval = 20
   private let finalizationCancelSpeedMps: Double = 2.2
   private let queuedParkingGraceSec: TimeInterval = 25
   private let parkingFinalizationHoldSec: TimeInterval = 7
@@ -258,6 +263,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let locationWatchdogIntervalSec: TimeInterval = 20
   private let watchdogRecoveryCooldownSec: TimeInterval = 60
   private let bootstrapGpsWindowSec: TimeInterval = 75
+  private var stopWindowMaxSpeedMps: Double = 0
 
   // Camera alert tuning: match JS defaults
   private let camBaseAlertRadiusMeters: Double = 150
@@ -548,6 +554,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationAtStopStart = nil
     lastStationaryTime = nil
     speedZeroStartTime = nil
+    stopWindowMaxSpeedMps = 0
     stationaryLocation = nil
     stationaryStartTime = nil
     parkingFinalizationPending = false
@@ -559,6 +566,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastConfirmedParkingLocation = nil
     hasConfirmedParkingThisSession = false
     coreMotionNotAutomotiveSince = nil
+    coreMotionUnknownSince = nil
+    coreMotionStateLabel = "unknown"
     coreMotionWalkingSince = nil
     coreMotionStationarySince = nil
     lastLocationCallbackTime = nil
@@ -984,7 +993,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         if !self.coreMotionSaysAutomotive {
           self.automotiveSessionStart = Date()
         }
+        self.coreMotionStateLabel = "automotive"
         self.coreMotionSaysAutomotive = true
+        self.coreMotionUnknownSince = nil
         self.coreMotionNotAutomotiveSince = nil  // Reset stability tracker — back to automotive
         self.coreMotionWalkingSince = nil
         self.coreMotionStationarySince = nil
@@ -1001,6 +1012,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           self.speedZeroTimer?.invalidate()
           self.speedZeroTimer = nil
           self.speedZeroStartTime = nil
+          self.stopWindowMaxSpeedMps = 0
           self.lastStationaryTime = nil
           self.locationAtStopStart = nil
           self.log("CoreMotion automotive + GPS moving — cancelled parking timers")
@@ -1093,7 +1105,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         // CoreMotion takes 30-60s to reach medium confidence after parking,
         // while GPS immediately shows speed=0.
         let wasAutomotive = self.coreMotionSaysAutomotive
+        self.coreMotionStateLabel = activity.walking ? "walking" : "stationary"
         self.coreMotionSaysAutomotive = false
+        self.coreMotionUnknownSince = nil
         if activity.walking {
           if self.coreMotionWalkingSince == nil { self.coreMotionWalkingSince = Date() }
           self.coreMotionStationarySince = nil
@@ -1192,31 +1206,29 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             self.locationAtStopStart = nil
             self.speedSaysMoving = false
             self.speedZeroStartTime = nil
+            self.stopWindowMaxSpeedMps = 0
           }
         }
       } else if !activity.automotive && !activity.stationary && !activity.walking {
-        // CoreMotion "unknown" can persist after parking (especially at low speed)
-        // while GPS has already shown sustained zero movement.
-        // If we stay in that state too long, parking confirmation gets delayed.
-        if self.isDriving && !self.speedSaysMoving {
+        self.coreMotionStateLabel = "unknown"
+        if self.coreMotionUnknownSince == nil {
+          self.coreMotionUnknownSince = Date()
+          self.decision("coremotion_unknown_started", [
+            "confidence": self.confidenceString(activity.confidence),
+            "isDriving": self.isDriving,
+            "speedSaysMoving": self.speedSaysMoving,
+          ])
+          self.log("CoreMotion entered unknown state; waiting for stronger evidence")
+        } else if self.isDriving && !self.speedSaysMoving {
           let zeroDuration = self.speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? 0
+          let unknownDuration = self.coreMotionUnknownSince.map { Date().timeIntervalSince($0) } ?? 0
           let currentSpeed = self.locationManager.location?.speed ?? -1
-          let gpsZeroish = currentSpeed >= 0 && currentSpeed < 1.0
-          let unknownCanBeNonAutomotive = zeroDuration >= 20 && gpsZeroish
-
-          if unknownCanBeNonAutomotive {
-            let wasAutomotive = self.coreMotionSaysAutomotive
-            self.coreMotionSaysAutomotive = false
-            if wasAutomotive && self.coreMotionNotAutomotiveSince == nil {
-              self.coreMotionNotAutomotiveSince = Date()
-              self.log("CoreMotion unknown treated as non-automotive after \(String(format: "%.0f", zeroDuration))s zero speed")
-            }
-            self.decision("coremotion_unknown_treated_non_automotive", [
-              "zeroDurationSec": zeroDuration,
-              "gpsSpeed": currentSpeed,
-              "confidence": self.confidenceString(activity.confidence),
-            ])
-          }
+          self.decision("coremotion_unknown_waiting", [
+            "unknownDurationSec": unknownDuration,
+            "zeroDurationSec": zeroDuration,
+            "gpsSpeed": currentSpeed,
+            "maxSpeedDuringStop": self.stopWindowMaxSpeedMps,
+          ])
         }
       }
       // Note: cycling, running, unknown → ignore, don't change state
@@ -1313,6 +1325,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       speedZeroTimer?.invalidate()
       speedZeroTimer = nil
       speedZeroStartTime = nil
+      stopWindowMaxSpeedMps = 0
       locationAtStopStart = nil  // Reset stop location - wasn't a real stop
 
       // GPS speed alone does NOT start driving — only CoreMotion can detect
@@ -1448,6 +1461,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         // Record when speed first hit zero
         if speedZeroStartTime == nil {
           speedZeroStartTime = Date()
+          stopWindowMaxSpeedMps = max(0, speed)
         }
         // Record location when we first stopped
         if stationaryLocation == nil {
@@ -1463,6 +1477,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           // Check current GPS speed — the 2-min location check only applies if phone is truly stationary
           // (not walking away from car). Walking is ~1.4 m/s.
           let currentSpeed = self.locationManager.location?.speed ?? -1
+          if currentSpeed >= 0 {
+            self.stopWindowMaxSpeedMps = max(self.stopWindowMaxSpeedMps, currentSpeed)
+          }
           let phoneIsStationary = currentSpeed >= 0 && currentSpeed < 0.5  // truly not moving
 
           // Check if we've moved significantly from parking spot
@@ -1483,6 +1500,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             timer.invalidate()
             self.speedZeroTimer = nil
             self.speedZeroStartTime = nil
+            self.stopWindowMaxSpeedMps = 0
             self.stationaryLocation = nil
             self.stationaryStartTime = nil
             return
@@ -1490,6 +1508,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
           let zeroDuration = self.speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? 0
           let stationaryDuration = self.stationaryStartTime.map { Date().timeIntervalSince($0) } ?? 0
+          let unknownDuration = self.coreMotionUnknownSince.map { Date().timeIntervalSince($0) } ?? 0
 
           if !self.coreMotionSaysAutomotive {
             // CoreMotion agrees user is not in a vehicle.
@@ -1511,6 +1530,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
                 "zeroDurationSec": zeroDuration,
                 "coreMotionStableSec": coreMotionStableDuration,
                 "gpsSpeed": currentSpeedCheck,
+                "coreMotionState": self.coreMotionStateLabel,
+                "unknownDurationSec": unknownDuration,
+                "maxSpeedDuringStop": self.stopWindowMaxSpeedMps,
                 "walkingEvidenceSec": walkingEvidenceSec,
                 "hasWalkingEvidence": hasWalkingEvidence,
                 "longNoWalkingStop": longNoWalkingStop,
@@ -1537,12 +1559,33 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
                 "zeroDurationSec": zeroDuration,
                 "coreMotionStableSec": coreMotionStableDuration,
                 "gpsSpeed": currentSpeedCheck,
+                "coreMotionState": self.coreMotionStateLabel,
+                "unknownDurationSec": unknownDuration,
+                "maxSpeedDuringStop": self.stopWindowMaxSpeedMps,
                 "walkingEvidenceSec": walkingEvidenceSec,
                 "hasWalkingEvidence": hasWalkingEvidence,
                 "longNoWalkingStop": longNoWalkingStop,
                 "reasons": waitReasons.joined(separator: "; "),
               ])
             }
+          } else if self.coreMotionStateLabel == "unknown" &&
+                    unknownDuration >= self.unknownFallbackZeroSpeedSec &&
+                    zeroDuration >= self.unknownFallbackZeroSpeedSec &&
+                    self.stopWindowMaxSpeedMps <= self.unknownFallbackMaxSpeedMps &&
+                    (self.drivingStartTime.map { Date().timeIntervalSince($0) } ?? 0) >= self.unknownFallbackMinDrivingSec {
+            // Conservative fallback for devices that linger in CoreMotion "unknown":
+            // require a long sustained stop and no meaningful speed spikes.
+            self.log("Parking confirmed via unknown fallback: unknown \(String(format: "%.0f", unknownDuration))s, zero \(String(format: "%.0f", zeroDuration))s, max stop speed \(String(format: "%.1f", self.stopWindowMaxSpeedMps)) m/s")
+            self.decision("gps_unknown_fallback_passed", [
+              "unknownDurationSec": unknownDuration,
+              "zeroDurationSec": zeroDuration,
+              "maxSpeedDuringStop": self.stopWindowMaxSpeedMps,
+              "gpsSpeed": currentSpeed,
+              "coreMotionState": self.coreMotionStateLabel,
+            ])
+            timer.invalidate()
+            self.speedZeroTimer = nil
+            self.confirmParking(source: "gps_unknown_fallback")
           } else if phoneIsStationary && withinStationaryRadius && stationaryDuration >= self.stationaryDurationSec {
             // Phone hasn't moved (speed < 0.5 m/s) AND still within 50m of parking spot for 2+ min.
             // This means the user is sitting in their parked car (not walking away).
@@ -1553,8 +1596,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             self.confirmParking(source: "location_stationary")
           } else {
             var reason = "CoreMotion still automotive"
+            if self.coreMotionStateLabel == "unknown" {
+              reason = "CoreMotion unknown"
+            }
             if !phoneIsStationary { reason += ", phone moving (speed: \(String(format: "%.1f", currentSpeed)) m/s)" }
             if !withinStationaryRadius { reason += ", user walked away from parking spot" }
+            if self.coreMotionStateLabel == "unknown" {
+              reason += ", unknown=\(String(format: "%.0f", unknownDuration))s/\(String(format: "%.0f", self.unknownFallbackZeroSpeedSec))s, maxStopSpeed=\(String(format: "%.1f", self.stopWindowMaxSpeedMps))m/s"
+            }
             self.log("Speed≈0 for \(String(format: "%.0f", zeroDuration))s, stationary for \(String(format: "%.0f", stationaryDuration))s. Waiting... (\(reason))")
           }
         }
@@ -2509,7 +2558,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // abort parking confirmation — UNLESS this is a speed override (15s of zero speed
     // means the engine is off, CoreMotion is just slow to update).
     // Also allow "location_stationary" — if in same spot for 2+ min, that's definitely parking.
-    if coreMotionSaysAutomotive && source != "location_stationary" {
+    if coreMotionSaysAutomotive &&
+       source != "location_stationary" &&
+       source != "gps_unknown_fallback" {
       self.log("CoreMotion still says automotive — aborting parking confirmation (source: \(source))")
       decision("confirm_parking_aborted_automotive", ["source": source])
       lastStationaryTime = nil
@@ -2732,9 +2783,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastStationaryTime = nil
     locationAtStopStart = nil
     speedZeroStartTime = nil
+    stopWindowMaxSpeedMps = 0
     stationaryLocation = nil
     stationaryStartTime = nil
     coreMotionNotAutomotiveSince = nil
+    coreMotionUnknownSince = nil
+    coreMotionStateLabel = "unknown"
     coreMotionWalkingSince = nil
     coreMotionStationarySince = nil
     gpsFallbackDrivingSince = nil
