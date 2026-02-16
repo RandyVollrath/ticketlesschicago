@@ -3210,7 +3210,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "heading": heading,
       "accuracy": acc,
     ])
-    log("NATIVE CAMERA ALERT: \(title) @ \(cam.address) (dist=\(String(format: \"%.0f\", bestDist))m, radius=\(String(format: \"%.0f\", alertRadius))m)")
+    log("NATIVE CAMERA ALERT: \(title) @ \(cam.address) (dist=\(Int(bestDist))m, radius=\(Int(alertRadius))m)")
   }
 
   private func cameraAlertRadiusMeters(speedMps: Double) -> Double {
