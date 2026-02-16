@@ -404,6 +404,71 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationWatchdogTimer = nil
   }
 
+  private func startMonitoringHeartbeat() {
+    monitoringHeartbeatTimer?.invalidate()
+    let timer = Timer.scheduledTimer(withTimeInterval: monitoringHeartbeatIntervalSec, repeats: true) { [weak self] _ in
+      self?.emitMonitoringHeartbeat(reason: "interval")
+    }
+    RunLoop.main.add(timer, forMode: .common)
+    monitoringHeartbeatTimer = timer
+    emitMonitoringHeartbeat(reason: "started")
+    self.log("Monitoring heartbeat started (\(Int(monitoringHeartbeatIntervalSec))s)")
+  }
+
+  private func stopMonitoringHeartbeat() {
+    monitoringHeartbeatTimer?.invalidate()
+    monitoringHeartbeatTimer = nil
+  }
+
+  private func emitMonitoringHeartbeat(reason: String) {
+    guard isMonitoring else { return }
+
+    let now = Date()
+    let currentLoc = locationManager.location
+    let currentLocAgeSec = currentLoc.map { now.timeIntervalSince($0.timestamp) } ?? -1
+    let callbackAgeSec = lastLocationCallbackTime.map { now.timeIntervalSince($0) } ?? -1
+    let speedZeroAgeSec = speedZeroStartTime.map { now.timeIntervalSince($0) } ?? -1
+    let nonAutoAgeSec = coreMotionNotAutomotiveSince.map { now.timeIntervalSince($0) } ?? -1
+    let unknownAgeSec = coreMotionUnknownSince.map { now.timeIntervalSince($0) } ?? -1
+    let queuedAgeSec = queuedParkingAt.map { now.timeIntervalSince($0) } ?? -1
+    let lockoutRemainingSec = falsePositiveParkingLockoutUntil.map { max(0, $0.timeIntervalSinceNow) } ?? 0
+
+    decision("monitoring_heartbeat", [
+      "reason": reason,
+      "isDriving": isDriving,
+      "coreMotionAutomotive": coreMotionSaysAutomotive,
+      "speedSaysMoving": speedSaysMoving,
+      "coreMotionState": coreMotionStateLabel,
+      "hasConfirmedParkingThisSession": hasConfirmedParkingThisSession,
+      "continuousGpsActive": continuousGpsActive,
+      "coreMotionActive": coreMotionActive,
+      "gpsOnlyMode": gpsOnlyMode,
+      "parkingFinalizationPending": parkingFinalizationPending,
+      "speedZeroTimerActive": speedZeroTimer != nil,
+      "parkingConfirmationTimerActive": parkingConfirmationTimer != nil,
+      "queueActive": queuedParkingAt != nil,
+      "queueAgeSec": queuedAgeSec,
+      "speedZeroAgeSec": speedZeroAgeSec,
+      "nonAutomotiveAgeSec": nonAutoAgeSec,
+      "unknownAgeSec": unknownAgeSec,
+      "lastLocationCallbackAgeSec": callbackAgeSec,
+      "currentLocationAgeSec": currentLocAgeSec,
+      "currentSpeed": currentLoc?.speed ?? -1,
+      "currentAccuracy": currentLoc?.horizontalAccuracy ?? -1,
+      "carAudioConnected": carAudioConnected,
+      "recentVehicleSignal": hasRecentVehicleSignal(180),
+      "cameraPrewarmRemainingSec": cameraPrewarmUntil.map { max(0, $0.timeIntervalSinceNow) } ?? 0,
+      "lockoutRemainingSec": lockoutRemainingSec,
+      "hotspotCount": falsePositiveHotspots.count,
+      "healthRecoveryCount": healthRecoveryCount,
+      "lastParkingDecisionConfidence": lastParkingDecisionConfidence,
+      "lastParkingDecisionSource": lastParkingDecisionSource,
+      "lastParkingDecisionHoldReason": lastParkingDecisionHoldReason,
+      "tripActive": tripSummaryId != nil,
+      "tripId": tripSummaryId ?? "",
+    ])
+  }
+
   private func runLocationWatchdog() {
     guard isMonitoring else { return }
 
@@ -523,6 +588,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var lastConfirmedParkingLocation: CLLocation? = nil  // Where we last confirmed parking (for distance-based flicker check)
   private var lastLocationCallbackTime: Date? = nil
   private var locationWatchdogTimer: Timer?
+  private var monitoringHeartbeatTimer: Timer?
   private var lastWatchdogRecoveryTime: Date? = nil
   private var lastMotionDecisionSignature: String? = nil
   private var lastSpeedBucket: String? = nil
@@ -678,6 +744,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let postConfirmUnwindMaxConfidence = 65
   private let locationCallbackStaleSec: TimeInterval = 90
   private let locationWatchdogIntervalSec: TimeInterval = 20
+  private let monitoringHeartbeatIntervalSec: TimeInterval = 20
   private let watchdogRecoveryCooldownSec: TimeInterval = 60
   private let healthRecoveryWarnThreshold = 3
   private let healthRecoveryWarnWindowSec: TimeInterval = 15 * 60
@@ -1078,6 +1145,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     ])
     lastLocationCallbackTime = Date()
     startLocationWatchdog()
+    startMonitoringHeartbeat()
     startBootstrapGpsWindow(reason: "start_monitoring")
     let authStatus = locationManager.authorizationStatus
     let authString: String
@@ -1096,6 +1164,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   /// Stop all monitoring
   @objc func stopMonitoring(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     decision("stop_monitoring_called")
+    emitMonitoringHeartbeat(reason: "stopping")
     emitTripSummary(outcome: "monitoring_stopped")
     locationManager.stopMonitoringSignificantLocationChanges()
     stopVehicleSignalMonitoring()
@@ -1103,6 +1172,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     stopMotionActivityMonitoring()
     stopAccelerometerRecording()
     stopLocationWatchdog()
+    stopMonitoringHeartbeat()
     bootstrapGpsTimer?.invalidate()
     bootstrapGpsTimer = nil
 
@@ -1212,6 +1282,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "backgroundRefreshStatus": bgRefreshString,
       "lowPowerModeEnabled": ProcessInfo.processInfo.isLowPowerModeEnabled,
       "vehicleSignalConnected": carAudioConnected,
+      "recentVehicleSignal": hasRecentVehicleSignal(180),
+      "parkingFinalizationPending": parkingFinalizationPending,
+      "queueActive": queuedParkingAt != nil,
+      "queueAgeSec": queuedParkingAt.map { Date().timeIntervalSince($0) } ?? NSNull(),
+      "speedZeroAgeSec": speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? NSNull(),
+      "coreMotionUnknownAgeSec": coreMotionUnknownSince.map { Date().timeIntervalSince($0) } ?? NSNull(),
+      "coreMotionNonAutoAgeSec": coreMotionNotAutomotiveSince.map { Date().timeIntervalSince($0) } ?? NSNull(),
+      "heartbeatActive": monitoringHeartbeatTimer != nil,
       "healthRecoveryCount": healthRecoveryCount,
       "lastParkingDecisionConfidence": lastParkingDecisionConfidence,
       "lastParkingDecisionHoldReason": lastParkingDecisionHoldReason,

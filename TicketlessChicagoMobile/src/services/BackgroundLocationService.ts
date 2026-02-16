@@ -59,6 +59,14 @@ export interface BackgroundLocationStatus {
   lowPowerModeEnabled?: boolean;
   notificationsAuthorized?: boolean;
   vehicleSignalConnected?: boolean;
+  recentVehicleSignal?: boolean;
+  parkingFinalizationPending?: boolean;
+  queueActive?: boolean;
+  queueAgeSec?: number | null;
+  speedZeroAgeSec?: number | null;
+  coreMotionUnknownAgeSec?: number | null;
+  coreMotionNonAutoAgeSec?: number | null;
+  heartbeatActive?: boolean;
   healthRecoveryCount?: number;
   drivingDurationSec?: number;
   lastDrivingLat?: number;
