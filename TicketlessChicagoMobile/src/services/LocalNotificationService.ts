@@ -207,7 +207,7 @@ class LocalNotificationServiceClass {
         break;
 
       case 'permit_zone':
-        hoursBefore = 0; // Time is pre-computed (enforcement start minus 15 min)
+        hoursBefore = 0; // Time is pre-computed (enforcement start minus advance warning)
         notificationId = `${NOTIFICATION_PREFIX.PERMIT_ZONE}${Date.now()}`;
         channelId = 'parking-alerts';
         title = '🅿️ Permit Zone — Move Your Car!';
@@ -219,8 +219,8 @@ class LocalNotificationServiceClass {
         notificationId = `${NOTIFICATION_PREFIX.METERED_PARKING}${Date.now()}`;
         channelId = 'parking-alerts';
         // Detect subtype: expiry warning vs enforcement activation
-        if (details?.includes('expires in 15 minutes')) {
-          title = '⏰ Meter Expiring in 15 Minutes!';
+        if (details?.includes('expires in 30 minutes')) {
+          title = '⏰ Meter Expiring in 30 Minutes!';
         } else {
           title = '⏰ Meter Enforcement Starting!';
         }
