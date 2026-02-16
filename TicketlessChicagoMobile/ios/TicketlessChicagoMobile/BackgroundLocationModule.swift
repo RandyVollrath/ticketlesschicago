@@ -295,6 +295,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           "outputs": outputTypes.joined(separator: ","),
         ])
         log("Vehicle audio signal connected (\(outputTypes.joined(separator: ",")))")
+        extendCameraPrewarm(reason: "vehicle_signal_connected", seconds: cameraPrewarmStrongSec)
         if isMonitoring && !continuousGpsActive {
           startBootstrapGpsWindow(reason: "vehicle_signal_connected")
         }
@@ -306,6 +307,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           "outputs": outputTypes.joined(separator: ","),
         ])
         log("Vehicle audio signal disconnected")
+        extendCameraPrewarm(reason: "vehicle_signal_disconnected", seconds: cameraPrewarmSec)
       }
     }
   }
@@ -466,11 +468,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var gpsFallbackStartLocation: CLLocation? = nil
   private var gpsFallbackPossibleDrivingEmitted = false
   private var bootstrapGpsTimer: Timer? = nil
+  private var cameraPrewarmUntil: Date? = nil
   private var vehicleSignalMonitoringActive = false
   private var carAudioConnected = false
   private var lastCarAudioConnectedAt: Date? = nil
   private var lastCarAudioDisconnectedAt: Date? = nil
   private var lastVehicleSignalPollAt: Date? = nil
+  private var falsePositiveHotspots: [[String: Any]] = []
   private var healthRecoveryCount = 0
   private var healthRecoveryWindowStart: Date? = nil
   private var lastHealthWarningAt: Date? = nil
@@ -518,6 +522,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let kLastParkingAccKey = "bg_lastConfirmedParkingAcc"
   private let kLastParkingTimeKey = "bg_lastConfirmedParkingTime"
   private let kHasConfirmedParkingKey = "bg_hasConfirmedParking"
+  private let kFalsePositiveHotspotsKey = "bg_false_positive_hotspots_v1"
 
   // Configuration
   private let minDrivingDurationSec: TimeInterval = 10   // 10 sec of driving before we care about stops (was 120→60→30→10; covers moving car one block for street cleaning)
@@ -575,7 +580,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let healthRecoveryWarnWindowSec: TimeInterval = 15 * 60
   private let healthWarnCooldownSec: TimeInterval = 30 * 60
   private let bootstrapGpsWindowSec: TimeInterval = 75
+  private let cameraPrewarmSec: TimeInterval = 180
+  private let cameraPrewarmStrongSec: TimeInterval = 300
   private var stopWindowMaxSpeedMps: Double = 0
+  private let hotspotMergeRadiusMeters: Double = 80
+  private let hotspotBlockRadiusMeters: Double = 90
+  private let hotspotBlockMinReports: Int = 2
 
   // Camera alert tuning: match JS defaults
   private let camBaseAlertRadiusMeters: Double = 150
@@ -610,6 +620,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // resets all Clybourn guards to nil/false, allowing significantLocationChange
     // to create false parking at wrong addresses with cell-tower GPS.
     restorePersistedParkingState()
+    loadFalsePositiveHotspots()
 
     // Listen for app resuming from iOS suspension. When iOS suspends the app,
     // CoreMotion callbacks freeze — we can miss entire drive+park cycles.
@@ -658,6 +669,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "redlightEnabled": redlightEnabled,
     ])
     log("Camera settings updated: enabled=\(enabled) speed=\(speedEnabled) redlight=\(redlightEnabled)")
+    resolve(true)
+  }
+
+  @objc func reportParkingFalsePositive(_ latitude: Double, longitude: Double,
+                                        resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    addFalsePositiveHotspot(lat: latitude, lng: longitude, source: "user_report")
+    resolve(true)
+  }
+
+  @objc func reportParkingConfirmed(_ latitude: Double, longitude: Double,
+                                    resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    reduceFalsePositiveHotspot(lat: latitude, lng: longitude, source: "user_confirm")
     resolve(true)
   }
 
@@ -726,6 +749,105 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     defaults.removeObject(forKey: kLastParkingTimeKey)
     defaults.removeObject(forKey: kHasConfirmedParkingKey)
     self.log("Cleared persisted parking state from UserDefaults")
+  }
+
+  private func loadFalsePositiveHotspots() {
+    let defaults = UserDefaults.standard
+    guard let arr = defaults.array(forKey: kFalsePositiveHotspotsKey) as? [[String: Any]] else { return }
+    falsePositiveHotspots = arr
+    decision("hotspots_loaded", ["count": arr.count])
+  }
+
+  private func saveFalsePositiveHotspots() {
+    UserDefaults.standard.set(falsePositiveHotspots, forKey: kFalsePositiveHotspotsKey)
+  }
+
+  private func addFalsePositiveHotspot(lat: Double, lng: Double, source: String) {
+    let nowMs = Date().timeIntervalSince1970 * 1000
+    let newLoc = CLLocation(latitude: lat, longitude: lng)
+    var merged = false
+    for i in 0..<falsePositiveHotspots.count {
+      guard
+        let existingLat = falsePositiveHotspots[i]["lat"] as? Double,
+        let existingLng = falsePositiveHotspots[i]["lng"] as? Double
+      else { continue }
+      let dist = newLoc.distance(from: CLLocation(latitude: existingLat, longitude: existingLng))
+      if dist <= hotspotMergeRadiusMeters {
+        let prevCount = falsePositiveHotspots[i]["count"] as? Int ?? 1
+        falsePositiveHotspots[i]["count"] = min(prevCount + 1, 20)
+        falsePositiveHotspots[i]["lastTs"] = nowMs
+        merged = true
+        decision("hotspot_updated", [
+          "source": source,
+          "count": min(prevCount + 1, 20),
+          "distanceMeters": dist,
+        ])
+        break
+      }
+    }
+    if !merged {
+      falsePositiveHotspots.append([
+        "lat": lat,
+        "lng": lng,
+        "count": 1,
+        "firstTs": nowMs,
+        "lastTs": nowMs,
+      ])
+      decision("hotspot_added", [
+        "source": source,
+        "count": 1,
+      ])
+    }
+    if falsePositiveHotspots.count > 30 {
+      falsePositiveHotspots = Array(falsePositiveHotspots.suffix(30))
+    }
+    saveFalsePositiveHotspots()
+  }
+
+  private func reduceFalsePositiveHotspot(lat: Double, lng: Double, source: String) {
+    let loc = CLLocation(latitude: lat, longitude: lng)
+    for i in stride(from: falsePositiveHotspots.count - 1, through: 0, by: -1) {
+      guard
+        let hLat = falsePositiveHotspots[i]["lat"] as? Double,
+        let hLng = falsePositiveHotspots[i]["lng"] as? Double
+      else { continue }
+      let dist = loc.distance(from: CLLocation(latitude: hLat, longitude: hLng))
+      if dist <= hotspotMergeRadiusMeters {
+        let prevCount = falsePositiveHotspots[i]["count"] as? Int ?? 1
+        let next = max(0, prevCount - 1)
+        if next == 0 {
+          falsePositiveHotspots.remove(at: i)
+        } else {
+          falsePositiveHotspots[i]["count"] = next
+          falsePositiveHotspots[i]["lastTs"] = Date().timeIntervalSince1970 * 1000
+        }
+        decision("hotspot_reduced", [
+          "source": source,
+          "prevCount": prevCount,
+          "nextCount": next,
+          "distanceMeters": dist,
+        ])
+        saveFalsePositiveHotspots()
+        return
+      }
+    }
+  }
+
+  private func hotspotInfo(near location: CLLocation?) -> (count: Int, distance: Double)? {
+    guard let location = location else { return nil }
+    var best: (count: Int, distance: Double)? = nil
+    for item in falsePositiveHotspots {
+      guard let lat = item["lat"] as? Double, let lng = item["lng"] as? Double else { continue }
+      let dist = location.distance(from: CLLocation(latitude: lat, longitude: lng))
+      if dist > hotspotBlockRadiusMeters { continue }
+      let count = item["count"] as? Int ?? 1
+      if let cur = best {
+        if dist < cur.distance { best = (count, dist) }
+      } else {
+        best = (count, dist)
+      }
+    }
+    return best
   }
 
   @objc override static func requiresMainQueueSetup() -> Bool {
@@ -906,6 +1028,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastCarAudioConnectedAt = nil
     lastCarAudioDisconnectedAt = nil
     lastVehicleSignalPollAt = nil
+    cameraPrewarmUntil = nil
     healthRecoveryCount = 0
     healthRecoveryWindowStart = nil
     lastHealthWarningAt = nil
@@ -1262,6 +1385,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     bootstrapGpsTimer = timer
   }
 
+  private func extendCameraPrewarm(reason: String, seconds: TimeInterval? = nil) {
+    let duration = seconds ?? cameraPrewarmSec
+    let newUntil = Date().addingTimeInterval(duration)
+    if let existing = cameraPrewarmUntil, existing > newUntil {
+      return
+    }
+    cameraPrewarmUntil = newUntil
+    decision("camera_prewarm_extended", [
+      "reason": reason,
+      "durationSec": duration,
+      "untilTs": newUntil.timeIntervalSince1970 * 1000,
+    ])
+  }
+
   // MARK: - Accelerometer: Evidence Recording
 
   /// Start recording accelerometer + gyro data into a rolling buffer.
@@ -1444,6 +1581,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
                   "timestamp": Date().timeIntervalSince1970 * 1000,
                   "source": "coremotion_pre_gps",
                 ])
+                self.extendCameraPrewarm(reason: "possible_driving_coremotion", seconds: self.cameraPrewarmStrongSec)
                 self.log("Emitted onPossibleDriving — camera alerts should start now")
               }
               self.log("CoreMotion says automotive but GPS speed ≈ 0 — waiting for GPS speed confirmation")
@@ -1483,6 +1621,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             "timestamp": departureTimestamp,
             "source": departureSource,
           ])
+          self.extendCameraPrewarm(reason: "driving_started_coremotion", seconds: self.cameraPrewarmStrongSec)
         }
 
       } else if (activity.stationary || activity.walking) && (activity.confidence != .low || !self.speedSaysMoving) {
@@ -1752,6 +1891,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           "timestamp": departureTimestamp,
           "source": "gps_speed_confirmed",
         ])
+        extendCameraPrewarm(reason: "driving_started_gps_confirmed", seconds: cameraPrewarmStrongSec)
         beginTripSummary(source: "gps_speed_confirmed", departureTimestampMs: departureTimestamp)
         gpsFallbackDrivingSince = nil
         gpsFallbackStartLocation = nil
@@ -1786,6 +1926,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
               "timestamp": Date().timeIntervalSince1970 * 1000,
               "source": "gps_speed_fallback_preconfirm",
             ])
+            extendCameraPrewarm(reason: "possible_driving_gps_fallback", seconds: cameraPrewarmStrongSec)
             self.log("Emitted onPossibleDriving from GPS fallback preconfirm")
           }
 
@@ -1808,6 +1949,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
               "timestamp": fallbackStart.timeIntervalSince1970 * 1000,
               "source": "gps_speed_fallback",
             ])
+            extendCameraPrewarm(reason: "driving_started_gps_fallback", seconds: cameraPrewarmStrongSec)
             beginTripSummary(source: "gps_speed_fallback", departureTimestampMs: fallbackStart.timeIntervalSince1970 * 1000)
             gpsFallbackDrivingSince = nil
             gpsFallbackStartLocation = nil
@@ -2074,7 +2216,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // Native camera alerts: only when backgrounded (JS often suspended)
     // and only while we believe the user is driving/automotive.
     let appState = UIApplication.shared.applicationState
-    let cameraArmed = isDriving || coreMotionSaysAutomotive || speedSaysMoving || hasRecentVehicleSignal(120)
+    let cameraPrewarmed = cameraPrewarmUntil.map { Date() <= $0 } ?? false
+    let cameraArmed = isDriving || coreMotionSaysAutomotive || speedSaysMoving || hasRecentVehicleSignal(120) || cameraPrewarmed
     if appState != .active && cameraArmed {
       maybeSendNativeCameraAlert(location)
     }
@@ -2844,6 +2987,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           "timestamp": departureTimestamp,
           "source": "recovery_coremotion_history",
         ])
+        self.extendCameraPrewarm(reason: "driving_started_recovery", seconds: self.cameraPrewarmStrongSec)
         self.log("RECOVERY: onDrivingStarted fired (departure from previous parking)")
 
         // DON'T use the significantLocationChange cell-tower fix as the parking
@@ -3006,14 +3150,40 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       return
     }
 
-    self.log("PARKING CANDIDATE READY (source: \(source)) — holding \(String(format: "%.0f", parkingFinalizationHoldSec))s for stability")
-
     // Location priority:
     // 1. locationAtStopStart - captured when CoreMotion first said non-automotive (best)
     // 2. lastDrivingLocation - last GPS while in driving state (very good - includes slow creep)
     // 3. locationManager.location - current GPS (last resort - user may have walked)
     let parkingLocation = locationAtStopStart ?? lastDrivingLocation
     let currentLocation = locationManager.location
+    let hotspotCandidate = parkingLocation ?? currentLocation
+    let hotspot = hotspotInfo(near: hotspotCandidate)
+    let walkingEvidenceSec = coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
+    let zeroDurationSec = speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? 0
+    let hasRecentDisconnectEvidence: Bool = {
+      guard let disconnectedAt = lastCarAudioDisconnectedAt else { return false }
+      let age = Date().timeIntervalSince(disconnectedAt)
+      return age >= 0 && age <= carDisconnectEvidenceWindowSec
+    }()
+    if source != "location_stationary",
+       let h = hotspot,
+       h.count >= hotspotBlockMinReports,
+       walkingEvidenceSec < minWalkingEvidenceSec,
+       !hasRecentDisconnectEvidence,
+       zeroDurationSec < 25 {
+      self.log("Parking candidate blocked by hotspot guard (reports=\(h.count), dist=\(String(format: "%.0f", h.distance))m, zero=\(String(format: "%.0f", zeroDurationSec))s)")
+      decision("confirm_parking_blocked_hotspot", [
+        "source": source,
+        "hotspotReports": h.count,
+        "hotspotDistanceMeters": h.distance,
+        "zeroDurationSec": zeroDurationSec,
+        "walkingEvidenceSec": walkingEvidenceSec,
+      ])
+      lastStationaryTime = nil
+      locationAtStopStart = nil
+      return
+    }
+    self.log("PARKING CANDIDATE READY (source: \(source)) — holding \(String(format: "%.0f", parkingFinalizationHoldSec))s for stability")
 
     // Use the parking location's GPS timestamp if available — this is when the car
     // ACTUALLY stopped, not when the confirmation timer fires (which can be 5-13s later).

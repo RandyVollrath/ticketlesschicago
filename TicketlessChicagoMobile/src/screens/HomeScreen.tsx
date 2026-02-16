@@ -766,6 +766,34 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [lastParkingCheck]);
 
+  const markFalsePositiveParking = useCallback(async () => {
+    if (!lastParkingCheck) return;
+    try {
+      await BackgroundLocationService.reportParkingFalsePositive(
+        lastParkingCheck.coords.latitude,
+        lastParkingCheck.coords.longitude
+      );
+      setLastParkingCheck(null);
+      await AsyncStorage.removeItem(StorageKeys.LAST_PARKING_LOCATION);
+      Alert.alert('Updated', 'Marked as not parked. We will use this to reduce false positives.');
+    } catch (e) {
+      log.warn('Failed to mark false positive parking', e);
+    }
+  }, [lastParkingCheck]);
+
+  const confirmParkingHere = useCallback(async () => {
+    if (!lastParkingCheck) return;
+    try {
+      await BackgroundLocationService.reportParkingConfirmed(
+        lastParkingCheck.coords.latitude,
+        lastParkingCheck.coords.longitude
+      );
+      Alert.alert('Thanks', 'Confirmed. This helps tune parking detection at this location.');
+    } catch (e) {
+      log.warn('Failed to confirm parking location', e);
+    }
+  }, [lastParkingCheck]);
+
   const getDirections = useCallback((coords: Coordinates) => {
     const url = Platform.select({
       ios: `http://maps.apple.com/?daddr=${coords.latitude},${coords.longitude}&dirflg=w`,
@@ -1322,6 +1350,26 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.heroTimestamp}>
                   {formatTimeSince(lastParkingCheck.timestamp)}
                 </Text>
+              </View>
+              <View style={styles.heroFeedbackRow}>
+                <TouchableOpacity
+                  style={styles.heroFeedbackButton}
+                  onPress={markFalsePositiveParking}
+                  accessibilityLabel="Mark this as not parked"
+                  accessibilityRole="button"
+                >
+                  <MaterialCommunityIcons name="close-circle-outline" size={14} color={colors.white} />
+                  <Text style={styles.heroFeedbackText}>Not parked</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.heroFeedbackButton}
+                  onPress={confirmParkingHere}
+                  accessibilityLabel="Confirm this parked location"
+                  accessibilityRole="button"
+                >
+                  <MaterialCommunityIcons name="check-circle-outline" size={14} color={colors.white} />
+                  <Text style={styles.heroFeedbackText}>I parked here</Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -1981,6 +2029,26 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     opacity: 0.7,
     marginLeft: 'auto',
+  },
+  heroFeedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+    gap: spacing.sm,
+  },
+  heroFeedbackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  heroFeedbackText: {
+    color: colors.white,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    marginLeft: spacing.xs,
   },
   staleInfo: {
     flexDirection: 'row',
