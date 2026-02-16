@@ -28,6 +28,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var decisionLogFileHandle: FileHandle?
   private let decisionLogFileName = "parking_decisions.ndjson"
   private var decisionLogFileURL: URL?
+  private var logWritesSinceRotateCheck = 0
+  private var decisionWritesSinceRotateCheck = 0
+  private let logRotateCheckEveryWrites = 200
+  private let logMaxBytes: Int64 = 8 * 1024 * 1024
+  private let decisionLogMaxBytes: Int64 = 12 * 1024 * 1024
   private let dateFormatter: DateFormatter = {
     let df = DateFormatter()
     df.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
@@ -45,6 +50,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     if let data = logLine.data(using: .utf8) {
       logFileHandle?.write(data)
       logFileHandle?.synchronizeFile()  // Flush immediately
+      maybeRotateDebugLog()
     }
   }
 
@@ -81,10 +87,78 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     log("Decision log path: \(decisionURL.path)")
   }
 
+  private func maybeRotateDebugLog() {
+    logWritesSinceRotateCheck += 1
+    if logWritesSinceRotateCheck < logRotateCheckEveryWrites { return }
+    logWritesSinceRotateCheck = 0
+    guard let logURL = logFileURL else { return }
+    guard FileManager.default.fileExists(atPath: logURL.path) else { return }
+    guard
+      let attrs = try? FileManager.default.attributesOfItem(atPath: logURL.path),
+      let size = attrs[.size] as? NSNumber,
+      size.int64Value > logMaxBytes
+    else { return }
+
+    let backupURL = logURL.deletingLastPathComponent().appendingPathComponent("\(logFileName).prev")
+    do {
+      logFileHandle?.closeFile()
+      if FileManager.default.fileExists(atPath: backupURL.path) {
+        try FileManager.default.removeItem(at: backupURL)
+      }
+      try FileManager.default.moveItem(at: logURL, to: backupURL)
+      FileManager.default.createFile(atPath: logURL.path, contents: nil, attributes: nil)
+      logFileHandle = try? FileHandle(forWritingTo: logURL)
+      logFileHandle?.seekToEndOfFile()
+      let ts = dateFormatter.string(from: Date())
+      let line = "[\(ts)] LOG_ROTATED previous=\(backupURL.lastPathComponent) maxBytes=\(logMaxBytes)\n"
+      if let data = line.data(using: .utf8) {
+        logFileHandle?.write(data)
+        logFileHandle?.synchronizeFile()
+      }
+      NSLog("[BackgroundLocation] Debug log rotated (%lld bytes max)", logMaxBytes)
+    } catch {
+      NSLog("[BackgroundLocation] Debug log rotation failed: %@", error.localizedDescription)
+    }
+  }
+
+  private func maybeRotateDecisionLog() {
+    decisionWritesSinceRotateCheck += 1
+    if decisionWritesSinceRotateCheck < logRotateCheckEveryWrites { return }
+    decisionWritesSinceRotateCheck = 0
+    guard let decisionURL = decisionLogFileURL else { return }
+    guard FileManager.default.fileExists(atPath: decisionURL.path) else { return }
+    guard
+      let attrs = try? FileManager.default.attributesOfItem(atPath: decisionURL.path),
+      let size = attrs[.size] as? NSNumber,
+      size.int64Value > decisionLogMaxBytes
+    else { return }
+
+    let backupURL = decisionURL.deletingLastPathComponent().appendingPathComponent("\(decisionLogFileName).prev")
+    do {
+      decisionLogFileHandle?.closeFile()
+      if FileManager.default.fileExists(atPath: backupURL.path) {
+        try FileManager.default.removeItem(at: backupURL)
+      }
+      try FileManager.default.moveItem(at: decisionURL, to: backupURL)
+      FileManager.default.createFile(atPath: decisionURL.path, contents: nil, attributes: nil)
+      decisionLogFileHandle = try? FileHandle(forWritingTo: decisionURL)
+      decisionLogFileHandle?.seekToEndOfFile()
+      let evt = "{\"event\":\"decision_log_rotated\",\"ts\":\(Date().timeIntervalSince1970 * 1000),\"previous\":\"\(backupURL.lastPathComponent)\",\"maxBytes\":\(decisionLogMaxBytes)}\n"
+      if let data = evt.data(using: .utf8) {
+        decisionLogFileHandle?.write(data)
+        decisionLogFileHandle?.synchronizeFile()
+      }
+      NSLog("[BackgroundLocation] Decision log rotated (%lld bytes max)", decisionLogMaxBytes)
+    } catch {
+      NSLog("[BackgroundLocation] Decision log rotation failed: %@", error.localizedDescription)
+    }
+  }
+
   private func appendDecisionLogLine(_ line: String) {
     guard let data = (line + "\n").data(using: .utf8) else { return }
     decisionLogFileHandle?.write(data)
     decisionLogFileHandle?.synchronizeFile()
+    maybeRotateDecisionLog()
   }
 
   private func decision(_ event: String, _ details: [String: Any] = [:]) {
@@ -432,6 +506,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     let unknownAgeSec = coreMotionUnknownSince.map { now.timeIntervalSince($0) } ?? -1
     let queuedAgeSec = queuedParkingAt.map { now.timeIntervalSince($0) } ?? -1
     let lockoutRemainingSec = falsePositiveParkingLockoutUntil.map { max(0, $0.timeIntervalSinceNow) } ?? 0
+    let bgRefreshString: String = {
+      switch UIApplication.shared.backgroundRefreshStatus {
+      case .available: return "available"
+      case .denied: return "denied"
+      case .restricted: return "restricted"
+      @unknown default: return "unknown"
+      }
+    }()
+    let locationAuthRaw = locationManager.authorizationStatus.rawValue
 
     decision("monitoring_heartbeat", [
       "reason": reason,
@@ -466,6 +549,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "lastParkingDecisionHoldReason": lastParkingDecisionHoldReason,
       "tripActive": tripSummaryId != nil,
       "tripId": tripSummaryId ?? "",
+      "locationAuthRaw": locationAuthRaw,
+      "backgroundRefreshStatus": bgRefreshString,
+      "lowPowerModeEnabled": ProcessInfo.processInfo.isLowPowerModeEnabled,
     ])
   }
 
@@ -3341,6 +3427,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
     let status = manager.authorizationStatus
     self.log("Auth changed: \(status.rawValue)")
+    let bgRefreshString: String = {
+      switch UIApplication.shared.backgroundRefreshStatus {
+      case .available: return "available"
+      case .denied: return "denied"
+      case .restricted: return "restricted"
+      @unknown default: return "unknown"
+      }
+    }()
+    decision("location_auth_changed", [
+      "authRaw": status.rawValue,
+      "hasAlwaysPermission": status == .authorizedAlways,
+      "backgroundRefreshStatus": bgRefreshString,
+      "lowPowerModeEnabled": ProcessInfo.processInfo.isLowPowerModeEnabled,
+    ])
     if status == .authorizedWhenInUse {
       manager.requestAlwaysAuthorization()
     }

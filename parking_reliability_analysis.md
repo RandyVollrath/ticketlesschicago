@@ -46,6 +46,8 @@ Implemented and now active in code:
   - Added adaptive GPS fallback for missed driving starts: when a recent car-audio signal exists, fallback driving promotion uses lower speed/distance/duration thresholds to reduce missed departures and delayed camera startup.
   - Added native `monitoring_heartbeat` diagnostics every 20 seconds while monitoring is active (plus stop snapshot), capturing motion/gps/timer/queue/lockout/vehicle-signal state for full timeline debugging.
   - Expanded iOS status payload with queue/timer/signal/heartbeat fields so runtime state can be inspected without pulling full raw logs.
+  - Added heartbeat environment fields (`locationAuthRaw`, background refresh status, low-power mode) and explicit `location_auth_changed` decision events for permission-state correlation.
+  - Added automatic rotation for debug/decision logs with `.prev` backups so high-volume logging remains stable over long sessions.
 - New npm script entry points:
   - `npm run harness:camera-drive`
   - `npm run report:parking-camera`
