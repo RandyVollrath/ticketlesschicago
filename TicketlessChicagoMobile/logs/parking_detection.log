@@ -13712,3 +13712,6 @@
 [2026-02-16 01:05:31.741] CoreMotion update: automotive=false stationary=false walking=false confidence=high
 [2026-02-16 01:05:35.246] CoreMotion update: automotive=false stationary=true walking=false confidence=low
 [2026-02-16 01:05:35.568] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 12:25:39.065] CoreMotion update: automotive=false stationary=false walking=true confidence=high
+[2026-02-16 12:25:39.068] Recovery check: no missed parking (drove: false, stationary: true, duration: 0s)
+[2026-02-16 12:25:39.068] CoreMotion already active, skipping restart
