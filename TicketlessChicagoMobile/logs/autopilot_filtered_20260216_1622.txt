@@ -1,0 +1,309 @@
+Feb 16 16:22:57.458054 dasd(RunningBoardServices)[84] <Info>: Sending launch request: <RBSLaunchRequest| app<fyi.ticketless.app((null))>; "DAS Prewarm launch">
+Feb 16 16:22:57.459438 runningboardd(RunningBoard)[34] <Debug>: BEGIN suppressing state updates for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.459533 runningboardd(RunningBoard)[34] <Notice>: Acquiring assertion targeting app<fyi.ticketless.app((null))> from originator [osservice<com.apple.dasd>:84] with description <RBSAssertionDescriptor| "DAS Prewarm launch" ID:34-84-401938 target:app<fyi.ticketless.app((null))> attributes:[
+Feb 16 16:22:57.459593 runningboardd(RunningBoard)[34] <Debug>: Incrementing suppression state to 1 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.460014 runningboardd(RunningBoard)[34] <Notice>: Assertion 34-84-401938 (target:app<fyi.ticketless.app((null))>) will be created as active
+Feb 16 16:22:57.460807 runningboardd(RunningBoard)[34] <Debug>: Adding assertion 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:57.460959 runningboardd(RunningBoard)[34] <Debug>: SUPPRESSING state update for app<fyi.ticketless.app((null))>: <RBSProcessState| task:none debug:none terminationResistance:None cpuRole:Background rbAssertions:[
+Feb 16 16:22:57.461713 runningboardd(RunningBoard)[34] <Info>: app<fyi.ticketless.app((null))> is now targeted by 1 assertions
+Feb 16 16:22:57.461931 runningboardd(RunningBoard)[34] <Debug>: Incrementing suppression state to 2 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.462838 runningboardd(RunningBoard)[34] <Info>: Finished acquiring assertion 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:57.464009 runningboardd(RunningBoard)[34] <Debug>: Updating events for assertion: 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:57.464177 runningboardd(RunningBoard)[34] <Debug>: Decrementing suppression state to 1 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.464276 runningboardd(RunningBoard)[34] <Debug>: Removing events for context: 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:57.464568 runningboardd(RunningBoard)[34] <Debug>: Enqueueing events for assertion: 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:57.464833 runningboardd(RunningBoard)[34] <Debug>: app<fyi.ticketless.app((null))> - New process assertions warning time: 396805.144529 expiration time: 396810.144529.
+Feb 16 16:22:57.464901 runningboardd(RunningBoard)[34] <Notice>: Creating and launching job for: app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.465109 runningboardd(RunningBoard)[34] <Notice>: _mutateContextIfNeeded called for fyi.ticketless.app
+Feb 16 16:22:57.469319 runningboardd(RunningBoard)[34] <Info>: No personas found for bundle identifier: fyi.ticketless.app
+Feb 16 16:22:57.469614 runningboardd(RunningBoard)[34] <Notice>: app<fyi.ticketless.app((null))>: -[RBPersonaManager personaForIdentity:context:personaUID:personaUniqueString:] required 0.002027 ms (wallclock); resolved to {1000, AFC398F4-9015-4616-82FE-85BA100A2ACD}
+Feb 16 16:22:57.469765 runningboardd(RunningBoard)[34] <Notice>: 'app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>' Skipping container path lookup because containerization was prevented (<RBSLaunchContext: 0x6e3250000>)
+Feb 16 16:22:57.518912 amfid[78728] <Info>: Entering iOS path for /private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot
+Feb 16 16:22:57.548292 amfid(Security)[78728] <Debug>: open(/private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot,0x0,0x1b6) = 3
+Feb 16 16:22:57.548490 amfid(Security)[78728] <Debug>: open(/private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot,0x0,0x1b6) = 4
+Feb 16 16:22:57.558118 amfid(Security)[78728] <Debug>: 6506 signing bytes in 5 blob(s) from /private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot(arm64)
+Feb 16 16:22:57.594828 amfid(Security)[78728] <Debug>: open(/private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Info.plist,0x0,0x1b6) = 3
+Feb 16 16:22:57.600873 amfid(Security)[78728] <Debug>: 0xa8f0e0018 done serializing <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>application-identifier</key><string>V22BMBQJ67.fyi.ticketless.app</string><key>com.apple.developer.applesignin</key><array><string>Default</string></array><key>com.apple.developer.associated-domains</key><array><string>applinks:autopilotamerica.com</string><string>applinks:www.autopilotamerica.com</string></array><key>com.apple.developer.team-identifier</key><string>V22BMBQJ67</string><key>get-task-allow</key><true/></dict></plist>
+    "string\^_application-identifier\^_V22BMBQJ67.fyi.ticketless.app",
+    "string\^_com.apple.developer.associated-domains\^_applinks:autopilotamerica.com",
+    "string\^_com.apple.developer.associated-domains\^_applinks:www.autopilotamerica.com",
+Feb 16 16:22:57.647045 misagent[87450] <Notice>: Sending 2c356b4f-c9ae-48e9-989a-c69f6b313bbb - iOS Team Provisioning Profile: fyi.ticketless.app
+Feb 16 16:22:57.719807 kernel(Sandbox)[0] <Notice>: /private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot[87676] ==> container
+Feb 16 16:22:57.721036 runningboardd(RunningBoard)[34] <Info>: _executablePath = /var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot
+Feb 16 16:22:57.721357 runningboardd(RunningBoard)[34] <Info>: _doesOverrideManagement = 1, _overrideManageFlags = 255, _underlyingAssertion = (null), _variableEUID = 0, _specifiedIdenity = app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> _beforeTranslocationBundlePath = (null)
+Feb 16 16:22:57.722084 kernel(Sandbox)[0] <Error>: Sandbox: Autopilot(87676) deny(1) sysctl-read kern.bootargs
+Feb 16 16:22:57.723510 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] Memory Limits: active 2098 inactive 2098
+Feb 16 16:22:57.723568 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] This process will be managed.
+Feb 16 16:22:57.723593 runningboardd(RunningBoard)[34] <Notice>: Now tracking process: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.724391 runningboardd(RunningBoard)[34] <Notice>: Calculated state for app<fyi.ticketless.app((null))>: running-active (role: Background) (endowments: (null))
+Feb 16 16:22:57.724426 runningboardd(RunningBoard)[34] <Debug>: Updating events for assertion: 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:57.724527 runningboardd(RunningBoard)[34] <Debug>: Removing events for context: 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:57.724557 runningboardd(RunningBoard)[34] <Debug>: Sending state update for app<fyi.ticketless.app((null))>: <RBSProcessState| task:running-active debug:none terminationResistance:None cpuRole:Background rbAssertions:[
+Feb 16 16:22:57.724584 runningboardd(RunningBoard)[34] <Debug>: Enqueueing events for assertion: 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:57.724704 runningboardd(RunningBoard)[34] <Debug>: app<fyi.ticketless.app((null))> - New process assertions warning time: 396805.144525 expiration time: 396810.144525.
+Feb 16 16:22:57.724760 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.audiomxd>:110]
+Feb 16 16:22:57.725368 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.locationd>:87328]
+Feb 16 16:22:57.725533 audiomxd(RunningBoardServices)[110] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.725612 audiomxd(RunningBoardServices)[110] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.725770 audiomxd(RunningBoardServices)[110] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.725932 audiomxd(RunningBoardServices)[110] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.726094 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.replayd>:3684]
+Feb 16 16:22:57.726648 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.PerfPowerServices>:85670]
+Feb 16 16:22:57.726914 locationd(RunningBoardServices)[87328] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.727155 locationd(RunningBoardServices)[87328] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.727351 locationd[87328] <Notice>: {"msg":"RBS #AppMonitor process monitor update handler invoked", "pid":87676, "bundleID":"fyi.ticketless.app", "state":"RunningScheduled"}
+Feb 16 16:22:57.727815 locationd(RunningBoardServices)[87328] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.727898 locationd[87328] <Notice>: {"msg":"RBS #AppMonitor Post Application State Change Notification", "notification":"BackgroundRunning", "pid":87676, "bundleId":"fyi.ticketless.app"}
+Feb 16 16:22:57.728137 locationd[87328] <Debug>: {"msg":"AppMonitor notification", "notification":"BackgroundRunning", "pid":87676, "bundleId":"fyi.ticketless.app"}
+Feb 16 16:22:57.728265 locationd[87328] <Notice>: {"msg":"#CLIUA AppMonitor notification", "notification":"BackgroundRunning", "pid":87676, "bundleId":"fyi.ticketless.app", "ClientKey":"ifyi.ticketless.app:"}
+Feb 16 16:22:57.728414 locationd[87328] <Debug>: {"msg":"skip erasing #CLIUA for RunningBoard Process State. Does not exists", "bundleId":"fyi.ticketless.app"}
+Feb 16 16:22:57.728907 replayd(RunningBoardServices)[3684] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.728932 replayd(RunningBoardServices)[3684] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.728948 locationd(RunningBoardServices)[87328] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.729000 replayd(RunningBoardServices)[3684] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.729017 runningboardd(RunningBoard)[34] <Notice>: Using default underlying assertion for app: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.729038 PerfPowerServices(RunningBoardServices)[85670] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.729141 PerfPowerServices(RunningBoardServices)[85670] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.729307 PerfPowerServices(RunningBoardServices)[85670] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.729529 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.CommCenter>:101]
+Feb 16 16:22:57.729689 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.SpringBoard>:35]
+Feb 16 16:22:57.730221 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.watchdogd>:62]
+Feb 16 16:22:57.730511 CommCenter(RunningBoardServices)[101] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.730943 CommCenter(RunningBoardServices)[101] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.731027 CommCenter(RunningBoardServices)[101] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.731142 SpringBoard(RunningBoardServices)[35] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.731382 SpringBoard(RunningBoardServices)[35] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.731417 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.WirelessRadioManager>:51]
+Feb 16 16:22:57.731496 CommCenter[101] <Info>: BundleID: fyi.ticketless.app is no longer a foreground app
+Feb 16 16:22:57.731544 runningboardd(RunningBoard)[34] <Debug>: Incrementing suppression state to 2 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.731573 CommCenter[101] <Info>: BundleID: fyi.ticketless.app is no longer a foreground app
+Feb 16 16:22:57.731726 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.731747 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.732248 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.732283 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.backboardd>:71]
+Feb 16 16:22:57.732346 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.732544 SpringBoard(UserNotificationsCore)[35] <Notice>: [fyi.ticketless.app] fyi.ticketless.app application state changed to <RBSProcessState| task:running-active debug:none>
+Feb 16 16:22:57.732563 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.symptomsd>:142]
+Feb 16 16:22:57.732752 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.coreservices.useractivityd>:245]
+Feb 16 16:22:57.733600 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.dasd>:84]
+Feb 16 16:22:57.733944 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.UserEventAgent-System>:32]
+Feb 16 16:22:57.734235 watchdogd(RunningBoardServices)[62] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.734349 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.wifid>:18823]
+Feb 16 16:22:57.734374 WirelessRadioManagerd(RunningBoardServices)[51] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.734488 WirelessRadioManagerd(RunningBoardServices)[51] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.734679 WirelessRadioManagerd(RunningBoardServices)[51] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.734706 watchdogd(RunningBoardServices)[62] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.734721 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3096ae0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.gamepolicyd>:78571]
+Feb 16 16:22:57.734898 watchdogd(RunningBoardServices)[62] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.735892 symptomsd(RunningBoardServices)[142] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.736010 symptomsd(RunningBoardServices)[142] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.736205 symptomsd(RunningBoardServices)[142] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.736284 symptomsd(RunningBoardServices)[142] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.738270 backboardd(RunningBoardServices)[71] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.738385 backboardd(RunningBoardServices)[71] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.738558 backboardd(RunningBoardServices)[71] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.738626 useractivityd(RunningBoardServices)[245] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.738758 useractivityd(RunningBoardServices)[245] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.738991 dasd(RunningBoardServices)[84] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.739027 useractivityd(RunningBoardServices)[245] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.739121 dasd(RunningBoardServices)[84] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.739294 dasd(RunningBoardServices)[84] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.739492 dasd(RunningBoardServices)[84] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.739559 dasd(RunningBoardServices)[84] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.739797 UserEventAgent(RunningBoardServices)[32] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.739893 UserEventAgent(RunningBoardServices)[32] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.739990 wifid(RunningBoardServices)[18823] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.740031 gamepolicyd(RunningBoardServices)[78571] <Notice>: Hit the server for a process handle 1a4e88ef0001567c that resolved to: [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.740121 wifid(RunningBoardServices)[18823] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.740210 gamepolicyd(RunningBoardServices)[78571] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.740260 wifid(RunningBoardServices)[18823] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.740462 gamepolicyd(RunningBoardServices)[78571] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.740766 UserEventAgent(RunningBoardServices)[32] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.741010 UserEventAgent(RunningBoardServices)[32] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.741253 runningboardd(RunningBoard)[34] <Notice>: Acquiring assertion targeting [app<fyi.ticketless.app((null))>:87676] from originator [app<fyi.ticketless.app((null))>:87676] with description <RBSAssertionDescriptor| "RB Underlying Assertion" ID:34-34-401939 target:87676 attributes:[
+    "fyi.ticketless.app" = 1;
+Feb 16 16:22:57.742001 runningboardd(RunningBoard)[34] <Notice>: Assertion 34-34-401939 (target:[app<fyi.ticketless.app((null))>:87676]) will be created as active
+Feb 16 16:22:57.742182 runningboardd(RunningBoard)[34] <Debug>: Incrementing suppression state to 3 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.742481 runningboardd(RunningBoard)[34] <Debug>: Decrementing suppression state to 2 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.742653 runningboardd(RunningBoard)[34] <Debug>: Adding assertion 34-34-401939 (target:[app<fyi.ticketless.app((null))>:87676])
+Feb 16 16:22:57.742711 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] reported to RB as running
+Feb 16 16:22:57.742924 runningboardd(RunningBoard)[34] <Info>: app<fyi.ticketless.app((null))> is now targeted by 2 assertions
+Feb 16 16:22:57.743408 runningboardd(RunningBoard)[34] <Debug>: Updating events for assertion: 34-34-401939 (target:[app<fyi.ticketless.app((null))>:87676])
+Feb 16 16:22:57.743421 runningboardd(RunningBoard)[34] <Debug>: Removing events for context: 34-34-401939 (target:[app<fyi.ticketless.app((null))>:87676])
+Feb 16 16:22:57.743517 runningboardd(RunningBoard)[34] <Debug>: Enqueueing events for assertion: 34-34-401939 (target:[app<fyi.ticketless.app((null))>:87676])
+Feb 16 16:22:57.743593 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] Set jetsam priority to 0 [0] flag[1]
+Feb 16 16:22:57.743649 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] Resuming task.
+Feb 16 16:22:57.743684 runningboardd(RunningBoard)[34] <Debug>: app<fyi.ticketless.app((null))> - New process assertions warning time: 396805.144535 expiration time: 396810.144535.
+Feb 16 16:22:57.743700 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] Set darwin role to: Background
+Feb 16 16:22:57.743848 runningboardd(RunningBoard)[34] <Info>: [app<fyi.ticketless.app((null))>:87676] Disabled CPU monitoring
+Feb 16 16:22:57.743881 runningboardd(RunningBoard)[34] <Info>: [app<fyi.ticketless.app((null))>:87676] Reset CPU monitoring limits to defaults
+Feb 16 16:22:57.743927 runningboardd(RunningBoard)[34] <Info>: [app<fyi.ticketless.app((null))>:87676] Resumed CPU monitoring
+Feb 16 16:22:57.743991 runningboardd(RunningBoard)[34] <Notice>: Calculated state for app<fyi.ticketless.app((null))>: running-active (role: Background) (endowments: (null))
+Feb 16 16:22:57.744007 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] set Memory Limits to Default Inactive (2098)
+Feb 16 16:22:57.744020 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] Set Carplay mode to: 0
+Feb 16 16:22:57.744200 runningboardd(RunningBoard)[34] <Debug>: SUPPRESSING state update for app<fyi.ticketless.app((null))>: <RBSProcessState| task:running-active debug:none terminationResistance:None cpuRole:Background rbAssertions:[
+Feb 16 16:22:57.744237 runningboardd(RunningBoard)[34] <Info>: Finished acquiring assertion 34-34-401939 (target:[app<fyi.ticketless.app((null))>:87676])
+Feb 16 16:22:57.744278 runningboardd(RunningBoard)[34] <Notice>: Successfully acquired underlying assertion for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.744295 runningboardd(RunningBoard)[34] <Debug>: Decrementing suppression state to 1 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.764025 gamepolicyd[78571] <Notice>: Identified app fyi.ticketless.app GM:false DPS:false SEM:Unsupported MMA:false
+Feb 16 16:22:57.765200 wifid(WiFiPolicy)[18823] <Notice>: -[WiFiUserInteractionMonitor setApplicationRunningState:foregroundState:andNetworkingState:forBundleId:]: fyi.ticketless.app entered background
+Feb 16 16:22:57.896691 amfid[78728] <Info>: Entering iOS path for /private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot.debug.dylib
+Feb 16 16:22:57.897714 amfid(Security)[78728] <Debug>: open(/private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot.debug.dylib,0x0,0x1b6) = 3
+Feb 16 16:22:57.897868 amfid(Security)[78728] <Debug>: open(/private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot.debug.dylib,0x0,0x1b6) = 4
+Feb 16 16:22:57.898707 amfid(Security)[78728] <Debug>: 172277 signing bytes in 3 blob(s) from /private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Autopilot.debug.dylib(arm64)
+Feb 16 16:22:57.906293 misagent[87450] <Notice>: Sending c193789e-681e-4cb7-b101-a0d5b34f0c51 - iOS Team Provisioning Profile: fyi.ticketless.app
+Feb 16 16:22:57.906309 misagent[87450] <Notice>: Sending c68deae7-e55d-43d4-8527-5aea6162164a - iOS Team Provisioning Profile: fyi.ticketless.app
+Feb 16 16:22:57.906318 misagent[87450] <Notice>: Sending 2c356b4f-c9ae-48e9-989a-c69f6b313bbb - iOS Team Provisioning Profile: fyi.ticketless.app
+Feb 16 16:22:57.915360 runningboardd(RunningBoard)[34] <Debug>: Decrementing suppression state to 0 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.915599 runningboardd(RunningBoard)[34] <Debug>: END suppressing state updates for app<fyi.ticketless.app((null))>
+Feb 16 16:22:57.915896 runningboardd(RunningBoard)[34] <Debug>: Sending state update for app<fyi.ticketless.app((null))>: <RBSProcessState| task:running-active debug:none terminationResistance:None cpuRole:Background rbAssertions:[
+Feb 16 16:22:57.916113 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.SpringBoard>:35]
+Feb 16 16:22:57.916597 SpringBoard(RunningBoardServices)[35] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.916621 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.audiomxd>:110]
+Feb 16 16:22:57.916659 SpringBoard(RunningBoardServices)[35] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.916687 SpringBoard(RunningBoardServices)[35] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.916718 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.CommCenter>:101]
+Feb 16 16:22:57.916795 CommCenter(RunningBoardServices)[101] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.916835 CommCenter(RunningBoardServices)[101] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.916855 audiomxd(RunningBoardServices)[110] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.916869 audiomxd(RunningBoardServices)[110] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.917838 audiomxd(RunningBoardServices)[110] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.918607 SpringBoard(RunningBoardServices)[35] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.918862 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.WirelessRadioManager>:51]
+Feb 16 16:22:57.918956 SpringBoard(RunningBoardServices)[35] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.919488 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.UserEventAgent-System>:32]
+Feb 16 16:22:57.919995 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.wifid>:18823]
+Feb 16 16:22:57.920628 WirelessRadioManagerd(RunningBoardServices)[51] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.920710 WirelessRadioManagerd(RunningBoardServices)[51] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.920834 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.gamepolicyd>:78571]
+Feb 16 16:22:57.920986 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.locationd>:87328]
+Feb 16 16:22:57.921106 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.replayd>:3684]
+Feb 16 16:22:57.921342 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.PerfPowerServices>:85670]
+Feb 16 16:22:57.921528 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.watchdogd>:62]
+Feb 16 16:22:57.921675 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.backboardd>:71]
+Feb 16 16:22:57.921940 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.symptomsd>:142]
+Feb 16 16:22:57.922118 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.coreservices.useractivityd>:245]
+Feb 16 16:22:57.922171 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3097cd0 for app<fyi.ticketless.app((null))> to [osservice<com.apple.dasd>:84]
+Feb 16 16:22:57.923590 locationd(RunningBoardServices)[87328] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.923632 locationd(RunningBoardServices)[87328] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.923690 locationd(RunningBoardServices)[87328] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.923950 PerfPowerServices(RunningBoardServices)[85670] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.923974 replayd(RunningBoardServices)[3684] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.924095 replayd(RunningBoardServices)[3684] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.924204 PerfPowerServices(RunningBoardServices)[85670] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.924310 watchdogd(RunningBoardServices)[62] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.924398 backboardd(RunningBoardServices)[71] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.924447 watchdogd(RunningBoardServices)[62] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.924479 backboardd(RunningBoardServices)[71] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.924747 symptomsd(RunningBoardServices)[142] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.924831 symptomsd(RunningBoardServices)[142] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.924866 symptomsd(RunningBoardServices)[142] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.926038 useractivityd(RunningBoardServices)[245] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.926117 dasd(RunningBoardServices)[84] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.926204 dasd(RunningBoardServices)[84] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.926256 dasd(RunningBoardServices)[84] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.926519 UserEventAgent(RunningBoardServices)[32] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.926586 useractivityd(RunningBoardServices)[245] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.926645 dasd(RunningBoardServices)[84] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.927270 UserEventAgent(RunningBoardServices)[32] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+Feb 16 16:22:57.927355 UserEventAgent(RunningBoardServices)[32] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.928939 wifid(RunningBoardServices)[18823] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.929022 wifid(RunningBoardServices)[18823] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:57.929357 gamepolicyd(RunningBoardServices)[78571] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-active-NotVisible
+Feb 16 16:22:57.929515 gamepolicyd(RunningBoardServices)[78571] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 4
+    "fyi.ticketless.app" = 1;
+Feb 16 16:22:57.953050 amfid[78728] <Info>: Entering iOS path for /private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Frameworks/hermesvm.framework/hermesvm
+Feb 16 16:22:57.955904 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app((null))> ['DAS Prewarm launch'] [34-84-401938]
+Feb 16 16:22:57.962263 amfid(Security)[78728] <Debug>: open(/private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Frameworks/hermesvm.framework/hermesvm,0x0,0x1b6) = 3
+Feb 16 16:22:57.962352 amfid(Security)[78728] <Debug>: open(/private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Frameworks/hermesvm.framework/hermesvm,0x0,0x1b6) = 4
+Feb 16 16:22:57.964029 amfid(Security)[78728] <Debug>: 18475 signing bytes in 3 blob(s) from /private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Frameworks/hermesvm.framework/hermesvm(arm64)
+Feb 16 16:22:57.970820 amfid(Security)[78728] <Debug>: open(/private/var/containers/Bundle/Application/097E7C54-2278-47F0-A732-019E1A393BCD/Autopilot.app/Frameworks/hermesvm.framework/Info.plist,0x0,0x1b6) = 3
+Feb 16 16:22:57.973531 misagent[87450] <Notice>: Sending c193789e-681e-4cb7-b101-a0d5b34f0c51 - iOS Team Provisioning Profile: fyi.ticketless.app
+Feb 16 16:22:57.973544 misagent[87450] <Notice>: Sending c68deae7-e55d-43d4-8527-5aea6162164a - iOS Team Provisioning Profile: fyi.ticketless.app
+Feb 16 16:22:57.973564 misagent[87450] <Notice>: Sending 2c356b4f-c9ae-48e9-989a-c69f6b313bbb - iOS Team Provisioning Profile: fyi.ticketless.app
+    "fyi.ticketless.app" = 1;
+    "fyi.ticketless.app" = 1;
+    "fyi.ticketless.app" = 1;
+    "fyi.ticketless.app" = 1;
+Feb 16 16:22:58.132943 runningboardd(RunningBoard)[34] <Notice>: Invalidating assertion 34-84-401938 (target:app<fyi.ticketless.app((null))>) from originator [osservice<com.apple.dasd>:84]
+Feb 16 16:22:58.133058 runningboardd(RunningBoard)[34] <Notice>: Removed last relative-start-date-defining assertion for process app<fyi.ticketless.app((null))>
+Feb 16 16:22:58.133273 runningboardd(RunningBoard)[34] <Debug>: Updating events for assertion: 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:58.133290 runningboardd(RunningBoard)[34] <Debug>: Removing assertion 34-84-401938 on app<fyi.ticketless.app((null))>
+Feb 16 16:22:58.133319 runningboardd(RunningBoard)[34] <Debug>: Removing events for context: 34-84-401938 (target:app<fyi.ticketless.app((null))>)
+Feb 16 16:22:58.133444 runningboardd(RunningBoard)[34] <Info>: app<fyi.ticketless.app((null))> is now targeted by 1 assertions
+Feb 16 16:22:58.133734 runningboardd(RunningBoard)[34] <Notice>: Calculated state for app<fyi.ticketless.app((null))>: running-suspended (role: None) (endowments: (null))
+Feb 16 16:22:58.133751 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] Suspending task.
+Feb 16 16:22:58.133813 runningboardd(RunningBoard)[34] <Debug>: Sending state update for app<fyi.ticketless.app((null))>: <RBSProcessState| task:running-suspended debug:none terminationResistance:None cpuRole:None rbAssertions:[
+Feb 16 16:22:58.133964 runningboardd(RunningBoard)[34] <Debug>: BEGIN suppressing state updates for app<fyi.ticketless.app((null))>
+Feb 16 16:22:58.133989 runningboardd(RunningBoard)[34] <Debug>: Incrementing suppression state to 1 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:58.134765 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] Shutdown sockets (SVC)
+Feb 16 16:22:58.134825 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] Set darwin role to: None
+Feb 16 16:22:58.137398 runningboardd(RunningBoard)[34] <Debug>: [app<fyi.ticketless.app((null))>:87676]: adding allowed path from bundle /private/var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA
+Feb 16 16:22:58.137772 runningboardd(RunningBoard)[34] <Notice>: [app<fyi.ticketless.app((null))>:87676] check if suspended process is holding locks
+Feb 16 16:22:58.137945 runningboardd(RunningBoard)[34] <Info>: [app<fyi.ticketless.app((null))>:87676] Not checking lock on special file: /dev/null
+Feb 16 16:22:58.138106 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.SpringBoard>:35]
+Feb 16 16:22:58.140987 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.audiomxd>:110]
+Feb 16 16:22:58.141023 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.CommCenter>:101]
+Feb 16 16:22:58.141201 CommCenter(RunningBoardServices)[101] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.141243 CommCenter(RunningBoardServices)[101] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.141336 audiomxd(RunningBoardServices)[110] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.141348 audiomxd(RunningBoardServices)[110] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.141414 SpringBoard(RunningBoardServices)[35] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.141479 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.141619 CommCenter[101] <Info>: BundleID: fyi.ticketless.app is no longer a foreground app
+Feb 16 16:22:58.141729 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.142020 CommCenter[101] <Info>: BundleID: fyi.ticketless.app is no longer a foreground app
+Feb 16 16:22:58.142124 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.locationd>:87328]
+Feb 16 16:22:58.142136 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.replayd>:3684]
+Feb 16 16:22:58.142175 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.PerfPowerServices>:85670]
+Feb 16 16:22:58.142238 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.watchdogd>:62]
+Feb 16 16:22:58.142277 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.WirelessRadioManager>:51]
+Feb 16 16:22:58.142289 audiomxd(RunningBoardServices)[110] <Info>: Update skipped for [app<fyi.ticketless.app((null))>:87676]
+Feb 16 16:22:58.142352 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.backboardd>:71]
+Feb 16 16:22:58.142374 locationd(RunningBoardServices)[87328] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.142507 locationd[87328] <Notice>: {"msg":"RBS #AppMonitor process monitor update handler invoked", "pid":87676, "bundleID":"fyi.ticketless.app", "state":"RunningSuspended"}
+Feb 16 16:22:58.142548 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.symptomsd>:142]
+Feb 16 16:22:58.142568 locationd(RunningBoardServices)[87328] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.142612 locationd[87328] <Notice>: {"msg":"RBS #AppMonitor Post Application State Change Notification", "notification":"BackgroundTaskSuspended", "pid":87676, "bundleId":"fyi.ticketless.app"}
+Feb 16 16:22:58.142904 locationd[87328] <Debug>: {"msg":"AppMonitor notification", "notification":"BackgroundTaskSuspended", "pid":87676, "bundleId":"fyi.ticketless.app"}
+Feb 16 16:22:58.143021 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.coreservices.useractivityd>:245]
+Feb 16 16:22:58.143179 locationd[87328] <Notice>: {"msg":"#CLIUA AppMonitor notification", "notification":"BackgroundTaskSuspended", "pid":87676, "bundleId":"fyi.ticketless.app", "ClientKey":"ifyi.ticketless.app:"}
+Feb 16 16:22:58.143225 locationd[87328] <Debug>: {"msg":"skip erasing #CLIUA for RunningBoard Process State. Does not exists", "bundleId":"fyi.ticketless.app"}
+Feb 16 16:22:58.143381 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.143419 replayd(RunningBoardServices)[3684] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.143462 PerfPowerServices(RunningBoardServices)[85670] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.143477 replayd(RunningBoardServices)[3684] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.143498 SpringBoard(RunningBoardServices)[35] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.143519 PerfPowerServices(RunningBoardServices)[85670] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.143592 SpringBoard(UserNotificationsCore)[35] <Notice>: [fyi.ticketless.app] fyi.ticketless.app application state changed to <RBSProcessState| task:running-suspended debug:none>
+Feb 16 16:22:58.143642 watchdogd(RunningBoardServices)[62] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.143699 watchdogd(RunningBoardServices)[62] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.143801 WirelessRadioManagerd(RunningBoardServices)[51] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.143818 backboardd(RunningBoardServices)[71] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.143847 locationd(RunningBoardServices)[87328] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.143865 WirelessRadioManagerd(RunningBoardServices)[51] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.143893 backboardd(RunningBoardServices)[71] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.144125 useractivityd(RunningBoardServices)[245] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.144193 useractivityd(RunningBoardServices)[245] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.144372 symptomsd(RunningBoardServices)[142] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.144413 symptomsd(RunningBoardServices)[142] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.144469 symptomsd(RunningBoardServices)[142] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.144484 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.dasd>:84]
+Feb 16 16:22:58.144588 dasd(RunningBoardServices)[84] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.144613 dasd(RunningBoardServices)[84] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.144741 dasd(RunningBoardServices)[84] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.144752 dasd(RunningBoardServices)[84] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.144996 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.UserEventAgent-System>:32]
+Feb 16 16:22:58.145212 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.wifid>:18823]
+Feb 16 16:22:58.145531 wifid(RunningBoardServices)[18823] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.145574 UserEventAgent(RunningBoardServices)[32] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.145635 wifid(RunningBoardServices)[18823] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.145747 UserEventAgent(RunningBoardServices)[32] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.145765 runningboardd(RunningBoard)[34] <Debug>: Sending state 0x6e3337720 for app<fyi.ticketless.app((null))> to [osservice<com.apple.gamepolicyd>:78571]
+Feb 16 16:22:58.145823 UserEventAgent(RunningBoardServices)[32] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.146175 gamepolicyd(RunningBoardServices)[78571] <Notice>: Received state update for 87676 (app<fyi.ticketless.app((null))>, running-suspended-NotVisible
+Feb 16 16:22:58.146279 gamepolicyd(RunningBoardServices)[78571] <Info>: Update delivered for [app<fyi.ticketless.app((null))>:87676] with taskState 3
+Feb 16 16:22:58.149719 symptomsd(SymptomEvaluator)[142] <Debug>: Removed state tracker with taskState 3, pid 87676, for fyi.ticketless.app
+Feb 16 16:22:58.239416 runningboardd(RunningBoard)[34] <Debug>: Decrementing suppression state to 0 for app<fyi.ticketless.app((null))>
+Feb 16 16:22:58.239589 runningboardd(RunningBoard)[34] <Debug>: END suppressing state updates for app<fyi.ticketless.app((null))>
+Feb 16 16:22:58.330784 runningboardd(RunningBoard)[34] <Debug>: [osservice<com.apple.powerexceptionsd>:78] query resolved to [app<fyi.ticketless.app((null))>:87676]

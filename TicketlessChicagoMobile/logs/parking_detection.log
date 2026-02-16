@@ -13973,3 +13973,5 @@
 [2026-02-16 15:48:57.211] CoreMotion activity monitoring started
 [2026-02-16 15:48:57.211] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
 [2026-02-16 15:48:57.231] CoreMotion update: automotive=false stationary=true walking=false confidence=high
+[2026-02-16 15:49:43.786] CoreMotion update: automotive=false stationary=true walking=false confidence=high
+[2026-02-16 15:49:44.092] CoreMotion update: automotive=false stationary=false walking=false confidence=high
