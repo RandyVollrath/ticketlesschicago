@@ -49,6 +49,7 @@ export interface ParkingHistoryItem {
     accuracy?: number;
     drivingDurationSec?: number;
     nativeTimestamp?: number;
+    driveSessionId?: string | null;
     recordedAt: number;
   };
 }
