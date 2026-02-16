@@ -166,8 +166,8 @@ const TARGET_WARNING_SECONDS = 10;
 /** Distance user must move from camera before it can re-alert */
 const COOLDOWN_RADIUS_METERS = 400;
 
-/** Minimum speed (m/s) to trigger speed camera alerts - ~10 mph, filters out walking */
-const MIN_SPEED_SPEED_CAM_MPS = 4.5;
+/** Minimum speed (m/s) to trigger speed camera alerts - ~7 mph, filters out walking */
+const MIN_SPEED_SPEED_CAM_MPS = 3.2;
 
 /** Minimum speed (m/s) to trigger red light camera alerts - ~2 mph.
  *  Red light cameras matter at ANY driving speed. A user going 5 mph
@@ -177,6 +177,7 @@ const MIN_SPEED_REDLIGHT_MPS = 1.0;
 
 /** Minimum time between any two TTS announcements (ms) */
 const MIN_ANNOUNCE_INTERVAL_MS = 5000;
+const REJECT_LOG_COOLDOWN_MS = 8000;
 const PASS_CAPTURE_DISTANCE_METERS = 35;
 const PASS_MOVED_AWAY_DELTA_METERS = 20;
 const REDLIGHT_PASS_CAPTURE_DISTANCE_METERS = 22;
@@ -311,6 +312,23 @@ interface CameraPassTracking {
   sawBehindHeading: boolean;
 }
 
+interface CameraTripSummary {
+  startedAtMs: number;
+  durationMs: number;
+  gpsUpdates: number;
+  alertsFired: number;
+  alertCandidatesSeen: number;
+  typeFiltered: number;
+  speedFiltered: number;
+  bboxFiltered: number;
+  distanceFiltered: number;
+  headingFiltered: number;
+  bearingFiltered: number;
+  nearestRedlightMeters: number | null;
+  nearestSpeedMeters: number | null;
+  noAlertTopReason: string;
+}
+
 export interface CameraAlertStatus {
   isEnabled: boolean;
   isActive: boolean;
@@ -350,6 +368,18 @@ class CameraAlertServiceClass {
   private diagnosticCallback: ((title: string, body: string) => void) | null = null;
   /** Diagnostic: only fire first red-light rejection notification per drive */
   private hasNotifiedRedlightRejection = false;
+  private lastRejectLogAt = 0;
+  private tripStartedAt = 0;
+  private tripAlertsFired = 0;
+  private tripAlertCandidatesSeen = 0;
+  private tripTypeFiltered = 0;
+  private tripSpeedFiltered = 0;
+  private tripBboxFiltered = 0;
+  private tripDistanceFiltered = 0;
+  private tripHeadingFiltered = 0;
+  private tripBearingFiltered = 0;
+  private tripNearestRedlightDistance = Infinity;
+  private tripNearestSpeedDistance = Infinity;
 
   /** Diagnostic: count GPS updates for periodic logging */
   private gpsUpdateCount = 0;
@@ -612,6 +642,18 @@ class CameraAlertServiceClass {
     if (!this.isEnabled) return;
 
     this.isActive = true;
+    this.tripStartedAt = Date.now();
+    this.tripAlertsFired = 0;
+    this.tripAlertCandidatesSeen = 0;
+    this.tripTypeFiltered = 0;
+    this.tripSpeedFiltered = 0;
+    this.tripBboxFiltered = 0;
+    this.tripDistanceFiltered = 0;
+    this.tripHeadingFiltered = 0;
+    this.tripBearingFiltered = 0;
+    this.tripNearestRedlightDistance = Infinity;
+    this.tripNearestSpeedDistance = Infinity;
+    this.lastRejectLogAt = 0;
     this.alertedCameras.clear();
     this.passTrackingByCamera.clear();
     this.recentTrace = [];
@@ -626,11 +668,38 @@ class CameraAlertServiceClass {
    * Stop monitoring. Called when parking is detected.
    */
   stop(): void {
+    const wasActive = this.isActive;
     this.isActive = false;
     this.alertedCameras.clear();
     this.passTrackingByCamera.clear();
     this.recentTrace = [];
     stopSpeech();
+    if (wasActive && this.tripStartedAt > 0) {
+      const summary: CameraTripSummary = {
+        startedAtMs: this.tripStartedAt,
+        durationMs: Date.now() - this.tripStartedAt,
+        gpsUpdates: this.gpsUpdateCount,
+        alertsFired: this.tripAlertsFired,
+        alertCandidatesSeen: this.tripAlertCandidatesSeen,
+        typeFiltered: this.tripTypeFiltered,
+        speedFiltered: this.tripSpeedFiltered,
+        bboxFiltered: this.tripBboxFiltered,
+        distanceFiltered: this.tripDistanceFiltered,
+        headingFiltered: this.tripHeadingFiltered,
+        bearingFiltered: this.tripBearingFiltered,
+        nearestRedlightMeters: Number.isFinite(this.tripNearestRedlightDistance) ? this.tripNearestRedlightDistance : null,
+        nearestSpeedMeters: Number.isFinite(this.tripNearestSpeedDistance) ? this.tripNearestSpeedDistance : null,
+        noAlertTopReason: this.topNoAlertReason(),
+      };
+      log.info(`CAMERA TRIP SUMMARY: ${JSON.stringify(summary)}`);
+      if (summary.alertsFired === 0 && summary.gpsUpdates >= 8) {
+        this.sendDiag(
+          'Camera Miss Summary',
+          `No alert fired. Top reason: ${summary.noAlertTopReason}. nearestRL=${summary.nearestRedlightMeters ? Math.round(summary.nearestRedlightMeters) + 'm' : 'n/a'} nearestSpeed=${summary.nearestSpeedMeters ? Math.round(summary.nearestSpeedMeters) + 'm' : 'n/a'}`
+        );
+      }
+    }
+    this.tripStartedAt = 0;
     log.info('Camera alert monitoring stopped');
   }
 
@@ -673,6 +742,7 @@ class CameraAlertServiceClass {
       // Speed filtering is per-camera-type: red light cameras alert at any
       // driving speed (≥1 m/s), speed cameras only at ≥10 mph (4.5 m/s).
       const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading, alertRadius, speed);
+      this.tripAlertCandidatesSeen += nearbyCameras.length;
 
       // Periodic diagnostic logging (every 10 GPS updates = ~10s)
       if (this.gpsUpdateCount % 10 === 1) {
@@ -695,6 +765,7 @@ class CameraAlertServiceClass {
 
         // New camera in range - speak alert
         this.announceCamera(camera, distance, speed);
+        this.tripAlertsFired += 1;
         this.alertedCameras.set(index, { index, alertedAt: now });
         const bearingOffHeadingDegrees = this.getBearingOffHeadingDegrees(
           latitude,
@@ -939,6 +1010,10 @@ class CameraAlertServiceClass {
     let bearingFiltered = 0;
     let nearestRedlightDistance = Infinity;
     let nearestSpeedDistance = Infinity;
+    let nearestRejected:
+      | { reason: string; index: number; distance: number; camera: CameraLocation }
+      | null = null;
+    const rejectDebugRadius = Math.max(alertRadius * 1.4, 220);
 
     const latMin = lat - BBOX_DEGREES;
     const latMax = lat + BBOX_DEGREES;
@@ -962,7 +1037,10 @@ class CameraAlertServiceClass {
       // - Red light cameras: alert at any driving speed ≥~2 mph
       if (speed >= 0) {
         const minSpeed = cam.type === 'speed' ? MIN_SPEED_SPEED_CAM_MPS : MIN_SPEED_REDLIGHT_MPS;
-        if (speed < minSpeed) { speedFiltered++; continue; }
+        if (speed < minSpeed) {
+          speedFiltered++;
+          continue;
+        }
       }
 
       // Fast bounding box filter
@@ -984,6 +1062,9 @@ class CameraAlertServiceClass {
         // this camera monitors. Fail-open if heading unavailable.
         if (!isHeadingMatch(heading, cam.approaches)) {
           headingFiltered++;
+          if (distance <= rejectDebugRadius && (!nearestRejected || distance < nearestRejected.distance)) {
+            nearestRejected = { reason: 'heading_mismatch', index: i, distance, camera: cam };
+          }
           // Fire visible notification for first red light heading rejection
           if (cam.type === 'redlight' && !this.hasNotifiedRedlightRejection) {
             this.hasNotifiedRedlightRejection = true;
@@ -997,6 +1078,9 @@ class CameraAlertServiceClass {
         // This prevents false alerts from cameras on parallel streets one block over.
         if (!this.isCameraAhead(lat, lng, cam.latitude, cam.longitude, heading)) {
           bearingFiltered++;
+          if (distance <= rejectDebugRadius && (!nearestRejected || distance < nearestRejected.distance)) {
+            nearestRejected = { reason: 'camera_not_ahead', index: i, distance, camera: cam };
+          }
           if (cam.type === 'redlight' && !this.hasNotifiedRedlightRejection) {
             this.hasNotifiedRedlightRejection = true;
             const bearing = this.bearingTo(lat, lng, cam.latitude, cam.longitude);
@@ -1010,6 +1094,9 @@ class CameraAlertServiceClass {
         results.push({ index: i, camera: cam, distance });
       } else {
         distanceFiltered++;
+        if (distance <= rejectDebugRadius && (!nearestRejected || distance < nearestRejected.distance)) {
+          nearestRejected = { reason: 'outside_radius', index: i, distance, camera: cam };
+        }
       }
     }
 
@@ -1040,10 +1127,39 @@ class CameraAlertServiceClass {
       nearestRedlightDistance,
       nearestSpeedDistance,
     };
+    this.tripTypeFiltered += typeFiltered;
+    this.tripSpeedFiltered += speedFiltered;
+    this.tripBboxFiltered += bboxFiltered;
+    this.tripDistanceFiltered += distanceFiltered;
+    this.tripHeadingFiltered += headingFiltered;
+    this.tripBearingFiltered += bearingFiltered;
+    this.tripNearestRedlightDistance = Math.min(this.tripNearestRedlightDistance, nearestRedlightDistance);
+    this.tripNearestSpeedDistance = Math.min(this.tripNearestSpeedDistance, nearestSpeedDistance);
+
+    if (results.length === 0 && nearestRejected && Date.now() - this.lastRejectLogAt >= REJECT_LOG_COOLDOWN_MS) {
+      this.lastRejectLogAt = Date.now();
+      log.info(
+        `CAMERA CANDIDATE REJECTED(js): reason=${nearestRejected.reason} type=${nearestRejected.camera.type} dist=${Math.round(nearestRejected.distance)}m speed=${speed.toFixed(1)}m/s heading=${Math.round(heading)}° radius=${Math.round(alertRadius)}m address=${nearestRejected.camera.address}`
+      );
+    }
 
     // Sort by distance (closest first)
     results.sort((a, b) => a.distance - b.distance);
     return results;
+  }
+
+  private topNoAlertReason(): string {
+    const rows: Array<[string, number]> = [
+      ['type_disabled_or_schedule', this.tripTypeFiltered],
+      ['speed_below_min', this.tripSpeedFiltered],
+      ['outside_bbox', this.tripBboxFiltered],
+      ['outside_radius', this.tripDistanceFiltered],
+      ['heading_mismatch', this.tripHeadingFiltered],
+      ['camera_not_ahead', this.tripBearingFiltered],
+    ];
+    rows.sort((a, b) => b[1] - a[1]);
+    const top = rows[0];
+    return top && top[1] > 0 ? top[0] : 'no_rejections_recorded';
   }
 
   /**

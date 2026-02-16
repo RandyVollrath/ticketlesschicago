@@ -10,7 +10,8 @@
     "lint": "next lint",
     "deploy": "vercel --prod",
     "deploy:staging": "vercel",
-    "analyze:parking": "node scripts/analyze-parking-decisions.js"
+    "analyze:parking": "node scripts/analyze-parking-decisions.js",
+    "replay:parking-camera": "node scripts/replay-parking-camera-log.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",

@@ -135,6 +135,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     tripSummaryFinalizationCancelledCount = 0
     tripSummaryCameraAlertCount = 0
     tripSummaryWatchdogRecoveries = 0
+    tripSummaryFinalizationCancelledAutomotive = 0
+    tripSummaryFinalizationCancelledSpeed = 0
+    tripSummaryFinalizationCancelledDrift = 0
+    tripSummaryHotspotBlockedCount = 0
+    tripSummaryLockoutBlockedCount = 0
+    tripSummaryCameraRejectSpeedLow = 0
+    tripSummaryCameraRejectRadius = 0
+    tripSummaryCameraRejectHeading = 0
+    tripSummaryCameraRejectAhead = 0
+    tripSummaryCameraRejectDedupe = 0
     tripLastMotionState = nil
     tripLastMotionAt = nil
     decision("trip_summary_started", [
@@ -190,6 +200,30 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       return "camera_not_expected"
     }()
     let parkingGuardOutcome: String = tripSummaryFinalizationCancelledCount > 0 ? "false_positive_guarded" : "no_guard_cancellations"
+    let cameraMissTopReason: String = {
+      let reasons: [(String, Int)] = [
+        ("speed_below_min", tripSummaryCameraRejectSpeedLow),
+        ("outside_radius", tripSummaryCameraRejectRadius),
+        ("heading_mismatch", tripSummaryCameraRejectHeading),
+        ("camera_not_ahead", tripSummaryCameraRejectAhead),
+        ("per_camera_dedupe", tripSummaryCameraRejectDedupe),
+      ]
+      let top = reasons.max(by: { $0.1 < $1.1 })
+      guard let t = top, t.1 > 0 else { return "none" }
+      return t.0
+    }()
+    let parkingMissTopReason: String = {
+      let reasons: [(String, Int)] = [
+        ("lockout_after_false_positive", tripSummaryLockoutBlockedCount),
+        ("hotspot_block", tripSummaryHotspotBlockedCount),
+        ("finalization_cancelled_automotive", tripSummaryFinalizationCancelledAutomotive),
+        ("finalization_cancelled_speed", tripSummaryFinalizationCancelledSpeed),
+        ("finalization_cancelled_drift", tripSummaryFinalizationCancelledDrift),
+      ]
+      let top = reasons.max(by: { $0.1 < $1.1 })
+      guard let t = top, t.1 > 0 else { return "none" }
+      return t.0
+    }()
     decision("trip_summary", [
       "tripId": tripId,
       "outcome": outcome,
@@ -218,6 +252,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "watchdogRecoveries": tripSummaryWatchdogRecoveries,
       "cameraAlertOutcome": cameraAlertOutcome,
       "parkingGuardOutcome": parkingGuardOutcome,
+      "cameraMissTopReason": cameraMissTopReason,
+      "parkingMissTopReason": parkingMissTopReason,
+      "cameraRejectSpeedLowCount": tripSummaryCameraRejectSpeedLow,
+      "cameraRejectRadiusCount": tripSummaryCameraRejectRadius,
+      "cameraRejectHeadingCount": tripSummaryCameraRejectHeading,
+      "cameraRejectAheadCount": tripSummaryCameraRejectAhead,
+      "cameraRejectDedupeCount": tripSummaryCameraRejectDedupe,
+      "parkingCancelledAutomotiveCount": tripSummaryFinalizationCancelledAutomotive,
+      "parkingCancelledSpeedCount": tripSummaryFinalizationCancelledSpeed,
+      "parkingCancelledDriftCount": tripSummaryFinalizationCancelledDrift,
+      "parkingHotspotBlockedCount": tripSummaryHotspotBlockedCount,
+      "parkingLockoutBlockedCount": tripSummaryLockoutBlockedCount,
     ])
 
     tripSummaryId = nil
@@ -241,6 +287,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     tripSummaryFinalizationCancelledCount = 0
     tripSummaryCameraAlertCount = 0
     tripSummaryWatchdogRecoveries = 0
+    tripSummaryFinalizationCancelledAutomotive = 0
+    tripSummaryFinalizationCancelledSpeed = 0
+    tripSummaryFinalizationCancelledDrift = 0
+    tripSummaryHotspotBlockedCount = 0
+    tripSummaryLockoutBlockedCount = 0
+    tripSummaryCameraRejectSpeedLow = 0
+    tripSummaryCameraRejectRadius = 0
+    tripSummaryCameraRejectHeading = 0
+    tripSummaryCameraRejectAhead = 0
+    tripSummaryCameraRejectDedupe = 0
     tripLastMotionState = nil
     tripLastMotionAt = nil
   }
@@ -499,8 +555,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var tripSummaryFinalizationCancelledCount = 0
   private var tripSummaryCameraAlertCount = 0
   private var tripSummaryWatchdogRecoveries = 0
+  private var tripSummaryFinalizationCancelledAutomotive = 0
+  private var tripSummaryFinalizationCancelledSpeed = 0
+  private var tripSummaryFinalizationCancelledDrift = 0
+  private var tripSummaryHotspotBlockedCount = 0
+  private var tripSummaryLockoutBlockedCount = 0
+  private var tripSummaryCameraRejectSpeedLow = 0
+  private var tripSummaryCameraRejectRadius = 0
+  private var tripSummaryCameraRejectHeading = 0
+  private var tripSummaryCameraRejectAhead = 0
+  private var tripSummaryCameraRejectDedupe = 0
   private var tripLastMotionState: String? = nil
   private var tripLastMotionAt: Date? = nil
+  private var falsePositiveParkingLockoutUntil: Date? = nil
 
   // Camera alerts (native iOS fallback for when JS is suspended in background)
   private var cameraAlertsEnabled = false
@@ -573,7 +640,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let finalizationCancelSpeedMps: Double = 2.2
   private let queuedParkingGraceSec: TimeInterval = 25
   private let parkingFinalizationHoldSec: TimeInterval = 7
+  private let parkingFinalizationHoldFastSec: TimeInterval = 5
+  private let parkingFinalizationHoldStrongSec: TimeInterval = 11
   private let parkingFinalizationMaxDriftMeters: Double = 35
+  private let falsePositiveParkingLockoutSec: TimeInterval = 180
   private let locationCallbackStaleSec: TimeInterval = 90
   private let locationWatchdogIntervalSec: TimeInterval = 20
   private let watchdogRecoveryCooldownSec: TimeInterval = 60
@@ -677,6 +747,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   @objc func reportParkingFalsePositive(_ latitude: Double, longitude: Double,
                                         resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     addFalsePositiveHotspot(lat: latitude, lng: longitude, source: "user_report")
+    falsePositiveParkingLockoutUntil = Date().addingTimeInterval(falsePositiveParkingLockoutSec)
+    decision("parking_false_positive_reported", [
+      "lat": latitude,
+      "lng": longitude,
+      "lockoutSec": falsePositiveParkingLockoutSec,
+      "lockoutUntilTs": falsePositiveParkingLockoutUntil?.timeIntervalSince1970 ?? 0,
+    ])
     resolve(true)
   }
 
@@ -1044,6 +1121,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     alertedCameraAtByIndex.removeAll()
     lastCameraAlertAt = nil
     lastCameraRejectLogAt = nil
+    falsePositiveParkingLockoutUntil = nil
     gpsOnlyMode = false
     clearPersistedParkingState()
 
@@ -2849,6 +2927,17 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     guard let idx = bestIdx else {
       if let rIdx = nearestRejectedIdx,
          let reason = nearestRejectedReason {
+        if reason == "speed_below_min" {
+          tripSummaryCameraRejectSpeedLow += 1
+        } else if reason == "outside_radius" {
+          tripSummaryCameraRejectRadius += 1
+        } else if reason == "heading_mismatch" {
+          tripSummaryCameraRejectHeading += 1
+        } else if reason == "camera_not_ahead" {
+          tripSummaryCameraRejectAhead += 1
+        } else if reason == "per_camera_dedupe" {
+          tripSummaryCameraRejectDedupe += 1
+        }
         let shouldLog = lastCameraRejectLogAt.map { Date().timeIntervalSince($0) >= camRejectLogCooldownSec } ?? true
         if shouldLog {
           lastCameraRejectLogAt = Date()
@@ -3168,6 +3257,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       decision("confirm_parking_skipped_finalization_pending", ["source": source])
       return
     }
+    if let lockoutUntil = falsePositiveParkingLockoutUntil, Date() < lockoutUntil {
+      let remaining = lockoutUntil.timeIntervalSinceNow
+      self.log("confirmParking(\(source)) blocked by false-positive lockout (\(String(format: "%.0f", remaining))s remaining)")
+      tripSummaryLockoutBlockedCount += 1
+      decision("confirm_parking_blocked_lockout", [
+        "source": source,
+        "remainingSec": remaining,
+      ])
+      lastStationaryTime = nil
+      locationAtStopStart = nil
+      return
+    }
 
     // ALWAYS cancel BOTH timers first to prevent double-triggering.
     // Previously only the "other" timer was cancelled, leaving the second
@@ -3220,11 +3321,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         "zeroDurationSec": zeroDurationSec,
         "walkingEvidenceSec": walkingEvidenceSec,
       ])
+      tripSummaryHotspotBlockedCount += 1
       lastStationaryTime = nil
       locationAtStopStart = nil
       return
     }
-    self.log("PARKING CANDIDATE READY (source: \(source)) — holding \(String(format: "%.0f", parkingFinalizationHoldSec))s for stability")
+    let adaptiveHoldSec = self.adaptiveParkingFinalizationHoldSec(source: source, zeroDurationSec: zeroDurationSec, walkingEvidenceSec: walkingEvidenceSec, hotspot: hotspot)
+    self.log("PARKING CANDIDATE READY (source: \(source)) — holding \(String(format: "%.0f", adaptiveHoldSec))s for stability")
 
     // Use the parking location's GPS timestamp if available — this is when the car
     // ACTUALLY stopped, not when the confirmation timer fires (which can be 5-13s later).
@@ -3272,14 +3375,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     pendingParkingLocation = candidateLocation
     decision("parking_candidate_ready", [
       "source": source,
-      "holdSec": parkingFinalizationHoldSec,
+      "holdSec": adaptiveHoldSec,
       "locationSource": body["locationSource"] as? String ?? "unknown",
       "accuracy": body["accuracy"] as? Double ?? -1,
       "drivingDurationSec": body["drivingDurationSec"] as? Double ?? -1,
       "walkingEvidenceSec": self.coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0,
     ])
     parkingFinalizationTimer?.invalidate()
-    parkingFinalizationTimer = Timer.scheduledTimer(withTimeInterval: parkingFinalizationHoldSec, repeats: false) { [weak self] _ in
+    parkingFinalizationTimer = Timer.scheduledTimer(withTimeInterval: adaptiveHoldSec, repeats: false) { [weak self] _ in
       guard let self = self else { return }
       self.parkingFinalizationTimer = nil
 
@@ -3314,6 +3417,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   }
 
   // MARK: - Helpers
+
+  private func adaptiveParkingFinalizationHoldSec(source: String, zeroDurationSec: TimeInterval, walkingEvidenceSec: TimeInterval, hotspot: (count: Int, distance: Double)?) -> TimeInterval {
+    // Strong hold near known false-positive hotspots and weak no-walking candidates.
+    if let h = hotspot, h.count >= hotspotBlockMinReports {
+      return parkingFinalizationHoldStrongSec
+    }
+    if walkingEvidenceSec >= minWalkingEvidenceSec && zeroDurationSec >= minZeroSpeedForAgreeSec {
+      return parkingFinalizationHoldFastSec
+    }
+    if source == "gps_unknown_fallback" || source == "location_stationary" {
+      return parkingFinalizationHoldFastSec
+    }
+    if zeroDurationSec < 12 && walkingEvidenceSec < minWalkingEvidenceSec {
+      return parkingFinalizationHoldStrongSec
+    }
+    return parkingFinalizationHoldSec
+  }
 
   private func queueParkingCandidateForRetry(body: [String: Any], source: String, reason: String) {
     queuedParkingBody = body
@@ -3395,6 +3515,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     guard parkingFinalizationPending || parkingFinalizationTimer != nil else { return }
     self.log("Parking finalization cancelled: \(reason)")
     tripSummaryFinalizationCancelledCount += 1
+    if reason.contains("automotive") {
+      tripSummaryFinalizationCancelledAutomotive += 1
+    } else if reason.contains("GPS speed") || reason.contains("speed") {
+      tripSummaryFinalizationCancelledSpeed += 1
+    } else if reason.contains("Moved ") || reason.contains("drift") {
+      tripSummaryFinalizationCancelledDrift += 1
+    }
     decision("parking_finalization_cancelled", ["reason": reason])
     parkingFinalizationTimer?.invalidate()
     parkingFinalizationTimer = nil
