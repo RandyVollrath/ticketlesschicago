@@ -1,0 +1,1 @@
+Feb 16 13:04:10.096735 runningboardd(RunningBoard)[34] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [34-35-350301]
