@@ -854,6 +854,29 @@ class CameraAlertServiceClass {
       // driving speed (≥1 m/s), speed cameras only at ≥10 mph (4.5 m/s).
       const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading, alertRadius, speed);
       this.tripAlertCandidatesSeen += nearbyCameras.length;
+      const now = Date.now();
+
+      // Periodic opportunity digest for downstream tuning (throttled).
+      if (this.lastDiagnostic && now - this.recentOpportunityDigestAt >= 15000) {
+        this.recentOpportunityDigestAt = now;
+        void GroundTruthService.recordEvent({
+          type: 'camera_opportunity_digest',
+          timestamp: now,
+          driveSessionId: this.driveSessionId,
+          latitude,
+          longitude,
+          metadata: {
+            speedMps: speed,
+            heading,
+            alertRadius,
+            nearbyCandidates: nearbyCameras.length,
+            highConfidenceAlerts: this.tripHighConfidenceAlerts,
+            mediumConfidenceAlerts: this.tripMediumConfidenceAlerts,
+            lowConfidenceSuppressed: this.tripLowConfidenceSuppressed,
+            diagnostic: this.lastDiagnostic,
+          },
+        });
+      }
 
       // Periodic diagnostic logging (every 10 GPS updates = ~10s)
       if (this.gpsUpdateCount % 10 === 1) {
@@ -868,7 +891,6 @@ class CameraAlertServiceClass {
       if (nearbyCameras.length === 0) return;
 
       // Alert for the closest camera we haven't alerted yet
-      const now = Date.now();
       if (now - this.lastAnnounceTime < MIN_ANNOUNCE_INTERVAL_MS) return;
 
       for (const { index, camera, distance, confidenceScore, confidenceTier } of nearbyCameras) {
