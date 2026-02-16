@@ -2036,7 +2036,7 @@ class BackgroundTaskServiceClass {
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
-        log.info(`Scheduled permit zone notification for ${notifyTime.toLocaleString()} (15 min before ${enforcementTimeStr} enforcement)`);
+        log.info(`Scheduled permit zone notification for ${notifyTime.toLocaleString()} (${ADVANCE_WARNING_MINUTES} min before ${enforcementTimeStr} enforcement)`);
       }
     }
 
@@ -2049,7 +2049,8 @@ class BackgroundTaskServiceClass {
       if (result.meteredParking.isEnforcedNow) {
         // Currently enforced — schedule 1h45m timer (15 min before 2-hour limit)
         const timeLimitMin = result.meteredParking.timeLimitMinutes || 120;
-        const warningMinutesBefore = 15;
+        // This is a product decision: warn early enough to move or add time.
+        const warningMinutesBefore = 30;
         const delayMs = (timeLimitMin - warningMinutesBefore) * 60 * 1000;
 
         const meterExpiryWarningTime = new Date(Date.now() + delayMs);
@@ -2059,7 +2060,7 @@ class BackgroundTaskServiceClass {
           type: 'metered_parking',
           restrictionStartTime: meterExpiryWarningTime,
           address: result.address || '',
-          details: `Your ${limitHours}-hour meter expires in 15 minutes (${rate}). Move your car or add time — $65 ticket if expired.`,
+          details: `Your ${limitHours}-hour meter expires in 30 minutes (${rate}). Move your car or add time — $65 ticket if expired.`,
           latitude: coords.latitude,
           longitude: coords.longitude,
         });

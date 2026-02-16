@@ -4,6 +4,7 @@
 
 Implemented and now active in code:
 
+- Meter expiry reminders are scheduled **30 minutes before** meter expiry (not 15).
 - Multi-signal parking confidence gate in iOS native flow (`BackgroundLocationModule.swift`) to suppress weak red-light stop candidates before confirmation.
 - Intersection-risk awareness (camera-proximity proxy) added to confidence scoring for conservative decisions near signalized corridors.
 - Decision observability added to status payloads:
@@ -44,6 +45,10 @@ Implemented and now active in code:
   - Stale-location blocks now queue a retry candidate (`stale_retry_candidate`) instead of dropping the parking pipeline, reducing missed parks when GPS quality catches up a few seconds later.
   - Added trip-summary counter `parkingStaleLocationBlockedCount` so stale-fix pressure is visible in post-drive diagnostics.
   - Added adaptive GPS fallback for missed driving starts: when a recent car-audio signal exists, fallback driving promotion uses lower speed/distance/duration thresholds to reduce missed departures and delayed camera startup.
+  - Added a **hard GPS high-speed driving override** when CoreMotion stays non-automotive despite clear driving speed:
+    - triggers only at high speed with sustained duration + real displacement
+    - uses a higher accuracy tolerance than the strict fallback (because cell-tower GPS can be coarse)
+    - designed to prevent "not detecting driving anymore" which blocks departure/camera pipelines
   - Added native `monitoring_heartbeat` diagnostics every 20 seconds while monitoring is active (plus stop snapshot), capturing motion/gps/timer/queue/lockout/vehicle-signal state for full timeline debugging.
   - Expanded iOS status payload with queue/timer/signal/heartbeat fields so runtime state can be inspected without pulling full raw logs.
   - Added heartbeat environment fields (`locationAuthRaw`, background refresh status, low-power mode) and explicit `location_auth_changed` decision events for permission-state correlation.
