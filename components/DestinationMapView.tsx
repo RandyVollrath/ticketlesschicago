@@ -174,51 +174,99 @@ function toLatOffsetDegrees(meters: number): number {
   return meters / 111320;
 }
 
-function offsetLineCoordinates(
+function metersPerDegreeLng(lat: number): number {
+  return 111320 * Math.max(Math.cos((lat * Math.PI) / 180), 0.2);
+}
+
+function toLocalMeters(
+  lng: number,
+  lat: number,
+  refLat: number,
+): { x: number; y: number } {
+  // Equirectangular approximation (good for small offsets).
+  const x = lng * metersPerDegreeLng(refLat);
+  const y = lat * 111320;
+  return { x, y };
+}
+
+function fromLocalMeters(
+  x: number,
+  y: number,
+  refLat: number,
+): { lng: number; lat: number } {
+  const lng = x / metersPerDegreeLng(refLat);
+  const lat = y / 111320;
+  return { lng, lat };
+}
+
+function normalize2(x: number, y: number): { x: number; y: number } {
+  const mag = Math.hypot(x, y);
+  if (!isFinite(mag) || mag < 1e-6) return { x: 0, y: 0 };
+  return { x: x / mag, y: y / mag };
+}
+
+function evenOddNormalsForPoint(
   coords: number[][],
-  latMeters: number,
-  lngMeters: number,
+  i: number,
+): { even: { x: number; y: number }; odd: { x: number; y: number } } {
+  // Compute a tangent using prev/next points, then pick the normal that points
+  // more "north/west" as the EVEN side (Chicago parity convention).
+  const cur = coords[i];
+  const prev = coords[Math.max(0, i - 1)];
+  const next = coords[Math.min(coords.length - 1, i + 1)];
+
+  const refLat = cur?.[1] ?? 0;
+  const p0 = toLocalMeters(prev?.[0] ?? 0, prev?.[1] ?? 0, refLat);
+  const p1 = toLocalMeters(next?.[0] ?? 0, next?.[1] ?? 0, refLat);
+
+  const t = normalize2(p1.x - p0.x, p1.y - p0.y);
+  // If tangent is degenerate, fall back to a simple "north" tangent so we still offset.
+  const tx = t.x === 0 && t.y === 0 ? 0 : t.x;
+  const ty = t.x === 0 && t.y === 0 ? 1 : t.y;
+
+  // Left/right normals in meter-space
+  const left = normalize2(-ty, tx);
+  const right = normalize2(ty, -tx);
+
+  // Prefer the normal pointing more NW: high north (y) + high west (-x).
+  const score = (n: { x: number; y: number }) => n.y - n.x;
+  const even = score(left) >= score(right) ? left : right;
+  const odd = score(left) >= score(right) ? right : left;
+  return { even, odd };
+}
+
+function offsetByVariant(
+  coords: number[][],
+  oddEven: string | null | undefined,
+  variant: 'restricted' | 'opposite' | 'both_a' | 'both_b',
 ): number[][] {
-  return coords.map(([lng, lat]) => [
-    lng + toLngOffsetDegrees(lngMeters, lat),
-    lat + toLatOffsetDegrees(latMeters),
-  ]);
-}
-
-function axisForLine(coords: number[][]): 'horizontal' | 'vertical' {
-  if (!coords || coords.length < 2) return 'horizontal';
-  const start = coords[0];
-  const end = coords[coords.length - 1];
-  const dLng = Math.abs((end?.[0] ?? 0) - (start?.[0] ?? 0));
-  const dLat = Math.abs((end?.[1] ?? 0) - (start?.[1] ?? 0));
-  return dLng >= dLat ? 'horizontal' : 'vertical';
-}
-
-function offsetByVariant(coords: number[][], oddEven: string | null | undefined, variant: 'restricted' | 'opposite' | 'both_a' | 'both_b') {
-  const axis = axisForLine(coords);
   const offsetMeters = 4.5;
+  const oe = (oddEven || '').toUpperCase();
 
-  if (variant === 'both_a' || variant === 'both_b') {
-    if (axis === 'horizontal') {
-      return offsetLineCoordinates(coords, variant === 'both_a' ? offsetMeters : -offsetMeters, 0);
+  return coords.map(([lng, lat], i) => {
+    const refLat = lat;
+    const { even, odd } = evenOddNormalsForPoint(coords, i);
+
+    // Pick which parity side we want to render on
+    let use: { x: number; y: number };
+    if (variant === 'both_a') {
+      // Odd-colored line
+      use = odd;
+    } else if (variant === 'both_b') {
+      // Even-colored line
+      use = even;
+    } else {
+      const restrictedIsEven = oe === 'E';
+      const wantEven = variant === 'restricted' ? restrictedIsEven : !restrictedIsEven;
+      use = wantEven ? even : odd;
     }
-    return offsetLineCoordinates(coords, 0, variant === 'both_a' ? -offsetMeters : offsetMeters);
-  }
 
-  // Chicago convention:
-  // Even = north or west side
-  // Odd = south or east side
-  const evenIsPositiveLat = axis === 'horizontal';
-  const restrictedIsEven = oddEven === 'E';
-  const useEvenSide = variant === 'restricted' ? restrictedIsEven : !restrictedIsEven;
-
-  if (axis === 'horizontal') {
-    const latMeters = (useEvenSide ? 1 : -1) * offsetMeters * (evenIsPositiveLat ? 1 : -1);
-    return offsetLineCoordinates(coords, latMeters, 0);
-  }
-
-  const lngMeters = (useEvenSide ? -1 : 1) * offsetMeters;
-  return offsetLineCoordinates(coords, 0, lngMeters);
+    const cur = toLocalMeters(lng, lat, refLat);
+    const x2 = cur.x + use.x * offsetMeters;
+    const y2 = cur.y + use.y * offsetMeters;
+    const out = fromLocalMeters(x2, y2, refLat);
+    return [out.lng, out.lat];
+  });
 }
 
 function offsetPermitGeometry(
