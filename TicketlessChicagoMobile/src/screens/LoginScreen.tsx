@@ -228,6 +228,25 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               </View>
             )}
 
+            {/* Google Sign In Button */}
+            <TouchableOpacity
+              style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading || appleLoading || loading}
+              accessibilityLabel="Continue with Google"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: googleLoading || appleLoading || loading }}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color={colors.textPrimary} />
+              ) : (
+                <>
+                  <GoogleLogo size={20} />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             {/* Apple Sign In Button (iOS only) */}
             {Platform.OS === 'ios' && (
               <TouchableOpacity
@@ -248,25 +267,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
                 )}
               </TouchableOpacity>
             )}
-
-            {/* Google Sign In Button */}
-            <TouchableOpacity
-              style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
-              onPress={handleGoogleSignIn}
-              disabled={googleLoading || appleLoading || loading}
-              accessibilityLabel="Continue with Google"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: googleLoading || appleLoading || loading }}
-            >
-              {googleLoading ? (
-                <ActivityIndicator color={colors.textPrimary} />
-              ) : (
-                <>
-                  <GoogleLogo size={20} />
-                  <Text style={styles.googleButtonText}>Continue with Google</Text>
-                </>
-              )}
-            </TouchableOpacity>
 
             {/* Divider */}
             <View style={styles.dividerContainer}>

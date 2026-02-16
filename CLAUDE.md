@@ -39,6 +39,12 @@ After completing any code/content/config change (feature, bug fix, copy update, 
 7. **Completion rule**: A task is not complete until deployment has finished and deployment status/URL is reported.
 8. **No local leftovers**: Never leave a dirty working tree at handoff. Commit, push, and deploy in the same working session for every completed change.
 
+## Release Checklist — Verify After Every Deploy
+After deploying, verify these critical user flows work:
+1. **Web auto-login**: Visit `autopilotamerica.com/settings` in a browser where the user previously signed in. Confirm the session persists and the user is NOT asked to log in again. If session doesn't persist, check Supabase auth cookie/localStorage handling.
+2. **Alerts signup → settings redirect**: Complete a free alerts signup via email magic link. After clicking the link, confirm the user lands on `/settings` already authenticated (not on the login page).
+3. **Mobile WebView auth**: Open the settings page from the mobile app. Confirm the WebView auto-authenticates via URL query params (`mobile_access_token`, `mobile_refresh_token`).
+
 ## Version Bumping
 **Only bump versions for actual releases** (new features, app store submissions, or when Firebase App Distribution needs a distinct build). Do NOT bump for every bug fix or deploy — rebuilding and reinstalling the same version is fine.
 

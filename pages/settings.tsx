@@ -1426,9 +1426,9 @@ export default function SettingsPage() {
               alignItems: 'center',
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 18, fontFamily: FONTS.heading }}>Quick Setup</h3>
+                <h3 style={{ margin: 0, fontSize: 18, fontFamily: FONTS.heading }}>Let's get you set up</h3>
                 <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.9 }}>
-                  Step {guidedSetupStep + 1} of {[!lastName.trim(), !plateNumber.trim(), !mailingAddress1.trim()].filter(Boolean).length} — one thing at a time
+                  Just {[!lastName.trim(), !plateNumber.trim(), !mailingAddress1.trim()].filter(Boolean).length} quick {[!lastName.trim(), !plateNumber.trim(), !mailingAddress1.trim()].filter(Boolean).length === 1 ? 'thing' : 'things'} to fill in
                 </p>
               </div>
               <button onClick={() => setGuidedSetupDismissed(true)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', opacity: 0.7 }}>&times;</button>
@@ -1438,7 +1438,7 @@ export default function SettingsPage() {
               {!lastName.trim() && guidedSetupStep === 0 && (
                 <div>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: COLORS.primary, marginBottom: 8 }}>What's your last name?</label>
-                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>We need this to search Chicago's ticket database for your violations.</p>
+                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>Used to look up tickets in Chicago's system.</p>
                   <input
                     type="text"
                     value={lastName}
@@ -1453,10 +1453,7 @@ export default function SettingsPage() {
               {(lastName.trim() || guidedSetupStep > 0) && !plateNumber.trim() && (guidedSetupStep === 0 || guidedSetupStep === 1) && (
                 <div>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: COLORS.primary, marginBottom: 8 }}>What's your license plate?</label>
-                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>
-                    This lets us automatically check for new tickets twice a week.
-                    <br /><span style={{ fontStyle: 'italic' }}>Tip: Check your registration card or insurance app if you don't remember.</span>
-                  </p>
+                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>So we can check for new tickets automatically.</p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <select
                       value={plateState}
@@ -1479,7 +1476,7 @@ export default function SettingsPage() {
               {lastName.trim() && plateNumber.trim() && !mailingAddress1.trim() && (
                 <div>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: COLORS.primary, marginBottom: 8 }}>What's your mailing address?</label>
-                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>Contest letters are mailed on your behalf — we need to know where to send them.</p>
+                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>Where we'll mail contest letters on your behalf.</p>
                   <input
                     type="text"
                     value={mailingAddress1}
@@ -1525,7 +1522,7 @@ export default function SettingsPage() {
                   onClick={() => setGuidedSetupDismissed(true)}
                   style={{ padding: '10px 16px', background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 13, cursor: 'pointer' }}
                 >
-                  I'll do this later
+                  Skip for now
                 </button>
                 {!(lastName.trim() && plateNumber.trim() && mailingAddress1.trim()) ? (
                   <button
@@ -1536,14 +1533,14 @@ export default function SettingsPage() {
                     }}
                     style={{ padding: '10px 20px', backgroundColor: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                   >
-                    Next
+                    Continue
                   </button>
                 ) : (
                   <button
                     onClick={() => setGuidedSetupDismissed(true)}
                     style={{ padding: '10px 20px', backgroundColor: COLORS.accent, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                   >
-                    Done
+                    All done!
                   </button>
                 )}
               </div>
@@ -1832,9 +1829,6 @@ export default function SettingsPage() {
                   Required for ticket monitoring
                 </p>
               )}
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: COLORS.textMuted }}>
-                Tip: Your plate number is on your registration card, or check your insurance app.
-              </p>
             </div>
 
             {/* VIN */}
@@ -2421,8 +2415,7 @@ export default function SettingsPage() {
                 Snow ban alerts
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                Get notified when snow parking bans are active.{' '}
-                {!snowBanAlerts && <span style={{ color: COLORS.danger, fontWeight: 500 }}>Tap to enable — Chicago tows during snow bans ($235+ penalty).</span>}
+                Get notified when snow parking bans are active
               </p>
             </div>
             <Toggle checked={snowBanAlerts} onChange={setSnowBanAlerts} />
@@ -2473,10 +2466,10 @@ export default function SettingsPage() {
           }}>
             <div>
               <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
-                Renewal reminders (meter expiry & registrations)
+                Renewal reminders
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                Reminders before your city sticker, license plates, or emissions test expire — so you renew on time and avoid tickets
+                Reminders for city sticker, plates, and emissions
               </p>
             </div>
             <Toggle checked={renewalReminders} onChange={setRenewalReminders} />
@@ -2792,7 +2785,7 @@ export default function SettingsPage() {
                     {type.label}
                     {isEvidenceOnly && (
                       <span style={{ display: 'block', fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
-                        We email the city for evidence on your behalf
+                        We'll email you to collect evidence for your contest
                       </span>
                     )}
                   </span>
@@ -3034,7 +3027,7 @@ export default function SettingsPage() {
                   cursor: 'pointer',
                 }}
               >
-                OK, I'll do this later
+                OK
               </button>
             </div>
           </div>
