@@ -41,6 +41,8 @@ Implemented and now active in code:
 - Additional parking confirmation hardening:
   - Queued parking recovery no longer depends only on walking evidence; it can now recover with sustained non-automotive + zero-speed evidence or recent car-disconnect evidence.
   - Added stale-location guard at confirmation time and fresh-GPS refinement (`current_refined`) so old/low-quality stop snapshots are replaced or blocked before final parking confirmation.
+  - Stale-location blocks now queue a retry candidate (`stale_retry_candidate`) instead of dropping the parking pipeline, reducing missed parks when GPS quality catches up a few seconds later.
+  - Added trip-summary counter `parkingStaleLocationBlockedCount` so stale-fix pressure is visible in post-drive diagnostics.
 - New npm script entry points:
   - `npm run harness:camera-drive`
   - `npm run report:parking-camera`

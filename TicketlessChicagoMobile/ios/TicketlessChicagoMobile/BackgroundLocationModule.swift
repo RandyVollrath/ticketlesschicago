@@ -146,6 +146,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     tripSummaryCameraRejectAhead = 0
     tripSummaryCameraRejectDedupe = 0
     tripSummaryLowConfidenceBlockedCount = 0
+    tripSummaryStaleLocationBlockedCount = 0
     tripLastMotionState = nil
     tripLastMotionAt = nil
     decision("trip_summary_started", [
@@ -217,6 +218,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       let reasons: [(String, Int)] = [
         ("lockout_after_false_positive", tripSummaryLockoutBlockedCount),
         ("low_confidence_guard", tripSummaryLowConfidenceBlockedCount),
+        ("stale_location_block", tripSummaryStaleLocationBlockedCount),
         ("hotspot_block", tripSummaryHotspotBlockedCount),
         ("finalization_cancelled_automotive", tripSummaryFinalizationCancelledAutomotive),
         ("finalization_cancelled_speed", tripSummaryFinalizationCancelledSpeed),
@@ -267,6 +269,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "parkingHotspotBlockedCount": tripSummaryHotspotBlockedCount,
       "parkingLockoutBlockedCount": tripSummaryLockoutBlockedCount,
       "parkingLowConfidenceBlockedCount": tripSummaryLowConfidenceBlockedCount,
+      "parkingStaleLocationBlockedCount": tripSummaryStaleLocationBlockedCount,
     ])
 
     tripSummaryId = nil
@@ -301,6 +304,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     tripSummaryCameraRejectAhead = 0
     tripSummaryCameraRejectDedupe = 0
     tripSummaryLowConfidenceBlockedCount = 0
+    tripSummaryStaleLocationBlockedCount = 0
     tripLastMotionState = nil
     tripLastMotionAt = nil
   }
@@ -570,6 +574,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var tripSummaryCameraRejectAhead = 0
   private var tripSummaryCameraRejectDedupe = 0
   private var tripSummaryLowConfidenceBlockedCount = 0
+  private var tripSummaryStaleLocationBlockedCount = 0
   private var tripLastMotionState: String? = nil
   private var tripLastMotionAt: Date? = nil
   private var falsePositiveParkingLockoutUntil: Date? = nil
@@ -3396,9 +3401,24 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           "hasRecentDisconnectEvidence": hasRecentDisconnectEvidence,
           "walkingEvidenceSec": walkingEvidenceSec,
         ])
-        tripSummaryLowConfidenceBlockedCount += 1
-        lastStationaryTime = nil
-        locationAtStopStart = nil
+        tripSummaryStaleLocationBlockedCount += 1
+        var retryBody: [String: Any] = [
+          "timestamp": Date().timeIntervalSince1970 * 1000,
+        ]
+        if let retryLoc = parkingLocation ?? currentLocation {
+          retryBody["latitude"] = retryLoc.coordinate.latitude
+          retryBody["longitude"] = retryLoc.coordinate.longitude
+          retryBody["accuracy"] = retryLoc.horizontalAccuracy
+          retryBody["locationSource"] = "stale_retry_candidate"
+        }
+        if let drivingStart = drivingStartTime {
+          retryBody["drivingDurationSec"] = Date().timeIntervalSince(drivingStart)
+        }
+        queueParkingCandidateForRetry(
+          body: retryBody,
+          source: source,
+          reason: "stale_location_waiting_for_fresh_fix"
+        )
         return
       }
     }
@@ -3779,8 +3799,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       currentSpeed < 1.0 &&
       zeroDurationSec >= minZeroSpeedNoWalkingSec &&
       nonAutomotiveStableSec >= coreMotionStabilitySec
-    guard currentSpeed >= 0 && currentSpeed < 1.3 else { return }
-    guard hasWalkingEvidence || hasLongStillEvidence || hasRecentDisconnectEvidence else { return }
+    let hasUnknownSpeedStillEvidence: Bool = {
+      guard currentSpeed < 0 else { return false }
+      guard let cur = locationManager.location else { return false }
+      let ageSec = Date().timeIntervalSince(cur.timestamp)
+      return ageSec >= 0 &&
+        ageSec <= 8 &&
+        cur.horizontalAccuracy > 0 &&
+        cur.horizontalAccuracy <= 35 &&
+        zeroDurationSec >= minZeroSpeedNoWalkingSec &&
+        nonAutomotiveStableSec >= coreMotionStabilitySec &&
+        (hasWalkingEvidence || hasRecentDisconnectEvidence)
+    }()
+    guard (currentSpeed >= 0 && currentSpeed < 1.3) || hasUnknownSpeedStillEvidence else { return }
+    guard hasWalkingEvidence || hasLongStillEvidence || hasRecentDisconnectEvidence || hasUnknownSpeedStillEvidence else { return }
 
     decision("parking_candidate_queue_recovered", [
       "source": source,
@@ -3788,6 +3820,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "walkingEvidenceSec": walkingEvidenceSec,
       "currentSpeed": currentSpeed,
       "hasLongStillEvidence": hasLongStillEvidence,
+      "hasUnknownSpeedStillEvidence": hasUnknownSpeedStillEvidence,
       "zeroDurationSec": zeroDurationSec,
       "nonAutomotiveStableSec": nonAutomotiveStableSec,
       "hasRecentDisconnectEvidence": hasRecentDisconnectEvidence,
