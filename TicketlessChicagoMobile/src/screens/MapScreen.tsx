@@ -8,7 +8,9 @@ import {
   Platform,
   Alert,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, useNavigation, RouteProp, NavigationProp } from '@react-navigation/native';
@@ -38,6 +40,7 @@ const MapScreenContent: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentLocation, setCurrentLocation] = useState<Coordinates | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [showProtectionStatus, setShowProtectionStatus] = useState(false);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -414,8 +417,22 @@ const MapScreenContent: React.FC = () => {
             )}
 
             {/* Protection Status - Shows all databases checked */}
-            <Card title="Protection Status">
-              <View style={styles.protectionList}>
+            <Card title={
+              <TouchableOpacity
+                onPress={() => setShowProtectionStatus(!showProtectionStatus)}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}
+                accessibilityLabel={showProtectionStatus ? 'Collapse protection status' : 'Expand protection status'}
+                accessibilityRole="button"
+              >
+                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Protection Status</Text>
+                <MaterialCommunityIcons
+                  name={showProtectionStatus ? 'chevron-up' : 'chevron-down'}
+                  size={22}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
+            }>
+              {showProtectionStatus && <View style={styles.protectionList}>
                 <View style={styles.protectionItem} accessibilityLabel="Street cleaning, checked">
                   <Text style={styles.protectionIcon}>🧹</Text>
                   <View style={styles.protectionInfo}>
@@ -456,8 +473,8 @@ const MapScreenContent: React.FC = () => {
                   </View>
                   <Text style={styles.protectionCheck} importantForAccessibility="no">✓</Text>
                 </View>
-              </View>
-              {lastLocation.rules.length === 0 && (
+              </View>}
+              {showProtectionStatus && lastLocation.rules.length === 0 && (
                 <View style={styles.allClear} accessibilityRole="text" accessibilityLabel="All clear, no active restrictions">
                   <Text style={styles.allClearIcon}>✅</Text>
                   <Text style={styles.allClearText}>All clear - no active restrictions!</Text>

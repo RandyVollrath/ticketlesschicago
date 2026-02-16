@@ -160,7 +160,8 @@ const BATTERY_WARNING_DISMISSED_KEY = 'batteryWarningDismissed';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const route = useRoute<RouteProp<{ Home: HomeScreenRouteParams }, 'Home'>>();
-  const [isMonitoring, setIsMonitoring] = useState(false);
+  // Default to true to prevent flash of "Resume" button before autoStartMonitoring() runs
+  const [isMonitoring, setIsMonitoring] = useState(true);
   const [lastParkingCheck, setLastParkingCheck] = useState<ParkingCheckResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -1449,7 +1450,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             accessibilityLabel={`Motion status: ${
               currentActivity === 'automotive' ? 'Driving detected' :
               currentActivity === 'walking' ? 'Walking' :
-              currentActivity === 'stationary' ? 'Stationary' : 'Monitoring'
+              currentActivity === 'stationary' ? 'Stationary' : 'Monitoring active'
             }`}
             accessibilityRole="text"
           >
@@ -1461,7 +1462,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.statusRowText}>
               {currentActivity === 'automotive' ? 'Driving detected' :
                currentActivity === 'walking' ? 'Walking' :
-               currentActivity === 'stationary' ? 'Stationary' : 'Monitoring'}
+               currentActivity === 'stationary' ? 'Stationary' : 'Monitoring active'}
             </Text>
           </View>
         )}

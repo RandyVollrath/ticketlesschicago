@@ -228,27 +228,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               </View>
             )}
 
-            {/* Email field */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="your@email.com"
-                placeholderTextColor={colors.textTertiary}
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (error) setError(null);
-                }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoFocus
-                accessibilityLabel="Email address"
-                accessibilityHint="Enter your email to receive a magic link"
-              />
-            </View>
-
             {/* Apple Sign In Button (iOS only) */}
             {Platform.OS === 'ios' && (
               <TouchableOpacity
@@ -292,8 +271,28 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
             {/* Divider */}
             <View style={styles.dividerContainer}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
+              <Text style={styles.dividerText}>or sign in with email</Text>
               <View style={styles.dividerLine} />
+            </View>
+
+            {/* Email field */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="your@email.com"
+                placeholderTextColor={colors.textTertiary}
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (error) setError(null);
+                }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="Email address"
+                accessibilityHint="Enter your email to receive a magic link"
+              />
             </View>
 
             {/* Magic Link Button */}

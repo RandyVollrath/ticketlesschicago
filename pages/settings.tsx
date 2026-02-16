@@ -51,7 +51,6 @@ const VEHICLE_TYPES = [
   'Sedan', 'SUV', 'Truck', 'Van', 'Motorcycle', 'Other'
 ];
 
-// Note: Red light camera and speed camera tickets are excluded due to legal complexity
 const TICKET_TYPES = [
   { id: 'expired_plates', label: 'Expired Plates', winRate: 75 },
   { id: 'no_city_sticker', label: 'No City Sticker', winRate: 70 },
@@ -65,6 +64,8 @@ const TICKET_TYPES = [
   { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44 },
   { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
   { id: 'bus_lane', label: 'Bus Lane (Smart Streets)', winRate: 25 },
+  { id: 'red_light', label: 'Red Light Camera', winRate: 32, evidenceOnly: true },
+  { id: 'speed_camera', label: 'Speed Camera', winRate: 28, evidenceOnly: true },
 ];
 
 const NOTIFICATION_DAYS = [30, 14, 7, 3, 1, 0];
@@ -707,6 +708,11 @@ export default function SettingsPage() {
   const [emailOnTicketFound, setEmailOnTicketFound] = useState(true);
   const [emailOnLetterMailed, setEmailOnLetterMailed] = useState(true);
   const [emailOnApprovalNeeded, setEmailOnApprovalNeeded] = useState(true);
+
+  // Guided Setup Wizard
+  const [guidedSetupStep, setGuidedSetupStep] = useState(0);
+  const [showGuidedSetup, setShowGuidedSetup] = useState(false);
+  const [guidedSetupDismissed, setGuidedSetupDismissed] = useState(false);
 
   // Dashboard Tab State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'settings'>('settings');
@@ -1401,6 +1407,150 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* Guided Setup Wizard — shows for users with incomplete profiles */}
+        {user && !guidedSetupDismissed && (!lastName.trim() || !plateNumber.trim() || !mailingAddress1.trim()) && !showCheckoutSuccess && (
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: 12,
+            border: `2px solid ${COLORS.primary}`,
+            padding: 0,
+            marginBottom: 20,
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              background: `linear-gradient(135deg, ${COLORS.primary} 0%, #1a365d 100%)`,
+              padding: '20px 24px',
+              color: '#fff',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontFamily: FONTS.heading }}>Quick Setup</h3>
+                <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.9 }}>
+                  Step {guidedSetupStep + 1} of {[!lastName.trim(), !plateNumber.trim(), !mailingAddress1.trim()].filter(Boolean).length} — one thing at a time
+                </p>
+              </div>
+              <button onClick={() => setGuidedSetupDismissed(true)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', opacity: 0.7 }}>&times;</button>
+            </div>
+            <div style={{ padding: 24 }}>
+              {/* Step: Last Name */}
+              {!lastName.trim() && guidedSetupStep === 0 && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: COLORS.primary, marginBottom: 8 }}>What's your last name?</label>
+                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>We need this to search Chicago's ticket database for your violations.</p>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Your last name"
+                    style={{ width: '100%', padding: '12px 16px', border: `2px solid ${COLORS.primary}`, borderRadius: 8, fontSize: 16, boxSizing: 'border-box' }}
+                    autoFocus
+                  />
+                </div>
+              )}
+              {/* Step: License Plate */}
+              {(lastName.trim() || guidedSetupStep > 0) && !plateNumber.trim() && (guidedSetupStep === 0 || guidedSetupStep === 1) && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: COLORS.primary, marginBottom: 8 }}>What's your license plate?</label>
+                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>
+                    This lets us automatically check for new tickets twice a week.
+                    <br /><span style={{ fontStyle: 'italic' }}>Tip: Check your registration card or insurance app if you don't remember.</span>
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <select
+                      value={plateState}
+                      onChange={(e) => setPlateState(e.target.value)}
+                      style={{ padding: '12px', border: `2px solid ${COLORS.primary}`, borderRadius: 8, fontSize: 14, fontWeight: 700 }}
+                    >
+                      {US_STATES.map(s => <option key={s.code} value={s.code}>{s.code}</option>)}
+                    </select>
+                    <input
+                      type="text"
+                      value={plateNumber}
+                      onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+                      placeholder="ABC1234"
+                      style={{ flex: 1, padding: '12px 16px', border: `2px solid ${COLORS.primary}`, borderRadius: 8, fontSize: 18, fontFamily: 'monospace', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                    />
+                  </div>
+                </div>
+              )}
+              {/* Step: Mailing Address */}
+              {lastName.trim() && plateNumber.trim() && !mailingAddress1.trim() && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: COLORS.primary, marginBottom: 8 }}>What's your mailing address?</label>
+                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>Contest letters are mailed on your behalf — we need to know where to send them.</p>
+                  <input
+                    type="text"
+                    value={mailingAddress1}
+                    onChange={(e) => setMailingAddress1(e.target.value)}
+                    placeholder="123 Main St"
+                    style={{ width: '100%', padding: '12px 16px', border: `2px solid ${COLORS.primary}`, borderRadius: 8, fontSize: 16, boxSizing: 'border-box', marginBottom: 8 }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      value={mailingCity}
+                      onChange={(e) => setMailingCity(e.target.value)}
+                      placeholder="Chicago"
+                      style={{ flex: 2, padding: '12px 16px', border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                    <input
+                      type="text"
+                      value={mailingState}
+                      onChange={(e) => setMailingState(e.target.value)}
+                      placeholder="IL"
+                      maxLength={2}
+                      style={{ width: 60, padding: '12px', border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 14, textAlign: 'center', boxSizing: 'border-box' }}
+                    />
+                    <input
+                      type="text"
+                      value={mailingZip}
+                      onChange={(e) => setMailingZip(e.target.value)}
+                      placeholder="60601"
+                      style={{ width: 90, padding: '12px', border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              )}
+              {/* All done */}
+              {lastName.trim() && plateNumber.trim() && mailingAddress1.trim() && (
+                <div style={{ textAlign: 'center', padding: 12 }}>
+                  <p style={{ fontSize: 18, fontWeight: 600, color: COLORS.accent, margin: 0 }}>All set! Your profile is complete.</p>
+                  <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '8px 0 0' }}>We'll start monitoring for tickets automatically.</p>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
+                <button
+                  onClick={() => setGuidedSetupDismissed(true)}
+                  style={{ padding: '10px 16px', background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 13, cursor: 'pointer' }}
+                >
+                  I'll do this later
+                </button>
+                {!(lastName.trim() && plateNumber.trim() && mailingAddress1.trim()) ? (
+                  <button
+                    onClick={() => {
+                      if (!lastName.trim()) { /* stay on current step */ }
+                      else if (!plateNumber.trim()) { setGuidedSetupStep(1); }
+                      else { setGuidedSetupStep(2); }
+                    }}
+                    style={{ padding: '10px 20px', backgroundColor: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Next
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setGuidedSetupDismissed(true)}
+                    style={{ padding: '10px 20px', backgroundColor: COLORS.accent, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Done
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Warning Banner for Paid Users Without Plates, Last Name, or Mailing Address */}
         {/* Hide when checkout success modal is showing - give user a chance to fill out profile */}
         {isPaidUser && (!hasActivePlates || !lastName.trim() || !mailingAddress1.trim()) && !showCheckoutSuccess && (
@@ -1682,6 +1832,9 @@ export default function SettingsPage() {
                   Required for ticket monitoring
                 </p>
               )}
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: COLORS.textMuted }}>
+                Tip: Your plate number is on your registration card, or check your insurance app.
+              </p>
             </div>
 
             {/* VIN */}
@@ -2268,7 +2421,8 @@ export default function SettingsPage() {
                 Snow ban alerts
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                Get notified when snow parking bans are active
+                Get notified when snow parking bans are active.{' '}
+                {!snowBanAlerts && <span style={{ color: COLORS.danger, fontWeight: 500 }}>Tap to enable — Chicago tows during snow bans ($235+ penalty).</span>}
               </p>
             </div>
             <Toggle checked={snowBanAlerts} onChange={setSnowBanAlerts} />
@@ -2319,10 +2473,10 @@ export default function SettingsPage() {
           }}>
             <div>
               <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
-                Renewal reminders
+                Renewal reminders (meter expiry & registrations)
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                Reminders for city sticker, plates, and emissions
+                Reminders before your city sticker, license plates, or emissions test expire — so you renew on time and avoid tickets
               </p>
             </div>
             <Toggle checked={renewalReminders} onChange={setRenewalReminders} />
@@ -2607,9 +2761,13 @@ export default function SettingsPage() {
             }}>
               Ticket types to auto-contest
             </label>
+            <p style={{ margin: '0 0 12px', fontSize: 12, color: COLORS.textMuted }}>
+              Percentages show the historical win rate when contested.
+            </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
               {TICKET_TYPES.map(type => {
                 const isChecked = isPaidUser && allowedTicketTypes.includes(type.id);
+                const isEvidenceOnly = (type as any).evidenceOnly;
                 return (
                 <label key={type.id} style={{
                   display: 'flex',
@@ -2630,13 +2788,22 @@ export default function SettingsPage() {
                     disabled={!isPaidUser}
                     style={{ width: 16, height: 16, accentColor: COLORS.primary }}
                   />
-                  <span style={{ flex: 1 }}>{type.label}</span>
+                  <span style={{ flex: 1 }}>
+                    {type.label}
+                    {isEvidenceOnly && (
+                      <span style={{ display: 'block', fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                        We email the city for evidence on your behalf
+                      </span>
+                    )}
+                  </span>
                   <span style={{
                     fontSize: 11,
                     color: type.winRate >= 60 ? COLORS.accent : type.winRate <= 20 ? COLORS.danger : COLORS.textMuted,
                     fontWeight: 600,
-                  }}>
-                    {type.winRate}%
+                  }}
+                  title={`${type.winRate}% of contested ${type.label} tickets are dismissed`}
+                  >
+                    {type.winRate}% win
                   </span>
                 </label>
               );
@@ -2728,13 +2895,15 @@ export default function SettingsPage() {
           justifyContent: 'center',
           zIndex: 1000,
           padding: 20,
+          overflowY: 'auto',
         }}>
           <div style={{
             backgroundColor: COLORS.white,
             borderRadius: 16,
             maxWidth: 500,
             width: '100%',
-            overflow: 'hidden',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
           }}>
             {/* Header */}
@@ -2850,6 +3019,22 @@ export default function SettingsPage() {
                 }}
               >
                 Complete My Profile
+              </button>
+              <button
+                onClick={() => setShowCheckoutSuccess(false)}
+                style={{
+                  width: '100%',
+                  marginTop: 10,
+                  padding: '12px 24px',
+                  backgroundColor: 'transparent',
+                  color: COLORS.textMuted,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 8,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              >
+                OK, I'll do this later
               </button>
             </div>
           </div>
