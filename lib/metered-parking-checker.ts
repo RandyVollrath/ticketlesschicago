@@ -250,11 +250,40 @@ export async function checkMeteredParking(
       return makeNoMeterResult();
     }
 
+    // Side-of-street guard:
+    // Chicago address parity corresponds to side of street (even vs odd). Meter paybox
+    // address numbers are generally assigned on the side the meters are on.
+    //
+    // If the user is across the street from the metered side, we should NOT warn.
+    // We approximate this by requiring parity match when we have both numbers.
+    let candidateMeters = meters;
+    if (parsed.number) {
+      const userParity = parsed.number % 2;
+      const parityMatched = meters.filter((m: any) => {
+        const meterParsed = parseChicagoAddress(String(m.address || ''));
+        if (!meterParsed?.number) return false;
+        return (meterParsed.number % 2) === userParity;
+      });
+
+      if (parityMatched.length > 0) {
+        console.log(
+          `[metered-parking] Parity filter: user ${parsed.number} (${userParity ? 'odd' : 'even'}) ` +
+            `kept ${parityMatched.length}/${meters.length} meter candidates`,
+        );
+        candidateMeters = parityMatched;
+      } else {
+        console.log(
+          `[metered-parking] Parity filter: user ${parsed.number} (${userParity ? 'odd' : 'even'}) ` +
+            `kept 0/${meters.length} candidates; falling back to unfiltered meters`,
+        );
+      }
+    }
+
     // Step 4: Build result with actual data from the matched meter(s)
     // Pick the meter with the most spaces as the representative paybox
-    const meter = meters.reduce(
+    const meter = candidateMeters.reduce(
       (best, m) => ((m.spaces || 0) > (best.spaces || 0) ? m : best),
-      meters[0],
+      candidateMeters[0],
     );
 
     const enforcement = parseEnforcementSchedule(meter.rate_description || '');
