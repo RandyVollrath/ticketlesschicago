@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import CoreMotion
+import AVFoundation
 import UIKit
 import UserNotifications
 import React
@@ -135,6 +136,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "tripId": tripSummaryId ?? "",
       "source": source,
       "departureTs": departureTimestampMs,
+      "carAudioConnected": carAudioConnected,
     ])
   }
 
@@ -196,6 +198,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "gpsZeroSamples": tripSummaryGpsZeroSamples,
       "gpsMovingSamples": tripSummaryGpsMovingSamples,
       "maxSpeedMps": tripSummaryMaxSpeedMps,
+      "carAudioConnects": tripSummaryCarAudioConnects,
+      "carAudioDisconnects": tripSummaryCarAudioDisconnects,
+      "carAudioConnectedAtEnd": carAudioConnected,
       "stopWindowMaxSpeedMps": stopWindowMaxSpeedMps,
     ])
 
@@ -215,8 +220,75 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     tripSummaryGpsZeroSamples = 0
     tripSummaryGpsMovingSamples = 0
     tripSummaryMaxSpeedMps = 0
+    tripSummaryCarAudioConnects = 0
+    tripSummaryCarAudioDisconnects = 0
     tripLastMotionState = nil
     tripLastMotionAt = nil
+  }
+
+  private func startVehicleSignalMonitoring() {
+    guard !vehicleSignalMonitoringActive else { return }
+    vehicleSignalMonitoringActive = true
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(handleAudioRouteChanged),
+      name: AVAudioSession.routeChangeNotification,
+      object: nil
+    )
+    pollVehicleSignal(reason: "start_monitoring")
+    decision("vehicle_signal_monitoring_started")
+  }
+
+  private func stopVehicleSignalMonitoring() {
+    guard vehicleSignalMonitoringActive else { return }
+    vehicleSignalMonitoringActive = false
+    NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
+    decision("vehicle_signal_monitoring_stopped")
+  }
+
+  @objc private func handleAudioRouteChanged(_ notification: Notification) {
+    let reasonRaw = (notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? NSNumber)?.intValue
+    pollVehicleSignal(reason: "route_change_\(reasonRaw ?? -1)")
+  }
+
+  private func pollVehicleSignal(reason: String) {
+    let now = Date()
+    if let lastPoll = lastVehicleSignalPollAt, now.timeIntervalSince(lastPoll) < 2 {
+      return
+    }
+    lastVehicleSignalPollAt = now
+
+    let route = AVAudioSession.sharedInstance().currentRoute
+    let outputTypes = route.outputs.map { $0.portType.rawValue }
+    let hasVehicleRoute = route.outputs.contains { output in
+      output.portType == .carAudio ||
+      output.portType == .bluetoothA2DP ||
+      output.portType == .bluetoothHFP ||
+      output.portType == .bluetoothLE
+    }
+    if hasVehicleRoute != carAudioConnected {
+      carAudioConnected = hasVehicleRoute
+      if hasVehicleRoute {
+        lastCarAudioConnectedAt = now
+        tripSummaryCarAudioConnects += 1
+        decision("vehicle_signal_connected", [
+          "reason": reason,
+          "outputs": outputTypes.joined(separator: ","),
+        ])
+        log("Vehicle audio signal connected (\(outputTypes.joined(separator: ",")))")
+        if isMonitoring && !continuousGpsActive {
+          startBootstrapGpsWindow(reason: "vehicle_signal_connected")
+        }
+      } else {
+        lastCarAudioDisconnectedAt = now
+        tripSummaryCarAudioDisconnects += 1
+        decision("vehicle_signal_disconnected", [
+          "reason": reason,
+          "outputs": outputTypes.joined(separator: ","),
+        ])
+        log("Vehicle audio signal disconnected")
+      }
+    }
   }
 
   private func startLocationWatchdog() {
@@ -300,6 +372,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var gpsFallbackStartLocation: CLLocation? = nil
   private var gpsFallbackPossibleDrivingEmitted = false
   private var bootstrapGpsTimer: Timer? = nil
+  private var vehicleSignalMonitoringActive = false
+  private var carAudioConnected = false
+  private var lastCarAudioConnectedAt: Date? = nil
+  private var lastCarAudioDisconnectedAt: Date? = nil
+  private var lastVehicleSignalPollAt: Date? = nil
   private var tripSummaryId: String? = nil
   private var tripSummaryStart: Date? = nil
   private var tripSummaryDepartureMs: Double? = nil
@@ -316,6 +393,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var tripSummaryGpsZeroSamples = 0
   private var tripSummaryGpsMovingSamples = 0
   private var tripSummaryMaxSpeedMps: Double = 0
+  private var tripSummaryCarAudioConnects = 0
+  private var tripSummaryCarAudioDisconnects = 0
   private var tripLastMotionState: String? = nil
   private var tripLastMotionAt: Date? = nil
 
@@ -382,6 +461,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let unknownFallbackZeroSpeedSec: TimeInterval = 45
   private let unknownFallbackMaxSpeedMps: Double = 0.9
   private let unknownFallbackMinDrivingSec: TimeInterval = 20
+  private let unknownFallbackWithCarSignalSec: TimeInterval = 25
+  private let unknownFallbackWithCarSignalMaxSpeedMps: Double = 1.2
+  private let carDisconnectEvidenceWindowSec: TimeInterval = 180
   private let finalizationCancelSpeedMps: Double = 2.2
   private let queuedParkingGraceSec: TimeInterval = 25
   private let parkingFinalizationHoldSec: TimeInterval = 7
@@ -630,6 +712,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     // Do NOT start continuous GPS yet - wait until CoreMotion detects driving.
     // This saves significant battery when user is walking/stationary.
 
+    startVehicleSignalMonitoring()
     isMonitoring = true
     decision("start_monitoring_success", [
       "authStatusRaw": locationManager.authorizationStatus.rawValue,
@@ -657,6 +740,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     decision("stop_monitoring_called")
     emitTripSummary(outcome: "monitoring_stopped")
     locationManager.stopMonitoringSignificantLocationChanges()
+    stopVehicleSignalMonitoring()
     stopContinuousGps()
     stopMotionActivityMonitoring()
     stopAccelerometerRecording()
@@ -698,6 +782,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     coreMotionStateLabel = "unknown"
     coreMotionWalkingSince = nil
     coreMotionStationarySince = nil
+    carAudioConnected = false
+    lastCarAudioConnectedAt = nil
+    lastCarAudioDisconnectedAt = nil
+    lastVehicleSignalPollAt = nil
     lastLocationCallbackTime = nil
     lastWatchdogRecoveryTime = nil
     lastMotionDecisionSignature = nil
@@ -1384,6 +1472,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     guard let location = locations.last else { return }
+    if vehicleSignalMonitoringActive {
+      pollVehicleSignal(reason: "location_tick")
+    }
     lastLocationCallbackTime = Date()
     let speed = location.speed  // m/s, -1 if unknown
     if tripSummaryId != nil {
@@ -1665,13 +1756,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             let walkingEvidenceSec = self.coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
             let hasWalkingEvidence = walkingEvidenceSec >= self.minWalkingEvidenceSec
             let longNoWalkingStop = zeroDuration >= self.minZeroSpeedNoWalkingSec
+            let hasCarDisconnectEvidence: Bool = {
+              guard let disconnectedAt = self.lastCarAudioDisconnectedAt else { return false }
+              let age = Date().timeIntervalSince(disconnectedAt)
+              return age >= 0 && age <= self.carDisconnectEvidenceWindowSec
+            }()
             let currentSpeedCheck = self.locationManager.location?.speed ?? -1
             let gpsSpeedOk = currentSpeedCheck >= 0 && currentSpeedCheck < 1.0
 
             if zeroDuration >= self.minZeroSpeedForAgreeSec &&
                coreMotionStableDuration >= self.coreMotionStabilitySec &&
                gpsSpeedOk &&
-               (hasWalkingEvidence || longNoWalkingStop) {
+               (hasWalkingEvidence || longNoWalkingStop || hasCarDisconnectEvidence) {
               self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion non-automotive for \(String(format: "%.0f", coreMotionStableDuration))s + GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s")
               self.tripSummaryGatePassCount += 1
               self.decision("gps_coremotion_gate_passed", [
@@ -1684,6 +1780,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
                 "walkingEvidenceSec": walkingEvidenceSec,
                 "hasWalkingEvidence": hasWalkingEvidence,
                 "longNoWalkingStop": longNoWalkingStop,
+                "hasCarDisconnectEvidence": hasCarDisconnectEvidence,
               ])
               timer.invalidate()
               self.speedZeroTimer = nil
@@ -1699,8 +1796,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
               if !gpsSpeedOk {
                 waitReasons.append("GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s (need < 1.0)")
               }
-              if !hasWalkingEvidence && !longNoWalkingStop {
-                waitReasons.append("no walking evidence yet (\(String(format: "%.0f", walkingEvidenceSec))s) and stop<\(String(format: "%.0f", self.minZeroSpeedNoWalkingSec))s")
+              if !hasWalkingEvidence && !longNoWalkingStop && !hasCarDisconnectEvidence {
+                waitReasons.append("no walk/car-disconnect evidence and stop<\(String(format: "%.0f", self.minZeroSpeedNoWalkingSec))s")
               }
               self.log("CoreMotion agrees (not automotive) but guards not met: \(waitReasons.joined(separator: ", "))")
               self.tripSummaryGateWaitCount += 1
@@ -1714,13 +1811,26 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
                 "walkingEvidenceSec": walkingEvidenceSec,
                 "hasWalkingEvidence": hasWalkingEvidence,
                 "longNoWalkingStop": longNoWalkingStop,
+                "hasCarDisconnectEvidence": hasCarDisconnectEvidence,
                 "reasons": waitReasons.joined(separator: "; "),
               ])
             }
           } else if self.coreMotionStateLabel == "unknown" &&
-                    unknownDuration >= self.unknownFallbackZeroSpeedSec &&
-                    zeroDuration >= self.unknownFallbackZeroSpeedSec &&
-                    self.stopWindowMaxSpeedMps <= self.unknownFallbackMaxSpeedMps &&
+                    unknownDuration >= {
+                      guard let disconnectedAt = self.lastCarAudioDisconnectedAt else { return self.unknownFallbackZeroSpeedSec }
+                      let age = Date().timeIntervalSince(disconnectedAt)
+                      return (age >= 0 && age <= self.carDisconnectEvidenceWindowSec) ? self.unknownFallbackWithCarSignalSec : self.unknownFallbackZeroSpeedSec
+                    }() &&
+                    zeroDuration >= {
+                      guard let disconnectedAt = self.lastCarAudioDisconnectedAt else { return self.unknownFallbackZeroSpeedSec }
+                      let age = Date().timeIntervalSince(disconnectedAt)
+                      return (age >= 0 && age <= self.carDisconnectEvidenceWindowSec) ? self.unknownFallbackWithCarSignalSec : self.unknownFallbackZeroSpeedSec
+                    }() &&
+                    self.stopWindowMaxSpeedMps <= {
+                      guard let disconnectedAt = self.lastCarAudioDisconnectedAt else { return self.unknownFallbackMaxSpeedMps }
+                      let age = Date().timeIntervalSince(disconnectedAt)
+                      return (age >= 0 && age <= self.carDisconnectEvidenceWindowSec) ? self.unknownFallbackWithCarSignalMaxSpeedMps : self.unknownFallbackMaxSpeedMps
+                    }() &&
                     (self.drivingStartTime.map { Date().timeIntervalSince($0) } ?? 0) >= self.unknownFallbackMinDrivingSec {
             // Conservative fallback for devices that linger in CoreMotion "unknown":
             // require a long sustained stop and no meaningful speed spikes.
@@ -1732,6 +1842,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
               "maxSpeedDuringStop": self.stopWindowMaxSpeedMps,
               "gpsSpeed": currentSpeed,
               "coreMotionState": self.coreMotionStateLabel,
+              "hasCarDisconnectEvidence": {
+                guard let disconnectedAt = self.lastCarAudioDisconnectedAt else { return false }
+                let age = Date().timeIntervalSince(disconnectedAt)
+                return age >= 0 && age <= self.carDisconnectEvidenceWindowSec
+              }(),
             ])
             timer.invalidate()
             self.speedZeroTimer = nil
@@ -1752,7 +1867,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             if !phoneIsStationary { reason += ", phone moving (speed: \(String(format: "%.1f", currentSpeed)) m/s)" }
             if !withinStationaryRadius { reason += ", user walked away from parking spot" }
             if self.coreMotionStateLabel == "unknown" {
-              reason += ", unknown=\(String(format: "%.0f", unknownDuration))s/\(String(format: "%.0f", self.unknownFallbackZeroSpeedSec))s, maxStopSpeed=\(String(format: "%.1f", self.stopWindowMaxSpeedMps))m/s"
+              let hasCarDisconnectEvidence: Bool = {
+                guard let disconnectedAt = self.lastCarAudioDisconnectedAt else { return false }
+                let age = Date().timeIntervalSince(disconnectedAt)
+                return age >= 0 && age <= self.carDisconnectEvidenceWindowSec
+              }()
+              let reqUnknown = hasCarDisconnectEvidence ? self.unknownFallbackWithCarSignalSec : self.unknownFallbackZeroSpeedSec
+              reason += ", unknown=\(String(format: "%.0f", unknownDuration))s/\(String(format: "%.0f", reqUnknown))s, maxStopSpeed=\(String(format: "%.1f", self.stopWindowMaxSpeedMps))m/s, carDisconnectEvidence=\(hasCarDisconnectEvidence)"
             }
             self.log("Speed≈0 for \(String(format: "%.0f", zeroDuration))s, stationary for \(String(format: "%.0f", stationaryDuration))s. Waiting... (\(reason))")
           }
