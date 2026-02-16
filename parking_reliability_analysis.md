@@ -24,6 +24,28 @@ Purpose of this update:
 - Preserve true parking detection by requiring stronger, multi-signal evidence.
 - Improve root-cause speed by logging explicit decision confidence, hold reasons, and summary metrics.
 
+### Next Reliability Hardening (Recommended)
+
+1. Add an "intersection dwell" guard:
+   - If a candidate stop occurs within intersection-risk radius and movement resumes within a short window, auto-mark as non-parking and extend temporary lockout.
+2. Add "post-confirm unwind":
+   - If parking is confirmed but trip-like movement resumes quickly (distance + speed thresholds), automatically revert that parking event as false positive.
+3. Add per-trip server-ingested diagnostics:
+   - Upload compact trip summary events (start/end, hold reason, confidence buckets, camera reject reasons) so tuning does not depend on manual local log pulls.
+4. Build threshold sweep tooling:
+   - Run offline replay across recent trips using multiple confidence/hold thresholds and output precision/recall tradeoff table for deterministic tuning.
+5. Add camera heartbeat safety:
+   - While `isDriving=true`, emit periodic camera-engine heartbeat counters and "last camera candidate ts" to detect silent background stalls.
+6. Add optional high-signal integrations (feature-flagged):
+   - Car Bluetooth/CarPlay disconnect as a confidence boost only (never sole trigger), with safe fallback when unavailable.
+7. Add production reliability SLO dashboard:
+   - Track daily parking false-positive rate, missed parking reports, camera alert rate per drive hour, and unknown-CoreMotion ratio.
+
+Target outcomes:
+- Parking detection reliability toward 99%+ practical accuracy in normal urban driving.
+- Red-light stop false positives reduced to near-zero.
+- Camera notifications become observable and auditable when background constraints interfere.
+
 ## Executive Summary
 
 The parking detection system has **solid architecture with good recovery mechanisms**, but there are **several critical gaps** that can cause missed parking detections, particularly around app death, force-kill, and Android lifecycle events.
