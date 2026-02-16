@@ -508,6 +508,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var cameraRedlightEnabled = false
   private var alertedCameraAtByIndex: [Int: Date] = [:]
   private var lastCameraAlertAt: Date? = nil
+  private var lastCameraRejectLogAt: Date? = nil
 
   private let kCameraAlertsEnabledKey = "bg_camera_alerts_enabled"
   private let kCameraSpeedEnabledKey = "bg_camera_alerts_speed_enabled"
@@ -592,13 +593,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let camMaxAlertRadiusMeters: Double = 250
   private let camTargetWarningSec: Double = 10
   private let camCooldownRadiusMeters: Double = 400
-  private let camMinSpeedSpeedCamMps: Double = 4.5
+  private let camMinSpeedSpeedCamMps: Double = 3.2
   private let camMinSpeedRedlightMps: Double = 1.0
   private let camAnnounceMinIntervalSec: TimeInterval = 5
   private let camAlertDedupeSec: TimeInterval = 3 * 60
   private let camBBoxDegrees: Double = 0.0025
   private let camHeadingToleranceDeg: Double = 45
   private let camMaxBearingOffHeadingDeg: Double = 30
+  private let camRejectLogCooldownSec: TimeInterval = 10
   private let speedCamEnforceStartHour = 6
   private let speedCamEnforceEndHour = 23
 
@@ -1039,6 +1041,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     gpsFallbackDrivingSince = nil
     gpsFallbackStartLocation = nil
     gpsFallbackPossibleDrivingEmitted = false
+    alertedCameraAtByIndex.removeAll()
+    lastCameraAlertAt = nil
+    lastCameraRejectLogAt = nil
     gpsOnlyMode = false
     clearPersistedParkingState()
 
@@ -2786,6 +2791,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
     var bestIdx: Int? = nil
     var bestDist: Double = Double.greatestFiniteMagnitude
+    var nearestRejectedIdx: Int? = nil
+    var nearestRejectedDist: Double = Double.greatestFiniteMagnitude
+    var nearestRejectedReason: String? = nil
+    let rejectDebugRadius = max(alertRadius * 1.4, 220)
 
     for i in 0..<Self.chicagoCameras.count {
       let cam = Self.chicagoCameras[i]
@@ -2799,26 +2808,37 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
         guard cameraRedlightEnabled else { continue }
       }
 
-      // Speed filters (fail-open if speed unknown)
-      if speed >= 0 {
-        let minSpeed = (cam.type == "speed") ? camMinSpeedSpeedCamMps : camMinSpeedRedlightMps
-        if speed < minSpeed { continue }
-      }
-
       // Fast bbox
       if cam.lat < latMin || cam.lat > latMax { continue }
       if cam.lng < lngMin || cam.lng > lngMax { continue }
 
       let dist = haversineMeters(lat1: lat, lon1: lng, lat2: cam.lat, lon2: cam.lng)
-      if dist > alertRadius { continue }
+      let minSpeed = (cam.type == "speed") ? camMinSpeedSpeedCamMps : camMinSpeedRedlightMps
+      let perCameraDeduped = alertedCameraAtByIndex[i].map { Date().timeIntervalSince($0) < camAlertDedupeSec } ?? false
+      let headingOk = isHeadingMatch(headingDeg: heading, approaches: cam.approaches)
+      let aheadOk = isCameraAhead(userLat: lat, userLng: lng, camLat: cam.lat, camLng: cam.lng, headingDeg: heading)
 
-      // Per-camera dedupe
-      if let lastAlert = alertedCameraAtByIndex[i], Date().timeIntervalSince(lastAlert) < camAlertDedupeSec {
-        continue
+      var rejectReason: String? = nil
+      if speed >= 0 && speed < minSpeed {
+        rejectReason = "speed_below_min"
+      } else if dist > alertRadius {
+        rejectReason = "outside_radius"
+      } else if perCameraDeduped {
+        rejectReason = "per_camera_dedupe"
+      } else if !headingOk {
+        rejectReason = "heading_mismatch"
+      } else if !aheadOk {
+        rejectReason = "camera_not_ahead"
       }
 
-      if !isHeadingMatch(headingDeg: heading, approaches: cam.approaches) { continue }
-      if !isCameraAhead(userLat: lat, userLng: lng, camLat: cam.lat, camLng: cam.lng, headingDeg: heading) { continue }
+      if let reason = rejectReason {
+        if dist <= rejectDebugRadius && dist < nearestRejectedDist {
+          nearestRejectedIdx = i
+          nearestRejectedDist = dist
+          nearestRejectedReason = reason
+        }
+        continue
+      }
 
       if dist < bestDist {
         bestDist = dist
@@ -2826,7 +2846,28 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       }
     }
 
-    guard let idx = bestIdx else { return }
+    guard let idx = bestIdx else {
+      if let rIdx = nearestRejectedIdx,
+         let reason = nearestRejectedReason {
+        let shouldLog = lastCameraRejectLogAt.map { Date().timeIntervalSince($0) >= camRejectLogCooldownSec } ?? true
+        if shouldLog {
+          lastCameraRejectLogAt = Date()
+          let cam = Self.chicagoCameras[rIdx]
+          decision("native_camera_candidate_rejected", [
+            "idx": rIdx,
+            "type": cam.type,
+            "address": cam.address,
+            "reason": reason,
+            "distanceMeters": nearestRejectedDist,
+            "alertRadiusMeters": alertRadius,
+            "speedMps": speed,
+            "heading": heading,
+            "accuracy": acc,
+          ])
+        }
+      }
+      return
+    }
     let cam = Self.chicagoCameras[idx]
 
     // Local notification
