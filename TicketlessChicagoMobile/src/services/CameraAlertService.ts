@@ -313,10 +313,16 @@ interface CameraPassTracking {
 }
 
 interface CameraTripSummary {
+  sessionId: string;
   startedAtMs: number;
   durationMs: number;
   gpsUpdates: number;
   alertsFired: number;
+  audioSpeakAttempts: number;
+  audioSpeakSuccess: number;
+  audioSpeakFailures: number;
+  audioRetries: number;
+  audioFallbackNotifications: number;
   alertCandidatesSeen: number;
   typeFiltered: number;
   speedFiltered: number;
@@ -366,6 +372,18 @@ class CameraAlertServiceClass {
 
   /** Diagnostic: callback for surfacing diagnostics as visible notifications */
   private diagnosticCallback: ((title: string, body: string) => void) | null = null;
+  /** Callback for user-visible fallback when TTS fails in background */
+  private alertDeliveryCallback: ((payload: {
+    title: string;
+    body: string;
+    cameraType: CameraLocation['type'];
+    address: string;
+    distanceMeters: number;
+    sessionId: string;
+    reason: string;
+    message: string;
+    attempt: number;
+  }) => void) | null = null;
   /** Diagnostic: only fire first red-light rejection notification per drive */
   private hasNotifiedRedlightRejection = false;
   private lastRejectLogAt = 0;
@@ -378,6 +396,14 @@ class CameraAlertServiceClass {
   private tripDistanceFiltered = 0;
   private tripHeadingFiltered = 0;
   private tripBearingFiltered = 0;
+  private tripAudioSpeakAttempts = 0;
+  private tripAudioSpeakSuccess = 0;
+  private tripAudioSpeakFailures = 0;
+  private tripAudioRetries = 0;
+  private tripAudioFallbackNotifications = 0;
+  private driveSessionId = '';
+  private lastAlertDeliveryFailureReason = '';
+  private lastAudioFallbackAt = 0;
   private tripNearestRedlightDistance = Infinity;
   private tripNearestSpeedDistance = Infinity;
 
@@ -614,6 +640,23 @@ class CameraAlertServiceClass {
     return success;
   }
 
+  /**
+   * Pre-warm audio path so first in-drive camera alert is less likely to miss.
+   * Safe no-op if already initialized.
+   */
+  async prewarmAudio(reason: string = 'unknown'): Promise<void> {
+    try {
+      if (!this.isEnabled) return;
+      await this.initTts();
+      if (Platform.OS === 'ios' && SpeechModule?.warmup) {
+        await SpeechModule.warmup();
+      }
+      log.info(`Camera audio prewarmed (${reason})`);
+    } catch (error) {
+      log.warn(`Camera audio prewarm failed (${reason})`, error);
+    }
+  }
+
   // --------------------------------------------------------------------------
   // Start / Stop (called when driving starts/stops)
   // --------------------------------------------------------------------------
@@ -638,6 +681,28 @@ class CameraAlertServiceClass {
     }
   }
 
+  setAlertDeliveryCallback(
+    cb: ((payload: {
+      title: string;
+      body: string;
+      cameraType: CameraLocation['type'];
+      address: string;
+      distanceMeters: number;
+      sessionId: string;
+      reason: string;
+      message: string;
+      attempt: number;
+    }) => void) | null
+  ): void {
+    this.alertDeliveryCallback = cb;
+  }
+
+  private makeDriveSessionId(): string {
+    const now = Date.now().toString(36);
+    const rand = Math.random().toString(36).slice(2, 8);
+    return `drive_${now}_${rand}`;
+  }
+
   start(): void {
     if (!this.isEnabled) return;
 
@@ -651,8 +716,16 @@ class CameraAlertServiceClass {
     this.tripDistanceFiltered = 0;
     this.tripHeadingFiltered = 0;
     this.tripBearingFiltered = 0;
+    this.tripAudioSpeakAttempts = 0;
+    this.tripAudioSpeakSuccess = 0;
+    this.tripAudioSpeakFailures = 0;
+    this.tripAudioRetries = 0;
+    this.tripAudioFallbackNotifications = 0;
     this.tripNearestRedlightDistance = Infinity;
     this.tripNearestSpeedDistance = Infinity;
+    this.driveSessionId = this.makeDriveSessionId();
+    this.lastAlertDeliveryFailureReason = '';
+    this.lastAudioFallbackAt = 0;
     this.lastRejectLogAt = 0;
     this.alertedCameras.clear();
     this.passTrackingByCamera.clear();
@@ -661,7 +734,7 @@ class CameraAlertServiceClass {
     this.gpsUpdateCount = 0;
     this.lastDiagnostic = null;
     this.hasNotifiedRedlightRejection = false;
-    log.info(`Camera alert monitoring started (speed=${this.speedAlertsEnabled}, redlight=${this.redLightAlertsEnabled}, cameras=${CHICAGO_CAMERAS.length})`);
+    log.info(`Camera alert monitoring started (session=${this.driveSessionId}, speed=${this.speedAlertsEnabled}, redlight=${this.redLightAlertsEnabled}, cameras=${CHICAGO_CAMERAS.length})`);
   }
 
   /**
@@ -676,10 +749,16 @@ class CameraAlertServiceClass {
     stopSpeech();
     if (wasActive && this.tripStartedAt > 0) {
       const summary: CameraTripSummary = {
+        sessionId: this.driveSessionId,
         startedAtMs: this.tripStartedAt,
         durationMs: Date.now() - this.tripStartedAt,
         gpsUpdates: this.gpsUpdateCount,
         alertsFired: this.tripAlertsFired,
+        audioSpeakAttempts: this.tripAudioSpeakAttempts,
+        audioSpeakSuccess: this.tripAudioSpeakSuccess,
+        audioSpeakFailures: this.tripAudioSpeakFailures,
+        audioRetries: this.tripAudioRetries,
+        audioFallbackNotifications: this.tripAudioFallbackNotifications,
         alertCandidatesSeen: this.tripAlertCandidatesSeen,
         typeFiltered: this.tripTypeFiltered,
         speedFiltered: this.tripSpeedFiltered,
@@ -695,11 +774,12 @@ class CameraAlertServiceClass {
       if (summary.alertsFired === 0 && summary.gpsUpdates >= 8) {
         this.sendDiag(
           'Camera Miss Summary',
-          `No alert fired. Top reason: ${summary.noAlertTopReason}. nearestRL=${summary.nearestRedlightMeters ? Math.round(summary.nearestRedlightMeters) + 'm' : 'n/a'} nearestSpeed=${summary.nearestSpeedMeters ? Math.round(summary.nearestSpeedMeters) + 'm' : 'n/a'}`
+          `Session=${summary.sessionId}. No alert fired. Top reason: ${summary.noAlertTopReason}. nearestRL=${summary.nearestRedlightMeters ? Math.round(summary.nearestRedlightMeters) + 'm' : 'n/a'} nearestSpeed=${summary.nearestSpeedMeters ? Math.round(summary.nearestSpeedMeters) + 'm' : 'n/a'}`
         );
       }
     }
     this.tripStartedAt = 0;
+    this.driveSessionId = '';
     log.info('Camera alert monitoring stopped');
   }
 
@@ -764,7 +844,7 @@ class CameraAlertServiceClass {
         if (this.alertedCameras.has(index)) continue;
 
         // New camera in range - speak alert
-        this.announceCamera(camera, distance, speed);
+        void this.announceCamera(camera, distance, speed);
         this.tripAlertsFired += 1;
         this.alertedCameras.set(index, { index, alertedAt: now });
         const bearingOffHeadingDegrees = this.getBearingOffHeadingDegrees(
@@ -1181,7 +1261,7 @@ class CameraAlertServiceClass {
   // TTS Announcement
   // --------------------------------------------------------------------------
 
-  private announceCamera(camera: CameraLocation, distanceMeters: number, speed: number = -1): void {
+  private async announceCamera(camera: CameraLocation, distanceMeters: number, speed: number = -1): Promise<void> {
     // Just awareness — no speed advice (school vs park zone ambiguity)
     // and no action advice (braking at the speed limit is dangerous).
     const message = camera.type === 'redlight'
@@ -1191,9 +1271,46 @@ class CameraAlertServiceClass {
     // Log with speed context for debugging alert timing
     const speedMph = speed >= 0 ? Math.round(speed * 2.237) : -1;
     const secondsToCamera = speed > 0 ? (distanceMeters / speed).toFixed(1) : '?';
-    log.info(`CAMERA ALERT: ${message} - ${camera.address} (speed: ${speedMph} mph, ~${secondsToCamera}s away, alertRadius: ${this.getAlertRadius(speed)}m)`);
+    log.info(`CAMERA ALERT: ${message} - ${camera.address} (session=${this.driveSessionId}, speed: ${speedMph} mph, ~${secondsToCamera}s away, alertRadius: ${this.getAlertRadius(speed)}m)`);
 
-    speak(message);
+    this.tripAudioSpeakAttempts += 1;
+    const firstSuccess = await speak(message);
+    if (firstSuccess) {
+      this.tripAudioSpeakSuccess += 1;
+      return;
+    }
+
+    this.tripAudioSpeakFailures += 1;
+    this.tripAudioRetries += 1;
+    this.tripAudioSpeakAttempts += 1;
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    const retrySuccess = await speak(message);
+    if (retrySuccess) {
+      this.tripAudioSpeakSuccess += 1;
+      return;
+    }
+
+    this.tripAudioSpeakFailures += 1;
+    this.lastAlertDeliveryFailureReason = 'tts_failed_after_retry';
+    if (Date.now() - this.lastAudioFallbackAt < 10000) {
+      return;
+    }
+    this.lastAudioFallbackAt = Date.now();
+    this.tripAudioFallbackNotifications += 1;
+
+    if (this.alertDeliveryCallback) {
+      this.alertDeliveryCallback({
+        title: camera.type === 'redlight' ? 'Red-light camera ahead' : 'Speed camera ahead',
+        body: `${camera.address}. Audio failed, showing backup alert.`,
+        cameraType: camera.type,
+        address: camera.address,
+        distanceMeters,
+        sessionId: this.driveSessionId,
+        reason: this.lastAlertDeliveryFailureReason,
+        message,
+        attempt: 2,
+      });
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -1326,6 +1443,7 @@ class CameraAlertServiceClass {
   getDiagnosticInfo(): {
     isEnabled: boolean;
     isActive: boolean;
+    driveSessionId: string;
     speedAlertsEnabled: boolean;
     redLightAlertsEnabled: boolean;
     hasLoadedSettings: boolean;
@@ -1334,6 +1452,12 @@ class CameraAlertServiceClass {
     redlightCameraCount: number;
     gpsUpdateCount: number;
     alertedCount: number;
+    audioSpeakAttempts: number;
+    audioSpeakSuccess: number;
+    audioSpeakFailures: number;
+    audioRetries: number;
+    audioFallbackNotifications: number;
+    lastAlertDeliveryFailureReason: string;
     lastDiagnostic: typeof this.lastDiagnostic;
   } {
     let speedCount = 0;
@@ -1345,6 +1469,7 @@ class CameraAlertServiceClass {
     return {
       isEnabled: this.isEnabled,
       isActive: this.isActive,
+      driveSessionId: this.driveSessionId,
       speedAlertsEnabled: this.speedAlertsEnabled,
       redLightAlertsEnabled: this.redLightAlertsEnabled,
       hasLoadedSettings: this.hasLoadedSettings,
@@ -1353,6 +1478,12 @@ class CameraAlertServiceClass {
       redlightCameraCount: redlightCount,
       gpsUpdateCount: this.gpsUpdateCount,
       alertedCount: this.alertedCameras.size,
+      audioSpeakAttempts: this.tripAudioSpeakAttempts,
+      audioSpeakSuccess: this.tripAudioSpeakSuccess,
+      audioSpeakFailures: this.tripAudioSpeakFailures,
+      audioRetries: this.tripAudioRetries,
+      audioFallbackNotifications: this.tripAudioFallbackNotifications,
+      lastAlertDeliveryFailureReason: this.lastAlertDeliveryFailureReason,
       lastDiagnostic: this.lastDiagnostic,
     };
   }

@@ -89,6 +89,27 @@ class SpeechModule: RCTEventEmitter, AVSpeechSynthesizerDelegate {
     resolve(true)
   }
 
+  /// Warm up AVAudioSession + synthesizer path without audible speech.
+  /// Helps avoid first-alert latency/failure right after driving starts.
+  @objc func warmup(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else {
+        resolve(false)
+        return
+      }
+
+      self.configureAudioSessionIfNeeded()
+      do {
+        try AVAudioSession.sharedInstance().setActive(true)
+        try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        resolve(true)
+      } catch {
+        NSLog("[SpeechModule] Warmup failed: \(error)")
+        resolve(false)
+      }
+    }
+  }
+
   // MARK: - AVSpeechSynthesizerDelegate
 
   func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {

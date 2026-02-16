@@ -118,8 +118,13 @@ class BackgroundTaskServiceClass {
     accuracy?: number;
     drivingDurationSec?: number;
     nativeTimestamp?: number;
+    driveSessionId?: string | null;
     recordedAt: number;
   } | null = null;
+  private currentDriveSessionId: string | null = null;
+  private lastCameraFallbackNotificationAt: number = 0;
+  private cameraHeartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  private lastCameraHeartbeatGpsCount: number = 0;
 
   /**
    * Initialize the background task service
@@ -157,6 +162,9 @@ class BackgroundTaskServiceClass {
       // filter rejections as visible notifications
       CameraAlertService.setDiagnosticCallback((title, body) => {
         this.sendDiagnosticNotification(title, body);
+      });
+      CameraAlertService.setAlertDeliveryCallback((payload) => {
+        void this.sendCameraAudioFallbackNotification(payload);
       });
 
       // Runtime check: read raw AsyncStorage camera settings and show them
@@ -489,6 +497,7 @@ class BackgroundTaskServiceClass {
                 accuracy: event.accuracy,
                 drivingDurationSec: event.drivingDurationSec,
                 nativeTimestamp: event.timestamp,
+                driveSessionId: this.currentDriveSessionId,
                 recordedAt: Date.now(),
               };
               this.clearLowAccuracyRecovery();
@@ -573,10 +582,12 @@ class BackgroundTaskServiceClass {
             // onDrivingStarted - fires when user starts driving
             (drivingTimestamp?: number) => {
               this.lastIosDrivingStartedAt = drivingTimestamp || Date.now();
+              this.currentDriveSessionId = null;
               void this.captureIosHealthSnapshot('onDrivingStarted', { force: true, includeLogTail: true });
               log.info('DRIVING STARTED - user departing', {
                 nativeTimestamp: drivingTimestamp ? new Date(drivingTimestamp).toISOString() : 'none',
               });
+              void CameraAlertService.prewarmAudio('onDrivingStarted');
               this.startCameraAlerts();
               this.handleCarReconnection(drivingTimestamp);
             },
@@ -587,6 +598,7 @@ class BackgroundTaskServiceClass {
             () => {
               void this.captureIosHealthSnapshot('onPossibleDriving');
               log.info('POSSIBLE DRIVING - CoreMotion automotive detected, starting camera alerts early');
+              void CameraAlertService.prewarmAudio('onPossibleDriving');
               this.startCameraAlerts();
             }
           );
@@ -1097,6 +1109,31 @@ class BackgroundTaskServiceClass {
   // Camera Alert Helpers
   // --------------------------------------------------------------------------
 
+  private startCameraHeartbeat(): void {
+    this.stopCameraHeartbeat();
+    this.lastCameraHeartbeatGpsCount = CameraAlertService.getDiagnosticInfo().gpsUpdateCount;
+    this.cameraHeartbeatInterval = setInterval(() => {
+      const diag = CameraAlertService.getDiagnosticInfo();
+      if (!diag.isActive) return;
+      const delta = diag.gpsUpdateCount - this.lastCameraHeartbeatGpsCount;
+      this.lastCameraHeartbeatGpsCount = diag.gpsUpdateCount;
+      if (delta <= 0) {
+        void this.sendDiagnosticNotification(
+          'Camera Heartbeat Stalled',
+          `session=${diag.driveSessionId || 'n/a'} active=true gpsDelta=0 audioFail=${diag.audioSpeakFailures} fallback=${diag.audioFallbackNotifications}`
+        );
+      }
+    }, 60000);
+  }
+
+  private stopCameraHeartbeat(): void {
+    if (this.cameraHeartbeatInterval) {
+      clearInterval(this.cameraHeartbeatInterval);
+      this.cameraHeartbeatInterval = null;
+    }
+    this.lastCameraHeartbeatGpsCount = 0;
+  }
+
   /**
    * Start camera proximity alerts while driving.
    * On iOS: subscribes to BackgroundLocationService location updates.
@@ -1104,6 +1141,7 @@ class BackgroundTaskServiceClass {
    */
   private startCameraAlerts(): void {
     if (!CameraAlertService.isAlertEnabled()) return;
+    void CameraAlertService.prewarmAudio('startCameraAlerts');
 
     // Idempotent: if already active (e.g. from onPossibleDriving), don't
     // re-subscribe or clear alerted cameras. Just make sure CameraAlertService
@@ -1112,17 +1150,21 @@ class BackgroundTaskServiceClass {
       // Already listening — just ensure CameraAlertService is active
       if (!CameraAlertService.getStatus().isActive) {
         CameraAlertService.start();
+        const restartedDiag = CameraAlertService.getDiagnosticInfo();
+        this.currentDriveSessionId = restartedDiag.driveSessionId || null;
       }
       return;
     }
 
     CameraAlertService.start();
+    this.startCameraHeartbeat();
 
     // Diagnostic: show camera alert settings at startup
     const diag = CameraAlertService.getDiagnosticInfo();
+    this.currentDriveSessionId = diag.driveSessionId || null;
     this.sendDiagnosticNotification(
       'Camera Alerts Started',
-      `speed=${diag.speedAlertsEnabled ? 'ON' : 'OFF'} redlight=${diag.redLightAlertsEnabled ? 'ON' : 'OFF'} cameras=${diag.totalCameras} (${diag.speedCameraCount}spd/${diag.redlightCameraCount}rl) loaded=${diag.hasLoadedSettings}`
+      `session=${diag.driveSessionId || 'n/a'} speed=${diag.speedAlertsEnabled ? 'ON' : 'OFF'} redlight=${diag.redLightAlertsEnabled ? 'ON' : 'OFF'} cameras=${diag.totalCameras} (${diag.speedCameraCount}spd/${diag.redlightCameraCount}rl) loaded=${diag.hasLoadedSettings}`
     );
 
     if (Platform.OS === 'ios') {
@@ -1169,11 +1211,15 @@ class BackgroundTaskServiceClass {
     if (diag.gpsUpdateCount > 0) {
       this.sendDiagnosticNotification(
         'Camera Alerts Stopped',
-        `GPS updates=${diag.gpsUpdateCount} alerts=${diag.alertedCount} settings(spd=${diag.speedAlertsEnabled ? 'ON' : 'OFF'} rl=${diag.redLightAlertsEnabled ? 'ON' : 'OFF'})`
+        `session=${diag.driveSessionId || 'n/a'} GPS updates=${diag.gpsUpdateCount} alerts=${diag.alertedCount} ` +
+        `audio(ok=${diag.audioSpeakSuccess}/${diag.audioSpeakAttempts} fail=${diag.audioSpeakFailures} retry=${diag.audioRetries} fb=${diag.audioFallbackNotifications}) ` +
+        `settings(spd=${diag.speedAlertsEnabled ? 'ON' : 'OFF'} rl=${diag.redLightAlertsEnabled ? 'ON' : 'OFF'})`
       );
     }
 
     CameraAlertService.stop();
+    this.stopCameraHeartbeat();
+    this.currentDriveSessionId = null;
 
     if (this.cameraLocationUnsubscribe) {
       this.cameraLocationUnsubscribe();
@@ -1331,6 +1377,7 @@ class BackgroundTaskServiceClass {
     accuracy?: number;
     drivingDurationSec?: number;
     nativeTimestamp?: number;
+    driveSessionId?: string | null;
     recordedAt: number;
   }): Promise<void> {
     let resolvedCoords: { latitude: number; longitude: number; accuracy?: number } | null = null;
@@ -2414,6 +2461,48 @@ class BackgroundTaskServiceClass {
     }
   }
 
+  private async sendCameraAudioFallbackNotification(payload: {
+    title: string;
+    body: string;
+    cameraType: 'speed' | 'redlight';
+    address: string;
+    distanceMeters: number;
+    sessionId: string;
+    reason: string;
+    message: string;
+    attempt: number;
+  }): Promise<void> {
+    try {
+      const now = Date.now();
+      if (now - this.lastCameraFallbackNotificationAt < 12000) {
+        return;
+      }
+      this.lastCameraFallbackNotificationAt = now;
+
+      await notifee.displayNotification({
+        title: payload.title,
+        body: payload.body,
+        android: {
+          channelId: 'parking-monitoring',
+          importance: AndroidImportance.HIGH,
+          pressAction: { id: 'default' },
+          sound: 'default',
+        },
+        ios: {
+          sound: 'default',
+          interruptionLevel: 'timeSensitive',
+        },
+      });
+
+      log.warn(
+        `[CameraAudioFallback] session=${payload.sessionId} type=${payload.cameraType} reason=${payload.reason} ` +
+        `distance=${Math.round(payload.distanceMeters)}m address=${payload.address}`
+      );
+    } catch (error) {
+      log.error('Failed to send camera audio fallback notification', error);
+    }
+  }
+
   /**
    * iOS reliability snapshot:
    * - Captures native monitoring status + callback staleness
@@ -2496,6 +2585,7 @@ class BackgroundTaskServiceClass {
         id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         ts: Date.now(),
         reason,
+        driveSessionId: this.currentDriveSessionId,
         event: {
           timestamp: event.timestamp,
           latitude: event.latitude,
@@ -2531,6 +2621,7 @@ class BackgroundTaskServiceClass {
       accuracy?: number;
       drivingDurationSec?: number;
       nativeTimestamp?: number;
+      driveSessionId?: string | null;
       recordedAt: number;
     }
   ): void {

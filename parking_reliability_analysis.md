@@ -19,6 +19,16 @@ Implemented and now active in code:
   - if rapid real driving movement shortly after a low-confidence/risky parking confirm indicates false positive, native logic auto-unwinds parking assumptions and applies lockout/hotspot learning.
 - New synthetic camera validation harness: `scripts/camera-drive-harness.js`.
 - New daily tuning report generator: `scripts/daily-parking-camera-report.js`.
+- Camera audio reliability hardening:
+  - iOS SpeechModule warmup hook added to prime AVAudioSession before first drive alert.
+  - Camera alerts now use retry-on-failure (`~1.2s` retry window) before fallback.
+  - If TTS fails after retry, app emits an immediate local notification fallback so the user still gets warned.
+  - Added per-drive camera audio metrics (attempts, success, failures, retries, fallback notifications).
+- Drive-session traceability:
+  - Camera alert engine now generates a `driveSessionId` per drive and includes it in trip summaries.
+  - Parking rejection logs now include drive session linkage for cross-event debugging.
+- Camera runtime heartbeat:
+  - Added minute-level heartbeat checks while camera alerts are active; if GPS update flow stalls, the app logs/surfaces a diagnostic signal.
 - New npm script entry points:
   - `npm run harness:camera-drive`
   - `npm run report:parking-camera`
