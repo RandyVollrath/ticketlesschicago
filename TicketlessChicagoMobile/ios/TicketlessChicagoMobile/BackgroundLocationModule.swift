@@ -110,6 +110,115 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     }
   }
 
+  private func beginTripSummary(source: String, departureTimestampMs: Double) {
+    guard tripSummaryId == nil else { return }
+    let now = Date()
+    tripSummaryId = UUID().uuidString
+    tripSummaryStart = now
+    tripSummaryDepartureMs = departureTimestampMs
+    tripSummaryStartSource = source
+    tripSummaryAutomotiveUpdates = 0
+    tripSummaryNonAutomotiveUpdates = 0
+    tripSummaryUnknownUpdates = 0
+    tripSummaryAutomotiveDurationSec = 0
+    tripSummaryNonAutomotiveDurationSec = 0
+    tripSummaryUnknownDurationSec = 0
+    tripSummaryGateWaitCount = 0
+    tripSummaryGatePassCount = 0
+    tripSummaryUnknownFallbackPassCount = 0
+    tripSummaryGpsZeroSamples = 0
+    tripSummaryGpsMovingSamples = 0
+    tripSummaryMaxSpeedMps = 0
+    tripLastMotionState = nil
+    tripLastMotionAt = nil
+    decision("trip_summary_started", [
+      "tripId": tripSummaryId ?? "",
+      "source": source,
+      "departureTs": departureTimestampMs,
+    ])
+  }
+
+  private func trackTripMotionState(_ state: String, countUpdate: Bool = true) {
+    guard tripSummaryId != nil else { return }
+    let now = Date()
+
+    if let prevState = tripLastMotionState, let prevAt = tripLastMotionAt {
+      let elapsed = max(0, min(120, now.timeIntervalSince(prevAt)))
+      if prevState == "automotive" {
+        tripSummaryAutomotiveDurationSec += elapsed
+      } else if prevState == "non_automotive" {
+        tripSummaryNonAutomotiveDurationSec += elapsed
+      } else if prevState == "unknown" {
+        tripSummaryUnknownDurationSec += elapsed
+      }
+    }
+
+    if countUpdate {
+      if state == "automotive" {
+        tripSummaryAutomotiveUpdates += 1
+      } else if state == "non_automotive" {
+        tripSummaryNonAutomotiveUpdates += 1
+      } else if state == "unknown" {
+        tripSummaryUnknownUpdates += 1
+      }
+    }
+
+    tripLastMotionState = state
+    tripLastMotionAt = now
+  }
+
+  private func emitTripSummary(outcome: String, parkingSource: String? = nil) {
+    guard let tripId = tripSummaryId else { return }
+
+    // Flush trailing motion-state segment into the summary before emitting.
+    if let state = tripLastMotionState {
+      trackTripMotionState(state, countUpdate: false)
+    }
+
+    let now = Date()
+    let durationSec = tripSummaryStart.map { now.timeIntervalSince($0) } ?? 0
+    decision("trip_summary", [
+      "tripId": tripId,
+      "outcome": outcome,
+      "parkingSource": parkingSource ?? "",
+      "startSource": tripSummaryStartSource ?? "",
+      "departureTs": tripSummaryDepartureMs ?? -1,
+      "durationSec": durationSec,
+      "motionAutomotiveUpdates": tripSummaryAutomotiveUpdates,
+      "motionNonAutomotiveUpdates": tripSummaryNonAutomotiveUpdates,
+      "motionUnknownUpdates": tripSummaryUnknownUpdates,
+      "motionAutomotiveDurationSec": tripSummaryAutomotiveDurationSec,
+      "motionNonAutomotiveDurationSec": tripSummaryNonAutomotiveDurationSec,
+      "motionUnknownDurationSec": tripSummaryUnknownDurationSec,
+      "gateWaitCount": tripSummaryGateWaitCount,
+      "gatePassCount": tripSummaryGatePassCount,
+      "unknownFallbackPassCount": tripSummaryUnknownFallbackPassCount,
+      "gpsZeroSamples": tripSummaryGpsZeroSamples,
+      "gpsMovingSamples": tripSummaryGpsMovingSamples,
+      "maxSpeedMps": tripSummaryMaxSpeedMps,
+      "stopWindowMaxSpeedMps": stopWindowMaxSpeedMps,
+    ])
+
+    tripSummaryId = nil
+    tripSummaryStart = nil
+    tripSummaryDepartureMs = nil
+    tripSummaryStartSource = nil
+    tripSummaryAutomotiveUpdates = 0
+    tripSummaryNonAutomotiveUpdates = 0
+    tripSummaryUnknownUpdates = 0
+    tripSummaryAutomotiveDurationSec = 0
+    tripSummaryNonAutomotiveDurationSec = 0
+    tripSummaryUnknownDurationSec = 0
+    tripSummaryGateWaitCount = 0
+    tripSummaryGatePassCount = 0
+    tripSummaryUnknownFallbackPassCount = 0
+    tripSummaryGpsZeroSamples = 0
+    tripSummaryGpsMovingSamples = 0
+    tripSummaryMaxSpeedMps = 0
+    tripLastMotionState = nil
+    tripLastMotionAt = nil
+  }
+
   private func startLocationWatchdog() {
     locationWatchdogTimer?.invalidate()
     let timer = Timer.scheduledTimer(withTimeInterval: locationWatchdogIntervalSec, repeats: true) { [weak self] _ in
@@ -191,6 +300,24 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var gpsFallbackStartLocation: CLLocation? = nil
   private var gpsFallbackPossibleDrivingEmitted = false
   private var bootstrapGpsTimer: Timer? = nil
+  private var tripSummaryId: String? = nil
+  private var tripSummaryStart: Date? = nil
+  private var tripSummaryDepartureMs: Double? = nil
+  private var tripSummaryStartSource: String? = nil
+  private var tripSummaryAutomotiveUpdates = 0
+  private var tripSummaryNonAutomotiveUpdates = 0
+  private var tripSummaryUnknownUpdates = 0
+  private var tripSummaryAutomotiveDurationSec: TimeInterval = 0
+  private var tripSummaryNonAutomotiveDurationSec: TimeInterval = 0
+  private var tripSummaryUnknownDurationSec: TimeInterval = 0
+  private var tripSummaryGateWaitCount = 0
+  private var tripSummaryGatePassCount = 0
+  private var tripSummaryUnknownFallbackPassCount = 0
+  private var tripSummaryGpsZeroSamples = 0
+  private var tripSummaryGpsMovingSamples = 0
+  private var tripSummaryMaxSpeedMps: Double = 0
+  private var tripLastMotionState: String? = nil
+  private var tripLastMotionAt: Date? = nil
 
   // Camera alerts (native iOS fallback for when JS is suspended in background)
   private var cameraAlertsEnabled = false
@@ -528,6 +655,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   /// Stop all monitoring
   @objc func stopMonitoring(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     decision("stop_monitoring_called")
+    emitTripSummary(outcome: "monitoring_stopped")
     locationManager.stopMonitoringSignificantLocationChanges()
     stopContinuousGps()
     stopMotionActivityMonitoring()
@@ -974,6 +1102,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
       // Log every CoreMotion update for diagnostics
       self.log("CoreMotion update: automotive=\(activity.automotive) stationary=\(activity.stationary) walking=\(activity.walking) confidence=\(self.confidenceString(activity.confidence))")
+      let tripMotionState: String = {
+        if activity.automotive { return "automotive" }
+        if activity.stationary || activity.walking { return "non_automotive" }
+        return "unknown"
+      }()
+      self.trackTripMotionState(tripMotionState)
       let motionSig = "\(activity.automotive)-\(activity.stationary)-\(activity.walking)-\(self.confidenceString(activity.confidence))"
       if self.lastMotionDecisionSignature != motionSig {
         self.lastMotionDecisionSignature = motionSig
@@ -1091,6 +1225,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           }
 
           self.log("Driving started (CoreMotion automotive + GPS moving, confidence: \(self.confidenceString(activity.confidence)), source: \(departureSource))")
+          self.beginTripSummary(source: departureSource, departureTimestampMs: departureTimestamp)
           self.sendEvent(withName: "onDrivingStarted", body: [
             "timestamp": departureTimestamp,
             "source": departureSource,
@@ -1251,6 +1386,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     guard let location = locations.last else { return }
     lastLocationCallbackTime = Date()
     let speed = location.speed  // m/s, -1 if unknown
+    if tripSummaryId != nil {
+      if speed >= 0 {
+        tripSummaryMaxSpeedMps = max(tripSummaryMaxSpeedMps, speed)
+      }
+      if speed > minDrivingSpeedMps {
+        tripSummaryGpsMovingSamples += 1
+      } else if speed >= 0 && speed <= 0.5 {
+        tripSummaryGpsZeroSamples += 1
+      }
+    }
     let speedBucket: String = {
       if speed < 0 { return "unknown" }
       if speed <= 0.5 { return "zeroish" }
@@ -1351,6 +1496,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           "timestamp": departureTimestamp,
           "source": "gps_speed_confirmed",
         ])
+        beginTripSummary(source: "gps_speed_confirmed", departureTimestampMs: departureTimestamp)
         gpsFallbackDrivingSince = nil
         gpsFallbackStartLocation = nil
         gpsFallbackPossibleDrivingEmitted = false
@@ -1406,6 +1552,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
               "timestamp": fallbackStart.timeIntervalSince1970 * 1000,
               "source": "gps_speed_fallback",
             ])
+            beginTripSummary(source: "gps_speed_fallback", departureTimestampMs: fallbackStart.timeIntervalSince1970 * 1000)
             gpsFallbackDrivingSince = nil
             gpsFallbackStartLocation = nil
             gpsFallbackPossibleDrivingEmitted = false
@@ -1526,6 +1673,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
                gpsSpeedOk &&
                (hasWalkingEvidence || longNoWalkingStop) {
               self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion non-automotive for \(String(format: "%.0f", coreMotionStableDuration))s + GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s")
+              self.tripSummaryGatePassCount += 1
               self.decision("gps_coremotion_gate_passed", [
                 "zeroDurationSec": zeroDuration,
                 "coreMotionStableSec": coreMotionStableDuration,
@@ -1555,6 +1703,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
                 waitReasons.append("no walking evidence yet (\(String(format: "%.0f", walkingEvidenceSec))s) and stop<\(String(format: "%.0f", self.minZeroSpeedNoWalkingSec))s")
               }
               self.log("CoreMotion agrees (not automotive) but guards not met: \(waitReasons.joined(separator: ", "))")
+              self.tripSummaryGateWaitCount += 1
               self.decision("gps_coremotion_gate_wait", [
                 "zeroDurationSec": zeroDuration,
                 "coreMotionStableSec": coreMotionStableDuration,
@@ -1576,6 +1725,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             // Conservative fallback for devices that linger in CoreMotion "unknown":
             // require a long sustained stop and no meaningful speed spikes.
             self.log("Parking confirmed via unknown fallback: unknown \(String(format: "%.0f", unknownDuration))s, zero \(String(format: "%.0f", zeroDuration))s, max stop speed \(String(format: "%.1f", self.stopWindowMaxSpeedMps)) m/s")
+            self.tripSummaryUnknownFallbackPassCount += 1
             self.decision("gps_unknown_fallback_passed", [
               "unknownDurationSec": unknownDuration,
               "zeroDurationSec": zeroDuration,
@@ -2764,6 +2914,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "drivingDurationSec": body["drivingDurationSec"] as? Double ?? -1,
       "timestamp": body["timestamp"] as? Double ?? -1,
     ])
+    emitTripSummary(outcome: "parked", parkingSource: source)
 
     // After first confirmed parking, require GPS confirmation to restart driving
     // (prevents CoreMotion flicker from immediately re-entering driving state).
