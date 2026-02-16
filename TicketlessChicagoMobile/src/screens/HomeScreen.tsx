@@ -200,6 +200,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [debugAccuracy, setDebugAccuracy] = useState<number>(0);
   const [debugTransitions, setDebugTransitions] = useState<DebugTransition[]>([]);
   const [debugBgStatus, setDebugBgStatus] = useState<string>('');
+  const [debugDecisionScore, setDebugDecisionScore] = useState<number>(-1);
+  const [debugHoldReason, setDebugHoldReason] = useState<string>('');
+  const [debugDecisionSource, setDebugDecisionSource] = useState<string>('');
+  const [showGroundTruthBanner, setShowGroundTruthBanner] = useState(false);
   const debugTransitionsRef = useRef<DebugTransition[]>([]);
 
   // Update time every minute
@@ -396,6 +400,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         if (status.drivingDurationSec) {
           parts.push(`DUR:${status.drivingDurationSec}s`);
         }
+        if (typeof status.lastParkingDecisionConfidence === 'number' && status.lastParkingDecisionConfidence >= 0) {
+          parts.push(`PDEC:${status.lastParkingDecisionConfidence}`);
+          setDebugDecisionScore(status.lastParkingDecisionConfidence);
+          setDebugHoldReason(status.lastParkingDecisionHoldReason || '');
+          setDebugDecisionSource(status.lastParkingDecisionSource || '');
+        }
         setDebugBgStatus(parts.join(' | '));
       } catch (e) {
         // ignore
@@ -460,6 +470,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         setBackgroundRefreshBlocked(bgStatus.backgroundRefreshStatus === 'denied' || bgStatus.backgroundRefreshStatus === 'restricted');
         setLowPowerWarning(bgStatus.lowPowerModeEnabled === true);
         setHealthRecoveryWarning((bgStatus.healthRecoveryCount ?? 0) >= 3);
+        setDebugDecisionScore(bgStatus.lastParkingDecisionConfidence ?? -1);
+        setDebugHoldReason(bgStatus.lastParkingDecisionHoldReason || '');
+        setDebugDecisionSource(bgStatus.lastParkingDecisionSource || '');
       } catch (e) {
         // Non-critical
       }
@@ -547,6 +560,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setRefreshing(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!lastParkingCheck || !isMonitoring) {
+      setShowGroundTruthBanner(false);
+      return;
+    }
+    const ageMs = Date.now() - lastParkingCheck.timestamp;
+    // Show only for recent park detections to allow immediate correction loop.
+    setShowGroundTruthBanner(ageMs <= 20 * 60 * 1000);
+  }, [lastParkingCheck, isMonitoring]);
 
   const handleCarDisconnect = async () => {
     log.info('Parking detected - refreshing UI');
@@ -774,6 +797,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         lastParkingCheck.coords.longitude
       );
       setLastParkingCheck(null);
+      setShowGroundTruthBanner(false);
       await AsyncStorage.removeItem(StorageKeys.LAST_PARKING_LOCATION);
       Alert.alert('Updated', 'Marked as not parked. We will use this to reduce false positives.');
     } catch (e) {
@@ -788,6 +812,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         lastParkingCheck.coords.latitude,
         lastParkingCheck.coords.longitude
       );
+      setShowGroundTruthBanner(false);
       Alert.alert('Thanks', 'Confirmed. This helps tune parking detection at this location.');
     } catch (e) {
       log.warn('Failed to confirm parking location', e);
@@ -1094,6 +1119,35 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </View>
       )}
+      {showGroundTruthBanner && lastParkingCheck && !isDriving && (
+        <View style={styles.groundTruthBanner} accessibilityRole="alert">
+          <View style={styles.groundTruthBannerHeader}>
+            <MaterialCommunityIcons name="map-marker-check-outline" size={18} color={colors.primary} />
+            <Text style={styles.groundTruthBannerTitle}>Parking detected. Is this correct?</Text>
+          </View>
+          <Text style={styles.groundTruthBannerBody} numberOfLines={2}>
+            {lastParkingCheck.address}
+          </Text>
+          <View style={styles.groundTruthBannerActions}>
+            <TouchableOpacity
+              style={styles.groundTruthNegativeBtn}
+              onPress={markFalsePositiveParking}
+              accessibilityRole="button"
+              accessibilityLabel="Mark detection as false alarm"
+            >
+              <Text style={styles.groundTruthNegativeText}>False alarm</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.groundTruthPositiveBtn}
+              onPress={confirmParkingHere}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm this parking detection"
+            >
+              <Text style={styles.groundTruthPositiveText}>Parked correctly</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       <ScrollView
         contentContainerStyle={styles.scrollView}
         refreshControl={
@@ -1167,6 +1221,22 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <View style={styles.debugRow}>
               <Text style={styles.debugLabel}>Hero</Text>
               <Text style={styles.debugValue}>{heroState}</Text>
+            </View>
+            <View style={styles.debugRow}>
+              <Text style={styles.debugLabel}>Park score</Text>
+              <Text style={styles.debugValue}>{debugDecisionScore >= 0 ? `${debugDecisionScore}/100` : '---'}</Text>
+            </View>
+            <View style={styles.debugRow}>
+              <Text style={styles.debugLabel}>Hold reason</Text>
+              <Text style={[styles.debugValue, styles.debugLongValue]} numberOfLines={1}>
+                {debugHoldReason || '---'}
+              </Text>
+            </View>
+            <View style={styles.debugRow}>
+              <Text style={styles.debugLabel}>Decision src</Text>
+              <Text style={[styles.debugValue, styles.debugLongValue]} numberOfLines={1}>
+                {debugDecisionSource || '---'}
+              </Text>
             </View>
 
             {/* Background status */}
@@ -1812,6 +1882,62 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
     color: colors.white,
   },
+  groundTruthBanner: {
+    backgroundColor: '#EAF3FF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#CFE4FF',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.base,
+  },
+  groundTruthBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  groundTruthBannerTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  groundTruthBannerBody: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+    marginLeft: 26,
+  },
+  groundTruthBannerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    marginLeft: 26,
+  },
+  groundTruthNegativeBtn: {
+    backgroundColor: '#FFE7E7',
+    borderWidth: 1,
+    borderColor: '#FFCFCF',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.sm,
+  },
+  groundTruthNegativeText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.error,
+  },
+  groundTruthPositiveBtn: {
+    backgroundColor: '#E9F9EE',
+    borderWidth: 1,
+    borderColor: '#CBEFD8',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.sm,
+  },
+  groundTruthPositiveText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.success,
+  },
   scrollView: {
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
@@ -1875,6 +2001,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     fontWeight: typography.weights.bold,
+  },
+  debugLongValue: {
+    maxWidth: '62%',
+    textAlign: 'right',
   },
   debugBgStatus: {
     fontSize: 9,

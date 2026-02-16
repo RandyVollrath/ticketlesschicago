@@ -145,6 +145,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     tripSummaryCameraRejectHeading = 0
     tripSummaryCameraRejectAhead = 0
     tripSummaryCameraRejectDedupe = 0
+    tripSummaryLowConfidenceBlockedCount = 0
     tripLastMotionState = nil
     tripLastMotionAt = nil
     decision("trip_summary_started", [
@@ -215,6 +216,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     let parkingMissTopReason: String = {
       let reasons: [(String, Int)] = [
         ("lockout_after_false_positive", tripSummaryLockoutBlockedCount),
+        ("low_confidence_guard", tripSummaryLowConfidenceBlockedCount),
         ("hotspot_block", tripSummaryHotspotBlockedCount),
         ("finalization_cancelled_automotive", tripSummaryFinalizationCancelledAutomotive),
         ("finalization_cancelled_speed", tripSummaryFinalizationCancelledSpeed),
@@ -264,6 +266,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "parkingCancelledDriftCount": tripSummaryFinalizationCancelledDrift,
       "parkingHotspotBlockedCount": tripSummaryHotspotBlockedCount,
       "parkingLockoutBlockedCount": tripSummaryLockoutBlockedCount,
+      "parkingLowConfidenceBlockedCount": tripSummaryLowConfidenceBlockedCount,
     ])
 
     tripSummaryId = nil
@@ -297,6 +300,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     tripSummaryCameraRejectHeading = 0
     tripSummaryCameraRejectAhead = 0
     tripSummaryCameraRejectDedupe = 0
+    tripSummaryLowConfidenceBlockedCount = 0
     tripLastMotionState = nil
     tripLastMotionAt = nil
   }
@@ -565,9 +569,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var tripSummaryCameraRejectHeading = 0
   private var tripSummaryCameraRejectAhead = 0
   private var tripSummaryCameraRejectDedupe = 0
+  private var tripSummaryLowConfidenceBlockedCount = 0
   private var tripLastMotionState: String? = nil
   private var tripLastMotionAt: Date? = nil
   private var falsePositiveParkingLockoutUntil: Date? = nil
+  private var lastParkingDecisionConfidence: Int = -1
+  private var lastParkingDecisionHoldReason: String = ""
+  private var lastParkingDecisionSource: String = ""
+  private var lastParkingDecisionTs: Double = 0
 
   // Camera alerts (native iOS fallback for when JS is suspended in background)
   private var cameraAlertsEnabled = false
@@ -644,6 +653,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let parkingFinalizationHoldStrongSec: TimeInterval = 11
   private let parkingFinalizationMaxDriftMeters: Double = 35
   private let falsePositiveParkingLockoutSec: TimeInterval = 180
+  private let intersectionRiskRadiusMeters: Double = 95
   private let locationCallbackStaleSec: TimeInterval = 90
   private let locationWatchdogIntervalSec: TimeInterval = 20
   private let watchdogRecoveryCooldownSec: TimeInterval = 60
@@ -1122,6 +1132,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     lastCameraAlertAt = nil
     lastCameraRejectLogAt = nil
     falsePositiveParkingLockoutUntil = nil
+    lastParkingDecisionConfidence = -1
+    lastParkingDecisionHoldReason = ""
+    lastParkingDecisionSource = ""
+    lastParkingDecisionTs = 0
     gpsOnlyMode = false
     clearPersistedParkingState()
 
@@ -1164,6 +1178,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "lowPowerModeEnabled": ProcessInfo.processInfo.isLowPowerModeEnabled,
       "vehicleSignalConnected": carAudioConnected,
       "healthRecoveryCount": healthRecoveryCount,
+      "lastParkingDecisionConfidence": lastParkingDecisionConfidence,
+      "lastParkingDecisionHoldReason": lastParkingDecisionHoldReason,
+      "lastParkingDecisionSource": lastParkingDecisionSource,
+      "lastParkingDecisionTs": lastParkingDecisionTs,
     ]
 
     UNUserNotificationCenter.current().getNotificationSettings { settings in
@@ -3326,8 +3344,45 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       locationAtStopStart = nil
       return
     }
-    let adaptiveHoldSec = self.adaptiveParkingFinalizationHoldSec(source: source, zeroDurationSec: zeroDurationSec, walkingEvidenceSec: walkingEvidenceSec, hotspot: hotspot)
-    self.log("PARKING CANDIDATE READY (source: \(source)) — holding \(String(format: "%.0f", adaptiveHoldSec))s for stability")
+    let nearIntersectionRisk = self.isNearSignalizedIntersection(hotspotCandidate)
+    let confidenceScore = self.parkingDecisionConfidenceScore(
+      source: source,
+      zeroDurationSec: zeroDurationSec,
+      walkingEvidenceSec: walkingEvidenceSec,
+      hasRecentDisconnectEvidence: hasRecentDisconnectEvidence,
+      nearIntersectionRisk: nearIntersectionRisk,
+      hotspot: hotspot
+    )
+    if confidenceScore < 35 && walkingEvidenceSec < minWalkingEvidenceSec && !hasRecentDisconnectEvidence {
+      self.log("Parking candidate blocked by low-confidence guard (score=\(confidenceScore), nearIntersection=\(nearIntersectionRisk))")
+      tripSummaryLowConfidenceBlockedCount += 1
+      decision("confirm_parking_blocked_low_confidence", [
+        "source": source,
+        "confidenceScore": confidenceScore,
+        "zeroDurationSec": zeroDurationSec,
+        "walkingEvidenceSec": walkingEvidenceSec,
+        "hasRecentDisconnectEvidence": hasRecentDisconnectEvidence,
+        "nearIntersectionRisk": nearIntersectionRisk,
+      ])
+      lastStationaryTime = nil
+      locationAtStopStart = nil
+      return
+    }
+    let adaptiveHold = self.adaptiveParkingFinalizationHold(
+      source: source,
+      zeroDurationSec: zeroDurationSec,
+      walkingEvidenceSec: walkingEvidenceSec,
+      hotspot: hotspot,
+      nearIntersectionRisk: nearIntersectionRisk,
+      confidenceScore: confidenceScore
+    )
+    let adaptiveHoldSec = adaptiveHold.seconds
+    let holdReason = adaptiveHold.reason
+    lastParkingDecisionConfidence = confidenceScore
+    lastParkingDecisionHoldReason = holdReason
+    lastParkingDecisionSource = source
+    lastParkingDecisionTs = Date().timeIntervalSince1970 * 1000
+    self.log("PARKING CANDIDATE READY (source: \(source), confidence=\(confidenceScore), holdReason=\(holdReason)) — holding \(String(format: "%.0f", adaptiveHoldSec))s for stability")
 
     // Use the parking location's GPS timestamp if available — this is when the car
     // ACTUALLY stopped, not when the confirmation timer fires (which can be 5-13s later).
@@ -3380,6 +3435,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       "accuracy": body["accuracy"] as? Double ?? -1,
       "drivingDurationSec": body["drivingDurationSec"] as? Double ?? -1,
       "walkingEvidenceSec": self.coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0,
+      "confidenceScore": confidenceScore,
+      "holdReason": holdReason,
+      "nearIntersectionRisk": nearIntersectionRisk,
     ])
     parkingFinalizationTimer?.invalidate()
     parkingFinalizationTimer = Timer.scheduledTimer(withTimeInterval: adaptiveHoldSec, repeats: false) { [weak self] _ in
@@ -3418,21 +3476,71 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   // MARK: - Helpers
 
-  private func adaptiveParkingFinalizationHoldSec(source: String, zeroDurationSec: TimeInterval, walkingEvidenceSec: TimeInterval, hotspot: (count: Int, distance: Double)?) -> TimeInterval {
+  private func adaptiveParkingFinalizationHold(
+    source: String,
+    zeroDurationSec: TimeInterval,
+    walkingEvidenceSec: TimeInterval,
+    hotspot: (count: Int, distance: Double)?,
+    nearIntersectionRisk: Bool,
+    confidenceScore: Int
+  ) -> (seconds: TimeInterval, reason: String) {
     // Strong hold near known false-positive hotspots and weak no-walking candidates.
     if let h = hotspot, h.count >= hotspotBlockMinReports {
-      return parkingFinalizationHoldStrongSec
+      return (parkingFinalizationHoldStrongSec, "hotspot_high_reports")
     }
-    if walkingEvidenceSec >= minWalkingEvidenceSec && zeroDurationSec >= minZeroSpeedForAgreeSec {
-      return parkingFinalizationHoldFastSec
+    if nearIntersectionRisk && walkingEvidenceSec < minWalkingEvidenceSec {
+      return (parkingFinalizationHoldStrongSec, "intersection_no_walking")
+    }
+    if confidenceScore >= 75 && walkingEvidenceSec >= minWalkingEvidenceSec && zeroDurationSec >= minZeroSpeedForAgreeSec {
+      return (parkingFinalizationHoldFastSec, "high_confidence_with_walking")
     }
     if source == "gps_unknown_fallback" || source == "location_stationary" {
-      return parkingFinalizationHoldFastSec
+      return (parkingFinalizationHoldFastSec, "fallback_source_confirm")
     }
     if zeroDurationSec < 12 && walkingEvidenceSec < minWalkingEvidenceSec {
-      return parkingFinalizationHoldStrongSec
+      return (parkingFinalizationHoldStrongSec, "short_zero_no_walking")
     }
-    return parkingFinalizationHoldSec
+    return (parkingFinalizationHoldSec, "balanced_default")
+  }
+
+  private func parkingDecisionConfidenceScore(
+    source: String,
+    zeroDurationSec: TimeInterval,
+    walkingEvidenceSec: TimeInterval,
+    hasRecentDisconnectEvidence: Bool,
+    nearIntersectionRisk: Bool,
+    hotspot: (count: Int, distance: Double)?
+  ) -> Int {
+    var score = 0
+
+    if walkingEvidenceSec >= minWalkingEvidenceSec { score += 35 }
+    if zeroDurationSec >= 20 { score += 25 }
+    else if zeroDurationSec >= 12 { score += 15 }
+
+    let nonAutoStableSec = coreMotionNotAutomotiveSince.map { Date().timeIntervalSince($0) } ?? 0
+    if nonAutoStableSec >= coreMotionStabilitySec { score += 20 }
+
+    if hasRecentDisconnectEvidence { score += 15 }
+    if source == "location_stationary" || source == "gps_unknown_fallback" { score += 10 }
+
+    if nearIntersectionRisk && walkingEvidenceSec < minWalkingEvidenceSec { score -= 20 }
+    if let h = hotspot, h.count >= hotspotBlockMinReports { score -= 15 }
+
+    return max(0, min(100, score))
+  }
+
+  private func isNearSignalizedIntersection(_ location: CLLocation?) -> Bool {
+    guard let loc = location else { return false }
+    let lat = loc.coordinate.latitude
+    let lng = loc.coordinate.longitude
+    for cam in Self.chicagoCameras {
+      if cam.type != "redlight" { continue }
+      let dist = haversineMeters(lat1: lat, lon1: lng, lat2: cam.lat, lon2: cam.lng)
+      if dist <= intersectionRiskRadiusMeters {
+        return true
+      }
+    }
+    return false
   }
 
   private func queueParkingCandidateForRetry(body: [String: Any], source: String, reason: String) {
