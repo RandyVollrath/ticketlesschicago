@@ -32,9 +32,12 @@ Implemented and now active in code:
 - Ground-truth loop foundation:
   - Mobile now queues and flushes parking/camera ground-truth events (`GroundTruthService`) to `/api/mobile/ground-truth`.
   - Added API ingestion route for `mobile_ground_truth_events` so user feedback can be used for recurring threshold tuning.
+  - Added Supabase migration `20260216074000_create_mobile_ground_truth_events.sql` with indexes + RLS for production persistence.
+  - Added periodic `camera_opportunity_digest` telemetry events (throttled) so we capture near-miss context, not only final alerts.
 - Auto-tuning + release gates:
   - Added `scripts/auto-tune-reliability.js` to produce threshold recommendations from recent logs.
   - Added `scripts/reliability-release-gate.js` to fail releases when miss/unwind/fallback rates exceed configured limits.
+  - Added `npm run deploy:safe` to run reliability gate before prod deploy.
 - New npm script entry points:
   - `npm run harness:camera-drive`
   - `npm run report:parking-camera`
@@ -66,6 +69,83 @@ Target outcomes:
 - Parking detection reliability toward 99%+ practical accuracy in normal urban driving.
 - Red-light stop false positives reduced to near-zero.
 - Camera notifications become observable and auditable when background constraints interfere.
+
+## Why This Should Work Now (Current Theory)
+
+### What we changed in this cycle
+
+1. Parking false-positive suppression got stronger at intersections.
+   - Added intersection dwell guard before parking confirmation.
+   - Added quick-resume logic that treats short intersection stops followed by movement as non-parking and learns hotspot + lockout.
+
+2. False parking confirms can now self-correct.
+   - Added post-confirm unwind logic:
+     - if movement patterns shortly after confirm look like real driving,
+     - and the original confirm was low-confidence/risky,
+     - system unwinds parking assumptions and records the location as a false-positive hotspot.
+
+3. Camera delivery became multi-path instead of single-path.
+   - High confidence: audio-first (with retry), then fallback notification if audio fails.
+   - Medium confidence: notification-only (no audio spam).
+   - Low confidence: suppressed.
+
+4. Audio startup race conditions were reduced.
+   - Added iOS SpeechModule warmup hook.
+   - Triggered prewarm on early-driving signals (`onPossibleDriving`, `onDrivingStarted`, and camera-start path).
+
+5. Observability was expanded to per-drive, not just per-event.
+   - Added `driveSessionId` lifecycle in camera pipeline.
+   - Added per-drive delivery counters: attempts/success/failures/retries/fallbacks.
+   - Added camera heartbeat stall detection while driving.
+   - Added parking/camera ground-truth queue + ingestion endpoint.
+
+6. Reliability is now gateable before release.
+   - Added auto-tune recommendation script (`tune:reliability`).
+   - Added release gate script (`gate:reliability`) to fail bad reliability profiles.
+
+### Core hypotheses behind this version
+
+1. Most parking false positives are “short stop + no true exit evidence” events at intersections.
+   - Therefore: intersection dwell + no-walking/no-disconnect guard should block most of them.
+
+2. Remaining false positives can be detected by immediate post-confirm behavior.
+   - Therefore: unwind-on-rapid-movement should prevent one bad confirm from poisoning later state.
+
+3. Camera misses are often delivery failures, not candidate-detection failures.
+   - Therefore: retry + fallback notification + prewarm should increase delivered alerts even when background audio is flaky.
+
+4. One-size-fits-all alerting causes either misses or noise.
+   - Therefore: confidence-tier routing should preserve important alerts while reducing low-confidence noise.
+
+5. We need explicit feedback loops to finish tuning.
+   - Therefore: ground-truth events + per-drive metrics + release gates should let us tighten toward reliable operation instead of guessing.
+
+### What would falsify these hypotheses
+
+1. Continued red-light false positives with:
+   - intersection dwell guard firing rarely,
+   - but post-confirm unwind firing often.
+   This would imply guard thresholds are still too permissive before confirm.
+
+2. Continued camera “I passed one but got nothing” reports with:
+   - candidate counts present,
+   - but no delivery attempts.
+   This would imply upstream candidate logic still misses real opportunities.
+
+3. High fallback notification rates despite prewarm and retry.
+   This would imply deeper audio-session/OS interruption constraints need different handling.
+
+### Near-term success criteria
+
+1. Parking:
+   - lower false-positive reports at known intersection corridors,
+   - low post-confirm unwind rate over normal drives,
+   - stable parking detection rate after true departures.
+
+2. Camera:
+   - increase in delivered alerts (audio or fallback) per camera opportunity,
+   - lower “silent miss” reports,
+   - fallback used as safety net, not dominant path.
 
 ## Executive Summary
 

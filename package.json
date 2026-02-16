@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "deploy": "vercel --prod",
+    "deploy:safe": "npm run gate:reliability && vercel --prod",
     "deploy:staging": "vercel",
     "analyze:parking": "node scripts/analyze-parking-decisions.js",
     "replay:parking-camera": "node scripts/replay-parking-camera-log.js",

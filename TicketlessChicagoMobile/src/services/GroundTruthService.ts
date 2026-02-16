@@ -12,7 +12,8 @@ export type GroundTruthEventType =
   | 'parking_confirmed'
   | 'camera_alert_fallback'
   | 'camera_alert_medium_confidence'
-  | 'camera_alert_suppressed_low_confidence';
+  | 'camera_alert_suppressed_low_confidence'
+  | 'camera_opportunity_digest';
 
 export interface GroundTruthEvent {
   type: GroundTruthEventType;
