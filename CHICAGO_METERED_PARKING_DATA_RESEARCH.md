@@ -135,6 +135,18 @@ ParkChicago organizes parking by **geographic zones**, not individual streets or
 
 ## Recommendations
 
+## Side-Of-Street Accuracy (Important)
+
+Meter enforcement applies to a specific block face, not the entire street. If we warn a driver parked across the street from the metered side, that is a false positive.
+
+Current mitigation (server-side, Feb 2026):
+- When we have a user address number (from reverse geocode) and a matched paybox address number, we require **odd/even parity match** before warning.
+- This leverages Chicago’s parity convention (even vs odd sides) and the assumption that paybox address numbering corresponds to the metered side.
+
+Limitations:
+- If reverse geocoding returns no house number (or an unreliable one), parity filtering cannot be applied.
+- This is still an approximation; a true solution would need block-face geometry (street centerline + side) or meter segment data.
+
 ### Option 1: Use 2019 GitHub Data "As-Is"
 - Download `chicago_parking_meters_2019-06-26.geojson`
 - Display as point markers on the map
