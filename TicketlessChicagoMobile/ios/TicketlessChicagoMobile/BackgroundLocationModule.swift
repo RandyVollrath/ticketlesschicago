@@ -190,6 +190,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var gpsFallbackDrivingSince: Date? = nil
   private var gpsFallbackStartLocation: CLLocation? = nil
   private var gpsFallbackPossibleDrivingEmitted = false
+  private var bootstrapGpsTimer: Timer? = nil
 
   // Camera alerts (native iOS fallback for when JS is suspended in background)
   private var cameraAlertsEnabled = false
@@ -256,6 +257,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let locationCallbackStaleSec: TimeInterval = 90
   private let locationWatchdogIntervalSec: TimeInterval = 20
   private let watchdogRecoveryCooldownSec: TimeInterval = 60
+  private let bootstrapGpsWindowSec: TimeInterval = 75
 
   // Camera alert tuning: match JS defaults
   private let camBaseAlertRadiusMeters: Double = 150
@@ -343,6 +345,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
   @objc private func appDidBecomeActive() {
     guard isMonitoring else { return }
+    if !isDriving && !coreMotionSaysAutomotive {
+      startBootstrapGpsWindow(reason: "app_resume")
+    }
     guard !isDriving && !coreMotionSaysAutomotive else { return }
     guard hasConfirmedParkingThisSession else { return }
 
@@ -499,6 +504,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     ])
     lastLocationCallbackTime = Date()
     startLocationWatchdog()
+    startBootstrapGpsWindow(reason: "start_monitoring")
     let authStatus = locationManager.authorizationStatus
     let authString: String
     switch authStatus {
@@ -521,6 +527,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     stopMotionActivityMonitoring()
     stopAccelerometerRecording()
     stopLocationWatchdog()
+    bootstrapGpsTimer?.invalidate()
+    bootstrapGpsTimer = nil
 
     parkingConfirmationTimer?.invalidate()
     parkingConfirmationTimer = nil
@@ -812,6 +820,56 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     locationManager.distanceFilter = 10
     continuousGpsActive = false
     self.log("Continuous GPS OFF (saving battery, distanceFilter=10m)")
+  }
+
+  /// Briefly run high-frequency GPS after monitor start/resume to avoid a blind
+  /// window where CoreMotion is quiet and no speed/heading callbacks arrive.
+  /// This improves first-drive detection and camera alert arming reliability.
+  private func startBootstrapGpsWindow(reason: String) {
+    guard isMonitoring else { return }
+    if isDriving || coreMotionSaysAutomotive { return }
+
+    bootstrapGpsTimer?.invalidate()
+
+    if !continuousGpsActive {
+      startContinuousGps()
+    }
+    decision("bootstrap_gps_started", [
+      "reason": reason,
+      "windowSec": bootstrapGpsWindowSec,
+    ])
+    self.log("Bootstrap GPS started (\(reason)) for \(String(format: "%.0f", bootstrapGpsWindowSec))s")
+
+    let timer = Timer.scheduledTimer(withTimeInterval: bootstrapGpsWindowSec, repeats: false) { [weak self] _ in
+      guard let self = self else { return }
+      self.bootstrapGpsTimer = nil
+      let shouldKeepGps =
+        self.isDriving ||
+        self.coreMotionSaysAutomotive ||
+        self.speedSaysMoving ||
+        self.parkingFinalizationPending ||
+        self.speedZeroTimer != nil
+
+      if shouldKeepGps {
+        self.log("Bootstrap GPS window elapsed but keeping GPS ON (driving pipeline active)")
+        self.decision("bootstrap_gps_kept_active", [
+          "isDriving": self.isDriving,
+          "coreMotionAutomotive": self.coreMotionSaysAutomotive,
+          "speedSaysMoving": self.speedSaysMoving,
+          "parkingFinalizationPending": self.parkingFinalizationPending,
+          "speedZeroTimerActive": self.speedZeroTimer != nil,
+        ])
+        return
+      }
+
+      if self.continuousGpsActive {
+        self.stopContinuousGps()
+      }
+      self.decision("bootstrap_gps_stopped", ["reason": "window_elapsed_idle"])
+      self.log("Bootstrap GPS window elapsed — stopped GPS (still idle)")
+    }
+    RunLoop.main.add(timer, forMode: .common)
+    bootstrapGpsTimer = timer
   }
 
   // MARK: - Accelerometer: Evidence Recording
