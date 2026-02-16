@@ -96,6 +96,26 @@ class BackgroundLocationServiceClass {
     }
   }
 
+  async reportParkingFalsePositive(latitude: number, longitude: number): Promise<boolean> {
+    if (Platform.OS !== 'ios' || !BackgroundLocationModule?.reportParkingFalsePositive) return false;
+    try {
+      return await BackgroundLocationModule.reportParkingFalsePositive(latitude, longitude);
+    } catch (e) {
+      log.warn('Failed to report false positive parking', e);
+      return false;
+    }
+  }
+
+  async reportParkingConfirmed(latitude: number, longitude: number): Promise<boolean> {
+    if (Platform.OS !== 'ios' || !BackgroundLocationModule?.reportParkingConfirmed) return false;
+    try {
+      return await BackgroundLocationModule.reportParkingConfirmed(latitude, longitude);
+    } catch (e) {
+      log.warn('Failed to report confirmed parking', e);
+      return false;
+    }
+  }
+
   /**
    * Check if the service is available (iOS only)
    */

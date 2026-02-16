@@ -57,4 +57,14 @@ RCT_EXTERN_METHOD(setCameraAlertSettings:(BOOL)enabled
                   resolve:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(reportParkingFalsePositive:(double)latitude
+                  longitude:(double)longitude
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(reportParkingConfirmed:(double)latitude
+                  longitude:(double)longitude
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end
