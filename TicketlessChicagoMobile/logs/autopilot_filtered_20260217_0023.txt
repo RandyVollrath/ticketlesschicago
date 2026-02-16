@@ -1,0 +1,138 @@
+Feb 16 00:23:43.150168 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+    "fyi.ticketless.app",
+Feb 16 00:23:43.184174 symptomsd(SymptomEvaluator)[142] <Debug>: Skip flush origin ledger, name fyi.ticketless.app duration 1891.620 extensions (null) delegates (null) bitmaps {
+Feb 16 00:23:43.184216 symptomsd(SymptomEvaluator)[142] <Debug>: Skip flush top level origin ledger fyi.ticketless.app -> FlowOriginLedger for fyi.ticketless.app at 0x794e55540, current direct flows {
+Feb 16 00:23:43.372851 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:43.450629 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:44.283768 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:44.420003 locationd(CoreAnalytics)[60844] <Info>: Dropping "com.apple.CoreMotion.CompassCalibration" as it isn't used in any transform (not in the config or budgeted?)
+Feb 16 00:23:45.395113 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:45.395183 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:45.398029 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:23:45.404287 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:45.404315 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:45.404416 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:45.696364 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:45.696476 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:45.701715 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:45.701846 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:45.702794 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:46.968392 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:47.202807 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:47.384583 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:47.670215 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:47.757094 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:47.940807 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:23:47.940895 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:47.940935 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:48.148130 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:48.355590 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:48.447041 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:49.286071 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:50.492320 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:23:50.493561 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:50.493670 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:51.123195 locationd[60844] <Info>: CL: CLLocationController::onAppNotification
+Feb 16 00:23:51.123254 locationd[60844] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:51.123555 locationd[60844] <Notice>: os_transaction created: (0x1700a5c40) GetIdentifyingInformation
+Feb 16 00:23:51.123909 locationd[60844] <Debug>: {"msg":"#GetIdentifyingInfo found identifying information for client", "ClientKeyPath":"icom.moredays.app:", "bundleId":"com.moredays.app", "bundlePath":"\/private\/var\/containers\/Bundle\/Application\/2968C8B7-D064-4A5E-84B7-50935022E22A\/DeathClockRN.app", "executablePath":"\/private\/var\/containers\/Bundle\/Application\/2968C8B7-D064-4A5E-84B7-50935022E22A\/DeathClockRN.app\/DeathClockRN", "platformSpecificBundleId":"", "pluginBundleIds":"(\n    \"com.moredays.app.OneSignalNotificationServiceExtension\"\n)", "isAppClip":0}
+Feb 16 00:23:51.123944 locationd[60844] <Notice>: os_transaction releasing: (0x1700a5c40) GetIdentifyingInformation
+Feb 16 00:23:51.756953 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:51.757197 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:51.759872 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:51.761243 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:51.761333 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:51.966583 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:52.080172 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:52.080198 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:52.081768 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:52.082666 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:52.082787 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:52.202430 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:52.384935 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:52.674689 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:52.756739 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:52.903693 amsaccountsd(CoreLocation)[76065] <Info>: CL: CLLocationManager
+Feb 16 00:23:52.927209 amsaccountsd(CoreLocation)[76065] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"initWithEffectiveBundleIdentifier:bundlePath:websiteIdentifier:delegate:silo:", "self":"0x78d0f8ef0", "identifier":"", "bundlePath":""}
+Feb 16 00:23:52.936944 amsaccountsd(CoreLocation)[76065] <Debug>: {"msg":"state transition", "event":"state_transition", "state":"LocationManager", "id":"0x78d0f8ef0", "property":"init", "new":{"trackRunInfoEnabled":false,"previousAuthorizationStatusValid":false,"paused":false,"requestingLocation":false,"updatingVehicleSpeed":false,"desiredAccuracy":-1,"allowsBackgroundLocationUpdates":false,"dynamicAccuracyReductionEnabled":false,"distanceFilter":-1,"allowsLocationPrompts":true,"activityType":0,"groundAltitudeEnabled":false,"pausesLocationUpdatesAutomatically":0,"fusionInfoEnabled":false,"isAuthorizedForWidgetUpdates":false,"updatingVehicleHeading":false,"batchingLocation":false,"showsBackgroundLocationIndicator":false,"updatingLocation":false,"updatingHeading":false,"previousAuthorizationStatus":0,"allowsMapCorrection":true,"matchInfoEnabled":false,"allowsAlteredAccessoryLocations":false,"limitsPrecision":false,"courtesyPromptNeeded":false,"headingFilter":1}}
+Feb 16 00:23:52.981452 locationd[60844] <Notice>: os_transaction created: (0x170018880) GetIdentifyingInformation
+Feb 16 00:23:52.982585 locationd[60844] <Info>: {"msg":"#GetIdentifyingInfo LaunchServices does not have an application record for client", "ClientKeyPath":"icom.apple.AppleMediaServices:", "extensionRecordError":"Error Domain=NSOSStatusErrorDomain Code=-10814 \"Unable to find this application extension record in the Launch Services database.\" UserInfo={_LSLine=652, _LSFunction=_LSPluginFindWithPlatformInfo, _LSFile=LSPluginBundle.mm, NSDebugDescription=Unable to find this application extension record in the Launch Services database., SK=com.apple.AppleMediaServices, IS=false}", "applicationRecordError":"Error Domain=NSOSStatusErrorDomain Code=-10814 \"(null)\" UserInfo={_LSFile=LSBindingEvaluator.mm, _LSLine=1973, _LSFunction=runEvaluator}", "companionAppRecordError":""}
+Feb 16 00:23:52.982626 locationd[60844] <Notice>: os_transaction releasing: (0x170018880) GetIdentifyingInformation
+Feb 16 00:23:52.983824 amsaccountsd(CoreLocation)[76065] <Info>: CL: CLLocationManager
+Feb 16 00:23:52.989161 amsaccountsd(CoreLocation)[76065] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"onClientEventRegistration:", "self":"0x78d0f8ef0", "clientKey":""}
+Feb 16 00:23:52.995677 locationd[60844] <Debug>: {"msg":"skip marking BackgroundLocationCapability. Client not found", "Client":"icom.apple.AppleMediaServices:"}
+Feb 16 00:23:53.042819 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:23:53.045308 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:53.045484 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:53.046696 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:53.047677 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:53.047732 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:53.147708 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:53.354964 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:53.447434 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:53.725382 locationd[60844] <Notice>: LocationController,notifying clients,kNotificationRecentLocationsRevised,applicable_mct_sec,450452.931,start_mct_sec,449552.931,end_mct_sec,450152.931,
+Feb 16 00:23:53.996026 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:53.996312 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:53.996979 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:53.998573 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:54.003762 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:54.283965 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:54.957501 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:54.958100 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:54.966011 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:54.966232 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:54.966956 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:55.597226 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:55.597280 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:55.598219 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:23:55.598247 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:55.598291 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:55.602866 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:56.966955 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:57.187404 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:57.187432 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:57.190045 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:57.190123 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:57.191570 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:57.202838 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:57.384870 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:57.628860 locationd[60844] <Notice>: os_transaction created: (0x170249c40) GetIdentifyingInformation
+Feb 16 00:23:57.628959 locationd[60844] <Debug>: {"msg":"#GetIdentifyingInfo found identifying information for client", "ClientKeyPath":"icom.moredays.app:", "bundleId":"com.moredays.app", "bundlePath":"\/private\/var\/containers\/Bundle\/Application\/2968C8B7-D064-4A5E-84B7-50935022E22A\/DeathClockRN.app", "executablePath":"\/private\/var\/containers\/Bundle\/Application\/2968C8B7-D064-4A5E-84B7-50935022E22A\/DeathClockRN.app\/DeathClockRN", "platformSpecificBundleId":"", "pluginBundleIds":"(\n    \"com.moredays.app.OneSignalNotificationServiceExtension\"\n)", "isAppClip":0}
+Feb 16 00:23:57.628996 locationd[60844] <Notice>: os_transaction releasing: (0x170249c40) GetIdentifyingInformation
+Feb 16 00:23:57.669925 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:57.756906 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:58.153657 routined(CoreMotion)[38] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:58.156790 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:23:58.156871 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:58.157070 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:58.356243 CommCenter(CoreMotion)[101] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:58.447743 milod(CoreMotion)[68728] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:58.469022 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:58.469247 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:58.473128 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:58.473285 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:58.473335 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:58.792372 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:58.792453 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:58.796875 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:58.796932 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:58.797203 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:23:59.289051 cameracaptured(CoreMotion)[69] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:23:59.429608 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:23:59.429699 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:59.430912 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:23:59.430981 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:23:59.435071 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:24:00.703669 locationd[60844] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Feb 16 00:24:00.704596 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:24:00.704672 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:24:01.965665 biometrickitd(CoreMotion)[119] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:24:02.202545 backboardd(CoreMotion)[71] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:24:02.303207 locationd[60844] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Feb 16 00:24:02.303481 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:24:02.305095 SpringBoard(CoreMotion)[35] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Feb 16 00:24:02.305195 locationd[60844] <Info>: CL: CLLocationController::onMotionNotification
+Feb 16 00:24:02.305223 locationd[60844] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0x790ced800"}
+Feb 16 00:24:02.384347 nearbyd(CoreMotion)[214] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:24:02.669030 SpringBoard(CoreMotion)[35] <Debug>: Ping timer fired, resetting watchdog
+Feb 16 00:24:02.756847 audiomxd(CoreMotion)[110] <Debug>: Ping timer fired, resetting watchdog
