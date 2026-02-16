@@ -101,12 +101,41 @@ class MotionActivityModule: RCTEventEmitter {
     }
   }
 
+  /// Get CoreMotion authorization status
+  /// Returns: "authorized", "denied", "restricted", "notDetermined"
+  @objc func getAuthorizationStatus(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let status = CMMotionActivityManager.authorizationStatus()
+    switch status {
+    case .authorized:
+      resolve("authorized")
+    case .denied:
+      resolve("denied")
+    case .restricted:
+      resolve("restricted")
+    case .notDetermined:
+      resolve("notDetermined")
+    @unknown default:
+      resolve("unknown")
+    }
+  }
+
   /// Get monitoring status
   @objc func getStatus(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let authStatus = CMMotionActivityManager.authorizationStatus()
+    let authString: String
+    switch authStatus {
+    case .authorized: authString = "authorized"
+    case .denied: authString = "denied"
+    case .restricted: authString = "restricted"
+    case .notDetermined: authString = "notDetermined"
+    @unknown default: authString = "unknown"
+    }
+
     resolve([
       "isMonitoring": isMonitoring,
       "lastActivity": lastActivity,
-      "isAvailable": CMMotionActivityManager.isActivityAvailable()
+      "isAvailable": CMMotionActivityManager.isActivityAvailable(),
+      "authorizationStatus": authString,
     ])
   }
 

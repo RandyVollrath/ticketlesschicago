@@ -80,6 +80,24 @@ class MotionActivityServiceClass {
   }
 
   /**
+   * Get CoreMotion authorization status.
+   * Returns: 'authorized' | 'denied' | 'restricted' | 'notDetermined' | 'unknown'
+   * iOS only — returns 'unknown' on Android.
+   */
+  async getAuthorizationStatus(): Promise<'authorized' | 'denied' | 'restricted' | 'notDetermined' | 'unknown'> {
+    if (Platform.OS !== 'ios' || !MotionActivityModule?.getAuthorizationStatus) {
+      return 'unknown';
+    }
+
+    try {
+      return await MotionActivityModule.getAuthorizationStatus();
+    } catch (error) {
+      log.error('Error getting motion authorization status', error);
+      return 'unknown';
+    }
+  }
+
+  /**
    * Start monitoring for parking events using motion activity
    * This is very battery efficient - uses CMMotionActivityManager
    */

@@ -234,6 +234,32 @@ CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor �
 - Background the app and drive past a known red-light camera.
 - Expect a banner local notification ("Red-light camera ahead") even if JS is suspended.
 
+## iOS CoreMotion Permission Handling & GPS-Only Fallback
+
+iOS only prompts the user ONCE for CoreMotion (Motion & Fitness) permission. If denied, the system will never re-prompt — the user must manually enable it in Settings > Privacy > Motion & Fitness.
+
+### Architecture (3 layers)
+
+1. **Pre-permission primer** (`BackgroundTaskService.ts`): Before the first CoreMotion access, if auth is `notDetermined`, shows an `Alert.alert()` explaining why motion sensors are needed. This appears RIGHT BEFORE the iOS system prompt.
+
+2. **GPS-only fallback** (`BackgroundLocationModule.swift`): When CoreMotion is denied/restricted/unavailable, `startMonitoring()` sets `gpsOnlyMode = true` and starts continuous GPS at low frequency (distanceFilter=20m, accuracy=100m) instead of waiting for CoreMotion to detect driving. The existing GPS speed fallback path (requires 4.2 m/s for 8s + 90m displacement) then detects driving from GPS speed alone.
+
+3. **Post-denial recovery banner** (`HomeScreen.tsx`): When `MotionActivityService.getAuthorizationStatus()` returns `denied` or `restricted`, a yellow warning banner appears: "Motion & Fitness disabled — Enable in Settings for best results" with an "Open Settings" button.
+
+### Key Behavior Differences in GPS-Only Mode
+- `gpsOnlyMode = true` is set on `BackgroundLocationModule`
+- `stopContinuousGps()` does NOT fully stop GPS — drops to low-frequency (20m, 100m accuracy) so the next drive can still be detected
+- Driving detection requires higher speed threshold (4.2 m/s vs 2.5 m/s with CoreMotion) and sustained duration (8s + 90m)
+- Camera alerts still work via `speedSaysMoving` flag
+- More battery usage than CoreMotion (which runs on M-series coprocessor at near-zero cost)
+
+### Rules
+1. **Never remove the GPS speed fallback path** (lines ~1593-1660 in BackgroundLocationModule.swift). It's the ONLY driving detection when CoreMotion is denied.
+2. **`gpsOnlyMode` must be exposed in `getStatus()`** so JS can detect it and show appropriate UI.
+3. **The pre-permission primer must appear BEFORE `startMonitoring()`** — once startMonitoring calls `activityManager.startActivityUpdates()`, the system prompt fires immediately.
+4. **`MotionActivityModule.getAuthorizationStatus()`** is the canonical way to check CoreMotion permission from JS. Returns: `authorized`, `denied`, `restricted`, `notDetermined`, or `unknown`.
+5. **The recovery banner should NOT show if location is also denied** (location denied is more critical — show that banner instead).
+
 ## Parking State Machine — Single Source of Truth
 
 The Android parking detection state machine (`ParkingDetectionStateMachine.ts`) is the **single source of truth** for whether the user is driving or parked. Departure tracking DEPENDS on this state machine being in the correct state.

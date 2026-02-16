@@ -182,6 +182,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [checkingAddress, setCheckingAddress] = useState<string | null>(null);
   const [showBatteryWarning, setShowBatteryWarning] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
+  const [motionDenied, setMotionDenied] = useState(false);
   const [homePermitZone, setHomePermitZone] = useState<string | null>(null);
   const [showParkingMap, setShowParkingMap] = useState(false);
   const [showPlateNudge, setShowPlateNudge] = useState(false);
@@ -299,6 +300,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           if (!isMonitoring) {
             autoStartMonitoring();
           }
+        }
+      }
+      // Re-check CoreMotion permission (user may have just enabled it in Settings)
+      if (Platform.OS === 'ios') {
+        const motionAuth = await MotionActivityService.getAuthorizationStatus();
+        if (motionAuth === 'denied' || motionAuth === 'restricted') {
+          setMotionDenied(true);
+        } else {
+          setMotionDenied(false);
         }
       }
     });
@@ -422,6 +432,18 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         }
       } catch (e) {
         // Non-critical - module may not support this method
+      }
+    }
+
+    // iOS: check CoreMotion (Motion & Fitness) permission
+    if (Platform.OS === 'ios') {
+      try {
+        const motionAuth = await MotionActivityService.getAuthorizationStatus();
+        if (motionAuth === 'denied' || motionAuth === 'restricted') {
+          setMotionDenied(true);
+        }
+      } catch (e) {
+        // Non-critical
       }
     }
   };
@@ -931,6 +953,28 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             accessibilityLabel="Open device settings"
             accessibilityRole="button"
             accessibilityHint="Opens system settings to grant location permission"
+          >
+            <Text style={styles.permissionBannerBtnText}>Open Settings</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {motionDenied && Platform.OS === 'ios' && !locationDenied && (
+        <View style={styles.permissionBanner} accessibilityRole="alert">
+          <View style={styles.permissionBannerContent}>
+            <MaterialCommunityIcons name="run" size={18} color={colors.warning} />
+            <View style={styles.permissionBannerTextWrap}>
+              <Text style={styles.permissionBannerTitle}>Motion & Fitness disabled</Text>
+              <Text style={styles.permissionBannerBody}>
+                Autopilot uses motion sensors to detect when you park. Without this, parking detection uses GPS only and may be less reliable. Enable Motion & Fitness in Settings for best results.
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.permissionBannerBtn}
+            onPress={() => Linking.openSettings()}
+            accessibilityLabel="Open device settings to enable Motion & Fitness"
+            accessibilityRole="button"
+            accessibilityHint="Opens system settings to enable Motion & Fitness permission"
           >
             <Text style={styles.permissionBannerBtnText}>Open Settings</Text>
           </TouchableOpacity>
