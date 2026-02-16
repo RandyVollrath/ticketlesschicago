@@ -1194,6 +1194,30 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             self.speedZeroStartTime = nil
           }
         }
+      } else if !activity.automotive && !activity.stationary && !activity.walking {
+        // CoreMotion "unknown" can persist after parking (especially at low speed)
+        // while GPS has already shown sustained zero movement.
+        // If we stay in that state too long, parking confirmation gets delayed.
+        if self.isDriving && !self.speedSaysMoving {
+          let zeroDuration = self.speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? 0
+          let currentSpeed = self.locationManager.location?.speed ?? -1
+          let gpsZeroish = currentSpeed >= 0 && currentSpeed < 1.0
+          let unknownCanBeNonAutomotive = zeroDuration >= 20 && gpsZeroish
+
+          if unknownCanBeNonAutomotive {
+            let wasAutomotive = self.coreMotionSaysAutomotive
+            self.coreMotionSaysAutomotive = false
+            if wasAutomotive && self.coreMotionNotAutomotiveSince == nil {
+              self.coreMotionNotAutomotiveSince = Date()
+              self.log("CoreMotion unknown treated as non-automotive after \(String(format: "%.0f", zeroDuration))s zero speed")
+            }
+            self.decision("coremotion_unknown_treated_non_automotive", [
+              "zeroDurationSec": zeroDuration,
+              "gpsSpeed": currentSpeed,
+              "confidence": self.confidenceString(activity.confidence),
+            ])
+          }
+        }
       }
       // Note: cycling, running, unknown → ignore, don't change state
     }
