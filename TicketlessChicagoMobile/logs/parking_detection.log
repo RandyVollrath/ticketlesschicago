@@ -14089,3 +14089,412 @@
 [2026-02-16 16:55:13.382] CoreMotion update: automotive=false stationary=false walking=false confidence=high
 [2026-02-16 16:55:14.346] CoreMotion update: automotive=false stationary=false walking=false confidence=high
 [2026-02-16 16:55:14.658] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 18:52:46.490] === Log file opened ===
+[2026-02-16 18:52:46.491] Log path: /var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA/Documents/parking_detection.log
+[2026-02-16 18:52:46.491] BackgroundLocationModule initialized
+[2026-02-16 18:52:46.509] Auth changed: 3
+[2026-02-16 18:52:48.037] Cleared persisted parking state from UserDefaults
+[2026-02-16 18:52:48.038] Monitoring stopped
+[2026-02-16 18:52:48.050] GPS speed > threshold (13.3 m/s) but CoreMotion not automotive — waiting for CoreMotion
+[2026-02-16 18:52:48.051] CoreMotion available: true
+[2026-02-16 18:52:48.051] CoreMotion activity monitoring started
+[2026-02-16 18:52:48.052] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
+[2026-02-16 18:52:48.064] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:52:48.064] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-16 18:52:48.064] Continuous GPS ON (driving detected, distanceFilter=none)
+[2026-02-16 18:52:48.064] Accelerometer recording started (10Hz, 30s buffer)
+[2026-02-16 18:52:48.066] Driving started (CoreMotion automotive + GPS moving, confidence: high, source: coremotion)
+[2026-02-16 18:53:21.446] === Log file opened ===
+[2026-02-16 18:53:21.447] Log path: /var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA/Documents/parking_detection.log
+[2026-02-16 18:53:21.447] BackgroundLocationModule initialized
+[2026-02-16 18:53:21.454] Auth changed: 3
+[2026-02-16 18:53:22.560] Cleared persisted parking state from UserDefaults
+[2026-02-16 18:53:22.560] Monitoring stopped
+[2026-02-16 18:53:22.573] GPS speed > threshold (13.3 m/s) but CoreMotion not automotive — waiting for CoreMotion
+[2026-02-16 18:53:22.574] CoreMotion available: true
+[2026-02-16 18:53:22.574] CoreMotion activity monitoring started
+[2026-02-16 18:53:22.574] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
+[2026-02-16 18:53:22.585] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:53:22.585] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-16 18:53:22.586] Continuous GPS ON (driving detected, distanceFilter=none)
+[2026-02-16 18:53:22.586] Accelerometer recording started (10Hz, 30s buffer)
+[2026-02-16 18:53:22.587] Using GPS timestamp for departure: 2026-02-17 00:53:22 +0000 (speed: 10.5 m/s)
+[2026-02-16 18:53:22.587] Driving started (CoreMotion automotive + GPS moving, confidence: high, source: coremotion_gps_adjusted)
+[2026-02-16 18:53:30.022] GPS speed≈0 while driving. Captured stop location: 41.9358936651069, -87.6636664477062
+[2026-02-16 18:53:33.042] Stationary location captured: 41.935905064495216, -87.66366418459235
+[2026-02-16 18:53:33.043] GPS speed≈0 after 10s driving. Starting parking check (every 3.0s).
+[2026-02-16 18:53:36.045] Speed≈0 for 3s, stationary for 3s. Waiting... (CoreMotion still automotive)
+[2026-02-16 18:53:39.045] Speed≈0 for 6s, stationary for 6s. Waiting... (CoreMotion still automotive)
+[2026-02-16 18:53:42.045] Speed≈0 for 9s, stationary for 9s. Waiting... (CoreMotion still automotive)
+[2026-02-16 18:53:45.048] Speed≈0 for 12s, stationary for 12s. Waiting... (CoreMotion still automotive)
+[2026-02-16 18:53:48.045] Speed≈0 for 15s, stationary for 15s. Waiting... (CoreMotion still automotive)
+[2026-02-16 18:53:51.045] Speed≈0 for 18s, stationary for 18s. Waiting... (CoreMotion still automotive)
+[2026-02-16 18:53:54.050] Speed≈0 for 21s, stationary for 21s. Waiting... (CoreMotion still automotive)
+[2026-02-16 18:53:56.735] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:53:56.736] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:53:57.682] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:53:57.682] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-16 18:54:02.044] GPS speed≈0 while driving. Captured stop location: 41.93606978949243, -87.66364451661347
+[2026-02-16 18:54:02.045] GPS speed≈0 after 39s driving. Starting parking check (every 3.0s).
+[2026-02-16 18:54:16.864] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:54:16.865] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-16 18:54:32.038] GPS speed≈0 while driving. Captured stop location: 41.93776480309114, -87.66588667870319
+[2026-02-16 18:54:32.039] GPS speed≈0 after 69s driving. Starting parking check (every 3.0s).
+[2026-02-16 18:54:32.191] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:54:32.192] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:54:35.046] User is 278m from parking spot — location check won't apply
+[2026-02-16 18:54:35.047] Speed≈0 for 3s, stationary for 62s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:54:38.052] User is 277m from parking spot — location check won't apply
+[2026-02-16 18:54:38.055] Speed≈0 for 6s, stationary for 65s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:54:41.042] User is 277m from parking spot — location check won't apply
+[2026-02-16 18:54:41.044] Speed≈0 for 9s, stationary for 68s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:54:44.044] User is 279m from parking spot — location check won't apply
+[2026-02-16 18:54:44.045] Speed≈0 for 12s, stationary for 71s. Waiting... (CoreMotion still automotive, phone moving (speed: 0.8 m/s), user walked away from parking spot)
+[2026-02-16 18:54:47.046] User is 279m from parking spot — location check won't apply
+[2026-02-16 18:54:47.048] Speed≈0 for 15s, stationary for 74s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:54:47.196] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:54:47.197] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:54:47.833] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:54:47.835] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:54:50.043] User is 278m from parking spot — location check won't apply
+[2026-02-16 18:54:50.044] Speed≈0 for 18s, stationary for 77s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:54:53.041] User is 278m from parking spot — location check won't apply
+[2026-02-16 18:54:53.043] Speed≈0 for 21s, stationary for 80s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:54:56.042] User is 278m from parking spot — location check won't apply
+[2026-02-16 18:54:56.042] Speed≈0 for 24s, stationary for 83s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:54:56.456] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:54:56.457] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:54:57.099] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:54:57.100] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:54:58.055] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:54:58.056] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:54:58.693] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:54:58.694] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:54:59.044] User is 278m from parking spot — location check won't apply
+[2026-02-16 18:54:59.044] Speed≈0 for 27s, stationary for 86s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:55:02.044] User is 279m from parking spot — location check won't apply
+[2026-02-16 18:55:02.046] Speed≈0 for 30s, stationary for 89s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:55:05.043] User is 279m from parking spot — location check won't apply
+[2026-02-16 18:55:05.043] Speed≈0 for 33s, stationary for 92s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:55:08.040] User is 279m from parking spot — location check won't apply
+[2026-02-16 18:55:08.041] Speed≈0 for 36s, stationary for 95s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:55:08.915] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:55:08.915] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:55:09.235] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:55:09.236] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:55:11.045] User is 279m from parking spot — location check won't apply
+[2026-02-16 18:55:11.045] Speed≈0 for 39s, stationary for 98s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:55:28.413] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:55:28.414] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-16 18:55:33.526] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:55:33.527] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-16 18:55:53.036] GPS speed≈0 while driving. Captured stop location: 41.939433754561406, -87.66822425388392
+[2026-02-16 18:55:53.036] GPS speed≈0 after 150s driving. Starting parking check (every 3.0s).
+[2026-02-16 18:55:56.037] User is 544m from parking spot — location check won't apply
+[2026-02-16 18:55:56.039] Speed≈0 for 3s, stationary for 143s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:55:59.042] User is 544m from parking spot — location check won't apply
+[2026-02-16 18:55:59.043] Speed≈0 for 6s, stationary for 146s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:02.040] User is 544m from parking spot — location check won't apply
+[2026-02-16 18:56:02.041] Speed≈0 for 9s, stationary for 149s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:05.042] User is 544m from parking spot — location check won't apply
+[2026-02-16 18:56:05.043] Speed≈0 for 12s, stationary for 152s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:08.040] User is 544m from parking spot — location check won't apply
+[2026-02-16 18:56:08.041] Speed≈0 for 15s, stationary for 155s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:10.574] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:56:10.575] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:56:10.893] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:56:10.894] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:56:11.040] User is 544m from parking spot — location check won't apply
+[2026-02-16 18:56:11.040] Speed≈0 for 18s, stationary for 158s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:14.039] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:14.040] Speed≈0 for 21s, stationary for 161s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:17.042] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:17.044] Speed≈0 for 24s, stationary for 164s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:20.042] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:20.043] Speed≈0 for 27s, stationary for 167s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:23.040] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:23.041] Speed≈0 for 30s, stationary for 170s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:26.042] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:26.043] Speed≈0 for 33s, stationary for 173s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:29.039] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:29.039] Speed≈0 for 36s, stationary for 176s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:32.039] User is 542m from parking spot — location check won't apply
+[2026-02-16 18:56:32.040] Speed≈0 for 39s, stationary for 179s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:35.041] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:35.042] Speed≈0 for 42s, stationary for 182s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:37.416] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:56:37.417] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:56:38.042] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:38.043] Speed≈0 for 45s, stationary for 185s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:38.050] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:56:38.050] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:56:41.041] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:41.043] Speed≈0 for 48s, stationary for 188s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:44.040] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:56:44.040] Speed≈0 for 51s, stationary for 191s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:47.043] User is 542m from parking spot — location check won't apply
+[2026-02-16 18:56:47.044] Speed≈0 for 54s, stationary for 194s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:50.042] User is 542m from parking spot — location check won't apply
+[2026-02-16 18:56:50.043] Speed≈0 for 57s, stationary for 197s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:53.042] User is 542m from parking spot — location check won't apply
+[2026-02-16 18:56:53.043] Speed≈0 for 60s, stationary for 200s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:56.041] User is 542m from parking spot — location check won't apply
+[2026-02-16 18:56:56.042] Speed≈0 for 63s, stationary for 203s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:59.040] User is 542m from parking spot — location check won't apply
+[2026-02-16 18:56:59.042] Speed≈0 for 66s, stationary for 206s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:56:59.138] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:56:59.139] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:56:59.455] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:56:59.456] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:57:02.043] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:57:02.043] Speed≈0 for 69s, stationary for 209s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:57:04.886] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:57:04.886] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:57:05.043] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:57:05.043] Speed≈0 for 72s, stationary for 212s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:57:06.161] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:57:06.162] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:57:08.041] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:57:08.042] Speed≈0 for 75s, stationary for 215s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:57:11.043] User is 543m from parking spot — location check won't apply
+[2026-02-16 18:57:11.043] Speed≈0 for 78s, stationary for 218s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:57:14.040] User is 544m from parking spot — location check won't apply
+[2026-02-16 18:57:14.041] Speed≈0 for 81s, stationary for 221s. Waiting... (CoreMotion still automotive, phone moving (speed: 1.7 m/s), user walked away from parking spot)
+[2026-02-16 18:57:46.046] GPS speed≈0 while driving. Captured stop location: 41.941387741700595, -87.66976447019073
+[2026-02-16 18:57:46.048] GPS speed≈0 after 263s driving. Starting parking check (every 3.0s).
+[2026-02-16 18:57:49.053] User is 792m from parking spot — location check won't apply
+[2026-02-16 18:57:49.054] Speed≈0 for 3s, stationary for 256s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:57:52.050] User is 792m from parking spot — location check won't apply
+[2026-02-16 18:57:52.051] Speed≈0 for 6s, stationary for 259s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:58:20.045] GPS speed≈0 while driving. Captured stop location: 41.943122454086094, -87.67100506030656
+[2026-02-16 18:58:20.047] GPS speed≈0 after 297s driving. Starting parking check (every 3.0s).
+[2026-02-16 18:58:23.050] User is 1006m from parking spot — location check won't apply
+[2026-02-16 18:58:23.051] Speed≈0 for 3s, stationary for 290s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:58:26.052] User is 1005m from parking spot — location check won't apply
+[2026-02-16 18:58:26.053] Speed≈0 for 6s, stationary for 293s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:58:29.052] User is 1005m from parking spot — location check won't apply
+[2026-02-16 18:58:29.054] Speed≈0 for 9s, stationary for 296s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:26.034] GPS speed≈0 while driving. Captured stop location: 41.946741643033576, -87.67352700224959
+[2026-02-16 18:59:26.035] GPS speed≈0 after 363s driving. Starting parking check (every 3.0s).
+[2026-02-16 18:59:29.040] User is 1455m from parking spot — location check won't apply
+[2026-02-16 18:59:29.041] Speed≈0 for 3s, stationary for 356s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:32.040] User is 1455m from parking spot — location check won't apply
+[2026-02-16 18:59:32.041] Speed≈0 for 6s, stationary for 359s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:35.037] User is 1455m from parking spot — location check won't apply
+[2026-02-16 18:59:35.040] Speed≈0 for 9s, stationary for 362s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:38.039] User is 1455m from parking spot — location check won't apply
+[2026-02-16 18:59:38.040] Speed≈0 for 12s, stationary for 365s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:41.041] User is 1455m from parking spot — location check won't apply
+[2026-02-16 18:59:41.042] Speed≈0 for 15s, stationary for 368s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:44.040] User is 1455m from parking spot — location check won't apply
+[2026-02-16 18:59:44.042] Speed≈0 for 18s, stationary for 371s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:47.041] User is 1455m from parking spot — location check won't apply
+[2026-02-16 18:59:47.042] Speed≈0 for 21s, stationary for 374s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:50.041] User is 1454m from parking spot — location check won't apply
+[2026-02-16 18:59:50.044] Speed≈0 for 24s, stationary for 377s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:50.996] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 18:59:50.996] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:59:51.316] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 18:59:51.318] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 18:59:53.040] User is 1454m from parking spot — location check won't apply
+[2026-02-16 18:59:53.041] Speed≈0 for 27s, stationary for 380s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:56.037] User is 1454m from parking spot — location check won't apply
+[2026-02-16 18:59:56.038] Speed≈0 for 30s, stationary for 383s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 18:59:59.037] User is 1454m from parking spot — location check won't apply
+[2026-02-16 18:59:59.038] Speed≈0 for 33s, stationary for 386s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:00:02.041] User is 1454m from parking spot — location check won't apply
+[2026-02-16 19:00:02.042] Speed≈0 for 36s, stationary for 389s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:00:05.038] User is 1454m from parking spot — location check won't apply
+[2026-02-16 19:00:05.039] Speed≈0 for 39s, stationary for 392s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:00:06.327] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 19:00:06.327] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:00:06.974] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 19:00:06.975] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:00:08.040] User is 1454m from parking spot — location check won't apply
+[2026-02-16 19:00:08.040] Speed≈0 for 42s, stationary for 395s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:00:11.037] User is 1454m from parking spot — location check won't apply
+[2026-02-16 19:00:11.038] Speed≈0 for 45s, stationary for 398s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:00:14.041] User is 1454m from parking spot — location check won't apply
+[2026-02-16 19:00:14.041] Speed≈0 for 48s, stationary for 401s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:00:14.313] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 19:00:14.313] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:00:15.270] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 19:00:15.270] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:00:17.040] User is 1454m from parking spot — location check won't apply
+[2026-02-16 19:00:17.040] Speed≈0 for 51s, stationary for 404s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:00:20.038] User is 1454m from parking spot — location check won't apply
+[2026-02-16 19:00:20.039] Speed≈0 for 54s, stationary for 407s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:00:23.039] User is 1454m from parking spot — location check won't apply
+[2026-02-16 19:00:23.040] Speed≈0 for 57s, stationary for 410s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:01:09.031] GPS speed≈0 while driving. Captured stop location: 41.950278739356555, -87.67600573902061
+[2026-02-16 19:01:09.033] GPS speed≈0 after 466s driving. Starting parking check (every 3.0s).
+[2026-02-16 19:01:12.038] User is 1897m from parking spot — location check won't apply
+[2026-02-16 19:01:12.039] Speed≈0 for 3s, stationary for 459s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:01:15.035] User is 1896m from parking spot — location check won't apply
+[2026-02-16 19:01:15.036] Speed≈0 for 6s, stationary for 462s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:01:18.036] User is 1896m from parking spot — location check won't apply
+[2026-02-16 19:01:18.037] Speed≈0 for 9s, stationary for 465s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:01:19.507] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 19:01:19.508] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:01:21.037] User is 1896m from parking spot — location check won't apply
+[2026-02-16 19:01:21.038] Speed≈0 for 12s, stationary for 468s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:01:21.093] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 19:01:21.094] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:01:22.687] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-16 19:01:22.688] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:01:23.006] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 19:01:23.007] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:01:24.038] User is 1896m from parking spot — location check won't apply
+[2026-02-16 19:01:24.039] Speed≈0 for 15s, stationary for 471s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:01:27.035] User is 1897m from parking spot — location check won't apply
+[2026-02-16 19:01:27.036] Speed≈0 for 18s, stationary for 474s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:01:30.038] User is 1898m from parking spot — location check won't apply
+[2026-02-16 19:01:30.039] Speed≈0 for 21s, stationary for 477s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:02:18.044] GPS speed≈0 while driving. Captured stop location: 41.95234049726431, -87.67623785075646
+[2026-02-16 19:02:18.047] GPS speed≈0 after 535s driving. Starting parking check (every 3.0s).
+[2026-02-16 19:02:20.215] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 19:02:20.215] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:02:21.053] User is 2103m from parking spot — location check won't apply
+[2026-02-16 19:02:21.054] Speed≈0 for 3s, stationary for 528s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:02:24.052] User is 2101m from parking spot — location check won't apply
+[2026-02-16 19:02:24.053] Speed≈0 for 6s, stationary for 531s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:02:27.052] User is 2100m from parking spot — location check won't apply
+[2026-02-16 19:02:27.053] Speed≈0 for 9s, stationary for 534s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:02:27.557] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 19:02:27.557] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:02:30.049] User is 2100m from parking spot — location check won't apply
+[2026-02-16 19:02:30.051] Speed≈0 for 12s, stationary for 537s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:02:30.110] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-16 19:02:30.112] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-16 19:02:33.051] User is 2101m from parking spot — location check won't apply
+[2026-02-16 19:02:33.052] Speed≈0 for 15s, stationary for 540s. Waiting... (CoreMotion still automotive, user walked away from parking spot)
+[2026-02-16 19:02:35.227] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 19:02:36.050] User is 2104m from parking spot — location check won't apply
+[2026-02-16 19:02:36.050] Speed≈0 for 18s, stationary for 543s. Waiting... (CoreMotion still automotive, phone moving (speed: 1.0 m/s), user walked away from parking spot)
+[2026-02-16 19:02:39.053] User is 2103m from parking spot — location check won't apply
+[2026-02-16 19:02:39.054] Speed≈0 for 21s, stationary for 546s. Waiting... (CoreMotion still automotive, phone moving (speed: 1.4 m/s), user walked away from parking spot)
+[2026-02-16 19:02:40.343] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 19:02:42.052] User is 2104m from parking spot — location check won't apply
+[2026-02-16 19:02:42.053] Speed≈0 for 24s, stationary for 549s. Waiting... (CoreMotion still automotive, phone moving (speed: 1.4 m/s), user walked away from parking spot)
+[2026-02-16 19:02:42.238] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 19:02:45.054] User is 2106m from parking spot — location check won't apply
+[2026-02-16 19:02:45.054] Speed≈0 for 27s, stationary for 552s. Waiting... (CoreMotion still automotive, phone moving (speed: 1.2 m/s), user walked away from parking spot)
+[2026-02-16 19:02:45.450] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 19:02:48.025] CoreMotion update: automotive=false stationary=false walking=true confidence=high
+[2026-02-16 19:02:48.026] CoreMotion stability: transitioned to non-automotive, tracking stability timer
+[2026-02-16 19:02:48.026] Exited vehicle (CoreMotion: walking, confidence: high)
+[2026-02-16 19:02:48.026] Parking detected after 565s driving (walking=true)
+[2026-02-16 19:02:48.049] User is 2104m from parking spot — location check won't apply
+[2026-02-16 19:02:48.049] Parking confirmed: GPS speed≈0 for 30s + CoreMotion agrees (not automotive)
+[2026-02-16 19:02:48.049] PARKING CONFIRMED (source: gps_coremotion_agree)
+[2026-02-16 19:02:48.061] Persisted parking location: 41.95234049726431, -87.67623785075646 ±8.367284872597216m
+[2026-02-16 19:02:48.063] Using parking location GPS timestamp: 2026-02-17 01:02:17 +0000 (30s ago)
+[2026-02-16 19:02:48.064] Parking at (stop_start): 41.95234049726431, -87.67623785075646 ±8.367284872597216m
+[2026-02-16 19:02:48.064] User walked 14m from car
+[2026-02-16 19:02:48.065] Continuous GPS OFF (saving battery, distanceFilter=10m)
+[2026-02-16 19:02:48.071] Accelerometer recording stopped
+[2026-02-16 19:02:48.075] Keeping CoreMotion active for departure detection (low power)
+[2026-02-16 22:02:42.264] === Log file opened ===
+[2026-02-16 22:02:42.265] Log path: /var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA/Documents/parking_detection.log
+[2026-02-16 22:02:42.265] Restored persisted parking location: 41.95234049726431, -87.67623785075646 ±8.367284872597216m (age: 10824s)
+[2026-02-16 22:02:42.265] Restored hasConfirmedParkingThisSession = true from UserDefaults
+[2026-02-16 22:02:42.265] BackgroundLocationModule initialized
+[2026-02-16 22:02:42.279] Auth changed: 3
+[2026-02-16 22:02:43.721] Cleared persisted parking state from UserDefaults
+[2026-02-16 22:02:43.722] Monitoring stopped
+[2026-02-16 22:02:43.734] CoreMotion available: true
+[2026-02-16 22:02:43.735] CoreMotion activity monitoring started
+[2026-02-16 22:02:43.735] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
+[2026-02-16 22:02:43.748] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-16 22:02:50.007] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-16 22:02:50.326] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 04:22:11.819] === Log file opened ===
+[2026-02-17 04:22:11.821] Log path: /var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA/Documents/parking_detection.log
+[2026-02-17 04:22:11.821] BackgroundLocationModule initialized
+[2026-02-17 04:22:11.837] Auth changed: 3
+[2026-02-17 04:22:13.293] Cleared persisted parking state from UserDefaults
+[2026-02-17 04:22:13.294] Monitoring stopped
+[2026-02-17 04:22:13.302] CoreMotion available: true
+[2026-02-17 04:22:13.302] CoreMotion activity monitoring started
+[2026-02-17 04:22:13.302] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
+[2026-02-17 04:22:13.323] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-17 04:22:13.323] Continuous GPS ON (driving detected, distanceFilter=none)
+[2026-02-17 04:22:13.323] Accelerometer recording started (10Hz, 30s buffer)
+[2026-02-17 04:22:13.329] Driving started (CoreMotion automotive + GPS moving, confidence: high, source: coremotion)
+[2026-02-17 04:22:13.330] Recovery check: no missed parking (drove: true, stationary: false, duration: 0s)
+[2026-02-17 04:22:17.348] CoreMotion update: automotive=true stationary=true walking=false confidence=low
+[2026-02-17 04:22:17.348] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-17 04:22:17.671] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-17 04:22:17.672] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-17 04:22:38.439] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-17 04:22:38.439] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-17 04:22:43.551] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-17 04:22:43.552] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-17 04:22:51.218] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-17 04:22:51.219] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-17 04:23:01.438] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-17 04:23:01.439] CoreMotion automotive + GPS moving — cancelled parking timers
+[2026-02-17 04:23:48.042] GPS speed≈0 while driving. Captured stop location: 41.92625689894352, -87.66393458696068
+[2026-02-17 04:23:48.043] Stationary location captured: 41.92625689894352, -87.66393458696068
+[2026-02-17 04:23:48.043] GPS speed≈0 after 95s driving. Starting parking check (every 3.0s).
+[2026-02-17 04:23:51.045] Speed≈0 for 3s, stationary for 3s. Waiting... (CoreMotion still automotive)
+[2026-02-17 04:23:54.044] Speed≈0 for 6s, stationary for 6s. Waiting... (CoreMotion still automotive)
+[2026-02-17 04:23:57.046] Speed≈0 for 9s, stationary for 9s. Waiting... (CoreMotion still automotive)
+[2026-02-17 04:24:00.044] Speed≈0 for 12s, stationary for 12s. Waiting... (CoreMotion still automotive, phone moving (speed: 0.6 m/s))
+[2026-02-17 04:24:00.512] CoreMotion update: automotive=true stationary=false walking=false confidence=high
+[2026-02-17 04:24:00.513] CoreMotion says automotive BUT GPS speed ≈ 0 — NOT cancelling parking timers (CoreMotion flicker?)
+[2026-02-17 04:24:02.762] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 04:24:03.049] Speed≈0 for 15s, stationary for 15s. Waiting... (CoreMotion still automotive)
+[2026-02-17 04:24:07.870] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 04:24:09.035] GPS speed≈0 while driving. Captured stop location: 41.926213610586, -87.66394169985476
+[2026-02-17 04:24:09.036] GPS speed≈0 after 116s driving. Starting parking check (every 3.0s).
+[2026-02-17 04:24:12.042] Speed≈0 for 3s, stationary for 24s. Waiting... (CoreMotion still automotive)
+[2026-02-17 04:24:15.038] Speed≈0 for 6s, stationary for 27s. Waiting... (CoreMotion still automotive, phone moving (speed: 1.1 m/s))
+[2026-02-17 04:24:15.538] CoreMotion update: automotive=false stationary=false walking=true confidence=high
+[2026-02-17 04:24:15.539] CoreMotion stability: transitioned to non-automotive, tracking stability timer
+[2026-02-17 04:24:15.539] Exited vehicle (CoreMotion: walking, confidence: high)
+[2026-02-17 04:24:15.540] Parking detected after 122s driving (walking=true)
+[2026-02-17 04:24:18.037] Parking confirmed: GPS speed≈0 for 9s + CoreMotion agrees (not automotive)
+[2026-02-17 04:24:18.039] PARKING CONFIRMED (source: gps_coremotion_agree)
+[2026-02-17 04:24:18.059] Persisted parking location: 41.926213610586, -87.66394169985476 ±9.698841879238223m
+[2026-02-17 04:24:18.062] Using parking location GPS timestamp: 2026-02-17 10:24:09 +0000 (9s ago)
+[2026-02-17 04:24:18.063] Parking at (stop_start): 41.926213610586, -87.66394169985476 ±9.698841879238223m
+[2026-02-17 04:24:18.063] User walked 17m from car
+[2026-02-17 04:24:18.064] Continuous GPS OFF (saving battery, distanceFilter=10m)
+[2026-02-17 04:24:18.067] Accelerometer recording stopped
+[2026-02-17 04:24:18.067] Keeping CoreMotion active for departure detection (low power)
+[2026-02-17 04:28:12.900] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 04:28:14.110] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-17 04:28:15.386] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:14.259] === Log file opened ===
+[2026-02-17 15:27:14.260] Log path: /var/mobile/Containers/Data/Application/09808006-30BD-400E-B534-D1389B4C84EA/Documents/parking_detection.log
+[2026-02-17 15:27:14.260] Restored persisted parking location: 41.926213610586, -87.66394169985476 ±9.698841879238223m (age: 39785s)
+[2026-02-17 15:27:14.260] Restored hasConfirmedParkingThisSession = true from UserDefaults
+[2026-02-17 15:27:14.260] BackgroundLocationModule initialized
+[2026-02-17 15:27:14.274] Auth changed: 3
+[2026-02-17 15:27:15.719] Cleared persisted parking state from UserDefaults
+[2026-02-17 15:27:15.719] Monitoring stopped
+[2026-02-17 15:27:15.732] CoreMotion available: true
+[2026-02-17 15:27:15.732] CoreMotion activity monitoring started
+[2026-02-17 15:27:15.732] Monitoring started (significantChanges + CoreMotion, GPS on-demand, auth=ALWAYS, coreMotion=true)
+[2026-02-17 15:27:15.743] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:15.774] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:20.237] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-17 15:27:20.557] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:20.880] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-17 15:27:21.515] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:21.833] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-17 15:27:23.436] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:25.026] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:25.990] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:41.635] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:46.435] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:48.340] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:49.297] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:54.099] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:56.005] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:27:59.207] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:28:01.433] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-17 15:28:01.760] CoreMotion update: automotive=false stationary=false walking=false confidence=high
+[2026-02-17 15:28:05.905] CoreMotion update: automotive=false stationary=true walking=false confidence=low
+[2026-02-17 15:28:06.544] CoreMotion update: automotive=false stationary=false walking=false confidence=high
