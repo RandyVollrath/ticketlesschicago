@@ -389,7 +389,7 @@ export default function LandingPage() {
           letterSpacing: '1px',
           textTransform: 'uppercase',
         }}>
-          Most Drivers Just Pay.
+          Chicago FOIA Data, 2021–2024
         </p>
         <div style={{
           fontFamily: FONTS.heading,
@@ -398,9 +398,18 @@ export default function LandingPage() {
           fontWeight: 800,
           letterSpacing: '-0.5px',
         }}>
-          <div>93% of tickets go uncontested.</div>
+          <div>94% of tickets go uncontested.</div>
           <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 54% of contested tickets win.</div>
         </div>
+        <p style={{
+          margin: '24px 0 0',
+          color: '#64748B',
+          fontSize: '14px',
+          lineHeight: 1.6,
+          maxWidth: '580px',
+        }}>
+          9 million parking tickets. 530,000 hearings. The data is clear: most people never fight back — and the ones who do win more than half the time.
+        </p>
       </section>
 
       {/* How it Works */}
