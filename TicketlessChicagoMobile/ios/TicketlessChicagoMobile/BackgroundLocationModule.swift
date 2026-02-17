@@ -3600,19 +3600,25 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
 
       let selectedAgeSec = Date().timeIntervalSince(parkingLocation?.timestamp ?? candidate.timestamp)
       let selectedAcc = parkingLocation?.horizontalAccuracy ?? candidateAcc
+      let walkingEvidenceSecEarly = coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
+      let hasRecentDisconnectEvidenceEarly: Bool = {
+        guard let disconnectedAt = lastCarAudioDisconnectedAt else { return false }
+        let age = Date().timeIntervalSince(disconnectedAt)
+        return age >= 0 && age <= carDisconnectEvidenceWindowSec
+      }()
       if source != "location_stationary" &&
          selectedAgeSec > parkingCandidateHardStaleSec &&
          selectedAcc > 0 &&
          selectedAcc > parkingCandidateHardMaxAccuracyMeters &&
-         !hasRecentDisconnectEvidence &&
-         walkingEvidenceSec < minWalkingEvidenceSec {
+         !hasRecentDisconnectEvidenceEarly &&
+         walkingEvidenceSecEarly < minWalkingEvidenceSec {
         self.log("Parking candidate blocked by stale/low-quality location (age=\(String(format: "%.0f", selectedAgeSec))s, acc=\(String(format: "%.0f", selectedAcc))m)")
         decision("confirm_parking_blocked_stale_location", [
           "source": source,
           "ageSec": selectedAgeSec,
           "accuracy": selectedAcc,
-          "hasRecentDisconnectEvidence": hasRecentDisconnectEvidence,
-          "walkingEvidenceSec": walkingEvidenceSec,
+          "hasRecentDisconnectEvidence": hasRecentDisconnectEvidenceEarly,
+          "walkingEvidenceSec": walkingEvidenceSecEarly,
         ])
         tripSummaryStaleLocationBlockedCount += 1
         var retryBody: [String: Any] = [
