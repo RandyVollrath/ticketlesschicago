@@ -2,6 +2,10 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { verifyWebhook } from '../../../lib/webhook-verification';
 import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.APPROVAL_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://autopilotamerica.com';
 
 /**
  * Evidence Email Webhook
@@ -247,6 +251,161 @@ function cleanUserEvidence(text: string): string {
   }
 
   return cleaned.join('\n').trim();
+}
+
+/**
+ * Generate a JWT token for one-click letter approval
+ */
+function generateApprovalToken(ticketId: string, userId: string, letterId: string): string {
+  return jwt.sign(
+    { ticket_id: ticketId, user_id: userId, letter_id: letterId },
+    JWT_SECRET,
+    { expiresIn: '21d' }
+  );
+}
+
+/**
+ * Send approval email so user can review and approve the letter with one click
+ */
+async function sendApprovalEmailForEvidence(
+  userEmail: string,
+  userName: string,
+  ticketNumber: string,
+  ticketId: string,
+  userId: string,
+  letterId: string,
+  letterContent: string,
+  violationDescription: string,
+  violationDate: string | null,
+  amount: number | string | null,
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+
+  const token = generateApprovalToken(ticketId, userId, letterId);
+  const approveUrl = `${BASE_URL}/api/autopilot/approve-letter?token=${token}&action=approve`;
+  const skipUrl = `${BASE_URL}/api/autopilot/approve-letter?token=${token}&action=skip`;
+
+  const violationDateFormatted = violationDate
+    ? new Date(violationDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'Unknown date';
+
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        to: [userEmail],
+        subject: `Your evidence is in — approve your contest letter for ticket #${ticketNumber}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; font-size: 22px;">Evidence Received — Letter Updated!</h1>
+              <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">We've integrated your evidence into your contest letter</p>
+            </div>
+
+            <div style="background: white; border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
+              <p style="color: #374151; font-size: 15px; line-height: 1.6;">
+                Hi ${userName},
+              </p>
+              <p style="color: #374151; font-size: 15px; line-height: 1.6;">
+                Thank you for submitting evidence for ticket <strong>#${ticketNumber}</strong>. We've updated your contest letter to include everything you sent us.
+              </p>
+
+              <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                <p style="margin: 0 0 8px; font-weight: 600; color: #065f46; font-size: 14px;">What happens next:</p>
+                <ol style="margin: 0; padding-left: 20px; color: #065f46; font-size: 14px; line-height: 1.8;">
+                  <li>Review the letter preview below</li>
+                  <li>Click <strong>"Approve & Mail"</strong> to send it to the City</li>
+                  <li>We'll print and mail it the same day</li>
+                </ol>
+              </div>
+
+              <h2 style="font-size: 15px; color: #374151; margin: 24px 0 12px;">Ticket Details</h2>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Ticket #</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">${ticketNumber}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Violation</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">${violationDescription}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Date</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">${violationDateFormatted}</td>
+                </tr>
+                ${amount ? `<tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Amount</td>
+                  <td style="padding: 8px 0; font-weight: 600; font-size: 14px;">$${amount}</td>
+                </tr>` : ''}
+              </table>
+
+              <h2 style="font-size: 15px; color: #374151; margin: 0 0 12px;">Letter Preview</h2>
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 24px; font-size: 13px; line-height: 1.6; color: #374151; white-space: pre-wrap; font-family: 'Georgia', serif;">${letterContent.substring(0, 800)}${letterContent.length > 800 ? '\n\n[Full letter available on your dashboard]' : ''}</div>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${approveUrl}" style="display: inline-block; background: #10b981; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin-right: 12px;">
+                  Approve & Mail
+                </a>
+                <a href="${skipUrl}" style="display: inline-block; background: #6b7280; color: white; padding: 14px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                  Skip
+                </a>
+              </div>
+
+              <p style="font-size: 13px; color: #6b7280; text-align: center; margin: 16px 0 0;">
+                Don't worry — if you don't respond, we'll auto-send the letter as a safety net before the 21-day contest deadline.
+              </p>
+            </div>
+
+            <p style="text-align: center; font-size: 12px; color: #9ca3af; margin-top: 20px;">
+              Autopilot America — Automatic Parking Ticket Defense
+            </p>
+          </div>
+        `,
+      }),
+    });
+    console.log(`    Sent approval email to ${userEmail}`);
+  } catch (err) {
+    console.error('Failed to send approval email:', err);
+  }
+}
+
+/**
+ * Trigger the letter generation cron to create a letter for a ticket that doesn't have one yet
+ */
+async function triggerLetterGeneration(reason: string): Promise<{ triggered: boolean; message: string }> {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return { triggered: false, message: 'CRON_SECRET missing' };
+  }
+
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+  const url = new URL('/api/cron/autopilot-generate-letters', baseUrl);
+  url.searchParams.set('key', cronSecret);
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${cronSecret}`,
+        'x-trigger-reason': reason,
+      },
+    });
+
+    return {
+      triggered: response.ok,
+      message: response.ok ? 'Triggered letter generation' : `Letter generation trigger failed (${response.status})`,
+    };
+  } catch (error: any) {
+    return { triggered: false, message: `Letter generation trigger error: ${error?.message}` };
+  }
 }
 
 /**
@@ -638,6 +797,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? new Date(evidenceReceivedAt).getTime() <= (new Date(ticket.evidence_requested_at).getTime() + 48 * 60 * 60 * 1000)
       : null;
 
+    // Look up user settings to determine approval requirement
+    const { data: userSettings } = await supabaseAdmin
+      .from('autopilot_settings')
+      .select('require_approval, auto_mail_enabled')
+      .eq('user_id', user.id)
+      .single();
+
+    // Default: require approval (matches new DB default)
+    const requireApproval = userSettings?.require_approval ?? true;
+    const autoMailEnabled = userSettings?.auto_mail_enabled ?? false;
+    const needsApproval = requireApproval || !autoMailEnabled;
+
+    console.log(`User settings: require_approval=${requireApproval}, auto_mail_enabled=${autoMailEnabled}, needsApproval=${needsApproval}`);
+
+    // Determine new ticket status based on approval requirement
+    const newStatus = needsApproval ? 'needs_approval' : 'evidence_received';
+
     // Update ticket with evidence
     await supabaseAdmin
       .from('detected_tickets')
@@ -646,15 +822,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         user_evidence_uploaded_at: evidenceReceivedAt,
         evidence_received_at: evidenceReceivedAt,
         evidence_on_time: evidenceOnTime,
-        evidence_deadline: evidenceReceivedAt, // make ticket immediately eligible for same-day mailing
-        status: 'evidence_received',
+        // Only set evidence_deadline to now for auto-mail users (legacy behavior)
+        ...(needsApproval ? {} : { evidence_deadline: evidenceReceivedAt }),
+        status: newStatus,
       })
       .eq('id', ticket.id);
 
-    console.log('Updated ticket with evidence');
+    console.log(`Updated ticket with evidence, status=${newStatus}`);
 
     // Regenerate letter with AI if we have an existing letter
     let regeneratedLetterContent: string | null = null;
+    let currentLetterId: string | null = letter?.id || null;
+
     if (letter) {
       const originalLetter = letter.letter_content || letter.letter_text || '';
 
@@ -666,18 +845,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         attachments.length > 0
       );
 
+      // Set letter status based on approval requirement
+      const letterStatus = needsApproval ? 'pending_approval' : 'ready';
+
       await supabaseAdmin
         .from('contest_letters')
         .update({
           letter_content: regeneratedLetterContent,
           letter_text: regeneratedLetterContent,
-          status: 'ready',
+          status: letterStatus,
           evidence_integrated: true,
           evidence_integrated_at: new Date().toISOString(),
         })
         .eq('id', letter.id);
 
-      console.log('Regenerated contest letter with AI-enhanced evidence integration');
+      console.log(`Regenerated contest letter with AI-enhanced evidence integration (status=${letterStatus})`);
+    } else {
+      // No letter exists yet — ticket was found but letter generation cron hasn't run
+      // Set ticket status to 'found' temporarily so the generate-letters cron picks it up
+      console.log('No existing letter found — triggering letter generation');
+      await supabaseAdmin
+        .from('detected_tickets')
+        .update({ status: 'found' })
+        .eq('id', ticket.id);
+
+      const genResult = await triggerLetterGeneration('evidence_received_no_letter');
+      console.log(`Letter generation trigger: ${genResult.message}`);
+
+      // After generation, the generate-letters cron will set status to needs_approval
+      // and send the approval email. We don't need to do it here.
     }
 
     // Log to audit
@@ -691,19 +887,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           email_from: fromEmail,
           email_subject: subject,
           attachment_count: attachments.length,
+          needs_approval: needsApproval,
         },
         performed_by: 'evidence_webhook',
       });
 
-    // Send confirmation email to user
-    await sendUserConfirmation(fromEmail, profile?.first_name || 'there', ticket.ticket_number);
+    // Get user email for notifications
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user.id);
+    const userEmail = authUser?.user?.email || fromEmail;
+
+    // If approval is needed and we have a regenerated letter, send approval email immediately
+    if (needsApproval && regeneratedLetterContent && currentLetterId) {
+      await sendApprovalEmailForEvidence(
+        userEmail,
+        profile?.first_name || 'there',
+        ticket.ticket_number,
+        ticket.id,
+        user.id,
+        currentLetterId,
+        regeneratedLetterContent,
+        ticket.violation_description || ticket.violation_type || 'Parking Violation',
+        ticket.violation_date || ticket.issue_date || null,
+        ticket.amount || ticket.total_amount || null,
+      );
+    } else if (!needsApproval) {
+      // Auto-mail user: send simple confirmation and trigger mailing
+      await sendUserConfirmation(fromEmail, profile?.first_name || 'there', ticket.ticket_number);
+
+      const triggerResult = await triggerAutopilotMailRun({
+        ticketId: ticket.id,
+        reason: 'evidence_received_webhook',
+      });
+      console.log(`Mail trigger: ${triggerResult.message}`);
+    }
+    // If no letter existed, the generate-letters cron handles the approval email
 
     // Notify admin with full details + regenerated letter
     await sendAdminNotification(
       fromEmail,
       subject,
       evidenceText,
-      `Evidence received for ticket ${ticket.ticket_number}. Letter regenerated.`,
+      `Evidence received for ticket ${ticket.ticket_number}. ${needsApproval ? 'Approval email sent.' : 'Letter queued for mailing.'}`,
       ticket.ticket_number,
       attachments.length,
       {
@@ -717,20 +941,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
-    // Trigger immediate mailing run so evidence-backed letters go out same day
-    const triggerResult = await triggerAutopilotMailRun({
-      ticketId: ticket.id,
-      reason: 'evidence_received_webhook',
-    });
-    console.log(`Mail trigger: ${triggerResult.message}`);
-
     return res.status(200).json({
       success: true,
-      message: 'Evidence received and processed',
+      message: needsApproval ? 'Evidence received — approval email sent' : 'Evidence received — mailing triggered',
       ticket_id: ticket.id,
       ticket_number: ticket.ticket_number,
       letter_updated: !!letter,
-      mail_triggered: triggerResult.triggered,
+      needs_approval: needsApproval,
     });
 
   } catch (error: any) {

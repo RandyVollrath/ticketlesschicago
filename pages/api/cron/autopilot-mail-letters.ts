@@ -439,19 +439,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const now = new Date().toISOString();
 
-    // Get all tickets where evidence deadline has passed and status is pending_evidence
-    // These are ready to mail
-    const { data: readyTickets } = await supabaseAdmin
-      .from('detected_tickets')
-      .select('id')
-      .eq('status', 'pending_evidence')
-      .lte('evidence_deadline', now);
-
-    const readyTicketIds = readyTickets?.map(t => t.id) || [];
-
-    // Get letters for these tickets, plus any already approved letters
-    // Exclude test tickets from being mailed
-    // Include user_evidence for attaching images to letters
+    // Get letters that are ready to mail:
+    // 1. status='approved' — user clicked approval link OR day-19 safety net triggered
+    // 2. For auto_mail_enabled users: evidence_deadline has passed
     const { data: letters } = await supabaseAdmin
       .from('contest_letters')
       .select(`
@@ -461,16 +451,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         letter_content,
         letter_text,
         defense_type,
+        status,
+        approved_via,
         detected_tickets!inner (
           id,
           ticket_number,
           status,
           evidence_deadline,
+          auto_send_deadline,
           is_test,
           user_evidence
         )
       `)
-      .or(`status.eq.pending_evidence,status.eq.approved,status.eq.draft,status.eq.ready`)
+      .or(`status.eq.approved,status.eq.pending_evidence,status.eq.draft,status.eq.ready`)
       .order('created_at', { ascending: true });
 
     if (!letters || letters.length === 0) {
@@ -482,9 +475,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Filter to only letters where evidence_deadline has passed
-    // This is the safest approach - either user provided evidence (letter was regenerated with AI)
-    // or they didn't (they get the original template letter)
+    // Filter to letters that are actually ready to mail
     const readyLetters = letters.filter((l: any) => {
       const ticket = l.detected_tickets;
       if (!ticket) return false;
@@ -495,7 +486,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return false;
       }
 
-      // Only mail if evidence deadline has passed
+      // Case 1: Letter explicitly approved (user clicked link or safety net triggered)
+      if (l.status === 'approved') {
+        return true;
+      }
+
+      // Case 2: Ticket status is 'approved' (set by reminders cron safety net)
+      if (ticket.status === 'approved') {
+        return true;
+      }
+
+      // Case 3: Legacy flow — auto_mail users whose evidence deadline has passed
+      // Check if user has auto_mail_enabled (no approval required)
+      // For now, also keep backward compat with old 48h evidence_deadline
       if (ticket.evidence_deadline) {
         const deadline = new Date(ticket.evidence_deadline);
         if (deadline <= new Date()) {

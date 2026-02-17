@@ -948,8 +948,8 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
     .single();
 
   const userSettings: UserSettings = settings || {
-    auto_mail_enabled: true,
-    require_approval: false,
+    auto_mail_enabled: false,
+    require_approval: true,
     allowed_ticket_types: ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone', 'no_standing_time_restricted', 'parking_prohibited', 'residential_permit', 'missing_plate', 'commercial_loading', 'bus_lane'],
     never_auto_mail_unknown: true,
   };
