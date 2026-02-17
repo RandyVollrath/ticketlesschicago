@@ -182,35 +182,79 @@ async function sendEvidenceRequestEmail(
   const guidance = getEvidenceGuidance(violationType);
   const questionsHtml = generateEvidenceQuestionsHtml(guidance);
   const quickTipsHtml = generateQuickTipsHtml(guidance);
-  const formattedDeadline = evidenceDeadline.toLocaleString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZoneName: 'short',
-  });
+
   const violationDateFormatted = violationDate
     ? new Date(violationDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : 'Unknown date';
 
+  // Calculate days remaining from ticket date (21-day contest window)
+  const ticketDate = violationDate ? new Date(violationDate) : new Date();
+  const daysSinceTicket = Math.floor((Date.now() - ticketDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysRemaining = Math.max(0, 21 - daysSinceTicket);
+  const contestDeadlineDate = new Date(ticketDate.getTime() + 21 * 24 * 60 * 60 * 1000);
+  const formattedContestDeadline = contestDeadlineDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2>${guidance.title}</h2>
-      <p>Hi ${userName},</p>
-      <p>${guidance.intro}</p>
-      <p><strong>Ticket #:</strong> ${ticketNumber}<br/>
-      <strong>Violation Date:</strong> ${violationDateFormatted}<br/>
-      <strong>License Plate:</strong> ${plate}${amount ? `<br/><strong>Amount:</strong> $${amount.toFixed(2)}` : ''}</p>
-      <div style="background:#fffbeb;border:1px solid #f59e0b;padding:16px;border-radius:8px;margin:16px 0;">
-        <p><strong>Please reply to this email</strong> with evidence/details for your case:</p>
-        ${questionsHtml}
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; font-size: 22px;">${guidance.title}</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">We detected a new ticket and are building your contest letter</p>
       </div>
-      ${quickTipsHtml}
-      <div style="background:#dbeafe;border:1px solid #3b82f6;padding:12px;border-radius:8px;margin-top:16px;">
-        <strong>Evidence deadline:</strong> ${formattedDeadline}
+
+      <div style="background: white; border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
+        <p style="margin: 0 0 16px; font-size: 16px; color: #374151;">Hi ${userName},</p>
+        <p style="margin: 0 0 20px; font-size: 15px; color: #4b5563;">${guidance.intro}</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Ticket #</td><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">${ticketNumber}</td></tr>
+          <tr><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Violation Date</td><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">${violationDateFormatted}</td></tr>
+          <tr><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">License Plate</td><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; font-size: 14px;">${plate}</td></tr>
+          ${amount ? `<tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Amount</td><td style="padding: 8px 0; font-weight: 600; font-size: 14px;">$${amount.toFixed(2)}</td></tr>` : ''}
+        </table>
+
+        <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 20px; margin-right: 8px;">&#9200;</span>
+            <strong style="font-size: 15px; color: #92400E;">Contest Deadline: ${formattedContestDeadline} (${daysRemaining} days remaining)</strong>
+          </div>
+          <p style="margin: 0; font-size: 13px; color: #92400E;">
+            Chicago allows 21 days from the ticket date to file a contest. Tickets contested earlier tend to have higher success rates, so the sooner you provide your evidence, the better.
+          </p>
+        </div>
+
+        <div style="background: #EFF6FF; border: 1px solid #3B82F6; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <h3 style="margin: 0 0 8px; font-size: 15px; color: #1E40AF;">How this works</h3>
+          <ol style="margin: 0; padding-left: 20px; font-size: 14px; color: #1E40AF; line-height: 1.8;">
+            <li>We've already gathered automated evidence (weather, GPS, FOIA data, Street View)</li>
+            <li><strong>Reply to this email</strong> with any additional evidence you have (photos, receipts, etc.)</li>
+            <li>We'll generate an AI-powered contest letter using all available evidence</li>
+            <li>You'll receive the letter for review and approval before we mail it</li>
+          </ol>
+        </div>
+
+        <div style="background:#fffbeb;border:1px solid #f59e0b;padding:16px;border-radius:8px;margin-bottom:16px;">
+          <p style="margin: 0 0 8px; font-weight: 600; font-size: 14px; color: #92400E;">Your evidence strengthens the letter. Reply with any of the following:</p>
+          ${questionsHtml}
+        </div>
+
+        ${quickTipsHtml}
+
+        <div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 16px; margin-top: 16px;">
+          <p style="margin: 0; font-size: 13px; color: #166534;">
+            <strong>No evidence?</strong> That's okay. Our automated evidence gathering (weather data, FOIA hearing records, GPS parking data, and Street View imagery) often provides enough for a strong letter. We'll email you the letter for approval before mailing.
+          </p>
+        </div>
       </div>
+
+      <p style="text-align: center; font-size: 12px; color: #9ca3af; margin-top: 20px;">
+        You're receiving this because you have Autopilot ticket monitoring enabled.<br>
+        <a href="https://autopilotamerica.com/settings" style="color: #6B7280;">Manage settings</a>
+      </p>
     </div>
   `;
 
@@ -218,7 +262,7 @@ async function sendEvidenceRequestEmail(
     await resend.emails.send({
       from: 'Autopilot America <alerts@autopilotamerica.com>',
       to: [userEmail],
-      subject: guidance.emailSubject,
+      subject: `${guidance.emailSubject} (${daysRemaining} days to contest)`,
       html,
       replyTo: `evidence+${ticketId}@autopilotamerica.com`,
     });
@@ -475,7 +519,12 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
 
     const violationType = mapViolationType(ticket.violation_code);
     const cameraViolation = isCameraViolation(violationType);
-    const evidenceDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    // Calculate deadlines based on ticket issue date (21-day contest window)
+    const ticketDate = new Date(ticket.issue_date);
+    const autoSendDeadline = new Date(ticketDate.getTime() + 19 * 24 * 60 * 60 * 1000); // Day 19 safety net
+    const contestDeadline = new Date(ticketDate.getTime() + 21 * 24 * 60 * 60 * 1000); // Day 21 hard deadline
+    // Keep evidence_deadline for backward compat but set to day 19 (not 48h)
+    const evidenceDeadline = autoSendDeadline;
 
     // Insert new ticket directly into evidence collection flow
     const { data: newTicket, error: insertError } = await supabaseAdmin
@@ -501,6 +550,8 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         source: 'chicago_api',
         evidence_requested_at: new Date().toISOString(),
         evidence_deadline: evidenceDeadline.toISOString(),
+        auto_send_deadline: autoSendDeadline.toISOString(),
+        reminder_count: 0,
         raw_data: ticket,
       })
       .select('id')

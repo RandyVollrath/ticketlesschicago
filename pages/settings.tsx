@@ -698,8 +698,8 @@ export default function SettingsPage() {
   const [emissionsDate, setEmissionsDate] = useState('');
 
   // Autopilot Settings
-  const [autoMailEnabled, setAutoMailEnabled] = useState(true);
-  const [requireApproval, setRequireApproval] = useState(false);
+  const [autoMailEnabled, setAutoMailEnabled] = useState(false);
+  const [requireApproval, setRequireApproval] = useState(true);
   const [allowedTicketTypes, setAllowedTicketTypes] = useState<string[]>([
     'expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone',
     'no_standing_time_restricted', 'parking_prohibited', 'residential_permit',
@@ -968,15 +968,16 @@ export default function SettingsPage() {
         setDashboardTickets(formattedTickets);
       }
 
-      // Set next check date (next Monday or Thursday at 9 AM Central)
+      // Set next check date (daily at 9 AM Central / 14:00 UTC)
       const now = new Date();
-      const dayOfWeek = now.getDay();
-      let daysUntilNext;
-      if (dayOfWeek < 1) daysUntilNext = 1; // Sunday -> Monday
-      else if (dayOfWeek < 4) daysUntilNext = 4 - dayOfWeek; // Mon-Wed -> Thursday
-      else daysUntilNext = 8 - dayOfWeek; // Thu-Sat -> next Monday
       const nextCheck = new Date(now);
-      nextCheck.setDate(now.getDate() + daysUntilNext);
+      // If today's check hasn't run yet (before 14:00 UTC), next check is today
+      // Otherwise, next check is tomorrow
+      if (now.getUTCHours() < 14) {
+        // Today
+      } else {
+        nextCheck.setDate(now.getDate() + 1);
+      }
       setNextCheckDate(nextCheck.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
 
       // Load subscription info (may not exist for new users)
@@ -2701,17 +2702,22 @@ export default function SettingsPage() {
           }}>
             <div>
               <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
-                Auto-mail letters
+                Require approval before mailing
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                Automatically mail contest letters when tickets are found
+                We'll email you the letter for review before sending it to the city. Recommended for most users.
               </p>
+              {requireApproval && (
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: '#059669', fontStyle: 'italic' }}>
+                  Safety net: if the 21-day deadline is approaching and you haven't approved, we'll auto-send to protect you from missing the deadline.
+                </p>
+              )}
             </div>
             <Toggle
-              checked={isPaidUser && autoMailEnabled}
+              checked={isPaidUser && requireApproval}
               onChange={(checked) => {
-                setAutoMailEnabled(checked);
-                setRequireApproval(!checked);
+                setRequireApproval(checked);
+                setAutoMailEnabled(!checked);
               }}
               disabled={!isPaidUser}
             />
@@ -2727,17 +2733,31 @@ export default function SettingsPage() {
           }}>
             <div>
               <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
-                Require approval before mailing
+                Full auto-pilot (no approval needed)
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                Review and approve letters before they're sent
+                We detect, build, and mail contest letters automatically without waiting for your review.
               </p>
+              {autoMailEnabled && (
+                <div style={{
+                  margin: '8px 0 0',
+                  padding: '8px 12px',
+                  background: '#FEF3C7',
+                  border: '1px solid #F59E0B',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  color: '#92400E',
+                }}>
+                  <strong>Heads up:</strong> Letters will be mailed to the City of Chicago on your behalf without you seeing them first.
+                  We still email you evidence requests and send a copy of each letter, but the letter goes out automatically.
+                </div>
+              )}
             </div>
             <Toggle
-              checked={isPaidUser && requireApproval}
+              checked={isPaidUser && autoMailEnabled}
               onChange={(checked) => {
-                setRequireApproval(checked);
-                setAutoMailEnabled(!checked);
+                setAutoMailEnabled(checked);
+                setRequireApproval(!checked);
               }}
               disabled={!isPaidUser}
             />

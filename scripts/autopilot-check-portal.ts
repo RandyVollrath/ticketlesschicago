@@ -12,7 +12,7 @@
  * 4. Creates detected_tickets + contest_letters in the DB (same as VA upload)
  * 5. Sends evidence request emails to users
  *
- * Schedule: Monday and Thursday (2x/week)
+ * Schedule: Daily
  * Run: npx ts-node scripts/autopilot-check-portal.ts
  *
  * Required environment variables:
@@ -61,7 +61,9 @@ const supabaseAdmin = createClient(
 const MAX_PLATES = parseInt(process.env.PORTAL_CHECK_MAX_PLATES || '50');
 const DELAY_MS = parseInt(process.env.PORTAL_CHECK_DELAY_MS || '5000');
 const SCREENSHOT_DIR = process.env.PORTAL_CHECK_SCREENSHOT_DIR || path.resolve(__dirname, '../debug-screenshots');
-const EVIDENCE_DEADLINE_HOURS = 72;
+// Evidence deadline is calculated per-ticket based on issue date (day 19 from ticket date)
+// This matches the API cron behavior in autopilot-check-plates.ts
+const AUTO_SEND_DAY = 19; // Day 19 from ticket issue date
 
 // Default sender address (same as upload-results.ts)
 const DEFAULT_SENDER_ADDRESS = {
@@ -1037,7 +1039,6 @@ async function processFoundTicket(
     plate: string;
     state: string;
   },
-  evidenceDeadline: Date
 ): Promise<{ created: boolean; error?: string }> {
   const { plate_id, user_id, plate, state } = plateInfo;
 
@@ -1076,6 +1077,21 @@ async function processFoundTicket(
   const violationType = mapViolationType(ticket.violation_description || '');
   const amount = ticket.current_amount_due || null;
 
+  // Calculate evidence deadline based on ticket issue date (day 19 from issue)
+  // This gives the user maximum time while still beating the 21-day contest deadline
+  let evidenceDeadline: Date;
+  if (violationDate) {
+    const ticketDate = new Date(violationDate);
+    evidenceDeadline = new Date(ticketDate.getTime() + AUTO_SEND_DAY * 24 * 60 * 60 * 1000);
+    // If ticket is old and deadline would be in the past, give at least 48 hours
+    if (evidenceDeadline.getTime() < Date.now() + 48 * 60 * 60 * 1000) {
+      evidenceDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    }
+  } else {
+    // No violation date — fallback to 14 days from now
+    evidenceDeadline = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  }
+
   // Get user profile
   const { data: profile } = await supabaseAdmin
     .from('user_profiles')
@@ -1108,6 +1124,8 @@ async function processFoundTicket(
       source: 'portal_scrape',
       evidence_requested_at: now,
       evidence_deadline: evidenceDeadline.toISOString(),
+      auto_send_deadline: evidenceDeadline.toISOString(),
+      reminder_count: 0,
     })
     .select()
     .single();
@@ -1403,7 +1421,6 @@ async function main() {
   );
 
   // Process results - create tickets in DB
-  const evidenceDeadline = new Date(Date.now() + EVIDENCE_DEADLINE_HOURS * 60 * 60 * 1000);
   let totalCreated = 0;
   let totalSkipped = 0;
   let totalErrors = 0;
@@ -1438,7 +1455,6 @@ async function main() {
           plate: plateInfo.plate,
           state: plateInfo.state,
         },
-        evidenceDeadline
       );
 
       if (processResult.created) {
