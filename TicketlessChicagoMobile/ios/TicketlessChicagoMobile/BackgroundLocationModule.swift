@@ -7,7 +7,7 @@ import UserNotifications
 import React
 
 @objc(BackgroundLocationModule)
-class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
+class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSpeechSynthesizerDelegate {
 
   private let locationManager = CLLocationManager()
   private let activityManager = CMMotionActivityManager()
@@ -751,6 +751,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var lastCameraAlertAt: Date? = nil
   private var lastCameraRejectLogAt: Date? = nil
 
+  // Native TTS for background camera alerts (AVSpeechSynthesizer runs natively,
+  // unlike JS SpeechModule which is suspended when the app is backgrounded)
+  private let speechSynthesizer = AVSpeechSynthesizer()
+  private var speechAudioSessionConfigured = false
+
   private let kCameraAlertsEnabledKey = "bg_camera_alerts_enabled"
   private let kCameraSpeedEnabledKey = "bg_camera_alerts_speed_enabled"
   private let kCameraRedlightEnabledKey = "bg_camera_alerts_redlight_enabled"
@@ -801,6 +806,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private var speedZeroStartTime: Date?  // When GPS speed first dropped to ≈0 during this driving session
   private var stationaryLocation: CLLocation?  // Location when we first stopped moving
   private var stationaryStartTime: Date?  // When we first stopped at stationaryLocation
+  private var speedMovingConsecutiveCount: Int = 0  // Count of consecutive GPS readings showing speed > driving threshold
+  private let speedMovingConsecutiveRequired: Int = 2  // Must see N consecutive above-threshold readings to cancel parking timer (GPS noise filter)
   private var parkingFinalizationTimer: Timer?  // Short post-confirm hold to suppress red-light false positives
   private var parkingFinalizationPending = false
   private var pendingParkingLocation: CLLocation? = nil
@@ -886,6 +893,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     setupDecisionLogFile()
     restorePersistedCameraSettings()
     locationManager.delegate = self
+    speechSynthesizer.delegate = self
     locationManager.desiredAccuracy = kCLLocationAccuracyBest
     locationManager.allowsBackgroundLocationUpdates = true
     locationManager.pausesLocationUpdatesAutomatically = false
@@ -2243,23 +2251,34 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     if speed > minDrivingSpeedMps {
       maybeUnwindRecentParkingConfirmation(location, speed: speed)
       maybeHandleIntersectionDwellResume(location, speed: speed)
-      speedSaysMoving = true
-      cancelPendingParkingFinalization(reason: "GPS speed resumed above driving threshold")
-      if queuedParkingAt != nil {
-        decision("parking_candidate_queue_cleared", ["reason": "driving_resumed"])
-        queuedParkingAt = nil
-        queuedParkingBody = nil
-        queuedParkingSource = nil
-      }
 
-      // Cancel speed-based parking timer - still moving (red light ended)
-      speedZeroTimer?.invalidate()
-      speedZeroTimer = nil
-      speedZeroStartTime = nil
-      stopWindowMaxSpeedMps = 0
-      stationaryLocation = nil   // Reset so next stop captures fresh location
-      stationaryStartTime = nil
-      locationAtStopStart = nil  // Reset stop location - wasn't a real stop
+      // GPS noise filter: require N consecutive above-threshold readings before
+      // declaring "definitely moving" and cancelling parking timers. A single
+      // noisy GPS reading (multipath off buildings, GPS drift while parked in a
+      // store) used to kill the parking timer — the CVS bug.
+      speedMovingConsecutiveCount += 1
+
+      if speedMovingConsecutiveCount >= speedMovingConsecutiveRequired {
+        speedSaysMoving = true
+        cancelPendingParkingFinalization(reason: "GPS speed resumed above driving threshold")
+        if queuedParkingAt != nil {
+          decision("parking_candidate_queue_cleared", ["reason": "driving_resumed"])
+          queuedParkingAt = nil
+          queuedParkingBody = nil
+          queuedParkingSource = nil
+        }
+
+        // Cancel speed-based parking timer - confirmed moving (red light ended)
+        speedZeroTimer?.invalidate()
+        speedZeroTimer = nil
+        speedZeroStartTime = nil
+        stopWindowMaxSpeedMps = 0
+        stationaryLocation = nil   // Reset so next stop captures fresh location
+        stationaryStartTime = nil
+        locationAtStopStart = nil  // Reset stop location - wasn't a real stop
+      } else {
+        self.log("GPS speed \(String(format: "%.1f", speed)) m/s above threshold but only \(speedMovingConsecutiveCount)/\(speedMovingConsecutiveRequired) consecutive — not cancelling parking timer yet (noise filter)")
+      }
 
       // GPS speed alone does NOT start driving — only CoreMotion can detect
       // "in a vehicle" vs "walking". GPS speed is used as a sanity check
@@ -3313,10 +3332,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     }
     let cam = Self.chicagoCameras[idx]
 
-    // Local notification
+    // Local notification + spoken TTS alert
     let title = cam.type == "redlight" ? "Red-light camera ahead" : "Speed camera ahead"
     let body = cam.address
     scheduleCameraLocalNotification(title: title, body: body, id: "cam-\(idx)")
+    speakCameraAlert(title)
 
     alertedCameraAtByIndex[idx] = Date()
     lastCameraAlertAt = Date()
@@ -3363,6 +3383,65 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
           self.log("Camera notification add failed: \(err.localizedDescription)")
         }
       }
+    }
+  }
+
+  /// Speak a camera alert using native AVSpeechSynthesizer.
+  /// Works in background because:
+  ///   1. UIBackgroundModes includes "audio"
+  ///   2. AVAudioSession category is .playback
+  ///   3. AVSpeechSynthesizer is a native API (not JS — JS is suspended in background)
+  private func speakCameraAlert(_ message: String) {
+    // Configure audio session for background playback (lazy, once)
+    if !speechAudioSessionConfigured {
+      do {
+        try AVAudioSession.sharedInstance().setCategory(
+          .playback,
+          mode: .voicePrompt,
+          options: [.duckOthers]  // Lower music volume instead of pausing it
+        )
+        speechAudioSessionConfigured = true
+        log("Speech audio session configured for background TTS")
+      } catch {
+        log("Failed to configure speech audio session: \(error.localizedDescription)")
+        return
+      }
+    }
+
+    // Activate audio session
+    do {
+      try AVAudioSession.sharedInstance().setActive(true)
+    } catch {
+      log("Failed to activate speech audio session: \(error.localizedDescription)")
+      return
+    }
+
+    // Stop any in-progress speech
+    if speechSynthesizer.isSpeaking {
+      speechSynthesizer.stopSpeaking(at: .immediate)
+    }
+
+    let utterance = AVSpeechUtterance(string: message)
+    utterance.rate = 0.52  // Match JS SpeechModule rate — slightly fast but clear
+    utterance.pitchMultiplier = 1.0
+    utterance.volume = 1.0
+    if let voice = AVSpeechSynthesisVoice(language: "en-US") {
+      utterance.voice = voice
+    }
+
+    speechSynthesizer.speak(utterance)
+    log("Native TTS: speaking '\(message)'")
+  }
+
+  // MARK: - AVSpeechSynthesizerDelegate
+
+  func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+    // Deactivate audio session to restore user's music/podcast
+    do {
+      try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+      log("Native TTS: speech finished, audio session deactivated")
+    } catch {
+      log("Native TTS: failed to deactivate audio session: \(error.localizedDescription)")
     }
   }
 
