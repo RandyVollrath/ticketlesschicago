@@ -73,4 +73,10 @@ RCT_EXTERN_METHOD(getPendingParkingEvent:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(acknowledgeParkingEvent:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(getPendingRedLightEvidence:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(acknowledgeRedLightEvidence:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

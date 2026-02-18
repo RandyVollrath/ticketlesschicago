@@ -24,6 +24,7 @@ import PushNotificationService from './PushNotificationService';
 import AuthService from './AuthService';
 import { ParkingHistoryService } from '../screens/HistoryScreen';
 import CameraAlertService from './CameraAlertService';
+import RedLightReceiptService from './RedLightReceiptService';
 import GroundTruthService from './GroundTruthService';
 import { fetchCameraLocations } from '../data/chicago-cameras';
 import AppEvents from './AppEvents';
@@ -377,6 +378,11 @@ class BackgroundTaskServiceClass {
 
       // Start foreground monitoring
       await this.startForegroundMonitoring();
+
+      // Check for red-light evidence captured natively while JS was dead
+      if (Platform.OS === 'ios') {
+        void this.ingestPendingNativeRedLightEvidence();
+      }
 
       await this.saveState();
       log.info('Monitoring started');
@@ -2723,6 +2729,10 @@ class BackgroundTaskServiceClass {
 
     if (nextAppState === 'active' && this.state.isMonitoring) {
       void this.captureIosHealthSnapshot('app-foreground', { force: true, includeLogTail: true });
+      // Check for red-light evidence captured natively while JS was suspended
+      if (Platform.OS === 'ios') {
+        void this.ingestPendingNativeRedLightEvidence();
+      }
       // App came to foreground - only restart periodic check timer if needed
       // Do NOT re-register BT listeners (they persist across app state changes)
       if (!this.monitoringInterval) {
@@ -2739,6 +2749,31 @@ class BackgroundTaskServiceClass {
       // App went to background
       // BT listeners and periodic checks continue running
       log.info('App entered background, monitoring continues');
+    }
+  }
+
+  /**
+   * Check for red-light camera evidence captured natively while JS was suspended.
+   * Ingests each entry into RedLightReceiptService and acknowledges the native queue.
+   */
+  private async ingestPendingNativeRedLightEvidence(): Promise<void> {
+    try {
+      const evidence = await BackgroundLocationService.getPendingRedLightEvidence();
+      if (!evidence || evidence.length === 0) return;
+
+      log.info(`Found ${evidence.length} pending native red-light evidence entries`);
+      let ingested = 0;
+
+      for (const entry of evidence) {
+        const ok = await RedLightReceiptService.ingestNativeEvidence(entry);
+        if (ok) ingested++;
+      }
+
+      // Clear native queue after processing
+      await BackgroundLocationService.acknowledgeRedLightEvidence();
+      log.info(`Ingested ${ingested}/${evidence.length} native red-light evidence entries`);
+    } catch (error) {
+      log.error('Error ingesting pending native red-light evidence', error);
     }
   }
 

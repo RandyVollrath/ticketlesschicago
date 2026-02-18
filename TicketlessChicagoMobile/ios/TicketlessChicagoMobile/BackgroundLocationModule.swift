@@ -3382,6 +3382,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     scheduleCameraLocalNotification(title: title, body: body, id: "cam-\(idx)")
     speakCameraAlert(title)
 
+    // For red light cameras: capture evidence (accelerometer + GPS) natively.
+    // JS may be suspended in background, so save to UserDefaults for JS to retrieve later.
+    if cam.type == "redlight" {
+      captureRedLightEvidenceNatively(cam: cam, speed: speed, heading: heading, accuracy: acc, distance: bestDist)
+    }
+
     alertedCameraAtByIndex[idx] = Date()
     lastCameraAlertAt = Date()
     tripSummaryCameraAlertCount += 1
@@ -3417,7 +3423,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       let content = UNMutableNotificationContent()
       content.title = title
       content.body = body
-      content.sound = UNNotificationSound.default
+      // Only play notification sound if app is in foreground (where native TTS doesn't speak).
+      // In background, native TTS speaks the alert — the notification chime would overlap
+      // and be redundant. The visual banner is still delivered without sound.
+      let appState = UIApplication.shared.applicationState
+      if appState == .active {
+        content.sound = UNNotificationSound.default
+      }
 
       // Fire immediately (short delay to avoid iOS dropping same-tick notifications)
       let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
@@ -3567,6 +3579,132 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
     // End the background task now that speech is complete
     endBackgroundSpeechTask()
+  }
+
+  // MARK: - Native Red-Light Evidence Capture (background-safe)
+  //
+  // When JS is suspended in background, CameraAlertService.recordRedLightReceipt()
+  // never runs. This native method captures accelerometer + GPS evidence and queues
+  // it in UserDefaults. JS retrieves it on next wake via getPendingRedLightEvidence().
+
+  private let kPendingRedLightEvidenceKey = "bg_pending_redlight_evidence_v1"
+
+  private func captureRedLightEvidenceNatively(cam: NativeCameraDef, speed: Double, heading: Double, accuracy: Double, distance: Double) {
+    let now = Date()
+    let ts = now.timeIntervalSince1970 * 1000  // ms for JS compatibility
+
+    // 1. Snapshot accelerometer buffer (last 30 seconds)
+    accelBufferLock.lock()
+    let rawBuffer = self.accelBuffer
+    accelBufferLock.unlock()
+
+    let accelCutoff = (rawBuffer.last?.timestamp ?? 0) - 30.0
+    let recentAccel = rawBuffer.filter { $0.timestamp >= accelCutoff }
+
+    // Build accelerometer trace as array of dictionaries (matches JS AccelerometerDataPoint)
+    let accelTrace: [[String: Any]] = recentAccel.map { entry in
+      [
+        "timestamp": entry.timestamp,
+        "x": round(entry.x * 10000) / 10000,
+        "y": round(entry.y * 10000) / 10000,
+        "z": round(entry.z * 10000) / 10000,
+        "gx": round(entry.gx * 10000) / 10000,
+        "gy": round(entry.gy * 10000) / 10000,
+        "gz": round(entry.gz * 10000) / 10000,
+      ]
+    }
+
+    // 2. Calculate peak deceleration (same logic as JS calculatePeakDeceleration)
+    var peakG: Double = 0
+    for entry in recentAccel {
+      let horizontalG = sqrt(entry.x * entry.x + entry.y * entry.y)
+      if horizontalG > abs(peakG) {
+        peakG = entry.y < 0 ? -horizontalG : horizontalG
+      }
+    }
+
+    // 3. Build GPS trace point from current location
+    let speedMps = max(speed, 0)
+    let speedMph = speedMps * 2.2369362920544
+    let loc = locationManager.location
+    let gpsTrace: [[String: Any]] = [
+      [
+        "timestamp": ts,
+        "latitude": loc?.coordinate.latitude ?? cam.lat,
+        "longitude": loc?.coordinate.longitude ?? cam.lng,
+        "speedMps": speedMps,
+        "speedMph": round(speedMph * 10) / 10,
+        "heading": heading,
+        "horizontalAccuracyMeters": accuracy,
+      ]
+    ]
+
+    // 4. Build receipt-compatible payload
+    let receiptId = "\(Int(ts))-\(String(format: "%.5f", cam.lat))-\(String(format: "%.5f", cam.lng))"
+    let intersectionId = "\(String(format: "%.4f", cam.lat)),\(String(format: "%.4f", cam.lng))"
+    let postedSpeedMph = 30  // Chicago street default
+    let expectedYellowSec = postedSpeedMph <= 30 ? 3.0 : 4.0
+
+    let receipt: [String: Any] = [
+      "id": receiptId,
+      "deviceTimestamp": ts,
+      "cameraAddress": cam.address,
+      "cameraLatitude": cam.lat,
+      "cameraLongitude": cam.lng,
+      "intersectionId": intersectionId,
+      "heading": heading,
+      "approachSpeedMph": round(speedMph * 10) / 10,
+      "minSpeedMph": round(speedMph * 10) / 10,  // single point, same as approach
+      "speedDeltaMph": 0,
+      "fullStopDetected": false,  // can't detect from single GPS point
+      "trace": gpsTrace,
+      "accelerometerTrace": accelTrace,
+      "peakDecelerationG": round(peakG * 1000) / 1000,
+      "expectedYellowDurationSec": expectedYellowSec,
+      "postedSpeedLimitMph": postedSpeedMph,
+      "distanceMeters": distance,
+      "_capturedNatively": true,
+      "_persistedAt": now.timeIntervalSince1970,
+    ]
+
+    // 5. Append to pending queue (array — multiple cameras can be passed in one drive)
+    var queue = UserDefaults.standard.array(forKey: kPendingRedLightEvidenceKey) as? [[String: Any]] ?? []
+    queue.append(receipt)
+    // Cap at 20 to avoid unbounded growth
+    if queue.count > 20 {
+      queue = Array(queue.suffix(20))
+    }
+    UserDefaults.standard.set(queue, forKey: kPendingRedLightEvidenceKey)
+
+    log("Native red-light evidence captured: \(cam.address) (\(accelTrace.count) accel samples, speed=\(String(format: "%.1f", speedMph))mph, peakG=\(String(format: "%.3f", peakG)))")
+  }
+
+  /// JS bridge: retrieve all pending red-light evidence captured natively while JS was suspended.
+  @objc func getPendingRedLightEvidence(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let queue = UserDefaults.standard.array(forKey: kPendingRedLightEvidenceKey) as? [[String: Any]] ?? []
+    if queue.isEmpty {
+      resolve([])
+    } else {
+      // Expire entries older than 24 hours
+      let now = Date().timeIntervalSince1970
+      let fresh = queue.filter { entry in
+        guard let persistedAt = entry["_persistedAt"] as? Double else { return false }
+        return (now - persistedAt) < 86400  // 24 hours
+      }
+      if fresh.count != queue.count {
+        UserDefaults.standard.set(fresh, forKey: kPendingRedLightEvidenceKey)
+        log("Expired \(queue.count - fresh.count) stale red-light evidence entries")
+      }
+      log("Returning \(fresh.count) pending native red-light evidence entries to JS")
+      resolve(fresh)
+    }
+  }
+
+  /// JS bridge: acknowledge that pending red-light evidence has been processed.
+  @objc func acknowledgeRedLightEvidence(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    UserDefaults.standard.removeObject(forKey: kPendingRedLightEvidenceKey)
+    log("Cleared pending red-light evidence from UserDefaults")
+    resolve(true)
   }
 
   private func haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
