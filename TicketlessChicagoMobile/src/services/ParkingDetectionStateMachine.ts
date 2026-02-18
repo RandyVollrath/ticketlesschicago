@@ -40,6 +40,7 @@ export type DetectionEventType =
   | 'DEBOUNCE_CANCELLED'     // BT reconnected during debounce window
   | 'PARKING_CONFIRMED'      // Parking check completed successfully (auto-detected)
   | 'MANUAL_PARKING_SET'     // User manually checked parking (sets state to PARKED)
+  | 'IOS_NATIVE_PARKING_CONFIRMED' // iOS CoreMotion+GPS confirmed parking (forces PARKED from any state)
   | 'DEPARTURE_DETECTED'     // User started driving again (BT reconnect)
   | 'MONITORING_STARTED'     // User started monitoring (car paired)
   | 'MONITORING_STOPPED'     // User stopped monitoring
@@ -50,6 +51,7 @@ export type DetectionSource =
   | 'bt_profile_proxy'    // Android BT profile proxy check
   | 'periodic_check'      // 15-minute periodic fallback
   | 'user_manual'         // User triggered manually
+  | 'ios_native'          // iOS CoreMotion + GPS parking detection
   | 'system';             // Internal (timers, persistence, initialization)
 
 export interface DetectionEvent {
@@ -343,6 +345,28 @@ class ParkingDetectionStateMachineClass {
     // IDLE or INITIALIZING — transition to PARKED so departure will be tracked
     log.info(`manualParkingConfirmed: transitioning from ${this._state} to PARKED`);
     this.transition('PARKED', 'MANUAL_PARKING_SET', 'user_manual', metadata);
+  }
+
+  /**
+   * iOS native CoreMotion has confirmed the user parked.
+   * Unlike manualParkingConfirmed, this forces the transition from ANY state
+   * because native detection is authoritative — CoreMotion + GPS have already
+   * confirmed parking. Without this, the state machine can be stuck in DRIVING
+   * and departure tracking never fires (PARKED→DRIVING is the only trigger).
+   */
+  iosNativeParkingConfirmed(metadata?: Record<string, any>): void {
+    if (this._state === 'PARKED') {
+      log.debug('iosNativeParkingConfirmed: already PARKED, no-op');
+      return;
+    }
+
+    log.info(`iosNativeParkingConfirmed: forcing transition from ${this._state} to PARKED`);
+    // Cancel any active debounce timer
+    if (this._debounceTimer) {
+      clearTimeout(this._debounceTimer);
+      this._debounceTimer = null;
+    }
+    this.transition('PARKED', 'IOS_NATIVE_PARKING_CONFIRMED', 'ios_native', metadata);
   }
 
   /**

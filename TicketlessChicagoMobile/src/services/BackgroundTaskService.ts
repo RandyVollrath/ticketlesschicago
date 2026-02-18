@@ -1351,6 +1351,23 @@ class BackgroundTaskServiceClass {
     await this.triggerParkingCheck(parkingCoords, true, nativeTimestamp, true, detectionMeta || undefined);
     this.pendingNativeDetectionMeta = null;
 
+    // Transition state machine to PARKED so departure tracking works.
+    // On iOS, this function is called from onParkingDetected — native CoreMotion
+    // already confirmed parking. On Android, it's called from state machine callbacks
+    // which already handle the transition. iosNativeParkingConfirmed forces the
+    // transition from ANY state (including DRIVING) because native detection is
+    // authoritative. Without this, PARKED→DRIVING never fires and departure is lost.
+    if (Platform.OS === 'ios') {
+      const smState = ParkingDetectionStateMachine.state;
+      if (smState !== 'PARKED') {
+        log.info(`iOS parking confirmed: transitioning state machine from ${smState} to PARKED for departure tracking`);
+        ParkingDetectionStateMachine.iosNativeParkingConfirmed({
+          source: 'ios_native_parking_detected',
+          previousState: smState,
+        });
+      }
+    }
+
     // Call the callback if provided (HomeScreen UI refresh)
     if (this.disconnectCallback) {
       try {
