@@ -14923,3 +14923,7 @@
 [2026-02-18 02:23:14.925] CoreMotion update: automotive=false stationary=true walking=false confidence=high
 [2026-02-18 02:23:33.392] CoreMotion update: automotive=false stationary=true walking=false confidence=high
 [2026-02-18 02:23:36.593] CoreMotion update: automotive=false stationary=true walking=false confidence=high
+[2026-02-18 02:28:23.527] CoreMotion update: automotive=false stationary=true walking=false confidence=high
+[2026-02-18 02:28:26.710] CoreMotion update: automotive=false stationary=true walking=false confidence=high
+[2026-02-18 02:32:50.841] CoreMotion update: automotive=false stationary=true walking=false confidence=high
+[2026-02-18 02:32:53.077] CoreMotion update: automotive=false stationary=false walking=false confidence=high
