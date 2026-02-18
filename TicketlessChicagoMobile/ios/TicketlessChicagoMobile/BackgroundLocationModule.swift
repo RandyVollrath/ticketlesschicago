@@ -766,6 +766,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let kHasConfirmedParkingKey = "bg_hasConfirmedParking"
   private let kFalsePositiveHotspotsKey = "bg_false_positive_hotspots_v1"
 
+  // Pending parking event queue — survives stopMonitoring/startMonitoring cycles.
+  // When JS is suspended by iOS, sendEvent("onParkingDetected") is silently lost.
+  // This queue persists the full event payload so JS can pick it up on next startup.
+  // Only cleared by explicit JS acknowledgment (acknowledgeParkingEvent).
+  private let kPendingParkingEventKey = "bg_pending_parking_event_v1"
+
   // Configuration
   private let minDrivingDurationSec: TimeInterval = 10   // 10 sec of driving before we care about stops (was 120→60→30→10; covers moving car one block for street cleaning)
   private let exitDebounceSec: TimeInterval = 5          // 5 sec debounce after CoreMotion confirms exit
@@ -961,6 +967,24 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     resolve(true)
   }
 
+  /// Returns any pending parking event that JS may have missed due to iOS suspension.
+  /// Returns null if no pending event.
+  @objc func getPendingParkingEvent(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    if let event = readPendingParkingEvent() {
+      let ageSec = event["_persistedAt"].flatMap { $0 as? Double }.map { Date().timeIntervalSince1970 - $0 } ?? -1
+      self.log("Returning pending parking event to JS (age: \(String(format: "%.0f", ageSec))s)")
+      resolve(event)
+    } else {
+      resolve(NSNull())
+    }
+  }
+
+  /// JS calls this after successfully processing a pending parking event.
+  @objc func acknowledgeParkingEvent(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    clearPendingParkingEvent()
+    resolve(true)
+  }
+
   @objc private func appDidBecomeActive() {
     guard isMonitoring else { return }
     if !isDriving && !coreMotionSaysAutomotive {
@@ -1026,6 +1050,45 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     defaults.removeObject(forKey: kLastParkingTimeKey)
     defaults.removeObject(forKey: kHasConfirmedParkingKey)
     self.log("Cleared persisted parking state from UserDefaults")
+  }
+
+  // MARK: - Pending Parking Event Queue (survives stop/start monitoring)
+
+  /// Persist the full parking event payload so JS can pick it up even if
+  /// sendEvent was lost due to iOS suspending JS.
+  private func persistPendingParkingEvent(_ payload: [String: Any]) {
+    // Convert to a plist-safe dictionary (no NSNull, etc.)
+    var safePayload: [String: Any] = [:]
+    for (key, value) in payload {
+      if value is NSNull { continue }
+      safePayload[key] = value
+    }
+    safePayload["_persistedAt"] = Date().timeIntervalSince1970
+    UserDefaults.standard.set(safePayload, forKey: kPendingParkingEventKey)
+    self.log("Persisted pending parking event to UserDefaults queue")
+  }
+
+  /// Read the pending parking event (if any). Returns nil if none queued.
+  private func readPendingParkingEvent() -> [String: Any]? {
+    guard let event = UserDefaults.standard.dictionary(forKey: kPendingParkingEventKey) else {
+      return nil
+    }
+    // Expire events older than 24 hours — stale events are not useful
+    if let persistedAt = event["_persistedAt"] as? Double {
+      let ageHours = (Date().timeIntervalSince1970 - persistedAt) / 3600
+      if ageHours > 24 {
+        self.log("Pending parking event expired (age: \(String(format: "%.1f", ageHours))h) — clearing")
+        clearPendingParkingEvent()
+        return nil
+      }
+    }
+    return event
+  }
+
+  /// Clear the pending parking event after JS has acknowledged it.
+  private func clearPendingParkingEvent() {
+    UserDefaults.standard.removeObject(forKey: kPendingParkingEventKey)
+    self.log("Cleared pending parking event from UserDefaults queue")
   }
 
   private func loadFalsePositiveHotspots() {
@@ -3437,6 +3500,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     persistParkingState()
 
     sendEvent(withName: "onParkingDetected", body: body)
+    persistPendingParkingEvent(body)  // Survive JS suspension
   }
 
   func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -4137,6 +4201,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     var payload = body
     payload["detectionSource"] = source
     sendEvent(withName: "onParkingDetected", body: payload)
+
+    // Also persist the event to the pending queue so JS can pick it up
+    // if sendEvent was lost (JS suspended by iOS in background).
+    // JS calls acknowledgeParkingEvent() after processing to clear this.
+    persistPendingParkingEvent(payload)
 
     // Reset driving state
     isDriving = false

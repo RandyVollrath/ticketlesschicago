@@ -201,7 +201,7 @@ class BackgroundLocationServiceClass {
         this.parkingSubscription = this.eventEmitter.addListener(
           'onParkingDetected',
           (event: ParkingDetectedEvent) => {
-            log.info('Parking detected!', {
+            log.info('Parking detected (live event)!', {
               lat: event.latitude?.toFixed(6),
               lng: event.longitude?.toFixed(6),
               accuracy: event.accuracy?.toFixed(1),
@@ -210,6 +210,10 @@ class BackgroundLocationServiceClass {
             if (this.onParkingDetected) {
               this.onParkingDetected(event);
             }
+            // Clear the pending parking event queue since JS received this live.
+            // Prevents the same event from being replayed on next startMonitoring.
+            BackgroundLocationModule.acknowledgeParkingEvent?.()
+              .catch((e: any) => log.warn('Failed to ack pending parking event:', e));
           }
         );
 
@@ -243,10 +247,64 @@ class BackgroundLocationServiceClass {
 
       this.isStarted = true;
       log.info('Background location monitoring started');
+
+      // Check for pending parking events that were persisted by native code
+      // when JS was suspended by iOS and sendEvent was silently lost.
+      this.checkPendingParkingEvent();
+
       return true;
     } catch (error) {
       log.error('Failed to start background location monitoring', error);
       return false;
+    }
+  }
+
+  /**
+   * Check for a parking event that native persisted but JS never received.
+   * This handles the case where iOS suspends JS while native code continues
+   * running — sendEvent("onParkingDetected") is silently lost.
+   */
+  private async checkPendingParkingEvent(): Promise<void> {
+    try {
+      const pendingEvent = await BackgroundLocationModule.getPendingParkingEvent();
+      if (!pendingEvent || pendingEvent === null) {
+        log.debug('No pending parking event in native queue');
+        return;
+      }
+
+      const ageSec = pendingEvent._persistedAt
+        ? (Date.now() / 1000 - pendingEvent._persistedAt)
+        : -1;
+      log.info('Found pending parking event from native queue', {
+        lat: pendingEvent.latitude?.toFixed?.(6),
+        lng: pendingEvent.longitude?.toFixed?.(6),
+        accuracy: pendingEvent.accuracy?.toFixed?.(1),
+        ageSec: ageSec.toFixed(0),
+        detectionSource: pendingEvent.detectionSource,
+      });
+
+      // Feed it through the same onParkingDetected handler
+      if (this.onParkingDetected) {
+        const event: ParkingDetectedEvent = {
+          timestamp: pendingEvent.timestamp,
+          latitude: pendingEvent.latitude,
+          longitude: pendingEvent.longitude,
+          accuracy: pendingEvent.accuracy,
+          drivingDurationSec: pendingEvent.drivingDurationSec,
+          detectionSource: pendingEvent.detectionSource,
+          locationSource: pendingEvent.locationSource,
+          driftFromParkingMeters: pendingEvent.driftFromParkingMeters,
+        };
+
+        log.info('Processing pending parking event through onParkingDetected handler');
+        await this.onParkingDetected(event);
+      }
+
+      // Acknowledge the event so it's not replayed again
+      await BackgroundLocationModule.acknowledgeParkingEvent();
+      log.info('Acknowledged pending parking event — cleared from native queue');
+    } catch (error) {
+      log.warn('Error checking pending parking event:', error);
     }
   }
 
