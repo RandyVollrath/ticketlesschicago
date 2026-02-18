@@ -992,7 +992,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       startBootstrapGpsWindow(reason: "app_resume")
     }
     guard !isDriving && !coreMotionSaysAutomotive else { return }
-    guard hasConfirmedParkingThisSession else { return }
 
     self.log("App resumed from suspension — checking CoreMotion history for missed parking")
     // Reset the flag so checkForMissedParking can run
@@ -1317,6 +1316,24 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     }
     self.log("Monitoring started (significantChanges + \(gpsOnlyMode ? "GPS-ONLY" : "CoreMotion"), auth=\(authString), coreMotion=\(coreMotionAvailable), gpsOnlyMode=\(gpsOnlyMode))")
     resolve(true)
+
+    // Check for missed parking events from when the app was killed/suspended.
+    // This MUST run after startMonitoring() because it needs CoreMotion to be active.
+    // Use a short delay to let CoreMotion provide initial activity state first.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+      guard let self = self, self.isMonitoring else { return }
+      // Only run recovery if we're not already driving (CoreMotion just told us)
+      guard !self.isDriving else {
+        self.log("Startup recovery: skipping — already driving")
+        return
+      }
+      if let currentLoc = self.locationManager.location {
+        self.log("Startup recovery: checking CoreMotion history for missed parking (location available: \(currentLoc.coordinate.latitude), \(currentLoc.coordinate.longitude) ±\(currentLoc.horizontalAccuracy)m, age: \(String(format: "%.0f", Date().timeIntervalSince(currentLoc.timestamp)))s)")
+        self.checkForMissedParking(currentLocation: currentLoc)
+      } else {
+        self.log("Startup recovery: no location available — will check on first location update")
+      }
+    }
   }
 
   /// Stop all monitoring
@@ -3417,32 +3434,54 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
     hasCheckedForMissedParking = true
 
     let now = Date()
-    let lookback = now.addingTimeInterval(-30 * 60) // Check last 30 minutes
+    let lookback = now.addingTimeInterval(-6 * 60 * 60) // Check last 6 hours (app may have been killed for a long time)
 
     activityManager.queryActivityStarting(from: lookback, to: now, to: .main) { [weak self] activities, error in
       guard let self = self, let activities = activities, activities.count > 1 else { return }
 
-      // Look for pattern: automotive activity followed by stationary/walking
+      // Find the LAST automotive→stationary/walking transition.
+      // Walk backwards through activities to find the most recent drive that ended.
+      var lastAutomotiveEnd: Date? = nil
+      var lastAutomotiveStart: Date? = nil
+      var totalAutomotiveDuration: TimeInterval = 0
       var wasRecentlyDriving = false
-      var automotiveDuration: TimeInterval = 0
-      var firstAutomotiveStart: Date? = nil  // When driving actually began
+      var inAutomotiveSegment = false
+      var segmentStart: Date? = nil
 
       for i in 0..<activities.count {
         let activity = activities[i]
         if activity.automotive {
           wasRecentlyDriving = true
-          if firstAutomotiveStart == nil {
-            firstAutomotiveStart = activity.startDate
+          if !inAutomotiveSegment {
+            inAutomotiveSegment = true
+            segmentStart = activity.startDate
           }
           if i + 1 < activities.count {
-            automotiveDuration += activities[i + 1].startDate.timeIntervalSince(activity.startDate)
+            totalAutomotiveDuration += activities[i + 1].startDate.timeIntervalSince(activity.startDate)
           }
+        } else if inAutomotiveSegment {
+          // Automotive segment just ended
+          lastAutomotiveEnd = activity.startDate
+          lastAutomotiveStart = segmentStart
+          inAutomotiveSegment = false
         }
       }
 
       // Check if the most recent activity is stationary/walking
       guard let lastActivity = activities.last else { return }
       let currentlyStationary = lastActivity.stationary || lastActivity.walking
+
+      // Use the last automotive segment's duration if available, otherwise total
+      let automotiveDuration: TimeInterval
+      let firstAutomotiveStart: Date?
+      if let segStart = lastAutomotiveStart, let segEnd = lastAutomotiveEnd {
+        automotiveDuration = segEnd.timeIntervalSince(segStart)
+        firstAutomotiveStart = segStart
+        self.log("RECOVERY: Found last drive segment: \(segStart) → \(segEnd) (\(String(format: "%.0f", automotiveDuration))s). Total automotive in window: \(String(format: "%.0f", totalAutomotiveDuration))s. Currently: \(lastActivity.stationary ? "stationary" : lastActivity.walking ? "walking" : "other")")
+      } else {
+        automotiveDuration = totalAutomotiveDuration
+        firstAutomotiveStart = segmentStart
+      }
 
       if wasRecentlyDriving && currentlyStationary && automotiveDuration > 0 {
         self.log("RECOVERY: CoreMotion says user drove \(String(format: "%.0f", automotiveDuration))s and is now stationary. Requesting accurate GPS before emitting parking event.")
