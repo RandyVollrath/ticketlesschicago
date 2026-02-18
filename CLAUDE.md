@@ -189,7 +189,7 @@ CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor �
 1. **Departure never captured**: `onDrivingStarted` never fires for the next drive because CoreMotion isn't running. The server never records that the user left their parking spot. This has been a recurring bug — the user reported it multiple times.
 2. **Second parking never detected**: If the user parks, drives somewhere else (e.g. home), and parks again — the second parking is never detected because `isDriving` is never set back to true (no CoreMotion to detect it).
 
-**Rule**: Only stop continuous GPS after parking. Keep CoreMotion running always. `significantLocationChange` is too unreliable for detecting the START of a new drive — it depends on cell tower geometry, can take minutes, and doesn't fire at all for short same-area trips.
+**Rule**: Keep CoreMotion running always. Keep GPS in ultra-low-frequency "keepalive" mode (200m, 3km accuracy) after parking — never fully stop it. Fully stopping GPS lets iOS kill the app process, which also kills CoreMotion callbacks. `significantLocationChange` alone is too unreliable for detecting the START of a new drive — it depends on cell tower geometry, can take minutes, and doesn't fire at all for short same-area trips.
 
 ### Architecture
 - **Native module**: `BackgroundLocationModule.swift` — CLLocationManager + CMMotionActivityManager
@@ -197,7 +197,7 @@ CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor �
 - **Departure flow**: `onDrivingStarted` → `handleCarReconnection()` → `markCarReconnected()` → `scheduleDepartureConfirmation()` (2-min delay to capture new GPS) → `confirmDeparture()`
 
 ### Rules
-1. **CoreMotion must stay active at all times while monitoring is on.** Only continuous GPS can be stopped to save battery.
+1. **CoreMotion AND keepalive GPS must stay active at all times while monitoring is on.** GPS drops to ultra-low-frequency (200m, 3km) after parking but is NEVER fully stopped — this prevents iOS from killing the process.
 2. **Departure depends on `onDrivingStarted`** firing when the user starts their next drive. If CoreMotion is stopped, this event never fires and departure is never recorded.
 3. **The `minDrivingDurationSec` (10s) filter** prevents false parking events from red lights. Walking override bypasses this (walking = user exited car, not a red light). GPS speed-zero path uses the same 10s minimum plus requires 10s of sustained zero speed before confirming.
 4. **The speed-based override (10s of zero speed)** catches cases where CoreMotion is slow to report stationary. Don't remove it.
@@ -248,7 +248,7 @@ iOS only prompts the user ONCE for CoreMotion (Motion & Fitness) permission. If 
 
 ### Key Behavior Differences in GPS-Only Mode
 - `gpsOnlyMode = true` is set on `BackgroundLocationModule`
-- `stopContinuousGps()` does NOT fully stop GPS — drops to low-frequency (20m, 100m accuracy) so the next drive can still be detected
+- `stopContinuousGps()` NEVER fully stops GPS — drops to keepalive mode (200m, 3km accuracy in normal mode; 20m, 100m in gpsOnly mode) to prevent iOS from killing the process
 - Driving detection requires higher speed threshold (4.2 m/s vs 2.5 m/s with CoreMotion) and sustained duration (8s + 90m)
 - Camera alerts still work via `speedSaysMoving` flag
 - More battery usage than CoreMotion (which runs on M-series coprocessor at near-zero cost)
