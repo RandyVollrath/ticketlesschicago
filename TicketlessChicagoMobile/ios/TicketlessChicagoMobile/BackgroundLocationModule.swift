@@ -2318,6 +2318,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         drivingStartTime = Date()
         lastDrivingLocation = nil
         locationAtStopStart = nil
+        configureSpeechAudioSession()
         self.log("Driving started (GPS speed \(String(format: "%.1f", speed)) m/s confirmed CoreMotion automotive)")
 
         var departureTimestamp = Date().timeIntervalSince1970 * 1000
@@ -2392,6 +2393,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             locationAtStopStart = nil
             startContinuousGps()
             startAccelerometerRecording()
+            configureSpeechAudioSession()
             decision("gps_fallback_promoted_to_driving", [
               "durationSec": fallbackDuration,
               "distanceMeters": fallbackDistance,
@@ -3427,8 +3429,34 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       )
       speechAudioSessionConfigured = true
       log("Speech audio session configured for background TTS (.playback, .duckOthers)")
+
+      // Listen for audio interruptions (phone calls, Siri, etc.)
+      // After an interruption ends, re-configure so the next TTS alert works.
+      NotificationCenter.default.addObserver(
+        self,
+        selector: #selector(handleAudioInterruption),
+        name: AVAudioSession.interruptionNotification,
+        object: nil
+      )
     } catch {
       log("Failed to configure speech audio session: \(error.localizedDescription)")
+    }
+  }
+
+  @objc private func handleAudioInterruption(_ notification: Notification) {
+    guard let typeValue = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+          let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+    if type == .began {
+      log("Native TTS: audio interrupted (phone call, Siri, etc.)")
+      if speechSynthesizer.isSpeaking {
+        speechSynthesizer.stopSpeaking(at: .immediate)
+      }
+    } else if type == .ended {
+      log("Native TTS: audio interruption ended — reconfiguring session")
+      // Reset flag so next speakCameraAlert re-configures if needed
+      speechAudioSessionConfigured = false
+      configureSpeechAudioSession()
     }
   }
 
