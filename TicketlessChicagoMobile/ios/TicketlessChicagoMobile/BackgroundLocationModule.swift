@@ -755,6 +755,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   // unlike JS SpeechModule which is suspended when the app is backgrounded)
   private let speechSynthesizer = AVSpeechSynthesizer()
   private var speechAudioSessionConfigured = false
+  private var backgroundSpeechTaskId: UIBackgroundTaskIdentifier = .invalid
 
   private let kCameraAlertsEnabledKey = "bg_camera_alerts_enabled"
   private let kCameraSpeedEnabledKey = "bg_camera_alerts_speed_enabled"
@@ -1281,6 +1282,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       startMotionActivityMonitoring()
       gpsOnlyMode = false
       self.log("CoreMotion activity monitoring started")
+      // Start ultra-low-frequency GPS keepalive to prevent iOS from killing the app.
+      // CoreMotion handles driving detection; GPS just keeps the process alive.
+      if !continuousGpsActive {
+        locationManager.distanceFilter = 200
+        locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+        locationManager.startUpdatingLocation()
+        continuousGpsActive = true
+        self.log("Keepalive GPS started (distanceFilter=200m, accuracy=3km)")
+      }
     } else {
       gpsOnlyMode = true
       if coreMotionAuthStatus == .denied {
@@ -1351,7 +1361,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     emitTripSummary(outcome: "monitoring_stopped")
     locationManager.stopMonitoringSignificantLocationChanges()
     stopVehicleSignalMonitoring()
-    stopContinuousGps()
+    // Fully stop GPS when monitoring is disabled (not just keepalive mode)
+    locationManager.stopUpdatingLocation()
+    continuousGpsActive = false
     stopMotionActivityMonitoring()
     stopAccelerometerRecording()
     stopLocationWatchdog()
@@ -1372,6 +1384,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     isDriving = false
     coreMotionSaysAutomotive = false
     speedSaysMoving = false
+    speedMovingConsecutiveCount = 0
     drivingStartTime = nil
     lastDrivingLocation = nil
     locationAtStopStart = nil
@@ -1700,35 +1713,46 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   // MARK: - Battery Management: GPS on-demand
 
   /// Start continuous GPS (called when CoreMotion detects driving)
+  /// If GPS is already in keepalive mode, ramp up to full accuracy.
   private func startContinuousGps() {
-    guard !continuousGpsActive else { return }
     // Remove distance filter during driving so we get GPS updates even when
     // stationary. Without this, distanceFilter=10 means no updates arrive
     // when the car stops, so the speed-zero parking detection never triggers.
+    let wasActive = continuousGpsActive
     locationManager.distanceFilter = kCLDistanceFilterNone
-    locationManager.startUpdatingLocation()
+    locationManager.desiredAccuracy = kCLLocationAccuracyBest
+    if !continuousGpsActive {
+      locationManager.startUpdatingLocation()
+    }
     continuousGpsActive = true
-    self.log("Continuous GPS ON (driving detected, distanceFilter=none)")
+    if wasActive {
+      self.log("Continuous GPS ramped up from keepalive → full accuracy (driving detected)")
+    } else {
+      self.log("Continuous GPS ON (driving detected, distanceFilter=none)")
+    }
   }
 
   /// Stop continuous GPS (called after parking confirmed)
-  /// significantLocationChange remains active as low-power backup
-  /// In GPS-only mode (CoreMotion denied), drops to low-frequency instead of stopping
+  /// NEVER fully stop GPS — doing so lets iOS kill the app process, losing
+  /// CoreMotion callbacks and making the next drive undetectable. Instead,
+  /// drop to ultra-low-frequency updates that keep the process alive at
+  /// minimal battery cost (~1-2% per hour).
   private func stopContinuousGps() {
     guard continuousGpsActive else { return }
     if gpsOnlyMode {
-      // Don't fully stop GPS — we need it to detect the next drive.
-      // Drop to low-frequency updates to save battery while parked.
+      // GPS-only mode: need slightly more frequent updates for driving detection
       locationManager.distanceFilter = 20
       locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
       self.log("Continuous GPS → low-frequency (GPS-only mode, distanceFilter=20m, accuracy=100m)")
       // Keep continuousGpsActive = true so location callbacks keep flowing
     } else {
-      locationManager.stopUpdatingLocation()
-      // Restore distance filter to save power when not actively driving
-      locationManager.distanceFilter = 10
-      continuousGpsActive = false
-      self.log("Continuous GPS OFF (saving battery, distanceFilter=10m)")
+      // Normal mode (CoreMotion available): drop to ultra-low-frequency GPS
+      // to keep the app process alive. CoreMotion handles driving detection;
+      // GPS just needs to prevent iOS from killing us.
+      locationManager.distanceFilter = 200  // Only update every 200m of movement
+      locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers  // Lowest power GPS
+      self.log("Continuous GPS → keepalive mode (distanceFilter=200m, accuracy=3km) — preventing iOS process kill")
+      // Keep continuousGpsActive = true so the process stays alive
     }
   }
 
@@ -1741,9 +1765,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     bootstrapGpsTimer?.invalidate()
 
-    if !continuousGpsActive {
-      startContinuousGps()
-    }
+    // Always ramp up to full accuracy (startContinuousGps handles keepalive→active transition)
+    startContinuousGps()
     decision("bootstrap_gps_started", [
       "reason": reason,
       "windowSec": bootstrapGpsWindowSec,
@@ -1997,6 +2020,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           self.startContinuousGps()
           // Start recording accelerometer data for red light evidence
           self.startAccelerometerRecording()
+          // Warm up audio session for background TTS camera alerts
+          self.configureSpeechAudioSession()
 
           // DEPARTURE TIMING: Use GPS timestamp if available for more accurate timing.
           var departureTimestamp = Date().timeIntervalSince1970 * 1000
@@ -2129,6 +2154,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             self.lastDrivingLocation = nil
             self.locationAtStopStart = nil
             self.speedSaysMoving = false
+            self.speedMovingConsecutiveCount = 0
             self.speedZeroStartTime = nil
             self.stopWindowMaxSpeedMps = 0
           }
@@ -2408,6 +2434,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
     } else if speed >= 0 && speed <= 0.5 {
       speedSaysMoving = false
+      speedMovingConsecutiveCount = 0  // Reset GPS noise filter — speed dropped, not consecutively moving
       if gpsFallbackDrivingSince != nil || gpsFallbackStartLocation != nil {
         let elapsed = gpsFallbackDrivingSince.map { location.timestamp.timeIntervalSince($0) } ?? 0
         decision("gps_fallback_reset", [
@@ -3386,51 +3413,103 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
   }
 
-  /// Speak a camera alert using native AVSpeechSynthesizer.
-  /// Works in background because:
-  ///   1. UIBackgroundModes includes "audio"
-  ///   2. AVAudioSession category is .playback
-  ///   3. AVSpeechSynthesizer is a native API (not JS — JS is suspended in background)
-  private func speakCameraAlert(_ message: String) {
-    // Configure audio session for background playback (lazy, once)
-    if !speechAudioSessionConfigured {
-      do {
-        try AVAudioSession.sharedInstance().setCategory(
-          .playback,
-          mode: .voicePrompt,
-          options: [.duckOthers]  // Lower music volume instead of pausing it
-        )
-        speechAudioSessionConfigured = true
-        log("Speech audio session configured for background TTS")
-      } catch {
-        log("Failed to configure speech audio session: \(error.localizedDescription)")
-        return
-      }
-    }
-
-    // Activate audio session
+  /// Configure the audio session for background TTS playback.
+  /// Called eagerly when driving starts so the audio pipeline is ready before the first alert.
+  /// Calling this lazily on the first alert adds ~200ms latency and risks iOS refusing
+  /// the session change mid-background.
+  private func configureSpeechAudioSession() {
+    guard !speechAudioSessionConfigured else { return }
     do {
-      try AVAudioSession.sharedInstance().setActive(true)
+      try AVAudioSession.sharedInstance().setCategory(
+        .playback,
+        mode: .voicePrompt,
+        options: [.duckOthers]  // Lower music volume briefly instead of pausing it
+      )
+      speechAudioSessionConfigured = true
+      log("Speech audio session configured for background TTS (.playback, .duckOthers)")
     } catch {
-      log("Failed to activate speech audio session: \(error.localizedDescription)")
+      log("Failed to configure speech audio session: \(error.localizedDescription)")
+    }
+  }
+
+  /// Speak a camera alert using native AVSpeechSynthesizer.
+  /// This runs entirely in native Swift — it does NOT depend on JS (which iOS suspends
+  /// in background). Combined with UIBackgroundModes "audio" and .playback audio session,
+  /// this allows spoken alerts even when the app is backgrounded.
+  ///
+  /// Only speaks when the app is backgrounded or inactive. In foreground, JS
+  /// CameraAlertService handles TTS via SpeechModule to avoid double-speak.
+  private func speakCameraAlert(_ message: String) {
+    // Only speak natively when app is NOT in foreground.
+    // In foreground, JS CameraAlertService handles TTS via SpeechModule.
+    // Without this check, the user hears the same alert twice.
+    let appState = UIApplication.shared.applicationState
+    if appState == .active {
+      log("Native TTS: skipping — app is in foreground (JS handles TTS)")
       return
     }
 
-    // Stop any in-progress speech
-    if speechSynthesizer.isSpeaking {
-      speechSynthesizer.stopSpeaking(at: .immediate)
+    // Configure audio session if not already done (safety net — should have been
+    // done at driving start, but handle the case where driving detection was via
+    // GPS fallback or app was killed and re-launched by significantLocationChange)
+    configureSpeechAudioSession()
+    guard speechAudioSessionConfigured else {
+      log("Native TTS: cannot speak — audio session not configured")
+      return
     }
 
-    let utterance = AVSpeechUtterance(string: message)
-    utterance.rate = 0.52  // Match JS SpeechModule rate — slightly fast but clear
-    utterance.pitchMultiplier = 1.0
-    utterance.volume = 1.0
-    if let voice = AVSpeechSynthesisVoice(language: "en-US") {
-      utterance.voice = voice
+    // Request a background task to prevent iOS from suspending us mid-speech.
+    // AVSpeechSynthesizer takes 1-3 seconds; without this, iOS can suspend the
+    // process between the speak() call and the didFinish delegate callback.
+    if backgroundSpeechTaskId != .invalid {
+      UIApplication.shared.endBackgroundTask(backgroundSpeechTaskId)
+    }
+    backgroundSpeechTaskId = UIApplication.shared.beginBackgroundTask(withName: "CameraAlertSpeech") { [weak self] in
+      // Expiration handler — iOS is about to suspend us
+      self?.speechSynthesizer.stopSpeaking(at: .immediate)
+      if let taskId = self?.backgroundSpeechTaskId, taskId != .invalid {
+        UIApplication.shared.endBackgroundTask(taskId)
+        self?.backgroundSpeechTaskId = .invalid
+      }
+      self?.log("Native TTS: background task expired — speech stopped")
     }
 
-    speechSynthesizer.speak(utterance)
-    log("Native TTS: speaking '\(message)'")
+    // AVSpeechSynthesizer must be used from the main thread for reliable background playback
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+
+      // Activate audio session
+      do {
+        try AVAudioSession.sharedInstance().setActive(true)
+      } catch {
+        self.log("Native TTS: failed to activate audio session: \(error.localizedDescription)")
+        self.endBackgroundSpeechTask()
+        return
+      }
+
+      // Stop any in-progress speech
+      if self.speechSynthesizer.isSpeaking {
+        self.speechSynthesizer.stopSpeaking(at: .immediate)
+      }
+
+      let utterance = AVSpeechUtterance(string: message)
+      utterance.rate = 0.52  // Match JS SpeechModule rate — slightly fast but clear
+      utterance.pitchMultiplier = 1.0
+      utterance.volume = 1.0
+      if let voice = AVSpeechSynthesisVoice(language: "en-US") {
+        utterance.voice = voice
+      }
+
+      self.speechSynthesizer.speak(utterance)
+      self.log("Native TTS: speaking '\(message)' (appState=\(appState == .background ? "background" : "inactive"))")
+    }
+  }
+
+  private func endBackgroundSpeechTask() {
+    if backgroundSpeechTaskId != .invalid {
+      UIApplication.shared.endBackgroundTask(backgroundSpeechTaskId)
+      backgroundSpeechTaskId = .invalid
+    }
   }
 
   // MARK: - AVSpeechSynthesizerDelegate
@@ -3443,6 +3522,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     } catch {
       log("Native TTS: failed to deactivate audio session: \(error.localizedDescription)")
     }
+    // End the background task now that speech is complete
+    endBackgroundSpeechTask()
   }
 
   private func haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
@@ -3518,31 +3599,36 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     activityManager.queryActivityStarting(from: lookback, to: now, to: .main) { [weak self] activities, error in
       guard let self = self, let activities = activities, activities.count > 1 else { return }
 
-      // Find the LAST automotive→stationary/walking transition.
-      // Walk backwards through activities to find the most recent drive that ended.
-      var lastAutomotiveEnd: Date? = nil
-      var lastAutomotiveStart: Date? = nil
-      var totalAutomotiveDuration: TimeInterval = 0
-      var wasRecentlyDriving = false
+      // ── Build a list of ALL drive→park trips from CoreMotion history ──
+      // Each trip = (driveStart, driveEnd/parkTime, driveDuration)
+      struct RecoveredTrip {
+        let driveStart: Date
+        let parkTime: Date       // When automotive ended (= parking started)
+        let driveDuration: TimeInterval
+      }
+      var trips: [RecoveredTrip] = []
       var inAutomotiveSegment = false
       var segmentStart: Date? = nil
 
       for i in 0..<activities.count {
         let activity = activities[i]
         if activity.automotive {
-          wasRecentlyDriving = true
           if !inAutomotiveSegment {
             inAutomotiveSegment = true
             segmentStart = activity.startDate
           }
-          if i + 1 < activities.count {
-            totalAutomotiveDuration += activities[i + 1].startDate.timeIntervalSince(activity.startDate)
-          }
         } else if inAutomotiveSegment {
-          // Automotive segment just ended
-          lastAutomotiveEnd = activity.startDate
-          lastAutomotiveStart = segmentStart
+          // Automotive segment just ended — this is a park event
+          if let start = segmentStart {
+            let parkTime = activity.startDate
+            let duration = parkTime.timeIntervalSince(start)
+            // Only count trips with meaningful driving (>10s to filter noise)
+            if duration > 10 {
+              trips.append(RecoveredTrip(driveStart: start, parkTime: parkTime, driveDuration: duration))
+            }
+          }
           inAutomotiveSegment = false
+          segmentStart = nil
         }
       }
 
@@ -3550,49 +3636,86 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       guard let lastActivity = activities.last else { return }
       let currentlyStationary = lastActivity.stationary || lastActivity.walking
 
-      // Use the last automotive segment's duration if available, otherwise total
-      let automotiveDuration: TimeInterval
-      let firstAutomotiveStart: Date?
-      if let segStart = lastAutomotiveStart, let segEnd = lastAutomotiveEnd {
-        automotiveDuration = segEnd.timeIntervalSince(segStart)
-        firstAutomotiveStart = segStart
-        self.log("RECOVERY: Found last drive segment: \(segStart) → \(segEnd) (\(String(format: "%.0f", automotiveDuration))s). Total automotive in window: \(String(format: "%.0f", totalAutomotiveDuration))s. Currently: \(lastActivity.stationary ? "stationary" : lastActivity.walking ? "walking" : "other")")
-      } else {
-        automotiveDuration = totalAutomotiveDuration
-        firstAutomotiveStart = segmentStart
+      self.log("RECOVERY: Found \(trips.count) drive→park trips in last 6 hours. Currently: \(lastActivity.stationary ? "stationary" : lastActivity.walking ? "walking" : lastActivity.automotive ? "automotive" : "other")")
+      for (idx, trip) in trips.enumerated() {
+        self.log("RECOVERY:   Trip \(idx + 1): drive \(trip.driveStart) → parked \(trip.parkTime) (\(String(format: "%.0f", trip.driveDuration))s)")
       }
 
-      if wasRecentlyDriving && currentlyStationary && automotiveDuration > 0 {
-        self.log("RECOVERY: CoreMotion says user drove \(String(format: "%.0f", automotiveDuration))s and is now stationary. Requesting accurate GPS before emitting parking event.")
-
-        // Emit onDrivingStarted so JS records the departure from the previous parking spot.
-        // Use the actual automotive start time from CoreMotion history for accurate departure tracking.
-        let departureTimestamp = (firstAutomotiveStart?.timeIntervalSince1970 ?? Date().timeIntervalSince1970) * 1000
-        self.sendEvent(withName: "onDrivingStarted", body: [
-          "timestamp": departureTimestamp,
-          "source": "recovery_coremotion_history",
-        ])
-        self.extendCameraPrewarm(reason: "driving_started_recovery", seconds: self.cameraPrewarmStrongSec)
-        self.log("RECOVERY: onDrivingStarted fired (departure from previous parking)")
-
-        // DON'T use the significantLocationChange cell-tower fix as the parking
-        // location. That's how the Clybourn bug happens — 300-500m off.
-        // Instead, start high-accuracy GPS and wait for a real satellite fix.
-        self.recoveryDrivingDuration = automotiveDuration
-        self.waitingForAccurateGpsForRecovery = true
-        self.startContinuousGps()
-
-        // Safety timeout: if GPS doesn't deliver an accurate fix within 15s,
-        // give up rather than emit bad coordinates. The user is already parked;
-        // the NEXT normal parking detection will catch them on the next drive.
-        self.recoveryGpsTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { [weak self] _ in
-          guard let self = self, self.waitingForAccurateGpsForRecovery else { return }
-          self.waitingForAccurateGpsForRecovery = false
-          self.stopContinuousGps()
-          self.log("RECOVERY: GPS timeout — no accurate fix in 15s. Skipping recovery parking to avoid wrong address.")
+      guard !trips.isEmpty && currentlyStationary else {
+        self.log("Recovery check: no missed parking (trips: \(trips.count), stationary: \(currentlyStationary))")
+        // Force-restart CoreMotion
+        if self.coreMotionActive {
+          self.activityManager.stopActivityUpdates()
+          self.coreMotionActive = false
         }
-      } else {
-        self.log("Recovery check: no missed parking (drove: \(wasRecentlyDriving), stationary: \(currentlyStationary), duration: \(String(format: "%.0f", automotiveDuration))s)")
+        self.startMotionActivityMonitoring()
+        return
+      }
+
+      // ── Emit events for ALL trips ──
+      // For intermediate trips (not the last one): emit departure + parking
+      // without GPS coordinates (we can't retroactively get past locations).
+      // For the LAST trip: use accurate GPS for the current parking location.
+
+      // Emit intermediate trips (historical — no GPS coordinates available)
+      if trips.count > 1 {
+        self.log("RECOVERY: Emitting \(trips.count - 1) historical intermediate parking events")
+        for i in 0..<(trips.count - 1) {
+          let trip = trips[i]
+          let departureTimestamp = trip.driveStart.timeIntervalSince1970 * 1000
+          let parkTimestamp = trip.parkTime.timeIntervalSince1970 * 1000
+
+          // Emit departure (from previous parking spot)
+          self.sendEvent(withName: "onDrivingStarted", body: [
+            "timestamp": departureTimestamp,
+            "source": "recovery_historical",
+          ])
+          self.log("RECOVERY: Historical trip \(i + 1) — onDrivingStarted at \(trip.driveStart)")
+
+          // Emit parking (no GPS available for past locations)
+          let body: [String: Any] = [
+            "timestamp": parkTimestamp,
+            "latitude": 0,        // No GPS available for historical stops
+            "longitude": 0,
+            "accuracy": -1,       // Signals "no GPS" to JS
+            "locationSource": "recovery_historical",
+            "drivingDurationSec": trip.driveDuration,
+            "isHistorical": true,  // JS can display "location unknown" for these
+          ]
+          self.sendEvent(withName: "onParkingDetected", body: body)
+          self.persistPendingParkingEvent(body)
+          self.log("RECOVERY: Historical trip \(i + 1) — onParkingDetected at \(trip.parkTime) (no GPS)")
+        }
+      }
+
+      // ── Handle the LAST trip with accurate GPS ──
+      let lastTrip = trips.last!
+      self.log("RECOVERY: Processing last trip (current location) — drove \(String(format: "%.0f", lastTrip.driveDuration))s. Requesting accurate GPS.")
+
+      // Emit onDrivingStarted for the last trip's departure
+      let departureTimestamp = lastTrip.driveStart.timeIntervalSince1970 * 1000
+      self.sendEvent(withName: "onDrivingStarted", body: [
+        "timestamp": departureTimestamp,
+        "source": "recovery_coremotion_history",
+      ])
+      self.extendCameraPrewarm(reason: "driving_started_recovery", seconds: self.cameraPrewarmStrongSec)
+      self.log("RECOVERY: onDrivingStarted fired for last trip (departure)")
+
+      // DON'T use the significantLocationChange cell-tower fix as the parking
+      // location. That's how the Clybourn bug happens — 300-500m off.
+      // Instead, start high-accuracy GPS and wait for a real satellite fix.
+      self.recoveryDrivingDuration = lastTrip.driveDuration
+      self.waitingForAccurateGpsForRecovery = true
+      self.startContinuousGps()
+
+      // Safety timeout: if GPS doesn't deliver an accurate fix within 15s,
+      // give up rather than emit bad coordinates. The user is already parked;
+      // the NEXT normal parking detection will catch them on the next drive.
+      self.recoveryGpsTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { [weak self] _ in
+        guard let self = self, self.waitingForAccurateGpsForRecovery else { return }
+        self.waitingForAccurateGpsForRecovery = false
+        self.stopContinuousGps()
+        self.log("RECOVERY: GPS timeout — no accurate fix in 15s. Skipping recovery parking to avoid wrong address.")
       }
 
       // Force-restart CoreMotion monitoring after wake from suspension.
@@ -4351,6 +4474,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     isDriving = false
     coreMotionSaysAutomotive = false
     speedSaysMoving = false
+    speedMovingConsecutiveCount = 0
     drivingStartTime = nil
     lastStationaryTime = nil
     locationAtStopStart = nil
