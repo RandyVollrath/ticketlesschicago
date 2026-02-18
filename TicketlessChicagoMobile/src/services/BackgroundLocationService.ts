@@ -414,6 +414,35 @@ class BackgroundLocationServiceClass {
   }
 
   /**
+   * Get pending red-light camera evidence captured natively while JS was suspended.
+   * Returns an array of receipt-compatible objects (may be empty).
+   * Call acknowledgeRedLightEvidence() after processing to clear the queue.
+   */
+  async getPendingRedLightEvidence(): Promise<any[]> {
+    if (!this.isAvailable()) return [];
+    try {
+      const evidence = await BackgroundLocationModule.getPendingRedLightEvidence();
+      return evidence || [];
+    } catch (error) {
+      log.error('Error getting pending red-light evidence', error);
+      return [];
+    }
+  }
+
+  /**
+   * Acknowledge that pending red-light evidence has been processed.
+   * Clears the native UserDefaults queue.
+   */
+  async acknowledgeRedLightEvidence(): Promise<void> {
+    if (!this.isAvailable()) return;
+    try {
+      await BackgroundLocationModule.acknowledgeRedLightEvidence();
+    } catch (error) {
+      log.error('Error acknowledging red-light evidence', error);
+    }
+  }
+
+  /**
    * Returns the native parking-detection debug log tail.
    */
   async getDebugLogs(lineCount: number = 200): Promise<string> {

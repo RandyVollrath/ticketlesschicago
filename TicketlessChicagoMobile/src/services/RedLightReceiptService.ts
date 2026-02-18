@@ -533,6 +533,74 @@ class RedLightReceiptServiceClass {
       return false;
     }
   }
+  /**
+   * Ingest a red-light receipt captured natively (Swift) while JS was suspended.
+   * The native payload is already in receipt-compatible format, so we just validate
+   * the minimum required fields and store it directly.
+   */
+  async ingestNativeEvidence(nativeReceipt: Record<string, any>): Promise<boolean> {
+    try {
+      if (!nativeReceipt.id || !nativeReceipt.cameraAddress || !nativeReceipt.deviceTimestamp) {
+        log.warn('Invalid native evidence - missing required fields', {
+          hasId: !!nativeReceipt.id,
+          hasAddress: !!nativeReceipt.cameraAddress,
+          hasTimestamp: !!nativeReceipt.deviceTimestamp,
+        });
+        return false;
+      }
+
+      const receipt: RedLightReceipt = {
+        id: nativeReceipt.id,
+        deviceTimestamp: nativeReceipt.deviceTimestamp,
+        cameraAddress: nativeReceipt.cameraAddress,
+        cameraLatitude: nativeReceipt.cameraLatitude ?? 0,
+        cameraLongitude: nativeReceipt.cameraLongitude ?? 0,
+        intersectionId: nativeReceipt.intersectionId ?? buildIntersectionId(
+          nativeReceipt.cameraLatitude ?? 0,
+          nativeReceipt.cameraLongitude ?? 0,
+        ),
+        heading: nativeReceipt.heading ?? -1,
+        approachSpeedMph: nativeReceipt.approachSpeedMph ?? null,
+        minSpeedMph: nativeReceipt.minSpeedMph ?? null,
+        speedDeltaMph: nativeReceipt.speedDeltaMph ?? null,
+        fullStopDetected: nativeReceipt.fullStopDetected ?? false,
+        fullStopDurationSec: nativeReceipt.fullStopDurationSec ?? null,
+        horizontalAccuracyMeters: nativeReceipt.horizontalAccuracyMeters ?? null,
+        estimatedSpeedAccuracyMph: nativeReceipt.estimatedSpeedAccuracyMph ?? null,
+        trace: nativeReceipt.trace ?? [],
+        accelerometerTrace: nativeReceipt.accelerometerTrace,
+        peakDecelerationG: nativeReceipt.peakDecelerationG ?? null,
+        expectedYellowDurationSec: nativeReceipt.expectedYellowDurationSec,
+        postedSpeedLimitMph: nativeReceipt.postedSpeedLimitMph,
+      };
+
+      // Deduplicate — skip if we already have a receipt with the same id
+      const stored = await AsyncStorage.getItem(RECEIPTS_KEY);
+      const existing: RedLightReceipt[] = stored ? JSON.parse(stored) : [];
+      if (existing.some(r => r.id === receipt.id)) {
+        log.debug('Native evidence already ingested, skipping duplicate', { id: receipt.id });
+        return false;
+      }
+
+      const updated = [receipt, ...existing].slice(0, MAX_RECEIPTS);
+      await AsyncStorage.setItem(RECEIPTS_KEY, JSON.stringify(updated));
+      AppEvents.emit('red-light-receipts-updated');
+      log.info('Ingested native red-light evidence', {
+        id: receipt.id,
+        address: receipt.cameraAddress,
+        accelSamples: receipt.accelerometerTrace?.length ?? 0,
+        speedMph: receipt.approachSpeedMph,
+        peakG: receipt.peakDecelerationG,
+      });
+
+      // Fire-and-forget sync to server
+      syncAddToServer(receipt);
+      return true;
+    } catch (error) {
+      log.error('Failed to ingest native red-light evidence', error);
+      return false;
+    }
+  }
 }
 
 export default new RedLightReceiptServiceClass();
