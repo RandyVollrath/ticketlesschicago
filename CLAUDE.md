@@ -202,6 +202,31 @@ CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor �
 3. **The `minDrivingDurationSec` (10s) filter** prevents false parking events from red lights. Walking override bypasses this (walking = user exited car, not a red light). GPS speed-zero path uses the same 10s minimum plus requires 10s of sustained zero speed before confirming.
 4. **The speed-based override (10s of zero speed)** catches cases where CoreMotion is slow to report stationary. Don't remove it.
 5. **After parking confirmation, `isDriving` resets to false.** The ONLY way it gets set back to true is via CoreMotion reporting automotive or GPS speed > 2.5 m/s. If neither is running, the app is permanently stuck in "parked" state.
+6. **GPS noise filter**: Require 2 consecutive above-threshold GPS readings before cancelling the parking timer. Reset `speedMovingConsecutiveCount = 0` in ALL paths where `speedSaysMoving` is set to false.
+7. **CLVisit monitoring must be started alongside significantLocationChange.** Visits are the ONLY way to get coordinates for stops that happened while the app was killed.
+
+### CLVisit Monitoring (Safety Net for App Kill)
+
+iOS's `CLLocationManager.startMonitoringVisits()` tracks places where the user dwells and delivers `CLVisit` objects with coordinates + arrival/departure times. Crucially, these are delivered even when the app was killed — they're queued by iOS and delivered on next launch.
+
+**How it works in our stack:**
+1. `startMonitoring()` calls `locationManager.startMonitoringVisits()` alongside significantLocationChange
+2. `didVisit()` receives visits with coordinates. If the visit doesn't match a recent confirmed parking location, it emits `onParkingDetected` + a local notification
+3. Visits are persisted to UserDefaults (`com.ticketless.visitHistory`) as a ring buffer (max 20, pruned at 24h)
+4. The CoreMotion recovery function (`checkForMissedParking`) calls `findVisitForTimestamp()` to match intermediate trips with CLVisit coordinates
+5. When a match is found, the parking event gets real coordinates → JS can check rules → user gets notified
+
+**CLVisit limitations:**
+- Minimum dwell time is typically 2-5 minutes (iOS decides, not configurable)
+- Accuracy varies (50-200m) — good enough for parking rule checks but not exact spot
+- Delivery can be delayed by minutes (iOS batches them)
+- Not all stops register as visits — short stops (<2 min) are unreliable
+
+**Rules:**
+1. **Never remove `startMonitoringVisits()`** — it's the only fallback with coordinates when the app is killed
+2. **`findVisitForTimestamp()` uses 600s (10 min) tolerance** — CLVisit arrival times may not match CoreMotion timestamps exactly
+3. **Always check `lastConfirmedParkingLocation` before emitting a visit-based parking event** — prevents duplicates when the normal pipeline already caught the stop
+4. **Visit history is persisted to UserDefaults**, not just in-memory — must survive app kill + relaunch cycle
 
 ## iOS Camera Alerts — Background Reality (Critical)
 

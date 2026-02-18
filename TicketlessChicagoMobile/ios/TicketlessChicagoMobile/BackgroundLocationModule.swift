@@ -659,6 +659,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
   }
 
+  // CLVisit tracking — iOS provides coordinates for places where the user dwells,
+  // even when the app is killed. Used to enrich historical recovery with GPS coordinates.
+  private var recentVisits: [(visit: CLVisit, receivedAt: Date)] = []  // Ring buffer of recent visits (max 20)
+  private let maxRecentVisits = 20
+  private let kVisitHistoryKey = "com.ticketless.visitHistory"  // UserDefaults key for persisting visits across app kills
+
   // Driving state tracking
   private var isDriving = false
   private var coreMotionSaysAutomotive = false  // True when CoreMotion chip reports automotive
@@ -1272,6 +1278,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // if iOS kills the app or user force-quits.
     locationManager.startMonitoringSignificantLocationChanges()
 
+    // CLVisit monitoring — iOS tracks places where the user dwells and delivers
+    // CLVisit objects with coordinates + arrival/departure times, even if the app
+    // was killed. These visits enrich historical recovery with GPS coordinates,
+    // allowing parking rule checks for missed stops.
+    locationManager.startMonitoringVisits()
+    loadPersistedVisits()
+    self.log("CLVisit monitoring started")
+
     // Start CoreMotion - this is the primary driving detection.
     // Runs on the M-series coprocessor, nearly zero battery.
     let coreMotionAvailable = CMMotionActivityManager.isActivityAvailable()
@@ -1360,6 +1374,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     emitMonitoringHeartbeat(reason: "stopping")
     emitTripSummary(outcome: "monitoring_stopped")
     locationManager.stopMonitoringSignificantLocationChanges()
+    locationManager.stopMonitoringVisits()
     stopVehicleSignalMonitoring()
     // Fully stop GPS when monitoring is disabled (not just keepalive mode)
     locationManager.stopUpdatingLocation()
@@ -3681,13 +3696,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
 
       // ── Emit events for ALL trips ──
-      // For intermediate trips (not the last one): emit departure + parking
-      // without GPS coordinates (we can't retroactively get past locations).
+      // For intermediate trips: try to match with CLVisit coordinates (iOS
+      // tracks dwell locations even when the app is killed). If a CLVisit match
+      // is found, the parking event gets real coordinates and JS can check rules.
       // For the LAST trip: use accurate GPS for the current parking location.
 
-      // Emit intermediate trips (historical — no GPS coordinates available)
+      // Emit intermediate trips — try to enrich with CLVisit coordinates
       if trips.count > 1 {
-        self.log("RECOVERY: Emitting \(trips.count - 1) historical intermediate parking events")
+        self.log("RECOVERY: Emitting \(trips.count - 1) intermediate parking events (checking CLVisit history for coordinates)")
         for i in 0..<(trips.count - 1) {
           let trip = trips[i]
           let departureTimestamp = trip.driveStart.timeIntervalSince1970 * 1000
@@ -3698,21 +3714,45 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             "timestamp": departureTimestamp,
             "source": "recovery_historical",
           ])
-          self.log("RECOVERY: Historical trip \(i + 1) — onDrivingStarted at \(trip.driveStart)")
+          self.log("RECOVERY: Trip \(i + 1) — onDrivingStarted at \(trip.driveStart)")
 
-          // Emit parking (no GPS available for past locations)
-          let body: [String: Any] = [
+          // Try to match this parking time with a CLVisit for coordinates
+          let visitMatch = self.findVisitForTimestamp(trip.parkTime, toleranceSec: 600)
+
+          var body: [String: Any] = [
             "timestamp": parkTimestamp,
-            "latitude": 0,        // No GPS available for historical stops
-            "longitude": 0,
-            "accuracy": -1,       // Signals "no GPS" to JS
-            "locationSource": "recovery_historical",
             "drivingDurationSec": trip.driveDuration,
-            "isHistorical": true,  // JS can display "location unknown" for these
+            "isHistorical": true,
           ]
+
+          if let visit = visitMatch {
+            // CLVisit provided coordinates — JS CAN check parking rules!
+            body["latitude"] = visit.latitude
+            body["longitude"] = visit.longitude
+            body["accuracy"] = visit.accuracy
+            body["locationSource"] = "recovery_clvisit"
+            body["isFromVisit"] = true
+            self.log("RECOVERY: Trip \(i + 1) — CLVisit match! (\(visit.latitude), \(visit.longitude)) ±\(String(format: "%.0f", visit.accuracy))m — parking rules CAN be checked")
+          } else {
+            // No CLVisit match — emit with no coordinates
+            body["latitude"] = 0
+            body["longitude"] = 0
+            body["accuracy"] = -1  // Signals "no GPS" to JS
+            body["locationSource"] = "recovery_historical"
+            self.log("RECOVERY: Trip \(i + 1) — no CLVisit match — emitting without coordinates")
+          }
+
           self.sendEvent(withName: "onParkingDetected", body: body)
           self.persistPendingParkingEvent(body)
-          self.log("RECOVERY: Historical trip \(i + 1) — onParkingDetected at \(trip.parkTime) (no GPS)")
+
+          // If we have coordinates, also send a local notification
+          if visitMatch != nil {
+            self.sendParkingVisitNotification(
+              latitude: visitMatch!.latitude,
+              longitude: visitMatch!.longitude,
+              arrivalDate: trip.parkTime
+            )
+          }
         }
       }
 
@@ -3818,6 +3858,212 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     if status == .authorizedWhenInUse {
       manager.requestAlwaysAuthorization()
     }
+  }
+
+  // MARK: - CLVisit Monitoring
+  //
+  // iOS tracks places where the user dwells ("visits") and delivers CLVisit objects
+  // with coordinates and arrival/departure times. Crucially, iOS delivers these visits
+  // even if the app was killed — they're queued and delivered on next launch.
+  //
+  // We persist visits to UserDefaults so the recovery function can match CoreMotion
+  // timestamps to visit coordinates, enabling parking rule checks for missed stops.
+
+  func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
+    let arrivalStr = visit.arrivalDate == Date.distantPast ? "unknown" : "\(visit.arrivalDate)"
+    let departureStr = visit.departureDate == Date.distantFuture ? "ongoing" : "\(visit.departureDate)"
+    self.log("CLVisit: (\(visit.coordinate.latitude), \(visit.coordinate.longitude)) ±\(String(format: "%.0f", visit.horizontalAccuracy))m, arrived: \(arrivalStr), departed: \(departureStr)")
+
+    decision("clvisit_received", [
+      "latitude": visit.coordinate.latitude,
+      "longitude": visit.coordinate.longitude,
+      "accuracy": visit.horizontalAccuracy,
+      "arrivalDate": visit.arrivalDate.timeIntervalSince1970,
+      "departureDate": visit.departureDate == Date.distantFuture ? -1 : visit.departureDate.timeIntervalSince1970,
+    ])
+
+    // Store in ring buffer + persist to UserDefaults
+    recentVisits.append((visit: visit, receivedAt: Date()))
+    if recentVisits.count > maxRecentVisits {
+      recentVisits.removeFirst()
+    }
+    persistVisits()
+
+    // If the app is alive and we have a visit with coordinates, check if this
+    // represents a parking event we missed (e.g., the normal pipeline didn't fire).
+    // Only process if:
+    // 1. We're not currently driving (would be a false visit)
+    // 2. The visit has valid arrival time (not distantPast)
+    // 3. The visit has reasonable accuracy (<200m)
+    if !isDriving &&
+       visit.arrivalDate != Date.distantPast &&
+       visit.horizontalAccuracy > 0 && visit.horizontalAccuracy < 200 {
+
+      // Check if this visit already matches a recent parking event we detected.
+      // If we already confirmed parking at this location recently, skip.
+      if let lastParking = lastConfirmedParkingLocation {
+        let distance = CLLocation(latitude: visit.coordinate.latitude, longitude: visit.coordinate.longitude)
+          .distance(from: lastParking)
+        if distance < 150 {
+          self.log("CLVisit: matches recent confirmed parking (\(String(format: "%.0f", distance))m away) — skipping duplicate")
+          return
+        }
+      }
+
+      // This visit is at a location we didn't detect parking for.
+      // Emit a parking event so JS can check rules and notify the user.
+      let visitLocation = CLLocation(
+        coordinate: visit.coordinate,
+        altitude: 0,
+        horizontalAccuracy: visit.horizontalAccuracy,
+        verticalAccuracy: -1,
+        timestamp: visit.arrivalDate
+      )
+
+      self.log("CLVisit: emitting parking event for undetected visit at (\(visit.coordinate.latitude), \(visit.coordinate.longitude))")
+
+      let body: [String: Any] = [
+        "timestamp": visit.arrivalDate.timeIntervalSince1970 * 1000,
+        "latitude": visit.coordinate.latitude,
+        "longitude": visit.coordinate.longitude,
+        "accuracy": visit.horizontalAccuracy,
+        "locationSource": "clvisit_realtime",
+        "drivingDurationSec": 0,  // Unknown from visit data alone
+        "isFromVisit": true,
+      ]
+
+      lastConfirmedParkingLocation = visitLocation
+      hasConfirmedParkingThisSession = true
+
+      sendEvent(withName: "onParkingDetected", body: body)
+      persistPendingParkingEvent(body)  // Survive JS suspension
+
+      // Also send a local notification since the user may not have the app open
+      sendParkingVisitNotification(
+        latitude: visit.coordinate.latitude,
+        longitude: visit.coordinate.longitude,
+        arrivalDate: visit.arrivalDate
+      )
+    }
+  }
+
+  /// Send a local notification when a CLVisit-based parking event is detected.
+  /// This is the "delayed notification" for stops the normal pipeline missed.
+  private func sendParkingVisitNotification(latitude: Double, longitude: Double, arrivalDate: Date) {
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      let allowed = settings.authorizationStatus == .authorized ||
+                    settings.authorizationStatus == .provisional ||
+                    settings.authorizationStatus == .ephemeral
+      guard allowed else {
+        self.log("Visit parking notification skipped: notifications not authorized")
+        return
+      }
+      let content = UNMutableNotificationContent()
+      content.title = "Parking detected"
+      content.body = "We detected you parked. Checking parking rules..."
+      content.sound = UNNotificationSound.default
+      content.categoryIdentifier = "parking_detected"
+      let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+      let req = UNNotificationRequest(
+        identifier: "visit-parking-\(Int(arrivalDate.timeIntervalSince1970))",
+        content: content,
+        trigger: trigger
+      )
+      UNUserNotificationCenter.current().add(req) { err in
+        if let err = err {
+          self.log("Visit parking notification failed: \(err.localizedDescription)")
+        } else {
+          self.log("Visit parking notification sent")
+        }
+      }
+    }
+  }
+
+  /// Persist recent visits to UserDefaults so they survive app kills.
+  /// We store as array of dictionaries with lat, lng, accuracy, arrival, departure.
+  private func persistVisits() {
+    let visitDicts: [[String: Any]] = recentVisits.map { item in
+      [
+        "latitude": item.visit.coordinate.latitude,
+        "longitude": item.visit.coordinate.longitude,
+        "accuracy": item.visit.horizontalAccuracy,
+        "arrivalDate": item.visit.arrivalDate.timeIntervalSince1970,
+        "departureDate": item.visit.departureDate == Date.distantFuture ? -1 : item.visit.departureDate.timeIntervalSince1970,
+        "receivedAt": item.receivedAt.timeIntervalSince1970,
+      ]
+    }
+    UserDefaults.standard.set(visitDicts, forKey: kVisitHistoryKey)
+  }
+
+  /// Load persisted visits from UserDefaults on startup.
+  /// Prunes visits older than 24 hours and logs what's available for recovery matching.
+  private func loadPersistedVisits() {
+    guard let dicts = UserDefaults.standard.array(forKey: kVisitHistoryKey) as? [[String: Any]] else {
+      self.log("No persisted CLVisit history found")
+      return
+    }
+    let now = Date()
+    // Prune old visits (>24h) and keep the rest
+    let validDicts = dicts.filter { dict in
+      guard let arrivalTs = dict["arrivalDate"] as? Double else { return false }
+      return now.timeIntervalSince1970 - arrivalTs <= 24 * 3600
+    }
+    if validDicts.count < dicts.count {
+      UserDefaults.standard.set(validDicts, forKey: kVisitHistoryKey)
+    }
+    self.log("Loaded \(validDicts.count) persisted CLVisits (pruned \(dicts.count - validDicts.count) stale)")
+    for dict in validDicts {
+      if let lat = dict["latitude"] as? Double,
+         let lng = dict["longitude"] as? Double,
+         let arrivalTs = dict["arrivalDate"] as? Double {
+        let age = now.timeIntervalSince1970 - arrivalTs
+        self.log("  Visit: (\(lat), \(lng)) arrived \(String(format: "%.0f", age / 60))min ago")
+      }
+    }
+  }
+
+  /// Find the best CLVisit match for a given timestamp (within tolerance).
+  /// Returns (latitude, longitude, accuracy) or nil if no match.
+  func findVisitForTimestamp(_ timestamp: Date, toleranceSec: TimeInterval = 600) -> (latitude: Double, longitude: Double, accuracy: Double)? {
+    // Also check persisted visits from UserDefaults
+    let allVisitDicts = UserDefaults.standard.array(forKey: kVisitHistoryKey) as? [[String: Any]] ?? []
+
+    var bestMatch: (latitude: Double, longitude: Double, accuracy: Double)? = nil
+    var bestTimeDiff: TimeInterval = toleranceSec
+
+    for dict in allVisitDicts {
+      guard let lat = dict["latitude"] as? Double,
+            let lng = dict["longitude"] as? Double,
+            let acc = dict["accuracy"] as? Double,
+            let arrivalTs = dict["arrivalDate"] as? Double else { continue }
+
+      let arrivalDate = Date(timeIntervalSince1970: arrivalTs)
+      let timeDiff = abs(timestamp.timeIntervalSince(arrivalDate))
+
+      // Visit arrival should be close to the CoreMotion parking timestamp
+      if timeDiff < bestTimeDiff && acc < 200 {
+        bestTimeDiff = timeDiff
+        bestMatch = (latitude: lat, longitude: lng, accuracy: acc)
+      }
+    }
+
+    // Also check in-memory visits
+    for item in recentVisits {
+      let timeDiff = abs(timestamp.timeIntervalSince(item.visit.arrivalDate))
+      if timeDiff < bestTimeDiff && item.visit.horizontalAccuracy < 200 {
+        bestTimeDiff = timeDiff
+        bestMatch = (
+          latitude: item.visit.coordinate.latitude,
+          longitude: item.visit.coordinate.longitude,
+          accuracy: item.visit.horizontalAccuracy
+        )
+      }
+    }
+
+    if let match = bestMatch {
+      self.log("CLVisit match for \(timestamp): (\(match.latitude), \(match.longitude)) ±\(String(format: "%.0f", match.accuracy))m (time diff: \(String(format: "%.0f", bestTimeDiff))s)")
+    }
+    return bestMatch
   }
 
   // MARK: - Parking Detection Logic
