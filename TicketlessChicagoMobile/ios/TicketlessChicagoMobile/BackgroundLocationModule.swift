@@ -835,6 +835,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
   private let parkingFinalizationHoldStrongSec: TimeInterval = 11
   private let parkingFinalizationMaxDriftMeters: Double = 35
   private let falsePositiveParkingLockoutSec: TimeInterval = 180
+  private let gpsZeroSpeedHardTimeoutSec: TimeInterval = 45  // Hard override: 45s of GPS speed≈0 = parked, even if CoreMotion still says automotive
   private let intersectionRiskRadiusMeters: Double = 95
   private let intersectionDwellAbortWindowSec: TimeInterval = 90
   private let intersectionDwellMinStopSec: TimeInterval = 18
@@ -2239,6 +2240,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
       speedZeroTimer = nil
       speedZeroStartTime = nil
       stopWindowMaxSpeedMps = 0
+      stationaryLocation = nil   // Reset so next stop captures fresh location
+      stationaryStartTime = nil
       locationAtStopStart = nil  // Reset stop location - wasn't a real stop
 
       // GPS speed alone does NOT start driving — only CoreMotion can detect
@@ -2564,6 +2567,24 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             timer.invalidate()
             self.speedZeroTimer = nil
             self.confirmParking(source: "location_stationary")
+          } else if zeroDuration >= self.gpsZeroSpeedHardTimeoutSec {
+            // HARD TIMEOUT: GPS speed has been ≈0 for 45+ seconds. No red light lasts
+            // this long. CoreMotion is wrong — confirm parking regardless.
+            // This catches the common case where CoreMotion stays "automotive" after
+            // the engine stops (phone vibration, slow M-series transition, etc.)
+            self.log("Parking confirmed via GPS hard timeout: speed≈0 for \(String(format: "%.0f", zeroDuration))s (CoreMotion: \(self.coreMotionStateLabel), phone moving: \(!phoneIsStationary), walked away: \(!withinStationaryRadius))")
+            self.decision("gps_speed_zero_hard_timeout", [
+              "zeroDurationSec": zeroDuration,
+              "stationaryDurationSec": stationaryDuration,
+              "coreMotionState": self.coreMotionStateLabel,
+              "phoneIsStationary": phoneIsStationary,
+              "withinStationaryRadius": withinStationaryRadius,
+              "maxSpeedDuringStop": self.stopWindowMaxSpeedMps,
+              "gpsSpeed": currentSpeed,
+            ])
+            timer.invalidate()
+            self.speedZeroTimer = nil
+            self.confirmParking(source: "gps_speed_zero_timeout")
           } else {
             var reason = "CoreMotion still automotive"
             if self.coreMotionStateLabel == "unknown" {
@@ -2571,6 +2592,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate {
             }
             if !phoneIsStationary { reason += ", phone moving (speed: \(String(format: "%.1f", currentSpeed)) m/s)" }
             if !withinStationaryRadius { reason += ", user walked away from parking spot" }
+            reason += ", timeout in \(String(format: "%.0f", self.gpsZeroSpeedHardTimeoutSec - zeroDuration))s"
             if self.coreMotionStateLabel == "unknown" {
               let hasCarDisconnectEvidence: Bool = {
                 guard let disconnectedAt = self.lastCarAudioDisconnectedAt else { return false }
