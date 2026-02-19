@@ -43,7 +43,7 @@ export default function PricingPage() {
           <p style={{ color: '#64748B', lineHeight: 1.7, marginBottom: 0 }}>
             If we do not successfully dismiss at least one eligible non-camera ticket during your membership year,
             you can request a full refund of your membership fee. Camera tickets (red light / speed cameras) are excluded.
-            Eligibility requires timely cooperation, including providing requested documentation within 17 days of the ticket issue date.
+            Eligibility requires timely cooperation, including providing requested documentation promptly when asked.
           </p>
         </section>
       </main>

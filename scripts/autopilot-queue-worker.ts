@@ -542,10 +542,10 @@ async function sendEvidenceRequestEmail(
         ${pitfallsHtml}
         <div style="background: #dbeafe; border: 1px solid #3b82f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0; color: #1e40af; font-size: 14px;">
-            <strong>Evidence Deadline:</strong> ${formattedDeadline}
+            <strong>The sooner you reply, the stronger your case.</strong> Evidence submitted quickly gives us time to build the best possible contest letter.
           </p>
-          <p style="margin: 8px 0 0; color: #1e40af; font-size: 14px;">
-            We will send your contest letter with or without evidence after this deadline.
+          <p style="margin: 8px 0 0; color: #1e40af; font-size: 13px;">
+            Final deadline: ${formattedDeadline}. We'll send your letter with or without evidence after that date.
           </p>
         </div>
         <p style="color: #6b7280; font-size: 12px; margin-top: 24px; text-align: center;">
