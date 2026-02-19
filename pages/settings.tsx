@@ -723,6 +723,14 @@ export default function SettingsPage() {
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
+  // Sticky flag: once we know this page was loaded from the mobile WebView,
+  // it stays true for the entire component lifetime.  Reading URL params on
+  // every render is unreliable because Next.js router.replace() (e.g. the
+  // checkout-success handler) strips query params from the URL.
+  const isMobileWebViewRef = useRef(
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('mobile_access_token')
+  );
 
   useEffect(() => {
     // Check for mobile app auth tokens in query params.
@@ -735,6 +743,8 @@ export default function SettingsPage() {
     const mobileRefreshToken = params.get('mobile_refresh_token');
 
     if (mobileAccessToken && mobileRefreshToken) {
+      // Reinforce the sticky flag (ref initializer already set it, but be safe)
+      isMobileWebViewRef.current = true;
       // setSession returns { data, error } as a resolved promise — it does NOT
       // reject on auth errors. We must check the return value explicitly.
       supabase.auth.setSession({
@@ -815,16 +825,12 @@ export default function SettingsPage() {
     }
   }, [router.isReady, router.query.checkout, router.query.welcome]);
 
-  // Detect mobile WebView context (tokens passed in URL)
-  const isMobileWebView = typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('mobile_access_token');
-
   const loadData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       // In mobile WebView, don't redirect — post a message so the native app
       // can show its own unauthenticated UI instead of the web sign-in page.
-      if (isMobileWebView) {
+      if (isMobileWebViewRef.current) {
         try {
           (window as any).ReactNativeWebView?.postMessage('auth_failed');
         } catch (_) { /* not in WebView */ }

@@ -312,14 +312,25 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               setHasError(true);
             }
           }}
+          onShouldStartLoadWithRequest={(request) => {
+            // Block navigation to sign-in or any non-settings page BEFORE
+            // the WebView starts loading it.  onNavigationStateChange fires
+            // after the load starts and can't prevent it.
+            const url = request.url || '';
+            if (url.includes('/auth/signin') || url.includes('/login')) {
+              log.warn('Blocked WebView navigation to sign-in:', url);
+              setIsAuthenticated(false);
+              setIsLoading(false);
+              return false; // Block the navigation
+            }
+            return true;
+          }}
           onNavigationStateChange={(navState) => {
-            // Prevent the WebView from navigating to the sign-in page or
-            // any other page — it should only show settings.
+            // Fallback detection (some SPA navigations don't trigger
+            // onShouldStartLoadWithRequest since they're JS-driven pushState).
             if (navState.url && !navState.url.includes('/settings')) {
               log.warn('WebView navigating away from settings:', navState.url);
               if (navState.url.includes('/auth/signin') || navState.url.includes('/login')) {
-                // Auth failed and the web page tried to redirect to sign-in.
-                // Block it and show native unauthenticated UI instead.
                 setIsAuthenticated(false);
                 setIsLoading(false);
               }
