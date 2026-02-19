@@ -21,8 +21,10 @@ This document records finalized product decisions. Claude Code MUST NOT change t
 | Decision | Value | Date |
 |----------|-------|------|
 | Legal contest deadline (Chicago) | 21 days from ticket issue date | — |
-| Evidence submission deadline | **NEEDS CONFIRMATION**: Code has 72h (queue worker), 48h (manual upload), and Day 19 (main cron). Which is correct? | 2026-02-18 |
-| Auto-mail cutoff | Letters auto-mailed after `evidence_deadline` passes, regardless of whether user submitted evidence | — |
+| Evidence submission deadline | **Day 17 from ticket issue date** — unified across ALL code paths (API cron, portal scraper, queue worker, VA upload) | 2026-02-18 |
+| Auto-send deadline | **Day 17** — letters auto-mail on Day 17 regardless of whether user submitted evidence. 4-day buffer before Day 21 hard deadline. | 2026-02-18 |
+| Late ticket fallback | If ticket is old and Day 17 already passed, give at least 48 hours from detection | 2026-02-18 |
+| No violation date fallback | 14 days from detection | 2026-02-18 |
 | Contest letter delivery | USPS via Lob | — |
 
 ## Pricing & Users
@@ -79,4 +81,4 @@ This document records finalized product decisions. Claude Code MUST NOT change t
 1. **Before making a change**, check if it contradicts a decision above.
 2. **If it does**, do NOT proceed — ask the owner first.
 3. **To update a decision**, edit this file with the new value and date, then commit.
-4. **Evidence deadline** is flagged as needing confirmation — the three code paths should be unified once the owner confirms the correct value.
+4. **Evidence deadline** has been unified to Day 17 across all code paths (confirmed 2026-02-18).

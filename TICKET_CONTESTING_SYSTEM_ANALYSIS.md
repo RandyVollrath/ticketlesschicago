@@ -129,7 +129,7 @@ For each ticket found:
    - table: detected_tickets
    - status: 'pending_evidence'
    - source: 'portal_scrape'
-   - evidence_deadline: now + 72 hours
+   - evidence_deadline: ticketDate + 17 days (see PRODUCT_DECISIONS.md)
 
 6. Generate contest letter
    - Uses DEFENSE_TEMPLATES (violation-type specific)
@@ -248,7 +248,7 @@ Each ticket type has:
   - Good examples for each question
   - Quick tips section
   - Pitfalls/avoidable mistakes
-  - Evidence deadline (72 hours from detection)
+  - Evidence deadline (Day 17 from ticket issue date)
   - Weather question (if applicable)
 
 ### Key Functions
@@ -374,7 +374,7 @@ updated_at (timestamp)
 - Evidence request questions (3-4 per ticket type)
 - Quick tips tailored to violation type
 - Pitfalls/mistakes to avoid
-- Evidence deadline (72 hours)
+- Evidence deadline (Day 17 from ticket issue date)
 - Optional weather question
 
 **Implementation**: Via Resend API (`RESEND_API_KEY`)
@@ -443,7 +443,7 @@ updated_at (timestamp)
 #### 6b. Letter Status Workflow
 ```
 pending_evidence
-  ↓ (72 hour deadline passes)
+  ↓ (Day 17 deadline passes)
 pending_review (user review + evidence collection)
   ↓ (approved by user or auto-approved after deadline)
 ready_to_mail
@@ -576,7 +576,7 @@ resolved (hearing outcome recorded)
   - Feedback loop to improve future letters
 
 ### Gap 10: Evidence Deadline Not Enforced
-**Issue**: Evidence deadline set to 72 hours but system doesn't block letter mailing if missed
+**Issue**: [RESOLVED] Evidence deadline unified to Day 17 from ticket date. Letters auto-send on Day 17.
 **Process**: Manual or auto-approval unclear
 **Missing**: Clear deadline enforcement, user notification before deadline expires
 
@@ -667,7 +667,7 @@ resolved (hearing outcome recorded)
                                ▼
                   ┌─────────────────────────────┐
                   │   WAITING FOR USER RESPONSE │
-                  │   (72-hour evidence window) │
+                  │   (Day 17 evidence window)  │
                   │                             │
                   │  User receives email with:  │
                   │  - Evidence questions       │
@@ -690,7 +690,7 @@ resolved (hearing outcome recorded)
                            │
                            ▼
         ┌──────────────────────────────────────┐
-        │  After Evidence Deadline (72hrs):    │
+        │  After Evidence Deadline (Day 17):   │
         │                                      │
         │  1. Mark letter status               │
         │  2. [GAP] Regenerate letter with     │

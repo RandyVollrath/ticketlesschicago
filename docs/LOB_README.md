@@ -41,9 +41,9 @@ This directory contains comprehensive documentation of the Lob.com integration f
 ```
 STEP 1: VA uploads CSV with ticket data
         ↓
-STEP 2: Ticket created, letter generated, user emailed (72-hour deadline)
+STEP 2: Ticket created, letter generated, user emailed (Day 17 deadline)
         ↓
-STEP 3: Wait 72 hours...
+STEP 3: Wait until Day 17 from ticket issue date...
         ↓
 STEP 4: Daily cron (3 PM UTC) checks if deadline passed
         ↓
@@ -165,7 +165,7 @@ lib/
 **detected_tickets**
 - Stores parking tickets detected
 - Status: pending_evidence → mailed
-- evidence_deadline: 72 hours from creation
+- evidence_deadline: Day 17 from ticket issue date (see PRODUCT_DECISIONS.md)
 - is_test: flag to prevent mailing
 
 **contest_letters**

@@ -1868,7 +1868,7 @@ export default function AdminPortal() {
                   <li>VA searches for tickets against each license plate on the Chicago portal</li>
                   <li>VA fills in ticket details in the CSV and uploads it below</li>
                   <li>System automatically creates tickets, generates letters, and emails users for evidence</li>
-                  <li>After 72 hours, letters are ready to mail via Lob</li>
+                  <li>After Day 17 deadline, letters are ready to mail via Lob</li>
                 </ol>
               </div>
 
@@ -2199,7 +2199,7 @@ Wilson,Amy,GHI3456,IL,user-id-012,555666777,Expired Meter,2025-01-13,75.00`;
                   Step 3: Evidence Collection
                 </h3>
                 <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
-                  After upload, users are automatically emailed asking for evidence within 72 hours. Letters are generated and ready for mailing after the deadline.
+                  After upload, users are automatically emailed asking for evidence. Letters auto-send on Day 17 from the ticket issue date (4-day buffer before the Day 21 legal deadline).
                 </p>
 
                 {pendingEvidenceTickets.length > 0 ? (

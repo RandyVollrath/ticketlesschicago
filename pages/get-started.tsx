@@ -488,7 +488,7 @@ export default function GetStarted() {
                     </div>
                     <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
                       <strong>First Dismissal Guarantee</strong><br />
-                      If we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full refund of your membership fee. Camera tickets (red light / speed cameras) are excluded from the guarantee. Eligibility requires timely cooperation, including providing requested documentation within 72 hours.
+                      If we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full refund of your membership fee. Camera tickets (red light / speed cameras) are excluded from the guarantee. Eligibility requires timely cooperation, including providing requested documentation within 17 days of the ticket issue date.
                     </div>
                     <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
                       <input

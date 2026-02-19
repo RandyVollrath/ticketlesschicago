@@ -9,8 +9,8 @@
  * On upload:
  * 1. Creates ticket in detected_tickets
  * 2. Generates contest letter in contest_letters
- * 3. Emails user asking for evidence within 48 hours
- * 4. Sets evidence_deadline (48 hours from now)
+ * 3. Emails user asking for evidence by Day 17 from ticket date
+ * 4. Sets evidence_deadline (Day 17 from ticket issue date)
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -903,9 +903,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       rowDetails: [] as RowResult[],
     };
 
-    // Calculate evidence deadline (48 hours from now)
+    // Evidence deadline is calculated per-ticket based on violation date (Day 17)
     const now = new Date();
-    const evidenceDeadline = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
     for (let i = 0; i < tickets.length; i++) {
       const ticket = tickets[i];
@@ -990,6 +989,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Parse the date flexibly (handles "1-10-26", "1/10/2026", "2026-01-10", etc.)
         const parsedDate = parseDateFlexible(ticket.violation_date);
+
+        // Calculate evidence deadline: Day 17 from ticket issue date
+        let evidenceDeadline: Date;
+        if (parsedDate) {
+          const ticketDate = new Date(parsedDate);
+          evidenceDeadline = new Date(ticketDate.getTime() + 17 * 24 * 60 * 60 * 1000);
+          // If ticket is old and deadline would be in the past, give at least 48 hours
+          if (evidenceDeadline.getTime() < now.getTime() + 48 * 60 * 60 * 1000) {
+            evidenceDeadline = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+          }
+        } else {
+          // No violation date — fallback to 14 days from now
+          evidenceDeadline = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+        }
 
         const normalizedType = ticket.violation_type || 'other_unknown';
         const cameraViolation = isCameraViolation(normalizedType);

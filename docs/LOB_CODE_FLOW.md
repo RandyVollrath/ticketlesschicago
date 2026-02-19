@@ -67,7 +67,7 @@ handler(req: NextApiRequest, res: NextApiResponse) {
         ticket_number: ticket.ticket_number,
         violation_type: normalizeViolationType(ticket.violation_type),
         status: 'pending_evidence',
-        evidence_deadline: NOW + 72 hours,
+        evidence_deadline: ticketDate + 17 days (with fallbacks),
         source: 'va_upload',
         // ... other fields
       })
@@ -655,7 +655,7 @@ detected_tickets:
   id: [generated UUID]
   ticket_number: [from CSV]
   status: 'pending_evidence'
-  evidence_deadline: NOW + 72 hours
+  evidence_deadline: ticketDate + 17 days
   is_test: false
   source: 'va_upload'
 

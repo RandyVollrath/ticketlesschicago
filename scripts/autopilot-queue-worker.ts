@@ -81,7 +81,7 @@ const IDLE_SLEEP_MIN = parseInt(process.env.WORKER_IDLE_SLEEP_MIN || '30');
 const ACTIVE_HOURS_START = parseInt(process.env.WORKER_ACTIVE_HOURS_START || '7');
 const ACTIVE_HOURS_END = parseInt(process.env.WORKER_ACTIVE_HOURS_END || '23');
 const SCREENSHOT_DIR = process.env.PORTAL_CHECK_SCREENSHOT_DIR || path.resolve(__dirname, '../debug-screenshots');
-const EVIDENCE_DEADLINE_HOURS = 72;
+const EVIDENCE_DEADLINE_DAYS = 17; // Day 17 from ticket issue date (auto-send deadline)
 const MAX_CONSECUTIVE_ERRORS = 5; // Back off after this many failures in a row
 const ERROR_BACKOFF_MIN = 15; // Minutes to wait after consecutive errors
 const LONG_PAUSE_EVERY_N = 50; // Every N plates, take a longer break
@@ -586,7 +586,6 @@ async function sendEvidenceRequestEmail(
 async function processFoundTicket(
   ticket: PortalTicket,
   plateInfo: PlateToCheck,
-  evidenceDeadline: Date
 ): Promise<{ created: boolean; error?: string }> {
   const { plate_id, user_id, plate, state } = plateInfo;
 
@@ -618,6 +617,20 @@ async function processFoundTicket(
       }
       violationDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
+  }
+
+  // Calculate evidence deadline: Day 17 from ticket issue date
+  let evidenceDeadline: Date;
+  if (violationDate) {
+    const ticketDate = new Date(violationDate);
+    evidenceDeadline = new Date(ticketDate.getTime() + EVIDENCE_DEADLINE_DAYS * 24 * 60 * 60 * 1000);
+    // If ticket is old and deadline would be in the past, give at least 48 hours
+    if (evidenceDeadline.getTime() < Date.now() + 48 * 60 * 60 * 1000) {
+      evidenceDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    }
+  } else {
+    // No violation date — fallback to 14 days from now
+    evidenceDeadline = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   }
 
   const violationType = mapViolationType(ticket.violation_description || '');
@@ -898,8 +911,6 @@ async function runWorker(): Promise<void> {
         ],
       });
 
-      const evidenceDeadline = new Date(Date.now() + EVIDENCE_DEADLINE_HOURS * 60 * 60 * 1000);
-
       for (let i = 0; i < plateQueue.length; i++) {
         if (shuttingDown) break;
 
@@ -948,7 +959,7 @@ async function runWorker(): Promise<void> {
               console.log(`    Found ${result.tickets.length} ticket(s)`);
 
               for (const ticket of result.tickets) {
-                const processResult = await processFoundTicket(ticket, plateInfo, evidenceDeadline);
+                const processResult = await processFoundTicket(ticket, plateInfo);
                 if (processResult.created) {
                   stats.tickets_created_total++;
                 }

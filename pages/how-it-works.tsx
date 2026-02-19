@@ -175,7 +175,7 @@ export default function HowItWorks() {
                   alignItems: 'flex-start'
                 }}>
                   <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  <span style={{ color: '#6b7280' }}>Provide requested documentation within 72 hours (or the contest deadline)</span>
+                  <span style={{ color: '#6b7280' }}>Provide requested documentation within 17 days of the ticket issue date (or the contest deadline)</span>
                 </li>
               </ul>
             </div>
