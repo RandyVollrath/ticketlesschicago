@@ -496,9 +496,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return true;
       }
 
-      // Case 3: Legacy flow — auto_mail users whose evidence deadline has passed
-      // Check if user has auto_mail_enabled (no approval required)
-      // For now, also keep backward compat with old 48h evidence_deadline
+      // Case 3: Auto-send — evidence deadline (Day 17) has passed
+      // Letters auto-mail once evidence_deadline <= now, regardless of evidence submission
       if (ticket.evidence_deadline) {
         const deadline = new Date(ticket.evidence_deadline);
         if (deadline <= new Date()) {

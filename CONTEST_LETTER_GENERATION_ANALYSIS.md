@@ -492,7 +492,7 @@ Uses Resend API to send approval request email with:
 - Win rate percentage (from `evidence-guidance.ts`)
 - Quick tips specific to violation type
 - Pitfalls to avoid
-- Evidence deadline (72 hours default)
+- Evidence deadline (Day 17 from ticket issue date)
 
 **Reply-To:** `evidence+{ticketId}@autopilotamerica.com` (for email forwarding capture)
 

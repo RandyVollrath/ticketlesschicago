@@ -40,7 +40,7 @@ export default function Support() {
         },
         {
           q: 'What makes a ticket eligible for the guarantee?',
-          a: 'It must be a City of Chicago non-camera ticket, issued during your active membership, still eligible to contest, and you must provide requested documentation within 72 hours.'
+          a: 'It must be a City of Chicago non-camera ticket, issued during your active membership, still eligible to contest, and you must provide requested documentation within 17 days of the ticket issue date.'
         },
         {
           q: 'How long does a guarantee review take?',

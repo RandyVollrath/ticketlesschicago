@@ -22,14 +22,14 @@ Process:
      - Create detected_ticket (status='pending_evidence')
      - Generate contest_letter (status='pending_evidence')
      - Send evidence request email
-  4. Set evidence_deadline = NOW + 72 HOURS
+  4. Set evidence_deadline = ticketDate + 17 DAYS
 
 ================================================================================
 STEP 2: WAIT FOR EVIDENCE DEADLINE
 ================================================================================
 User can reply to evidence@autopilotamerica.com with supporting documents
 Email deadline is communicated in the initial evidence request email
-After 72 hours pass, letter is eligible for mailing
+After Day 17 deadline passes, letter is eligible for mailing
 
 ================================================================================
 STEP 3: DAILY MAILING CRON

@@ -164,7 +164,7 @@ export default function TermsOfService() {
                 Notify us immediately of any changes to your vehicles, address, or contact information
               </li>
               <li style={{ marginBottom: '8px' }}>
-                Submit requested ticket documentation within 72 hours (or before the contest deadline, whichever is sooner)
+                Submit requested ticket documentation within 17 days of the ticket issue date (or before the contest deadline, whichever is sooner)
               </li>
             </ul>
             <p style={{ fontWeight: 'bold', color: '#dc2626' }}>

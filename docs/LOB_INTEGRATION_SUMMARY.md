@@ -16,18 +16,18 @@ For each ticket found:
 2. **Check** ticket is not duplicate
 3. **Create** `detected_tickets` record
    - Status: `pending_evidence`
-   - Evidence deadline: NOW + 72 hours
+   - Evidence deadline: ticketDate + 17 days
 4. **Generate** contest letter from template
    - Template selected by violation_type
    - Customized with user/ticket details
 5. **Email** user asking for evidence
    - Reply to: `evidence@autopilotamerica.com`
-   - Deadline: 72 hours
+   - Deadline: Day 17 from ticket issue date
    - Specific questions for their violation type
 
 ### Phase 2: Wait for Evidence (User Action)
 Users can reply to evidence email with supporting documents (optional).
-Deadline is fixed: 72 hours from upload.
+Deadline is Day 17 from ticket issue date (with 48h minimum if ticket is old).
 
 ### Phase 3: Automatic Mailing (Cron Job)
 **Endpoint**: `GET /api/cron/autopilot-mail-letters`
@@ -190,20 +190,20 @@ T=0 (Upload)           VA uploads CSV
 T=0                    Ticket created in system        pending_evidence
 T=0                    Letter generated                pending_evidence
 T=0                    Evidence request email sent     
-                       (deadline in 72 hours)
+                       (deadline: Day 17 from ticket date)
 
-T=72h (Deadline)       Cron runs at 3 PM UTC           (automatic)
-                       Checks: is deadline passed?     
+T=Day 17 (Deadline)    Cron runs at 3 PM UTC           (automatic)
+                       Checks: is deadline passed?
                        YES → continues
 
-T=72h+ (Same day)      Lob API called                  
+T=Day 17 (Same day)    Lob API called
                        Letter printed, enveloped, mailed
 
-T=72h+ (Same day)      Letter marked as mailed         mailed
+T=Day 17 (Same day)    Letter marked as mailed         mailed
                        Tracking number stored
                        User notified by email
 
-T=72h+3-5d             USPS delivers letter            
+T=Day 17+3-5d          USPS delivers letter            
                        to City of Chicago
 ```
 
@@ -287,7 +287,7 @@ WHERE user_id = '...';
 ## Key Takeaways
 
 1. **CSV Upload** → Creates ticket + letter + emails user evidence request
-2. **72-hour wait** → User can send evidence via email reply
+2. **Day 17 deadline** → User can send evidence via email reply until Day 17 from ticket date
 3. **Daily cron** → Checks if deadline passed, then mails via Lob
 4. **Multiple kill switches** → pause_all_mail, is_test, evidence_deadline
 5. **LOB_API_KEY** → Must be set to mail letters

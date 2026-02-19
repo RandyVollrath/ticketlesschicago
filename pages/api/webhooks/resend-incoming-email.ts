@@ -174,8 +174,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .update({
               evidence_deadline: new Date().toISOString(), // immediately eligible for same-day mailing
               evidence_received_at: new Date().toISOString(),
-              evidence_on_time: pendingTicket?.evidence_requested_at
-                ? new Date().getTime() <= (new Date(pendingTicket.evidence_requested_at).getTime() + 48 * 60 * 60 * 1000)
+              evidence_on_time: pendingTicket?.evidence_deadline
+                ? new Date().getTime() <= new Date(pendingTicket.evidence_deadline).getTime()
                 : null,
               status: 'evidence_received',
             })

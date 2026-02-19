@@ -70,7 +70,7 @@ This document describes the complete flow of how parking contest letters are det
    - violation_date: parsed from CSV
    - amount: parsed from CSV
    - status: 'pending_evidence'  ← KEY STATUS
-   - evidence_deadline: NOW + 72 HOURS  ← KEY DEADLINE
+   - evidence_deadline: ticketDate + 17 DAYS  ← KEY DEADLINE
    - source: 'va_upload'
    ```
 
@@ -400,7 +400,7 @@ if (ticket.is_test) {
 ┌─────────────────────────────────────────────────────────────┐
 │ 2. Create Ticket in detected_tickets                         │
 │    - status: 'pending_evidence'                              │
-│    - evidence_deadline: NOW + 72 HOURS                       │
+│    - evidence_deadline: ticketDate + 17 DAYS                  │
 └────────────┬────────────────────────────────────────────────┘
              │
              ▼
@@ -420,7 +420,7 @@ if (ticket.is_test) {
 └────────────┬────────────────────────────────────────────────┘
              │
       ┌──────┴──────┐
-      │ 72 hours    │
+      │ Day 17      │
       │ passes...   │
       ▼             ▼
 ┌─────────────────────────────────────────────────────────────┐

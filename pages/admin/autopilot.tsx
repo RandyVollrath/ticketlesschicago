@@ -1188,7 +1188,7 @@ export default function AutopilotAdmin() {
                 Awaiting Evidence ({pendingEvidenceTickets.length})
               </h2>
               <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 24px 0' }}>
-                Users have 72 hours to submit evidence before letters are mailed.
+                Letters auto-send on Day 17 from the ticket issue date (4-day buffer before Day 21 legal deadline).
               </p>
 
               {pendingEvidenceTickets.length === 0 ? (

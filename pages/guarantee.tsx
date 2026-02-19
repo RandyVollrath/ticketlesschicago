@@ -52,7 +52,7 @@ export default function GuaranteePage() {
               <p><strong>Timing:</strong> Issued after subscription start date and within paid membership period.</p>
               <p><strong>Type:</strong> Non-camera violations only. Red-light and speed camera tickets are excluded.</p>
               <p><strong>Status:</strong> Must still be eligible to contest (not past deadlines, not adjudicated, not in collections, not at boot/tow enforcement stage).</p>
-              <p><strong>Documentation:</strong> Requested evidence/info must be provided within 72 hours of request (or before contest deadline, whichever is sooner).</p>
+              <p><strong>Documentation:</strong> Requested evidence/info must be provided within 17 days of the ticket issue date (or before the contest deadline, whichever is sooner).</p>
               <p><strong>Accuracy:</strong> Information provided must be truthful and complete.</p>
               <p style={{ marginBottom: 0 }}><strong>Volume/abuse cap:</strong> First 5 eligible tickets per membership year are included for guarantee consideration.</p>
             </div>

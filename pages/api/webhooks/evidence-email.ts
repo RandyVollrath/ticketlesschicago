@@ -793,8 +793,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Update ticket with evidence and SLA tracking
     const evidenceReceivedAt = new Date().toISOString();
-    const evidenceOnTime = ticket?.evidence_requested_at
-      ? new Date(evidenceReceivedAt).getTime() <= (new Date(ticket.evidence_requested_at).getTime() + 48 * 60 * 60 * 1000)
+    const evidenceOnTime = ticket?.evidence_deadline
+      ? new Date(evidenceReceivedAt).getTime() <= new Date(ticket.evidence_deadline).getTime()
       : null;
 
     // Look up user settings to determine approval requirement
