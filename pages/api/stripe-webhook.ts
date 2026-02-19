@@ -1680,18 +1680,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               console.log('✅ Autopilot subscription activated for user:', supabaseUserId);
 
               // CRITICAL: Set has_contesting to true in user_profiles so user is recognized as paid
+              // Also save license plate + state from checkout metadata
+              const autopilotPlate = metadata.license_plate_number || null;
+              const autopilotState = metadata.license_plate_state || 'IL';
+              const autopilotCustomerName = session.customer_details?.name || '';
+              const autopilotFirstName = autopilotCustomerName.split(' ')[0] || null;
+              const autopilotLastName = autopilotCustomerName.split(' ').slice(1).join(' ') || null;
+              const autopilotEmail = session.customer_details?.email || metadata.email || null;
+
+              const autopilotProfileData: any = {
+                user_id: supabaseUserId,
+                has_contesting: true,
+                is_paid: true,
+                updated_at: new Date().toISOString(),
+              };
+              if (autopilotPlate) autopilotProfileData.license_plate = autopilotPlate;
+              if (autopilotState) autopilotProfileData.license_state = autopilotState;
+              if (autopilotFirstName) autopilotProfileData.first_name = autopilotFirstName;
+              if (autopilotLastName) autopilotProfileData.last_name = autopilotLastName;
+              if (autopilotEmail) autopilotProfileData.email = autopilotEmail;
+              if (session.customer as string) autopilotProfileData.stripe_customer_id = session.customer as string;
+
               const { error: profileUpdateError } = await supabaseAdmin
                 .from('user_profiles')
-                .upsert({
-                  user_id: supabaseUserId,
-                  has_contesting: true,
-                  updated_at: new Date().toISOString(),
-                }, { onConflict: 'user_id' });
+                .upsert(autopilotProfileData, { onConflict: 'user_id' });
 
               if (profileUpdateError) {
                 console.error('❌ Error setting has_contesting for Autopilot user:', profileUpdateError);
               } else {
-                console.log('✅ has_contesting set to true for user:', supabaseUserId);
+                console.log('✅ Profile updated for Autopilot user:', supabaseUserId);
+
+                // Add plate to monitored_plates for portal checking
+                if (autopilotPlate) {
+                  console.log('📋 Adding plate to monitored_plates:', autopilotPlate, autopilotState);
+                  const { error: plateError } = await supabaseAdmin
+                    .from('monitored_plates')
+                    .upsert({
+                      user_id: supabaseUserId,
+                      plate: autopilotPlate.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                      state: autopilotState,
+                      status: 'active',
+                      is_leased_or_company: false,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    }, { onConflict: 'user_id,plate' });
+
+                  if (plateError) {
+                    console.error('❌ Error adding plate to monitored_plates:', plateError);
+                  } else {
+                    console.log('✅ Plate added to monitored_plates');
+                  }
+                }
+
                 await requestInitialPortalCheckForUser(supabaseUserId, 'autopilot_checkout');
               }
 
