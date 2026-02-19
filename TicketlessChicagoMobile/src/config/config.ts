@@ -26,7 +26,7 @@ export default {
   // API Configuration
   // Note: Always use production API since localhost isn't reachable from physical devices
   // For local backend testing, replace with your Mac's IP: 'http://192.168.x.x:3000'
-  API_BASE_URL: 'https://autopilotamerica.com',
+  API_BASE_URL: 'https://www.autopilotamerica.com',
 
   // App Info
   APP_VERSION,
@@ -44,7 +44,7 @@ export default {
 
   // Deep Linking
   URL_SCHEME: 'autopilotamerica',
-  WEBSITE_URL: 'https://autopilotamerica.com',
+  WEBSITE_URL: 'https://www.autopilotamerica.com',
 
   // Timeouts (in milliseconds)
   API_TIMEOUT: 15000,

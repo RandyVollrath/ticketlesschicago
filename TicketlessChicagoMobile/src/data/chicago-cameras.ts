@@ -610,7 +610,7 @@ export async function fetchCameraLocations(): Promise<void> {
 
     // Step 3: Cache is stale or missing — fetch from API in background
     console.log('[Cameras] Cache stale, fetching from API...');
-    const API_URL = 'https://autopilotamerica.com/api/camera-locations';
+    const API_URL = 'https://www.autopilotamerica.com/api/camera-locations';
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
