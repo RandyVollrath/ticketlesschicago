@@ -753,6 +753,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var cameraAlertsEnabled = false
   private var cameraSpeedEnabled = false
   private var cameraRedlightEnabled = false
+  private var cameraAlertVolume: Float = 1.0
   private var alertedCameraAtByIndex: [Int: Date] = [:]
   private var lastCameraAlertAt: Date? = nil
   private var lastCameraRejectLogAt: Date? = nil
@@ -766,6 +767,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let kCameraAlertsEnabledKey = "bg_camera_alerts_enabled"
   private let kCameraSpeedEnabledKey = "bg_camera_alerts_speed_enabled"
   private let kCameraRedlightEnabledKey = "bg_camera_alerts_redlight_enabled"
+  private let kCameraAlertVolumeKey = "bg_camera_alert_volume"
 
   // UserDefaults keys for persisting critical state across app kills.
   // Without persistence, iOS can kill the app, significantLocationChange wakes it
@@ -939,7 +941,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     if d.object(forKey: kCameraRedlightEnabledKey) != nil {
       cameraRedlightEnabled = d.bool(forKey: kCameraRedlightEnabledKey)
     }
-    log("Restored camera settings: enabled=\(cameraAlertsEnabled) speed=\(cameraSpeedEnabled) redlight=\(cameraRedlightEnabled)")
+    if d.object(forKey: kCameraAlertVolumeKey) != nil {
+      cameraAlertVolume = d.float(forKey: kCameraAlertVolumeKey)
+    }
+    log("Restored camera settings: enabled=\(cameraAlertsEnabled) speed=\(cameraSpeedEnabled) redlight=\(cameraRedlightEnabled) volume=\(cameraAlertVolume)")
   }
 
   private func persistCameraSettings() {
@@ -947,13 +952,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     d.set(cameraAlertsEnabled, forKey: kCameraAlertsEnabledKey)
     d.set(cameraSpeedEnabled, forKey: kCameraSpeedEnabledKey)
     d.set(cameraRedlightEnabled, forKey: kCameraRedlightEnabledKey)
+    d.set(cameraAlertVolume, forKey: kCameraAlertVolumeKey)
   }
 
   @objc func setCameraAlertSettings(_ enabled: Bool, speedEnabled: Bool, redlightEnabled: Bool,
+                                    volume: Double,
                                     resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     cameraAlertsEnabled = enabled
     cameraSpeedEnabled = speedEnabled
     cameraRedlightEnabled = redlightEnabled
+    cameraAlertVolume = Float(max(0.0, min(1.0, volume)))
     persistCameraSettings()
     decision("camera_settings_updated", [
       "enabled": enabled,
@@ -3550,7 +3558,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       let utterance = AVSpeechUtterance(string: message)
       utterance.rate = 0.52  // Match JS SpeechModule rate — slightly fast but clear
       utterance.pitchMultiplier = 1.0
-      utterance.volume = 1.0
+      utterance.volume = self.cameraAlertVolume
       if let voice = AVSpeechSynthesisVoice(language: "en-US") {
         utterance.voice = voice
       }
@@ -3773,13 +3781,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       let utterance = AVSpeechUtterance(string: message)
       utterance.rate = 0.52
       utterance.pitchMultiplier = 1.0
-      utterance.volume = 1.0
+      utterance.volume = self.cameraAlertVolume
       if let voice = AVSpeechSynthesisVoice(language: "en-US") {
         utterance.voice = voice
       }
 
       self.speechSynthesizer.speak(utterance)
-      self.log("forceSpeakCameraAlert: speaking '\(message)'")
+      self.log("forceSpeakCameraAlert: speaking '\(message)' at volume \(self.cameraAlertVolume)")
     }
   }
 

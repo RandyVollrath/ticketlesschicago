@@ -13,6 +13,7 @@ import {
   Platform,
   Animated as RNAnimated,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -137,6 +138,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [cameraAlertsEnabled, setCameraAlertsEnabled] = useState(false);
   const [speedCameraAlertsEnabled, setSpeedCameraAlertsEnabled] = useState(false);
   const [redLightCameraAlertsEnabled, setRedLightCameraAlertsEnabled] = useState(false);
+  const [cameraAlertVolume, setCameraAlertVolume] = useState(1.0);
   const [cameraSettingsLoaded, setCameraSettingsLoaded] = useState(false);
   const [meterExpiryAlertsEnabled, setMeterExpiryAlertsEnabled] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -233,6 +235,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setCameraAlertsEnabled(cameraSettings.enabled);
       setSpeedCameraAlertsEnabled(cameraSettings.speedEnabled);
       setRedLightCameraAlertsEnabled(cameraSettings.redLightEnabled);
+      setCameraAlertVolume(cameraSettings.volume);
     } catch (error) {
       log.error('Error loading camera alert settings', error);
     } finally {
@@ -655,6 +658,41 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   />
                 </>
               )}
+              <Divider />
+              <View style={styles.volumeRow}>
+                <MaterialCommunityIcons name="volume-low" size={20} color={colors.info} style={styles.rowIcon} />
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>Alert Volume</Text>
+                  <Text style={styles.settingSubtitle}>
+                    {cameraAlertVolume === 0 ? 'Muted' : `${Math.round(cameraAlertVolume * 100)}%`}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="volume-high" size={18} color={colors.textTertiary} />
+              </View>
+              <View style={styles.sliderContainer}>
+                <Slider
+                  style={styles.slider}
+                  minimumValue={0}
+                  maximumValue={1}
+                  step={0.05}
+                  value={cameraAlertVolume}
+                  onSlidingComplete={async (value: number) => {
+                    setCameraAlertVolume(value);
+                    try {
+                      await CameraAlertService.setAlertVolume(value);
+                      showFeedback(value === 0 ? 'Camera alerts muted' : `Volume set to ${Math.round(value * 100)}%`);
+                    } catch (err) {
+                      log.error('Error setting alert volume', err);
+                    }
+                  }}
+                  onValueChange={(value: number) => setCameraAlertVolume(value)}
+                  minimumTrackTintColor={colors.primary}
+                  maximumTrackTintColor={colors.border}
+                  thumbTintColor={colors.primary}
+                  accessibilityLabel="Camera alert volume"
+                  accessibilityValue={{ min: 0, max: 100, now: Math.round(cameraAlertVolume * 100) }}
+                />
+              </View>
             </>
           )}
           <Divider />
@@ -929,6 +967,24 @@ const styles = StyleSheet.create({
   permitZoneCancelBtnText: {
     color: colors.textSecondary,
     fontSize: typography.sizes.sm,
+  },
+
+  // Volume slider
+  volumeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.base,
+    paddingBottom: 0,
+  },
+  sliderContainer: {
+    paddingHorizontal: spacing.base,
+    paddingLeft: 56, // align with text after icon
+    paddingBottom: spacing.md,
+  },
+  slider: {
+    width: '100%',
+    height: 32,
   },
 
   // Divider

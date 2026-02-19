@@ -312,6 +312,19 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               setHasError(true);
             }
           }}
+          onNavigationStateChange={(navState) => {
+            // Prevent the WebView from navigating to the sign-in page or
+            // any other page — it should only show settings.
+            if (navState.url && !navState.url.includes('/settings')) {
+              log.warn('WebView navigating away from settings:', navState.url);
+              if (navState.url.includes('/auth/signin') || navState.url.includes('/login')) {
+                // Auth failed and the web page tried to redirect to sign-in.
+                // Block it and show native unauthenticated UI instead.
+                setIsAuthenticated(false);
+                setIsLoading(false);
+              }
+            }
+          }}
           startInLoadingState={true}
           renderLoading={() => (
             <View style={styles.loadingOverlay}>
@@ -325,10 +338,17 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           thirdPartyCookiesEnabled={true}
           onMessage={(event) => {
             // Required for injectedJavaScript to execute on iOS WKWebView.
-            // Also receives our 'injection_done' signal.
+            // Also receives our 'injection_done' signal and 'auth_failed' from the web page.
             const msg = event.nativeEvent.data;
             if (msg === 'injection_done') {
               log.debug('WebView CSS/auth injection confirmed');
+            } else if (msg === 'auth_failed') {
+              // Web page couldn't authenticate with the provided tokens.
+              // Show the native unauthenticated UI instead of letting the
+              // WebView redirect to the web sign-in page.
+              log.warn('WebView auth_failed — showing native sign-in prompt');
+              setIsAuthenticated(false);
+              setIsLoading(false);
             }
           }}
           cacheEnabled={true}
