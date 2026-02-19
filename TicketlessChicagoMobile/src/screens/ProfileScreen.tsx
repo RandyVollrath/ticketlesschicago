@@ -27,6 +27,7 @@ import Config from '../config/config';
 import { clearUserData } from '../utils/storage';
 import { StorageKeys } from '../constants';
 import CameraAlertService from '../services/CameraAlertService';
+import BackgroundLocationService from '../services/BackgroundLocationService';
 
 const log = Logger.createLogger('SettingsScreen');
 
@@ -625,6 +626,35 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   }
                 }}
               />
+              {Platform.OS === 'ios' && (
+                <>
+                  <Divider />
+                  <LinkRow
+                    icon="cellphone-sound"
+                    iconColor={colors.info}
+                    title="Test Background Alert"
+                    onPress={async () => {
+                      Alert.alert(
+                        'Background Audio Test',
+                        'After pressing OK, you have 5 seconds to leave the app (press Home or swipe up). You will hear a spoken camera alert and see a notification while the app is in the background.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'OK',
+                            onPress: async () => {
+                              try {
+                                await BackgroundLocationService.testBackgroundTTS(5);
+                              } catch (err: any) {
+                                Alert.alert('Error', err?.message || String(err));
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  />
+                </>
+              )}
             </>
           )}
           <Divider />
