@@ -70,7 +70,7 @@ export async function fetchMeteredParkingLocations(): Promise<void> {
 
     // Step 3: Cache is stale or missing — fetch from API
     console.log('[MeteredParking] Cache stale, fetching from API...');
-    const API_URL = 'https://autopilotamerica.com/api/metered-parking';
+    const API_URL = 'https://www.autopilotamerica.com/api/metered-parking';
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout (larger dataset)
 
