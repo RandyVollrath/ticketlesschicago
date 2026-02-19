@@ -125,7 +125,8 @@ export default function StartFunnel() {
   useEffect(() => {
     if (router.query.checkout === 'success' && user) {
       setStep('tickets');
-      // Clean the URL
+      // Clean the URL and clear saved funnel state
+      localStorage.removeItem('start_funnel_state');
       router.replace('/start', undefined, { shallow: true });
     }
   }, [router.query.checkout, user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -191,6 +192,14 @@ export default function StartFunnel() {
     setLoading(true);
     setError('');
     try {
+      // Save funnel state to localStorage so it survives the OAuth redirect
+      localStorage.setItem('start_funnel_state', JSON.stringify({
+        plate,
+        plateState,
+        city,
+        step: 'signin',
+      }));
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
