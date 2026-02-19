@@ -210,7 +210,7 @@ export default function LandingPage() {
           ) : (
             <>
               <Link href="/auth/signin" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Login</Link>
-              <Button primary href="/get-started" style={{ padding: '10px 20px', fontSize: '14px' }}>Get Started</Button>
+              <Button primary href="/start" style={{ padding: '10px 20px', fontSize: '14px' }}>Get Started</Button>
             </>
           )}
         </div>
@@ -333,7 +333,7 @@ export default function LandingPage() {
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Button primary href="/get-started">
+          <Button primary href="/start">
             Become a Founding Member - $49/year <ArrowRight />
           </Button>
           <Button variant="outline" href="/alerts/signup">
@@ -540,7 +540,7 @@ export default function LandingPage() {
               <br/>• Which arguments succeed
               <br/>• Which tickets aren't worth fighting
             </p>
-            <Button primary href="/get-started">Start Protecting</Button>
+            <Button primary href="/start">Start Protecting</Button>
           </div>
           <div style={{ flex: '1 1 350px' }}>
             {dismissalRates.map((stat, i) => (
@@ -640,7 +640,7 @@ export default function LandingPage() {
 
             <Button
               fullWidth
-              href="/get-started"
+              href="/alerts/signup"
               style={{ backgroundColor: COLORS.bgSection, color: COLORS.primary, border: `1px solid ${COLORS.border}` }}
             >
               Start Free
@@ -714,7 +714,7 @@ export default function LandingPage() {
 
             <Button
               fullWidth
-              href="/get-started"
+              href="/start"
               style={{ backgroundColor: '#fff', color: COLORS.primary }}
             >
               Become a Founding Member
@@ -802,10 +802,10 @@ export default function LandingPage() {
             Not a generic national template.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button variant="outline" href="/get-started">
+            <Button variant="outline" href="/alerts/signup">
               Start Free
             </Button>
-            <Button primary href="/get-started">
+            <Button primary href="/start">
               Become a Founding Member - $49/year <ArrowRight />
             </Button>
           </div>
