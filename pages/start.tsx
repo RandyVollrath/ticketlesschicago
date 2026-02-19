@@ -4,11 +4,11 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 
 // Pre-payment: plate → city → signin → value → price → (stripe)
-// Post-payment: tickets → notifications → done
-type Step = 'plate' | 'city' | 'signin' | 'value' | 'price' | 'tickets' | 'notifications' | 'done';
+// Post-payment: confirmed → address → tickets → notifications
+type Step = 'plate' | 'city' | 'signin' | 'value' | 'price' | 'confirmed' | 'address' | 'tickets' | 'notifications';
 
 const PRE_PAYMENT_STEPS: Step[] = ['plate', 'city', 'signin', 'value', 'price'];
-const POST_PAYMENT_STEPS: Step[] = ['tickets', 'notifications', 'done'];
+const POST_PAYMENT_STEPS: Step[] = ['confirmed', 'address', 'tickets', 'notifications'];
 
 const COLORS = {
   bg: '#FAFBFC',
@@ -67,6 +67,10 @@ export default function StartFunnel() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [mailingAddress, setMailingAddress] = useState('');
+  const [mailingCity, setMailingCity] = useState('Chicago');
+  const [mailingState, setMailingState] = useState('IL');
+  const [mailingZip, setMailingZip] = useState('');
 
   const inputRef = useRef<HTMLInputElement>(null);
   const stepRef = useRef<Step>(step);
@@ -124,7 +128,7 @@ export default function StartFunnel() {
   // Handle checkout=success from Stripe redirect
   useEffect(() => {
     if (router.query.checkout === 'success' && user) {
-      setStep('tickets');
+      setStep('confirmed');
       // Clean the URL and clear saved funnel state
       localStorage.removeItem('start_funnel_state');
       router.replace('/start', undefined, { shallow: true });
@@ -314,6 +318,42 @@ export default function StartFunnel() {
       // Non-fatal
     }
     setSavingSettings(false);
+    // Last step — go to settings
+    router.push('/settings');
+  };
+
+  const handleSaveAddress = async () => {
+    if (!mailingAddress.trim()) {
+      setError('Please enter your street address.');
+      return;
+    }
+    if (!mailingZip.trim() || !/^\d{5}(-\d{4})?$/.test(mailingZip.trim())) {
+      setError('Please enter a valid ZIP code.');
+      return;
+    }
+
+    setSavingSettings(true);
+    setError('');
+    try {
+      const res = await fetch('/api/autopilot/update-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          mailing_address: mailingAddress.trim(),
+          mailing_city: mailingCity.trim(),
+          mailing_state: mailingState,
+          mailing_zip: mailingZip.trim(),
+          home_address_full: `${mailingAddress.trim()}, ${mailingCity.trim()}, ${mailingState} ${mailingZip.trim()}`,
+        }),
+      });
+      if (!res.ok) {
+        console.error('Failed to save address');
+      }
+    } catch {
+      // Non-fatal
+    }
+    setSavingSettings(false);
     goNext();
   };
 
@@ -390,7 +430,7 @@ export default function StartFunnel() {
         justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {stepIndex > 0 && step !== 'done' && (
+          {stepIndex > 0 && step !== 'confirmed' && (
             <button
               onClick={goBack}
               style={{
@@ -418,11 +458,9 @@ export default function StartFunnel() {
             Autopilot America
           </span>
         </div>
-        {step !== 'done' && (
-          <span style={{ fontSize: 13, color: COLORS.textMuted }}>
-            {isPostPayment ? 'Setting up your account' : `Step ${stepIndex + 1} of ${totalSteps}`}
-          </span>
-        )}
+        <span style={{ fontSize: 13, color: COLORS.textMuted }}>
+          {isPostPayment ? 'Setting up your account' : `Step ${stepIndex + 1} of ${totalSteps}`}
+        </span>
       </header>
 
       {/* Main content */}
@@ -674,22 +712,156 @@ export default function StartFunnel() {
           {/* POST-PAYMENT ONBOARDING STEPS          */}
           {/* ══════════════════════════════════════ */}
 
+          {/* ── Step: Confirmed (shown first after payment) ── */}
+          {step === 'confirmed' && (
+            <StepContainer>
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ fontSize: 64, marginBottom: 12 }}>&#9989;</div>
+                <StepLabel>You&apos;re protected!</StepLabel>
+                <StepSubtext>
+                  We&apos;re now monitoring license plate <strong>{plate} ({plateState})</strong> on the City of Chicago payment portal.
+                </StepSubtext>
+              </div>
+
+              <div style={{
+                backgroundColor: COLORS.primaryLight,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: 12,
+                padding: '20px',
+                marginBottom: 24,
+                textAlign: 'left',
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 14 }}>Here&apos;s how it works:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.5 }}>
+                    <span style={{ color: COLORS.primary, fontWeight: 700, flexShrink: 0 }}>1.</span>
+                    <span>We check for new tickets on your plate <strong>twice a week</strong> (Monday &amp; Thursday).</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.5 }}>
+                    <span style={{ color: COLORS.primary, fontWeight: 700, flexShrink: 0 }}>2.</span>
+                    <span>When we find a ticket, we <strong>automatically generate a contest letter</strong> and mail it to the City on your behalf.</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.5 }}>
+                    <span style={{ color: COLORS.primary, fontWeight: 700, flexShrink: 0 }}>3.</span>
+                    <span>We&apos;ll <strong>email you to request evidence</strong> (photos, receipts, etc.) that can strengthen your case. You can reply with evidence or let the letter go as-is.</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.5 }}>
+                    <span style={{ color: COLORS.primary, fontWeight: 700, flexShrink: 0 }}>4.</span>
+                    <span>You&apos;ll get notified at every step — when a ticket is found, when a letter is mailed, and when the result comes back.</span>
+                  </div>
+                </div>
+              </div>
+
+              <ContinueButton onClick={goNext}>
+                Finish setting up my account
+              </ContinueButton>
+
+              <button
+                onClick={() => router.push('/settings')}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'none',
+                  border: 'none',
+                  color: COLORS.textMuted,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  marginTop: 8,
+                  fontFamily: 'inherit',
+                }}
+              >
+                I&apos;ll do this later in Settings
+              </button>
+            </StepContainer>
+          )}
+
+          {/* ── Step: Mailing Address ── */}
+          {step === 'address' && (
+            <StepContainer>
+              <StepLabel>What&apos;s your address?</StepLabel>
+              <StepSubtext>
+                Used as the return address on contest letters so the City can send you the result.
+                Also enables free street cleaning and winter parking alerts for your area.
+              </StepSubtext>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={mailingAddress}
+                  onChange={(e) => { setMailingAddress(e.target.value); setError(''); }}
+                  placeholder="Street address"
+                  autoComplete="street-address"
+                  style={inputStyle}
+                />
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <input
+                    type="text"
+                    value={mailingCity}
+                    onChange={(e) => setMailingCity(e.target.value)}
+                    placeholder="City"
+                    autoComplete="address-level2"
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <select
+                    value={mailingState}
+                    onChange={(e) => setMailingState(e.target.value)}
+                    style={{
+                      width: 72,
+                      padding: '16px 8px',
+                      fontSize: 16,
+                      fontFamily: 'inherit',
+                      fontWeight: 600,
+                      border: `2px solid ${COLORS.border}`,
+                      borderRadius: 12,
+                      backgroundColor: COLORS.card,
+                      color: COLORS.text,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <input
+                  type="text"
+                  value={mailingZip}
+                  onChange={(e) => { setMailingZip(e.target.value.replace(/[^\d-]/g, '').slice(0, 10)); setError(''); }}
+                  placeholder="ZIP code"
+                  autoComplete="postal-code"
+                  inputMode="numeric"
+                  maxLength={10}
+                  style={{ ...inputStyle, width: 160 }}
+                />
+              </div>
+
+              {error && <ErrorText>{error}</ErrorText>}
+
+              <ContinueButton onClick={handleSaveAddress} disabled={savingSettings}>
+                {savingSettings ? 'Saving...' : 'Continue'}
+              </ContinueButton>
+
+              <button
+                onClick={goNext}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'none',
+                  border: 'none',
+                  color: COLORS.textMuted,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  marginTop: 8,
+                  fontFamily: 'inherit',
+                }}
+              >
+                Skip for now
+              </button>
+            </StepContainer>
+          )}
+
           {/* ── Step: Review Ticket Types ── */}
           {step === 'tickets' && (
             <StepContainer>
-              <div style={{
-                backgroundColor: COLORS.successBg,
-                border: `1px solid ${COLORS.success}`,
-                borderRadius: 12,
-                padding: '12px 16px',
-                marginBottom: 24,
-                fontSize: 14,
-                color: '#166534',
-                fontWeight: 500,
-              }}>
-                Payment confirmed! Let&apos;s customize your protection.
-              </div>
-
               <StepLabel>Which tickets should we contest?</StepLabel>
               <StepSubtext>We&apos;ll automatically contest these ticket types when found. You can change this anytime in Settings.</StepSubtext>
 
@@ -728,6 +900,23 @@ export default function StartFunnel() {
               <ContinueButton onClick={handleSaveTicketTypes} disabled={savingSettings}>
                 {savingSettings ? 'Saving...' : 'Continue'}
               </ContinueButton>
+
+              <button
+                onClick={goNext}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'none',
+                  border: 'none',
+                  color: COLORS.textMuted,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  marginTop: 8,
+                  fontFamily: 'inherit',
+                }}
+              >
+                Skip — use defaults
+              </button>
             </StepContainer>
           )}
 
@@ -790,7 +979,7 @@ export default function StartFunnel() {
               </ContinueButton>
 
               <button
-                onClick={goNext}
+                onClick={() => router.push('/settings')}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -805,49 +994,6 @@ export default function StartFunnel() {
               >
                 Skip for now
               </button>
-            </StepContainer>
-          )}
-
-          {/* ── Step: Done ── */}
-          {step === 'done' && (
-            <StepContainer>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 64, marginBottom: 16 }}>&#127881;</div>
-                <StepLabel>You&apos;re all set!</StepLabel>
-                <StepSubtext>
-                  We&apos;re monitoring <strong>{plate}</strong> for tickets starting now.
-                  Sit back and let Autopilot handle the rest.
-                </StepSubtext>
-
-                <div style={{
-                  backgroundColor: COLORS.primaryLight,
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 12,
-                  padding: '20px',
-                  marginBottom: 24,
-                  textAlign: 'left',
-                }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 12 }}>What happens next:</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', gap: 10, fontSize: 14, color: COLORS.textSecondary }}>
-                      <span style={{ color: COLORS.primary, fontWeight: 700 }}>1.</span>
-                      We run your first ticket check within 24 hours
-                    </div>
-                    <div style={{ display: 'flex', gap: 10, fontSize: 14, color: COLORS.textSecondary }}>
-                      <span style={{ color: COLORS.primary, fontWeight: 700 }}>2.</span>
-                      If we find any open tickets, we&apos;ll email you immediately
-                    </div>
-                    <div style={{ display: 'flex', gap: 10, fontSize: 14, color: COLORS.textSecondary }}>
-                      <span style={{ color: COLORS.primary, fontWeight: 700 }}>3.</span>
-                      Contest letters are auto-generated and mailed
-                    </div>
-                  </div>
-                </div>
-
-                <ContinueButton onClick={() => router.push('/settings')}>
-                  Go to Settings
-                </ContinueButton>
-              </div>
             </StepContainer>
           )}
 
