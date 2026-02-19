@@ -181,10 +181,12 @@ class BackgroundTaskServiceClass {
         const diag = CameraAlertService.getDiagnosticInfo();
         // Keep iOS-native camera alerts in sync so background alerts work even if JS is suspended.
         if (Platform.OS === 'ios') {
+          const cameraVolume = CameraAlertService.getAlertVolume();
           await BackgroundLocationService.setCameraAlertSettings(
             diag.isEnabled,
             diag.speedAlertsEnabled,
-            diag.redLightAlertsEnabled
+            diag.redLightAlertsEnabled,
+            cameraVolume
           );
         }
         await this.sendDiagnosticNotification(

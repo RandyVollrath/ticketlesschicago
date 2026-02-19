@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import { supabase } from '../lib/supabase';
 
-// Steps: plate → city → email → value → price → (stripe redirect)
-type Step = 'plate' | 'city' | 'email' | 'value' | 'price';
+// Pre-payment: plate → city → signin → value → price → (stripe)
+// Post-payment: tickets → notifications → done
+type Step = 'plate' | 'city' | 'signin' | 'value' | 'price' | 'tickets' | 'notifications' | 'done';
 
-const STEPS: Step[] = ['plate', 'city', 'email', 'value', 'price'];
+const PRE_PAYMENT_STEPS: Step[] = ['plate', 'city', 'signin', 'value', 'price'];
+const POST_PAYMENT_STEPS: Step[] = ['tickets', 'notifications', 'done'];
 
 const COLORS = {
   bg: '#FAFBFC',
@@ -23,18 +26,109 @@ const COLORS = {
   dangerBg: '#FEF2F2',
 };
 
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
+  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
+  'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
+  'VA','WA','WV','WI','WY','DC',
+];
+
+const TICKET_TYPES = [
+  { key: 'expired_plates', label: 'Expired Plates', winRate: 75, defaultOn: true },
+  { key: 'no_city_sticker', label: 'No City Sticker', winRate: 70, defaultOn: true },
+  { key: 'expired_meter', label: 'Expired Meter', winRate: 67, defaultOn: true },
+  { key: 'disabled_zone', label: 'Disabled Zone', winRate: 68, defaultOn: true },
+  { key: 'no_standing_time_restricted', label: 'No Standing / Time Restricted', winRate: 58, defaultOn: true },
+  { key: 'parking_prohibited', label: 'Parking / Standing Prohibited', winRate: 55, defaultOn: true },
+  { key: 'residential_permit', label: 'Residential Permit Parking', winRate: 54, defaultOn: true },
+  { key: 'missing_plate', label: 'Missing / Noncompliant Plate', winRate: 54, defaultOn: true },
+  { key: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 59, defaultOn: true },
+  { key: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44, defaultOn: false },
+  { key: 'street_cleaning', label: 'Street Cleaning', winRate: 34, defaultOn: false },
+  { key: 'bus_lane', label: 'Bus Lane / Smart Streets', winRate: 25, defaultOn: false },
+];
+
 export default function StartFunnel() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('plate');
   const [plate, setPlate] = useState('');
+  const [plateState, setPlateState] = useState('IL');
   const [city, setCity] = useState('Chicago');
-  const [state, setState] = useState('IL');
-  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Post-payment state
+  const [selectedTicketTypes, setSelectedTicketTypes] = useState<string[]>(
+    TICKET_TYPES.filter(t => t.defaultOn).map(t => t.key)
+  );
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [smsNotifications, setSmsNotifications] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const stepRef = useRef<Step>(step);
+  stepRef.current = step;
+
+  // Restore plate/city from localStorage on mount (survives OAuth redirect)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('start_funnel_state');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.plate) setPlate(parsed.plate);
+        if (parsed.plateState) setPlateState(parsed.plateState);
+        if (parsed.city) setCity(parsed.city);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  // Check auth on mount + listen for auth changes (Google OAuth redirect)
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUser(session.user);
+        // If we came back from OAuth and have saved funnel state, auto-advance past signin
+        const saved = localStorage.getItem('start_funnel_state');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.step === 'signin') {
+            setStep('value');
+          }
+        }
+      }
+      setAuthLoading(false);
+    };
+    checkAuth();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        setUser(session.user);
+        // If we're on the signin step, auto-advance
+        if (stepRef.current === 'signin') {
+          setStep('value');
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => authListener?.subscription.unsubscribe();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle checkout=success from Stripe redirect
+  useEffect(() => {
+    if (router.query.checkout === 'success' && user) {
+      setStep('tickets');
+      // Clean the URL
+      router.replace('/start', undefined, { shallow: true });
+    }
+  }, [router.query.checkout, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Focus input on step change
   useEffect(() => {
@@ -44,22 +138,25 @@ export default function StartFunnel() {
     return () => clearTimeout(timer);
   }, [step]);
 
-  const stepIndex = STEPS.indexOf(step);
-  const progress = ((stepIndex + 1) / STEPS.length) * 100;
+  const isPostPayment = POST_PAYMENT_STEPS.includes(step);
+  const currentSteps = isPostPayment ? POST_PAYMENT_STEPS : PRE_PAYMENT_STEPS;
+  const stepIndex = currentSteps.indexOf(step);
+  const totalSteps = currentSteps.length;
+  const progress = ((stepIndex + 1) / totalSteps) * 100;
 
   const goBack = () => {
     setError('');
-    const idx = STEPS.indexOf(step);
+    const idx = currentSteps.indexOf(step);
     if (idx > 0) {
-      setStep(STEPS[idx - 1]);
+      setStep(currentSteps[idx - 1]);
     }
   };
 
   const goNext = () => {
     setError('');
-    const idx = STEPS.indexOf(step);
-    if (idx < STEPS.length - 1) {
-      setStep(STEPS[idx + 1]);
+    const idx = currentSteps.indexOf(step);
+    if (idx < currentSteps.length - 1) {
+      setStep(currentSteps[idx + 1]);
     }
   };
 
@@ -82,21 +179,29 @@ export default function StartFunnel() {
       setError('Please select your city.');
       return;
     }
-    goNext();
+    // If user is already signed in (e.g. came back), skip signin step
+    if (user) {
+      setStep('value');
+    } else {
+      goNext();
+    }
   };
 
-  const handleEmailSubmit = () => {
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed) {
-      setError('Please enter your email.');
-      return;
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/start`,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+      setLoading(false);
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('Please enter a valid email address.');
-      return;
-    }
-    setEmail(trimmed);
-    goNext();
   };
 
   const handleCheckout = async () => {
@@ -105,33 +210,44 @@ export default function StartFunnel() {
       return;
     }
 
+    if (!user) {
+      setError('Please sign in first.');
+      setStep('signin');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      // Step 1: Create account
+      const cleanPlate = plate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+      // Create account record with plate (upserts if exists)
       const accountRes = await fetch('/api/start/create-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
-          licensePlate: plate,
+          email: user.email,
+          licensePlate: cleanPlate,
           city: city.toLowerCase().replace(/\s+/g, '-'),
-          state,
+          state: plateState,
         }),
       });
 
-      const accountData = await accountRes.json();
-
       if (!accountRes.ok) {
+        const accountData = await accountRes.json();
         throw new Error(accountData.error || 'Failed to create account');
       }
 
-      // Step 2: Create Stripe checkout session
+      // Create Stripe checkout session
       const checkoutRes = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: accountData.userId }),
+        body: JSON.stringify({
+          userId: user.id,
+          licensePlate: cleanPlate,
+          plateState,
+        }),
       });
 
       const checkoutData = await checkoutRes.json();
@@ -147,12 +263,80 @@ export default function StartFunnel() {
     }
   };
 
+  const handleSaveTicketTypes = async () => {
+    setSavingSettings(true);
+    try {
+      const res = await fetch('/api/autopilot/update-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          allowed_ticket_types: selectedTicketTypes,
+        }),
+      });
+      if (!res.ok) {
+        // Non-fatal — defaults are fine
+        console.error('Failed to save ticket type preferences');
+      }
+    } catch {
+      // Non-fatal
+    }
+    setSavingSettings(false);
+    goNext();
+  };
+
+  const handleSaveNotifications = async () => {
+    setSavingSettings(true);
+    try {
+      const res = await fetch('/api/autopilot/update-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          email_on_ticket_found: emailNotifications,
+          email_on_letter_mailed: emailNotifications,
+          email_on_approval_needed: emailNotifications,
+        }),
+      });
+      if (!res.ok) {
+        console.error('Failed to save notification preferences');
+      }
+    } catch {
+      // Non-fatal
+    }
+    setSavingSettings(false);
+    goNext();
+  };
+
+  const toggleTicketType = (key: string) => {
+    setSelectedTicketTypes(prev =>
+      prev.includes(key)
+        ? prev.filter(t => t !== key)
+        : [...prev, key]
+    );
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent, handler: () => void) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       handler();
     }
   };
+
+  if (authLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif',
+        color: COLORS.textMuted,
+      }}>
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -183,13 +367,13 @@ export default function StartFunnel() {
         <div style={{
           height: '100%',
           width: `${progress}%`,
-          backgroundColor: COLORS.primary,
+          backgroundColor: isPostPayment ? COLORS.success : COLORS.primary,
           transition: 'width 0.4s ease',
           borderRadius: '0 2px 2px 0',
         }} />
       </div>
 
-      {/* Header - minimal */}
+      {/* Header */}
       <header style={{
         padding: '16px 24px',
         display: 'flex',
@@ -197,7 +381,7 @@ export default function StartFunnel() {
         justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {stepIndex > 0 && (
+          {stepIndex > 0 && step !== 'done' && (
             <button
               onClick={goBack}
               style={{
@@ -225,12 +409,11 @@ export default function StartFunnel() {
             Autopilot America
           </span>
         </div>
-        <span style={{
-          fontSize: 13,
-          color: COLORS.textMuted,
-        }}>
-          Step {stepIndex + 1} of {STEPS.length}
-        </span>
+        {step !== 'done' && (
+          <span style={{ fontSize: 13, color: COLORS.textMuted }}>
+            {isPostPayment ? 'Setting up your account' : `Step ${stepIndex + 1} of ${totalSteps}`}
+          </span>
+        )}
       </header>
 
       {/* Main content */}
@@ -241,38 +424,60 @@ export default function StartFunnel() {
         justifyContent: 'center',
         padding: '24px',
       }}>
-        <div style={{
-          width: '100%',
-          maxWidth: 440,
-        }}>
+        <div style={{ width: '100%', maxWidth: 440 }}>
 
-          {/* Step: License Plate */}
+          {/* ── Step: License Plate ── */}
           {step === 'plate' && (
             <StepContainer>
               <StepLabel>What&apos;s your license plate?</StepLabel>
               <StepSubtext>We&apos;ll monitor the City of Chicago portal for any tickets on this plate.</StepSubtext>
-              <input
-                ref={inputRef}
-                type="text"
-                value={plate}
-                onChange={(e) => {
-                  setPlate(e.target.value.toUpperCase());
-                  setError('');
-                }}
-                onKeyDown={(e) => handleKeyDown(e, handlePlateSubmit)}
-                placeholder="e.g. AB12345"
-                autoCapitalize="characters"
-                autoComplete="off"
-                spellCheck={false}
-                style={inputStyle}
-              />
+              <div style={{ display: 'flex', gap: 10, marginBottom: 0 }}>
+                <select
+                  value={plateState}
+                  onChange={(e) => setPlateState(e.target.value)}
+                  style={{
+                    width: 72,
+                    padding: '16px 8px',
+                    fontSize: 16,
+                    fontFamily: 'inherit',
+                    fontWeight: 600,
+                    border: `2px solid ${COLORS.border}`,
+                    borderRadius: 12,
+                    backgroundColor: COLORS.card,
+                    color: COLORS.text,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={plate}
+                  onChange={(e) => {
+                    setPlate(e.target.value.toUpperCase());
+                    setError('');
+                  }}
+                  onKeyDown={(e) => handleKeyDown(e, handlePlateSubmit)}
+                  placeholder="e.g. AB12345"
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={10}
+                  style={{
+                    ...inputStyle,
+                    letterSpacing: '0.05em',
+                    fontWeight: 600,
+                  }}
+                />
+              </div>
               {error && <ErrorText>{error}</ErrorText>}
               <ContinueButton onClick={handlePlateSubmit}>Continue</ContinueButton>
               <Reassurance>Takes about 60 seconds to set up.</Reassurance>
             </StepContainer>
           )}
 
-          {/* Step: City */}
+          {/* ── Step: City ── */}
           {step === 'city' && (
             <StepContainer>
               <StepLabel>Which city?</StepLabel>
@@ -280,7 +485,7 @@ export default function StartFunnel() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <CityOption
                   selected={city === 'Chicago'}
-                  onClick={() => { setCity('Chicago'); setState('IL'); setError(''); }}
+                  onClick={() => { setCity('Chicago'); setError(''); }}
                 >
                   <span style={{ fontSize: 20 }}>&#127959;</span>
                   <div>
@@ -295,12 +500,8 @@ export default function StartFunnel() {
                   backgroundColor: COLORS.bg,
                   opacity: 0.6,
                 }}>
-                  <div style={{ fontSize: 14, color: COLORS.textMuted, fontWeight: 500 }}>
-                    More cities coming soon
-                  </div>
-                  <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 2 }}>
-                    San Francisco, Boston, San Diego, Los Angeles
-                  </div>
+                  <div style={{ fontSize: 14, color: COLORS.textMuted, fontWeight: 500 }}>More cities coming soon</div>
+                  <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 2 }}>San Francisco, Boston, San Diego, Los Angeles</div>
                 </div>
               </div>
               {error && <ErrorText>{error}</ErrorText>}
@@ -308,32 +509,50 @@ export default function StartFunnel() {
             </StepContainer>
           )}
 
-          {/* Step: Email */}
-          {step === 'email' && (
+          {/* ── Step: Sign In (Google OAuth) ── */}
+          {step === 'signin' && (
             <StepContainer>
-              <StepLabel>Where should we send alerts?</StepLabel>
-              <StepSubtext>We&apos;ll notify you instantly if we find a ticket on <strong>{plate}</strong>.</StepSubtext>
-              <input
-                ref={inputRef}
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setError('');
+              <StepLabel>Create your account</StepLabel>
+              <StepSubtext>Sign in to start protecting <strong>{plate}</strong> from parking tickets.</StepSubtext>
+
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '16px 24px',
+                  borderRadius: 12,
+                  border: `2px solid ${COLORS.border}`,
+                  backgroundColor: COLORS.card,
+                  color: COLORS.text,
+                  fontSize: 16,
+                  fontWeight: 500,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 12,
+                  fontFamily: 'inherit',
+                  transition: 'border-color 0.2s ease',
                 }}
-                onKeyDown={(e) => handleKeyDown(e, handleEmailSubmit)}
-                placeholder="you@email.com"
-                autoComplete="email"
-                autoCapitalize="off"
-                spellCheck={false}
-                style={inputStyle}
-              />
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                {loading ? 'Redirecting...' : 'Continue with Google'}
+              </button>
+
               {error && <ErrorText>{error}</ErrorText>}
-              <ContinueButton onClick={handleEmailSubmit}>Continue</ContinueButton>
+
+              <Reassurance>We only use your email for ticket alerts and account access.</Reassurance>
             </StepContainer>
           )}
 
-          {/* Step: Value Proposition */}
+          {/* ── Step: Value Proposition ── */}
           {step === 'value' && (
             <StepContainer>
               <StepLabel>Here&apos;s how Autopilot protects you</StepLabel>
@@ -358,7 +577,7 @@ export default function StartFunnel() {
             </StepContainer>
           )}
 
-          {/* Step: Price + Consent */}
+          {/* ── Step: Price + Consent ── */}
           {step === 'price' && (
             <StepContainer>
               <div style={{
@@ -383,32 +602,18 @@ export default function StartFunnel() {
                 }}>
                   Founding Member Rate
                 </div>
-                <div style={{
-                  fontSize: 48,
-                  fontWeight: 700,
-                  color: COLORS.text,
-                  lineHeight: 1.1,
-                }}>
+                <div style={{ fontSize: 48, fontWeight: 700, color: COLORS.text, lineHeight: 1.1 }}>
                   $49
                   <span style={{ fontSize: 20, fontWeight: 400, color: COLORS.textSecondary }}>/year</span>
                 </div>
-                <div style={{
-                  fontSize: 14,
-                  color: COLORS.textSecondary,
-                  marginTop: 8,
-                }}>
+                <div style={{ fontSize: 14, color: COLORS.textSecondary, marginTop: 8 }}>
                   Price locked for life while your membership stays active.
                 </div>
-                <div style={{
-                  fontSize: 13,
-                  color: COLORS.textMuted,
-                  marginTop: 4,
-                }}>
+                <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 4 }}>
                   That&apos;s less than a single parking ticket.
                 </div>
               </div>
 
-              {/* What's included summary */}
               <div style={{ marginBottom: 24 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 12 }}>What&apos;s included:</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -420,7 +625,6 @@ export default function StartFunnel() {
                 </div>
               </div>
 
-              {/* Consent */}
               <label style={{
                 display: 'flex',
                 alignItems: 'flex-start',
@@ -436,18 +640,8 @@ export default function StartFunnel() {
                 <input
                   type="checkbox"
                   checked={consentChecked}
-                  onChange={(e) => {
-                    setConsentChecked(e.target.checked);
-                    setError('');
-                  }}
-                  style={{
-                    width: 20,
-                    height: 20,
-                    marginTop: 1,
-                    accentColor: COLORS.primary,
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
+                  onChange={(e) => { setConsentChecked(e.target.checked); setError(''); }}
+                  style={{ width: 20, height: 20, marginTop: 1, accentColor: COLORS.primary, cursor: 'pointer', flexShrink: 0 }}
                 />
                 <span style={{ fontSize: 13, color: COLORS.textSecondary, lineHeight: 1.5 }}>
                   I authorize Autopilot America to monitor my license plate <strong>{plate}</strong> for parking tickets
@@ -461,13 +655,189 @@ export default function StartFunnel() {
                 {loading ? 'Setting up...' : 'Start my protection'}
               </ContinueButton>
 
-              <div style={{
-                textAlign: 'center',
-                marginTop: 12,
-                fontSize: 12,
-                color: COLORS.textMuted,
-              }}>
+              <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: COLORS.textMuted }}>
                 Secure payment via Stripe. Cancel anytime.
+              </div>
+            </StepContainer>
+          )}
+
+          {/* ══════════════════════════════════════ */}
+          {/* POST-PAYMENT ONBOARDING STEPS          */}
+          {/* ══════════════════════════════════════ */}
+
+          {/* ── Step: Review Ticket Types ── */}
+          {step === 'tickets' && (
+            <StepContainer>
+              <div style={{
+                backgroundColor: COLORS.successBg,
+                border: `1px solid ${COLORS.success}`,
+                borderRadius: 12,
+                padding: '12px 16px',
+                marginBottom: 24,
+                fontSize: 14,
+                color: '#166534',
+                fontWeight: 500,
+              }}>
+                Payment confirmed! Let&apos;s customize your protection.
+              </div>
+
+              <StepLabel>Which tickets should we contest?</StepLabel>
+              <StepSubtext>We&apos;ll automatically contest these ticket types when found. You can change this anytime in Settings.</StepSubtext>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+                {TICKET_TYPES.map((t) => (
+                  <label
+                    key={t.key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '12px 16px',
+                      borderRadius: 10,
+                      border: `1px solid ${selectedTicketTypes.includes(t.key) ? COLORS.primary : COLORS.border}`,
+                      backgroundColor: selectedTicketTypes.includes(t.key) ? COLORS.primaryLight : COLORS.card,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTicketTypes.includes(t.key)}
+                      onChange={() => toggleTicketType(t.key)}
+                      style={{ width: 18, height: 18, accentColor: COLORS.primary, cursor: 'pointer', flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: COLORS.text }}>{t.label}</span>
+                    </div>
+                    <span style={{ fontSize: 12, color: COLORS.success, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {t.winRate}% win
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <ContinueButton onClick={handleSaveTicketTypes} disabled={savingSettings}>
+                {savingSettings ? 'Saving...' : 'Continue'}
+              </ContinueButton>
+            </StepContainer>
+          )}
+
+          {/* ── Step: Notification Preferences ── */}
+          {step === 'notifications' && (
+            <StepContainer>
+              <StepLabel>How should we notify you?</StepLabel>
+              <StepSubtext>We&apos;ll send alerts when we find tickets and when contest letters are mailed.</StepSubtext>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 8 }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 20px',
+                  borderRadius: 12,
+                  border: `1px solid ${emailNotifications ? COLORS.primary : COLORS.border}`,
+                  backgroundColor: emailNotifications ? COLORS.primaryLight : COLORS.card,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.text }}>Email notifications</div>
+                    <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>Get notified about tickets and contest updates</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={emailNotifications}
+                    onChange={(e) => setEmailNotifications(e.target.checked)}
+                    style={{ width: 22, height: 22, accentColor: COLORS.primary, cursor: 'pointer', flexShrink: 0 }}
+                  />
+                </label>
+
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 20px',
+                  borderRadius: 12,
+                  border: `1px solid ${smsNotifications ? COLORS.primary : COLORS.border}`,
+                  backgroundColor: smsNotifications ? COLORS.primaryLight : COLORS.card,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.text }}>SMS notifications</div>
+                    <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>Text message alerts (you can add your phone in Settings)</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={smsNotifications}
+                    onChange={(e) => setSmsNotifications(e.target.checked)}
+                    style={{ width: 22, height: 22, accentColor: COLORS.primary, cursor: 'pointer', flexShrink: 0 }}
+                  />
+                </label>
+              </div>
+
+              <ContinueButton onClick={handleSaveNotifications} disabled={savingSettings}>
+                {savingSettings ? 'Saving...' : 'Finish setup'}
+              </ContinueButton>
+
+              <button
+                onClick={goNext}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'none',
+                  border: 'none',
+                  color: COLORS.textMuted,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  marginTop: 8,
+                  fontFamily: 'inherit',
+                }}
+              >
+                Skip for now
+              </button>
+            </StepContainer>
+          )}
+
+          {/* ── Step: Done ── */}
+          {step === 'done' && (
+            <StepContainer>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 64, marginBottom: 16 }}>&#127881;</div>
+                <StepLabel>You&apos;re all set!</StepLabel>
+                <StepSubtext>
+                  We&apos;re monitoring <strong>{plate}</strong> for tickets starting now.
+                  Sit back and let Autopilot handle the rest.
+                </StepSubtext>
+
+                <div style={{
+                  backgroundColor: COLORS.primaryLight,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 12,
+                  padding: '20px',
+                  marginBottom: 24,
+                  textAlign: 'left',
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 12 }}>What happens next:</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 14, color: COLORS.textSecondary }}>
+                      <span style={{ color: COLORS.primary, fontWeight: 700 }}>1.</span>
+                      We run your first ticket check within 24 hours
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 14, color: COLORS.textSecondary }}>
+                      <span style={{ color: COLORS.primary, fontWeight: 700 }}>2.</span>
+                      If we find any open tickets, we&apos;ll email you immediately
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 14, color: COLORS.textSecondary }}>
+                      <span style={{ color: COLORS.primary, fontWeight: 700 }}>3.</span>
+                      Contest letters are auto-generated and mailed
+                    </div>
+                  </div>
+                </div>
+
+                <ContinueButton onClick={() => router.push('/settings')}>
+                  Go to Settings
+                </ContinueButton>
               </div>
             </StepContainer>
           )}
@@ -492,9 +862,7 @@ export default function StartFunnel() {
 
 function StepContainer({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      animation: 'fadeIn 0.3s ease-out',
-    }}>
+    <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
       {children}
     </div>
   );
@@ -570,12 +938,7 @@ function ErrorText({ children }: { children: React.ReactNode }) {
 
 function Reassurance({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      textAlign: 'center',
-      marginTop: 16,
-      fontSize: 13,
-      color: COLORS.textMuted,
-    }}>
+    <div style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: COLORS.textMuted }}>
       {children}
     </div>
   );

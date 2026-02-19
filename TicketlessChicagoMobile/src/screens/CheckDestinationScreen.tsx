@@ -455,11 +455,18 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
               <TouchableOpacity
                 style={[styles.savedLocationChip, styles.addLocationChip]}
                 onPress={() => {
-                  inputRef.current?.focus();
+                  if (geocoded) {
+                    // If we have a search result, save it directly
+                    saveCurrentDestination();
+                  } else {
+                    inputRef.current?.focus();
+                  }
                 }}
               >
                 <Icon name="plus" size={14} color={colors.primary} />
-                <Text style={styles.savedLocationChipText}>Add</Text>
+                <Text style={styles.savedLocationChipText}>
+                  {geocoded ? 'Save' : 'Add'}
+                </Text>
               </TouchableOpacity>
             </ScrollView>
             {savedDestinations.length === 0 && (

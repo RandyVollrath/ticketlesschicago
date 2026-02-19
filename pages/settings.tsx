@@ -815,9 +815,21 @@ export default function SettingsPage() {
     }
   }, [router.isReady, router.query.checkout, router.query.welcome]);
 
+  // Detect mobile WebView context (tokens passed in URL)
+  const isMobileWebView = typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('mobile_access_token');
+
   const loadData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
+      // In mobile WebView, don't redirect — post a message so the native app
+      // can show its own unauthenticated UI instead of the web sign-in page.
+      if (isMobileWebView) {
+        try {
+          (window as any).ReactNativeWebView?.postMessage('auth_failed');
+        } catch (_) { /* not in WebView */ }
+        return;
+      }
       router.push('/auth/signin');
       return;
     }

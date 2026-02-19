@@ -210,6 +210,7 @@ const SPEED_CAMERA_ENFORCE_END_HOUR = 23;   // 11:00 PM
 const STORAGE_KEY_ENABLED = 'cameraAlertsEnabled';
 const STORAGE_KEY_SPEED_ENABLED = 'cameraAlertsSpeedEnabled';
 const STORAGE_KEY_REDLIGHT_ENABLED = 'cameraAlertsRedLightEnabled';
+const STORAGE_KEY_VOLUME = 'cameraAlertsVolume';
 
 // ============================================================================
 // Direction Matching
@@ -364,6 +365,7 @@ class CameraAlertServiceClass {
   private isEnabled = false;
   private speedAlertsEnabled = true;
   private redLightAlertsEnabled = true;
+  private alertVolume = 1.0;
   private isActive = false;
   private ttsInitialized = false;
   private hasLoadedSettings = false;
@@ -471,15 +473,17 @@ class CameraAlertServiceClass {
   }
 
   private async loadPersistedSettings(): Promise<void> {
-    const [storedGlobal, storedSpeed, storedRedLight] = await AsyncStorage.multiGet([
+    const [storedGlobal, storedSpeed, storedRedLight, storedVolume] = await AsyncStorage.multiGet([
       STORAGE_KEY_ENABLED,
       STORAGE_KEY_SPEED_ENABLED,
       STORAGE_KEY_REDLIGHT_ENABLED,
+      STORAGE_KEY_VOLUME,
     ]);
 
     const globalValue = storedGlobal[1];
     const speedValue = storedSpeed[1];
     const redLightValue = storedRedLight[1];
+    const volumeValue = storedVolume[1];
 
     this.isEnabled = globalValue === 'true';
     // Backward compatibility:
@@ -488,6 +492,13 @@ class CameraAlertServiceClass {
     this.speedAlertsEnabled = speedValue == null ? this.isEnabled : speedValue === 'true';
     this.redLightAlertsEnabled = redLightValue == null ? this.isEnabled : redLightValue === 'true';
     this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
+
+    if (volumeValue != null) {
+      const parsed = parseFloat(volumeValue);
+      if (!isNaN(parsed)) {
+        this.alertVolume = Math.max(0, Math.min(1, parsed));
+      }
+    }
   }
 
   private async persistSettings(): Promise<void> {
@@ -495,6 +506,7 @@ class CameraAlertServiceClass {
       [STORAGE_KEY_ENABLED, this.isEnabled ? 'true' : 'false'],
       [STORAGE_KEY_SPEED_ENABLED, this.speedAlertsEnabled ? 'true' : 'false'],
       [STORAGE_KEY_REDLIGHT_ENABLED, this.redLightAlertsEnabled ? 'true' : 'false'],
+      [STORAGE_KEY_VOLUME, this.alertVolume.toString()],
     ]);
   }
 
@@ -502,13 +514,36 @@ class CameraAlertServiceClass {
     enabled: boolean;
     speedEnabled: boolean;
     redLightEnabled: boolean;
+    volume: number;
   }> {
     await this.initialize();
     return {
       enabled: this.isEnabled,
       speedEnabled: this.speedAlertsEnabled,
       redLightEnabled: this.redLightAlertsEnabled,
+      volume: this.alertVolume,
     };
+  }
+
+  async setAlertVolume(volume: number): Promise<void> {
+    this.alertVolume = Math.max(0, Math.min(1, volume));
+    this.hasLoadedSettings = true;
+    await this.persistSettings();
+    log.info(`Camera alert volume set to ${this.alertVolume}`);
+
+    // Sync to iOS native layer
+    if (Platform.OS === 'ios') {
+      await BackgroundLocationService.setCameraAlertSettings(
+        this.isEnabled,
+        this.speedAlertsEnabled,
+        this.redLightAlertsEnabled,
+        this.alertVolume
+      );
+    }
+  }
+
+  getAlertVolume(): number {
+    return this.alertVolume;
   }
 
   private async initTts(): Promise<void> {
@@ -578,7 +613,8 @@ class CameraAlertServiceClass {
       await BackgroundLocationService.setCameraAlertSettings(
         this.isEnabled,
         this.speedAlertsEnabled,
-        this.redLightAlertsEnabled
+        this.redLightAlertsEnabled,
+        this.alertVolume
       );
     }
   }
@@ -603,7 +639,8 @@ class CameraAlertServiceClass {
       await BackgroundLocationService.setCameraAlertSettings(
         this.isEnabled,
         this.speedAlertsEnabled,
-        this.redLightAlertsEnabled
+        this.redLightAlertsEnabled,
+        this.alertVolume
       );
     }
   }
@@ -624,7 +661,8 @@ class CameraAlertServiceClass {
       await BackgroundLocationService.setCameraAlertSettings(
         this.isEnabled,
         this.speedAlertsEnabled,
-        this.redLightAlertsEnabled
+        this.redLightAlertsEnabled,
+        this.alertVolume
       );
     }
   }
