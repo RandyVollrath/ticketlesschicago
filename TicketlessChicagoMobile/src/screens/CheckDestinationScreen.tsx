@@ -11,6 +11,7 @@ import {
   Platform,
   Linking,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -418,26 +419,55 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
             )}
           </TouchableOpacity>
 
-          {savedDestinations.length > 0 && (
-            <View style={styles.savedLocationsWrap}>
-              <Text style={styles.savedLocationsTitle}>Saved locations</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {savedDestinations.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.savedLocationChip}
-                    onPress={() => {
-                      setAddress(item.address);
-                      handleCheck(item.address);
-                    }}
-                  >
-                    <Icon name="bookmark-outline" size={14} color={colors.primary} />
-                    <Text style={styles.savedLocationChipText}>{item.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
+          <View style={styles.savedLocationsWrap}>
+            <Text style={styles.savedLocationsTitle}>Saved locations</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {savedDestinations.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.savedLocationChip}
+                  onPress={() => {
+                    setAddress(item.address);
+                    handleCheck(item.address);
+                  }}
+                  onLongPress={() => {
+                    Alert.alert(
+                      'Remove Location',
+                      `Remove "${item.label}" from saved locations?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Remove',
+                          style: 'destructive',
+                          onPress: () => {
+                            const next = savedDestinations.filter(d => d.id !== item.id);
+                            persistSavedDestinations(next);
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                >
+                  <Icon name="bookmark-outline" size={14} color={colors.primary} />
+                  <Text style={styles.savedLocationChipText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[styles.savedLocationChip, styles.addLocationChip]}
+                onPress={() => {
+                  inputRef.current?.focus();
+                }}
+              >
+                <Icon name="plus" size={14} color={colors.primary} />
+                <Text style={styles.savedLocationChipText}>Add</Text>
+              </TouchableOpacity>
+            </ScrollView>
+            {savedDestinations.length === 0 && (
+              <Text style={styles.savedLocationsHint}>
+                Search an address above, then tap Save to add it here
+              </Text>
+            )}
+          </View>
         </View>
 
         {/* Error */}
@@ -746,6 +776,18 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     color: colors.primary,
     fontWeight: typography.weights.medium,
+  },
+  addLocationChip: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+  },
+  savedLocationsHint: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginTop: 6,
+    fontStyle: 'italic',
   },
 
   // Error

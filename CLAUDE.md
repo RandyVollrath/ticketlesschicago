@@ -1,5 +1,8 @@
 # Project Instructions
 
+## Product Decisions — READ FIRST
+See **[PRODUCT_DECISIONS.md](./PRODUCT_DECISIONS.md)** for finalized product decisions. NEVER change behavior that contradicts that document without explicit owner approval.
+
 ## Codebase Overview
 - **Web app**: Next.js (pages/), deployed to Vercel via push to `main`
 - **Mobile app**: React Native in `TicketlessChicagoMobile/`, iOS + Android
