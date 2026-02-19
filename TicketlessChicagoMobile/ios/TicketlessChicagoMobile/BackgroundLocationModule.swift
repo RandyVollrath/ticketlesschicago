@@ -3707,6 +3707,82 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     resolve(true)
   }
 
+  /// JS bridge: test background TTS for App Store review.
+  /// Schedules a spoken alert after `delaySec` seconds so the reviewer can
+  /// background the app and hear it speak.  Also fires a local notification.
+  @objc func testBackgroundTTS(_ delaySec: Double, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let delay = max(delaySec, 1)
+    log("testBackgroundTTS: will speak in \(delay)s")
+
+    // Configure audio session eagerly (same as driving start)
+    configureSpeechAudioSession()
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+      guard let self = self else { return }
+
+      // Fire a local notification (visible even if app is backgrounded)
+      let content = UNMutableNotificationContent()
+      content.title = "Red-light camera ahead"
+      content.body = "W Fullerton Ave & N Milwaukee Ave — this is a test alert"
+      content.sound = nil  // TTS provides the audio
+      let request = UNNotificationRequest(identifier: "test-bg-tts", content: content, trigger: nil)
+      UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+
+      // Speak using forceSpeak (bypasses foreground check — the reviewer may
+      // still be transitioning to background when the timer fires)
+      self.forceSpeakCameraAlert("Red-light camera ahead. W Fullerton Ave and N Milwaukee Ave.")
+      self.log("testBackgroundTTS: fired test alert (appState=\(UIApplication.shared.applicationState == .active ? "active" : UIApplication.shared.applicationState == .background ? "background" : "inactive"))")
+    }
+
+    resolve(true)
+  }
+
+  /// Speak a camera alert regardless of foreground/background state.
+  /// Used only for the App Store test flow.
+  private func forceSpeakCameraAlert(_ message: String) {
+    configureSpeechAudioSession()
+    guard speechAudioSessionConfigured else {
+      log("forceSpeakCameraAlert: audio session not configured")
+      return
+    }
+
+    if backgroundSpeechTaskId != .invalid {
+      UIApplication.shared.endBackgroundTask(backgroundSpeechTaskId)
+    }
+    backgroundSpeechTaskId = UIApplication.shared.beginBackgroundTask(withName: "TestCameraAlertSpeech") { [weak self] in
+      self?.speechSynthesizer.stopSpeaking(at: .immediate)
+      if let taskId = self?.backgroundSpeechTaskId, taskId != .invalid {
+        UIApplication.shared.endBackgroundTask(taskId)
+      }
+      self?.backgroundSpeechTaskId = .invalid
+    }
+
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+
+      if self.speechSynthesizer.isSpeaking {
+        self.speechSynthesizer.stopSpeaking(at: .immediate)
+      }
+
+      do {
+        try AVAudioSession.sharedInstance().setActive(true)
+      } catch {
+        self.log("forceSpeakCameraAlert: failed to activate audio session: \(error)")
+      }
+
+      let utterance = AVSpeechUtterance(string: message)
+      utterance.rate = 0.52
+      utterance.pitchMultiplier = 1.0
+      utterance.volume = 1.0
+      if let voice = AVSpeechSynthesisVoice(language: "en-US") {
+        utterance.voice = voice
+      }
+
+      self.speechSynthesizer.speak(utterance)
+      self.log("forceSpeakCameraAlert: speaking '\(message)'")
+    }
+  }
+
   private func haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
     let r = 6371000.0
     let dLat = (lat2 - lat1) * Double.pi / 180.0

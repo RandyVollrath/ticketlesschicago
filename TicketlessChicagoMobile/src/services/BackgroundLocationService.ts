@@ -430,6 +430,22 @@ class BackgroundLocationServiceClass {
   }
 
   /**
+   * Test background TTS for App Store review.
+   * Schedules a spoken camera alert after `delaySec` seconds.
+   * The reviewer taps this, backgrounds the app, and hears the spoken alert.
+   */
+  async testBackgroundTTS(delaySec: number = 5): Promise<boolean> {
+    if (!this.isAvailable()) return false;
+    try {
+      await BackgroundLocationModule.testBackgroundTTS(delaySec);
+      return true;
+    } catch (error) {
+      log.error('Error testing background TTS', error);
+      return false;
+    }
+  }
+
+  /**
    * Acknowledge that pending red-light evidence has been processed.
    * Clears the native UserDefaults queue.
    */
