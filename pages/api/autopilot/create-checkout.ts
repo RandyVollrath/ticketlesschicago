@@ -19,11 +19,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { userId } = req.body;
+    const { userId, licensePlate, plateState } = req.body;
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID required' });
     }
+
+    if (!licensePlate) {
+      return res.status(400).json({ error: 'License plate required' });
+    }
+
+    // Sanitize inputs
+    const cleanPlate = String(licensePlate).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    const cleanState = String(plateState || 'IL').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2) || 'IL';
 
     // Get user email from Supabase
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
@@ -88,6 +96,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         supabase_user_id: userId,
         service: 'autopilot',
         plan_code: ACTIVE_AUTOPILOT_PLAN.code,
+        license_plate_number: cleanPlate,
+        license_plate_state: cleanState,
       },
     });
 

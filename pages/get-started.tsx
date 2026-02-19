@@ -30,9 +30,20 @@ export default function GetStarted() {
   // Plan selection
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'autopilot'>('autopilot');
 
+  // Vehicle info
+  const [licensePlate, setLicensePlate] = useState('');
+  const [plateState, setPlateState] = useState('IL');
+
   // Checkout state
   const [consentChecked, setConsentChecked] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const US_STATES = [
+    'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
+    'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
+    'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
+    'VA','WA','WV','WI','WY','DC',
+  ];
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -109,6 +120,13 @@ export default function GetStarted() {
   };
 
   const handleCheckout = async () => {
+    // Validate license plate
+    const cleanPlate = licensePlate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!cleanPlate) {
+      setAuthError('Please enter your license plate number.');
+      return;
+    }
+
     if (selectedPlan === 'autopilot' && !consentChecked) {
       setAuthError('Please accept the authorization to continue.');
       return;
@@ -119,7 +137,22 @@ export default function GetStarted() {
 
     try {
       if (selectedPlan === 'free') {
-        // For free plan, just redirect to settings
+        // For free plan, create profile + plate, then redirect to settings
+        const response = await fetch('/api/autopilot/create-free-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            licensePlate: cleanPlate,
+            plateState,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to create profile');
+        }
+
         router.push('/settings?welcome=true');
         return;
       }
@@ -128,7 +161,11 @@ export default function GetStarted() {
       const response = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({
+          userId: user.id,
+          licensePlate: cleanPlate,
+          plateState,
+        }),
       });
 
       const data = await response.json();
@@ -474,6 +511,55 @@ export default function GetStarted() {
                   Signed in as <strong>{user.email}</strong>
                 </p>
 
+                {/* License Plate + State */}
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: COLORS.graphite, marginBottom: 8 }}>
+                    License Plate
+                  </label>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <select
+                      value={plateState}
+                      onChange={(e) => setPlateState(e.target.value)}
+                      style={{
+                        width: 80,
+                        padding: '12px 8px',
+                        fontSize: 16,
+                        border: `1px solid ${COLORS.border}`,
+                        borderRadius: 8,
+                        outline: 'none',
+                        backgroundColor: COLORS.white,
+                        color: COLORS.graphite,
+                      }}
+                    >
+                      {US_STATES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={licensePlate}
+                      onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
+                      placeholder="ABC1234"
+                      maxLength={10}
+                      style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        fontSize: 16,
+                        border: `1px solid ${COLORS.border}`,
+                        borderRadius: 8,
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        fontWeight: 600,
+                      }}
+                    />
+                  </div>
+                  <p style={{ fontSize: 12, color: COLORS.slate, margin: '6px 0 0' }}>
+                    We use this to monitor for tickets on the City of Chicago portal.
+                  </p>
+                </div>
+
                 {/* Consent Checkbox - only for Autopilot */}
                 {selectedPlan === 'autopilot' && (
                   <div style={{
@@ -546,20 +632,20 @@ export default function GetStarted() {
 
                 <button
                   onClick={handleCheckout}
-                  disabled={checkoutLoading || (selectedPlan === 'autopilot' && !consentChecked)}
+                  disabled={checkoutLoading || !licensePlate.trim() || (selectedPlan === 'autopilot' && !consentChecked)}
                   style={{
                     width: '100%',
                     backgroundColor: selectedPlan === 'free'
-                      ? COLORS.signal
-                      : (consentChecked ? COLORS.regulatory : COLORS.slate),
+                      ? (licensePlate.trim() ? COLORS.signal : COLORS.slate)
+                      : (consentChecked && licensePlate.trim() ? COLORS.regulatory : COLORS.slate),
                     color: COLORS.white,
                     padding: '16px 24px',
                     borderRadius: 8,
                     border: 'none',
                     fontSize: 17,
                     fontWeight: 600,
-                    cursor: (checkoutLoading || (selectedPlan === 'autopilot' && !consentChecked)) ? 'not-allowed' : 'pointer',
-                    opacity: (checkoutLoading || (selectedPlan === 'autopilot' && !consentChecked)) ? 0.7 : 1,
+                    cursor: (checkoutLoading || !licensePlate.trim() || (selectedPlan === 'autopilot' && !consentChecked)) ? 'not-allowed' : 'pointer',
+                    opacity: (checkoutLoading || !licensePlate.trim() || (selectedPlan === 'autopilot' && !consentChecked)) ? 0.7 : 1,
                   }}
                 >
                   {checkoutLoading
