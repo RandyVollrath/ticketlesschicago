@@ -363,8 +363,7 @@ export default function DataPage() {
             <p style={styles.sourceNote}>
               This data was obtained directly from the City of Chicago through a formal FOIA request.
               Every record represents a real ticket contest hearing and its official outcome.
-              We did not generate, modify, or filter any records.
-              Win rate = "Not Liable" dispositions / total hearings.
+              Records were analyzed as provided by the City. Win rate calculated as "Not Liable" / total hearings.
             </p>
           </div>
         </section>
