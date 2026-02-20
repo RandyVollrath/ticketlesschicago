@@ -175,7 +175,8 @@ async function sendEvidenceRequestEmail(
   violationDate: string | null,
   amount: number | null,
   plate: string,
-  evidenceDeadline: Date
+  evidenceDeadline: Date,
+  userId?: string,
 ): Promise<boolean> {
   if (!resend) return false;
 
@@ -236,6 +237,26 @@ async function sendEvidenceRequestEmail(
             <li>You'll receive the letter for review and approval before we mail it</li>
           </ol>
         </div>
+
+        ${(() => {
+          const fwdAddr = userId ? `${userId}@receipts.autopilotamerica.com` : null;
+          if ((violationType === 'no_city_sticker' || violationType === 'expired_plates') && fwdAddr) {
+            const rType = violationType === 'no_city_sticker' ? 'City Sticker' : 'Plate Sticker';
+            const sender = violationType === 'no_city_sticker' ? 'chicagovehiclestickers@sebis.com' : 'ecommerce@ilsos.gov';
+            return `
+              <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                <p style="margin: 0 0 8px; font-weight: 700; font-size: 15px; color: #065f46;">Have Your ${rType} Receipt?</p>
+                <p style="margin: 0 0 10px; font-size: 13px; color: #065f46;">Your purchase receipt is the <strong>#1 winning evidence</strong>. Just forward it to us:</p>
+                <div style="background: white; border: 1px solid #10b981; border-radius: 6px; padding: 12px; margin-bottom: 10px;">
+                  <p style="margin: 0 0 2px; font-size: 11px; color: #6b7280; font-weight: 600;">FORWARD YOUR RECEIPT TO:</p>
+                  <p style="margin: 0; font-family: monospace; font-size: 13px; color: #1e40af; word-break: break-all;">${fwdAddr}</p>
+                </div>
+                <p style="margin: 0; font-size: 12px; color: #065f46;"><strong>How:</strong> Search for <span style="font-family: monospace;">${sender}</span> in your email, open the receipt, tap Forward, paste the address, Send.</p>
+              </div>
+            `;
+          }
+          return '';
+        })()}
 
         <div style="background:#fffbeb;border:1px solid #f59e0b;padding:16px;border-radius:8px;margin-bottom:16px;">
           <p style="margin: 0 0 8px; font-weight: 600; font-size: 14px; color: #92400E;">Your evidence strengthens the letter. Reply with any of the following:</p>
@@ -603,7 +624,8 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
           ticket.issue_date || null,
           amount,
           plate.plate,
-          evidenceDeadline
+          evidenceDeadline,
+          plate.user_id,
         );
         if (sent) {
           emailsSent++;
