@@ -2,13 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
+import RegistrationForwardingSetup from '../components/RegistrationForwardingSetup';
 
 // Pre-payment: plate → city → signin → value → price → (stripe)
-// Post-payment: confirmed → address → tickets → notifications
-type Step = 'plate' | 'city' | 'signin' | 'value' | 'price' | 'confirmed' | 'address' | 'tickets' | 'notifications';
+// Post-payment: confirmed → address → tickets → receipt-forwarding → notifications
+type Step = 'plate' | 'city' | 'signin' | 'value' | 'price' | 'confirmed' | 'address' | 'tickets' | 'receipt-forwarding' | 'notifications';
 
 const PRE_PAYMENT_STEPS: Step[] = ['plate', 'city', 'signin', 'value', 'price'];
-const POST_PAYMENT_STEPS: Step[] = ['confirmed', 'address', 'tickets', 'notifications'];
+const POST_PAYMENT_STEPS: Step[] = ['confirmed', 'address', 'tickets', 'receipt-forwarding', 'notifications'];
 
 const COLORS = {
   bg: '#FAFBFC',
@@ -916,6 +917,46 @@ export default function StartFunnel() {
                 }}
               >
                 Skip — use defaults
+              </button>
+            </StepContainer>
+          )}
+
+          {/* ── Step: Receipt Forwarding (optional) ── */}
+          {step === 'receipt-forwarding' && (
+            <StepContainer>
+              <StepLabel>Auto-forward your sticker receipts</StepLabel>
+              <StepSubtext>
+                If you ever get a sticker or plates ticket, your purchase receipt is the #1 evidence for winning your contest (70% win rate). Set up auto-forwarding now so we always have it on file.
+              </StepSubtext>
+
+              {user?.id && (
+                <RegistrationForwardingSetup
+                  forwardingEmail={`${user.id}@receipts.autopilotamerica.com`}
+                  compact
+                />
+              )}
+
+              <div style={{ marginTop: 20 }}>
+                <ContinueButton onClick={goNext}>
+                  Continue
+                </ContinueButton>
+              </div>
+
+              <button
+                onClick={goNext}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'none',
+                  border: 'none',
+                  color: COLORS.textMuted,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  marginTop: 8,
+                  fontFamily: 'inherit',
+                }}
+              >
+                Skip — I&apos;ll forward receipts when needed
               </button>
             </StepContainer>
           )}

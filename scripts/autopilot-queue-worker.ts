@@ -470,7 +470,8 @@ async function sendEvidenceRequestEmail(
   violationDate: string | null,
   amount: number | null,
   plate: string,
-  evidenceDeadline: Date
+  evidenceDeadline: Date,
+  userId?: string,
 ): Promise<boolean> {
   if (!process.env.RESEND_API_KEY) return false;
 
@@ -508,6 +509,32 @@ async function sendEvidenceRequestEmail(
 
   const ticketSpecificReplyTo = `evidence+${ticketId}@autopilotamerica.com`;
 
+  // Build receipt forwarding callout for sticker/plate tickets
+  const forwardingAddress = userId ? `${userId}@receipts.autopilotamerica.com` : null;
+  let receiptForwardingHtml = '';
+  if ((violationType === 'no_city_sticker' || violationType === 'expired_plates') && forwardingAddress) {
+    const receiptType = violationType === 'no_city_sticker' ? 'city sticker' : 'plate sticker';
+    const senderEmail = violationType === 'no_city_sticker' ? 'chicagovehiclestickers@sebis.com' : 'ecommerce@ilsos.gov';
+    receiptForwardingHtml = `
+      <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="margin: 0 0 8px; color: #065f46; font-size: 18px;">Have Your ${receiptType === 'city sticker' ? 'City Sticker' : 'Plate Sticker'} Receipt?</h3>
+        <p style="margin: 0 0 12px; color: #065f46; font-size: 14px; line-height: 1.6;">
+          Your purchase receipt is the <strong>#1 winning evidence</strong> for this ticket. Just forward it to us:
+        </p>
+        <div style="background: white; border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+          <p style="margin: 0 0 4px; font-size: 12px; color: #6b7280; font-weight: 600;">FORWARD YOUR RECEIPT TO:</p>
+          <p style="margin: 0; font-family: monospace; font-size: 14px; color: #1e40af; word-break: break-all;">${forwardingAddress}</p>
+        </div>
+        <p style="margin: 0 0 8px; color: #065f46; font-size: 13px;">
+          <strong>How:</strong> Search your email for <span style="font-family: monospace; background: #f0fdf4; padding: 2px 6px; border-radius: 4px;">${senderEmail}</span>, open the receipt, tap Forward, paste the address above, and Send.
+        </p>
+        <p style="margin: 0; color: #065f46; font-size: 12px; font-style: italic;">
+          That's it — we'll attach it to your contest letter automatically.
+        </p>
+      </div>
+    `;
+  }
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
@@ -533,6 +560,7 @@ async function sendEvidenceRequestEmail(
             <tr><td style="padding: 8px 0; color: #6b7280;">License Plate:</td><td style="padding: 8px 0; color: #111827; font-weight: 600;">${plate}</td></tr>
           </table>
         </div>
+        ${receiptForwardingHtml}
         <div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 16px; color: #92400e; font-size: 18px;">Help Us Win Your Case</h3>
           <p style="margin: 0 0 16px; color: #92400e; font-size: 14px;">Please <strong>reply to this email</strong> with answers to these questions:</p>
@@ -732,7 +760,8 @@ async function processFoundTicket(
       violationDate,
       amount,
       plate.toUpperCase(),
-      evidenceDeadline
+      evidenceDeadline,
+      user_id,
     );
   }
 

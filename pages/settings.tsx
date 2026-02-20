@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
+import RegistrationForwardingSetup from '../components/RegistrationForwardingSetup';
 
 const COLORS = {
   primary: '#0F172A',
@@ -2634,38 +2635,37 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="Registration Receipt Forwarding" badge={
+        <Card title="Receipt Forwarding" badge={
           <span style={{ fontSize: 11, color: COLORS.textMuted }}>Recommended</span>
         }>
-          <p style={{ margin: '0 0 10px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
-            Forward city sticker and license plate sticker purchase emails so we can keep contest evidence on file.
+          <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
+            Auto-forward your city sticker and plate sticker purchase emails so we have your receipt on file if you ever get ticketed. Your receipt is the #1 evidence for winning sticker contests (70% win rate).
           </p>
-          <ul style={{ margin: '0 0 12px', paddingLeft: 18, color: COLORS.textMuted, fontSize: 13, lineHeight: 1.8 }}>
-            <li>City sticker sender: <code>chicagovehiclestickers@sebis.com</code></li>
-            <li>Plate sticker sender: <code>ecommerce@ilsos.gov</code></li>
-            <li>Setup time: about 2 minutes (create 2 Gmail filters)</li>
-          </ul>
-          <p style={{ margin: '0 0 16px', fontSize: 13, color: COLORS.textMuted }}>
-            Your personal forwarding address and User UUID are shown on the next page.
-          </p>
-          <p style={{ margin: '0 0 16px', fontSize: 13, color: COLORS.textMuted }}>
-            Need permit-zone residency proof forwarding?{' '}
-            <Link href="/utility-evidence" style={{ color: COLORS.regulatory, textDecoration: 'none', fontWeight: 600 }}>
-              Open Utility Evidence Setup
+          {userId && (
+            <RegistrationForwardingSetup
+              forwardingEmail={`${userId}@receipts.autopilotamerica.com`}
+              compact
+            />
+          )}
+          <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Link href="/registration-evidence" style={{
+              fontSize: 13,
+              color: COLORS.accent,
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}>
+              View receipt history
             </Link>
-          </p>
-          <Link href="/registration-evidence" style={{
-            display: 'inline-block',
-            padding: '10px 16px',
-            borderRadius: 8,
-            backgroundColor: COLORS.primary,
-            color: COLORS.white,
-            fontSize: 14,
-            fontWeight: 600,
-            textDecoration: 'none',
-          }}>
-            Open Registration Evidence Setup
-          </Link>
+            <span style={{ color: COLORS.border }}>|</span>
+            <Link href="/utility-evidence" style={{
+              fontSize: 13,
+              color: COLORS.accent,
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}>
+              Utility bill forwarding (residency proof)
+            </Link>
+          </div>
         </Card>
 
         {/* Autopilot Settings */}
