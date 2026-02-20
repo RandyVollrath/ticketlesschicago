@@ -360,6 +360,12 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               log.warn('WebView auth_failed — showing native sign-in prompt');
               setIsAuthenticated(false);
               setIsLoading(false);
+            } else if (msg === 'load_error') {
+              // Web page's loadData() threw an exception but was caught.
+              // Show error state so user can retry.
+              log.warn('WebView load_error — data loading failed');
+              setHasError(true);
+              setIsLoading(false);
             }
           }}
           cacheEnabled={true}
