@@ -17,6 +17,9 @@ interface LetterToMail {
   letter_content: string;
   letter_text: string;
   defense_type: string | null;
+  street_view_exhibit_urls: string[] | null;
+  street_view_date: string | null;
+  street_view_address: string | null;
 }
 
 interface EvidenceData {
@@ -106,13 +109,19 @@ async function mailLetter(
       throw new Error('No letter content found');
     }
 
-    // Format letter as HTML with evidence images
+    // Format letter as HTML with evidence images and Street View exhibits
     const htmlContent = formatLetterAsHTML(letterText, {
       evidenceImages: evidenceImages,
+      streetViewImages: letter.street_view_exhibit_urls || undefined,
+      streetViewDate: letter.street_view_date || undefined,
+      streetViewAddress: letter.street_view_address || undefined,
     });
 
     if (evidenceImages && evidenceImages.length > 0) {
       console.log(`    Including ${evidenceImages.length} evidence image(s) in letter`);
+    }
+    if (letter.street_view_exhibit_urls && letter.street_view_exhibit_urls.length > 0) {
+      console.log(`    Including ${letter.street_view_exhibit_urls.length} Street View exhibit(s) in letter`);
     }
 
     // Send via Lob
@@ -453,6 +462,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         defense_type,
         status,
         approved_via,
+        street_view_exhibit_urls,
+        street_view_date,
+        street_view_address,
         detected_tickets!inner (
           id,
           ticket_number,

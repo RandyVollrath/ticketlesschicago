@@ -3849,6 +3849,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var hasCheckedForMissedParking = false
   private var waitingForAccurateGpsForRecovery = false  // true while we spin up GPS for an accurate fix
   private var recoveryDrivingDuration: TimeInterval = 0 // stash the driving duration from CoreMotion query
+  private var recoveryParkTime: Date? = nil // stash the CoreMotion parkTime for accurate timestamp
   private var recoveryGpsTimer: Timer? = nil             // timeout for GPS acquisition
 
   private func checkForMissedParking(currentLocation: CLLocation) {
@@ -3915,6 +3916,29 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         }
         self.startMotionActivityMonitoring()
         return
+      }
+
+      // ── Deduplication: skip if we already confirmed parking for the last trip ──
+      // If lastConfirmedParkingLocation exists and its timestamp is close to the
+      // last trip's parkTime, the normal pipeline already caught this stop.
+      // Re-emitting would create a duplicate parking record with the wrong timestamp.
+      if let lastParking = self.lastConfirmedParkingLocation {
+        let lastTrip = trips.last!
+        let timeDiff = abs(lastTrip.parkTime.timeIntervalSince(lastParking.timestamp))
+        if timeDiff < 3600 {
+          // Within 1 hour — same parking event. Also check distance if we have current GPS.
+          let distance = currentLocation.distance(from: lastParking)
+          if distance < 300 {
+            self.log("RECOVERY: skipping — lastConfirmedParkingLocation matches (timeDiff=\(String(format: "%.0f", timeDiff))s, dist=\(String(format: "%.0f", distance))m). Already recorded.")
+            // Still restart CoreMotion to ensure fresh callbacks
+            if self.coreMotionActive {
+              self.activityManager.stopActivityUpdates()
+              self.coreMotionActive = false
+            }
+            self.startMotionActivityMonitoring()
+            return
+          }
+        }
       }
 
       // ── Emit events for ALL trips ──
@@ -4008,6 +4032,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       // location. That's how the Clybourn bug happens — 300-500m off.
       // Instead, start high-accuracy GPS and wait for a real satellite fix.
       self.recoveryDrivingDuration = lastTrip.driveDuration
+      self.recoveryParkTime = lastTrip.parkTime
       self.waitingForAccurateGpsForRecovery = true
       self.startContinuousGps()
 
@@ -4049,10 +4074,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     recoveryGpsTimer = nil
     stopContinuousGps()
 
-    self.log("RECOVERY: Accurate GPS fix: \(location.coordinate.latitude), \(location.coordinate.longitude) ±\(location.horizontalAccuracy)m — emitting parking event")
+    // Use the CoreMotion parkTime (when driving actually ended) not Date() (current time).
+    // Date() would be hours off if the app was suspended/killed between parking and recovery.
+    let parkTimestamp = (recoveryParkTime ?? Date()).timeIntervalSince1970 * 1000
+    self.log("RECOVERY: Accurate GPS fix: \(location.coordinate.latitude), \(location.coordinate.longitude) ±\(location.horizontalAccuracy)m — emitting parking event (parkTime: \(recoveryParkTime?.description ?? "now"))")
 
     let body: [String: Any] = [
-      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "timestamp": parkTimestamp,
       "latitude": location.coordinate.latitude,
       "longitude": location.coordinate.longitude,
       "accuracy": location.horizontalAccuracy,
