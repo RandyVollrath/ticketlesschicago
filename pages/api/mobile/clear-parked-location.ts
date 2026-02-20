@@ -50,8 +50,10 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to clear parked location' });
     }
 
-    // Update parking history with cleared_at timestamp
-    // First find the most recent history record without a cleared_at
+    // Update parking history with cleared_at timestamp.
+    // Find the most recent uncleared record to return its ID for departure confirmation,
+    // then clear ALL uncleared records for this user (not just one). This prevents
+    // stale duplicate records from interfering with future departure confirmations.
     const clearedAt = new Date().toISOString();
     const { data: recentHistory, error: fetchError } = await supabaseAdmin
       .from('parking_location_history')
@@ -75,11 +77,14 @@ export default async function handler(
         address: recentHistory.address,
       };
 
-      // Update only that specific record
+      // Clear ALL uncleared records for this user (not just the one we found).
+      // This prevents duplicate/stale uncleared records from causing backwards
+      // departure timestamps on future parking events.
       const { error: historyError } = await supabaseAdmin
         .from('parking_location_history')
         .update({ cleared_at: clearedAt })
-        .eq('id', recentHistory.id);
+        .eq('user_id', user.id)
+        .is('cleared_at', null);
 
       if (historyError) {
         console.error('Error updating parking history cleared_at:', historyError);

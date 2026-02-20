@@ -1729,17 +1729,13 @@ class BackgroundTaskServiceClass {
         await this.sendSafeNotification(filteredResult.address, burstCoords.accuracy, rawData);
       }
 
-      // Update server record
+      // NOTE: Do NOT call saveParkedLocationToServer here. Phase 1 already
+      // inserted the server record, and calling it again creates a duplicate row
+      // in parking_location_history. The server-side dedup guard will also reject
+      // it, but skipping the call entirely avoids unnecessary network requests.
+      // The user_parked_vehicles table is updated by Phase 1's insert +
+      // deactivation of the previous row, so the active record is already correct.
       if (persistParkingEvent) {
-        try {
-          const fcmToken = await PushNotificationService.getToken();
-          if (fcmToken && AuthService.isAuthenticated()) {
-            await LocationService.saveParkedLocationToServer(burstCoords, rawData, result.address, fcmToken);
-          }
-        } catch (serverErr) {
-          log.warn('[GPS Phase 2] Failed to update server (non-fatal):', serverErr);
-        }
-
         // Update saved parked coords (for rescan + snow monitoring)
         await this.saveParkedCoords(burstCoords, result.address, result.rawApiData);
 
