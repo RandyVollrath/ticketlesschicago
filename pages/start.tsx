@@ -739,11 +739,11 @@ export default function StartFunnel() {
                   </div>
                   <div style={{ display: 'flex', gap: 12, fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.5 }}>
                     <span style={{ color: COLORS.primary, fontWeight: 700, flexShrink: 0 }}>2.</span>
-                    <span>When we find a ticket, we <strong>automatically generate a contest letter</strong> and mail it to the City on your behalf.</span>
+                    <span>When we find a ticket, we&apos;ll <strong>email you to request evidence</strong> (photos, receipts, etc.) that can strengthen your case.</span>
                   </div>
                   <div style={{ display: 'flex', gap: 12, fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.5 }}>
                     <span style={{ color: COLORS.primary, fontWeight: 700, flexShrink: 0 }}>3.</span>
-                    <span>We&apos;ll <strong>email you to request evidence</strong> (photos, receipts, etc.) that can strengthen your case. You can reply with evidence or let the letter go as-is.</span>
+                    <span>We then <strong>generate a contest letter and mail it</strong> to the City on your behalf — whether you send evidence or not.</span>
                   </div>
                   <div style={{ display: 'flex', gap: 12, fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.5 }}>
                     <span style={{ color: COLORS.primary, fontWeight: 700, flexShrink: 0 }}>4.</span>
