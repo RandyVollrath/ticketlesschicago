@@ -850,7 +850,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let parkingFinalizationHoldFastSec: TimeInterval = 5
   private let parkingFinalizationHoldStrongSec: TimeInterval = 11
   private let parkingFinalizationMaxDriftMeters: Double = 35
-  private let falsePositiveParkingLockoutSec: TimeInterval = 180
+  private let falsePositiveParkingLockoutSec: TimeInterval = 1800  // 30 min — prevents re-detection while user is still at the false positive location
   private let gpsZeroSpeedHardTimeoutSec: TimeInterval = 45  // Hard override: 45s of GPS speed≈0 = parked, even if CoreMotion still says automotive
   private let intersectionRiskRadiusMeters: Double = 95
   private let intersectionDwellAbortWindowSec: TimeInterval = 90
@@ -872,7 +872,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var stopWindowMaxSpeedMps: Double = 0
   private let hotspotMergeRadiusMeters: Double = 80
   private let hotspotBlockRadiusMeters: Double = 90
-  private let hotspotBlockMinReports: Int = 2
+  private let hotspotBlockMinReports: Int = 1
   private let parkingCandidateMaxAgeSec: TimeInterval = 40
   private let parkingCandidateHardStaleSec: TimeInterval = 75
   private let parkingCandidateFreshReplacementAgeSec: TimeInterval = 12
@@ -3948,6 +3948,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           ]
 
           if let visit = visitMatch {
+            // CLVisit provided coordinates — check hotspot before emitting
+            let recoveryLoc = CLLocation(latitude: visit.latitude, longitude: visit.longitude)
+            if let h = self.hotspotInfo(near: recoveryLoc), h.count >= self.hotspotBlockMinReports {
+              self.log("RECOVERY: Trip \(i + 1) — blocked by false positive hotspot (reports=\(h.count), dist=\(String(format: "%.0f", h.distance))m)")
+              self.decision("recovery_blocked_hotspot", [
+                "tripIndex": i + 1,
+                "latitude": visit.latitude,
+                "longitude": visit.longitude,
+                "hotspotReports": h.count,
+                "hotspotDistanceMeters": h.distance,
+              ])
+              continue  // Skip this trip entirely
+            }
             // CLVisit provided coordinates — JS CAN check parking rules!
             body["latitude"] = visit.latitude
             body["longitude"] = visit.longitude
@@ -4130,6 +4143,25 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           self.log("CLVisit: matches recent confirmed parking (\(String(format: "%.0f", distance))m away) — skipping duplicate")
           return
         }
+      }
+
+      // Check false positive hotspots — user previously marked "Not parked" near here.
+      let visitLoc = CLLocation(latitude: visit.coordinate.latitude, longitude: visit.coordinate.longitude)
+      if let h = hotspotInfo(near: visitLoc), h.count >= hotspotBlockMinReports {
+        self.log("CLVisit: blocked by false positive hotspot (reports=\(h.count), dist=\(String(format: "%.0f", h.distance))m)")
+        decision("clvisit_blocked_hotspot", [
+          "latitude": visit.coordinate.latitude,
+          "longitude": visit.coordinate.longitude,
+          "hotspotReports": h.count,
+          "hotspotDistanceMeters": h.distance,
+        ])
+        return
+      }
+
+      // Check lockout window — user recently reported a false positive (any location)
+      if let lockout = falsePositiveParkingLockoutUntil, Date() < lockout {
+        self.log("CLVisit: blocked by false positive lockout (until \(lockout))")
+        return
       }
 
       // This visit is at a location we didn't detect parking for.

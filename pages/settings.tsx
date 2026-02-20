@@ -826,195 +826,209 @@ export default function SettingsPage() {
   }, [router.isReady, router.query.checkout, router.query.welcome]);
 
   const loadData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      // In mobile WebView, don't redirect — post a message so the native app
-      // can show its own unauthenticated UI instead of the web sign-in page.
-      if (isMobileWebViewRef.current) {
-        try {
-          (window as any).ReactNativeWebView?.postMessage('auth_failed');
-        } catch (_) { /* not in WebView */ }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // In mobile WebView, don't redirect — post a message so the native app
+        // can show its own unauthenticated UI instead of the web sign-in page.
+        if (isMobileWebViewRef.current) {
+          try {
+            (window as any).ReactNativeWebView?.postMessage('auth_failed');
+          } catch (_) { /* not in WebView */ }
+          setLoading(false);
+          return;
+        }
+        router.push('/auth/signin');
         return;
       }
-      router.push('/auth/signin');
-      return;
-    }
 
-    setUserId(session.user.id);
-    setEmail(session.user.email || '');
+      setUserId(session.user.id);
+      setEmail(session.user.email || '');
 
-    // Load profile from user_profiles - single source of truth
-    const { data: profileData } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-
-    // Check if user has paid for ticket contesting
-    setIsPaidUser(profileData?.has_contesting === true);
-
-    if (profileData) {
-      setFirstName(profileData.first_name || '');
-      setLastName(profileData.last_name || '');
-      setPhone(profileData.phone || profileData.phone_number || '');
-      setHomeAddress(profileData.street_address || profileData.home_address_full || '');
-      // Parse ward from home_address_ward if available
-      if (profileData.home_address_ward) {
-        const wardNum = parseInt(profileData.home_address_ward);
-        if (!isNaN(wardNum)) setWard(wardNum);
-      }
-      setSection(profileData.home_address_section || '');
-      // Always capitalize city name properly
-      const city = profileData.city || 'Chicago';
-      setHomeCity(city.charAt(0).toUpperCase() + city.slice(1).toLowerCase());
-      setHomeState('IL'); // Chicago is in IL
-      setHomeZip(profileData.zip_code || '');
-      setMailingAddress1(profileData.mailing_address || '');
-      setMailingAddress2(profileData.mailing_address_2 || '');
-      // Capitalize mailing city properly
-      const mailingCityVal = profileData.mailing_city || 'Chicago';
-      setMailingCity(mailingCityVal.charAt(0).toUpperCase() + mailingCityVal.slice(1).toLowerCase());
-      setMailingState(profileData.mailing_state || 'IL');
-      setMailingZip(profileData.mailing_zip || '');
-      setVin(profileData.vin || '');
-      setVehicleType(profileData.vehicle_type || 'Sedan');
-      setCityStickerExpiry(profileData.city_sticker_expiry || '');
-      setLicensePlateExpiry(profileData.license_plate_expiry || '');
-      setEmissionsDate(profileData.emissions_date || '');
-
-      // Load plate from user_profiles
-      if (profileData.license_plate) {
-        setPlateNumber(profileData.license_plate);
-        setPlateState(profileData.license_state || 'IL');
-      }
-
-      // Notification preferences
-      if (profileData.notification_preferences) {
-        const prefs = profileData.notification_preferences;
-        setEmailNotifications(prefs.email ?? profileData.notify_email ?? true);
-        setSmsNotifications(prefs.sms ?? profileData.notify_sms ?? false);
-        setPhoneCallNotifications(prefs.phone_call ?? profileData.phone_call_enabled ?? false);
-        setStreetCleaningAlerts(prefs.street_cleaning ?? true);
-        setSnowBanAlerts(prefs.snow_ban ?? profileData.notify_snow_ban ?? true);
-        setRenewalReminders(prefs.renewals ?? true);
-        setTowAlerts(prefs.tow ?? profileData.notify_tow ?? true);
-        setNotificationDays(prefs.days_before || profileData.notify_days_array || [30, 7, 1]);
-      } else {
-        // Fallback to individual columns
-        setEmailNotifications(profileData.notify_email ?? true);
-        setSmsNotifications(profileData.notify_sms ?? false);
-        setPhoneCallNotifications(profileData.phone_call_enabled ?? false);
-        setSnowBanAlerts(profileData.notify_snow_ban ?? true);
-        setTowAlerts(profileData.notify_tow ?? true);
-        setNotificationDays(profileData.notify_days_array || [30, 7, 1]);
-      }
-    }
-
-    // Also check monitored_plates for paid users (may have different plate)
-    const { data: plateData } = await supabase
-      .from('monitored_plates')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .eq('status', 'active');
-
-    // Check if user has any active plates (check both monitored_plates AND user_profiles.license_plate)
-    const hasPlateInMonitored = plateData && plateData.length > 0;
-    const hasPlateInProfile = !!profileData?.license_plate?.trim();
-    setHasActivePlates(hasPlateInMonitored || hasPlateInProfile);
-
-    if (plateData && plateData.length > 0) {
-      // Use first active plate
-      setPlateNumber(plateData[0].plate);
-      setPlateState(plateData[0].state);
-      setIsLeased(plateData[0].is_leased_or_company || false);
-    }
-
-    // Load autopilot settings (may not exist for new users)
-    const { data: settingsData } = await supabase
-      .from('autopilot_settings')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-
-    if (settingsData) {
-      setAutoMailEnabled(settingsData.auto_mail_enabled);
-      setRequireApproval(settingsData.require_approval);
-      setAllowedTicketTypes(settingsData.allowed_ticket_types || []);
-      setEmailOnTicketFound(settingsData.email_on_ticket_found);
-      setEmailOnLetterMailed(settingsData.email_on_letter_mailed);
-      setEmailOnApprovalNeeded(settingsData.email_on_approval_needed);
-    }
-
-    // Load dashboard data for ticket display
-    if (plateData && plateData.length > 0) {
-      setPlatesMonitored(plateData.length);
-
-      // Fetch detected tickets for this user
-      const { data: ticketData } = await supabase
-        .from('detected_tickets')
-        .select(`
-          id,
-          ticket_number,
-          violation_type,
-          violation_code,
-          violation_date,
-          amount,
-          location,
-          status,
-          skip_reason,
-          created_at,
-          user_id
-        `)
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (ticketData) {
-        const formattedTickets: DashboardTicket[] = ticketData.map(t => ({
-          id: t.id,
-          plate: plateData[0]?.plate || '',
-          state: plateData[0]?.state || 'IL',
-          ticket_number: t.ticket_number,
-          violation_type: t.violation_type || t.violation_code || 'other_unknown',
-          violation_date: t.violation_date,
-          amount: t.amount,
-          location: t.location,
-          status: t.status || 'found',
-          skip_reason: t.skip_reason,
-          found_at: t.created_at,
-        }));
-        setDashboardTickets(formattedTickets);
-      }
-
-      // Set next check date (daily at 9 AM Central / 14:00 UTC)
-      const now = new Date();
-      const nextCheck = new Date(now);
-      // If today's check hasn't run yet (before 14:00 UTC), next check is today
-      // Otherwise, next check is tomorrow
-      if (now.getUTCHours() < 14) {
-        // Today
-      } else {
-        nextCheck.setDate(now.getDate() + 1);
-      }
-      setNextCheckDate(nextCheck.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
-
-      // Load subscription info (may not exist for new users)
-      const { data: subData } = await supabase
-        .from('subscriptions')
-        .select('status, current_period_end')
+      // Load profile from user_profiles - single source of truth
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('*')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
-      if (subData) {
-        setAutopilotSubscription({
-          status: subData.status,
-          current_period_end: subData.current_period_end,
-        });
-      }
-    }
+      // Check if user has paid for ticket contesting
+      setIsPaidUser(profileData?.has_contesting === true);
 
-    setLoading(false);
-    setTimeout(() => { initialLoadRef.current = false; }, 100);
+      if (profileData) {
+        setFirstName(profileData.first_name || '');
+        setLastName(profileData.last_name || '');
+        setPhone(profileData.phone || profileData.phone_number || '');
+        setHomeAddress(profileData.street_address || profileData.home_address_full || '');
+        // Parse ward from home_address_ward if available
+        if (profileData.home_address_ward) {
+          const wardNum = parseInt(profileData.home_address_ward);
+          if (!isNaN(wardNum)) setWard(wardNum);
+        }
+        setSection(profileData.home_address_section || '');
+        // Always capitalize city name properly
+        const city = profileData.city || 'Chicago';
+        setHomeCity(city.charAt(0).toUpperCase() + city.slice(1).toLowerCase());
+        setHomeState('IL'); // Chicago is in IL
+        setHomeZip(profileData.zip_code || '');
+        setMailingAddress1(profileData.mailing_address || '');
+        setMailingAddress2(profileData.mailing_address_2 || '');
+        // Capitalize mailing city properly
+        const mailingCityVal = profileData.mailing_city || 'Chicago';
+        setMailingCity(mailingCityVal.charAt(0).toUpperCase() + mailingCityVal.slice(1).toLowerCase());
+        setMailingState(profileData.mailing_state || 'IL');
+        setMailingZip(profileData.mailing_zip || '');
+        setVin(profileData.vin || '');
+        setVehicleType(profileData.vehicle_type || 'Sedan');
+        setCityStickerExpiry(profileData.city_sticker_expiry || '');
+        setLicensePlateExpiry(profileData.license_plate_expiry || '');
+        setEmissionsDate(profileData.emissions_date || '');
+
+        // Load plate from user_profiles
+        if (profileData.license_plate) {
+          setPlateNumber(profileData.license_plate);
+          setPlateState(profileData.license_state || 'IL');
+        }
+
+        // Notification preferences
+        if (profileData.notification_preferences) {
+          const prefs = typeof profileData.notification_preferences === 'object'
+            ? profileData.notification_preferences
+            : {};
+          setEmailNotifications(prefs.email ?? profileData.notify_email ?? true);
+          setSmsNotifications(prefs.sms ?? profileData.notify_sms ?? false);
+          setPhoneCallNotifications(prefs.phone_call ?? profileData.phone_call_enabled ?? false);
+          setStreetCleaningAlerts(prefs.street_cleaning ?? true);
+          setSnowBanAlerts(prefs.snow_ban ?? profileData.notify_snow_ban ?? true);
+          setRenewalReminders(prefs.renewals ?? true);
+          setTowAlerts(prefs.tow ?? profileData.notify_tow ?? true);
+          setNotificationDays(prefs.days_before || profileData.notify_days_array || [30, 7, 1]);
+        } else {
+          // Fallback to individual columns
+          setEmailNotifications(profileData.notify_email ?? true);
+          setSmsNotifications(profileData.notify_sms ?? false);
+          setPhoneCallNotifications(profileData.phone_call_enabled ?? false);
+          setSnowBanAlerts(profileData.notify_snow_ban ?? true);
+          setTowAlerts(profileData.notify_tow ?? true);
+          setNotificationDays(profileData.notify_days_array || [30, 7, 1]);
+        }
+      }
+
+      // Also check monitored_plates for paid users (may have different plate)
+      const { data: plateData } = await supabase
+        .from('monitored_plates')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('status', 'active');
+
+      // Check if user has any active plates (check both monitored_plates AND user_profiles.license_plate)
+      const hasPlateInMonitored = plateData && plateData.length > 0;
+      const hasPlateInProfile = !!profileData?.license_plate?.trim();
+      setHasActivePlates(hasPlateInMonitored || hasPlateInProfile);
+
+      if (plateData && plateData.length > 0) {
+        // Use first active plate
+        setPlateNumber(plateData[0].plate);
+        setPlateState(plateData[0].state);
+        setIsLeased(plateData[0].is_leased_or_company || false);
+      }
+
+      // Load autopilot settings (may not exist for new users)
+      const { data: settingsData } = await supabase
+        .from('autopilot_settings')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (settingsData) {
+        setAutoMailEnabled(settingsData.auto_mail_enabled);
+        setRequireApproval(settingsData.require_approval);
+        setAllowedTicketTypes(settingsData.allowed_ticket_types || []);
+        setEmailOnTicketFound(settingsData.email_on_ticket_found);
+        setEmailOnLetterMailed(settingsData.email_on_letter_mailed);
+        setEmailOnApprovalNeeded(settingsData.email_on_approval_needed);
+      }
+
+      // Load dashboard data for ticket display
+      if (plateData && plateData.length > 0) {
+        setPlatesMonitored(plateData.length);
+
+        // Fetch detected tickets for this user
+        const { data: ticketData } = await supabase
+          .from('detected_tickets')
+          .select(`
+            id,
+            ticket_number,
+            violation_type,
+            violation_code,
+            violation_date,
+            amount,
+            location,
+            status,
+            skip_reason,
+            created_at,
+            user_id
+          `)
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (ticketData) {
+          const formattedTickets: DashboardTicket[] = ticketData.map(t => ({
+            id: t.id,
+            plate: plateData[0]?.plate || '',
+            state: plateData[0]?.state || 'IL',
+            ticket_number: t.ticket_number,
+            violation_type: t.violation_type || t.violation_code || 'other_unknown',
+            violation_date: t.violation_date,
+            amount: t.amount,
+            location: t.location,
+            status: t.status || 'found',
+            skip_reason: t.skip_reason,
+            found_at: t.created_at,
+          }));
+          setDashboardTickets(formattedTickets);
+        }
+
+        // Set next check date (daily at 9 AM Central / 14:00 UTC)
+        const now = new Date();
+        const nextCheck = new Date(now);
+        // If today's check hasn't run yet (before 14:00 UTC), next check is today
+        // Otherwise, next check is tomorrow
+        if (now.getUTCHours() < 14) {
+          // Today
+        } else {
+          nextCheck.setDate(now.getDate() + 1);
+        }
+        setNextCheckDate(nextCheck.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+
+        // Load subscription info (may not exist for new users)
+        const { data: subData } = await supabase
+          .from('subscriptions')
+          .select('status, current_period_end')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (subData) {
+          setAutopilotSubscription({
+            status: subData.status,
+            current_period_end: subData.current_period_end,
+          });
+        }
+      }
+
+      setLoading(false);
+      setTimeout(() => { initialLoadRef.current = false; }, 100);
+    } catch (err) {
+      console.error('loadData error:', err);
+      // In mobile WebView, signal load failure instead of crashing the page
+      if (isMobileWebViewRef.current) {
+        try {
+          (window as any).ReactNativeWebView?.postMessage('load_error');
+        } catch (_) { /* not in WebView */ }
+      }
+      setLoading(false);
+    }
   };
 
   const autoSave = useCallback(async () => {
