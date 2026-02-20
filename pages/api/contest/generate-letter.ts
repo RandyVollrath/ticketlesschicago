@@ -916,6 +916,10 @@ Use a formal letter format with proper salutation and closing.`
         location_evidence_used: parkingEvidence?.hasEvidence || false,
         location_evidence_strength: parkingEvidence?.hasEvidence ? Math.round(parkingEvidence.evidenceStrength * 100) : null,
         estimated_win_rate: kitEvaluation ? Math.round(kitEvaluation.estimatedWinRate * 100) : null,
+        // Street View exhibit data for the mailing step
+        street_view_exhibit_urls: streetViewPackage?.exhibitUrls || null,
+        street_view_date: streetViewPackage?.imageDate || streetViewEvidence?.imageDate || null,
+        street_view_address: streetViewPackage?.address || null,
       })
       .eq('id', contestId);
 

@@ -1066,6 +1066,10 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
       status: needsApproval ? 'pending_approval' : 'draft',
       evidence_integrated: evidenceSources.length > 0,
       evidence_integrated_at: evidenceSources.length > 0 ? new Date().toISOString() : null,
+      // Store Street View exhibit data for the mailing step
+      street_view_exhibit_urls: evidence.streetViewPackage?.exhibitUrls || null,
+      street_view_date: evidence.streetViewPackage?.imageDate || evidence.streetViewEvidence?.imageDate || null,
+      street_view_address: evidence.streetViewPackage?.address || null,
     })
     .select()
     .single();

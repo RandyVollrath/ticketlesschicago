@@ -236,6 +236,16 @@ iOS's `CLLocationManager.startMonitoringVisits()` tracks places where the user d
 5. **Visit history is persisted to UserDefaults**, not just in-memory — must survive app kill + relaunch cycle
 6. **False positive hotspot checks** must be applied to CLVisit-based parking events (and recovery events). `hotspotBlockMinReports = 1` means one user "Not parked" tap permanently blocks that location.
 
+### `checkForMissedParking` Recovery — Deduplication Required
+
+`checkForMissedParking()` queries CoreMotion history (last 6 hours) on app startup/wake and re-emits parking events for drive→park transitions it finds. This runs on EVERY app restart, significantLocationChange wake, and app resume from suspension.
+
+**Critical rule: it MUST deduplicate against `lastConfirmedParkingLocation`.** Without this, the same parking event is re-emitted every time the app restarts, creating duplicate parking records in the user's history.
+
+**Deduplication logic:** Compare the last trip's `parkTime` with `lastConfirmedParkingLocation.timestamp` (within 1 hour) AND `currentLocation` with `lastConfirmedParkingLocation` (within 300m). If both match, skip recovery entirely.
+
+**Timestamp bug (fixed Feb 2026):** `handleRecoveryGpsFix()` was using `Date()` (current time) for the parking event timestamp instead of the CoreMotion `parkTime`. This caused parking records to show "parked now" instead of "parked 2 hours ago." Fix: store `recoveryParkTime` from the CoreMotion trip and use it in the event body.
+
 ## iOS Camera Alerts — Background Reality (Critical)
 
 **Problem:** On iOS, JavaScript can be suspended while the app is in the background even if native location/motion continues. This means a JS-based camera alert pipeline (e.g. `CameraAlertService.onLocationUpdate`) can miss alerts even when departure/parking detection later looks correct.

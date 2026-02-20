@@ -2608,7 +2608,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Update contest record
           const { data: contest, error: contestError } = await supabaseAdmin
             .from('ticket_contests')
-            .select('contest_letter, mailing_address, extracted_data')
+            .select('contest_letter, mailing_address, extracted_data, street_view_exhibit_urls, street_view_date, street_view_address')
             .eq('id', contestId)
             .single();
 
@@ -2637,7 +2637,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Get signature from extracted_data if available
             const signature = contest.extracted_data?.signature;
-            const letterHTML = formatLetterAsHTML(contest.contest_letter, signature);
+            const letterHTML = formatLetterAsHTML(contest.contest_letter, {
+              signatureImage: signature,
+              streetViewImages: contest.street_view_exhibit_urls || undefined,
+              streetViewDate: contest.street_view_date || undefined,
+              streetViewAddress: contest.street_view_address || undefined,
+            });
 
             const lobResponse = await sendLetter({
               from: userAddress, // User's address (return address on envelope)
