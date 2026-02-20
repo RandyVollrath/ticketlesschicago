@@ -214,22 +214,27 @@ iOS's `CLLocationManager.startMonitoringVisits()` tracks places where the user d
 
 **How it works in our stack:**
 1. `startMonitoring()` calls `locationManager.startMonitoringVisits()` alongside significantLocationChange
-2. `didVisit()` receives visits with coordinates. If the visit doesn't match a recent confirmed parking location, it emits `onParkingDetected` + a local notification
-3. Visits are persisted to UserDefaults (`com.ticketless.visitHistory`) as a ring buffer (max 20, pruned at 24h)
-4. The CoreMotion recovery function (`checkForMissedParking`) calls `findVisitForTimestamp()` to match intermediate trips with CLVisit coordinates
-5. When a match is found, the parking event gets real coordinates → JS can check rules → user gets notified
+2. `didVisit()` receives visits with coordinates, stores them in a ring buffer for coordinate enrichment
+3. **When monitoring is active**: CLVisit ONLY stores visits — it does NOT independently emit parking events. The normal CoreMotion+GPS pipeline handles parking detection.
+4. **When monitoring is NOT active** (app was killed, visits delivered on cold relaunch): CLVisit emits `onParkingDetected` for visits that don't match recent confirmed parking.
+5. Visits are persisted to UserDefaults (`com.ticketless.visitHistory`) as a ring buffer (max 20, pruned at 24h)
+6. The CoreMotion recovery function (`checkForMissedParking`) calls `findVisitForTimestamp()` to match intermediate trips with CLVisit coordinates
+7. When a match is found, the parking event gets real coordinates → JS can check rules → user gets notified
 
 **CLVisit limitations:**
 - Minimum dwell time is typically 2-5 minutes (iOS decides, not configurable)
 - Accuracy varies (50-200m) — good enough for parking rule checks but not exact spot
 - Delivery can be delayed by minutes (iOS batches them)
 - Not all stops register as visits — short stops (<2 min) are unreliable
+- **CLVisit fires REPEATEDLY while dwelling** — iOS sends updates as accuracy improves or time passes. This caused false parking notifications when the user was sitting at a library.
 
 **Rules:**
 1. **Never remove `startMonitoringVisits()`** — it's the only fallback with coordinates when the app is killed
-2. **`findVisitForTimestamp()` uses 600s (10 min) tolerance** — CLVisit arrival times may not match CoreMotion timestamps exactly
-3. **Always check `lastConfirmedParkingLocation` before emitting a visit-based parking event** — prevents duplicates when the normal pipeline already caught the stop
-4. **Visit history is persisted to UserDefaults**, not just in-memory — must survive app kill + relaunch cycle
+2. **CLVisit must NOT emit parking events when `isMonitoring == true`** — the normal pipeline handles it. CLVisit only stores visits for `findVisitForTimestamp()` coordinate enrichment while monitoring is active.
+3. **`findVisitForTimestamp()` uses 600s (10 min) tolerance** — CLVisit arrival times may not match CoreMotion timestamps exactly
+4. **Always check `lastConfirmedParkingLocation` before emitting a visit-based parking event** — prevents duplicates when the normal pipeline already caught the stop
+5. **Visit history is persisted to UserDefaults**, not just in-memory — must survive app kill + relaunch cycle
+6. **False positive hotspot checks** must be applied to CLVisit-based parking events (and recovery events). `hotspotBlockMinReports = 1` means one user "Not parked" tap permanently blocks that location.
 
 ## iOS Camera Alerts — Background Reality (Critical)
 
@@ -431,6 +436,27 @@ The `user_profiles.is_paid` column tracks whether a user has an active paid subs
 
 ### History
 A bug in `pages/api/alerts/create.ts` (fixed Feb 2026) was setting `is_paid: true` for every free signup with the comment "Free users are considered 'paid' for alerts." This incorrectly marked ~20 users as paid when only 9 actually were. The bug was a single line — there's nothing ambiguous about it: free users are free.
+
+## Web Pages Embedded in Mobile WebView — Shared Components
+
+Some pages are loaded BOTH as standalone web pages AND inside the mobile app's WebView (or as iframes on the website). When adding mobile-specific CSS or behavior, you MUST ensure it doesn't break the page in other contexts.
+
+### `touch-action: none` Kills Iframe Interactions
+`touch-action: none` on `html`, `body`, or container elements prevents ALL pointer interactions (mouse clicks, touch taps, drag) when the page is loaded inside an iframe. Leaflet maps handle their own touch events — they don't need `touch-action: none`. This was added for the mobile WebView `destination-map.tsx` page but broke the map embedded as an iframe on `check-your-street.tsx`.
+
+**Rule:** Never set `touch-action: none` on html/body or map containers. Leaflet handles its own touch events. If you need to prevent scroll-bounce on mobile WebView, use more targeted approaches.
+
+### Decorative Overlays Need `pointerEvents: 'none'`
+Absolute-positioned decorative elements (grid backgrounds, gradient overlays) that cover their parent section will intercept clicks on form inputs below them. Always add `pointerEvents: 'none'` to purely decorative positioned overlays.
+
+### `isMobileWebView` Must Be Stable Across Re-renders
+If a page uses `router.replace()` or `router.push()` (which strips/changes URL params), any value derived from `window.location.search` will change on re-render. Use `useRef` initialized from URL params for values that must persist across the component lifetime. See `pages/settings.tsx` for the `isMobileWebViewRef` pattern.
+
+### WebView `onShouldStartLoadWithRequest` Cannot Catch SPA Navigations
+Next.js `router.push()` uses `history.pushState()` — a client-side navigation that does NOT trigger WebView's `onShouldStartLoadWithRequest` (which only fires for full page loads/link clicks). To intercept SPA navigations, use `onNavigationStateChange` as a fallback.
+
+### `loadData()` and Other Async Functions Must Have try-catch
+If a web page loaded in the mobile WebView throws an unhandled exception, Next.js shows a client-side error page that's impossible to recover from inside the WebView. All async data-loading functions on pages that can be loaded in a WebView MUST have try-catch wrappers. On error, post a `load_error` message to `ReactNativeWebView` so the native app can show a retry UI.
 
 ## Supabase Details
 - Project ref: `dzhqolbhuqdcpngdayuq`

@@ -292,7 +292,8 @@ export default function CheckYourStreet() {
           inset: 0,
           backgroundImage: `linear-gradient(${COLORS.slate}10 1px, transparent 1px), linear-gradient(90deg, ${COLORS.slate}10 1px, transparent 1px)`,
           backgroundSize: '60px 60px',
-          opacity: 0.3
+          opacity: 0.3,
+          pointerEvents: 'none',
         }} />
 
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 32px', position: 'relative', textAlign: 'center' }}>

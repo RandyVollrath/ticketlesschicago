@@ -16,7 +16,7 @@ import {
   TicketFacts,
   UserEvidence,
 } from '../../../lib/contest-kits';
-import { getStreetViewEvidence, StreetViewResult } from '../../../lib/street-view-service';
+import { getStreetViewEvidence, StreetViewResult, getStreetViewEvidenceWithAnalysis, StreetViewEvidencePackage } from '../../../lib/street-view-service';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -123,6 +123,7 @@ interface EvidenceBundle {
   ordinanceInfo: any | null;
   streetCleaningSchedule: any | null;
   streetViewEvidence: StreetViewResult | null;
+  streetViewPackage: StreetViewEvidencePackage | null;
 }
 
 // ─── Approval Email ──────────────────────────────────────────
@@ -296,6 +297,7 @@ async function gatherAllEvidence(
     ordinanceInfo: null,
     streetCleaningSchedule: null,
     streetViewEvidence: null,
+    streetViewPackage: null,
   };
 
   // Resolve violation code
@@ -533,16 +535,33 @@ async function gatherAllEvidence(
     })());
   }
 
-  // 11. Google Street View imagery (signage verification)
+  // 11. Google Street View imagery (multi-angle with AI analysis)
   if (ticket.location) {
     promises.push((async () => {
       try {
-        bundle.streetViewEvidence = await getStreetViewEvidence(
+        bundle.streetViewPackage = await getStreetViewEvidenceWithAnalysis(
           ticket.location!,
-          ticket.violation_date
+          ticket.violation_date,
+          ticket.id || null,
         );
-        if (bundle.streetViewEvidence?.hasImagery) {
-          console.log(`    Street View imagery found: ${bundle.streetViewEvidence.imageDate || 'date unknown'}`);
+        if (bundle.streetViewPackage?.hasImagery) {
+          console.log(`    Street View: ${bundle.streetViewPackage.exhibitUrls.length} images captured, AI analysis: ${bundle.streetViewPackage.analyses.length > 0 ? 'done' : 'skipped'}`);
+          if (bundle.streetViewPackage.hasSignageIssue) {
+            console.log(`    Street View: SIGNAGE ISSUES FOUND: ${bundle.streetViewPackage.defenseFindings.join('; ')}`);
+          }
+          // Populate legacy field for backward compat
+          bundle.streetViewEvidence = {
+            hasImagery: true,
+            imageDate: bundle.streetViewPackage.imageDate,
+            panoramaId: bundle.streetViewPackage.panoramaId,
+            imageUrl: bundle.streetViewPackage.exhibitUrls[0] || null,
+            thumbnailUrl: null,
+            latitude: bundle.streetViewPackage.latitude,
+            longitude: bundle.streetViewPackage.longitude,
+            address: bundle.streetViewPackage.address,
+            heading: null,
+            signageObservation: bundle.streetViewPackage.timingObservation,
+          };
         }
       } catch (e) { console.error('    Street View lookup failed:', e); }
     })());
@@ -795,23 +814,30 @@ STRATEGY INSTRUCTIONS (DO NOT cite stats in the letter):
 7. Write the letter using the STRATEGY these outcomes suggest, not citing the data itself`);
   }
 
-  // ── Section 11: Google Street View Signage Evidence ──
-  if (evidence.streetViewEvidence?.hasImagery) {
+  // ── Section 11: Google Street View Signage Evidence (AI-Analyzed) ──
+  if (evidence.streetViewPackage?.hasImagery) {
+    const pkg = evidence.streetViewPackage;
+    sections.push(`=== GOOGLE STREET VIEW SIGNAGE EVIDENCE (AI-ANALYZED) ===
+Location: ${pkg.address || `${pkg.latitude}, ${pkg.longitude}`}
+Imagery Date: ${pkg.imageDate || 'Unknown'}
+Images Captured: ${pkg.exhibitUrls.length} directional views (North, East, South, West)
+${pkg.timingObservation || ''}
+
+AI SIGNAGE ANALYSIS:
+${pkg.analysisSummary}
+
+${pkg.hasSignageIssue ? `DEFENSE-RELEVANT FINDINGS:
+${pkg.defenseFindings.map(f => `- ${f}`).join('\n')}
+
+INSTRUCTIONS: These signage issues are STRONG defense arguments. The ${pkg.exhibitUrls.length} Street View photos will be included as physical exhibits in the mailed letter. Reference the attached Street View photographs as evidence showing the signage conditions. The hearing officer can also independently verify these conditions on Google Street View. Emphasize that inadequate, obscured, faded, or missing signage is grounds for dismissal under Chicago Municipal Code.` : `INSTRUCTIONS: ${pkg.exhibitUrls.length} Street View photographs from this location will be included as physical exhibits in the mailed letter. Reference them as evidence showing the area's signage conditions. If the signs appear to be in good condition, focus other defense arguments but still note that the photographs are provided for the record.`}`);
+  } else if (evidence.streetViewEvidence?.hasImagery) {
     const sv = evidence.streetViewEvidence;
     sections.push(`=== GOOGLE STREET VIEW SIGNAGE EVIDENCE ===
 Location: ${sv.address || `${sv.latitude}, ${sv.longitude}`}
 Imagery Date: ${sv.imageDate || 'Unknown'}
-Panorama ID: ${sv.panoramaId || 'N/A'}
-
 ${sv.signageObservation || ''}
 
-INSTRUCTIONS FOR USING STREET VIEW EVIDENCE:
-1. If the imagery date is close to the violation date (within 6 months), reference it as evidence of signage conditions at the time
-2. If signs were missing, obscured, or improperly posted in Street View imagery, argue this as a defense
-3. Present this as: "Google Street View imagery captured in ${sv.imageDate || 'the available timeframe'} for this location shows [signage conditions]"
-4. This is publicly available imagery that can be independently verified by the hearing officer
-5. DO NOT claim to have personally analyzed the imagery — instead argue that the hearing officer should review the Street View imagery at this location to verify signage compliance
-6. If signage is a relevant defense for this violation type, suggest the hearing officer verify signage presence/visibility using Google Street View`);
+INSTRUCTIONS: Suggest the hearing officer verify signage presence/visibility using Google Street View for this location.`);
   }
 
   // ── Section 12: Street Cleaning Schedule ──
@@ -839,7 +865,7 @@ Generate a professional, formal contest letter that:
    ${evidence.redLightReceipt ? '- Red light camera GPS data (STRONG - contradicts camera reading)' : ''}
    ${evidence.cameraPassHistory ? '- Speed camera GPS data (STRONG - shows actual speed)' : ''}
    ${evidence.weatherData?.hasAdverseWeather && evidence.weatherRelevanceType === 'primary' ? '- Weather conditions (PRIMARY defense for this violation)' : ''}
-   ${evidence.streetViewEvidence?.hasImagery ? '- Google Street View imagery (signage verification — reference but do not claim to have analyzed it)' : ''}
+   ${evidence.streetViewPackage?.hasImagery ? `- ${evidence.streetViewPackage.exhibitUrls.length} Google Street View photographs (attached as exhibits — ${evidence.streetViewPackage.hasSignageIssue ? 'SIGNAGE ISSUES FOUND' : 'signage verification'})` : evidence.streetViewEvidence?.hasImagery ? '- Google Street View imagery (signage verification)' : ''}
    ${evidence.foiaData.hasData ? '- FOIA hearing outcomes (INFORM strategy only, do not cite stats)' : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
@@ -992,7 +1018,13 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   if (evidence.cameraPassHistory) evidenceSources.push('speed_camera_gps');
   if (evidence.foiaData.hasData) evidenceSources.push('foia_data');
   if (evidence.kitEvaluation) evidenceSources.push('contest_kit');
-  if (evidence.streetViewEvidence?.hasImagery) evidenceSources.push('street_view');
+  if (evidence.streetViewPackage?.hasImagery) {
+    evidenceSources.push('street_view');
+    if (evidence.streetViewPackage.analyses.length > 0) evidenceSources.push('street_view_ai_analysis');
+    if (evidence.streetViewPackage.hasSignageIssue) evidenceSources.push('signage_issue_found');
+  } else if (evidence.streetViewEvidence?.hasImagery) {
+    evidenceSources.push('street_view');
+  }
 
   if (anthropic) {
     try {

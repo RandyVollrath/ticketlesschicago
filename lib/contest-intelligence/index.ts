@@ -60,24 +60,9 @@ export {
   EVIDENCE_IMPACT,
 } from './letter-scoring';
 
-// Signage Database
-export {
-  submitSignageReport,
-  findNearbySignage,
-  findDefenseSupportingSignage,
-  getSignageReport,
-  verifySignageReport,
-  updateSignageCondition,
-  recordSignageUsedInContest,
-  getWardSignageReports,
-  getProblematicSignage,
-  searchSignageByAddress,
-  getSignageStatsByWard,
-  formatSignCondition,
-  getRecommendedPhotos,
-  DEFENSE_SUPPORTING_CONDITIONS,
-  MAX_SEARCH_FEET,
-} from './signage-database';
+// Signage Database — REMOVED
+// Crowdsourced signage reporting was unused. Street View imagery with AI analysis
+// is now used instead (see lib/street-view-service.ts).
 
 // Outcome Learning Loop
 export {
@@ -137,7 +122,7 @@ export {
 import { createClient } from '@supabase/supabase-js';
 import { getWardIntelligence, generateWardRecommendation } from './ward-intelligence';
 import { getOfficerPatterns, generateOfficerRecommendation } from './hearing-officers';
-import { findDefenseSupportingSignage } from './signage-database';
+// findDefenseSupportingSignage removed — crowdsourced signage database was unused
 import { calculatePredictedWinProbability, getSimilarCases } from './outcome-learning';
 import { ContestRecommendation, NearbySignage } from './types';
 

@@ -18,7 +18,7 @@ import {
   generateEvidenceParagraph,
   ParkingEvidenceResult,
 } from '../../../lib/parking-evidence';
-import { getStreetViewEvidence, StreetViewResult } from '../../../lib/street-view-service';
+import { getStreetViewEvidence, StreetViewResult, getStreetViewEvidenceWithAnalysis, StreetViewEvidencePackage } from '../../../lib/street-view-service';
 
 // Weather relevance by violation type
 // PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
@@ -444,6 +444,7 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
     let redLightReceipt: any = null;
     let cameraPassHistory: any[] | null = null;
     let streetViewEvidence: StreetViewResult | null = null;
+    let streetViewPackage: StreetViewEvidencePackage | null = null;
     let streetCleaningSchedule: any[] | null = null;
     let foiaData: {
       hasData: boolean;
@@ -626,11 +627,30 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
       })());
     }
 
-    // 7. Google Street View (signage verification)
+    // 7. Google Street View (signage verification — multi-angle with AI analysis)
     if (contest.ticket_location) {
       evidencePromises.push((async () => {
         try {
-          streetViewEvidence = await getStreetViewEvidence(contest.ticket_location, ticketDate);
+          streetViewPackage = await getStreetViewEvidenceWithAnalysis(
+            contest.ticket_location,
+            ticketDate,
+            contestId,
+          );
+          // Also populate the legacy field for backward-compatible prompt section
+          if (streetViewPackage.hasImagery) {
+            streetViewEvidence = {
+              hasImagery: true,
+              imageDate: streetViewPackage.imageDate,
+              panoramaId: streetViewPackage.panoramaId,
+              imageUrl: streetViewPackage.exhibitUrls[0] || null,
+              thumbnailUrl: null,
+              latitude: streetViewPackage.latitude,
+              longitude: streetViewPackage.longitude,
+              address: streetViewPackage.address,
+              heading: null,
+              signageObservation: streetViewPackage.timingObservation,
+            };
+          }
         } catch (e) { console.error('Street View lookup failed:', e); }
       })());
     }
@@ -745,7 +765,20 @@ ${cameraPassHistory && cameraPassHistory.length > 0 ? `
 ${cameraPassHistory.slice(0, 3).map((p: any, i: number) => `Pass ${i + 1}: Camera: ${p.camera_name || p.camera_id || 'Unknown'}, GPS Speed: ${p.speed_mph ? `${p.speed_mph} mph` : 'Unknown'}, Posted Limit: ${p.speed_limit_mph ? `${p.speed_limit_mph} mph` : 'Unknown'}`).join('\n')}
 
 INSTRUCTIONS: Reference the GPS data as evidence of the user's actual speed.` : ''}
-${streetViewEvidence?.hasImagery ? `
+${streetViewPackage?.hasImagery ? `
+=== GOOGLE STREET VIEW SIGNAGE EVIDENCE (AI-ANALYZED) ===
+Location: ${streetViewPackage.address || `${streetViewPackage.latitude}, ${streetViewPackage.longitude}`}
+Imagery Date: ${streetViewPackage.imageDate || 'Unknown'}
+Images Captured: ${streetViewPackage.exhibitUrls.length} directional views (North, East, South, West)
+${streetViewPackage.timingObservation || ''}
+
+AI SIGNAGE ANALYSIS:
+${streetViewPackage.analysisSummary}
+
+${streetViewPackage.hasSignageIssue ? `DEFENSE-RELEVANT FINDINGS:
+${streetViewPackage.defenseFindings.map(f => `- ${f}`).join('\n')}
+
+INSTRUCTIONS: These signage issues are STRONG defense arguments. The ${streetViewPackage.exhibitUrls.length} Street View photos will be included as physical exhibits in the mailed letter. Reference the attached Street View photographs as evidence showing the signage conditions. The hearing officer can also independently verify these conditions on Google Street View. Emphasize that inadequate, obscured, faded, or missing signage is grounds for dismissal under Chicago Municipal Code.` : `INSTRUCTIONS: ${streetViewPackage.exhibitUrls.length} Street View photographs from this location will be included as physical exhibits in the mailed letter. Reference them as evidence showing the area's signage conditions. If the signs appear to be in good condition, focus other defense arguments but still note that the photographs are provided for the record.`}` : streetViewEvidence?.hasImagery ? `
 === GOOGLE STREET VIEW SIGNAGE EVIDENCE ===
 Location: ${streetViewEvidence.address || `${streetViewEvidence.latitude}, ${streetViewEvidence.longitude}`}
 Imagery Date: ${streetViewEvidence.imageDate || 'Unknown'}
@@ -858,7 +891,13 @@ Use a formal letter format with proper salutation and closing.`
     if (cameraPassHistory) evidenceSources.push('speed_camera_gps');
     if (foiaData.hasData) evidenceSources.push('foia_data');
     if (kitEvaluation) evidenceSources.push('contest_kit');
-    if (streetViewEvidence?.hasImagery) evidenceSources.push('street_view');
+    if (streetViewPackage?.hasImagery) {
+      evidenceSources.push('street_view');
+      if (streetViewPackage.analyses.length > 0) evidenceSources.push('street_view_ai_analysis');
+      if (streetViewPackage.hasSignageIssue) evidenceSources.push('signage_issue_found');
+    } else if (streetViewEvidence?.hasImagery) {
+      evidenceSources.push('street_view');
+    }
     if (courtData.hasData) evidenceSources.push('court_data');
     if (streetCleaningSchedule) evidenceSources.push('street_cleaning_schedule');
 
@@ -954,8 +993,16 @@ Use a formal letter format with proper salutation and closing.`
         mailContestWinRate: foiaData.mailContestWinRate,
         topReasons: foiaData.topDismissalReasons.slice(0, 3).map(r => r.reason),
       } : { hasData: false },
-      // Street View signage evidence
-      streetView: streetViewEvidence?.hasImagery ? {
+      // Street View signage evidence (with multi-angle images + AI analysis)
+      streetView: streetViewPackage?.hasImagery ? {
+        hasImagery: true,
+        imageDate: streetViewPackage.imageDate,
+        exhibitUrls: streetViewPackage.exhibitUrls,
+        analysisSummary: streetViewPackage.analysisSummary,
+        hasSignageIssue: streetViewPackage.hasSignageIssue,
+        defenseFindings: streetViewPackage.defenseFindings,
+        imageCount: streetViewPackage.exhibitUrls.length,
+      } : streetViewEvidence?.hasImagery ? {
         hasImagery: true,
         imageDate: streetViewEvidence.imageDate,
         imageUrl: streetViewEvidence.imageUrl,

@@ -124,27 +124,43 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
 }
 
 /**
- * Maximum number of evidence images to include
- * More than 5 images would exceed 6 pages and trigger extra fees
+ * Maximum number of user evidence images to include.
+ * Street View images are separate and don't count toward this limit.
  */
-const MAX_EVIDENCE_IMAGES = 5;
+const MAX_USER_EVIDENCE_IMAGES = 5;
 
 /**
- * Convert plain text letter to HTML format for Lob
- * Optionally includes signature image and evidence images
+ * Direction labels for Street View images
+ */
+const DIRECTION_LABELS: Record<number, string> = {
+  0: 'North',
+  1: 'East',
+  2: 'South',
+  3: 'West',
+};
+
+/**
+ * Convert plain text letter to HTML format for Lob.
+ * Optionally includes signature image, user evidence images, and Street View images.
  *
  * @param letterText - The letter content text
  * @param options.signatureImage - Optional signature image URL
- * @param options.evidenceImages - Array of evidence image URLs (max 5 will be included)
+ * @param options.evidenceImages - Array of user evidence image URLs (max 5 will be included)
+ * @param options.streetViewImages - Array of Street View image URLs (N/E/S/W directions)
+ * @param options.streetViewDate - Date of the Street View imagery (e.g., "2024-07")
+ * @param options.streetViewAddress - Address shown in the Street View images
  */
 export function formatLetterAsHTML(
   letterText: string,
   options?: {
     signatureImage?: string;
     evidenceImages?: string[];
+    streetViewImages?: string[];
+    streetViewDate?: string | null;
+    streetViewAddress?: string | null;
   }
 ): string {
-  const { signatureImage, evidenceImages } = options || {};
+  const { signatureImage, evidenceImages, streetViewImages, streetViewDate, streetViewAddress } = options || {};
 
   // Clean up the letter text - remove leading/trailing delimiters and whitespace
   let cleanedText = letterText.trim();
@@ -173,21 +189,51 @@ export function formatLetterAsHTML(
       </div>`
     : '';
 
-  // Add evidence images if provided (limit to MAX_EVIDENCE_IMAGES to stay under 6 pages)
+  // Track exhibit numbering across all evidence types
+  let exhibitNumber = 1;
+
+  // Add Street View images (these go first as signage evidence)
+  let streetViewHTML = '';
+  if (streetViewImages && streetViewImages.length > 0) {
+    const locationLabel = streetViewAddress || 'Ticket Location';
+    const dateLabel = streetViewDate ? ` (Imagery Date: ${streetViewDate})` : '';
+
+    streetViewHTML = `
+      <div style="page-break-before: always; margin-top: 30px;">
+        <h3 style="font-size: 14pt; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 8px;">
+          Exhibit A: Google Street View Signage Evidence
+        </h3>
+        <p style="font-size: 10pt; color: #333; margin-bottom: 15px;">
+          Location: ${locationLabel}${dateLabel}<br>
+          The following ${streetViewImages.length} photographs show the signage conditions at the citation location
+          from each cardinal direction, as captured by Google Street View.
+          These images are publicly available and can be independently verified.
+        </p>
+        ${streetViewImages.map((url, index) => `
+          <div style="margin-bottom: 15px; ${index === 2 ? 'page-break-before: always;' : ''}">
+            <p style="font-size: 10pt; font-weight: bold; margin-bottom: 5px;">
+              Exhibit ${exhibitNumber++}: ${DIRECTION_LABELS[index] || `Direction ${index + 1}`}-Facing View
+            </p>
+            <img src="${url}" alt="Street View - ${DIRECTION_LABELS[index] || `Direction ${index + 1}`}" style="max-width: 100%; max-height: 350px; border: 1px solid #999;" />
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // Add user evidence images if provided (limit to MAX_USER_EVIDENCE_IMAGES)
   let evidenceHTML = '';
   if (evidenceImages && evidenceImages.length > 0) {
-    const imagesToInclude = evidenceImages.slice(0, MAX_EVIDENCE_IMAGES);
-    const imageCount = imagesToInclude.length;
-    const totalImages = evidenceImages.length;
+    const imagesToInclude = evidenceImages.slice(0, MAX_USER_EVIDENCE_IMAGES);
 
     evidenceHTML = `
       <div style="page-break-before: always; margin-top: 30px;">
-        <h3 style="font-size: 14pt; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
-          Supporting Evidence${totalImages > imageCount ? ` (${imageCount} of ${totalImages} images)` : ''}
+        <h3 style="font-size: 14pt; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 8px;">
+          ${streetViewImages && streetViewImages.length > 0 ? 'Exhibit B: ' : ''}Additional Supporting Evidence
         </h3>
         ${imagesToInclude.map((url, index) => `
           <div style="margin-bottom: 20px; ${index > 0 && index % 2 === 0 ? 'page-break-before: always;' : ''}">
-            <p style="font-size: 10pt; color: #666; margin-bottom: 8px;">Exhibit ${index + 1}</p>
+            <p style="font-size: 10pt; font-weight: bold; margin-bottom: 5px;">Exhibit ${exhibitNumber++}</p>
             <img src="${url}" alt="Evidence ${index + 1}" style="max-width: 100%; max-height: 400px; border: 1px solid #ccc;" />
           </div>
         `).join('')}
@@ -217,6 +263,7 @@ export function formatLetterAsHTML(
 <body>
   ${withBreaks}
   ${signatureHTML}
+  ${streetViewHTML}
   ${evidenceHTML}
 </body>
 </html>
