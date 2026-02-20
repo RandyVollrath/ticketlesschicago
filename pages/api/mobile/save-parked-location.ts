@@ -137,31 +137,79 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to save parked location' });
     }
 
-    // Also insert into parking history for permanent record
-    const { error: historyError } = await supabaseAdmin
+    // Insert into parking history for permanent record — with dedup guard.
+    // Check if a recent history record already exists for this user at this location
+    // (within 5 minutes and ~200m). If so, update the existing record's GPS coords
+    // instead of inserting a duplicate. This prevents duplicate rows from GPS Phase 2
+    // refinement, app restart recovery, and other race conditions.
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: recentDuplicate } = await supabaseAdmin
       .from('parking_location_history')
-      .insert({
-        user_id: userId,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        address: addressValue,
+      .select('id, latitude, longitude')
+      .eq('user_id', userId)
+      .is('cleared_at', null)
+      .gte('parked_at', fiveMinAgo)
+      .order('parked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-        on_winter_ban_street: input.on_winter_ban_street,
-        winter_ban_street_name: input.winter_ban_street_name || null,
-        on_snow_route: input.on_snow_route,
-        snow_route_name: input.snow_route_name || null,
-        street_cleaning_date: streetCleaningDate,
-        street_cleaning_ward: input.street_cleaning_ward || null,
-        street_cleaning_section: input.street_cleaning_section || null,
-        permit_zone: input.permit_zone || null,
-        permit_restriction_schedule: null,
+    // Simple distance check (~200m): 0.002 degrees ≈ 200m at Chicago's latitude
+    const isNearby = recentDuplicate &&
+      Math.abs(recentDuplicate.latitude - input.latitude) < 0.002 &&
+      Math.abs(recentDuplicate.longitude - input.longitude) < 0.002;
 
-        parked_at: parkedAt,
-      });
+    if (recentDuplicate && isNearby) {
+      // Update existing record with refined GPS coords instead of creating duplicate
+      const { error: updateError } = await supabaseAdmin
+        .from('parking_location_history')
+        .update({
+          latitude: input.latitude,
+          longitude: input.longitude,
+          address: addressValue,
+          on_winter_ban_street: input.on_winter_ban_street,
+          winter_ban_street_name: input.winter_ban_street_name || null,
+          on_snow_route: input.on_snow_route,
+          snow_route_name: input.snow_route_name || null,
+          street_cleaning_date: streetCleaningDate,
+          street_cleaning_ward: input.street_cleaning_ward || null,
+          street_cleaning_section: input.street_cleaning_section || null,
+          permit_zone: input.permit_zone || null,
+          permit_restriction_schedule: null,
+        })
+        .eq('id', recentDuplicate.id);
 
-    if (historyError) {
-      // Log but don't fail the request - history is secondary to active tracking
-      console.error('Error saving parking history:', historyError);
+      if (updateError) {
+        console.error('Error updating existing parking history:', updateError);
+      } else {
+        console.log(`Dedup: updated existing parking history ${recentDuplicate.id} instead of creating duplicate`);
+      }
+    } else {
+      // No recent duplicate — insert new record
+      const { error: historyError } = await supabaseAdmin
+        .from('parking_location_history')
+        .insert({
+          user_id: userId,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          address: addressValue,
+
+          on_winter_ban_street: input.on_winter_ban_street,
+          winter_ban_street_name: input.winter_ban_street_name || null,
+          on_snow_route: input.on_snow_route,
+          snow_route_name: input.snow_route_name || null,
+          street_cleaning_date: streetCleaningDate,
+          street_cleaning_ward: input.street_cleaning_ward || null,
+          street_cleaning_section: input.street_cleaning_section || null,
+          permit_zone: input.permit_zone || null,
+          permit_restriction_schedule: null,
+
+          parked_at: parkedAt,
+        });
+
+      if (historyError) {
+        // Log but don't fail the request - history is secondary to active tracking
+        console.error('Error saving parking history:', historyError);
+      }
     }
 
     // Update saved location stats if user parked at a saved location (within ~50m)

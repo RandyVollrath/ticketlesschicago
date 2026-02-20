@@ -279,8 +279,10 @@ export const ParkingHistoryService = {
       AppEvents.emit('parking-history-updated');
       log.info(`Saved to parking history: "${newItem.address}" (${rules.length} rules, ${updated.length} total items)`);
 
-      // Fire-and-forget sync to server
-      syncAddToServer(newItem);
+      // NOTE: Do NOT call syncAddToServer here. BackgroundTaskService already
+      // saves to the server via LocationService.saveParkedLocationToServer()
+      // which inserts into parking_location_history. Calling syncAddToServer
+      // here creates duplicate server records with the same parked_at timestamp.
     } catch (error) {
       log.error('Error adding to parking history', error);
     }
