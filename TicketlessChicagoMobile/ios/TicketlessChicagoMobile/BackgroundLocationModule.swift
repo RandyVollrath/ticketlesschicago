@@ -4124,12 +4124,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
     persistVisits()
 
-    // If the app is alive and we have a visit with coordinates, check if this
-    // represents a parking event we missed (e.g., the normal pipeline didn't fire).
+    // CLVisit should only independently emit parking events when the normal
+    // CoreMotion+GPS pipeline could NOT have caught the stop — i.e., the app was
+    // just launched and monitoring hasn't started yet (visits queued by iOS during
+    // app-kill are delivered on relaunch). When isMonitoring is true, the normal
+    // pipeline is responsible for parking detection; CLVisit just stores visits
+    // in the ring buffer for findVisitForTimestamp() coordinate enrichment.
+    //
     // Only process if:
-    // 1. We're not currently driving (would be a false visit)
-    // 2. The visit has valid arrival time (not distantPast)
-    // 3. The visit has reasonable accuracy (<200m)
+    // 1. Monitoring is NOT active (normal pipeline wasn't running)
+    // 2. We're not currently driving (would be a false visit)
+    // 3. The visit has valid arrival time (not distantPast)
+    // 4. The visit has reasonable accuracy (<200m)
+    if isMonitoring {
+      self.log("CLVisit: monitoring active — stored for coordinate enrichment only (not emitting parking event)")
+      return
+    }
+
     if !isDriving &&
        visit.arrivalDate != Date.distantPast &&
        visit.horizontalAccuracy > 0 && visit.horizontalAccuracy < 200 {

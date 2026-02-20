@@ -424,7 +424,6 @@ export default function DestinationMapView() {
   }, []);
 
   const toggleLegendDesktop = useCallback(() => {
-    if (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) return;
     setLegendCollapsed((c) => !c);
   }, []);
 
@@ -905,7 +904,7 @@ export default function DestinationMapView() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
       {/* Map container */}
-      <div ref={containerRef} style={{ width: '100%', height: '100%', touchAction: 'none' }} />
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
       {/* Loading overlay */}
       {loading && (
@@ -955,8 +954,8 @@ export default function DestinationMapView() {
               WebkitTapHighlightColor: 'transparent',
             }}
           >
-            <span style={{ fontSize: '16px' }}>{parkabilityMode ? 'P' : 'P'}</span>
-            {parkabilityMode ? 'Where to park' : 'Where to park'}
+            <span style={{ fontSize: '16px' }}>{parkabilityMode ? '🔍' : 'P'}</span>
+            {parkabilityMode ? 'View restrictions' : 'Where to park'}
           </button>
         </div>
       )}
@@ -1005,7 +1004,6 @@ export default function DestinationMapView() {
           fontFamily: 'system-ui',
           overflow: 'hidden',
           transition: 'all 0.25s ease',
-          touchAction: 'none',
         }}
         onTouchStart={(e) => {
           touchStartY.current = e.touches[0].clientY;
