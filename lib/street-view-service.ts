@@ -111,7 +111,7 @@ const DIRECTIONS: Array<{ name: 'North' | 'East' | 'South' | 'West'; heading: nu
 export async function getStreetViewMetadata(
   location: string | { latitude: number; longitude: number }
 ): Promise<{ available: boolean; date: string | null; panoId: string | null; lat: number | null; lng: number | null }> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     return { available: false, date: null, panoId: null, lat: null, lng: null };
   }
@@ -164,7 +164,7 @@ export function buildStreetViewUrl(
     panoId?: string;
   }
 ): string | null {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) return null;
 
   const params = new URLSearchParams({
@@ -602,7 +602,7 @@ export async function getMultiAngleStreetView(
   latitude: number,
   longitude: number
 ): Promise<string[]> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) return [];
 
   const coords = { latitude, longitude };
