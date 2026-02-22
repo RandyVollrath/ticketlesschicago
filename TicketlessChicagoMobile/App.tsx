@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
-import AlertsScreen from './src/screens/AlertsScreen';
+import NativeAlertsScreen from './src/screens/NativeAlertsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -89,8 +89,8 @@ function MainTabNavigator() {
       />
       <Tab.Screen
         name="Alerts"
-        component={AlertsScreen}
-        options={{ tabBarLabel: 'Alerts', lazy: false }}
+        component={NativeAlertsScreen}
+        options={{ tabBarLabel: 'Alerts' }}
       />
       <Tab.Screen
         name="Settings"
