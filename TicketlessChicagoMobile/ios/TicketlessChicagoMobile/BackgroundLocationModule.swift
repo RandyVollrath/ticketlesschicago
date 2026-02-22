@@ -434,7 +434,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         ])
         log("Vehicle audio signal connected (\(outputTypes.joined(separator: ",")))")
         extendCameraPrewarm(reason: "vehicle_signal_connected", seconds: cameraPrewarmStrongSec)
-        if isMonitoring && !continuousGpsActive {
+        if isMonitoring && (!continuousGpsActive || gpsInKeepaliveMode) {
           startBootstrapGpsWindow(reason: "vehicle_signal_connected")
         }
       } else {
@@ -524,6 +524,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "coreMotionState": coreMotionStateLabel,
       "hasConfirmedParkingThisSession": hasConfirmedParkingThisSession,
       "continuousGpsActive": continuousGpsActive,
+      "gpsInKeepaliveMode": gpsInKeepaliveMode,
       "coreMotionActive": coreMotionActive,
       "gpsOnlyMode": gpsOnlyMode,
       "parkingFinalizationPending": parkingFinalizationPending,
@@ -559,8 +560,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     guard isMonitoring else { return }
 
     guard let lastCallback = lastLocationCallbackTime else {
-      if !continuousGpsActive && (isDriving || coreMotionSaysAutomotive) {
-        self.log("WATCHDOG: no location callbacks yet while driving/automotive — starting GPS")
+      if (!continuousGpsActive || gpsInKeepaliveMode) && (isDriving || coreMotionSaysAutomotive) {
+        self.log("WATCHDOG: no location callbacks yet while driving/automotive — \(gpsInKeepaliveMode ? "ramping up from keepalive" : "starting") GPS")
         startContinuousGps()
       }
       return
@@ -674,6 +675,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var locationAtStopStart: CLLocation? = nil   // Snapshot GPS at exact moment car stops
   private var lastStationaryTime: Date? = nil
   private var continuousGpsActive = false              // Whether high-frequency GPS is running
+  private var gpsInKeepaliveMode = false               // Whether GPS is in low-power keepalive (not full accuracy)
   private var coreMotionActive = false                  // Whether CoreMotion activity updates are running
   private var gpsOnlyMode = false                       // True when CoreMotion is denied/restricted — GPS speed is primary driving signal
   private var automotiveSessionStart: Date? = nil       // When current automotive session began (for flicker filtering)
@@ -1311,6 +1313,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
         locationManager.startUpdatingLocation()
         continuousGpsActive = true
+        gpsInKeepaliveMode = true
         self.log("Keepalive GPS started (distanceFilter=200m, accuracy=3km)")
       }
     } else {
@@ -1387,6 +1390,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // Fully stop GPS when monitoring is disabled (not just keepalive mode)
     locationManager.stopUpdatingLocation()
     continuousGpsActive = false
+    gpsInKeepaliveMode = false
     stopMotionActivityMonitoring()
     stopAccelerometerRecording()
     stopLocationWatchdog()
@@ -1493,6 +1497,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "isDriving": isDriving,
       "coreMotionAutomotive": coreMotionSaysAutomotive,
       "continuousGpsActive": continuousGpsActive,
+      "gpsInKeepaliveMode": gpsInKeepaliveMode,
       "coreMotionActive": coreMotionActive,
       "hasAlwaysPermission": locationManager.authorizationStatus == .authorizedAlways,
       "motionAvailable": CMMotionActivityManager.isActivityAvailable(),
@@ -1742,16 +1747,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // stationary. Without this, distanceFilter=10 means no updates arrive
     // when the car stops, so the speed-zero parking detection never triggers.
     let wasActive = continuousGpsActive
+    let wasKeepalive = gpsInKeepaliveMode
     locationManager.distanceFilter = kCLDistanceFilterNone
     locationManager.desiredAccuracy = kCLLocationAccuracyBest
     if !continuousGpsActive {
       locationManager.startUpdatingLocation()
     }
     continuousGpsActive = true
-    if wasActive {
+    gpsInKeepaliveMode = false
+    if wasKeepalive {
       self.log("Continuous GPS ramped up from keepalive → full accuracy (driving detected)")
-    } else {
+    } else if !wasActive {
       self.log("Continuous GPS ON (driving detected, distanceFilter=none)")
+    } else {
+      self.log("Continuous GPS already at full accuracy")
     }
   }
 
@@ -1768,6 +1777,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
       self.log("Continuous GPS → low-frequency (GPS-only mode, distanceFilter=20m, accuracy=100m)")
       // Keep continuousGpsActive = true so location callbacks keep flowing
+      gpsInKeepaliveMode = true
     } else {
       // Normal mode (CoreMotion available): drop to ultra-low-frequency GPS
       // to keep the app process alive. CoreMotion handles driving detection;
@@ -1776,6 +1786,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers  // Lowest power GPS
       self.log("Continuous GPS → keepalive mode (distanceFilter=200m, accuracy=3km) — preventing iOS process kill")
       // Keep continuousGpsActive = true so the process stays alive
+      gpsInKeepaliveMode = true
     }
   }
 
@@ -2010,12 +2021,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
               // Fall through to set isDriving = true below
             } else {
               // Still near parking spot — wait for GPS speed confirmation.
-              // Start GPS to GET speed updates. Otherwise we're stuck:
-              // - No GPS running (stopped after parking to save power)
-              // - speedSaysMoving stays false forever (no GPS = no speed updates)
-              // - Driving never detected, departure never recorded
-              if !self.continuousGpsActive {
-                self.log("CoreMotion says automotive but GPS speed unknown — starting GPS to verify")
+              // Start/ramp-up GPS to GET speed updates. Otherwise we're stuck:
+              // - GPS in keepalive mode (200m/3km after parking) — too infrequent for speed
+              // - speedSaysMoving stays false forever (keepalive GPS = rare, inaccurate updates)
+              // - Driving never detected, departure never recorded, camera alerts never fire
+              if !self.continuousGpsActive || self.gpsInKeepaliveMode {
+                self.log("CoreMotion says automotive but GPS speed unknown — \(self.gpsInKeepaliveMode ? "ramping up from keepalive" : "starting") GPS to verify")
                 self.startContinuousGps()
                 // Emit onPossibleDriving so camera alerts can start immediately
                 // while we wait for GPS to confirm driving. This closes the gap
