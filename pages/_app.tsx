@@ -9,9 +9,18 @@ export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter()
 
   useEffect(() => {
-    // CRITICAL: Intercept OAuth redirects that land on wrong pages
-    // Supabase may redirect to homepage or /settings instead of /auth/callback
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return
+
+    // Detect mobile WebView — it passes auth via URL query params, not hash.
+    // Skip OAuth redirect interception and PostHog in this context because:
+    // 1. PostHog init accesses browser APIs that can crash in WKWebView/Android WebView
+    // 2. OAuth hash redirect is irrelevant (mobile uses mobile_access_token params)
+    const isMobileWebView = window.location.search?.includes('mobile_access_token') ||
+      !!(window as any).ReactNativeWebView
+
+    if (!isMobileWebView) {
+      // CRITICAL: Intercept OAuth redirects that land on wrong pages
+      // Supabase may redirect to homepage or /settings instead of /auth/callback
       const currentPath = window.location.pathname
       const hash = window.location.hash
 
@@ -31,10 +40,10 @@ export default function App({ Component, pageProps }: AppProps) {
       if (hasOAuthTokens) {
         console.log('✅ OAuth tokens detected on correct page:', currentPath)
       }
-    }
 
-    // Initialize PostHog
-    initPostHog()
+      // Initialize PostHog (skip in WebView — it can crash accessing browser APIs)
+      initPostHog()
+    }
 
     // Track page views
     const handleRouteChange = () => {
