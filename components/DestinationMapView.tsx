@@ -19,7 +19,7 @@ import { useRouter } from 'next/router';
 // --- Restriction layer colors (original view) ---
 const LAYER_COLORS = {
   cleaningToday: '#EF4444',
-  cleaningSoon: '#F59E0B',
+  cleaningSoon: '#EAB308',
   cleaningLater: '#10B981',
   cleaningNone: '#94A3B8',
   snowRoute: '#D946EF',
@@ -32,7 +32,7 @@ const LAYER_COLORS = {
 const PERMIT_COLORS = {
   both: '#475569',
   odd: '#2563EB',
-  even: '#F97316',
+  even: '#EA580C',
 };
 
 // --- Parkability colors ---
@@ -305,9 +305,6 @@ export default function DestinationMapView() {
   const touchMoved = useRef(false);
 
   const [snowBanActive, setSnowBanActive] = useState(false);
-  const [alternativeZones, setAlternativeZones] = useState<any[]>([]);
-  const [loadingAlternatives, setLoadingAlternatives] = useState(false);
-  const alternativeKeysRef = useRef<Set<string>>(new Set());
 
   // Store layer references + raw data for restyling on toggle
   const layersRef = useRef<{
@@ -328,18 +325,14 @@ export default function DestinationMapView() {
     if (cleaningLayer) {
       cleaningLayer.eachLayer((layer: any) => {
         const nextISO = layer.feature?.properties?.nextISO;
-        const ward = layer.feature?.properties?.ward;
-        const section = layer.feature?.properties?.section;
-        const key = `${ward}-${section}`;
-        const isAlternative = alternativeKeysRef.current.has(key);
         if (isParkability) {
-          const color = isAlternative ? '#16a34a' : parkabilityZoneColor(nextISO);
+          const color = parkabilityZoneColor(nextISO);
           layer.setStyle({
             fillColor: color,
             color,
-            fillOpacity: isAlternative ? 0.55 : 0.3,
-            weight: isAlternative ? 2.2 : 1.5,
-            opacity: isAlternative ? 1 : 0.7
+            fillOpacity: 0.3,
+            weight: 1.5,
+            opacity: 0.7
           });
         } else {
           const color = cleaningColor(nextISO);
@@ -843,31 +836,6 @@ export default function DestinationMapView() {
           console.log(`[map] Rendered ${permitRes.features.length} permit zone lines (${permitRes.total} total zones, ${permitRes.resolved} resolved)`);
         }
 
-        // --- Alternative parking zones (for "Where to park") ---
-        if (ward && section) {
-          setLoadingAlternatives(true);
-          try {
-            const altUrl = `/api/find-alternative-parking?ward=${encodeURIComponent(ward)}&section=${encodeURIComponent(section)}${address ? `&address=${encodeURIComponent(address)}` : ''}`;
-            const altRes = await fetch(altUrl).then(r => r.ok ? r.json() : null).catch(() => null);
-            if (altRes?.alternatives?.length) {
-              const alternatives = altRes.alternatives.slice(0, 6);
-              setAlternativeZones(alternatives);
-              alternativeKeysRef.current = new Set(
-                alternatives.map((z: any) => `${String(z.ward)}-${String(z.section)}`)
-              );
-              applyViewMode(parkabilityMode);
-            } else {
-              setAlternativeZones([]);
-              alternativeKeysRef.current = new Set();
-              applyViewMode(parkabilityMode);
-            }
-          } finally {
-            setLoadingAlternatives(false);
-          }
-        } else {
-          setAlternativeZones([]);
-          alternativeKeysRef.current = new Set();
-        }
 
       } catch (err) {
         console.error('Error loading restriction data:', err);
@@ -1182,6 +1150,14 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Winter ban (3-7am)</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '18px', height: '3px', borderTop: `3px dashed ${PERMIT_COLORS.odd}`, flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Permit odd side</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '18px', height: '3px', borderTop: `3px dashed ${PERMIT_COLORS.even}`, flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Permit even side</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '18px', height: '7px', borderTop: `2px solid ${PERMIT_COLORS.odd}`, borderBottom: `2px solid ${PERMIT_COLORS.even}`, borderRadius: '1px', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Permit both sides</span>
                   </div>
@@ -1193,59 +1169,12 @@ export default function DestinationMapView() {
                 <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
                   Teal shades: lighter = lower rate, darker = higher rate.
                 </div>
-                <div style={{ marginTop: '4px', fontSize: '11px', color: '#64748b' }}>
-                  <span style={{ color: PERMIT_COLORS.odd, fontWeight: 700 }}>Blue dashed</span> = odd side only, <span style={{ color: PERMIT_COLORS.even, fontWeight: 700 }}>Orange dashed</span> = even side only.
-                </div>
               </>
             )}
           </div>
         )}
       </div>
 
-      {/* Alternative zones panel */}
-      {!loading && parkabilityMode && (
-        <div style={{
-          position: 'absolute',
-          left: '12px',
-          right: '12px',
-          bottom: legendCollapsed ? '60px' : '190px',
-          zIndex: 1000,
-          backgroundColor: 'rgba(255,255,255,0.95)',
-          borderRadius: '10px',
-          border: '1px solid #E5E7EB',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-          padding: '10px 12px',
-          fontFamily: 'system-ui',
-        }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-            Nearby Safer Zones
-          </div>
-          {loadingAlternatives ? (
-            <div style={{ fontSize: '12px', color: '#6B7280' }}>Finding nearby options...</div>
-          ) : alternativeZones.length === 0 ? (
-            <div style={{ fontSize: '12px', color: '#6B7280' }}>No nearby alternatives found yet.</div>
-          ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {alternativeZones.slice(0, 4).map((z: any) => (
-                <div
-                  key={`${z.ward}-${z.section}`}
-                  style={{
-                    padding: '4px 8px',
-                    borderRadius: '999px',
-                    backgroundColor: '#ecfdf5',
-                    border: '1px solid #a7f3d0',
-                    fontSize: '11px',
-                    color: '#065f46',
-                    fontWeight: 600
-                  }}
-                >
-                  W{z.ward}-S{z.section}{z.distance_miles ? ` · ${Number(z.distance_miles).toFixed(1)}mi` : ''}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
