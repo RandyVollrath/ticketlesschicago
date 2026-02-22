@@ -22,6 +22,7 @@ import Config from '../config/config';
 import ApiClient from '../utils/ApiClient';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
+import LocationService from '../services/LocationService';
 
 const log = Logger.createLogger('CheckDestination');
 
@@ -91,6 +92,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [pendingSaveAddress, setPendingSaveAddress] = useState<string | null>(null);
   const [pendingSaveLabel, setPendingSaveLabel] = useState('');
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -272,6 +274,139 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
     }
   }, [address]);
 
+  const handleCurrentLocation = useCallback(async () => {
+    Keyboard.dismiss();
+    setIsGettingLocation(true);
+    setErrorMsg(null);
+    setRestrictions(null);
+    setGeocoded(null);
+    setShowMap(false);
+    setSnowForecast(null);
+
+    try {
+      const hasPermission = await LocationService.requestLocationPermission();
+      if (!hasPermission) {
+        setErrorMsg('Location permission is required. Please enable it in Settings.');
+        return;
+      }
+
+      const coords = await LocationService.getCurrentLocation();
+      const lat = coords.latitude;
+      const lng = coords.longitude;
+
+      // Use find-section with coordinates (it accepts lat/lng directly)
+      const [geoRes, snowRes] = await Promise.all([
+        ApiClient.get<any>(
+          `/api/find-section?lat=${lat}&lng=${lng}`,
+          { timeout: 12000, showErrorAlert: false },
+        ),
+        ApiClient.get<any>(
+          `/api/snow-forecast?lat=41.8781&lng=-87.6298`,
+          { timeout: 10000, showErrorAlert: false },
+        ).catch(() => null),
+      ]);
+
+      if (!geoRes.success || !geoRes.data?.coordinates) {
+        setErrorMsg('Could not identify restrictions at your location. You may be outside Chicago.');
+        return;
+      }
+
+      const d = geoRes.data;
+      const resolvedAddress = d.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      setAddress(resolvedAddress);
+
+      // Now fetch permit zone with the resolved address
+      const permitRes = await ApiClient.get<any>(
+        `/api/check-permit-zone?address=${encodeURIComponent(resolvedAddress)}`,
+        { timeout: 8000, showErrorAlert: false },
+      ).catch(() => ({ success: false }));
+
+      const geo: GeocodedResult = {
+        lat: d.coordinates.lat,
+        lng: d.coordinates.lng,
+        address: resolvedAddress,
+        ward: d.ward,
+        section: d.section,
+      };
+
+      // Compute restrictions (same logic as handleCheck)
+      const result: RestrictionResult = {};
+
+      if (d.nextCleaningDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const cleaning = new Date(d.nextCleaningDate + 'T00:00:00');
+        const diffDays = Math.round((cleaning.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const dateStr = cleaning.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+        let severity: string = 'none';
+        let message: string;
+        if (diffDays === 0) { severity = 'critical'; message = `Street cleaning TODAY (${dateStr}). Move your car!`; }
+        else if (diffDays === 1) { severity = 'warning'; message = `Street cleaning tomorrow (${dateStr})`; }
+        else if (diffDays <= 3) { severity = 'info'; message = `Street cleaning ${dateStr} (${diffDays} days)`; }
+        else { message = `Next cleaning: ${dateStr}`; }
+        result.streetCleaning = { hasRestriction: diffDays <= 1, message, severity, nextDate: d.nextCleaningDate };
+      } else {
+        result.streetCleaning = { hasRestriction: false, message: 'No upcoming street cleaning scheduled', severity: 'none' };
+      }
+
+      if (d.onWinterBan) {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const inSeason = month >= 12 || month <= 3;
+        const hour = now.getHours();
+        const isActiveNow = inSeason && (hour >= 3 && hour < 7);
+        const hoursUntilBan = inSeason ? (hour < 3 ? 3 - hour : hour >= 7 ? 24 - hour + 3 : 0) : -1;
+        let severity: string = 'none'; let message: string;
+        if (isActiveNow) { severity = 'critical'; message = `Winter parking ban ACTIVE on ${d.winterBanStreet || 'this street'}! No parking 3-7 AM.`; }
+        else if (inSeason && hoursUntilBan <= 7) { severity = 'warning'; message = `Winter ban in ${hoursUntilBan}h on ${d.winterBanStreet || 'this street'}. No parking 3-7 AM.`; }
+        else if (inSeason) { message = `Winter overnight ban street (${d.winterBanStreet || 'this street'}). No parking 3-7 AM Dec-Apr.`; }
+        else { message = `Winter overnight ban street (active Dec 1 - Apr 1, 3-7 AM)`; }
+        result.winterOvernightBan = { active: isActiveNow, message, severity };
+      } else {
+        result.winterOvernightBan = { active: false, message: 'Not on a winter overnight ban street', severity: 'none' };
+      }
+
+      if (d.onSnowRoute) {
+        const banActive = d.snowBanActive || false;
+        result.twoInchSnowBan = {
+          active: banActive,
+          message: banActive
+            ? `2-INCH SNOW BAN ACTIVE on ${d.snowRouteStreet || 'this street'}! Move your car to avoid tow.`
+            : `On a 2" snow ban route (${d.snowRouteStreet || 'this street'}). Ban not currently active.`,
+          severity: banActive ? 'critical' : 'none',
+        };
+      } else {
+        result.twoInchSnowBan = { active: false, message: 'Not on a 2" snow ban route', severity: 'none' };
+      }
+
+      if (permitRes.success && permitRes.data) {
+        const pz = permitRes.data;
+        if (pz.hasPermitZone && pz.zones?.length > 0) {
+          const zone = pz.zones[0];
+          geo.permitZone = String(zone.zone);
+          result.permitZone = { inPermitZone: true, message: `Permit Zone ${zone.zone} — permit required`, zoneName: String(zone.zone), severity: 'warning' };
+        } else {
+          result.permitZone = { inPermitZone: false, message: 'Not in a residential permit zone', severity: 'none' };
+        }
+      }
+
+      if (snowRes?.success && snowRes.data) {
+        setSnowForecast(snowRes.data);
+      }
+
+      setGeocoded(geo);
+      setRestrictions(result);
+      setShowMap(true);
+    } catch (err: any) {
+      log.error('Current location check error', err);
+      setErrorMsg('Something went wrong. Please check your connection and try again.');
+    } finally {
+      setIsGettingLocation(false);
+      setIsChecking(false);
+    }
+  }, []);
+
   // Count active restrictions — only warning/critical severity counts.
   // 'info' (e.g. cleaning on a future date) and 'none' are not actionable now.
   const isSevere = (s?: string) => s === 'warning' || s === 'critical';
@@ -403,9 +538,9 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           </View>
 
           <TouchableOpacity
-            style={[styles.checkButton, (!address.trim() || isChecking) && styles.checkButtonDisabled]}
+            style={[styles.checkButton, (!address.trim() || isChecking || isGettingLocation) && styles.checkButtonDisabled]}
             onPress={() => handleCheck()}
-            disabled={!address.trim() || isChecking}
+            disabled={!address.trim() || isChecking || isGettingLocation}
             accessibilityLabel="Check parking restrictions"
             accessibilityRole="button"
           >
@@ -415,6 +550,23 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
               <>
                 <Icon name="shield-search" size={20} color={colors.textInverse} style={{ marginRight: 8 }} />
                 <Text style={styles.checkButtonText}>Check Parking</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.currentLocationButton, (isChecking || isGettingLocation) && styles.checkButtonDisabled]}
+            onPress={handleCurrentLocation}
+            disabled={isChecking || isGettingLocation}
+            accessibilityLabel="Use current location"
+            accessibilityRole="button"
+          >
+            {isGettingLocation ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <>
+                <Icon name="crosshairs-gps" size={18} color={colors.primary} style={{ marginRight: 8 }} />
+                <Text style={styles.currentLocationButtonText}>Use Current Location</Text>
               </>
             )}
           </TouchableOpacity>
@@ -756,6 +908,22 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontSize: typography.sizes.base,
     fontWeight: typography.weights.bold,
+  },
+  currentLocationButton: {
+    flexDirection: 'row',
+    backgroundColor: colors.primaryTint,
+    borderRadius: borderRadius.lg,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  currentLocationButtonText: {
+    color: colors.primary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
   },
   savedLocationsWrap: {
     marginTop: spacing.base,
