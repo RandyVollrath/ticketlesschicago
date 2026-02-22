@@ -1,9 +1,56 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Component, ErrorInfo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import RegistrationForwardingSetup from '../components/RegistrationForwardingSetup';
+
+// ─── Error Boundary ─────────────────────────────────────────
+// Catches React render crashes so the user sees a clean fallback
+// instead of Next.js's "Application error: a client-side exception".
+// In mobile WebView, immediately posts 'load_error' so the native
+// app can show its own error UI.
+class SettingsErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_error: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Settings page crashed:', error, errorInfo);
+    // In mobile WebView, notify the native app immediately
+    try {
+      (window as any).ReactNativeWebView?.postMessage('load_error');
+    } catch (_) { /* not in WebView */ }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          fontFamily: '"Inter", sans-serif',
+          padding: 48,
+          textAlign: 'center',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+          <p style={{ color: '#64748B', fontSize: 16 }}>Loading...</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const COLORS = {
   primary: '#0F172A',
@@ -642,6 +689,14 @@ function Card({ title, children, badge, greyed, upgradeContent }: { title: strin
 }
 
 export default function SettingsPage() {
+  return (
+    <SettingsErrorBoundary>
+      <SettingsPageInner />
+    </SettingsErrorBoundary>
+  );
+}
+
+function SettingsPageInner() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);

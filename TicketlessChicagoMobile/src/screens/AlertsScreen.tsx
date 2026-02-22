@@ -32,6 +32,8 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // Track previous auth state via ref to avoid closure issues with subscribe
   const wasAuthRef = useRef(isAuthenticated);
   const lastTokenSignatureRef = useRef<string | null>(null);
+  // Guard against infinite load_error → remount → load_error loops
+  const loadErrorRetryCountRef = useRef(0);
 
   const remountWebViewIfTokenChanged = useCallback(() => {
     const authState = AuthService.getAuthState();
@@ -65,6 +67,8 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // Re-check auth when screen is focused (user may have just logged in)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      // Reset error retry counter on re-focus so user gets a fresh attempt
+      loadErrorRetryCountRef.current = 0;
       syncAlertsAuth().catch((error) => {
         log.error('Failed to sync alerts auth on focus', error);
       });
@@ -192,6 +196,28 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           ].join(' ');
           document.head.appendChild(style);
         }
+
+        // Detect Next.js "Application Error" crash screen and notify native app immediately.
+        // Without this, the user stares at a generic error for 20+ seconds.
+        function checkForAppError() {
+          var bodyText = document.body ? document.body.innerText : '';
+          if (bodyText.indexOf('Application error') !== -1 || bodyText.indexOf('client-side exception') !== -1) {
+            window.ReactNativeWebView && window.ReactNativeWebView.postMessage('load_error');
+            return true;
+          }
+          return false;
+        }
+        if (!checkForAppError()) {
+          // Check again after React hydration (500ms, 1.5s, 3s)
+          setTimeout(checkForAppError, 500);
+          setTimeout(checkForAppError, 1500);
+          setTimeout(checkForAppError, 3000);
+        }
+
+        // Also catch any future unhandled errors that crash the page
+        window.addEventListener('error', function(e) {
+          window.ReactNativeWebView && window.ReactNativeWebView.postMessage('load_error');
+        });
 
         // Signal injection complete
         window.ReactNativeWebView && window.ReactNativeWebView.postMessage('injection_done');
@@ -361,11 +387,35 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               setIsAuthenticated(false);
               setIsLoading(false);
             } else if (msg === 'load_error') {
-              // Web page's loadData() threw an exception but was caught.
-              // Show error state so user can retry.
-              log.warn('WebView load_error — data loading failed');
-              setHasError(true);
-              setIsLoading(false);
+              // Web page crashed or loadData() threw.
+              // Try refreshing auth once — the crash may be from expired tokens.
+              // If that doesn't help, show the sign-in screen (better than error).
+              loadErrorRetryCountRef.current += 1;
+              if (loadErrorRetryCountRef.current > 1) {
+                // Already retried once — don't loop. Show sign-in prompt.
+                log.warn('WebView load_error — already retried, showing sign-in');
+                setIsAuthenticated(false);
+                setIsLoading(false);
+                return;
+              }
+              log.warn('WebView load_error — attempting auth refresh (attempt 1)');
+              AuthService.refreshToken().then(() => {
+                const refreshedSession = AuthService.getAuthState()?.session;
+                if (refreshedSession) {
+                  // Got a fresh session — remount WebView with new tokens
+                  log.info('WebView load_error — retrying with refreshed token');
+                  remountWebViewIfTokenChanged();
+                } else {
+                  // No valid session — show sign-in prompt
+                  log.warn('WebView load_error — no valid session, showing sign-in');
+                  setIsAuthenticated(false);
+                  setIsLoading(false);
+                }
+              }).catch(() => {
+                log.warn('WebView load_error — refresh failed, showing sign-in');
+                setIsAuthenticated(false);
+                setIsLoading(false);
+              });
             }
           }}
           cacheEnabled={true}
