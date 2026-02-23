@@ -230,6 +230,13 @@ class AuthServiceClass {
         return { success: false, error: error.message };
       }
 
+      // Eagerly update auth state before returning — don't wait for onAuthStateChange
+      // which fires asynchronously and causes a race condition where callers see
+      // isAuthenticated()=false immediately after a successful sign-in.
+      if (data?.session) {
+        this.updateAuthState(data.session);
+      }
+
       log.info('Supabase authentication successful');
       return { success: true };
     } catch (error: any) {
@@ -292,6 +299,13 @@ class AuthServiceClass {
       if (error) {
         log.error('Supabase Apple auth error', error);
         return { success: false, error: error.message };
+      }
+
+      // Eagerly update auth state before returning — don't wait for onAuthStateChange
+      // which fires asynchronously and causes a race condition where callers see
+      // isAuthenticated()=false immediately after a successful sign-in.
+      if (data?.session) {
+        this.updateAuthState(data.session);
       }
 
       log.info('Supabase Apple authentication successful');

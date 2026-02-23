@@ -853,7 +853,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let parkingFinalizationHoldStrongSec: TimeInterval = 11
   private let parkingFinalizationMaxDriftMeters: Double = 35
   private let falsePositiveParkingLockoutSec: TimeInterval = 1800  // 30 min — prevents re-detection while user is still at the false positive location
-  private let gpsZeroSpeedHardTimeoutSec: TimeInterval = 45  // Hard override: 45s of GPS speed≈0 = parked, even if CoreMotion still says automotive
+  private let gpsZeroSpeedHardTimeoutSec: TimeInterval = 90  // Hard override: 90s of GPS speed≈0 = parked, even if CoreMotion still says automotive (was 45s, raised to avoid false positives at long red lights like Lincoln/Belmont/Ashland 6-way intersections)
   private let intersectionRiskRadiusMeters: Double = 95
   private let intersectionDwellAbortWindowSec: TimeInterval = 90
   private let intersectionDwellMinStopSec: TimeInterval = 18
@@ -2667,8 +2667,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             self.speedZeroTimer = nil
             self.confirmParking(source: "location_stationary")
           } else if zeroDuration >= self.gpsZeroSpeedHardTimeoutSec {
-            // HARD TIMEOUT: GPS speed has been ≈0 for 45+ seconds. No red light lasts
-            // this long. CoreMotion is wrong — confirm parking regardless.
+            // HARD TIMEOUT: GPS speed has been ≈0 for 90+ seconds. Even Chicago's
+            // longest red lights (6-way intersections like Lincoln/Belmont/Ashland)
+            // don't last this long. CoreMotion is wrong — confirm parking regardless.
             // This catches the common case where CoreMotion stays "automotive" after
             // the engine stops (phone vibration, slow M-series transition, etc.)
             self.log("Parking confirmed via GPS hard timeout: speed≈0 for \(String(format: "%.0f", zeroDuration))s (CoreMotion: \(self.coreMotionStateLabel), phone moving: \(!phoneIsStationary), walked away: \(!withinStationaryRadius))")
