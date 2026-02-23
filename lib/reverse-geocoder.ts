@@ -51,21 +51,45 @@ export async function reverseGeocode(
   try {
     console.log('Reverse geocoding:', { latitude, longitude });
 
-    const response = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`,
-      {
-        signal: AbortSignal.timeout(5000), // 5 second timeout
-      }
-    );
+    // Retry once on transient failures (timeout, network error, 5xx)
+    let data: any = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`,
+          {
+            signal: AbortSignal.timeout(5000), // 5 second timeout
+          }
+        );
 
-    if (!response.ok) {
-      throw new Error(`Geocoding API error: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`Geocoding API error: ${response.status}`);
+        }
+
+        data = await response.json();
+
+        if (data.status === 'OK' && data.results && data.results.length > 0) {
+          break; // Success
+        }
+
+        // Non-OK status — retry if first attempt
+        if (attempt === 0) {
+          console.warn(`Geocoding attempt ${attempt + 1} returned ${data.status}, retrying...`);
+          await new Promise(r => setTimeout(r, 500));
+          continue;
+        }
+      } catch (fetchError) {
+        if (attempt === 0) {
+          console.warn('Geocoding attempt 1 failed, retrying:', fetchError);
+          await new Promise(r => setTimeout(r, 500));
+          continue;
+        }
+        throw fetchError; // Re-throw on final attempt
+      }
     }
 
-    const data = await response.json();
-
-    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-      console.warn('Geocoding returned no results:', data.status);
+    if (!data || data.status !== 'OK' || !data.results || data.results.length === 0) {
+      console.warn('Geocoding returned no results after retries:', data?.status);
       return null;
     }
 
