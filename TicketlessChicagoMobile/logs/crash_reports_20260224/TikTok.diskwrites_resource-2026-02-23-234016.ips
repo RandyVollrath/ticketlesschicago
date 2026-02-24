@@ -1,0 +1,162 @@
+{"roots_installed":0,"app_name":"TikTok","timestamp":"2026-02-23 23:40:16.00 -0600","app_version":"43.7.0","slice_uuid":"45B98B9A-0B81-395B-B120-9C959168A12E","adam_id":"835599320","build_version":"437030","bundleID":"com.zhiliaoapp.musically","duration_ms":"10162227","is_first_party":0,"share_with_app_devs":1,"bug_type":"145","os_version":"iPhone OS 26.3 (23D127)","distributor_id":"com.apple.AppStore","name":"TikTok","incident_id":"5AF69263-C8E0-4663-8182-D0361057C730"}
+Date/Time:        2026-02-23 20:50:46.078 -0600
+End time:         2026-02-23 23:40:08.305 -0600
+OS Version:       iPhone OS 26.3 (Build 23D127)
+Architecture:     arm64e
+Report Version:   67
+Incident Identifier: 5AF69263-C8E0-4663-8182-D0361057C730
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     2D5A6D2E-6405-3FF7-83AF-C0BD2F74AF46 slid base address 0x19518c000, slide 0x1518c000
+
+Command:          TikTok
+Path:             /private/var/containers/Bundle/Application/8910603B-DE92-4FC9-B687-E788FC7F3C1F/TikTok.app/TikTok
+Identifier:       com.zhiliaoapp.musically
+Version:          43.7.0 (437030)
+Adam ID:          835599320
+Is First Party:   No
+Beta Identifier:  F5087EF4-CFC8-47DC-8689-D84E00CE0130
+Resource Coalition: 2677
+On Behalf Of:     1 sample UNKNOWN [35] (1 sample originated by TikTok [32820])
+Architecture:     arm64
+PID:              32820
+
+Event:            disk writes
+Action taken:     none
+Writes:           1073.75 MB of file backed memory dirtied over 10162 seconds (105.66 KB per second average), exceeding limit of 12.43 KB per second over 86400 seconds
+Writes limit:     1073.74 MB
+Limit duration:   86400s
+Writes caused:    1073.75 MB
+Writes duration:  10162s
+Duration:         10162.23s
+Duration Sampled: 1.12s (event starts 10159.96s before samples, event ends 1.15s after samples)
+Steps:            3 (10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+
+Models:           UNKNOWN
+
+OS Cryptex File Extents: 17577
+
+Heaviest stack for the target process:
+  3  ??? (libsystem_pthread.dylib + 2240) [0x1f4e1c8c0]
+  3  ??? (libsystem_pthread.dylib + 5048) [0x1f4e1d3b8]
+  3  ??? (libdispatch.dylib + 85220) [0x1d0fe7ce4]
+  3  ??? (libdispatch.dylib + 87020) [0x1d0fe83ec]
+  2  ??? (libdispatch.dylib + 44868) [0x1d0fddf44]
+  2  ??? (libdispatch.dylib + 42088) [0x1d0fdd468]
+  2  ??? (libdispatch.dylib + 112636) [0x1d0fee7fc]
+  2  ??? (libdispatch.dylib + 6876) [0x1d0fd4adc]
+  2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647545660) [0x12bfc033c]
+  2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647545708) [0x12bfc036c]
+  2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647546036) [0x12bfc04b4]
+  2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647546432) [0x12bfc0640]
+  2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647547204) [0x12bfc0944]
+  1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 589520) [0x130af7ed0]
+  1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647547456) [0x12bfc0a40]
+  1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647547652) [0x12bfc0b04]
+  1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 651556764) [0x12c39379c]
+  1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 651557140) [0x12c393914]
+  1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 372412) [0x130ac2ebc]
+  1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 372592) [0x130ac2f70]
+  1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 428960) [0x130ad0ba0]
+  1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 637052) [0x130b0387c]
+  1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x130ac8048]
+  1  ??? (libsystem_kernel.dylib + 27964) [0x245a64d3c]
+
+
+Powerstats for:   TikTok [32820]
+UUID:             45B98B9A-0B81-395B-B120-9C959168A12E
+Path:             /private/var/containers/Bundle/Application/8910603B-DE92-4FC9-B687-E788FC7F3C1F/TikTok.app/TikTok
+Identifier:       com.zhiliaoapp.musically
+Version:          43.7.0 (437030)
+Adam ID:          835599320
+Is First Party:   No
+Beta Identifier:  F5087EF4-CFC8-47DC-8689-D84E00CE0130
+Resource Coalition: 3 samples 2677
+On Behalf Of:     1 sample UNKNOWN [35] (1 sample originated by TikTok [32820])
+Architecture:     arm64
+Footprint:        234.59 MB -> 328.12 MB (+93.53 MB)
+Pageins:          8079 pages
+Start time:       2026-02-23 23:40:06.037 -0600
+End time:         2026-02-23 23:40:07.158 -0600
+Num samples:      3 (100%)
+Num threads:      3
+Primary state:    3 samples Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, Override Thread QoS Unspecified, p-core
+User Activity:    0 samples Idle, 3 samples Active
+Power Source:     3 samples on Battery, 0 samples on AC
+  3  ??? (libsystem_pthread.dylib + 2240) [0x1f4e1c8c0]
+    3  ??? (libsystem_pthread.dylib + 5048) [0x1f4e1d3b8]
+      3  ??? (libdispatch.dylib + 85220) [0x1d0fe7ce4]
+        3  ??? (libdispatch.dylib + 87020) [0x1d0fe83ec]
+          2  ??? (libdispatch.dylib + 44868) [0x1d0fddf44]
+            2  ??? (libdispatch.dylib + 42088) [0x1d0fdd468]
+              2  ??? (libdispatch.dylib + 112636) [0x1d0fee7fc]
+                2  ??? (libdispatch.dylib + 6876) [0x1d0fd4adc]
+                  2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647545660) [0x12bfc033c]
+                    2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647545708) [0x12bfc036c]
+                      2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647546036) [0x12bfc04b4]
+                        2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647546432) [0x12bfc0640]
+                          2  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647547204) [0x12bfc0944]
+                            1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 589520) [0x130af7ed0]
+                              1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647547456) [0x12bfc0a40]
+                                1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 647547652) [0x12bfc0b04]
+                                  1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 651556764) [0x12c39379c]
+                                    1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 651557140) [0x12c393914]
+                                      1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 372412) [0x130ac2ebc]
+                                        1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 372592) [0x130ac2f70]
+                                          1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 428960) [0x130ad0ba0]
+                                            1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 637052) [0x130b0387c]
+                                              1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x130ac8048]
+                                                1  ??? (libsystem_kernel.dylib + 27964) [0x245a64d3c]
+                            1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 589372) [0x130af7e3c]
+                              1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 585980) [0x130af70fc]
+                                1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 602436) [0x130afb144]
+                                  1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 423224) [0x130acf538]
+                                    1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 424132) [0x130acf8c4]
+                                      1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 640356) [0x130b04564]
+                                        1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 641996) [0x130b04bcc]
+                                          1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x130ac8048]
+                                            1  ??? (libsystem_kernel.dylib + 27964) [0x245a64d3c]
+          1  ??? (libdispatch.dylib + 44920) [0x1d0fddf78]
+            1  ??? (libdispatch.dylib + 42088) [0x1d0fdd468]
+              1  ??? (libdispatch.dylib + 112636) [0x1d0fee7fc]
+                1  ??? (libdispatch.dylib + 6876) [0x1d0fd4adc]
+                  1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 648569544) [0x12c0ba2c8]
+                    1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 648574536) [0x12c0bb648]
+                      1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 648735296) [0x12c0e2a40]
+                        1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 648738636) [0x12c0e374c]
+                          1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 648819876) [0x12c0f74a4]
+                            1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 654291856) [0x12c62f390]
+                              1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 637824720) [0x12b67aed0]
+                                1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 637825448) [0x12b67b1a8]
+                                  1  ??? (libdispatch.dylib + 71872) [0x1d0fe48c0]
+                                    1  ??? (libdispatch.dylib + 112636) [0x1d0fee7fc]
+                                      1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 637825676) [0x12b67b28c]
+                                        1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 637844824) [0x12b67fd58]
+                                          1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 637826932) [0x12b67b774]
+                                            1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 637826828) [0x12b67b70c]
+                                              1  ??? (<F23B1DB7-168D-39AE-A989-2E511E54DD46> + 637828828) [0x12b67bedc]
+                                                1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 589372) [0x130af7e3c]
+                                                  1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 586068) [0x130af7154]
+                                                    1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 602436) [0x130afb144]
+                                                      1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 423224) [0x130acf538]
+                                                        1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 424132) [0x130acf8c4]
+                                                          1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 640356) [0x130b04564]
+                                                            1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 641996) [0x130b04bcc]
+                                                              1  ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x130ac8048]
+                                                                1  ??? (libsystem_kernel.dylib + 27964) [0x245a64d3c]
+                                                                  1  <on behalf of UNKNOWN [35] (originated by TikTok [32820])>
+
+  Binary Images:
+           0x104c98000 -                ???  com.zhiliaoapp.musically 43.7.0 (437030) <45B98B9A-0B81-395B-B120-9C959168A12E>  /private/var/containers/Bundle/Application/8910603B-DE92-4FC9-B687-E788FC7F3C1F/TikTok.app/TikTok
+           0x105634000 -                ???  ???                                      <F23B1DB7-168D-39AE-A989-2E511E54DD46>
+           0x130a68000 -                ???  ???                                      <081FDB8B-C21C-39B2-8591-578057CE2ED5>
+           0x1d0fd3000 -        0x1d101921f  libdispatch.dylib                        <904D48A3-D99E-3962-BFA9-C3DFB66BBA83>  /usr/lib/system/libdispatch.dylib
+           0x1f4e1c000 -        0x1f4e2845f  libsystem_pthread.dylib                  <4F94107B-94D2-3E88-8542-F5403C581B50>  /usr/lib/system/libsystem_pthread.dylib
+           0x245a5e000 -        0x245a98d2b  libsystem_kernel.dylib                   <8D830129-2CBE-32A9-B61E-CE493EECB399>  /usr/lib/system/libsystem_kernel.dylib
