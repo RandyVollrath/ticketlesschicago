@@ -1,0 +1,161 @@
+{"roots_installed":0,"app_name":"Instagram","timestamp":"2026-02-17 07:34:30.00 -0600","app_version":"416.1.0","slice_uuid":"4C4C4407-5555-3144-A171-AE6A3EA3170A","adam_id":"389801252","build_version":"881475720","bundleID":"com.burbn.instagram","duration_ms":"29187840","is_first_party":0,"share_with_app_devs":1,"bug_type":"145","os_version":"iPhone OS 26.2.1 (23C71)","distributor_id":"com.apple.AppStore","name":"Instagram","incident_id":"AA9DD8B9-5FC5-4ED4-AD15-4CBCAEA98642"}
+Date/Time:        2026-02-16 23:27:59.584 -0600
+End time:         2026-02-17 07:34:27.425 -0600
+OS Version:       iPhone OS 26.2.1 (Build 23C71)
+Architecture:     arm64e
+Report Version:   67
+Incident Identifier: AA9DD8B9-5FC5-4ED4-AD15-4CBCAEA98642
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     7D35B09A-9AE1-3B69-A2D6-BFC8EDA015E4 slid base address 0x18ae1c000, slide 0xae1c000
+
+Command:          Instagram
+Path:             /private/var/containers/Bundle/Application/F3B2801B-B6B1-4814-82DD-56D534D23700/Instagram.app/Instagram
+Identifier:       com.burbn.instagram
+Version:          416.1.0 (881475720)
+Adam ID:          389801252
+Is First Party:   No
+Beta Identifier:  1AE32BC5-3B73-4E28-9E52-2009D4826829
+Resource Coalition: 7293
+Architecture:     arm64
+PID:              93718
+
+Event:            disk writes
+Action taken:     none
+Writes:           1073.75 MB of file backed memory dirtied over 29188 seconds (36.79 KB per second average), exceeding limit of 12.43 KB per second over 86400 seconds
+Writes limit:     1073.74 MB
+Limit duration:   86400s
+Writes caused:    1073.75 MB
+Writes duration:  29188s
+Duration:         29187.84s
+Duration Sampled: 0.00s (event starts 29187.51s before samples, event ends 0.33s after samples)
+Steps:            1 (10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+
+Models:           UNKNOWN
+
+OS Cryptex File Extents: 15076
+
+Heaviest stack for the target process:
+  1  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+  1  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+  1  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+  1  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+  1  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+  1  ??? (libdispatch.dylib + 41680) [0x1c6a382d0]
+  1  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+  1  ??? (libdispatch.dylib + 42088) [0x1c6a38468]
+  1  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+  1  ??? (libdispatch.dylib + 6876) [0x1c6a2fadc]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 5934520) [0x1102d4db8]
+  1  ??? (Instagram + 5350900) [0x10081a5f4]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 3099632) [0x110020bf0]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 3660440) [0x1100a9a98]
+  1  ??? (Instagram + 3388160) [0x10063b300]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 3574364) [0x110094a5c]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8359912) [0x110524fe8]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 6239064) [0x11031f358]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 2946468) [0x10fffb5a4]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8352976) [0x1105234d0]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8254584) [0x11050b478]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 6357876) [0x11033c374]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8284720) [0x110512a30]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8526640) [0x11054db30]
+  1  ??? (Instagram + 3386556) [0x10063acbc]
+  1  ??? (Instagram + 4894276) [0x1007aae44]
+  1  ??? (Instagram + 3237716) [0x100616754]
+  1  ??? (Instagram + 3363296) [0x1006351e0]
+  1  ??? (Instagram + 3362004) [0x100634cd4]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 6281820) [0x110329a5c]
+  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 4719604) [0x1101ac3f4]
+  1  ??? (libsqlite3.dylib + 34196) [0x18c6b4594]
+  1  ??? (libsqlite3.dylib + 35136) [0x18c6b4940]
+  1  ??? (libsqlite3.dylib + 37368) [0x18c6b51f8]
+  1  ??? (libsqlite3.dylib + 45732) [0x18c6b72a4]
+  1  ??? (libsqlite3.dylib + 786708) [0x18c76c114]
+  1  ??? (libsqlite3.dylib + 75084) [0x18c6be54c]
+  1  ??? (libsqlite3.dylib + 680488) [0x18c752228]
+  1  ??? (libsqlite3.dylib + 94252) [0x18c6c302c]
+  1  ??? (libsqlite3.dylib + 98372) [0x18c6c4044]
+  1  ??? (libsqlite3.dylib + 100720) [0x18c6c4970]
+  1  ??? (libsqlite3.dylib + 686144) [0x18c753840]
+  1  ??? (libsqlite3.dylib + 106284) [0x18c6c5f2c]
+  1  ??? (libsystem_kernel.dylib + 33600) [0x2388f9340]
+
+
+Powerstats for:   Instagram [93718]
+UUID:             4C4C4407-5555-3144-A171-AE6A3EA3170A
+Path:             /private/var/containers/Bundle/Application/F3B2801B-B6B1-4814-82DD-56D534D23700/Instagram.app/Instagram
+Identifier:       com.burbn.instagram
+Version:          416.1.0 (881475720)
+Adam ID:          389801252
+Is First Party:   No
+Beta Identifier:  1AE32BC5-3B73-4E28-9E52-2009D4826829
+Resource Coalition: 1 sample 7293
+Architecture:     arm64
+Footprint:        125.09 MB
+Start time:       2026-02-17 07:34:27.098 -0600
+End time:         2026-02-17 07:34:27.098 -0600
+Num samples:      1 (100%)
+Num threads:      1
+Primary state:    1 samples Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS User Interactive, Requested Thread QoS User Interactive, Override Thread QoS Unspecified, p-core
+User Activity:    0 samples Idle, 1 samples Active
+Power Source:     1 samples on Battery, 0 samples on AC
+  1  ??? (libsystem_pthread.dylib + 2240) [0x1ea7ef8c0]
+    1  ??? (libsystem_pthread.dylib + 5048) [0x1ea7f03b8]
+      1  ??? (libdispatch.dylib + 85220) [0x1c6a42ce4]
+        1  ??? (libdispatch.dylib + 87020) [0x1c6a433ec]
+          1  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+            1  ??? (libdispatch.dylib + 41680) [0x1c6a382d0]
+              1  ??? (libdispatch.dylib + 44920) [0x1c6a38f78]
+                1  ??? (libdispatch.dylib + 42088) [0x1c6a38468]
+                  1  ??? (libdispatch.dylib + 112636) [0x1c6a497fc]
+                    1  ??? (libdispatch.dylib + 6876) [0x1c6a2fadc]
+                      1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 5934520) [0x1102d4db8]
+                        1  ??? (Instagram + 5350900) [0x10081a5f4]
+                          1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 3099632) [0x110020bf0]
+                            1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 3660440) [0x1100a9a98]
+                              1  ??? (Instagram + 3388160) [0x10063b300]
+                                1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 3574364) [0x110094a5c]
+                                  1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8359912) [0x110524fe8]
+                                    1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 6239064) [0x11031f358]
+                                      1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 2946468) [0x10fffb5a4]
+                                        1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8352976) [0x1105234d0]
+                                          1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8254584) [0x11050b478]
+                                            1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 6357876) [0x11033c374]
+                                              1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8284720) [0x110512a30]
+                                                1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 8526640) [0x11054db30]
+                                                  1  ??? (Instagram + 3386556) [0x10063acbc]
+                                                    1  ??? (Instagram + 4894276) [0x1007aae44]
+                                                      1  ??? (Instagram + 3237716) [0x100616754]
+                                                        1  ??? (Instagram + 3363296) [0x1006351e0]
+                                                          1  ??? (Instagram + 3362004) [0x100634cd4]
+                                                            1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 6281820) [0x110329a5c]
+                                                              1  ??? (<4C4C44B4-5555-3144-A120-77BBEF084B87> + 4719604) [0x1101ac3f4]
+                                                                1  ??? (libsqlite3.dylib + 34196) [0x18c6b4594]
+                                                                  1  ??? (libsqlite3.dylib + 35136) [0x18c6b4940]
+                                                                    1  ??? (libsqlite3.dylib + 37368) [0x18c6b51f8]
+                                                                      1  ??? (libsqlite3.dylib + 45732) [0x18c6b72a4]
+                                                                        1  ??? (libsqlite3.dylib + 786708) [0x18c76c114]
+                                                                          1  ??? (libsqlite3.dylib + 75084) [0x18c6be54c]
+                                                                            1  ??? (libsqlite3.dylib + 680488) [0x18c752228]
+                                                                              1  ??? (libsqlite3.dylib + 94252) [0x18c6c302c]
+                                                                                1  ??? (libsqlite3.dylib + 98372) [0x18c6c4044]
+                                                                                  1  ??? (libsqlite3.dylib + 100720) [0x18c6c4970]
+                                                                                    1  ??? (libsqlite3.dylib + 686144) [0x18c753840]
+                                                                                      1  ??? (libsqlite3.dylib + 106284) [0x18c6c5f2c]
+                                                                                        1  ??? (libsystem_kernel.dylib + 33600) [0x2388f9340]
+
+  Binary Images:
+           0x100300000 -                ???  com.burbn.instagram 416.1.0 (881475720) <4C4C4407-5555-3144-A171-AE6A3EA3170A>  /private/var/containers/Bundle/Application/F3B2801B-B6B1-4814-82DD-56D534D23700/Instagram.app/Instagram
+           0x10fd2c000 -                ???  ???                                     <4C4C44B4-5555-3144-A120-77BBEF084B87>
+           0x18c6ac000 -        0x18c8556a3  libsqlite3.dylib                        <F94A238E-FF39-3316-B80E-8D89C47986A7>  /usr/lib/libsqlite3.dylib
+           0x1c6a2e000 -        0x1c6a7421f  libdispatch.dylib                       <654F736A-691D-3C6A-BD81-69BC65B9B8ED>  /usr/lib/system/libdispatch.dylib
+           0x1ea7ef000 -        0x1ea7fb44f  libsystem_pthread.dylib                 <36408BF3-C2B3-37C8-ABC2-0251F88E8724>  /usr/lib/system/libsystem_pthread.dylib
+           0x2388f1000 -        0x23892bd2b  libsystem_kernel.dylib                  <99B78925-F063-3B62-AD22-3986A636020D>  /usr/lib/system/libsystem_kernel.dylib
