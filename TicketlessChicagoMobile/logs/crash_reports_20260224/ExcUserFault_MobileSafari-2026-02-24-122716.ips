@@ -1,0 +1,91 @@
+{"is_simulated":1,"app_name":"MobileSafari","timestamp":"2026-02-24 12:27:16.00 -0600","app_version":"26.3","slice_uuid":"32733536-5ef2-31d6-98a1-dc8a9b814aad","build_version":"8623.2.7.10.4","platform":2,"bundleID":"com.apple.mobilesafari","share_with_app_devs":0,"is_first_party":1,"bug_type":"308","os_version":"iPhone OS 26.3 (23D127)","roots_installed":0,"name":"MobileSafari","incident_id":"3FEF4C55-2FE1-4A9F-8121-015623792615"}
+{
+  "uptime" : 220000,
+  "procRole" : "Unspecified",
+  "version" : 2,
+  "userID" : 501,
+  "deployVersion" : 210,
+  "modelCode" : "iPhone14,4",
+  "coalitionID" : 2328,
+  "osVersion" : {
+    "isEmbedded" : true,
+    "train" : "iPhone OS 26.3",
+    "releaseType" : "User",
+    "build" : "23D127"
+  },
+  "captureTime" : "2026-02-24 12:27:16.1674 -0600",
+  "codeSigningMonitor" : 2,
+  "incident" : "3FEF4C55-2FE1-4A9F-8121-015623792615",
+  "pid" : 40394,
+  "translated" : false,
+  "cpuType" : "ARM-64",
+  "procStartAbsTime" : 5445709048139,
+  "procName" : "MobileSafari",
+  "procPath" : "\/private\/var\/containers\/Bundle\/Application\/D8D2C1EB-B045-42D2-8CB1-D72643415C62\/MobileSafari.app\/MobileSafari",
+  "bundleInfo" : {"CFBundleShortVersionString":"26.3","CFBundleVersion":"8623.2.7.10.4","CFBundleIdentifier":"com.apple.mobilesafari"},
+  "storeInfo" : {"deviceIdentifierForVendor":"811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B"},
+  "parentPid" : 1,
+  "coalitionName" : "com.apple.mobilesafari",
+  "crashReporterKey" : "b0e9f08a5956528e8634b098a25bc4a464ad97ab",
+  "developerMode" : 1,
+  "bootProgressRegister" : "0x20800004",
+  "wasUnlockedSinceBoot" : 1,
+  "isLocked" : 0,
+  "codeSigningValidationCategory" : 0,
+  "codeSigningTrustLevel" : 0,
+  "bootSessionUUID" : "946690EA-7848-46D6-B446-256676D4CFF1",
+  "basebandVersion" : "5.40.01",
+  "isLightWeightCorpse" : 1,
+  "exception" : {"codes":"0x600000000000001f, 0x0000000000000000","reason":0,"message":"namespc 31 reason_code 0x0000000000000000","subtype":"GUARD_TYPE_USER","type":"EXC_GUARD","rawCodes":[6917529027641081887,0],"namespc":31},
+  "termination" : {"namespace":"WEBKIT","flags":518,"code":0},
+  "faultingThread" : 0,
+  "threads" : [{"id":1777135,"frames":[{"imageOffset":2962061676,"imageIndex":0},{"imageOffset":752640,"imageIndex":0},{"imageOffset":749044,"imageIndex":0},{"imageOffset":747956,"imageIndex":0},{"imageOffset":634140,"imageIndex":0},{"imageOffset":619748,"imageIndex":0},{"imageOffset":1428071268,"imageIndex":0},{"imageOffset":2574051140,"imageIndex":0},{"imageOffset":2574052276,"imageIndex":0},{"imageOffset":2574096872,"imageIndex":0},{"imageOffset":2574024016,"imageIndex":0},{"imageOffset":2574023164,"imageIndex":0},{"imageOffset":2574031564,"imageIndex":0},{"imageOffset":2574030444,"imageIndex":0},{"imageOffset":2574029576,"imageIndex":0},{"imageOffset":2574027368,"imageIndex":0},{"imageOffset":2574026380,"imageIndex":0},{"imageOffset":2574026208,"imageIndex":0},{"imageOffset":2573257668,"imageIndex":0},{"imageOffset":2573300376,"imageIndex":0},{"imageOffset":2574420460,"imageIndex":0},{"imageOffset":2574420148,"imageIndex":0},{"imageOffset":154959076,"imageIndex":0},{"imageOffset":167208128,"imageIndex":0},{"imageOffset":167209072,"imageIndex":0},{"imageOffset":161639604,"imageIndex":0},{"imageOffset":590328812,"imageIndex":0},{"imageOffset":590330020,"imageIndex":0},{"imageOffset":590328324,"imageIndex":0},{"imageOffset":590781388,"imageIndex":0},{"imageOffset":590384996,"imageIndex":0},{"imageOffset":590503428,"imageIndex":0},{"imageOffset":590509928,"imageIndex":0},{"imageOffset":590384996,"imageIndex":0},{"imageOffset":1004939260,"imageIndex":0},{"imageOffset":1004854196,"imageIndex":0},{"imageOffset":446661076,"imageIndex":0},{"imageOffset":446660692,"imageIndex":0},{"imageOffset":51953424,"imageIndex":0},{"imageOffset":51953284,"imageIndex":0},{"imageOffset":51813168,"imageIndex":0},{"imageOffset":51644120,"imageIndex":0},{"imageOffset":51640940,"imageIndex":0},{"imageOffset":2812990616,"imageIndex":0},{"imageOffset":146734584,"imageIndex":0},{"imageOffset":146378324,"imageIndex":0},{"imageOffset":2572659616,"imageIndex":0},{"imageOffset":1158696,"imageIndex":0}],"threadState":{"x":[{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0}],"flavor":"ARM_THREAD_STATE64","lr":{"value":0},"cpsr":{"value":0},"fp":{"value":0},"sp":{"value":0},"esr":{"value":0},"pc":{"value":0,"matchesCrashFrame":0},"far":{"value":0}}}],
+  "usedImages" : [
+  {
+    "size" : 4870807700,
+    "source" : "S",
+    "base" : 6442450944,
+    "uuid" : "2d5a6d2e-6405-3ff7-83af-c0bd2f74af46"
+  }
+],
+  "legacyInfo" : {
+  "threadTriggered" : {
+
+  }
+},
+  "bug_type" : "308",
+  "roots_installed" : 0,
+  "trialInfo" : {
+  "rollouts" : [
+    {
+      "rolloutId" : "654119024fac9d2df9ecb124",
+      "factorPackIds" : [
+        "66351d9f6f68390471b0fd35"
+      ],
+      "deploymentId" : 240000004
+    },
+    {
+      "rolloutId" : "67d07cd6a7affa169ae21f45",
+      "factorPackIds" : [
+
+      ],
+      "deploymentId" : 240000002
+    }
+  ],
+  "experiments" : [
+    {
+      "treatmentId" : "582596be-1d4a-408d-901b-5b311c006a4a",
+      "experimentId" : "65f31ccb74b6f500a45abda4",
+      "deploymentId" : 400000026
+    },
+    {
+      "treatmentId" : "2db2713a-2171-43fb-8e52-94b2254c68df",
+      "experimentId" : "68ba286f85381734e8535566",
+      "deploymentId" : 400000010
+    }
+  ]
+},
+  "reportNotes" : [
+  "PC register does not match crashing frame (0x0 vs 0x2308D796C)"
+]
+}
