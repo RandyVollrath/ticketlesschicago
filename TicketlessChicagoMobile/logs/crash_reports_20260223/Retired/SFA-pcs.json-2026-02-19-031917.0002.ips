@@ -1,0 +1,2 @@
+{"bug_type":"226","timestamp":"2026-02-19 03:19:17.00 -0600","os_version":"iPhone OS 26.2.1 (23C71)","roots_installed":0,"incident_id":"08D9C016-7E6D-4C49-9A4A-A047535F1417"}
+{"postTime":1771492757364,"events":[{"build":"23C71","product":"iPhone OS","success_count":0,"eventLinkID":"CABB8161-A4CF-4058-A07D-29DB38C1FE8A","eventType":"pcsHealthSummary","soft_failure_count":0,"topic":"xp_sear_keysync","version":"26.2.1","modelid":"iPhone14,4","hard_failure_count":0}]}
