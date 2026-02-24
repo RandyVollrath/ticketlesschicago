@@ -839,7 +839,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let coreMotionStabilitySec: TimeInterval = 6  // CoreMotion must stay non-automotive for 6s
   private let minZeroSpeedForAgreeSec: TimeInterval = 10  // GPS speed≈0 for 10s before gps_coremotion_agree can fire
   private let minWalkingEvidenceSec: TimeInterval = 4
-  private let minZeroSpeedNoWalkingSec: TimeInterval = 20
+  private let minZeroSpeedNoWalkingSec: TimeInterval = 45  // Raised from 20s to 45s — a 20s stop is easily a long red light at a 6-way intersection; 45s is more indicative of actual parking
   private let unknownFallbackZeroSpeedSec: TimeInterval = 45
   private let unknownFallbackMaxSpeedMps: Double = 0.9
   private let unknownFallbackMinDrivingSec: TimeInterval = 20
@@ -4784,8 +4784,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     guard let loc = location else { return false }
     let lat = loc.coordinate.latitude
     let lng = loc.coordinate.longitude
+    // Include BOTH redlight and speed cameras — speed cameras in Chicago are also
+    // at signalized intersections (triggered by signal violations). Previously only
+    // checking redlight cameras missed locations like Lincoln/Belmont/Ashland which
+    // has speed cameras but no redlight camera, causing false positive parking detections.
     for cam in Self.chicagoCameras {
-      if cam.type != "redlight" { continue }
       let dist = haversineMeters(lat1: lat, lon1: lng, lat2: cam.lat, lon2: cam.lng)
       if dist <= intersectionRiskRadiusMeters {
         return true
