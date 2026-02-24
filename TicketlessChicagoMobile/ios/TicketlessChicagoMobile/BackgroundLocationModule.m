@@ -83,4 +83,8 @@ RCT_EXTERN_METHOD(testBackgroundTTS:(double)delaySec
                   resolve:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(appendToDecisionLog:(NSString *)jsonLine
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

@@ -55,6 +55,10 @@ export const StorageKeys = {
   SNOW_FORECAST_LAST_CHECK: 'snowForecastLastCheck', // ISO timestamp
   SNOW_FORECAST_NOTIFIED: 'snowForecastNotified', // 'true' if already warned about upcoming snow
 
+  // Diagnostic Log Upload
+  LAST_LOG_UPLOAD_LINE_COUNT: 'lastLogUploadLineCount', // number of lines already uploaded (watermark)
+  LAST_LOG_UPLOAD_TIME: 'lastLogUploadTime', // ISO timestamp of last successful upload
+
   // One-time nudges
   PLATE_COMPLIANCE_NUDGE_DISMISSED: 'plateComplianceNudgeDismissed', // 'true' if user dismissed the front plate nudge
 } as const;

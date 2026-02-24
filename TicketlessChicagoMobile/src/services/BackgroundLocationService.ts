@@ -577,6 +577,27 @@ class BackgroundLocationServiceClass {
   }
 
   /**
+   * Append a JSON line to the native decision log (parking_decisions.ndjson).
+   * This lets JS-side decisions (state machine transitions, departure matching)
+   * appear in the same log file that gets uploaded to the server.
+   */
+  async appendToDecisionLog(event: string, data: Record<string, unknown> = {}): Promise<void> {
+    if (!this.isAvailable() || !BackgroundLocationModule.appendToDecisionLog) return;
+    try {
+      const payload = {
+        ...data,
+        event,
+        ts: new Date().toISOString(),
+        source: 'js',
+      };
+      const jsonLine = JSON.stringify(payload);
+      await BackgroundLocationModule.appendToDecisionLog(jsonLine);
+    } catch (error) {
+      // Non-fatal — don't break the caller
+    }
+  }
+
+  /**
    * Subscribe to real-time location updates (for debugging/display)
    */
   addLocationListener(callback: (event: LocationUpdateEvent) => void): () => void {
