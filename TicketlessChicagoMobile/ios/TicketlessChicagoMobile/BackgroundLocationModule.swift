@@ -4185,6 +4185,70 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
        visit.arrivalDate != Date.distantPast &&
        visit.horizontalAccuracy > 0 && visit.horizontalAccuracy < 200 {
 
+      // ── Additional guards for CLVisit-only parking detection ──
+      // CLVisit bypasses ALL normal guards (speed, CoreMotion, intersection,
+      // confidence scoring). These extra checks reduce false positives from
+      // brief slowdowns, passing-through, or stale visits delivered on app wake.
+
+      // Guard 1: Require departure to have occurred (visit is "complete").
+      // Arrival-only visits (departure == distantFuture) mean iOS hasn't confirmed
+      // the user actually stayed — could be a brief slowdown while driving through.
+      if visit.departureDate == Date.distantFuture {
+        self.log("CLVisit: skipping — departure not yet confirmed (arrival-only visit, user may still be in transit)")
+        decision("clvisit_skipped_no_departure", [
+          "latitude": visit.coordinate.latitude,
+          "longitude": visit.coordinate.longitude,
+          "arrivalDate": visit.arrivalDate.timeIntervalSince1970,
+        ])
+        return
+      }
+
+      // Guard 2: Require minimum dwell duration of 3 minutes.
+      // iOS CLVisit can fire for stops as short as ~2 minutes, which includes
+      // traffic slowdowns, picking someone up, or waiting at a complex intersection.
+      // Real parking is almost always 3+ minutes.
+      let dwellDuration = visit.departureDate.timeIntervalSince(visit.arrivalDate)
+      if dwellDuration < 180 {
+        self.log("CLVisit: skipping — dwell too short (\(String(format: "%.0f", dwellDuration))s < 180s minimum)")
+        decision("clvisit_skipped_short_dwell", [
+          "latitude": visit.coordinate.latitude,
+          "longitude": visit.coordinate.longitude,
+          "dwellDurationSec": dwellDuration,
+        ])
+        return
+      }
+
+      // Guard 3: Reject stale visits (arrival > 2 hours ago).
+      // After a Jetsam kill, iOS can deliver queued visits from hours ago.
+      // These are better handled by checkForMissedParking (which validates
+      // against CoreMotion history) rather than blindly emitting here.
+      let visitAge = Date().timeIntervalSince(visit.arrivalDate)
+      if visitAge > 7200 {
+        self.log("CLVisit: skipping — visit too old (arrived \(String(format: "%.0f", visitAge / 60)) min ago > 120 min max)")
+        decision("clvisit_skipped_stale", [
+          "latitude": visit.coordinate.latitude,
+          "longitude": visit.coordinate.longitude,
+          "visitAgeSec": visitAge,
+        ])
+        return
+      }
+
+      // Guard 4: GPS speed sanity check — if we have a recent GPS fix showing
+      // the user is moving, this visit is likely stale or for a different time.
+      if let currentLoc = locationManager.location {
+        let gpsAge = Date().timeIntervalSince(currentLoc.timestamp)
+        if gpsAge < 30 && currentLoc.speed > minDrivingSpeedMps {
+          self.log("CLVisit: skipping — current GPS shows movement (speed=\(String(format: "%.1f", currentLoc.speed)) m/s, GPS age=\(String(format: "%.0f", gpsAge))s)")
+          decision("clvisit_skipped_moving", [
+            "latitude": visit.coordinate.latitude,
+            "longitude": visit.coordinate.longitude,
+            "currentSpeed": currentLoc.speed,
+            "gpsAgeSec": gpsAge,
+          ])
+          return
+        }
+      }
+
       // Check if this visit already matches a recent parking event we detected.
       // If we already confirmed parking at this location recently, skip.
       if let lastParking = lastConfirmedParkingLocation {
@@ -4225,7 +4289,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         timestamp: visit.arrivalDate
       )
 
-      self.log("CLVisit: emitting parking event for undetected visit at (\(visit.coordinate.latitude), \(visit.coordinate.longitude))")
+      self.log("CLVisit: emitting parking event for undetected visit at (\(visit.coordinate.latitude), \(visit.coordinate.longitude)), dwell=\(String(format: "%.0f", dwellDuration))s, age=\(String(format: "%.0f", visitAge / 60))min")
 
       let body: [String: Any] = [
         "timestamp": visit.arrivalDate.timeIntervalSince1970 * 1000,
@@ -4235,6 +4299,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         "locationSource": "clvisit_realtime",
         "drivingDurationSec": 0,  // Unknown from visit data alone
         "isFromVisit": true,
+        "dwellDurationSec": dwellDuration,
       ]
 
       lastConfirmedParkingLocation = visitLocation
