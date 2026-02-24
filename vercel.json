@@ -87,6 +87,9 @@
     "pages/api/cron/autopilot-reminders.ts": {
       "maxDuration": 120
     },
+    "pages/api/cron/autopilot-send-foia-requests.ts": {
+      "maxDuration": 120
+    },
     "pages/api/cron/sync-relocation-data.ts": {
       "maxDuration": 60
     },
@@ -180,6 +183,10 @@
     {
       "path": "/api/cron/autopilot-reminders",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/autopilot-send-foia-requests",
+      "schedule": "30 15 * * *"
     },
     {
       "path": "/api/cron/sync-relocation-data",
