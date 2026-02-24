@@ -3727,6 +3727,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     resolve(true)
   }
 
+  /// Append a JSON line from JS to the native decision log (parking_decisions.ndjson).
+  /// This allows JS-side decisions (state machine transitions, departure matching, rejections)
+  /// to be captured in the same log file that gets uploaded to the server.
+  @objc func appendToDecisionLog(_ jsonLine: String, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard !jsonLine.isEmpty else {
+      resolve(false)
+      return
+    }
+    appendDecisionLogLine(jsonLine)
+    resolve(true)
+  }
+
   /// JS bridge: test background TTS for App Store review.
   /// Schedules a spoken alert after `delaySec` seconds so the reviewer can
   /// background the app and hear it speak.  Also fires a local notification.

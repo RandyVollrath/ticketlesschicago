@@ -28,6 +28,8 @@ import RedLightReceiptService from './RedLightReceiptService';
 import GroundTruthService from './GroundTruthService';
 import { fetchCameraLocations } from '../data/chicago-cameras';
 import AppEvents from './AppEvents';
+import ApiClient from '../utils/ApiClient';
+import Config from '../config/config';
 import { distanceMeters as haversineDistance } from '../utils/geo';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
@@ -129,6 +131,9 @@ class BackgroundTaskServiceClass {
   private lastCameraFallbackNotificationAt: number = 0;
   private cameraHeartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private lastCameraHeartbeatGpsCount: number = 0;
+  private logUploadInFlight: boolean = false;
+  private lastLogUploadTime: number = 0;
+  private readonly logUploadMinIntervalMs: number = 10 * 60 * 1000; // 10 minutes between uploads
 
   /**
    * Initialize the background task service
@@ -951,6 +956,13 @@ class BackgroundTaskServiceClass {
   private async handleCarReconnection(nativeDrivingTimestamp?: number): Promise<void> {
     void this.captureIosHealthSnapshot('handleCarReconnection', { force: true, includeLogTail: true });
     log.info('Car reconnection detected via Bluetooth');
+    void BackgroundLocationService.appendToDecisionLog('js_car_reconnection', {
+      nativeDrivingTimestamp: nativeDrivingTimestamp ? new Date(nativeDrivingTimestamp).toISOString() : null,
+      delayMs: nativeDrivingTimestamp ? Date.now() - nativeDrivingTimestamp : null,
+      smState: ParkingDetectionStateMachine.state,
+      hasPendingDeparture: !!this.state.pendingDepartureConfirmation,
+      driveSessionId: this.currentDriveSessionId,
+    });
     await this.markCarReconnected(nativeDrivingTimestamp);
   }
 
@@ -1336,6 +1348,17 @@ class BackgroundTaskServiceClass {
       const delayMs = Date.now() - nativeTimestamp;
       log.info(`Native event timestamp: ${new Date(nativeTimestamp).toISOString()} (${Math.round(delayMs / 1000)}s ago)`);
     }
+    void BackgroundLocationService.appendToDecisionLog('js_car_disconnection', {
+      hasParkingCoords: !!parkingCoords,
+      lat: parkingCoords?.latitude,
+      lng: parkingCoords?.longitude,
+      accuracy: parkingCoords?.accuracy,
+      nativeTimestamp: nativeTimestamp ? new Date(nativeTimestamp).toISOString() : null,
+      smState: ParkingDetectionStateMachine.state,
+      hasPendingDeparture: !!this.state.pendingDepartureConfirmation,
+      driveSessionId: this.currentDriveSessionId,
+      platform: Platform.OS,
+    });
 
     // If there's a pending departure from a PREVIOUS parking spot, finalize it NOW
     // with the current time as the departure time (since driving has clearly happened).
@@ -1374,6 +1397,12 @@ class BackgroundTaskServiceClass {
         ParkingDetectionStateMachine.iosNativeParkingConfirmed({
           source: 'ios_native_parking_detected',
           previousState: smState,
+        });
+        void BackgroundLocationService.appendToDecisionLog('js_sm_transition', {
+          from: smState,
+          to: 'PARKED',
+          trigger: 'ios_native_parking_confirmed',
+          driveSessionId: this.currentDriveSessionId,
         });
       }
     }
@@ -1630,6 +1659,11 @@ class BackgroundTaskServiceClass {
         gpsSource,
         accuracy: coords.accuracy ? `${coords.accuracy.toFixed(1)}m` : 'unknown',
       });
+
+      // Upload diagnostic logs after parking confirmed (captures detection decision data)
+      if (persistParkingEvent && isRealParkingEvent) {
+        void this.uploadDiagnosticLogs('parking-confirmed');
+      }
     } catch (error) {
       log.error('=== PARKING CHECK FAILED ===', error);
 
@@ -2733,6 +2767,19 @@ class BackgroundTaskServiceClass {
       const next = [record, ...arr].slice(0, 200);
       await AsyncStorage.setItem(key, JSON.stringify(next));
       log.warn(`[ParkingReject] ${reason}`, { id: record.id, ...extra });
+
+      // Also write to native decision log for server upload
+      void BackgroundLocationService.appendToDecisionLog('js_parking_rejected', {
+        reason,
+        lat: event.latitude,
+        lng: event.longitude,
+        accuracy: event.accuracy,
+        detectionSource: event.detectionSource,
+        locationSource: event.locationSource,
+        drivingDurationSec: event.drivingDurationSec,
+        driveSessionId: this.currentDriveSessionId,
+        ...extra,
+      });
     } catch (e) {
       log.warn('Failed to persist parking rejection record', e);
     }
@@ -2832,6 +2879,8 @@ class BackgroundTaskServiceClass {
 
     if (nextAppState === 'active' && this.state.isMonitoring) {
       void this.captureIosHealthSnapshot('app-foreground', { force: true, includeLogTail: true });
+      // Upload diagnostic logs on foreground (fire-and-forget)
+      void this.uploadDiagnosticLogs('app-foreground');
       // Check for red-light evidence captured natively while JS was suspended
       if (Platform.OS === 'ios') {
         void this.ingestPendingNativeRedLightEvidence();
@@ -3009,6 +3058,8 @@ class BackgroundTaskServiceClass {
           delayMs: DEPARTURE_CONFIRMATION_DELAY_MS,
         });
 
+        const localHistoryMatch = await this.findBestLocalHistoryItemId(departureTime);
+
         // Store pending departure confirmation (server mode)
         this.state.pendingDepartureConfirmation = {
           parkingHistoryId: response.parking_history_id,
@@ -3017,11 +3068,21 @@ class BackgroundTaskServiceClass {
           retryCount: 0,
           scheduledAt: Date.now(),
           departedAt: departureTime, // When driving actually started (native timestamp)
-          localHistoryItemId: await this.findBestLocalHistoryItemId(departureTime),
+          localHistoryItemId: localHistoryMatch,
         };
         await this.saveState();
         this.scheduleDepartureConfirmation();
         serverSucceeded = true;
+
+        void BackgroundLocationService.appendToDecisionLog('js_departure_scheduled', {
+          scenario: 'server',
+          parkingHistoryId: response.parking_history_id,
+          localHistoryMatch: localHistoryMatch || null,
+          departedAt: new Date(departureTime).toISOString(),
+          parkedLat: response.parked_location?.latitude,
+          parkedLng: response.parked_location?.longitude,
+          driveSessionId: this.currentDriveSessionId,
+        });
       }
     } catch (error) {
       log.warn('Server clear-parked-location failed (will use local fallback)', error);
@@ -3052,6 +3113,15 @@ class BackgroundTaskServiceClass {
           };
           await this.saveState();
           this.scheduleDepartureConfirmation();
+
+          void BackgroundLocationService.appendToDecisionLog('js_departure_scheduled', {
+            scenario: 'local_fallback',
+            localHistoryItemId: recentItem.id,
+            departedAt: new Date(departureTime).toISOString(),
+            parkedLat: recentItem.coords.latitude,
+            parkedLng: recentItem.coords.longitude,
+            driveSessionId: this.currentDriveSessionId,
+          });
         } else {
           // Last resort: capture current GPS as approximate parking spot.
           // This covers the case where the app was loaded while already parked
@@ -3098,8 +3168,22 @@ class BackgroundTaskServiceClass {
               };
               await this.saveState();
               this.scheduleDepartureConfirmation();
+
+              void BackgroundLocationService.appendToDecisionLog('js_departure_scheduled', {
+                scenario: 'gps_fallback',
+                departedAt: new Date(departureTime).toISOString(),
+                gpsLat: currentPos.latitude,
+                gpsLng: currentPos.longitude,
+                gpsAccuracy: currentPos.accuracy,
+                driveSessionId: this.currentDriveSessionId,
+              });
             } else {
               log.warn('No parking history and GPS unavailable — departure tracking skipped');
+              void BackgroundLocationService.appendToDecisionLog('js_departure_skipped', {
+                reason: 'no_history_no_gps',
+                departedAt: new Date(departureTime).toISOString(),
+                driveSessionId: this.currentDriveSessionId,
+              });
             }
           } catch (gpsError) {
             log.error('GPS departure fallback failed', gpsError);
@@ -3287,6 +3371,9 @@ class BackgroundTaskServiceClass {
       // Clearance record — always silent. This is proof the car left the spot,
       // saved to history for ticket contesting. No user notification needed.
       log.info(`Clearance record saved: ${Math.round(distanceMeters)}m from parking spot, conclusive=${isConclusive}`);
+
+      // Upload diagnostic logs after departure (captures the full drive cycle)
+      void this.uploadDiagnosticLogs('departure-confirmed');
     } catch (error) {
       log.error('Failed to confirm departure', error);
 
@@ -3363,7 +3450,13 @@ class BackgroundTaskServiceClass {
   private async findBestLocalHistoryItemId(referenceTimestamp: number): Promise<string | undefined> {
     try {
       const history = await ParkingHistoryService.getHistory();
-      if (!history || history.length === 0) return undefined;
+      if (!history || history.length === 0) {
+        void BackgroundLocationService.appendToDecisionLog('js_departure_match', {
+          result: 'no_history',
+          referenceTime: new Date(referenceTimestamp).toISOString(),
+        });
+        return undefined;
+      }
 
       const DAY_MS = 24 * 60 * 60 * 1000;
       // Only consider parking records that were created BEFORE or AT the departure
@@ -3375,8 +3468,33 @@ class BackgroundTaskServiceClass {
         .map(item => ({ id: item.id, diffMs: referenceTimestamp - item.timestamp }))
         .sort((a, b) => a.diffMs - b.diffMs);
 
-      if (candidates.length === 0) return undefined;
-      if (candidates[0].diffMs > DAY_MS) return undefined;
+      if (candidates.length === 0) {
+        void BackgroundLocationService.appendToDecisionLog('js_departure_match', {
+          result: 'no_candidates',
+          referenceTime: new Date(referenceTimestamp).toISOString(),
+          totalHistory: history.length,
+          withDeparture: history.filter(i => !!i.departure).length,
+          afterReference: history.filter(i => i.timestamp > referenceTimestamp).length,
+        });
+        return undefined;
+      }
+      if (candidates[0].diffMs > DAY_MS) {
+        void BackgroundLocationService.appendToDecisionLog('js_departure_match', {
+          result: 'too_old',
+          referenceTime: new Date(referenceTimestamp).toISOString(),
+          bestCandidateId: candidates[0].id,
+          bestCandidateAgeHrs: +(candidates[0].diffMs / 3600000).toFixed(1),
+        });
+        return undefined;
+      }
+
+      void BackgroundLocationService.appendToDecisionLog('js_departure_match', {
+        result: 'matched',
+        referenceTime: new Date(referenceTimestamp).toISOString(),
+        matchedId: candidates[0].id,
+        matchedAgeMin: +(candidates[0].diffMs / 60000).toFixed(1),
+        candidateCount: candidates.length,
+      });
       return candidates[0].id;
     } catch (error) {
       log.warn('findBestLocalHistoryItemId failed', error);
@@ -3743,6 +3861,117 @@ class BackgroundTaskServiceClass {
       }
     } catch (error) {
       log.warn('Snow forecast check failed (non-fatal)', error);
+    }
+  }
+
+  /**
+   * Upload recent parking decision logs from native to the server.
+   * Uses a line-count watermark to avoid re-uploading.
+   * Called on app foreground, parking confirmed, and departure confirmed.
+   */
+  private async uploadDiagnosticLogs(trigger: string): Promise<void> {
+    // Only iOS has persistent decision logs (Android uses logcat)
+    if (Platform.OS !== 'ios') return;
+    if (!BackgroundLocationService.isAvailable()) return;
+    if (this.logUploadInFlight) return;
+
+    const now = Date.now();
+    if (now - this.lastLogUploadTime < this.logUploadMinIntervalMs) return;
+
+    // Must be authenticated to upload
+    const token = AuthService.getToken();
+    if (!token) return;
+
+    this.logUploadInFlight = true;
+    try {
+      // Read watermark: how many lines we've already uploaded
+      const watermarkStr = await AsyncStorage.getItem(StorageKeys.LAST_LOG_UPLOAD_LINE_COUNT);
+      const watermark = watermarkStr ? parseInt(watermarkStr, 10) : 0;
+
+      // Read recent decision logs from native (up to 500 lines)
+      const rawLogs = await BackgroundLocationService.getDecisionLogs(500);
+      if (!rawLogs || rawLogs.trim().length === 0) return;
+
+      const lines = rawLogs.trim().split('\n');
+      const totalLines = lines.length;
+
+      // Only upload lines beyond the watermark
+      const newLines = watermark < totalLines ? lines.slice(watermark) : [];
+      if (newLines.length === 0) {
+        log.debug(`[LogUpload] No new lines (watermark=${watermark}, total=${totalLines})`);
+        return;
+      }
+
+      // Parse NDJSON lines into entries
+      const entries: Array<{ event: string; ts: string; data: Record<string, unknown>; hash: string }> = [];
+      for (const line of newLines) {
+        try {
+          const parsed = JSON.parse(line);
+          if (!parsed.event || !parsed.ts) continue;
+
+          // Create a simple hash from timestamp + event type for dedup
+          const hashInput = `${parsed.ts}_${parsed.event}_${parsed.lat || ''}_${parsed.lng || ''}`;
+          let hash = 0;
+          for (let i = 0; i < hashInput.length; i++) {
+            const ch = hashInput.charCodeAt(i);
+            hash = ((hash << 5) - hash) + ch;
+            hash |= 0;
+          }
+          const hashStr = Math.abs(hash).toString(36).padStart(8, '0');
+
+          entries.push({
+            event: parsed.event,
+            ts: parsed.ts,
+            data: parsed,
+            hash: hashStr,
+          });
+        } catch {
+          // Skip unparseable lines
+        }
+      }
+
+      if (entries.length === 0) {
+        log.debug('[LogUpload] No parseable entries in new lines');
+        // Still advance watermark to skip bad lines
+        await AsyncStorage.setItem(StorageKeys.LAST_LOG_UPLOAD_LINE_COUNT, String(totalLines));
+        return;
+      }
+
+      // Upload in batches of 100
+      let uploaded = 0;
+      const batchSize = 100;
+      for (let i = 0; i < entries.length; i += batchSize) {
+        const batch = entries.slice(i, i + batchSize);
+        const response = await ApiClient.authPost<any>('/api/mobile/upload-diagnostic-logs', {
+          entries: batch,
+          platform: Platform.OS,
+          app_version: Config.APP_VERSION,
+        }, {
+          retries: 1,
+          timeout: 30000,
+          showErrorAlert: false,
+        });
+
+        if (response.success) {
+          uploaded += batch.length;
+        } else {
+          log.warn('[LogUpload] Batch upload failed', response.error);
+          break; // Stop on failure, retry next time
+        }
+      }
+
+      if (uploaded > 0) {
+        // Advance watermark
+        const newWatermark = watermark + newLines.length;
+        await AsyncStorage.setItem(StorageKeys.LAST_LOG_UPLOAD_LINE_COUNT, String(newWatermark));
+        await AsyncStorage.setItem(StorageKeys.LAST_LOG_UPLOAD_TIME, new Date().toISOString());
+        this.lastLogUploadTime = now;
+        log.info(`[LogUpload] Uploaded ${uploaded} entries (trigger: ${trigger}, watermark: ${watermark} → ${newWatermark})`);
+      }
+    } catch (error) {
+      log.warn('[LogUpload] Error uploading diagnostic logs', error);
+    } finally {
+      this.logUploadInFlight = false;
     }
   }
 

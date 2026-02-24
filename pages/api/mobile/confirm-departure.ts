@@ -172,6 +172,28 @@ export default async function handler(
       });
     }
 
+    // Sanity check: departure_confirmed_at must be AFTER parked_at.
+    // The client-side fix (findBestLocalHistoryItemId) should prevent this,
+    // but add server-side guard to catch any remaining edge cases.
+    if (historyRecord.parked_at) {
+      const parkedAtMs = new Date(historyRecord.parked_at).getTime();
+      const departureMs = new Date(departureConfirmedAt).getTime();
+      if (departureMs < parkedAtMs) {
+        console.warn(`Departure before parking! departure=${departureConfirmedAt}, parked_at=${historyRecord.parked_at}, record=${historyRecord.id}`);
+        return res.status(422).json({
+          error: 'Departure timestamp cannot be before parking timestamp',
+          parked_at: historyRecord.parked_at,
+          departure_confirmed_at: departureConfirmedAt,
+        });
+      }
+
+      // Log warning for suspiciously short parking durations (<3 minutes)
+      const parkingDurationMin = (departureMs - parkedAtMs) / 60000;
+      if (parkingDurationMin < 3) {
+        console.warn(`Very short parking duration: ${parkingDurationMin.toFixed(1)} min, record=${historyRecord.id}`);
+      }
+    }
+
     // Calculate distance from parked location to current location
     const distanceMeters = calculateDistance(
       historyRecord.latitude,
