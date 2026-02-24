@@ -45,6 +45,8 @@ const DEPARTURE_CONFIRMATION_DELAY_MS = 60 * 1000; // 60s after car starts — e
 const MIN_PARKING_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes - prevent duplicate checks
 const LOW_ACCURACY_RECOVERY_DELAY_MS = 25000; // 25s retry window for poor native GPS fixes
 const RECENT_DRIVING_WINDOW_MS = 20 * 60 * 1000; // treat onDrivingStarted as recent for 20 minutes
+const ADDRESS_BACKFILL_DELAY_MS = 60 * 1000; // 60s delay before retrying geocoding for failed addresses
+const ADDRESS_BACKFILL_MAX_RETRIES = 3; // Max retries for address backfill
 
 // Periodic rescan: re-check parking at last location every 4 hours while parked
 const RESCAN_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
@@ -1539,6 +1541,17 @@ class BackgroundTaskServiceClass {
           await ParkingHistoryService.addToHistory(coords, result.rules, result.address, nativeTimestamp, detectionMeta);
           AppEvents.emit('parking-history-updated');
           log.info('Auto-detection result saved to parking history ✓');
+
+          // Deferred address backfill: if reverse geocoding failed and we stored
+          // raw coordinates as the address, schedule a background retry to resolve
+          // the real street address. This handles transient API failures gracefully.
+          if (this.isCoordinateAddress(result.address)) {
+            const recentItem = await ParkingHistoryService.getMostRecent();
+            if (recentItem) {
+              log.info(`Address looks like coordinates ("${result.address}"), scheduling deferred backfill`);
+              this.scheduleAddressBackfill(recentItem.id, coords);
+            }
+          }
         } catch (historyError) {
           log.error('Failed to save auto-detection to history (non-fatal):', historyError);
         }
@@ -1638,6 +1651,13 @@ class BackgroundTaskServiceClass {
             undefined
           );
           log.warn('Saved fallback parking history entry after API failure');
+
+          // Schedule deferred backfill for the coordinate-only address
+          const fallbackItem = await ParkingHistoryService.getMostRecent();
+          if (fallbackItem) {
+            log.info('Scheduling address backfill for API-failure fallback entry');
+            this.scheduleAddressBackfill(fallbackItem.id, resolvedCoords);
+          }
         } catch (fallbackError) {
           log.warn('Failed to save fallback parking history entry', fallbackError);
         }
@@ -1670,6 +1690,91 @@ class BackgroundTaskServiceClass {
    * The user already received a notification from Phase 1; this only
    * corrects it if the initial GPS was materially wrong (>25m off).
    */
+
+  /**
+   * Check if an address looks like raw coordinates (geocoding failed).
+   * Addresses like "41.939123, -87.667456" indicate the reverse geocoder
+   * returned null and the fallback coordinate string was used instead.
+   */
+  private isCoordinateAddress(address: string): boolean {
+    // Coordinate addresses look like "41.939123, -87.667456"
+    // Real addresses contain letters (street names, city, state)
+    return /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(address.trim());
+  }
+
+  /**
+   * Deferred address backfill: when reverse geocoding fails and we save
+   * raw coordinates as the address, schedule a background retry to resolve
+   * the address later. This handles transient Google Maps API failures
+   * (timeouts, rate limits, network blips) without blocking the parking flow.
+   *
+   * Retries with exponential backoff: 60s, 3min, 9min.
+   */
+  private scheduleAddressBackfill(
+    historyItemId: string,
+    coords: { latitude: number; longitude: number },
+    retryCount: number = 0
+  ): void {
+    if (retryCount >= ADDRESS_BACKFILL_MAX_RETRIES) {
+      log.info(`Address backfill: max retries (${ADDRESS_BACKFILL_MAX_RETRIES}) reached for item ${historyItemId}`);
+      return;
+    }
+
+    const delayMs = ADDRESS_BACKFILL_DELAY_MS * Math.pow(3, retryCount); // 60s, 180s, 540s
+    log.info(`Address backfill: scheduling retry ${retryCount + 1}/${ADDRESS_BACKFILL_MAX_RETRIES} in ${Math.round(delayMs / 1000)}s for item ${historyItemId}`);
+
+    setTimeout(async () => {
+      try {
+        // Re-call the parking API which includes reverse geocoding
+        const result = await LocationService.checkParkingLocation(coords);
+
+        if (!result.address || this.isCoordinateAddress(result.address)) {
+          log.warn(`Address backfill: retry ${retryCount + 1} still got coordinates, scheduling next retry`);
+          this.scheduleAddressBackfill(historyItemId, coords, retryCount + 1);
+          return;
+        }
+
+        // Success! Update local history with the resolved address
+        log.info(`Address backfill: resolved "${result.address}" for item ${historyItemId}`);
+        await ParkingHistoryService.updateItem(historyItemId, {
+          address: result.address,
+          rules: result.rules,
+        });
+
+        // Also update the LAST_PARKING_LOCATION for the hero card
+        await LocationService.saveParkingCheckResult(result);
+        AppEvents.emit('parking-check-updated');
+
+        // Update server record if authenticated
+        if (AuthService.isAuthenticated()) {
+          try {
+            const fcmToken = await PushNotificationService.getToken();
+            if (fcmToken) {
+              const rawData = result.rawApiData || await this.getRawParkingData(result);
+              await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
+              log.info('Address backfill: server record updated');
+            }
+          } catch (serverErr) {
+            log.warn('Address backfill: server update failed (non-fatal)', serverErr);
+          }
+        }
+
+        // Update the notification with the real address
+        const filteredResult = await this.filterOwnPermitZone(result);
+        const rawData = result.rawApiData || await this.getRawParkingData(result);
+        if (filteredResult.rules.length > 0) {
+          await this.sendParkingNotification(filteredResult, coords.accuracy, rawData);
+        } else {
+          await this.sendSafeNotification(filteredResult.address, coords.accuracy, rawData);
+        }
+        log.info('Address backfill: notification updated with resolved address');
+      } catch (error) {
+        log.warn(`Address backfill: retry ${retryCount + 1} failed`, error);
+        this.scheduleAddressBackfill(historyItemId, coords, retryCount + 1);
+      }
+    }, delayMs);
+  }
+
   private async backgroundBurstRefine(
     initialCoords: { latitude: number; longitude: number; accuracy?: number },
     nativeTimestamp?: number,
