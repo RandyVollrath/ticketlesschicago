@@ -110,6 +110,13 @@ interface FoiaData {
   mailContestWinRate: number | null;
 }
 
+interface FoiaRequestStatus {
+  hasFoiaRequest: boolean;
+  sentDate: string | null;
+  daysElapsed: number;
+  status: string; // 'sent' | 'fulfilled' | 'failed' | etc.
+}
+
 interface EvidenceBundle {
   parkingEvidence: ParkingEvidenceResult | null;
   weatherData: HistoricalWeatherData | null;
@@ -124,6 +131,7 @@ interface EvidenceBundle {
   streetCleaningSchedule: any | null;
   streetViewEvidence: StreetViewResult | null;
   streetViewPackage: StreetViewEvidencePackage | null;
+  foiaRequest: FoiaRequestStatus;
 }
 
 // ─── Approval Email ──────────────────────────────────────────
@@ -298,6 +306,12 @@ async function gatherAllEvidence(
     streetCleaningSchedule: null,
     streetViewEvidence: null,
     streetViewPackage: null,
+    foiaRequest: {
+      hasFoiaRequest: false,
+      sentDate: null,
+      daysElapsed: 0,
+      status: 'none',
+    },
   };
 
   // Resolve violation code
@@ -566,6 +580,31 @@ async function gatherAllEvidence(
       } catch (e) { console.error('    Street View lookup failed:', e); }
     })());
   }
+
+  // ── FOIA Evidence Request Status ──
+  promises.push((async () => {
+    try {
+      const { data: foiaReq } = await supabaseAdmin
+        .from('ticket_foia_requests' as any)
+        .select('status, sent_at')
+        .eq('ticket_id', ticket.id)
+        .eq('request_type', 'ticket_evidence_packet')
+        .single();
+
+      if (foiaReq && foiaReq.sent_at) {
+        const sentDate = new Date(foiaReq.sent_at);
+        const now = new Date();
+        const daysElapsed = Math.floor((now.getTime() - sentDate.getTime()) / (1000 * 60 * 60 * 24));
+        bundle.foiaRequest = {
+          hasFoiaRequest: true,
+          sentDate: foiaReq.sent_at,
+          daysElapsed,
+          status: foiaReq.status,
+        };
+        console.log(`    FOIA request: ${foiaReq.status}, sent ${daysElapsed} days ago`);
+      }
+    } catch (e) { /* No FOIA request for this ticket — that's fine */ }
+  })());
 
   // Wait for all evidence lookups to complete
   await Promise.all(promises);
@@ -850,6 +889,31 @@ ${scs.map((s: any) => `- Ward ${s.ward}, Section ${s.section}: ${s.status || 'sc
 NOTE: This is the city's schedule. We do NOT have data confirming whether cleaning actually occurred. You may argue that street cleaning is frequently cancelled or rescheduled, and request the city provide proof that cleaning actually took place on this date and block.`);
   }
 
+  // ── Section 13: FOIA Evidence Request ──
+  if (evidence.foiaRequest.hasFoiaRequest && evidence.foiaRequest.sentDate) {
+    const sentFormatted = new Date(evidence.foiaRequest.sentDate).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+
+    if (evidence.foiaRequest.status === 'sent' && evidence.foiaRequest.daysElapsed >= 7) {
+      // City has exceeded the 5-business-day deadline (7 calendar days is conservative)
+      sections.push(`=== FOIA EVIDENCE REQUEST — CITY FAILED TO RESPOND ===
+
+On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to the Department of Finance requesting the enforcement records for this citation, including the issuing officer's field notes, photographs, handheld device data, and violation-specific records.
+
+As of this letter, ${evidence.foiaRequest.daysElapsed} days have elapsed and the Department has NOT produced the requested records, exceeding the statutory five-business-day response period.
+
+INSTRUCTIONS: Include a paragraph in the contest letter noting that a FOIA request was filed on ${sentFormatted} for the enforcement records and the city failed to respond within the statutory deadline. Argue that the absence of these records means the city cannot establish a prima facie case. This is a STRONG supplementary argument — "Prima Facie Case Not Established by City" is one of the top reasons tickets are dismissed. Frame it as: without the officer's contemporaneous notes and photographic evidence, the city has not met its burden of proving the violation occurred as described.`);
+    } else if (evidence.foiaRequest.status === 'sent') {
+      // FOIA was sent but city still has time to respond
+      sections.push(`=== FOIA EVIDENCE REQUEST — PENDING ===
+
+A Freedom of Information Act request was submitted on ${sentFormatted} for the enforcement records for this citation. The city's response is still pending (${evidence.foiaRequest.daysElapsed} days elapsed).
+
+INSTRUCTIONS: Mention in the letter that a FOIA request was filed requesting the officer's field notes and enforcement records. Note that the results are pending and the respondent reserves the right to supplement this contest with any records produced. This shows diligence and puts the hearing officer on notice that the enforcement documentation is being scrutinized.`);
+    }
+  }
+
   // ── Final Instructions ──
   sections.push(`=== LETTER GENERATION INSTRUCTIONS ===
 
@@ -867,6 +931,7 @@ Generate a professional, formal contest letter that:
    ${evidence.weatherData?.hasAdverseWeather && evidence.weatherRelevanceType === 'primary' ? '- Weather conditions (PRIMARY defense for this violation)' : ''}
    ${evidence.streetViewPackage?.hasImagery ? `- ${evidence.streetViewPackage.exhibitUrls.length} Google Street View photographs (attached as exhibits — ${evidence.streetViewPackage.hasSignageIssue ? 'SIGNAGE ISSUES FOUND' : 'signage verification'})` : evidence.streetViewEvidence?.hasImagery ? '- Google Street View imagery (signage verification)' : ''}
    ${evidence.foiaData.hasData ? '- FOIA hearing outcomes (INFORM strategy only, do not cite stats)' : ''}
+   ${evidence.foiaRequest.hasFoiaRequest ? '- FOIA evidence request filed (use as supplementary argument if city failed to respond)' : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the hearing officer, sign with sender name only (Lob adds return address automatically)

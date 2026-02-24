@@ -899,10 +899,248 @@ export function getEvidenceGuidance(violationType: string): EvidenceGuidance {
 }
 
 /**
+ * What actually gets tickets dismissed — mapped from real FOIA hearing data.
+ *
+ * The 1.18M FOIA records have ~14 distinct dismissal reason codes.
+ * Each maps to a specific defense strategy and evidence type the user should provide.
+ * These are shown in evidence emails so users know what ACTUALLY wins, not just
+ * what we think might win.
+ */
+export interface DismissalInsight {
+  /** Reason from FOIA data (hearing officer's words) */
+  reason: string;
+  /** What this means in plain English */
+  translation: string;
+  /** What evidence the user should provide to trigger this outcome */
+  evidenceNeeded: string;
+  /** Approximate share of all dismissals for this violation type */
+  shareLabel: 'most common' | 'common' | 'sometimes';
+}
+
+/**
+ * FOIA-driven dismissal insights by violation type.
+ * Based on actual hearing outcomes from 1.18M contested tickets (2019-present).
+ */
+export const DISMISSAL_INSIGHTS: Record<string, DismissalInsight[]> = {
+  expired_plates: [
+    {
+      reason: 'Affirmative Compliance Defense',
+      translation: 'You showed proof of renewal',
+      evidenceNeeded: 'Forward your IL Secretary of State renewal confirmation or receipt showing you renewed your plates',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'The facts didn\'t support the ticket',
+      evidenceNeeded: 'Screenshot your IL SOS account showing valid registration on the ticket date',
+      shareLabel: 'common',
+    },
+  ],
+  no_city_sticker: [
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'The officer was wrong — the sticker existed',
+      evidenceNeeded: 'Your city sticker purchase receipt showing the date you bought it',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Affirmative Compliance Defense',
+      translation: 'You showed you bought a sticker (even after the ticket)',
+      evidenceNeeded: 'Buy a sticker at ezbuy.chicityclerk.com and forward the receipt — even a post-ticket purchase often wins',
+      shareLabel: 'common',
+    },
+    {
+      reason: 'Prima Facie Case Not Established by City',
+      translation: 'The city couldn\'t prove its case',
+      evidenceNeeded: 'We handle this — our FOIA request demands the city produce their evidence',
+      shareLabel: 'sometimes',
+    },
+  ],
+  expired_meter: [
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'Payment was actually valid or timing was wrong',
+      evidenceNeeded: 'Screenshot your ParkChicago app showing an active session at the ticket time',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Meter was Broken',
+      translation: 'The meter wasn\'t working',
+      evidenceNeeded: 'Photos of the meter showing an error, blank screen, or "out of order" — take one NOW if you can go back',
+      shareLabel: 'sometimes',
+    },
+    {
+      reason: 'Prima Facie Case Not Established by City',
+      translation: 'The city couldn\'t prove its case',
+      evidenceNeeded: 'We handle this — our FOIA request demands meter maintenance records',
+      shareLabel: 'sometimes',
+    },
+  ],
+  street_cleaning: [
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'The car wasn\'t there, or cleaning didn\'t happen',
+      evidenceNeeded: 'Any proof you moved the car before cleaning time — parking app receipts, dashcam, photo timestamps',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Signs were Missing or Obscured',
+      translation: 'The signs weren\'t visible',
+      evidenceNeeded: 'Go photograph the signage (or lack of it) where you parked — this is your #1 defense',
+      shareLabel: 'common',
+    },
+    {
+      reason: 'Prima Facie Case Not Established by City',
+      translation: 'The city couldn\'t prove sweeping actually occurred',
+      evidenceNeeded: 'We handle this — our FOIA request demands sweeper GPS data for your block',
+      shareLabel: 'sometimes',
+    },
+  ],
+  fire_hydrant: [
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'You were far enough away, or hydrant wasn\'t visible',
+      evidenceNeeded: 'Measure your distance from the hydrant (15 feet is the threshold) — photos showing obscured/buried hydrant',
+      shareLabel: 'most common',
+    },
+  ],
+  residential_permit: [
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'Permit was valid or zone assignment was wrong',
+      evidenceNeeded: 'Photo of your valid permit showing zone number and expiration date',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Required Permit was Properly Displayed',
+      translation: 'The permit was there — officer missed it',
+      evidenceNeeded: 'Photo showing your permit properly displayed in the windshield',
+      shareLabel: 'common',
+    },
+    {
+      reason: 'Signs were Missing or Obscured',
+      translation: 'Zone signage was confusing or missing',
+      evidenceNeeded: 'Photos of the zone signs (or lack of them) — especially if you were near a zone boundary',
+      shareLabel: 'sometimes',
+    },
+  ],
+  disabled_zone: [
+    {
+      reason: 'Disability Plate or Placard Properly Displayed',
+      translation: 'The placard was there — officer missed it',
+      evidenceNeeded: 'Photo of your valid disability placard/plate showing permit number and expiration',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'The facts didn\'t support the ticket',
+      evidenceNeeded: 'IL Secretary of State printout confirming your placard was valid on the ticket date',
+      shareLabel: 'common',
+    },
+  ],
+  no_standing_time_restricted: [
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'You were within the time limit or outside restriction hours',
+      evidenceNeeded: 'Evidence showing what time you parked — parking app receipts, photos with timestamps',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Signs were Missing or Obscured',
+      translation: 'The restriction signs weren\'t visible',
+      evidenceNeeded: 'Go photograph the signs where you parked — confusing/contradictory signs win cases',
+      shareLabel: 'common',
+    },
+  ],
+  speed_camera: [
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'The speed reading was wrong or vehicle was misidentified',
+      evidenceNeeded: 'Review the violation photos/video — is it actually your car? Note your cruise control setting if you use one',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Plate or Vehicle was Stolen',
+      translation: 'The vehicle was stolen at the time',
+      evidenceNeeded: 'Police report number if your vehicle was stolen',
+      shareLabel: 'sometimes',
+    },
+  ],
+  red_light: [
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'You entered on yellow, or the camera was wrong',
+      evidenceNeeded: 'Review the violation video — you may have entered the intersection before the light turned red',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Plate or Vehicle was Stolen',
+      translation: 'The vehicle was stolen at the time',
+      evidenceNeeded: 'Police report number if your vehicle was stolen',
+      shareLabel: 'sometimes',
+    },
+  ],
+  parking_prohibited: [
+    {
+      reason: 'Violation is Factually Inconsistent',
+      translation: 'You weren\'t actually parked illegally',
+      evidenceNeeded: 'Photos showing the exact spot, all nearby signs, and any contradictions (like a parking meter suggesting parking is OK)',
+      shareLabel: 'most common',
+    },
+    {
+      reason: 'Signs were Missing or Obscured',
+      translation: 'The No Parking signs weren\'t visible',
+      evidenceNeeded: 'Go photograph the signage NOW — missing/blocked/confusing signs are the top defense',
+      shareLabel: 'common',
+    },
+  ],
+};
+
+/**
+ * Generate the "What Actually Gets Tickets Dismissed" section HTML
+ */
+function generateDismissalInsightsHtml(violationType: string): string {
+  const insights = DISMISSAL_INSIGHTS[violationType];
+  if (!insights || insights.length === 0) return '';
+
+  const shareColors: Record<string, string> = {
+    'most common': '#059669',
+    'common': '#d97706',
+    'sometimes': '#6b7280',
+  };
+
+  const insightItems = insights.map(insight => `
+    <div style="margin-bottom: 16px; padding: 12px 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-weight: 600; color: #111827; font-size: 14px;">${insight.translation}</span>
+        <span style="font-size: 11px; color: ${shareColors[insight.shareLabel] || '#6b7280'}; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">${insight.shareLabel}</span>
+      </div>
+      <p style="margin: 0 0 8px; color: #4b5563; font-size: 13px; font-style: italic;">
+        Hearing officer reason: "${insight.reason}"
+      </p>
+      <p style="margin: 0; color: #1e40af; font-size: 13px; font-weight: 500;">
+        What you need: ${insight.evidenceNeeded}
+      </p>
+    </div>
+  `).join('');
+
+  return `
+    <div style="background: #f0fdf4; border: 2px solid #22c55e; padding: 20px; border-radius: 8px; margin: 0 0 24px;">
+      <h3 style="margin: 0 0 4px; color: #14532d; font-size: 16px;">What Actually Gets These Tickets Dismissed</h3>
+      <p style="margin: 0 0 16px; color: #166534; font-size: 12px;">Based on 1.18 million real Chicago hearing outcomes (FOIA data, 2019-present)</p>
+      ${insightItems}
+    </div>
+  `;
+}
+
+/**
  * Generate HTML for evidence request email questions
  */
 export function generateEvidenceQuestionsHtml(guidance: EvidenceGuidance): string {
   let html = '';
+
+  // FOIA-driven insights: what actually gets tickets dismissed
+  html += generateDismissalInsightsHtml(guidance.violationType);
 
   // Main questions
   guidance.questions.forEach((q, i) => {
