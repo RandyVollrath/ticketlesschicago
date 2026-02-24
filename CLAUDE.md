@@ -235,6 +235,12 @@ iOS's `CLLocationManager.startMonitoringVisits()` tracks places where the user d
 4. **Always check `lastConfirmedParkingLocation` before emitting a visit-based parking event** — prevents duplicates when the normal pipeline already caught the stop
 5. **Visit history is persisted to UserDefaults**, not just in-memory — must survive app kill + relaunch cycle
 6. **False positive hotspot checks** must be applied to CLVisit-based parking events (and recovery events). `hotspotBlockMinReports = 1` means one user "Not parked" tap permanently blocks that location.
+7. **CLVisit-only parking (when `isMonitoring == false`) bypasses ALL normal guards.** No speed check, no CoreMotion validation, no intersection check, no confidence scoring. It MUST have its own guards to prevent false positives:
+   - **Require departure confirmed** (not arrival-only visits) — arrival-only means iOS hasn't confirmed the user stayed
+   - **Require 3+ minute dwell** — shorter stops are traffic slowdowns, pickups, complex intersections
+   - **Reject visits older than 2 hours** — stale post-Jetsam visits should be handled by `checkForMissedParking` (which validates against CoreMotion history) instead
+   - **GPS speed sanity check** — if current GPS shows movement (speed > 2.5 m/s within last 30s), skip the visit
+8. **The cascading false positive problem**: Once parking is falsely confirmed, `isDriving = false` and `hasConfirmedParkingThisSession = true`. The app cannot detect new parking until departure is detected first. If the false positive location is close to the actual parking spot (<200m), departure detection may never trigger, causing the real parking to be silently missed.
 
 ### `checkForMissedParking` Recovery — Deduplication Required
 
@@ -245,6 +251,22 @@ iOS's `CLLocationManager.startMonitoringVisits()` tracks places where the user d
 **Deduplication logic:** Compare the last trip's `parkTime` with `lastConfirmedParkingLocation.timestamp` (within 1 hour) AND `currentLocation` with `lastConfirmedParkingLocation` (within 300m). If both match, skip recovery entirely.
 
 **Timestamp bug (fixed Feb 2026):** `handleRecoveryGpsFix()` was using `Date()` (current time) for the parking event timestamp instead of the CoreMotion `parkTime`. This caused parking records to show "parked now" instead of "parked 2 hours ago." Fix: store `recoveryParkTime` from the CoreMotion trip and use it in the event body.
+
+## Departure Matching — `findBestLocalHistoryItemId` Rules
+
+`findBestLocalHistoryItemId()` in `BackgroundTaskService.ts` matches a departure event to the correct parking record in local history. It finds the closest parking record (by timestamp) that doesn't already have departure data.
+
+### The Invariant
+**A departure can only be for a parking event that happened BEFORE the departure.** The function MUST only consider parking records with `timestamp <= departureTimestamp`. Never use `Math.abs()` for this — it allows matching a newer parking record, producing the impossible state `departure_confirmed_at < parked_at`.
+
+### How It Broke (Feb 2026)
+The original code used `Math.abs(item.timestamp - referenceTimestamp)` to find the "closest" parking record. When a false positive created two parking records close together in time, the departure from the second parking got matched to the first (which had the closer absolute distance), producing a departure time before the parking time.
+
+### Rules
+1. **Only consider parking records where `item.timestamp <= referenceTimestamp`** — a departure cannot precede its parking event.
+2. **Sort by `referenceTimestamp - item.timestamp` (ascending)** — prefer the most recent parking record that's still before the departure.
+3. **Cap at 24h** — don't match departures to parking events from days ago.
+4. **`pending.localHistoryItemId` takes priority** — it was matched when departure first started and is more reliable than re-matching later.
 
 ## iOS Camera Alerts — Background Reality (Critical)
 

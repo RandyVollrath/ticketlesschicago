@@ -3366,9 +3366,13 @@ class BackgroundTaskServiceClass {
       if (!history || history.length === 0) return undefined;
 
       const DAY_MS = 24 * 60 * 60 * 1000;
+      // Only consider parking records that were created BEFORE or AT the departure
+      // time. A departure can't be for a parking event that hasn't happened yet.
+      // Using Math.abs() previously allowed matching a NEWER parking record,
+      // causing departure_confirmed_at < parked_at (impossible in reality).
       const candidates = history
-        .filter(item => !item.departure)
-        .map(item => ({ id: item.id, diffMs: Math.abs(item.timestamp - referenceTimestamp) }))
+        .filter(item => !item.departure && item.timestamp <= referenceTimestamp)
+        .map(item => ({ id: item.id, diffMs: referenceTimestamp - item.timestamp }))
         .sort((a, b) => a.diffMs - b.diffMs);
 
       if (candidates.length === 0) return undefined;
