@@ -1,11 +1,20 @@
 /**
  * City Sticker Contest Kit (9-64-125(b))
  *
- * Win Rate: ~70% (one of the highest win rates!)
+ * Win Rate: 58% (from 1.18M FOIA records, decided cases)
  * Fine: $200 for vehicles ≤16,000 lbs
  * City sticker (Chicago wheel tax) is separate from IL license plate registration renewal
  * Primary defenses: Sticker was displayed, purchased after ticket, recently purchased vehicle, non-resident, stolen
  * Purchase link: ezbuy.chicityclerk.com/vehicle-stickers ($100-$160 for passenger vehicles)
+ *
+ * LEGAL NOTE: § 9-100-060(a)(7) excludes city stickers from the standard "corrected before
+ * adjudication" defense. A temporary affirmative defense existed through Dec 31, 2023.
+ * After that date, the correction defense is at the hearing officer's discretion, which
+ * explains the 50% win rate for the correction path in FOIA data.
+ *
+ * CRITICAL: 13.6% of all city sticker losses are "Failed to Select Codified Defense" —
+ * people who contested but didn't frame their argument using § 9-100-060 grounds.
+ * Our system auto-selects the correct codified defense, eliminating this failure mode.
  */
 
 import { ContestKit } from './types';
@@ -16,7 +25,7 @@ export const cityStickerKit: ContestKit = {
   description: 'Vehicle without required Chicago city vehicle sticker (wheel tax)',
   category: 'sticker',
   fineAmount: 200,
-  baseWinRate: 0.70, // From FOIA data - 70% win rate!
+  baseWinRate: 0.58, // From 1.18M FOIA records - 58% overall, up to 98% with right defense
 
   eligibility: {
     rules: [

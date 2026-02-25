@@ -46,10 +46,10 @@ export interface EvidenceQuestion {
 export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
   expired_plates: {
     violationType: 'expired_plates',
-    emailSubject: 'Expired Plates Ticket - 75% Win Rate - We Need Your Renewal Info!',
-    title: 'Your Expired Plates Ticket Has Great Odds!',
-    winRate: 0.75,
-    intro: `Great news - expired plates tickets have a 75% success rate when contested with the right evidence! The key is proving you either renewed on time or renewed promptly after. Let's get the evidence that wins.`,
+    emailSubject: 'Expired Plates Ticket - 59% Win Rate - We Need Your Renewal Info!',
+    title: 'Your Expired Plates Ticket Has Good Odds!',
+    winRate: 0.59,
+    intro: `Good news - expired plates tickets have a 59% success rate when contested with the right evidence. The key is proving you either renewed on time or renewed promptly after. Let's get the evidence that wins.`,
     questions: [
       {
         text: 'Did you renew your registration BEFORE or within a few days AFTER the ticket date? Please send a screenshot of your renewal confirmation email or receipt showing the exact renewal date.',
@@ -84,10 +84,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   no_city_sticker: {
     violationType: 'no_city_sticker',
-    emailSubject: 'City Sticker Ticket ($200) - 70% Win Rate - We Need Your Sticker Receipt!',
-    title: 'Your City Sticker Ticket Has Excellent Odds — 70% Win Rate!',
-    winRate: 0.70,
-    intro: `City sticker tickets have a 70% success rate when contested with proof of purchase! The key evidence is your city sticker purchase receipt. If you already have a sticker, just send us the receipt and we'll handle the rest. If you don't have one yet, read on — you may still be able to beat this $200 ticket.`,
+    emailSubject: 'City Sticker Ticket ($200) - 58% Win Rate - Action Required!',
+    title: 'Your City Sticker Ticket — 58% Win Rate With the Right Defense!',
+    winRate: 0.58,
+    intro: `City sticker tickets have a 58% success rate when properly contested. The key: you must select one of the legally codified defenses under Chicago Municipal Code § 9-100-060 — without one, you automatically lose (this accounts for 13.6% of all city sticker losses). We select the right defense for you. If you already have a sticker, send us the receipt. If you don't, read on — buying one now and using the right legal defense can still save you the $200 fine.`,
     questions: [
       {
         text: 'Do you already have a current Chicago city vehicle sticker? If yes, please send us your purchase receipt — a confirmation email, online receipt, or credit card statement showing the purchase date.',
@@ -96,8 +96,8 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
         goodExample: 'Forward the email from the City Clerk showing "Vehicle Sticker Purchase Confirmation" with the date and amount',
       },
       {
-        text: 'If you DON\'T have a city sticker yet — you can purchase one now and use the receipt to contest this $200 ticket. Buy online at https://ezbuy.chicityclerk.com/vehicle-stickers (costs $100-$160 depending on vehicle size). Then forward the confirmation email to us.',
-        whyItMatters: 'The city has historically dismissed sticker tickets when the owner shows proof of a subsequent purchase. Buying a sticker you need anyway and sending us the receipt may save you the $200 fine.',
+        text: 'If you DON\'T have a city sticker yet — BUY ONE NOW at https://ezbuy.chicityclerk.com/vehicle-stickers ($100-$160 depending on vehicle size). Then forward the confirmation email to us IMMEDIATELY. This is time-sensitive — you need the receipt before we mail your contest letter.',
+        whyItMatters: 'Under § 9-100-060, showing you corrected the violation before your hearing is a recognized defense. A temporary affirmative defense for city stickers was in effect through 2023, and hearing officers still frequently dismiss tickets when proof of subsequent purchase is presented — our FOIA data shows this accounts for a significant share of wins. The sticker costs less than the $200 fine, and you need one anyway.',
         impactScore: 0.45,
         goodExample: '"I just purchased my city sticker online — forwarding the confirmation email now"',
       },
@@ -116,17 +116,19 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     ],
     quickTips: [
       'Already have a sticker? Send us the purchase receipt — that\'s the strongest evidence',
-      'Don\'t have one yet? Buy at ezbuy.chicityclerk.com — the receipt may get your $200 ticket dismissed',
-      'City stickers cost $100-$160 for passenger vehicles — much less than the $200 fine',
-      'Forward your purchase confirmation email to us and we\'ll include it with your contest',
+      'Don\'t have one yet? BUY ONE NOW at ezbuy.chicityclerk.com — the receipt is key to contesting your $200 ticket',
+      'City stickers cost $100-$160 for passenger vehicles — much less than the $200 fine, and you need one anyway',
+      'Forward your purchase confirmation email to us and we\'ll include it with your contest letter',
       'If you set up email forwarding with us, we\'ll automatically capture the receipt',
       'Non-Chicago residents don\'t need a sticker — just prove you live outside the city',
+      'We select the correct codified defense for you — 13.6% of people lose simply because they don\'t pick a legal defense',
       'Note: a city sticker (Chicago wheel tax) is different from your IL license plate renewal sticker',
     ],
     pitfalls: [
-      'Don\'t ignore this $200 ticket — the 70% win rate makes contesting very worthwhile',
+      'Don\'t ignore this $200 ticket — the 58% win rate makes contesting worthwhile',
+      'Don\'t write a free-form letter without selecting a codified defense — the hearing officer MUST dismiss if you don\'t pick one',
       'Don\'t confuse the city sticker with your Illinois license plate renewal — they\'re separate',
-      'Don\'t pay the ticket without trying to contest first',
+      'Don\'t pay the ticket without trying to contest first — you have 21 days',
     ],
     weatherRelevant: false,
   },
@@ -224,10 +226,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   fire_hydrant: {
     violationType: 'fire_hydrant',
-    emailSubject: 'Fire Hydrant Ticket - 44% Win Rate - Was the Hydrant Visible?',
+    emailSubject: 'Fire Hydrant Ticket - 46% Win Rate - Was the Hydrant Visible?',
     title: 'Fire Hydrant Ticket - Visibility Matters!',
-    winRate: 0.44,
-    intro: `Fire hydrant tickets have a 44% success rate! The best defenses are: (1) the hydrant was obscured by snow/vegetation, (2) you were actually more than 15 feet away, or (3) there were no curb markings.`,
+    winRate: 0.46,
+    intro: `Fire hydrant tickets have a 46% success rate! The best defenses are: (1) the hydrant was obscured by snow/vegetation, (2) you were actually more than 15 feet away, or (3) there were no curb markings.`,
     questions: [
       {
         text: 'Was the fire hydrant hidden or obscured by snow, bushes, parked cars, or anything else when you parked?',
@@ -312,10 +314,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   residential_permit: {
     violationType: 'residential_permit',
-    emailSubject: 'Residential Permit Ticket - 54% Win Rate - Permit Documentation!',
+    emailSubject: 'Residential Permit Ticket - 53% Win Rate - Permit Documentation!',
     title: 'Residential Permit Ticket - Good Odds!',
-    winRate: 0.54,
-    intro: `Residential permit tickets have a 54% success rate! If you had a valid permit or visitor pass, or if the zone signage was confusing, we have a solid case.`,
+    winRate: 0.53,
+    intro: `Residential permit tickets have a 53% success rate! If you had a valid permit or visitor pass, or if the zone signage was confusing, we have a solid case.`,
     questions: [
       {
         text: 'Do you have a valid residential parking permit for this zone? What is your permit number and what zone is it for?',
@@ -394,10 +396,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   bike_lane: {
     violationType: 'bike_lane',
-    emailSubject: 'Bike Lane Ticket - Were the Markings Visible?',
+    emailSubject: 'Bike Lane Ticket - 50% Win Rate - Were the Markings Visible?',
     title: 'Bike Lane Ticket - Lane Markings Key!',
-    winRate: 0.18,
-    intro: `Bike lane tickets have a lower win rate (18%), but if the lane markings were faded or obscured, you may have a case. $150 fine makes it worth trying.`,
+    winRate: 0.50,
+    intro: `Bike lane tickets have a 50% success rate when contested. If the lane markings were faded or obscured, you have a strong case. The $150 fine makes it very worth contesting.`,
     questions: [
       {
         text: 'Were the bike lane markings (green paint, bike symbols) clearly visible, or were they faded/covered?',
@@ -670,8 +672,8 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     violationType: 'speed_camera',
     emailSubject: 'Speed Camera Ticket - Review Your Options',
     title: 'Speed Camera Ticket - Know Your Defenses',
-    winRate: 0.20,
-    intro: `Speed camera tickets have a lower success rate (about 20%) but there are valid defenses including camera accuracy, speed limit signage issues, and vehicle identification errors.`,
+    winRate: 0.11,
+    intro: `Speed camera tickets are the hardest to contest (about 11% success rate), but there are valid defenses including camera accuracy, speed limit signage issues, and vehicle identification errors. The fine is $35-$100, so weigh the effort.`,
     questions: [
       {
         text: 'Were the speed limit signs clearly visible at this location? Any obstructions or missing signs?',
@@ -813,10 +815,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   bus_lane: {
     violationType: 'bus_lane',
-    emailSubject: 'Bus Lane Ticket - Were You Loading Passengers?',
-    title: 'Bus Lane Ticket - Loading Defense Available!',
-    winRate: 0.22,
-    intro: `Bus lane tickets have a lower success rate (22%), but if you were loading/unloading passengers or the lane markings were unclear, there are valid defenses. The fine makes it worth trying.`,
+    emailSubject: 'Bus Lane Ticket - 57% Win Rate - Were You Loading Passengers?',
+    title: 'Bus Lane Ticket - Good Odds With Loading Defense!',
+    winRate: 0.57,
+    intro: `Bus lane tickets have a 57% success rate when contested. If you were loading/unloading passengers or the lane markings were unclear, these are strong defenses. Definitely worth contesting.`,
     questions: [
       {
         text: 'Were you briefly stopped to load or unload passengers? Describe exactly what happened.',
