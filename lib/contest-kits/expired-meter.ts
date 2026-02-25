@@ -1,7 +1,7 @@
 /**
  * Expired Meter Contest Kit (9-64-170)
  *
- * Win Rate: ~22%
+ * Win Rate: 67% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Meter malfunction, app payment error, meter time not expired
  */
 

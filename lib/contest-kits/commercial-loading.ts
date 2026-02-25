@@ -1,7 +1,7 @@
 /**
  * Commercial Loading Zone Contest Kit (9-64-160)
  *
- * Win Rate: ~59% (from FOIA data - commercial_loading)
+ * Win Rate: 60% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Active loading, permit displayed, signage issues
  */
 
@@ -13,7 +13,7 @@ export const commercialLoadingKit: ContestKit = {
   description: 'Parking in commercial loading zone without permit or commercial activity',
   category: 'parking',
   fineAmount: 100,
-  baseWinRate: 0.59, // From FOIA data
+  baseWinRate: 0.60, // From FOIA data - 60% decided cases
 
   eligibility: {
     rules: [
@@ -29,7 +29,7 @@ export const commercialLoadingKit: ContestKit = {
         description: 'Has a valid defense',
         check: 'wasActivelyLoading OR hadPermit OR hasSignageIssue',
         failureAction: 'warn',
-        failureMessage: 'Commercial loading violations have a decent win rate (59%). Focus on active loading or signage issues.',
+        failureMessage: 'Commercial loading violations have a decent win rate (60%). Focus on active loading or signage issues.',
       },
     ],
     weatherRelevance: false, // Weather not typically relevant

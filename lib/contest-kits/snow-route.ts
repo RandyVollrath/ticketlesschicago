@@ -1,7 +1,7 @@
 /**
  * Snow Route Parking Contest Kit (9-64-100)
  *
- * Win Rate: ~30%
+ * Win Rate: 38% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: No snow emergency declared, weather threshold not met, signage issues
  * Key: Weather data is CRITICAL for this violation type
  */
@@ -14,7 +14,7 @@ export const snowRouteKit: ContestKit = {
   description: 'Parking on designated snow route during snow emergency',
   category: 'parking',
   fineAmount: 60,
-  baseWinRate: 0.30,
+  baseWinRate: 0.38, // From FOIA data - 38% decided cases
 
   eligibility: {
     rules: [

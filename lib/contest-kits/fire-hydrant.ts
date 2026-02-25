@@ -1,7 +1,7 @@
 /**
  * Fire Hydrant Contest Kit (9-64-130)
  *
- * Win Rate: ~44% (from FOIA data)
+ * Win Rate: 46% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Hydrant not visible, distance measurement error, no curb markings
  */
 
@@ -13,7 +13,7 @@ export const fireHydrantKit: ContestKit = {
   description: 'Parking within 15 feet of fire hydrant',
   category: 'parking',
   fineAmount: 150,
-  baseWinRate: 0.44,
+  baseWinRate: 0.46, // From FOIA data - 46% decided cases
 
   eligibility: {
     rules: [
@@ -243,7 +243,7 @@ I respectfully request that this citation be dismissed.`,
   },
 
   tips: [
-    'Fire hydrant tickets have a solid 44% win rate - worth contesting!',
+    'Fire hydrant tickets have a solid 46% win rate - worth contesting!',
     'Snow covering hydrants is a GREAT defense in winter - photograph before it melts',
     'Overgrown bushes and vegetation are common and valid defenses',
     'Measure the actual distance - officers often estimate incorrectly',

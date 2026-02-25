@@ -1,7 +1,7 @@
 /**
  * Parking in Alley Contest Kit (9-64-020)
  *
- * Win Rate: ~25% (low - alleys clearly restricted)
+ * Win Rate: 71% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Active loading/unloading, not a public alley, vehicle disabled
  */
 
@@ -13,7 +13,7 @@ export const parkingAlleyKit: ContestKit = {
   description: 'Parking in public alley prohibited except for loading/unloading',
   category: 'parking',
   fineAmount: 50,
-  baseWinRate: 0.25,
+  baseWinRate: 0.71, // From FOIA data - 71% decided cases
 
   eligibility: {
     rules: [
@@ -29,7 +29,7 @@ export const parkingAlleyKit: ContestKit = {
         description: 'Has a valid defense',
         check: 'wasActivelyLoading OR notPublicAlley OR vehicleDisabled',
         failureAction: 'warn',
-        failureMessage: 'Alley parking is generally prohibited. Focus on active loading/unloading or emergency circumstances.',
+        failureMessage: 'Alley parking tickets have a 71% win rate. Focus on active loading/unloading or emergency circumstances.',
       },
     ],
     weatherRelevance: 'emergency', // Weather emergency could justify temporary alley parking

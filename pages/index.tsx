@@ -124,19 +124,19 @@ export default function LandingPage() {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  // Based on 1.18M contested tickets from Chicago FOIA data (decided cases only)
+  // Based on 1.18M contested tickets from Chicago FOIA data (decided cases, all contest methods)
   const dismissalRates = [
+    { label: 'Expired Plates', pct: 76 },
+    { label: 'No City Sticker', pct: 72 },
+    { label: 'Handicapped Zone', pct: 69 },
     { label: 'Expired Meter', pct: 67 },
-    { label: 'No Parking Anytime', pct: 61 },
-    { label: 'Expired Plates', pct: 59 },
-    { label: 'No City Sticker', pct: 58 },
-    { label: 'Bus Lane', pct: 57 },
-    { label: 'Residential Permit Parking', pct: 53 },
+    { label: 'No Standing / Tow Zone', pct: 59 },
+    { label: 'No Parking Anytime', pct: 57 },
+    { label: 'Residential Permit Parking', pct: 54 },
     { label: 'Bike Lane', pct: 50 },
     { label: 'Fire Hydrant', pct: 46 },
     { label: 'Rush Hour Parking', pct: 38 },
     { label: 'Street Cleaning', pct: 34 },
-    { label: 'Speed Camera', pct: 11 },
   ];
 
   const faqs = [
@@ -150,7 +150,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "Based on 1.18M contested tickets from Chicago FOIA data: expired meters have a 67% dismissal rate, expired plates 59%, city sticker 58%, residential permit 53%. Camera tickets are harder at 11-25%. These are real rates from actual hearings — not estimates."
+      a: "Based on 1.18M contested tickets from Chicago FOIA data (decided cases): expired plates have a 76% dismissal rate, city sticker 72%, handicapped zone 69%, expired meter 67%, residential permit 54%. Camera tickets are harder at 17-21%. These are real rates from actual hearings — not estimates."
     },
     {
       q: "Can I review letters before they're sent?",
@@ -399,7 +399,7 @@ export default function LandingPage() {
           letterSpacing: '-0.5px',
         }}>
           <div>94% of tickets go uncontested.</div>
-          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 54% of contested tickets win.</div>
+          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 55% of contested tickets win.</div>
         </div>
         <p style={{
           margin: '24px 0 0',

@@ -1,7 +1,7 @@
 /**
  * Double Parking Contest Kit (9-64-110)
  *
- * Win Rate: ~25% (low - double parking is strictly enforced)
+ * Win Rate: 72% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Active loading, emergency, vehicle disabled
  */
 
@@ -13,7 +13,7 @@ export const doubleParkingKit: ContestKit = {
   description: 'Parking alongside another parked vehicle (double parking)',
   category: 'parking',
   fineAmount: 100,
-  baseWinRate: 0.25,
+  baseWinRate: 0.72, // From FOIA data - 72% decided cases
 
   eligibility: {
     rules: [
@@ -29,7 +29,7 @@ export const doubleParkingKit: ContestKit = {
         description: 'Has a valid defense',
         check: 'wasActivelyLoading OR hadEmergency OR vehicleDisabled',
         failureAction: 'warn',
-        failureMessage: 'Double parking is strictly enforced. Focus on active loading or emergency circumstances.',
+        failureMessage: 'Double parking tickets have a 72% win rate. Focus on active loading or emergency circumstances.',
       },
     ],
     weatherRelevance: 'emergency', // Weather emergency could justify temporary stop

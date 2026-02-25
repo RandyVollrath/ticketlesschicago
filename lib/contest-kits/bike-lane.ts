@@ -1,7 +1,7 @@
 /**
  * Bike Lane Parking Contest Kit (9-64-090)
  *
- * Win Rate: ~18% (low - bike lanes strictly enforced)
+ * Win Rate: 50% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: No markings visible, vehicle disabled, emergency
  */
 
@@ -13,7 +13,7 @@ export const bikeLaneKit: ContestKit = {
   description: 'Parking in designated bicycle lane',
   category: 'parking',
   fineAmount: 150,
-  baseWinRate: 0.18,
+  baseWinRate: 0.50, // From FOIA data - 50% decided cases
 
   eligibility: {
     rules: [
@@ -29,7 +29,7 @@ export const bikeLaneKit: ContestKit = {
         description: 'Has a valid defense',
         check: 'noMarkingsVisible OR vehicleDisabled OR emergencySituation',
         failureAction: 'warn',
-        failureMessage: 'Bike lane violations have a low win rate (~18%). Focus on missing/faded markings or emergency circumstances.',
+        failureMessage: 'Bike lane violations have a 50% win rate. Focus on missing/faded markings or emergency circumstances.',
       },
     ],
     weatherRelevance: 'supporting', // Weather can obscure lane markings
@@ -258,7 +258,7 @@ I respectfully request that this citation be dismissed.`,
   },
 
   tips: [
-    'Bike lane tickets have a low win rate (~18%) - be realistic about your chances',
+    'Bike lane tickets have a 50% win rate - worth contesting!',
     'Best defense is faded or missing pavement markings - photograph immediately',
     'Snow or leaves covering markings is a legitimate defense',
     'Vehicle breakdown is one of the stronger defenses',

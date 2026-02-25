@@ -1,7 +1,7 @@
 /**
  * Street Cleaning Contest Kit (9-64-010)
  *
- * Win Rate: ~35% (one of the higher win rates for parking violations)
+ * Win Rate: 34% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Signage issues, weather conditions, street cleaning didn't occur
  */
 
@@ -303,7 +303,7 @@ I understand the importance of street cleaning compliance, but the circumstances
   },
 
   tips: [
-    'Street cleaning tickets have one of the higher contestation success rates (~35%)',
+    'Street cleaning tickets have a 34% win rate from FOIA data',
     'Signage issues are the #1 successful defense - always photograph signs (or lack thereof)',
     'Weather defense works well in Chicago winters - we automatically check weather data',
     'Take photos at the same time of day you received the ticket for consistent lighting',

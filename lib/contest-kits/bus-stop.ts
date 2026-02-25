@@ -1,7 +1,7 @@
 /**
  * Bus Stop Parking Contest Kit (9-64-050)
  *
- * Win Rate: ~20% (lower - bus stops are strictly enforced)
+ * Win Rate: 59% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: No signage, faded markings, vehicle disabled
  */
 
@@ -13,7 +13,7 @@ export const busStopKit: ContestKit = {
   description: 'Parking in designated bus stop or stand',
   category: 'parking',
   fineAmount: 100,
-  baseWinRate: 0.20,
+  baseWinRate: 0.59, // From FOIA data - 59% decided cases
 
   eligibility: {
     rules: [
@@ -260,7 +260,7 @@ I respectfully request that this citation be dismissed.`,
   },
 
   tips: [
-    'Bus stop tickets have a lower win rate (~20%) - focus on signage issues',
+    'Bus stop tickets have a solid 59% win rate - definitely contest!',
     'No sign AND no curb markings? That\'s your best defense',
     'Check CTA website to see if that stop is actually active',
     'Weather obscuring markings is a valid defense - document it',

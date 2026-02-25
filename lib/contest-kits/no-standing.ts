@@ -1,7 +1,7 @@
 /**
  * No Standing/Time Restricted Parking Contest Kit (9-64-140)
  *
- * Win Rate: ~58% (from FOIA data - no_standing_time_restricted)
+ * Win Rate: 59% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Signage issues, time discrepancy, active loading
  */
 
@@ -13,7 +13,7 @@ export const noStandingKit: ContestKit = {
   description: 'Parking or standing where prohibited or beyond time limit',
   category: 'parking',
   fineAmount: 100,
-  baseWinRate: 0.58, // From FOIA data
+  baseWinRate: 0.59, // From FOIA data - 59% decided cases
 
   eligibility: {
     rules: [
@@ -29,7 +29,7 @@ export const noStandingKit: ContestKit = {
         description: 'Has a valid defense',
         check: 'hasSignageIssue OR hasTimeDispute OR wasActivelyLoading',
         failureAction: 'warn',
-        failureMessage: 'No standing violations have a decent win rate (58%). Focus on signage or timing issues.',
+        failureMessage: 'No standing violations have a decent win rate (59%). Focus on signage or timing issues.',
       },
     ],
     weatherRelevance: 'supporting', // Weather can obscure signs
@@ -253,7 +253,7 @@ I respectfully request that this citation be dismissed.`,
   },
 
   tips: [
-    'No standing/time restricted violations have a solid 58% win rate',
+    'No standing/time restricted violations have a solid 59% win rate',
     'Know the difference: "No Parking" allows standing, "No Standing" is stricter',
     'Time limit signs must be clear - document any confusion',
     'Active loading/unloading is usually permitted even in "No Standing" zones',

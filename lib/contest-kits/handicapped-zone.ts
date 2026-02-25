@@ -1,7 +1,7 @@
 /**
  * Handicapped Zone Parking Contest Kit (9-64-180)
  *
- * Win Rate: ~68% (from FOIA data - disabled_zone)
+ * Win Rate: 69% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Valid placard displayed, no signage, emergency
  * Note: High fine ($350) - worth contesting
  */
@@ -14,7 +14,7 @@ export const handicappedZoneKit: ContestKit = {
   description: 'Parking in handicapped space without proper placard',
   category: 'parking',
   fineAmount: 350,
-  baseWinRate: 0.68, // From FOIA data - disabled_zone 68%
+  baseWinRate: 0.69, // From FOIA data - 69% decided cases
 
   eligibility: {
     rules: [
@@ -269,7 +269,7 @@ I respectfully request that this citation be dismissed.`,
   },
 
   tips: [
-    'Handicapped violations have a HIGH win rate (68%) - definitely contest!',
+    'Handicapped violations have a HIGH win rate (69%) - definitely contest!',
     '$350 fine is steep - worth the effort to contest',
     'If you had a valid placard that was displayed, you have an excellent case',
     'Print your Secretary of State placard registration as proof',

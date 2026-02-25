@@ -1,7 +1,7 @@
 /**
  * Missing/Noncompliant Plate Contest Kit (9-80-040)
  *
- * Win Rate: ~54% (from FOIA data - missing_plate)
+ * Win Rate: 55% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Plate was visible, temporary obstruction, recently repaired
  */
 
@@ -13,7 +13,7 @@ export const missingPlateKit: ContestKit = {
   description: 'License plate obscured, missing, or not clearly visible',
   category: 'equipment',
   fineAmount: 75,
-  baseWinRate: 0.54, // From FOIA data
+  baseWinRate: 0.55, // From FOIA data - 55% decided cases
 
   eligibility: {
     rules: [
@@ -29,7 +29,7 @@ export const missingPlateKit: ContestKit = {
         description: 'Has a valid defense',
         check: 'plateWasVisible OR temporaryObstruction OR hasBeenFixed',
         failureAction: 'warn',
-        failureMessage: 'Plate violations have a decent win rate (54%). Focus on proving the plate was visible or is now fixed.',
+        failureMessage: 'Plate violations have a decent win rate (55%). Focus on proving the plate was visible or is now fixed.',
       },
     ],
     weatherRelevance: 'supporting', // Weather can obscure plates (snow, mud)
@@ -240,7 +240,7 @@ I have corrected the issue and ask that this citation be dismissed or reduced in
   },
 
   tips: [
-    'Plate violations have a solid 54% win rate - worth contesting',
+    'Plate violations have a solid 55% win rate - worth contesting',
     'Take clear photos of your plate NOW to prove it\'s visible',
     'Snow and mud are valid temporary obstructions - document the weather',
     'Dealer-installed frames? Show it wasn\'t intentional',
