@@ -503,6 +503,69 @@ export default function LandingPage() {
         </Link>
       </section>
 
+      {/* Ticket History Banner */}
+      <section style={{
+        padding: '0 5%',
+        maxWidth: '1200px',
+        margin: '0 auto 20px',
+      }}>
+        <Link href="/ticket-history" style={{ textDecoration: 'none' }}>
+          <div style={{
+            backgroundColor: '#fff',
+            padding: '28px 32px',
+            borderRadius: '16px',
+            border: '1px solid #BAE6FD',
+            background: 'linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '20px',
+            cursor: 'pointer',
+            transition: 'box-shadow 0.2s, transform 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = '0 8px 25px -5px rgba(37, 99, 235, 0.15)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontFamily: FONTS.heading, fontSize: '18px', fontWeight: 600, color: COLORS.primary, marginBottom: '4px' }}>
+                  How Many Tickets Have You Gotten?
+                </div>
+                <div style={{ fontSize: '14px', color: COLORS.textMuted, lineHeight: 1.5 }}>
+                  We'll FOIA the City of Chicago for your complete ticket history — every citation, fine, and outcome. Free, takes 5 days.
+                </div>
+              </div>
+            </div>
+            <div style={{ color: COLORS.textMuted, flexShrink: 0 }}>
+              <ArrowRight />
+            </div>
+          </div>
+        </Link>
+      </section>
+
       {/* Data Section */}
       <section style={{
         margin: '40px 5%',
