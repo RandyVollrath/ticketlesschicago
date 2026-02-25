@@ -1,7 +1,7 @@
 /**
  * Expired Plates/Registration Contest Kit (9-76-160 / 9-80-190)
  *
- * Win Rate: ~75% (from FOIA data - expired_plates)
+ * Win Rate: 76% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Registration was valid, recently renewed, non-resident
  */
 
@@ -13,7 +13,7 @@ export const expiredPlatesKit: ContestKit = {
   description: 'Operating vehicle with expired registration or plates',
   category: 'equipment',
   fineAmount: 100,
-  baseWinRate: 0.75, // From FOIA data - 75%!
+  baseWinRate: 0.76, // From FOIA data - 76% decided cases
 
   eligibility: {
     rules: [
@@ -29,7 +29,7 @@ export const expiredPlatesKit: ContestKit = {
         description: 'Has a valid defense',
         check: 'registrationWasValid OR recentlyRenewed OR isNonResident',
         failureAction: 'warn',
-        failureMessage: 'Expired plates tickets have a high win rate (75%). If you renewed before or shortly after, definitely contest.',
+        failureMessage: 'Expired plates tickets have a high win rate (76%). If you renewed before or shortly after, definitely contest.',
       },
     ],
     weatherRelevance: false, // Weather not relevant
@@ -261,7 +261,7 @@ I respectfully request that this citation be dismissed.`,
   },
 
   tips: [
-    'Expired plates tickets have a HIGH win rate (75%) - definitely contest!',
+    'Expired plates tickets have a HIGH win rate (76%) - definitely contest!',
     'If your registration was valid, print proof from Secretary of State website',
     'Renewed recently? Show the renewal receipt - even if after the ticket',
     'Sticker in the mail? You have a grace period - show renewal date',

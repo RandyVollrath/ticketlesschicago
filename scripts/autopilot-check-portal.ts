@@ -1004,7 +1004,7 @@ async function sendEvidenceRequestEmail(
         </p>
         <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
           <strong>We handle this for you.</strong> We select the correct legal defense and pair it with your evidence.
-          With the right defense + a purchase receipt, your odds improve significantly over the 58% average.
+          With the right defense + a purchase receipt, your odds improve significantly over the 72% average.
         </p>
       </div>
       ` : ''}

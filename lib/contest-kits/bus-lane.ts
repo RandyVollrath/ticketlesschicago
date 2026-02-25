@@ -1,7 +1,7 @@
 /**
  * Bus Lane Violation Contest Kit (9-12-060)
  *
- * Win Rate: ~25% (estimated - program launched Nov 2024, limited FOIA data)
+ * Win Rate: 56% (from 1.18M FOIA records, decided cases, all contest methods)
  * Fine: $90 (doubles to $180 if not paid/contested within 25 days)
  *
  * Enforcement: Automated camera (Hayden AI "Smart Streets" program)
@@ -26,7 +26,7 @@ export const busLaneKit: ContestKit = {
   description: 'Standing, parking, or driving in a designated bus-only lane',
   category: 'camera',
   fineAmount: 90,
-  baseWinRate: 0.25, // Estimated - similar to bus stop (20%) and bike lane (18%), slightly higher due to new program errors
+  baseWinRate: 0.56, // From FOIA data - 56% decided cases
 
   eligibility: {
     rules: [
@@ -42,7 +42,7 @@ export const busLaneKit: ContestKit = {
         description: 'Has a valid defense',
         check: 'wasLoadingPassengers OR noSignage OR fadedMarkings OR outsideRestrictedHours OR cameraError OR vehicleDisabled',
         failureAction: 'warn',
-        failureMessage: 'Bus lane violations have a lower win rate (~25%). Focus on loading/unloading passengers, missing signage, or camera system errors.',
+        failureMessage: 'Bus lane violations have a 56% win rate. Focus on loading/unloading passengers, missing signage, or camera system errors.',
       },
     ],
     weatherRelevance: 'supporting', // Weather can obscure red pavement markings and signage

@@ -1,7 +1,7 @@
 /**
  * Residential Permit Parking Contest Kit (9-64-070)
  *
- * Win Rate: ~40% (good contestation rate)
+ * Win Rate: 54% (from 1.18M FOIA records, decided cases, all contest methods)
  * Primary defenses: Permit was displayed, signage issues, zone boundary confusion
  */
 

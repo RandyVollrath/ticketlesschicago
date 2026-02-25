@@ -1,7 +1,7 @@
 /**
  * City Sticker Contest Kit (9-64-125(b))
  *
- * Win Rate: 58% (from 1.18M FOIA records, decided cases)
+ * Win Rate: 72% (from 1.18M FOIA records, decided cases, all contest methods)
  * Fine: $200 for vehicles ≤16,000 lbs
  * City sticker (Chicago wheel tax) is separate from IL license plate registration renewal
  * Primary defenses: Sticker was displayed, purchased after ticket, recently purchased vehicle, non-resident, stolen
@@ -25,7 +25,7 @@ export const cityStickerKit: ContestKit = {
   description: 'Vehicle without required Chicago city vehicle sticker (wheel tax)',
   category: 'sticker',
   fineAmount: 200,
-  baseWinRate: 0.58, // From 1.18M FOIA records - 58% overall, up to 98% with right defense
+  baseWinRate: 0.72, // From 1.18M FOIA records - 72% decided cases, all contest methods
 
   eligibility: {
     rules: [
@@ -315,7 +315,7 @@ The city sticker requirement applies to Chicago residents, not visitors. I respe
   },
 
   tips: [
-    'City sticker violations have a 70% win rate — one of the highest of all ticket types',
+    'City sticker violations have a 72% win rate — one of the highest of all ticket types',
     'The #1 evidence is your purchase receipt — send it to us whether you bought before or after the ticket',
     'Already have a sticker? Just send the receipt and you\'re likely to win',
     'Don\'t have one yet? Buy at ezbuy.chicityclerk.com — the receipt may still get the $200 ticket dismissed',
@@ -327,7 +327,7 @@ The city sticker requirement applies to Chicago residents, not visitors. I respe
   ],
 
   pitfalls: [
-    'Don\'t pay the $200 ticket without contesting — the win rate is 70%',
+    'Don\'t pay the $200 ticket without contesting — the win rate is 72%',
     'Don\'t confuse the city sticker with your Illinois license plate renewal — they\'re different',
     'Don\'t claim non-residency if your vehicle is registered to a Chicago address',
     'Don\'t say the sticker "must have fallen off" without evidence — sounds like an excuse',

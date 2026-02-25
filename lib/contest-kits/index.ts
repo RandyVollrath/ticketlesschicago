@@ -3,23 +3,30 @@
  *
  * Central export point for all contest kits and the policy engine.
  *
- * Win rates from FOIA data (2023-2024):
- * - Expired Plates: 75%
- * - City Sticker: 70%
- * - Handicapped Zone: 68%
- * - Expired Meter: 67%
- * - Commercial Loading: 59%
- * - No Standing/Time Restricted: 58%
+ * Win rates from FOIA data (1.18M records, decided cases, all contest methods):
+ * - Expired Plates: 76%
+ * - Double Parking: 72%
+ * - City Sticker: 72%
+ * - Parking in Alley: 71%
+ * - Handicapped Zone: 69%
+ * - Expired Meter (CBD): 68%
+ * - Expired Meter (non-CBD): 67%
+ * - Commercial Loading: 60%
+ * - Bus/Taxi Stand: 59%
+ * - No Standing/Time Restricted: 59%
+ * - No Parking Anytime: 57%
+ * - Bus Lane: 56%
+ * - Missing Plate: 55%
  * - Residential Permit: 54%
- * - Missing Plate: 54%
- * - Fire Hydrant: 44%
+ * - Bike Lane: 50%
+ * - Fire Hydrant: 46%
+ * - Rush Hour: 38%
+ * - Snow Route: 38%
  * - Street Cleaning: 34%
- * - Snow Route: 30%
- * - Double Parking: 25%
- * - Parking in Alley: 25%
- * - Bus Stop: 20%
- * - Bike Lane: 18%
- * - Bus Lane: 25% (estimated - new Smart Streets program)
+ * - Red Light Camera: 21%
+ * - Speed Camera (11+ over): 20%
+ * - Speed Camera (6-10 over): 17%
+ * - Overall: 55%
  */
 
 // Type exports
