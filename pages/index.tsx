@@ -124,19 +124,19 @@ export default function LandingPage() {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  // Based on 1.2M contested tickets from Chicago FOIA data
+  // Based on 1.18M contested tickets from Chicago FOIA data (decided cases only)
   const dismissalRates = [
-    { label: 'Expired Plates', pct: 75 },
-    { label: 'No City Sticker', pct: 70 },
-    { label: 'Disabled Zone', pct: 68 },
     { label: 'Expired Meter', pct: 67 },
-    { label: 'Commercial Loading Zone', pct: 59 },
-    { label: 'No Standing/Time Restricted', pct: 58 },
-    { label: 'Residential Permit Parking', pct: 54 },
-    { label: 'Fire Hydrant', pct: 44 },
+    { label: 'No Parking Anytime', pct: 61 },
+    { label: 'Expired Plates', pct: 59 },
+    { label: 'No City Sticker', pct: 58 },
+    { label: 'Bus Lane', pct: 57 },
+    { label: 'Residential Permit Parking', pct: 53 },
+    { label: 'Bike Lane', pct: 50 },
+    { label: 'Fire Hydrant', pct: 46 },
+    { label: 'Rush Hour Parking', pct: 38 },
     { label: 'Street Cleaning', pct: 34 },
-    { label: 'Red Light Camera', pct: 20 },
-    { label: 'Speed Camera', pct: 18 },
+    { label: 'Speed Camera', pct: 11 },
   ];
 
   const faqs = [
@@ -150,7 +150,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "Based on 1.2M contested tickets: expired plates have 75% dismissal, no city sticker 70%, expired meters 67%. Camera tickets are lower at 18-20%."
+      a: "Based on 1.18M contested tickets from Chicago FOIA data: expired meters have a 67% dismissal rate, expired plates 59%, city sticker 58%, residential permit 53%. Camera tickets are harder at 11-25%. These are real rates from actual hearings — not estimates."
     },
     {
       q: "Can I review letters before they're sent?",

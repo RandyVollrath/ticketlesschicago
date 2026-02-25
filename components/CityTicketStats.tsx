@@ -130,8 +130,8 @@ export default function CityTicketStats({ compact = false }: { compact?: boolean
         />
         <StatBox
           label="Contest Win Rate"
-          value="75%"
-          subtext="from FOIA records"
+          value="58%"
+          subtext="from 1.18M FOIA records"
           color={COLORS.signal}
         />
       </div>
