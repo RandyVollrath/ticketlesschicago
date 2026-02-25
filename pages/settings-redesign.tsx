@@ -191,7 +191,7 @@ export default function SettingsPage() {
   const [allowedTicketTypes, setAllowedTicketTypes] = useState<string[]>([
     'expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone',
     'no_standing_time_restricted', 'parking_prohibited', 'residential_permit',
-    'missing_plate', 'commercial_loading'
+    'missing_plate', 'commercial_loading', 'fire_hydrant', 'street_cleaning', 'bus_lane'
   ]);
   const [emailOnTicketFound, setEmailOnTicketFound] = useState(true);
   const [emailOnLetterMailed, setEmailOnLetterMailed] = useState(true);

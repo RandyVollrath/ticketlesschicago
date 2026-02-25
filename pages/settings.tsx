@@ -792,10 +792,13 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
       disabled={disabled}
       style={{
         width: 48,
+        minWidth: 48,
+        flexShrink: 0,
         height: 26,
         borderRadius: 26,
         backgroundColor: checked ? COLORS.accent : '#CBD5E1',
         border: 'none',
+        padding: 0,
         cursor: disabled ? 'not-allowed' : 'pointer',
         position: 'relative',
         transition: 'background-color 0.2s',
@@ -927,13 +930,13 @@ function SettingsPageInner() {
   const [licensePlateExpiry, setLicensePlateExpiry] = useState('');
   const [emissionsDate, setEmissionsDate] = useState('');
 
-  // Autopilot Settings
-  const [autoMailEnabled, setAutoMailEnabled] = useState(false);
-  const [requireApproval, setRequireApproval] = useState(true);
+  // Autopilot Settings — default: auto-contest everything except cameras
+  const [autoMailEnabled, setAutoMailEnabled] = useState(true);
+  const [requireApproval, setRequireApproval] = useState(false);
   const [allowedTicketTypes, setAllowedTicketTypes] = useState<string[]>([
     'expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone',
     'no_standing_time_restricted', 'parking_prohibited', 'residential_permit',
-    'missing_plate', 'commercial_loading'
+    'missing_plate', 'commercial_loading', 'fire_hydrant', 'street_cleaning', 'bus_lane'
   ]);
   const [emailOnTicketFound, setEmailOnTicketFound] = useState(true);
   const [emailOnLetterMailed, setEmailOnLetterMailed] = useState(true);
@@ -3165,6 +3168,28 @@ function SettingsPageInner() {
         </Card>
           </>
         )}
+
+        {/* Sign Out */}
+        <div style={{ textAlign: 'center', marginTop: 32, marginBottom: 40 }}>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push('/');
+            }}
+            style={{
+              padding: '12px 32px',
+              backgroundColor: 'transparent',
+              color: COLORS.danger || '#DC2626',
+              border: `1px solid ${COLORS.danger || '#DC2626'}`,
+              borderRadius: 8,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
       </main>
 
       {/* Checkout Success Modal */}
