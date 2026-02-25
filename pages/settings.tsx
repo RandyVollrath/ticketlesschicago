@@ -1497,7 +1497,7 @@ function SettingsPageInner() {
         )}
 
         {/* Guided Setup Wizard — shows for users with incomplete profiles */}
-        {user && !guidedSetupDismissed && (!lastName.trim() || !plateNumber.trim() || !mailingAddress1.trim()) && !showCheckoutSuccess && (
+        {userId && !guidedSetupDismissed && (!lastName.trim() || !plateNumber.trim() || !mailingAddress1.trim()) && !showCheckoutSuccess && (
           <div style={{
             backgroundColor: '#fff',
             borderRadius: 12,
