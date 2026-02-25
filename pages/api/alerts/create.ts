@@ -31,6 +31,7 @@ const alertSignupSchema = z.object({
   token: z.string().max(100).optional().nullable(),
   smsConsent: z.boolean().optional(),
   marketingConsent: z.boolean().optional(),
+  foiaConsent: z.boolean().optional(),
   authenticatedUserId: z.string().uuid().optional().nullable(),
 });
 
@@ -103,6 +104,7 @@ export default async function handler(
     token,
     smsConsent,
     marketingConsent,
+    foiaConsent,
     authenticatedUserId
   } = parseResult.data;
 
@@ -350,6 +352,61 @@ export default async function handler(
     } catch (winterError) {
       // Don't fail signup if winter ban notification fails
       console.error('Winter ban notification failed (non-critical):', winterError);
+    }
+
+    // Auto-queue FOIA ticket history request if user consented
+    if (foiaConsent && licensePlate) {
+      try {
+        const fullName = [firstName, lastName].filter(Boolean).join(' ') || email;
+        const cleanPlate = licensePlate.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
+
+        // Check for duplicate recent requests (same plate + email in last 30 days)
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: existingFoia } = await supabase
+          .from('foia_history_requests')
+          .select('id')
+          .eq('license_plate', cleanPlate)
+          .eq('email', email)
+          .gte('created_at', thirtyDaysAgo)
+          .limit(1);
+
+        if (!existingFoia || existingFoia.length === 0) {
+          const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+            || req.socket.remoteAddress
+            || 'unknown';
+
+          await supabase
+            .from('foia_history_requests')
+            .insert({
+              user_id: userId,
+              email: email,
+              name: fullName,
+              license_plate: cleanPlate,
+              license_state: 'IL',
+              consent_given: true,
+              consent_given_at: new Date().toISOString(),
+              consent_ip: ip,
+              status: 'queued',
+              source: 'signup_auto',
+            });
+
+          // Update profile with FOIA consent
+          await supabase
+            .from('user_profiles')
+            .update({
+              foia_history_consent: true,
+              foia_history_consent_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId);
+
+          console.log('📋 Auto-queued FOIA ticket history request for plate:', cleanPlate);
+        } else {
+          console.log('ℹ️ FOIA history request already exists for plate:', cleanPlate);
+        }
+      } catch (foiaErr) {
+        // Non-critical — don't fail signup if FOIA queue fails
+        console.error('⚠️ Failed to auto-queue FOIA history request (non-critical):', foiaErr);
+      }
     }
 
     // SIMPLIFIED: If OAuth flow, we're done - no email needed

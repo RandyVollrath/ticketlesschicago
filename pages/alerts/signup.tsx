@@ -52,7 +52,8 @@ export default function AlertsSignup() {
     zip: '',
     city: 'chicago',
     smsConsent: true,
-    marketingConsent: true
+    marketingConsent: true,
+    foiaConsent: true,
   });
 
   // Track page view on mount
@@ -723,6 +724,29 @@ export default function AlertsSignup() {
                 />
                 <label htmlFor="marketingConsent" style={{ fontSize: '14px', color: COLORS.graphite, lineHeight: '1.5', cursor: 'pointer' }}>
                   I'd like to get updates or offers from Autopilot America about new ticket-prevention services.
+                </label>
+              </div>
+
+              {/* FOIA Ticket History Consent */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                padding: '16px',
+                backgroundColor: '#F0F9FF',
+                borderRadius: '8px',
+                border: '1px solid #BAE6FD'
+              }}>
+                <input
+                  type="checkbox"
+                  name="foiaConsent"
+                  id="foiaConsent"
+                  checked={formData.foiaConsent}
+                  onChange={handleInputChange}
+                  style={{ marginTop: '2px', width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                />
+                <label htmlFor="foiaConsent" style={{ fontSize: '14px', color: COLORS.graphite, lineHeight: '1.5', cursor: 'pointer' }}>
+                  <strong>Get my ticket history (free).</strong> I authorize Autopilot America to submit a Freedom of Information Act (FOIA) request to the City of Chicago on my behalf to retrieve all parking and traffic citations for my license plate.
                 </label>
               </div>
 

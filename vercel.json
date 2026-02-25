@@ -101,6 +101,9 @@
     },
     "pages/api/cron/sync-metered-parking.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/send-foia-history-requests.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -199,6 +202,10 @@
     {
       "path": "/api/cron/sync-metered-parking",
       "schedule": "10 2 * * 0"
+    },
+    {
+      "path": "/api/cron/send-foia-history-requests",
+      "schedule": "0 15 * * *"
     }
   ],
   "headers": [

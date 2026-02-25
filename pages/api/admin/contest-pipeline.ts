@@ -106,13 +106,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id, ticket_id, status, defense_type, letter_content, letter_text,
           evidence_integrated, evidence_integrated_at,
           mailed_at, lob_status, lob_expected_delivery, lob_letter_id,
-          using_default_address, created_at
+          using_default_address, created_at,
+          street_view_exhibit_urls, street_view_date, street_view_address
         `)
         .in('ticket_id', ticketIds),
       userIds.length > 0
         ? supabase
             .from('user_profiles')
-            .select('user_id, email, first_name, last_name, full_name')
+            .select('user_id, email, first_name, last_name')
             .in('user_id', userIds)
         : Promise.resolve({ data: [] }),
       supabase
@@ -146,11 +147,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const letter = letterMap[ticket.id];
       const user = userMap[ticket.user_id];
       const audit = auditMap[ticket.id];
-      const violationType = ticket.violation_type || normalizeViolationType(ticket.violation_description);
+      let violationType = ticket.violation_type || normalizeViolationType(ticket.violation_description);
 
-      // Parse evidence from audit log
+      // If still unknown, try to infer from defense_type
+      if (violationType === 'other_unknown' && letter?.defense_type) {
+        violationType = inferViolationFromDefense(letter.defense_type) || violationType;
+      }
+
+      // Parse evidence from audit log + letter-level evidence fields
       const evidenceDetails = audit?.details || {};
-      const evidenceSources = buildEvidenceSources(evidenceDetails);
+      const evidenceSources = buildEvidenceSources(evidenceDetails, letter);
 
       // Compute stage
       const stageInfo = computeStage(ticket, letter);
@@ -158,6 +164,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Compute evidence count
       const evidenceCount = evidenceSources.filter(e => e.found).length;
       const totalPossible = evidenceSources.length;
+
+      // Extract user name: profile > letter content > fallback
+      let userName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : null;
+      let userEmail = user?.email || null;
+      if (!userName && letter?.letter_content) {
+        userName = extractNameFromLetter(letter.letter_content);
+      }
 
       return {
         id: ticket.id,
@@ -172,8 +185,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         evidence_deadline: ticket.evidence_deadline,
         source: ticket.source,
         // User
-        user_email: user?.email || null,
-        user_name: user?.full_name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : null),
+        user_email: userEmail,
+        user_name: userName,
         // Stage
         stage: stageInfo.stage,
         stage_label: stageInfo.label,
@@ -275,10 +288,16 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
   if (ticket.user_id) {
     const { data } = await supabase
       .from('user_profiles')
-      .select('user_id, email, first_name, last_name, full_name, mailing_address')
+      .select('user_id, email, first_name, last_name, mailing_address')
       .eq('user_id', ticket.user_id)
       .single();
     user = data;
+  }
+
+  // Fallback: extract name from letter content if profile is empty
+  let userName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : null;
+  if (!userName && letter?.letter_content) {
+    userName = extractNameFromLetter(letter.letter_content);
   }
 
   // Extract evidence details from audit log
@@ -300,15 +319,15 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
     success: true,
     ticket,
     letter,
-    user: user ? {
-      email: user.email,
-      name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-      has_mailing_address: !!user.mailing_address,
-    } : null,
+    user: {
+      email: user?.email || null,
+      name: userName,
+      has_mailing_address: !!user?.mailing_address,
+    },
     evidence: {
       automated: evidenceDetails,
       user_submitted: ticket.user_evidence,
-      sources: buildEvidenceSources(evidenceDetails),
+      sources: buildEvidenceSources(evidenceDetails, letter),
     },
     contest: contestData ? {
       kit_used: contestData.kit_used,
@@ -328,43 +347,166 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
   });
 }
 
-function buildEvidenceSources(details: any) {
+function buildEvidenceSources(details: any, letter?: any) {
+  // Check letter content for evidence keywords — the AI letters always reference
+  // the evidence sources used, even if evidence_integrated flag isn't set.
+  // evidence_integrated only means "user evidence was merged after generation".
+  const letterContent = letter?.letter_content || letter?.letter_text || '';
+  const hasLetter = !!letterContent;
+  const letterDefense = letter?.defense_type || '';
+
   const sources = [
     {
-      key: 'weather',
-      ...EVIDENCE_SOURCE_LABELS['weather'],
-      found: !!details.weather?.summary,
-      data: details.weather || null,
-      defense_relevant: details.weather?.defenseRelevant || false,
+      key: 'contest_kit',
+      ...EVIDENCE_SOURCE_LABELS['contest_kit'],
+      found: !!letterDefense,
+      data: letterDefense ? { defense_type: letterDefense } : null,
     },
     {
       key: 'foia_data',
       ...EVIDENCE_SOURCE_LABELS['foia_data'],
-      found: !!details.foiaWinRate?.totalContested,
+      found: !!details.foiaWinRate?.totalContested || (hasLetter && /FOIA|hearing outcome|administrative hearing|contest.*rate|success rate|dismissal rate|\d+%.*dismissed|dismissed.*\d+%/i.test(letterContent)),
       data: details.foiaWinRate || null,
     },
     {
-      key: 'gps_parking',
-      ...EVIDENCE_SOURCE_LABELS['gps_parking'],
-      found: !!details.parkingHistory?.matchFound,
-      data: details.parkingHistory || null,
+      key: 'weather',
+      ...EVIDENCE_SOURCE_LABELS['weather'],
+      found: !!details.weather?.summary || (hasLetter && /weather.*condition|rain.*day|snow.*day|storm|poor visibility|inclement weather|temperature.*degree/i.test(letterContent)),
+      data: details.weather || null,
+      defense_relevant: details.weather?.defenseRelevant || false,
     },
     {
       key: 'street_view',
       ...EVIDENCE_SOURCE_LABELS['street_view'],
-      found: !!details.streetView?.hasImagery,
-      data: details.streetView || null,
+      found: !!details.streetView?.hasImagery || !!(letter?.street_view_exhibit_urls && letter.street_view_exhibit_urls.length > 0) || (hasLetter && /street view|google.*street|exhibit.*photograph|attached.*photo/i.test(letterContent)),
+      data: details.streetView || (letter?.street_view_exhibit_urls ? {
+        urls: letter.street_view_exhibit_urls,
+        date: letter.street_view_date,
+        address: letter.street_view_address,
+      } : null),
+    },
+    {
+      key: 'street_view_ai_analysis',
+      ...EVIDENCE_SOURCE_LABELS['street_view_ai_analysis'],
+      found: !!details.streetViewAI || (hasLetter && /sign.*analysis|visibility.*analysis|signage.*condition|AI.*analysis|sign.*obstructed|sign.*obscured|sign.*not visible/i.test(letterContent)),
+      data: details.streetViewAI || null,
+    },
+    {
+      key: 'gps_parking',
+      ...EVIDENCE_SOURCE_LABELS['gps_parking'],
+      found: !!details.parkingHistory?.matchFound || (hasLetter && /GPS.*data|GPS.*record|parking.*data|departure.*time|arrival.*time|mobile.*app.*record/i.test(letterContent)),
+      data: details.parkingHistory || null,
+    },
+    {
+      key: 'registration',
+      ...EVIDENCE_SOURCE_LABELS['registration'],
+      found: hasLetter && /registration.*renew|renewed.*registration|registration.*receipt|renewed.*plate|proof.*renewal|valid.*registration/i.test(letterContent),
+      data: null,
+    },
+    {
+      key: 'city_sticker',
+      ...EVIDENCE_SOURCE_LABELS['city_sticker'],
+      found: hasLetter && /city.*sticker|wheel.*tax|sticker.*purchase|receipt.*sticker|vehicle.*sticker|sticker.*valid/i.test(letterContent),
+      data: null,
     },
     {
       key: 'street_cleaning_schedule',
       ...EVIDENCE_SOURCE_LABELS['street_cleaning_schedule'],
-      found: !!details.streetCleaning?.relevant,
+      found: !!details.streetCleaning?.relevant || (hasLetter && /street.*clean.*schedule|sweep.*schedule|cleaning.*schedule|not.*scheduled.*clean/i.test(letterContent)),
       data: details.streetCleaning || null,
+    },
+    {
+      key: 'court_data',
+      ...EVIDENCE_SOURCE_LABELS['court_data'],
+      found: !!details.courtData || (hasLetter && /court record|case.*similar|hearing data|adjudication.*record/i.test(letterContent)),
+      data: details.courtData || null,
     },
   ];
 
-  // Only include applicable sources
   return sources;
+}
+
+/** Extract sender name from letter content. Letters follow format: date line, then name on next non-empty line */
+function extractNameFromLetter(letterContent: string): string | null {
+  if (!letterContent) return null;
+  const lines = letterContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  // Strategy 1: First line is a date, second line is the name
+  // Date patterns: "January 4, 2026", "01/04/2026", "2026-01-04", "Feb 14, 2026"
+  const datePattern = /^(?:january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}[\/\-])\s*\d/i;
+  for (let i = 0; i < Math.min(lines.length - 1, 5); i++) {
+    if (datePattern.test(lines[i])) {
+      const nextLine = lines[i + 1];
+      // Name line: 2-4 words, no numbers (not an address), not a city/org header
+      if (nextLine && /^[A-Z][a-z]+\s+[A-Z][a-z]+/.test(nextLine) && !/\d/.test(nextLine) && !/city of|department|p\.o\.|box/i.test(nextLine)) {
+        return nextLine;
+      }
+    }
+  }
+
+  // Strategy 2: Look for "Sincerely," followed by name
+  const sincerelyIdx = lines.findIndex(l => /^sincerely|^respectfully|^regards/i.test(l));
+  if (sincerelyIdx >= 0 && sincerelyIdx < lines.length - 1) {
+    const nameLine = lines[sincerelyIdx + 1];
+    if (nameLine && /^[A-Z][a-z]+\s+[A-Z][a-z]+/.test(nameLine) && !/\d/.test(nameLine)) {
+      return nameLine;
+    }
+  }
+
+  return null;
+}
+
+/** Map defense_type back to a violation type when violation_description is null */
+function inferViolationFromDefense(defenseType: string): string | null {
+  const map: Record<string, string> = {
+    // Registration / plates
+    'registration_renewed': 'expired_plates',
+    'registration_renewal': 'expired_plates',
+    'expired_registration': 'expired_plates',
+    'plates_renewed': 'expired_plates',
+    // City sticker
+    'sticker_challenge': 'no_city_sticker',
+    'city_sticker': 'no_city_sticker',
+    'sticker_purchased': 'no_city_sticker',
+    'wheel_tax': 'no_city_sticker',
+    // Meter
+    'meter_malfunction': 'expired_meter',
+    'meter_expired': 'expired_meter',
+    'meter_challenge': 'expired_meter',
+    // Street cleaning
+    'street_cleaning': 'street_cleaning',
+    'street_cleaning_challenge': 'street_cleaning',
+    'cleaning_schedule': 'street_cleaning',
+    // Fire hydrant
+    'fire_hydrant': 'fire_hydrant',
+    'hydrant_distance': 'fire_hydrant',
+    // Disabled
+    'disabled_zone': 'disabled_zone',
+    'handicap_permit': 'disabled_zone',
+    // Red light / speed
+    'red_light': 'red_light',
+    'speed_camera': 'speed_camera',
+    // Missing plate
+    'missing_plate': 'missing_plate',
+    // Residential permit
+    'residential_permit': 'residential_permit',
+    // Snow route
+    'snow_route': 'snow_route',
+    // Double parking
+    'double_parking': 'double_parking',
+    // Loading zone
+    'commercial_loading': 'commercial_loading',
+    'loading_zone': 'commercial_loading',
+    // Bike lane
+    'bike_lane': 'bike_lane',
+    // Bus stop/lane
+    'bus_stop': 'bus_stop',
+    'bus_lane': 'bus_lane',
+    // Generic
+    'signage_challenge': 'no_standing_time_restricted',
+    'sign_obstruction': 'no_standing_time_restricted',
+  };
+  return map[defenseType] || null;
 }
 
 function computeStage(ticket: any, letter: any): { stage: string; label: string; color: string } {

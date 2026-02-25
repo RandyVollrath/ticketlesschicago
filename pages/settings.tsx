@@ -273,12 +273,14 @@ function DashboardContent({
   nextCheckDate,
   subscription,
   isPaidUser,
+  foiaHistoryRequests,
 }: {
   tickets: DashboardTicket[];
   platesMonitored: number;
   nextCheckDate: string;
   subscription: AutopilotSubscription | null;
   isPaidUser: boolean;
+  foiaHistoryRequests: any[];
 }) {
   const ticketsFound = tickets.length;
   const lettersMailed = tickets.filter(t => t.status === 'mailed').length;
@@ -394,6 +396,45 @@ function DashboardContent({
         }}>
           Upgrade to Autopilot
         </Link>
+
+        {/* FOIA Ticket History CTA for free users */}
+        <div style={{
+          marginTop: 32,
+          padding: '24px',
+          backgroundColor: '#F0F9FF',
+          borderRadius: 12,
+          border: '1px solid #BAE6FD',
+          textAlign: 'left',
+        }}>
+          <h3 style={{
+            fontFamily: FONTS.heading,
+            fontSize: 16,
+            margin: '0 0 8px',
+            color: '#0369A1',
+          }}>
+            How many tickets have you gotten?
+          </h3>
+          <p style={{
+            fontSize: 14,
+            color: '#0C4A6E',
+            margin: '0 0 16px',
+            lineHeight: 1.6,
+          }}>
+            We'll file a FOIA request with the City of Chicago to get your complete ticket history — free.
+          </p>
+          <Link href="/ticket-history" style={{
+            display: 'inline-block',
+            padding: '10px 24px',
+            borderRadius: 8,
+            backgroundColor: '#2563EB',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: 'none',
+          }}>
+            Get Your Ticket History
+          </Link>
+        </div>
       </div>
     );
   }
@@ -545,6 +586,139 @@ function DashboardContent({
                 </div>
               );
             })}
+          </div>
+        )}
+      </Card>
+
+      {/* Your Ticket History (FOIA) */}
+      <Card title="Your Ticket History" badge={
+        foiaHistoryRequests.length > 0 && (
+          <span style={{
+            padding: '4px 10px',
+            fontSize: 11,
+            fontWeight: 700,
+            backgroundColor: foiaHistoryRequests.some((r: any) => r.status === 'fulfilled') ? COLORS.successLight : '#FEF3C7',
+            color: foiaHistoryRequests.some((r: any) => r.status === 'fulfilled') ? COLORS.accent : '#92400E',
+            borderRadius: 4,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}>
+            {foiaHistoryRequests.some((r: any) => r.status === 'fulfilled') ? 'RESULTS READY' : 'PENDING'}
+          </span>
+        )
+      }>
+        {foiaHistoryRequests.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px 20px' }}>
+            <div style={{ marginBottom: 16, color: '#2563EB' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </div>
+            <h4 style={{
+              margin: '0 0 8px',
+              fontSize: 18,
+              fontWeight: 600,
+              color: COLORS.primary,
+              fontFamily: FONTS.heading,
+            }}>
+              Get your complete ticket history
+            </h4>
+            <p style={{ color: COLORS.textMuted, fontSize: 14, margin: '0 0 20px', maxWidth: 440, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
+              We'll submit a FOIA request to the City of Chicago for every ticket ever written to your plate. Results typically arrive in 5 business days.
+            </p>
+            <Link href="/ticket-history" style={{
+              display: 'inline-block',
+              padding: '12px 28px',
+              borderRadius: 8,
+              backgroundColor: '#2563EB',
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}>
+              Request Your History
+            </Link>
+          </div>
+        ) : (
+          <div>
+            {foiaHistoryRequests.map((req: any, index: number) => {
+              const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
+                queued: { label: 'Queued', bg: '#F1F5F9', color: '#475569' },
+                sent: { label: 'Sent to City', bg: '#FEF3C7', color: '#92400E' },
+                fulfilled: { label: 'Results Ready', bg: COLORS.successLight, color: COLORS.accent },
+                failed: { label: 'Failed', bg: '#FEE2E2', color: '#DC2626' },
+                cancelled: { label: 'Cancelled', bg: '#F1F5F9', color: '#64748B' },
+              };
+              const st = statusConfig[req.status] || statusConfig.queued;
+              return (
+                <div
+                  key={req.id}
+                  style={{
+                    padding: '16px 0',
+                    borderBottom: index < foiaHistoryRequests.length - 1 ? `1px solid ${COLORS.border}` : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                      <span style={{
+                        fontFamily: 'monospace',
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: COLORS.primary,
+                        backgroundColor: COLORS.bgSection,
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                      }}>
+                        {req.license_state} {req.license_plate}
+                      </span>
+                      <span style={{
+                        padding: '3px 10px',
+                        borderRadius: 20,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        backgroundColor: st.bg,
+                        color: st.color,
+                      }}>
+                        {st.label}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: COLORS.textMuted }}>
+                      Requested {new Date(req.created_at).toLocaleDateString()}
+                      {req.status === 'fulfilled' && req.ticket_count != null && (
+                        <span style={{ fontWeight: 600 }}> &middot; {req.ticket_count} ticket{req.ticket_count !== 1 ? 's' : ''} found</span>
+                      )}
+                      {req.status === 'fulfilled' && req.total_fines != null && (
+                        <span style={{ fontWeight: 600 }}> &middot; ${Number(req.total_fines).toLocaleString()} in fines</span>
+                      )}
+                    </div>
+                  </div>
+                  {req.status === 'sent' && (
+                    <div style={{ fontSize: 12, color: '#92400E', fontStyle: 'italic' }}>
+                      Waiting for city response (up to 5 business days)
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <div style={{ textAlign: 'center', paddingTop: 16 }}>
+              <Link href="/ticket-history" style={{
+                fontSize: 13,
+                color: '#2563EB',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}>
+                Request history for another plate
+              </Link>
+            </div>
           </div>
         )}
       </Card>
@@ -776,6 +950,7 @@ function SettingsPageInner() {
   const [platesMonitored, setPlatesMonitored] = useState(0);
   const [nextCheckDate, setNextCheckDate] = useState('');
   const [autopilotSubscription, setAutopilotSubscription] = useState<AutopilotSubscription | null>(null);
+  const [foiaHistoryRequests, setFoiaHistoryRequests] = useState<any[]>([]);
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
@@ -1071,6 +1246,22 @@ function SettingsPageInner() {
             current_period_end: subData.current_period_end,
           });
         }
+      }
+
+      // Load FOIA ticket history requests
+      try {
+        const { data: foiaData } = await supabase
+          .from('foia_history_requests')
+          .select('id, license_plate, license_state, status, created_at, ticket_count, total_fines, response_received_at')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        if (foiaData) {
+          setFoiaHistoryRequests(foiaData);
+        }
+      } catch (foiaErr) {
+        // Non-critical — don't fail page load if table doesn't exist yet
+        console.error('FOIA history fetch error (non-critical):', foiaErr);
       }
 
       setLoading(false);
@@ -1724,6 +1915,7 @@ function SettingsPageInner() {
             nextCheckDate={nextCheckDate}
             subscription={autopilotSubscription}
             isPaidUser={isPaidUser}
+            foiaHistoryRequests={foiaHistoryRequests}
           />
         )}
 
