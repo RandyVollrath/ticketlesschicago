@@ -957,11 +957,31 @@ async function sendEvidenceRequestEmail(
   if ((violationType === 'no_city_sticker' || violationType === 'expired_plates') && forwardingAddress) {
     const receiptType = violationType === 'no_city_sticker' ? 'city sticker' : 'plate sticker';
     const senderEmail = violationType === 'no_city_sticker' ? 'chicagovehiclestickers@sebis.com' : 'ecommerce@ilsos.gov';
+    const buyLink = violationType === 'no_city_sticker'
+      ? 'https://ezbuy.chicityclerk.com/vehicle-stickers'
+      : 'https://www.ilsos.gov/onlinerenewal/';
+
     receiptForwardingHtml = `
+      <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
+          ${violationType === 'no_city_sticker' ? "Don't Have a City Sticker? BUY ONE NOW" : "Haven't Renewed? DO IT NOW"}
+        </h3>
+        <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+          ${violationType === 'no_city_sticker'
+            ? `A city sticker costs <strong>$100-$160</strong> — much less than this <strong>$200 fine</strong>. You need one anyway, and your purchase receipt is the <strong>#1 winning evidence</strong> for contesting this ticket. Hearing officers frequently dismiss tickets when you show proof of purchase.`
+            : `Your renewal receipt is the <strong>#1 winning evidence</strong> for this ticket. Renew now and forward the receipt to us.`
+          }
+        </p>
+        <div style="text-align: center; margin: 16px 0;">
+          <a href="${buyLink}" style="background: #dc2626; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
+            ${violationType === 'no_city_sticker' ? 'Buy Your City Sticker Now' : 'Renew Your Plates Now'}
+          </a>
+        </div>
+      </div>
       <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="margin: 0 0 8px; color: #065f46; font-size: 18px;">Have Your ${receiptType === 'city sticker' ? 'City Sticker' : 'Plate Sticker'} Receipt?</h3>
+        <h3 style="margin: 0 0 8px; color: #065f46; font-size: 18px;">Already Have Your ${receiptType === 'city sticker' ? 'City Sticker' : 'Plate Sticker'}? Send Us the Receipt!</h3>
         <p style="margin: 0 0 12px; color: #065f46; font-size: 14px; line-height: 1.6;">
-          Your purchase receipt is the <strong>#1 winning evidence</strong> for this ticket. Just forward it to us:
+          Forward your purchase receipt to us and we'll attach it to your contest letter:
         </p>
         <div style="background: white; border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
           <p style="margin: 0 0 4px; font-size: 12px; color: #6b7280; font-weight: 600;">FORWARD YOUR RECEIPT TO:</p>
@@ -974,6 +994,20 @@ async function sendEvidenceRequestEmail(
           That's it — we'll attach it to your contest letter automatically.
         </p>
       </div>
+      ${violationType === 'no_city_sticker' ? `
+      <div style="background: #eff6ff; border: 1px solid #3b82f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin: 0 0 8px; color: #1e40af; font-size: 15px;">Why This Works (Chicago Municipal Code)</h4>
+        <p style="margin: 0 0 8px; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
+          Under <strong>&sect; 9-100-060</strong>, you must select a legally codified defense to contest any parking ticket.
+          Without one, the hearing officer must find you liable — <strong>13.6% of all city sticker losses happen because
+          people didn't select a valid defense</strong>, even when they had a legitimate case.
+        </p>
+        <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
+          <strong>We handle this for you.</strong> We select the correct legal defense and pair it with your evidence.
+          With the right defense + a purchase receipt, your odds improve significantly over the 58% average.
+        </p>
+      </div>
+      ` : ''}
     `;
   }
 
