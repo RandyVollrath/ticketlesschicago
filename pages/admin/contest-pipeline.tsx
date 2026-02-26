@@ -81,6 +81,15 @@ interface PipelineTicket {
   mailed_at: string | null;
   lob_status: string | null;
   lob_expected_delivery: string | null;
+  // Deadlines
+  mail_by_deadline: string | null;
+  days_until_deadline: number | null;
+  auto_send_deadline: string | null;
+  // Email & evidence tracking
+  email_sent_at: string | null;
+  evidence_received_at: string | null;
+  has_evidence_reply: boolean;
+  // Evidence summary
   evidence_count: number;
   evidence_total: number;
   evidence_sources: EvidenceSource[];
@@ -419,7 +428,69 @@ export default function ContestPipelineAdmin() {
                       </div>
                     </div>
 
-                    {/* Row 3: Stage + Evidence pills */}
+                    {/* Row 3: Mail-by deadline + Email sent + Evidence reply */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                      {/* Mail-by deadline */}
+                      {ticket.mail_by_deadline && (() => {
+                        const days = ticket.days_until_deadline ?? 0;
+                        const isPastDue = days < 0;
+                        const isUrgent = days >= 0 && days <= 5;
+                        const isMailed = ticket.stage === 'mailed' || ticket.stage === 'delivered';
+                        const deadlineColor = isMailed ? C.green : isPastDue ? C.red : isUrgent ? C.yellow : C.textDim;
+                        const deadlineBg = isMailed ? C.greenDim : isPastDue ? C.redDim : isUrgent ? C.yellowDim : C.card;
+                        return (
+                          <span
+                            title={`Legal deadline: ${new Date(ticket.mail_by_deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (21 days from violation)`}
+                            style={{
+                              fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                              background: deadlineBg, color: deadlineColor,
+                              border: `1px solid ${deadlineColor}40`,
+                            }}
+                          >
+                            {isMailed
+                              ? `MAILED`
+                              : isPastDue
+                                ? `${Math.abs(days)}d OVERDUE`
+                                : `${days}d left`
+                            }
+                          </span>
+                        );
+                      })()}
+
+                      {/* Email sent indicator */}
+                      <span
+                        title={ticket.email_sent_at
+                          ? `Evidence email sent ${new Date(ticket.email_sent_at).toLocaleDateString()}`
+                          : 'No evidence email sent'
+                        }
+                        style={{
+                          fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                          background: ticket.email_sent_at ? `${C.accent}20` : `${C.textMuted}15`,
+                          color: ticket.email_sent_at ? C.accent : C.textMuted,
+                          border: `1px solid ${ticket.email_sent_at ? C.accent : C.textMuted}30`,
+                        }}
+                      >
+                        {ticket.email_sent_at ? `EMAILED` : `NO EMAIL`}
+                      </span>
+
+                      {/* Evidence reply indicator */}
+                      <span
+                        title={ticket.has_evidence_reply
+                          ? `Evidence received${ticket.evidence_received_at ? ` on ${new Date(ticket.evidence_received_at).toLocaleDateString()}` : ''}`
+                          : 'Waiting for user evidence'
+                        }
+                        style={{
+                          fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                          background: ticket.has_evidence_reply ? C.greenDim : `${C.textMuted}15`,
+                          color: ticket.has_evidence_reply ? C.green : C.textMuted,
+                          border: `1px solid ${ticket.has_evidence_reply ? C.green : C.textMuted}30`,
+                        }}
+                      >
+                        {ticket.has_evidence_reply ? `EVIDENCE` : `WAITING`}
+                      </span>
+                    </div>
+
+                    {/* Row 4: Stage + Evidence pills */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ fontSize: 11, color: ticket.stage_color, fontWeight: 600 }}>
                         {ticket.stage_label}
@@ -455,21 +526,16 @@ export default function ContestPipelineAdmin() {
                       </div>
                     </div>
 
-                    {/* Evidence deadline warning */}
-                    {ticket.evidence_deadline && ticket.stage === 'evidence_gathering' && (() => {
-                      const hoursLeft = (new Date(ticket.evidence_deadline).getTime() - Date.now()) / (1000 * 60 * 60);
-                      if (hoursLeft < 72 && hoursLeft > 0) {
-                        return (
-                          <div style={{
-                            marginTop: 6, fontSize: 11, fontWeight: 600,
-                            color: hoursLeft < 24 ? C.red : C.yellow,
-                          }}>
-                            Evidence deadline: {Math.round(hoursLeft)}h remaining
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                    {/* Deadline urgency warning */}
+                    {ticket.days_until_deadline != null && ticket.days_until_deadline <= 5 && ticket.days_until_deadline >= 0 && ticket.stage !== 'mailed' && ticket.stage !== 'delivered' && (
+                      <div style={{
+                        marginTop: 6, fontSize: 11, fontWeight: 600,
+                        color: ticket.days_until_deadline <= 2 ? C.red : C.yellow,
+                      }}>
+                        Must mail by {new Date(ticket.mail_by_deadline!).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        {ticket.days_until_deadline === 0 ? ' (TODAY!)' : ticket.days_until_deadline === 1 ? ' (TOMORROW!)' : ` (${ticket.days_until_deadline} days)`}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -515,6 +581,92 @@ export default function ContestPipelineAdmin() {
                             color={new Date(ticketDetail.ticket.evidence_deadline).getTime() < Date.now() ? C.red : C.yellow}
                           />
                         )}
+                      </Section>
+
+                      {/* Deadlines & Email Tracking */}
+                      <Section title="Deadlines & Email Tracking">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {/* Mail-by deadline card */}
+                          {(() => {
+                            const days = selectedTicket.days_until_deadline;
+                            const isMailed = selectedTicket.stage === 'mailed' || selectedTicket.stage === 'delivered';
+                            const isPastDue = days != null && days < 0;
+                            const isUrgent = days != null && days >= 0 && days <= 5;
+                            const borderColor = isMailed ? C.green : isPastDue ? C.red : isUrgent ? C.yellow : C.border;
+                            return (
+                              <div style={{
+                                padding: 12, borderRadius: 8,
+                                background: isMailed ? C.greenDim : isPastDue ? C.redDim : isUrgent ? C.yellowDim : C.card,
+                                border: `1px solid ${borderColor}`,
+                              }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: isMailed ? C.green : isPastDue ? C.red : isUrgent ? C.yellow : C.text, marginBottom: 8 }}>
+                                  {isMailed
+                                    ? 'Letter Mailed'
+                                    : isPastDue
+                                      ? `OVERDUE by ${Math.abs(days!)} days`
+                                      : days != null
+                                        ? `${days} days until legal deadline`
+                                        : 'No violation date — deadline unknown'
+                                  }
+                                </div>
+                                <DetailRow label="Legal Deadline (Day 21)" value={selectedTicket.mail_by_deadline ? new Date(selectedTicket.mail_by_deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'} color={isPastDue ? C.red : isUrgent ? C.yellow : undefined} />
+                                <DetailRow label="Auto-Send (Day 17)" value={selectedTicket.auto_send_deadline ? new Date(selectedTicket.auto_send_deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'} />
+                                {selectedTicket.mailed_at && (
+                                  <DetailRow label="Actually Mailed" value={new Date(selectedTicket.mailed_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} color={C.green} />
+                                )}
+                                {selectedTicket.lob_expected_delivery && (
+                                  <DetailRow label="Expected Delivery" value={new Date(selectedTicket.lob_expected_delivery).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} color={C.accent} />
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Email sent card */}
+                          <div style={{
+                            padding: 12, borderRadius: 8,
+                            background: C.card, border: `1px solid ${selectedTicket.email_sent_at ? C.accent : C.border}`,
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Evidence Request Email</span>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                                background: selectedTicket.email_sent_at ? `${C.accent}20` : `${C.textMuted}20`,
+                                color: selectedTicket.email_sent_at ? C.accent : C.textMuted,
+                              }}>
+                                {selectedTicket.email_sent_at ? 'SENT' : 'NOT SENT'}
+                              </span>
+                            </div>
+                            {selectedTicket.email_sent_at && (
+                              <DetailRow label="Sent At" value={new Date(selectedTicket.email_sent_at).toLocaleString()} />
+                            )}
+                          </div>
+
+                          {/* Evidence reply card */}
+                          <div style={{
+                            padding: 12, borderRadius: 8,
+                            background: selectedTicket.has_evidence_reply ? C.greenDim : C.card,
+                            border: `1px solid ${selectedTicket.has_evidence_reply ? C.green : C.border}`,
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>User Evidence Reply</span>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                                background: selectedTicket.has_evidence_reply ? C.greenDim : `${C.textMuted}20`,
+                                color: selectedTicket.has_evidence_reply ? C.green : C.textMuted,
+                              }}>
+                                {selectedTicket.has_evidence_reply ? 'RECEIVED' : 'WAITING'}
+                              </span>
+                            </div>
+                            {selectedTicket.evidence_received_at && (
+                              <DetailRow label="Received At" value={new Date(selectedTicket.evidence_received_at).toLocaleString()} color={C.green} />
+                            )}
+                            {!selectedTicket.has_evidence_reply && selectedTicket.email_sent_at && (
+                              <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>
+                                Email sent {Math.round((Date.now() - new Date(selectedTicket.email_sent_at).getTime()) / (1000 * 60 * 60 * 24))} days ago — no reply yet
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </Section>
 
                       {/* Evidence Sources */}

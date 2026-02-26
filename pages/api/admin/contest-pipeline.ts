@@ -83,6 +83,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         created_at,
         user_id,
         evidence_deadline,
+        evidence_requested_at,
+        evidence_received_at,
+        auto_send_deadline,
         source,
         plate,
         state,
@@ -103,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ticketIds = tickets.map(t => t.id);
     const userIds = [...new Set(tickets.map(t => t.user_id).filter(Boolean))];
 
-    const [lettersResult, usersResult, auditResult] = await Promise.all([
+    const [lettersResult, usersResult, auditResult, emailAuditResult] = await Promise.all([
       supabase
         .from('contest_letters')
         .select(`
@@ -126,6 +129,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .in('ticket_id', ticketIds)
         .eq('action', 'automated_evidence_gathered')
         .order('created_at', { ascending: false }),
+      supabase
+        .from('ticket_audit_log')
+        .select('ticket_id, action, details, created_at')
+        .in('ticket_id', ticketIds)
+        .in('action', ['evidence_email_sent', 'evidence_submitted', 'user_evidence_received'])
+        .order('created_at', { ascending: false }),
     ]);
 
     // Build maps
@@ -146,11 +155,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Build email/evidence audit maps per ticket
+    const emailSentMap: Record<string, any> = {};
+    const evidenceReceivedMap: Record<string, any> = {};
+    for (const audit of (emailAuditResult.data || [])) {
+      if (audit.action === 'evidence_email_sent' && !emailSentMap[audit.ticket_id]) {
+        emailSentMap[audit.ticket_id] = audit;
+      }
+      if ((audit.action === 'evidence_submitted' || audit.action === 'user_evidence_received') && !evidenceReceivedMap[audit.ticket_id]) {
+        evidenceReceivedMap[audit.ticket_id] = audit;
+      }
+    }
+
     // Build pipeline items
     const pipelineItems = tickets.map(ticket => {
       const letter = letterMap[ticket.id];
       const user = userMap[ticket.user_id];
       const audit = auditMap[ticket.id];
+      const emailSentAudit = emailSentMap[ticket.id];
+      const evidenceReceivedAudit = evidenceReceivedMap[ticket.id];
       let violationType = ticket.violation_type || normalizeViolationType(ticket.violation_description);
 
       // If still unknown, try to infer from defense_type
@@ -175,6 +198,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!userName && letter?.letter_content) {
         userName = extractNameFromLetter(letter.letter_content);
       }
+
+      // Compute mail-by deadline (21 days from violation date = legal deadline)
+      let mailByDeadline: string | null = null;
+      let daysUntilDeadline: number | null = null;
+      if (ticket.violation_date) {
+        const vDate = new Date(ticket.violation_date);
+        const deadline = new Date(vDate.getTime() + 21 * 24 * 60 * 60 * 1000);
+        mailByDeadline = deadline.toISOString();
+        daysUntilDeadline = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      }
+
+      // Evidence email tracking
+      // Primary source: evidence_requested_at on ticket (always set when email is sent)
+      // Fallback: audit log entry
+      const emailSentAt = ticket.evidence_requested_at || emailSentAudit?.created_at || null;
+
+      // Evidence reply tracking
+      // Primary: evidence_received_at on ticket (set when user replies)
+      // Fallback: user_evidence field populated, or audit log entry
+      const evidenceReceivedAt = ticket.evidence_received_at || evidenceReceivedAudit?.created_at || null;
+      const hasEvidenceReply = !!(evidenceReceivedAt || ticket.user_evidence || ticket.status === 'evidence_received');
 
       return {
         id: ticket.id,
@@ -205,6 +249,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mailed_at: letter?.mailed_at || null,
         lob_status: letter?.lob_status || null,
         lob_expected_delivery: letter?.lob_expected_delivery || null,
+        // Deadlines
+        mail_by_deadline: mailByDeadline,
+        days_until_deadline: daysUntilDeadline,
+        auto_send_deadline: ticket.auto_send_deadline || null,
+        // Email & evidence tracking
+        email_sent_at: emailSentAt,
+        evidence_received_at: evidenceReceivedAt,
+        has_evidence_reply: hasEvidenceReply,
         // Evidence summary
         evidence_count: evidenceCount,
         evidence_total: totalPossible,
