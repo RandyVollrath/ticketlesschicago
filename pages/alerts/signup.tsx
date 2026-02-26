@@ -54,6 +54,7 @@ export default function AlertsSignup() {
     smsConsent: true,
     marketingConsent: true,
     foiaConsent: true,
+    contestConsent: true,
   });
 
   // Track page view on mount
@@ -747,6 +748,29 @@ export default function AlertsSignup() {
                 />
                 <label htmlFor="foiaConsent" style={{ fontSize: '14px', color: COLORS.graphite, lineHeight: '1.5', cursor: 'pointer' }}>
                   <strong>Get my ticket history (free).</strong> I authorize Autopilot America to submit a Freedom of Information Act (FOIA) request to the City of Chicago on my behalf to retrieve all parking and traffic citations for my license plate.
+                </label>
+              </div>
+
+              {/* Contest Authorization Consent */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                padding: '16px',
+                backgroundColor: '#FEF3C7',
+                borderRadius: '8px',
+                border: '1px solid #F59E0B'
+              }}>
+                <input
+                  type="checkbox"
+                  name="contestConsent"
+                  id="contestConsent"
+                  checked={formData.contestConsent}
+                  onChange={handleInputChange}
+                  style={{ marginTop: '2px', width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                />
+                <label htmlFor="contestConsent" style={{ fontSize: '14px', color: COLORS.graphite, lineHeight: '1.5', cursor: 'pointer' }}>
+                  <strong>Contest my tickets for me.</strong> I, as the registered vehicle owner, authorize Autopilot America to contest parking and compliance tickets on my behalf by submitting correspondence hearing requests to the City of Chicago Department of Administrative Hearings. I understand that contest letters will be signed using my name as provided in this form, and I may review letters before they are mailed. This authorization remains in effect until I revoke it in my account settings.
                 </label>
               </div>
 

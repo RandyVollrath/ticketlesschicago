@@ -32,6 +32,7 @@ const alertSignupSchema = z.object({
   smsConsent: z.boolean().optional(),
   marketingConsent: z.boolean().optional(),
   foiaConsent: z.boolean().optional(),
+  contestConsent: z.boolean().optional(),
   authenticatedUserId: z.string().uuid().optional().nullable(),
 });
 
@@ -105,6 +106,7 @@ export default async function handler(
     smsConsent,
     marketingConsent,
     foiaConsent,
+    contestConsent,
     authenticatedUserId
   } = parseResult.data;
 
@@ -406,6 +408,29 @@ export default async function handler(
       } catch (foiaErr) {
         // Non-critical — don't fail signup if FOIA queue fails
         console.error('⚠️ Failed to auto-queue FOIA history request (non-critical):', foiaErr);
+      }
+    }
+
+    // Store contest authorization consent if provided
+    if (contestConsent) {
+      try {
+        const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+          || req.socket.remoteAddress
+          || 'unknown';
+
+        await supabase
+          .from('user_profiles')
+          .update({
+            contest_consent: true,
+            contest_consent_at: new Date().toISOString(),
+            contest_consent_ip: ip,
+          })
+          .eq('user_id', userId);
+
+        console.log('✍️ Contest authorization consent recorded for user:', userId);
+      } catch (consentErr) {
+        // Non-critical — don't fail signup if consent storage fails
+        console.error('⚠️ Failed to store contest consent (non-critical):', consentErr);
       }
     }
 
