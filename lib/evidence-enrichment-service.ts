@@ -189,7 +189,7 @@ export function normalizeAddressKey(address: string): string {
 
 /**
  * Get Street View evidence, using the address cache when available.
- * If cached and not expired, returns immediately. Otherwise fetches fresh.
+ * If cached, returns immediately. Otherwise fetches fresh and caches permanently.
  */
 export async function getCachedStreetView(
   supabase: SupabaseClient,
@@ -205,7 +205,6 @@ export async function getCachedStreetView(
       .from('street_view_cache')
       .select('*')
       .eq('address_key', addressKey)
-      .gt('expires_at', new Date().toISOString())
       .single();
 
     if (cached) {
@@ -251,7 +250,7 @@ export async function getCachedStreetView(
       defense_findings: pkg.defenseFindings,
       exhibit_urls: pkg.exhibitUrls,
       fetched_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString(), // 6 months
+      // No expires_at — cache permanently (street-level signage rarely changes)
     };
 
     await supabase

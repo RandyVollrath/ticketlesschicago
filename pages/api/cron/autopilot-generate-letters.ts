@@ -27,6 +27,10 @@ import {
   WeatherDefenseResult,
   ConstructionPermitResult,
 } from '../../../lib/evidence-enrichment-service';
+import {
+  getOfficerIntelligence,
+  getLocationPatternForAddress,
+} from '../../../lib/contest-outcome-tracker';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -147,6 +151,8 @@ interface EvidenceBundle {
   serviceRequest311Summary: string | null;
   expandedWeatherDefense: WeatherDefenseResult | null;
   constructionPermits: ConstructionPermitResult | null;
+  officerIntelligence: { hasData: boolean; officerBadge: string | null; totalCases: number; dismissalRate: number | null; tendency: string | null; recommendation: string | null } | null;
+  locationPattern: { ticketCount: number; uniqueUsers: number; dismissalRate: number | null; defenseRecommendation: string | null } | null;
 }
 
 // ─── Approval Email ──────────────────────────────────────────
@@ -331,6 +337,8 @@ async function gatherAllEvidence(
     serviceRequest311Summary: null,
     expandedWeatherDefense: null,
     constructionPermits: null,
+    officerIntelligence: null,
+    locationPattern: null,
   };
 
   // Resolve violation code
@@ -686,6 +694,37 @@ async function gatherAllEvidence(
     })());
   }
 
+  // 15. Officer badge intelligence
+  if (ticket.officer_badge) {
+    promises.push((async () => {
+      try {
+        const intel = await getOfficerIntelligence(supabaseAdmin, ticket.officer_badge!);
+        if (intel.hasData) {
+          bundle.officerIntelligence = intel;
+          console.log(`    Officer ${ticket.officer_badge}: ${intel.totalCases} cases, ${intel.dismissalRate !== null ? (intel.dismissalRate * 100).toFixed(0) + '% dismissal rate' : 'no rate'}, tendency: ${intel.tendency || 'unknown'}`);
+        }
+      } catch (e) { console.error('    Officer intelligence lookup failed:', e); }
+    })());
+  }
+
+  // 16. Cross-ticket location pattern
+  if (ticket.location) {
+    promises.push((async () => {
+      try {
+        const pattern = await getLocationPatternForAddress(supabaseAdmin, ticket.location!);
+        if (pattern) {
+          bundle.locationPattern = {
+            ticketCount: pattern.ticketCount,
+            uniqueUsers: pattern.uniqueUsers,
+            dismissalRate: pattern.dismissalRate,
+            defenseRecommendation: pattern.defenseRecommendation,
+          };
+          console.log(`    Location pattern: ${pattern.ticketCount} tickets at this address from ${pattern.uniqueUsers} users`);
+        }
+      } catch (e) { console.error('    Location pattern lookup failed:', e); }
+    })());
+  }
+
   // ── FOIA Evidence Request Status ──
   promises.push((async () => {
     try {
@@ -1036,6 +1075,36 @@ ${cp.defenseSummary}
 INSTRUCTIONS: Construction and road work directly affect parking signage visibility and available parking. Argue that active construction near the location may have obscured signage, reduced available parking, or created confusing conditions that affected the driver's ability to comply with parking restrictions. ${cp.hasSignBlockingPermit ? 'The city issued a permit that directly blocked or affected signage visibility — this is a STRONG argument.' : ''}`);
   }
 
+  // ── Section 11e: Officer Badge Intelligence ──
+  if (evidence.officerIntelligence?.hasData) {
+    const oi = evidence.officerIntelligence;
+    sections.push(`=== ISSUING OFFICER INTELLIGENCE ===
+
+Data on the officer who issued this ticket (Badge: ${oi.officerBadge}):
+- Total cases tracked: ${oi.totalCases}
+- Dismissal rate: ${oi.dismissalRate !== null ? (oi.dismissalRate * 100).toFixed(0) + '%' : 'Unknown'}
+- Tendency: ${oi.tendency || 'Unknown'}
+
+${oi.recommendation || ''}
+
+INSTRUCTIONS: Use this intelligence to INFORM your defense strategy — do NOT cite specific statistics about the officer in the letter. If the officer has a high dismissal rate, it means their tickets are frequently found to have deficiencies — focus your arguments on procedural and evidentiary challenges. If they have a low dismissal rate, lean more heavily on factual/documentary evidence. Never name or disparage the officer personally.`);
+  }
+
+  // ── Section 11f: Cross-Ticket Location Pattern ──
+  if (evidence.locationPattern && evidence.locationPattern.ticketCount >= 3) {
+    const lp = evidence.locationPattern;
+    sections.push(`=== LOCATION PATTERN ANALYSIS ===
+
+This location has an unusual concentration of parking tickets:
+- Total tickets at this address: ${lp.ticketCount}
+- From ${lp.uniqueUsers} different drivers
+- Historical dismissal rate at this location: ${lp.dismissalRate !== null ? (lp.dismissalRate * 100).toFixed(0) + '%' : 'Unknown'}
+
+${lp.defenseRecommendation || ''}
+
+INSTRUCTIONS: A high concentration of tickets from multiple drivers at the same location is strong evidence of inadequate signage, confusing restrictions, or systematic enforcement issues. Argue that the city has a pattern of issuing citations at this location, suggesting the restrictions are unclear or the signage is deficient. Do NOT cite exact numbers of other drivers — instead, use language like "this location is known to generate a disproportionate number of citations" or "the volume of citations at this address suggests systemic signage inadequacy."`);
+  }
+
   // ── Section 12: Street Cleaning Schedule ──
   if (evidence.streetCleaningSchedule && evidence.streetCleaningSchedule.length > 0) {
     const scs = evidence.streetCleaningSchedule;
@@ -1092,6 +1161,8 @@ Generate a professional, formal contest letter that:
    ${evidence.serviceRequest311Summary ? '- 311 service requests showing city knew about infrastructure issues near ticket location (STRONG - city\'s own records)' : ''}
    ${evidence.expandedWeatherDefense?.canUseWeatherDefense ? `- Expanded weather defense (${evidence.expandedWeatherDefense.relevanceLevel} relevance for this violation type)` : ''}
    ${evidence.constructionPermits?.defenseSummary ? `- Construction/road work permits near location (${evidence.constructionPermits.hasSignBlockingPermit ? 'SIGN-BLOCKING FOUND' : 'active permits'})` : ''}
+   ${evidence.officerIntelligence?.hasData ? `- Officer intelligence (${evidence.officerIntelligence.tendency || 'data available'} — INFORM strategy, do NOT cite stats)` : ''}
+   ${evidence.locationPattern && evidence.locationPattern.ticketCount >= 3 ? `- Location pattern: ${evidence.locationPattern.ticketCount} tickets from ${evidence.locationPattern.uniqueUsers} drivers (suggests signage/enforcement issues)` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the hearing officer, sign with sender name only (Lob adds return address automatically)
@@ -1150,6 +1221,10 @@ function generateFallbackLetter(
     if (evidence.weatherRelevanceType !== 'primary') {
       body += `\n\n${evidence.expandedWeatherDefense.defenseParagraph}`;
     }
+  }
+
+  if (evidence.locationPattern && evidence.locationPattern.ticketCount >= 3) {
+    body += `\n\nNotably, this location is known to generate a disproportionate number of parking citations affecting multiple drivers. This pattern suggests inadequate signage or confusing restrictions at this address, rather than individual driver non-compliance.`;
   }
 
   body += `\n\nI respectfully request that this citation be dismissed based on the evidence provided.`;
@@ -1268,6 +1343,8 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   if (evidence.serviceRequest311Summary) evidenceSources.push('311_evidence');
   if (evidence.expandedWeatherDefense?.canUseWeatherDefense) evidenceSources.push('expanded_weather_defense');
   if (evidence.constructionPermits?.defenseSummary) evidenceSources.push('construction_permits');
+  if (evidence.officerIntelligence?.hasData) evidenceSources.push('officer_intelligence');
+  if (evidence.locationPattern && evidence.locationPattern.ticketCount >= 3) evidenceSources.push('location_pattern');
 
   if (anthropic) {
     try {

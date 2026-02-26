@@ -3,6 +3,12 @@ import { supabaseAdmin } from '../../../lib/supabase';
 import { verifyWebhook } from '../../../lib/webhook-verification';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
+import {
+  isFoiaResponseEmail,
+  processFoiaResponse,
+  classifyComplianceDocument,
+  processComplianceDocument,
+} from '../../../lib/contest-outcome-tracker';
 
 /**
  * Resend Incoming Email Webhook
@@ -63,6 +69,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!supabaseAdmin) {
       console.error('Supabase admin client not available');
       return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    // ── Check if this is a FOIA response from the City of Chicago ──
+    if (isFoiaResponseEmail(fromEmail, subject, text)) {
+      console.log('📋 Detected FOIA response email from city');
+      try {
+        const foiaResult = await processFoiaResponse(
+          supabaseAdmin,
+          fromEmail,
+          subject,
+          text,
+          attachments.map((a: any) => ({
+            filename: a.filename || 'unknown',
+            content_type: a.content_type || 'application/octet-stream',
+          })),
+        );
+        console.log(`  FOIA result: ${foiaResult.action} (matched: ${foiaResult.matched})`);
+        if (foiaResult.matched) {
+          return res.status(200).json({
+            message: 'FOIA response processed',
+            ...foiaResult,
+          });
+        }
+      } catch (foiaErr: any) {
+        console.error('FOIA response processing failed:', foiaErr.message);
+      }
     }
 
     // Check if this is an evidence reply (sent to evidence@autopilotamerica.com)
@@ -237,6 +269,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       } else {
         console.log(`⚠️  No pending_evidence ticket found for user ${matchedUserId}`);
+      }
+    }
+
+    // ── Auto-classify compliance documents from attachments ──
+    if (matchedUserId && attachments.length > 0 && !isEvidenceReply) {
+      for (const attachment of attachments) {
+        const classification = classifyComplianceDocument(
+          attachment.filename || '',
+          subject,
+          text,
+        );
+        if (classification.type !== 'unknown' && classification.confidence !== 'low') {
+          console.log(`📄 Auto-classified compliance doc: ${classification.type} (${classification.confidence}) — ${classification.reason}`);
+          try {
+            const docResult = await processComplianceDocument(
+              supabaseAdmin,
+              matchedUserId,
+              classification.type,
+              {
+                filename: attachment.filename || 'unknown',
+                subject,
+                extractedText: text.substring(0, 1000),
+              },
+            );
+            console.log(`  Compliance doc result: ${docResult.action}`);
+          } catch (docErr: any) {
+            console.error(`  Compliance doc processing failed: ${docErr.message}`);
+          }
+        }
       }
     }
 

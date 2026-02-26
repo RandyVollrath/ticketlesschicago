@@ -107,6 +107,9 @@
     },
     "pages/api/cron/autopilot-open-data-monitor.ts": {
       "maxDuration": 120
+    },
+    "pages/api/cron/autopilot-check-outcomes.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -213,6 +216,10 @@
     {
       "path": "/api/cron/autopilot-open-data-monitor",
       "schedule": "0 3 * * 0"
+    },
+    {
+      "path": "/api/cron/autopilot-check-outcomes",
+      "schedule": "0 17 * * *"
     }
   ],
   "headers": [
