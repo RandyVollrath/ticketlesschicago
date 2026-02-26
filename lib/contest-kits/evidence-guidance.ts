@@ -689,10 +689,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
         goodExample: '"I reviewed the violation photos. The vehicle appears to be a dark blue sedan but my car is a black SUV. The plate number in the photo is partially obscured by glare."',
       },
       {
-        text: 'In the violation video, does it show you entering the intersection BEFORE the light turned red? Or were you already past the stop line when it changed? Count the seconds of yellow light in the video.',
-        whyItMatters: 'Illinois law (625 ILCS 5/11-306) says you must enter the intersection before the light turns red. IDOT minimum yellow time is 3 seconds for 30mph streets, 4 seconds for 35-45mph. If the yellow was shorter, the ticket is invalid. Chicago has been caught with short yellows before.',
+        text: 'Watch the violation video on chicago.gov/finance and use a stopwatch to time the yellow light — from the moment it turns yellow to the moment it turns red. Also note: were you already past the stop line when it turned red?',
+        whyItMatters: 'Illinois law (625 ILCS 5/11-306) says you must enter the intersection before the light turns red. IDOT requires minimum yellow times based on the speed limit: 3 seconds at 30mph, 3.5 at 35mph, 4 at 40mph. If the yellow in your video is shorter than the minimum, the ticket is automatically invalid. Chicago has been caught with illegally short yellows before — this is a real defense that wins cases.',
         impactScore: 0.40,
-        goodExample: '"I counted the yellow light in the violation video — it was only 2.5 seconds. The speed limit on this street is 35mph, which requires 4 seconds of yellow per IDOT standards."',
+        goodExample: '"I timed the yellow in my violation video with a stopwatch — it was 2.7 seconds. The speed limit on this street is 35mph, which requires 3.5 seconds of yellow per IDOT standards. The yellow was 0.8 seconds too short."',
       },
       {
         text: 'Were you making a right turn on red? If so, did you come to a complete stop before turning? Does the video show this?',
@@ -752,10 +752,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
         goodExample: '"I reviewed the photos. The license plate captured is partially obscured by a shadow and could be misread. My vehicle is a white Honda Civic but the photo shows what appears to be a silver Toyota."',
       },
       {
-        text: 'Go to the location where you were ticketed. Is the speed limit sign clearly visible? Is the CHILDREN\'S SAFETY ZONE sign posted (speed cameras are only legal near schools/parks)? Photograph everything.',
-        whyItMatters: 'Speed cameras in Chicago are only authorized in "Children\'s Safety Zones" near schools and parks (§ 9-102-020). If the required signage is missing, obscured by trees/construction, or the camera isn\'t actually in a valid safety zone, the ticket is invalid. Photograph the speed limit sign AND the safety zone sign.',
+        text: 'If you drive past this camera location again, photograph the speed limit sign and the CHILDREN\'S SAFETY ZONE sign. Are they clearly visible from the road? Speed cameras are only legal near schools/parks — if the signs are missing or hard to see, that\'s a strong defense. (We also check Google Street View automatically.)',
+        whyItMatters: 'Speed cameras in Chicago are only authorized in "Children\'s Safety Zones" near schools and parks (§ 9-102-020). If the required signage is missing, obscured by trees/construction, or the camera isn\'t actually in a valid safety zone, the ticket is invalid. We\'ll pull Street View imagery automatically, but your own recent photos carry more weight at a hearing.',
         impactScore: 0.40,
-        goodExample: '"I went back to the location. The speed limit sign is partially hidden behind overgrown tree branches. The Children\'s Safety Zone sign is faded and difficult to read. Photos attached."',
+        goodExample: '"I drove past the camera location. The speed limit sign is partially hidden behind overgrown tree branches. The Children\'s Safety Zone sign is faded and hard to read from the road. Photos attached."',
       },
       {
         text: 'Was your vehicle stolen, sold, or not in your possession on the violation date? Do you have documentation?',
@@ -770,10 +770,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
         goodExample: '"My dashcam shows I was traveling at 28mph in a 30mph zone. The camera claimed I was doing 42mph. I\'ve exported the dashcam clip with GPS speed overlay."',
       },
       {
-        text: 'Was the speed camera active during allowed hours? Check if it was a school zone (Mon-Fri, 7am-7pm school days only) vs. park zone (all day every day).',
-        whyItMatters: 'School zone cameras are only supposed to operate during school days/hours. If you were ticketed on a weekend, holiday, or outside school hours at a school-zone camera, the ticket may be invalid. Park zone cameras operate 24/7.',
+        text: 'Do you know if this camera is near a school or a park? School zone cameras should only be active on school days during certain hours. We\'ll check the date/time of your ticket automatically — but let us know if you know which school or park is nearby.',
+        whyItMatters: 'School zone cameras should only operate Mon-Fri during school hours (not weekends, holidays, or summer break). If your ticket was on a Saturday, a CPS holiday, or during summer, the ticket may be invalid. Park zone cameras operate 24/7 so this defense only works for school zones. We\'ll check the CPS calendar against your violation date automatically.',
         impactScore: 0.30,
-        goodExample: '"This camera is near a school, and my ticket was issued on a Saturday at 9pm. School zone cameras should only be active on school days."',
+        goodExample: '"This camera is near Lincoln Elementary School. My ticket was issued on a Saturday at 3pm — school zone cameras shouldn\'t be active on weekends."',
       },
     ],
     quickTips: [
