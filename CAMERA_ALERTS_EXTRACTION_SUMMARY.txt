@@ -1,0 +1,259 @@
+================================================================================
+iOS CAMERA ALERT LOGIC — COMPLETE EXTRACTION SUMMARY
+================================================================================
+
+Generated: 2026-02-26
+Source File: TicketlessChicagoMobile/ios/TicketlessChicagoMobile/BackgroundLocationModule.swift
+Line Range: 2772-3889 (core logic), plus state/constants at 762-905
+
+================================================================================
+DELIVERABLES
+================================================================================
+
+1. iOS_CAMERA_ALERTS_COMPLETE_EXTRACT.md (754 lines)
+   - Complete, line-numbered extraction of ALL camera alert logic
+   - 13 major sections covering every aspect
+   - Ready for direct comparison with Android implementation
+
+2. CAMERA_ALERTS_COMPARISON_GUIDE.md
+   - Side-by-side reference guide mapping iOS → Android
+   - 17 comparison points with examples
+   - Checklist of 50+ questions to ask about Android implementation
+
+3. This file: Summary & Quick Reference
+
+================================================================================
+KEY FACTS ABOUT iOS IMPLEMENTATION
+================================================================================
+
+CAMERAS: 510 Chicago cameras (speed + red-light)
+  - NativeCameraDef struct: type, address, lat, lng, approaches[]
+  - Embedded in Swift file (generated from TS at build time)
+
+ALERTING LOGIC:
+  - Runs on EVERY GPS location update while driving (10-30 Hz)
+  - Loops through all 510 cameras per update
+  - Uses bounding box filter (0.0025°) before distance calculation
+  - Picks nearest camera that passes ALL filters
+
+CORE CONSTANTS:
+  - Alert radius: 150-250m (speed-adaptive: speed × 10s)
+  - Min speed: 3.2 m/s (speed cameras), 1.0 m/s (red-light)
+  - Per-camera dedupe: 3 minutes cooldown
+  - Global cooldown: 5 seconds between ANY alert
+  - Heading tolerance: 45° (approach direction)
+  - Bearing tolerance: 30° (direction toward camera)
+  - GPS accuracy threshold: 120m (reject if worse)
+  - Speed camera hours: 6am-11pm (local device time)
+
+REJECTION REASONS (in order):
+  1. speed_below_min (user going too slow)
+  2. outside_radius (distance exceeds alert radius)
+  3. per_camera_dedupe (same camera within 3 min)
+  4. heading_mismatch (user not heading toward camera direction)
+  5. camera_not_ahead (camera bearing > 30° off user heading)
+
+HEADING VALIDATION (two-part):
+  1. isHeadingMatch: Does user heading match camera's approach direction?
+     - Mapping: NB=0°, NEB=45°, EB=90°, SEB=135°, SB=180°, SWB=225°, WB=270°, NWB=315°
+     - Tolerance: 45° (e.g., user heading 275° matches WB camera at 270°)
+  2. isCameraAhead: Is camera within 30° of user's actual heading?
+     - Uses bearingTo() to calculate compass direction FROM user TO camera
+     - Rejects if bearing differs from heading by > 30°
+
+TTS (TEXT-TO-SPEECH):
+  - Native AVSpeechSynthesizer (not JS, which is suspended)
+  - Works in BOTH foreground and background
+  - Speech rate: 0.52 (slightly fast, very clear)
+  - Audio session: .playback mode with .duckOthers (lowers music, doesn't pause)
+  - Volume: Configurable 0-1.0 via settings
+  - Background task protection: 30-second UIBackgroundTask prevents suspension mid-speech
+  - Interruption handling: Reconfigures audio session after phone calls/Siri
+
+LOCAL NOTIFICATIONS:
+  - Fired for every alert (with or without TTS permission)
+  - No sound (TTS provides audio)
+  - 1-second delay to avoid iOS dropping same-tick notifications
+  - Title: "Red-light camera ahead" or "Speed camera ahead"
+  - Body: Camera address
+
+RED-LIGHT EVIDENCE CAPTURE (native, for JS retrieval):
+  - Triggered: When red-light camera alert fires
+  - Captured: Last 30s accelerometer trace + current GPS + speed + heading
+  - Stored: UserDefaults (bg_pending_redlight_evidence_v1, max 20 entries)
+  - Expires: 24 hours
+  - Retrieved: JS calls getPendingRedLightEvidence() on next wake
+
+SETTINGS FROM JS:
+  - Method: setCameraAlertSettings(enabled, speedEnabled, redlightEnabled, volume)
+  - Persisted: UserDefaults (4 keys)
+  - Restored on startup from UserDefaults
+
+DECISION LOGGING:
+  - native_camera_candidate_rejected: Logged every ~10s for nearest rejected camera
+  - native_camera_alert_fired: Logged every time an alert is dispatched
+  - Both include: index, type, address, distance, alertRadius, speed, heading, accuracy
+
+================================================================================
+CRITICAL EDGE CASES
+================================================================================
+
+1. HEADING UNAVAILABLE (CLLocation.course = -1)
+   → All heading checks return TRUE (fail-open)
+   → Alert fires WITHOUT directional validation
+   → GPS-only mode (no CoreMotion)
+
+2. GPS ACCURACY POOR (> 120m)
+   → ENTIRE checkCameraProximity() returns early
+   → NO camera processing for this location update
+   → Protects against cell-tower GPS false positives
+
+3. SPEED UNAVAILABLE (< 0)
+   → Alert radius defaults to 150m (base radius)
+   → Doesn't block alert, just loses speed-adaptive scaling
+
+4. SPEED CAMERA TIME WINDOW
+   → Speed cameras only alert 6am-11pm local device time
+   → Red-light cameras alert 24/7 (no time restriction)
+   → Hour check uses Calendar.current (device local time)
+
+5. PER-CAMERA DEDUPE
+   → alertedCameraAtByIndex[i] tracks last alert time for each camera
+   → If alert fired < 3 min ago, reject with "per_camera_dedupe"
+   → Clear entire camera's entry when user > 400m away
+
+6. GLOBAL RATE LIMITING
+   → lastCameraAlertAt prevents ANY alert for 5 seconds after last alert
+   → Even different camera won't alert until 5 sec window closes
+
+================================================================================
+WHAT SPEED-ADAPTIVE RADIUS MEANS
+================================================================================
+
+Formula: alertRadius = max(150, min(speed × 10, 250))
+
+Examples (realistic Chicago speeds):
+  - 5 m/s  (11 mph, residential)  → 50m clamped to 150m → ALERT AT 150m
+  - 10 m/s (22 mph, side street)  → 100m clamped to 150m → ALERT AT 150m
+  - 15 m/s (33 mph, main street)  → 150m → ALERT AT 150m
+  - 20 m/s (45 mph, highway)      → 200m → ALERT AT 200m
+  - 25 m/s (56 mph, interstate)   → 250m → ALERT AT 250m
+  - 30+ m/s (67+ mph, max speed)  → clamped to 250m → ALERT AT 250m
+
+This gives ~10 seconds of warning at current speed.
+
+================================================================================
+APPROACH DIRECTION EXPLANATION
+================================================================================
+
+Each camera has approaches: ["WB", "EB"] (for example)
+This means the camera faces those compass directions.
+
+When user is heading WESTBOUND (270°) toward a camera with approach ["WB"]:
+  - User heading: 270° (WB)
+  - Camera approach target: 270° (WB)
+  - Difference: 0° ≤ 45° → MATCH ✓
+
+When user is heading SOUTHBOUND (180°, opposite direction):
+  - User heading: 180° (SB, away from camera)
+  - Camera approach target: 270° (WB)
+  - Difference: |180° - 270°| = 90°, normalized = 90° > 45° → NO MATCH ✗
+
+The second check (isCameraAhead) adds a bearing tolerance:
+  - User heading must be within 30° of the compass bearing TO the camera
+  - This prevents alerting when user has passed the camera and is turning away
+
+================================================================================
+DECISION LOG FORMAT (for debugging)
+================================================================================
+
+On every location update while camera checks are active, logs may include:
+
+REJECTED CANDIDATE (nearest rejected, logged every ~10s):
+{
+  "decision": "native_camera_candidate_rejected",
+  "idx": 42,
+  "type": "speed",
+  "address": "2721 W Montrose Ave",
+  "reason": "heading_mismatch",
+  "distanceMeters": 180,
+  "alertRadiusMeters": 200,
+  "speedMps": 15.0,
+  "heading": 90,  // user heading E
+  "accuracy": 25
+}
+
+ALERT FIRED:
+{
+  "decision": "native_camera_alert_fired",
+  "idx": 35,
+  "type": "redlight",
+  "address": "3843 W 111th St",
+  "distanceMeters": 120,
+  "alertRadiusMeters": 200,
+  "speedMps": 12.0,
+  "heading": 270,  // user heading W
+  "accuracy": 18
+}
+
+This log format allows replaying decisions to debug why alerts fired (or didn't).
+
+================================================================================
+FILES TO COMPARE AGAINST ANDROID
+================================================================================
+
+Required Android files:
+1. Camera proximity checking logic (wherever that lives)
+2. TTS/notification implementation
+3. Evidence capture (red-light)
+4. Settings persistence
+5. Decision/rejection logging
+6. Constants definition (alert radius, min speed, etc.)
+
+Questions to answer:
+- Does Android loop through all 510 cameras on every location update?
+- Does it use the same filtering order (type → bbox → distance → heading)?
+- Are the tuning constants identical?
+- Does it have the 6am-11pm speed camera schedule?
+- How does it handle heading unavailability?
+- What's the GPS accuracy threshold?
+- Is red-light evidence captured the same way?
+
+================================================================================
+HOW TO USE THESE DOCUMENTS
+================================================================================
+
+1. COMPLETE_EXTRACT.md
+   - Line-by-line reference for every function and constant
+   - Use when you need exact code or need to map Android to specific iOS lines
+
+2. COMPARISON_GUIDE.md
+   - When you have Android code, check each section for correspondence
+   - Use the checklist to verify both platforms match
+   - Reference the examples to understand expected behavior
+
+3. This SUMMARY
+   - Quick reference for key facts and edge cases
+   - Use when explaining iOS behavior to others
+   - Good for spotting obvious missing pieces in Android
+
+All documents cross-reference each other by line number and section.
+
+================================================================================
+KNOWN ASSUMPTIONS & NOTES
+================================================================================
+
+1. Camera data is embedded at build time (generated from typescript)
+2. All timestamps are milliseconds (consistent with JS)
+3. Distance calculations use haversineMeters function (Haversine formula)
+4. All angles use compass bearing (0=N, 90=E, 180=S, 270=W)
+5. Per-camera dedupe is in-memory (cleared on app restart)
+6. Red-light evidence stored in UserDefaults (not database)
+7. Settings persisted across app restart via UserDefaults
+8. Audio interruption (phone calls) handled via AVAudioSession notifications
+9. Background TTS protection via UIBackgroundTask (30-second limit)
+10. GPS updates continuous while `isDriving` even in background
+
+================================================================================
+END OF SUMMARY
+================================================================================
