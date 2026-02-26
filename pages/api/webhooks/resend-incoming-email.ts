@@ -240,6 +240,90 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Check for "I AUTHORIZE" reply — grants contest consent via email
+    const bodyTrimmed = text.replace(/[>\s\n\r]/g, ' ').trim();
+    const isAuthorizeReply = /\bI\s+AUTHORIZE\b/i.test(bodyTrimmed);
+
+    if (isAuthorizeReply && matchedUserId) {
+      console.log(`✍️ "I AUTHORIZE" reply detected from ${fromEmail} — granting contest consent`);
+
+      try {
+        // Get user's name from profile for the signature
+        const { data: consentProfile } = await supabaseAdmin
+          .from('user_profiles')
+          .select('first_name, last_name, contest_consent')
+          .eq('user_id', matchedUserId)
+          .single();
+
+        if (consentProfile && !consentProfile.contest_consent) {
+          const signatureName = `${consentProfile.first_name || ''} ${consentProfile.last_name || ''}`.trim() || fromEmail;
+
+          await supabaseAdmin
+            .from('user_profiles')
+            .update({
+              contest_consent: true,
+              contest_consent_at: new Date().toISOString(),
+              contest_consent_ip: 'email_reply',
+              contest_consent_signature: `${signatureName} (via email reply)`,
+            })
+            .eq('user_id', matchedUserId);
+
+          console.log(`✅ Contest consent granted via email for user ${matchedUserId} (signed as "${signatureName}")`);
+
+          // Send confirmation email
+          if (process.env.RESEND_API_KEY) {
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: 'Autopilot America <alerts@autopilotamerica.com>',
+                to: [fromEmail],
+                subject: 'Contest Authorization Confirmed',
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: #059669; color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+                      <h1 style="margin: 0; font-size: 20px;">Authorization Confirmed</h1>
+                    </div>
+                    <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                      <p>Hi ${consentProfile.first_name || 'there'},</p>
+                      <p>We've received your authorization. We can now contest tickets on your behalf automatically.</p>
+                      <p>Any pending contest letters that were waiting for your authorization will be processed in the next mailing run.</p>
+                      <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">You can revoke this authorization at any time in your <a href="https://autopilotamerica.com/settings" style="color: #059669;">account settings</a>.</p>
+                    </div>
+                  </div>
+                `,
+              }),
+            });
+            console.log('✅ Sent authorization confirmation email');
+          }
+
+          // Notify admin
+          if (process.env.RESEND_API_KEY) {
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: 'Autopilot America <alerts@autopilotamerica.com>',
+                to: ['randyvollrath@gmail.com'],
+                subject: `✍️ Contest Consent Received — ${fromEmail}`,
+                html: `<p><strong>${signatureName}</strong> (${fromEmail}) replied "I AUTHORIZE" to grant contest consent via email.</p>`,
+              }),
+            });
+          }
+        } else if (consentProfile?.contest_consent) {
+          console.log(`ℹ️ User ${matchedUserId} already has contest consent — no update needed`);
+        }
+      } catch (consentError) {
+        console.error('❌ Failed to process I AUTHORIZE reply:', consentError);
+      }
+    }
+
     // Check for keywords in the reply (for non-evidence emails)
     const bodyLower = text.toLowerCase();
     const subjectLower = subject.toLowerCase();

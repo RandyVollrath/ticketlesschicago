@@ -55,6 +55,7 @@ export default function AlertsSignup() {
     marketingConsent: true,
     foiaConsent: true,
     contestConsent: true,
+    contestSignature: '',
   });
 
   // Track page view on mount
@@ -751,27 +752,62 @@ export default function AlertsSignup() {
                 </label>
               </div>
 
-              {/* Contest Authorization Consent */}
+              {/* Contest Authorization E-Signature */}
               <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                padding: '16px',
+                padding: '20px',
                 backgroundColor: '#FEF3C7',
                 borderRadius: '8px',
                 border: '1px solid #F59E0B'
               }}>
-                <input
-                  type="checkbox"
-                  name="contestConsent"
-                  id="contestConsent"
-                  checked={formData.contestConsent}
-                  onChange={handleInputChange}
-                  style={{ marginTop: '2px', width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
-                />
-                <label htmlFor="contestConsent" style={{ fontSize: '14px', color: COLORS.graphite, lineHeight: '1.5', cursor: 'pointer' }}>
-                  <strong>Contest my tickets for me.</strong> I, as the registered vehicle owner, authorize Autopilot America to contest parking and compliance tickets on my behalf by submitting correspondence hearing requests to the City of Chicago Department of Administrative Hearings. I understand that contest letters will be signed using my name as provided in this form, and I may review letters before they are mailed. This authorization remains in effect until I revoke it in my account settings.
-                </label>
+                <p style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '600', color: '#92400E' }}>
+                  Contest Authorization (E-Signature)
+                </p>
+                <p style={{ margin: '0 0 16px', fontSize: '13px', color: COLORS.graphite, lineHeight: '1.6' }}>
+                  I, as the registered vehicle owner, authorize Autopilot America to contest parking and compliance tickets on my behalf by submitting correspondence hearing requests to the City of Chicago Department of Administrative Hearings. I understand that contest letters will be signed using my name as provided below, and I may review letters before they are mailed. This authorization remains in effect until I revoke it in my account settings.
+                </p>
+                <div style={{ position: 'relative' }}>
+                  <label htmlFor="contestSignature" style={{ display: 'block', fontSize: '12px', color: '#92400E', marginBottom: '6px', fontWeight: '500' }}>
+                    Type your full legal name to sign
+                  </label>
+                  <input
+                    type="text"
+                    name="contestSignature"
+                    id="contestSignature"
+                    value={formData.contestSignature}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      // Auto-set contestConsent based on whether signature is filled
+                      setFormData(prev => ({
+                        ...prev,
+                        contestSignature: e.target.value,
+                        contestConsent: e.target.value.trim().length > 0
+                      }));
+                    }}
+                    placeholder={formData.firstName && formData.lastName ? `${formData.firstName} ${formData.lastName}` : 'e.g. John Smith'}
+                    autoComplete="off"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      fontSize: '18px',
+                      fontFamily: "'Brush Script MT', 'Segoe Script', cursive",
+                      fontStyle: 'italic',
+                      border: formData.contestSignature.trim() ? '2px solid #059669' : '2px solid #D1D5DB',
+                      borderRadius: '8px',
+                      backgroundColor: 'white',
+                      color: '#1F2937',
+                      boxSizing: 'border-box',
+                      outline: 'none',
+                    }}
+                  />
+                  {formData.contestSignature.trim() && (
+                    <span style={{ position: 'absolute', right: '12px', top: '32px', color: '#059669', fontSize: '18px' }}>
+                      Signed
+                    </span>
+                  )}
+                </div>
+                <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#6B7280', lineHeight: '1.4' }}>
+                  By typing your name above, you are providing your electronic signature under the Illinois Uniform Electronic Transactions Act (815 ILCS 333). Skip this to receive alerts only without automatic contesting.
+                </p>
               </div>
 
               {router.query.flow === 'oauth' ? (
