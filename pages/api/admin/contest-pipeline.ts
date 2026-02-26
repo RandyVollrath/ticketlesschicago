@@ -106,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ticketIds = tickets.map(t => t.id);
     const userIds = [...new Set(tickets.map(t => t.user_id).filter(Boolean))];
 
-    const [lettersResult, usersResult, auditResult, emailAuditResult] = await Promise.all([
+    const [lettersResult, usersResult, auditResult, emailAuditResult, foiaResult] = await Promise.all([
       supabase
         .from('contest_letters')
         .select(`
@@ -135,6 +135,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .in('ticket_id', ticketIds)
         .in('action', ['evidence_email_sent', 'evidence_submitted', 'user_evidence_received'])
         .order('created_at', { ascending: false }),
+      supabase
+        .from('ticket_foia_requests')
+        .select('ticket_id, status, sent_at, requested_at')
+        .in('ticket_id', ticketIds)
+        .eq('request_type', 'ticket_evidence_packet'),
     ]);
 
     // Build maps
@@ -155,6 +160,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Build FOIA request map
+    const foiaMap: Record<string, any> = {};
+    for (const foia of (foiaResult.data || [])) {
+      if (!foiaMap[foia.ticket_id]) {
+        const sentDate = foia.sent_at ? new Date(foia.sent_at) : null;
+        const daysElapsed = sentDate ? Math.floor((Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        const businessDaysElapsed = sentDate ? countBusinessDays(sentDate, new Date()) : 0;
+        foiaMap[foia.ticket_id] = {
+          status: foia.status,
+          sent_at: foia.sent_at,
+          requested_at: foia.requested_at,
+          days_elapsed: daysElapsed,
+          business_days_elapsed: businessDaysElapsed,
+          deadline_expired: businessDaysElapsed >= 5,
+          prima_facie_eligible: businessDaysElapsed >= 5 && (foia.status === 'sent' || foia.status === 'no_response'),
+        };
+      }
+    }
+
     // Build email/evidence audit maps per ticket
     const emailSentMap: Record<string, any> = {};
     const evidenceReceivedMap: Record<string, any> = {};
@@ -172,6 +196,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const letter = letterMap[ticket.id];
       const user = userMap[ticket.user_id];
       const audit = auditMap[ticket.id];
+      const foia = foiaMap[ticket.id] || null;
       const emailSentAudit = emailSentMap[ticket.id];
       const evidenceReceivedAudit = evidenceReceivedMap[ticket.id];
       let violationType = ticket.violation_type || normalizeViolationType(ticket.violation_description);
@@ -264,6 +289,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         has_user_evidence: !!ticket.user_evidence,
         // Win rate
         base_win_rate: VIOLATION_WIN_RATES[violationType] || null,
+        // FOIA evidence request tracking
+        foia_request: foia,
       };
     });
 
@@ -344,10 +371,42 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
   if (ticket.user_id) {
     const { data } = await supabase
       .from('user_profiles')
-      .select('user_id, email, first_name, last_name, mailing_address')
+      .select('user_id, email, first_name, last_name, mailing_address, foia_wait_preference')
       .eq('user_id', ticket.user_id)
       .single();
     user = data;
+  }
+
+  // Get FOIA evidence request for this ticket
+  let foiaRequest = null;
+  const { data: foiaData } = await supabase
+    .from('ticket_foia_requests')
+    .select('id, status, sent_at, requested_at, notes, response_payload, updated_at')
+    .eq('ticket_id', ticketId)
+    .eq('request_type', 'ticket_evidence_packet')
+    .limit(1);
+  if (foiaData && foiaData.length > 0) {
+    const req = foiaData[0];
+    const sentDate = req.sent_at ? new Date(req.sent_at) : null;
+    const daysElapsed = sentDate ? Math.floor((Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    const businessDaysElapsed = sentDate ? countBusinessDays(sentDate, new Date()) : 0;
+    const deadlineExpired = businessDaysElapsed >= 5;
+    const deadlineDate = sentDate ? addBusinessDays(sentDate, 5) : null;
+    foiaRequest = {
+      id: req.id,
+      status: req.status,
+      sent_at: req.sent_at,
+      requested_at: req.requested_at,
+      updated_at: req.updated_at,
+      days_elapsed: daysElapsed,
+      business_days_elapsed: businessDaysElapsed,
+      deadline_expired: deadlineExpired,
+      deadline_date: deadlineDate?.toISOString() || null,
+      prima_facie_eligible: deadlineExpired && (req.status === 'sent' || req.status === 'no_response'),
+      response_received: req.status === 'fulfilled' || req.status === 'partial_response',
+      notes: req.notes,
+      resend_email_id: req.response_payload?.resend_email_id || null,
+    };
   }
 
   // Fallback: extract name from letter content if profile is empty
@@ -396,6 +455,8 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
       sources: buildEvidenceSources(evidenceDetails, letter),
     },
     camera_check: cameraCheckData,
+    foia_request: foiaRequest,
+    foia_wait_preference: user?.foia_wait_preference || 'wait_for_foia',
     email_info: emailInfo,
     contest: contestData ? {
       kit_used: contestData.kit_used,
@@ -656,4 +717,29 @@ function getEmptyStats() {
     avg_evidence_count: 0,
     evidence_coverage: [],
   };
+}
+
+/** Count business days (Mon-Fri) between two dates */
+function countBusinessDays(start: Date, end: Date): number {
+  let count = 0;
+  const current = new Date(start);
+  current.setDate(current.getDate() + 1); // Start counting from next day
+  while (current <= end) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) count++;
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
+/** Add N business days to a date */
+function addBusinessDays(start: Date, days: number): Date {
+  const result = new Date(start);
+  let added = 0;
+  while (added < days) {
+    result.setDate(result.getDate() + 1);
+    const day = result.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return result;
 }

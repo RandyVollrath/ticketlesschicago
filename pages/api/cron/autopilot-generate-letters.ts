@@ -113,6 +113,7 @@ interface UserSettings {
   require_approval: boolean;
   allowed_ticket_types: string[];
   never_auto_mail_unknown: boolean;
+  foia_wait_preference: 'wait_for_foia' | 'send_immediately';
 }
 
 interface FoiaData {
@@ -1288,11 +1289,12 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
     .eq('user_id', ticket.user_id)
     .single();
 
-  const userSettings: UserSettings = settings || {
-    auto_mail_enabled: false,
-    require_approval: true,
-    allowed_ticket_types: ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone', 'no_standing_time_restricted', 'parking_prohibited', 'residential_permit', 'missing_plate', 'commercial_loading', 'bus_lane'],
-    never_auto_mail_unknown: true,
+  const userSettings: UserSettings = {
+    auto_mail_enabled: settings?.auto_mail_enabled ?? false,
+    require_approval: settings?.require_approval ?? true,
+    allowed_ticket_types: settings?.allowed_ticket_types || ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone', 'no_standing_time_restricted', 'parking_prohibited', 'residential_permit', 'missing_plate', 'commercial_loading', 'bus_lane'],
+    never_auto_mail_unknown: settings?.never_auto_mail_unknown ?? true,
+    foia_wait_preference: profile.foia_wait_preference || 'wait_for_foia',
   };
 
   // Determine approval requirement
@@ -1311,6 +1313,54 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   } else if (ticket.violation_type === 'other_unknown' && userSettings.never_auto_mail_unknown) {
     needsApproval = true;
     skipReason = 'Unknown violation type requires approval';
+  }
+
+  // ── Check FOIA wait preference ──
+  // If user wants to wait for FOIA deadline, check if FOIA has been sent and deadline has expired
+  if (userSettings.foia_wait_preference === 'wait_for_foia') {
+    try {
+      const { data: foiaReq } = await supabaseAdmin
+        .from('ticket_foia_requests' as any)
+        .select('status, sent_at')
+        .eq('ticket_id', ticket.id)
+        .eq('request_type', 'ticket_evidence_packet')
+        .maybeSingle();
+
+      if (foiaReq && foiaReq.sent_at) {
+        const sentDate = new Date(foiaReq.sent_at);
+        const now = new Date();
+        // Count business days elapsed since FOIA was sent
+        let businessDays = 0;
+        const current = new Date(sentDate);
+        current.setDate(current.getDate() + 1); // Start from the day after sent
+        while (current <= now) {
+          const day = current.getDay();
+          if (day !== 0 && day !== 6) businessDays++; // Skip weekends
+          current.setDate(current.getDate() + 1);
+        }
+
+        const foiaDeadlineExpired = businessDays >= 5;
+        const foiaResponded = foiaReq.status === 'fulfilled' || foiaReq.status === 'partial_response' || foiaReq.status === 'denied';
+
+        if (!foiaDeadlineExpired && !foiaResponded) {
+          console.log(`    Waiting for FOIA deadline: ${businessDays}/5 business days elapsed (user preference: wait_for_foia)`);
+          return { success: true, status: 'waiting_for_foia' };
+        }
+
+        if (foiaDeadlineExpired && !foiaResponded) {
+          console.log(`    FOIA deadline EXPIRED (${businessDays} business days) — prima facie argument available`);
+        } else if (foiaResponded) {
+          console.log(`    FOIA response received (${foiaReq.status}) — proceeding with letter`);
+        }
+      } else if (foiaReq && !foiaReq.sent_at && foiaReq.status === 'queued') {
+        // FOIA queued but not yet sent — wait for it to be sent first
+        console.log(`    FOIA request queued but not yet sent — waiting for it to be sent first`);
+        return { success: true, status: 'waiting_for_foia' };
+      }
+      // If no FOIA request exists at all, proceed without waiting
+    } catch (e) {
+      console.log(`    FOIA check failed, proceeding with letter generation`);
+    }
   }
 
   // Resolve violation code
@@ -1507,14 +1557,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let lettersGenerated = 0;
     let needsApproval = 0;
+    let waitingForFoia = 0;
     let errors = 0;
 
     for (const ticket of tickets) {
       const result = await processTicket(ticket as DetectedTicket);
       if (result.success) {
-        lettersGenerated++;
-        if (result.status === 'needs_approval') {
-          needsApproval++;
+        if (result.status === 'waiting_for_foia') {
+          waitingForFoia++;
+        } else {
+          lettersGenerated++;
+          if (result.status === 'needs_approval') {
+            needsApproval++;
+          }
         }
       } else {
         errors++;
@@ -1524,12 +1579,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    console.log(`Complete: ${lettersGenerated} AI letters, ${needsApproval} need approval, ${errors} errors`);
+    console.log(`Complete: ${lettersGenerated} AI letters, ${needsApproval} need approval, ${waitingForFoia} waiting for FOIA, ${errors} errors`);
 
     return res.status(200).json({
       success: true,
       lettersGenerated,
       needsApproval,
+      waitingForFoia,
       errors,
       timestamp: new Date().toISOString(),
     });

@@ -95,6 +95,15 @@ interface PipelineTicket {
   evidence_sources: EvidenceSource[];
   has_user_evidence: boolean;
   base_win_rate: number | null;
+  foia_request: {
+    status: string;
+    sent_at: string | null;
+    requested_at: string | null;
+    days_elapsed: number;
+    business_days_elapsed: number;
+    deadline_expired: boolean;
+    prima_facie_eligible: boolean;
+  } | null;
 }
 
 interface EvidenceSource {
@@ -488,6 +497,40 @@ export default function ContestPipelineAdmin() {
                       >
                         {ticket.has_evidence_reply ? `EVIDENCE` : `WAITING`}
                       </span>
+
+                      {/* FOIA indicator */}
+                      {ticket.foia_request && (
+                        <span
+                          title={ticket.foia_request.prima_facie_eligible
+                            ? 'FOIA deadline expired — Prima Facie eligible!'
+                            : ticket.foia_request.deadline_expired
+                            ? `FOIA deadline expired (${ticket.foia_request.business_days_elapsed} biz days)`
+                            : ticket.foia_request.status === 'sent'
+                            ? `FOIA sent ${ticket.foia_request.days_elapsed}d ago (${ticket.foia_request.business_days_elapsed}/5 biz days)`
+                            : `FOIA ${ticket.foia_request.status}`
+                          }
+                          style={{
+                            fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                            background: ticket.foia_request.prima_facie_eligible ? C.greenDim
+                              : ticket.foia_request.deadline_expired ? `${C.yellow}15`
+                              : ticket.foia_request.status === 'sent' ? `${C.accent}15`
+                              : `${C.textMuted}15`,
+                            color: ticket.foia_request.prima_facie_eligible ? C.green
+                              : ticket.foia_request.deadline_expired ? C.yellow
+                              : ticket.foia_request.status === 'sent' ? C.accent
+                              : C.textMuted,
+                            border: `1px solid ${ticket.foia_request.prima_facie_eligible ? C.green
+                              : ticket.foia_request.deadline_expired ? C.yellow
+                              : ticket.foia_request.status === 'sent' ? C.accent
+                              : C.textMuted}30`,
+                          }}
+                        >
+                          {ticket.foia_request.prima_facie_eligible ? 'PRIMA FACIE'
+                            : ticket.foia_request.status === 'sent' ? `FOIA ${ticket.foia_request.business_days_elapsed}/5d`
+                            : ticket.foia_request.status === 'queued' ? 'FOIA QUEUED'
+                            : `FOIA ${ticket.foia_request.status?.toUpperCase()}`}
+                        </span>
+                      )}
                     </div>
 
                     {/* Row 4: Stage + Evidence pills */}
@@ -827,6 +870,144 @@ export default function ContestPipelineAdmin() {
                           )}
                         </Section>
                       )}
+
+                      {/* FOIA Evidence Request Tracking */}
+                      <Section title="FOIA Evidence Request">
+                        {ticketDetail.foia_request ? (() => {
+                          const foia = ticketDetail.foia_request;
+                          const statusColor = foia.prima_facie_eligible ? C.green
+                            : foia.deadline_expired ? C.yellow
+                            : foia.status === 'sent' ? C.accent
+                            : foia.status === 'queued' ? C.textMuted
+                            : foia.response_received ? C.purple
+                            : C.textMuted;
+                          const statusLabel = foia.prima_facie_eligible ? 'PRIMA FACIE ELIGIBLE'
+                            : foia.response_received ? 'RESPONSE RECEIVED'
+                            : foia.deadline_expired ? 'DEADLINE EXPIRED'
+                            : foia.status === 'sent' ? 'SENT — WAITING'
+                            : foia.status === 'queued' ? 'QUEUED'
+                            : foia.status === 'drafting' ? 'DRAFTING'
+                            : foia.status?.toUpperCase() || 'UNKNOWN';
+                          return (
+                            <div style={{
+                              padding: 14, borderRadius: 8,
+                              background: foia.prima_facie_eligible ? C.greenDim : C.card,
+                              border: `1px solid ${statusColor}`,
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: 18 }}>{'\u2696\uFE0F'}</span>
+                                  <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>FOIA Request to DOF</span>
+                                </div>
+                                <span style={{
+                                  fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 4,
+                                  background: `${statusColor}20`, color: statusColor,
+                                  letterSpacing: '0.5px',
+                                }}>
+                                  {statusLabel}
+                                </span>
+                              </div>
+
+                              {/* Timeline */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+                                {foia.requested_at && (
+                                  <DetailRow label="Queued At" value={new Date(foia.requested_at).toLocaleString()} />
+                                )}
+                                {foia.sent_at && (
+                                  <DetailRow label="Sent To City" value={new Date(foia.sent_at).toLocaleString()} color={C.accent} />
+                                )}
+                                {foia.deadline_date && (
+                                  <DetailRow
+                                    label="5-Business-Day Deadline"
+                                    value={new Date(foia.deadline_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                    color={foia.deadline_expired ? C.green : C.yellow}
+                                  />
+                                )}
+                                {foia.sent_at && (
+                                  <DetailRow
+                                    label="Days Elapsed"
+                                    value={`${foia.days_elapsed} calendar / ${foia.business_days_elapsed} business days`}
+                                    color={foia.deadline_expired ? C.green : undefined}
+                                  />
+                                )}
+                                {foia.resend_email_id && (
+                                  <DetailRow label="Resend ID" value={foia.resend_email_id} />
+                                )}
+                              </div>
+
+                              {/* Prima Facie callout */}
+                              {foia.prima_facie_eligible && (
+                                <div style={{
+                                  padding: '10px 12px', borderRadius: 6,
+                                  background: `${C.green}15`, border: `1px solid ${C.green}40`,
+                                  marginTop: 8,
+                                }}>
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: C.green, marginBottom: 4 }}>
+                                    Prima Facie Case Not Established
+                                  </div>
+                                  <div style={{ fontSize: 11, color: C.green, lineHeight: 1.5 }}>
+                                    City failed to respond within the statutory 5-business-day period.
+                                    This argument is being incorporated into the contest letter automatically.
+                                  </div>
+                                </div>
+                              )}
+
+                              {foia.response_received && (
+                                <div style={{
+                                  padding: '10px 12px', borderRadius: 6,
+                                  background: `${C.purple}15`, border: `1px solid ${C.purple}40`,
+                                  marginTop: 8,
+                                }}>
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: C.purple, marginBottom: 4 }}>
+                                    City Responded
+                                  </div>
+                                  <div style={{ fontSize: 11, color: C.purple, lineHeight: 1.5 }}>
+                                    Response received — reviewing for completeness. Incomplete records still support defense.
+                                  </div>
+                                </div>
+                              )}
+
+                              {!foia.deadline_expired && foia.status === 'sent' && (
+                                <div style={{
+                                  padding: '8px 12px', borderRadius: 6,
+                                  background: `${C.yellow}10`, marginTop: 8,
+                                  fontSize: 11, color: C.yellow, lineHeight: 1.5,
+                                }}>
+                                  Waiting for city response. {5 - foia.business_days_elapsed} business day{5 - foia.business_days_elapsed !== 1 ? 's' : ''} remaining until deadline.
+                                </div>
+                              )}
+
+                              {/* User preference */}
+                              <div style={{ marginTop: 10, fontSize: 11, color: C.textMuted }}>
+                                User preference: <strong style={{ color: C.text }}>
+                                  {ticketDetail.foia_wait_preference === 'send_immediately' ? 'Send letter immediately (don\'t wait for FOIA)' :
+                                   ticketDetail.foia_wait_preference === 'wait_for_foia' ? 'Wait for FOIA deadline before sending letter' :
+                                   'Wait for FOIA (default)'}
+                                </strong>
+                              </div>
+                            </div>
+                          );
+                        })() : (
+                          <div style={{
+                            padding: 14, borderRadius: 8,
+                            background: C.card, border: `1px solid ${C.border}`,
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 16 }}>{'\u2696\uFE0F'}</span>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: C.textMuted }}>No FOIA request filed</span>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                                background: `${C.textMuted}20`, color: C.textMuted,
+                              }}>
+                                NOT FILED
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
+                              Ticket may have been detected before FOIA auto-filing was enabled, or user had no mailing address.
+                            </div>
+                          </div>
+                        )}
+                      </Section>
 
                       {/* Evidence Email Sent */}
                       {ticketDetail.email_info && (

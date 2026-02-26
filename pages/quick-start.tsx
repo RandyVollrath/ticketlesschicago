@@ -50,6 +50,7 @@ export default function QuickStart() {
     foiaConsent: true, // Pre-checked
     contestSignature: '',
     marketingConsent: false,
+    foiaWaitPreference: 'wait_for_foia' as 'wait_for_foia' | 'send_immediately',
   });
 
   // Step 3: Profile completion
@@ -320,6 +321,8 @@ export default function QuickStart() {
         updates.mailing_state = profileData.mailingState;
         updates.mailing_zip = profileData.mailingZip;
       }
+      // Always save FOIA wait preference
+      updates.foia_wait_preference = formData.foiaWaitPreference;
       updates.updated_at = new Date().toISOString();
 
       if (Object.keys(updates).length > 1) { // more than just updated_at
@@ -827,6 +830,111 @@ export default function QuickStart() {
                   </button>
                 </>
               )}
+
+              {/* FOIA Wait Preference */}
+              <div style={{
+                backgroundColor: '#F5F3FF',
+                border: '1px solid #C4B5FD',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '20px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#5B21B6' }}>
+                    Contest Letter Timing
+                  </h4>
+                  <div
+                    title="When we detect a ticket, we immediately file a FOIA request demanding the city's enforcement records. The city has 5 business days to respond. If they don't, we use that failure as a legal argument in your contest letter."
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      backgroundColor: '#7C3AED',
+                      color: 'white',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'help',
+                    }}
+                  >?</div>
+                </div>
+                <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#6D28D9', lineHeight: 1.5 }}>
+                  Should we wait for the city's FOIA response deadline before sending your contest letter?
+                </p>
+
+                {/* Wait for FOIA option */}
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '12px',
+                  backgroundColor: formData.foiaWaitPreference === 'wait_for_foia' ? '#EDE9FE' : 'white',
+                  borderRadius: '8px',
+                  border: `2px solid ${formData.foiaWaitPreference === 'wait_for_foia' ? '#7C3AED' : '#E5E7EB'}`,
+                  cursor: 'pointer',
+                  marginBottom: '8px',
+                }}>
+                  <input
+                    type="radio"
+                    name="foiaWaitPreference"
+                    value="wait_for_foia"
+                    checked={formData.foiaWaitPreference === 'wait_for_foia'}
+                    onChange={() => setFormData(prev => ({ ...prev, foiaWaitPreference: 'wait_for_foia' }))}
+                    style={{ marginTop: '2px', accentColor: '#7C3AED' }}
+                  />
+                  <span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937' }}>
+                      Wait for FOIA deadline
+                      <span style={{
+                        marginLeft: '6px',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        backgroundColor: '#059669',
+                        color: 'white',
+                        textTransform: 'uppercase',
+                      }}>
+                        Recommended
+                      </span>
+                    </span>
+                    <br />
+                    <span style={{ fontSize: '12px', color: '#6B7280', lineHeight: 1.5 }}>
+                      Adds ~7 days but enables the &quot;Prima Facie Case Not Established&quot; argument — one of the top reasons tickets are dismissed.
+                    </span>
+                  </span>
+                </label>
+
+                {/* Send immediately option */}
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '12px',
+                  backgroundColor: formData.foiaWaitPreference === 'send_immediately' ? '#FEF3C7' : 'white',
+                  borderRadius: '8px',
+                  border: `2px solid ${formData.foiaWaitPreference === 'send_immediately' ? '#F59E0B' : '#E5E7EB'}`,
+                  cursor: 'pointer',
+                }}>
+                  <input
+                    type="radio"
+                    name="foiaWaitPreference"
+                    value="send_immediately"
+                    checked={formData.foiaWaitPreference === 'send_immediately'}
+                    onChange={() => setFormData(prev => ({ ...prev, foiaWaitPreference: 'send_immediately' }))}
+                    style={{ marginTop: '2px', accentColor: '#F59E0B' }}
+                  />
+                  <span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937' }}>Send letters immediately</span>
+                    <br />
+                    <span style={{ fontSize: '12px', color: '#6B7280', lineHeight: 1.5 }}>
+                      Faster turnaround but skips the FOIA non-response argument. Good if you have a deadline approaching.
+                    </span>
+                  </span>
+                </label>
+              </div>
 
               <button
                 onClick={() => setStep('profile')}
