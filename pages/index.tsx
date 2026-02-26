@@ -252,7 +252,7 @@ export default function LandingPage() {
           ) : (
             <>
               <Link href="/auth/signin" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Login</Link>
-              <Button primary href="/get-started" fullWidth style={{ marginTop: '8px' }}>Get Started</Button>
+              <Button primary href="/quick-start" fullWidth style={{ marginTop: '8px' }}>Quick Start (Free)</Button>
             </>
           )}
         </div>
@@ -336,8 +336,8 @@ export default function LandingPage() {
           <Button primary href="/start">
             Become a Founding Member - $49/year <ArrowRight />
           </Button>
-          <Button variant="outline" href="/alerts/signup">
-            Start Free Alerts
+          <Button variant="outline" href="/quick-start">
+            Quick Start (Free)
           </Button>
         </div>
 
