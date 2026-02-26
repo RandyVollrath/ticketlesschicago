@@ -3,7 +3,7 @@
  *
  * Sends follow-up reminder emails to users with pending tickets:
  *   - Day 5 reminder: "You have X days left — submit evidence to strengthen your letter"
- *   - Day 10 reminder: "11 days remaining — submit evidence soon"
+ *   - Days 10-16: DAILY evidence reminders (one per calendar day)
  *   - Day 17 LAST CHANCE: "Your letter will auto-send in 48 hours if not approved"
  *
  * Also handles the day 19 safety-net auto-send (triggers letter generation + approval bypass)
@@ -494,16 +494,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
-      // ── Day 10 SECOND REMINDER ──
-      if (daysElapsed >= 10 && (ticket.reminder_count || 0) === 1) {
-        console.log(`  Day ${daysElapsed}: Sending second reminder for ticket ${ticket.ticket_number}`);
+      // ── Days 10-16: DAILY EVIDENCE REMINDER ──
+      if (daysElapsed >= 10 && daysElapsed < 17 && (ticket.reminder_count || 0) >= 1) {
+        // Only send one reminder per calendar day (Chicago time)
+        const chicagoToday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+        const todayStr = `${chicagoToday.getFullYear()}-${String(chicagoToday.getMonth()+1).padStart(2,'0')}-${String(chicagoToday.getDate()).padStart(2,'0')}`;
+
+        if (ticket.last_reminder_sent_at) {
+          const lastSent = new Date(new Date(ticket.last_reminder_sent_at).toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+          const lastSentStr = `${lastSent.getFullYear()}-${String(lastSent.getMonth()+1).padStart(2,'0')}-${String(lastSent.getDate()).padStart(2,'0')}`;
+          if (lastSentStr === todayStr) {
+            continue; // Already sent today
+          }
+        }
+
+        console.log(`  Day ${daysElapsed}: Sending daily evidence reminder for ticket ${ticket.ticket_number}`);
         const sent = await sendReminderEmail(email, name, ticket, daysElapsed);
         if (sent) {
           remindersSent++;
           await supabaseAdmin
             .from('detected_tickets')
             .update({
-              reminder_count: 2,
+              reminder_count: (ticket.reminder_count || 0) + 1,
               last_reminder_sent_at: new Date().toISOString(),
             })
             .eq('id', ticket.id);
