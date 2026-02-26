@@ -7,11 +7,11 @@
 	<key>_reportProcessName</key>
 	<string>searchd</string>
 	<key>_reportTime</key>
-	<string>2026-02-26-09-53-53</string>
+	<string>2026-02-26-16-20-03</string>
 	<key>age_corespotlight_index</key>
-	<integer>41637480</integer>
+	<integer>41660650</integer>
 	<key>age_heartbeat</key>
-	<integer>38784315</integer>
+	<integer>38807485</integer>
 	<key>config_global</key>
 	<integer>0</integer>
 	<key>config_locale</key>
@@ -19,15 +19,23 @@
 	<key>config_ota_version</key>
 	<string>133.4.6</string>
 	<key>data_collection_error</key>
-	<integer>263168</integer>
+	<integer>0</integer>
 	<key>index_a_age</key>
-	<integer>6467148</integer>
+	<integer>6490318</integer>
 	<key>index_a_config</key>
 	<integer>0</integer>
+	<key>index_a_count_add_journaled</key>
+	<integer>10</integer>
+	<key>index_a_count_add_processed</key>
+	<integer>10</integer>
 	<key>index_a_count_add_request</key>
-	<integer>0</integer>
+	<integer>10</integer>
+	<key>index_a_count_delete_journaled</key>
+	<integer>13</integer>
+	<key>index_a_count_delete_processed</key>
+	<integer>2</integer>
 	<key>index_a_count_delete_request</key>
-	<integer>0</integer>
+	<integer>1</integer>
 	<key>index_a_count_drop</key>
 	<integer>0</integer>
 	<key>index_a_count_drop_total</key>
@@ -36,6 +44,10 @@
 	<integer>0</integer>
 	<key>index_a_count_open_dirty</key>
 	<integer>0</integer>
+	<key>index_a_count_update_journaled</key>
+	<integer>0</integer>
+	<key>index_a_count_update_processed</key>
+	<integer>0</integer>
 	<key>index_a_count_update_request</key>
 	<integer>0</integer>
 	<key>index_a_max_index_gen_merge_level</key>
@@ -43,7 +55,7 @@
 	<key>index_a_max_journal_file_bytes</key>
 	<integer>32</integer>
 	<key>index_a_num_file</key>
-	<integer>87</integer>
+	<integer>88</integer>
 	<key>index_a_num_index_gen_compacted</key>
 	<integer>1</integer>
 	<key>index_a_num_index_gen_non_compacted</key>
@@ -55,26 +67,34 @@
 	<key>index_a_num_journal_file</key>
 	<integer>1</integer>
 	<key>index_a_num_object_sdb</key>
-	<integer>860</integer>
+	<integer>871</integer>
 	<key>index_a_sdb_file_size_bytes</key>
-	<integer>5509120</integer>
+	<integer>5525504</integer>
 	<key>index_a_sdb_shadow_file_size_bytes</key>
-	<integer>5509120</integer>
+	<integer>5525504</integer>
 	<key>index_a_size_bytes</key>
-	<integer>12483386</integer>
+	<integer>12684733</integer>
 	<key>index_a_time_since_last_open_clean</key>
-	<integer>73931</integer>
+	<integer>23169</integer>
 	<key>index_a_time_since_last_open_dirty</key>
-	<integer>71628</integer>
+	<integer>94798</integer>
 	<key>index_a_time_since_merge_vacuum_end</key>
-	<integer>163686</integer>
+	<integer>186856</integer>
 	<key>index_a_time_since_merge_vacuum_start</key>
-	<integer>163688</integer>
+	<integer>186858</integer>
 	<key>index_b_age</key>
-	<integer>6456874</integer>
+	<integer>6480044</integer>
 	<key>index_b_config</key>
 	<integer>0</integer>
+	<key>index_b_count_add_journaled</key>
+	<integer>0</integer>
+	<key>index_b_count_add_processed</key>
+	<integer>0</integer>
 	<key>index_b_count_add_request</key>
+	<integer>0</integer>
+	<key>index_b_count_delete_journaled</key>
+	<integer>0</integer>
+	<key>index_b_count_delete_processed</key>
 	<integer>0</integer>
 	<key>index_b_count_delete_request</key>
 	<integer>0</integer>
@@ -85,6 +105,10 @@
 	<key>index_b_count_open_clean</key>
 	<integer>0</integer>
 	<key>index_b_count_open_dirty</key>
+	<integer>0</integer>
+	<key>index_b_count_update_journaled</key>
+	<integer>0</integer>
+	<key>index_b_count_update_processed</key>
 	<integer>0</integer>
 	<key>index_b_count_update_request</key>
 	<integer>0</integer>
@@ -113,27 +137,27 @@
 	<key>index_b_size_bytes</key>
 	<integer>1062469</integer>
 	<key>index_b_time_since_last_open_clean</key>
-	<integer>71628</integer>
+	<integer>23169</integer>
 	<key>index_b_time_since_merge_vacuum_end</key>
-	<integer>159581</integer>
+	<integer>182751</integer>
 	<key>index_b_time_since_merge_vacuum_start</key>
-	<integer>161342</integer>
+	<integer>184512</integer>
 	<key>index_c_age</key>
-	<integer>6631723</integer>
+	<integer>6654893</integer>
 	<key>index_c_config</key>
 	<integer>0</integer>
 	<key>index_c_count_add_journaled</key>
-	<integer>144</integer>
+	<integer>51</integer>
 	<key>index_c_count_add_processed</key>
-	<integer>142</integer>
+	<integer>51</integer>
 	<key>index_c_count_add_request</key>
-	<integer>13</integer>
+	<integer>51</integer>
 	<key>index_c_count_delete_journaled</key>
-	<integer>85</integer>
-	<key>index_c_count_delete_processed</key>
 	<integer>7</integer>
+	<key>index_c_count_delete_processed</key>
+	<integer>2</integer>
 	<key>index_c_count_delete_request</key>
-	<integer>1</integer>
+	<integer>5</integer>
 	<key>index_c_count_drop</key>
 	<integer>0</integer>
 	<key>index_c_count_drop_total</key>
@@ -141,19 +165,19 @@
 	<key>index_c_count_open_clean</key>
 	<integer>0</integer>
 	<key>index_c_count_open_dirty</key>
-	<integer>1</integer>
+	<integer>0</integer>
 	<key>index_c_count_update_journaled</key>
-	<integer>5887</integer>
+	<integer>44</integer>
 	<key>index_c_count_update_processed</key>
-	<integer>5916</integer>
+	<integer>55</integer>
 	<key>index_c_count_update_request</key>
-	<integer>10</integer>
+	<integer>44</integer>
 	<key>index_c_max_index_gen_merge_level</key>
 	<integer>1</integer>
 	<key>index_c_max_journal_file_bytes</key>
-	<integer>65334</integer>
+	<integer>32</integer>
 	<key>index_c_num_file</key>
-	<integer>108</integer>
+	<integer>106</integer>
 	<key>index_c_num_index_gen_compacted</key>
 	<integer>1</integer>
 	<key>index_c_num_index_gen_non_compacted</key>
@@ -163,28 +187,36 @@
 	<key>index_c_num_index_gen_writeable</key>
 	<integer>1</integer>
 	<key>index_c_num_journal_file</key>
-	<integer>3</integer>
+	<integer>1</integer>
 	<key>index_c_num_object_sdb</key>
-	<integer>142239</integer>
+	<integer>142324</integer>
 	<key>index_c_sdb_file_size_bytes</key>
-	<integer>83218432</integer>
+	<integer>83283968</integer>
 	<key>index_c_sdb_shadow_file_size_bytes</key>
-	<integer>83218432</integer>
+	<integer>83283968</integer>
 	<key>index_c_size_bytes</key>
-	<integer>360732144</integer>
+	<integer>361603294</integer>
 	<key>index_c_time_since_last_open_clean</key>
-	<integer>198767</integer>
+	<integer>221937</integer>
 	<key>index_c_time_since_last_open_dirty</key>
-	<integer>6131</integer>
+	<integer>29301</integer>
 	<key>index_c_time_since_merge_vacuum_end</key>
-	<integer>161129</integer>
+	<integer>184299</integer>
 	<key>index_c_time_since_merge_vacuum_start</key>
-	<integer>161152</integer>
+	<integer>184322</integer>
 	<key>index_cx_age</key>
-	<integer>6456874</integer>
+	<integer>6480044</integer>
 	<key>index_cx_config</key>
 	<integer>0</integer>
+	<key>index_cx_count_add_journaled</key>
+	<integer>0</integer>
+	<key>index_cx_count_add_processed</key>
+	<integer>0</integer>
 	<key>index_cx_count_add_request</key>
+	<integer>0</integer>
+	<key>index_cx_count_delete_journaled</key>
+	<integer>0</integer>
+	<key>index_cx_count_delete_processed</key>
 	<integer>0</integer>
 	<key>index_cx_count_delete_request</key>
 	<integer>0</integer>
@@ -195,6 +227,10 @@
 	<key>index_cx_count_open_clean</key>
 	<integer>0</integer>
 	<key>index_cx_count_open_dirty</key>
+	<integer>0</integer>
+	<key>index_cx_count_update_journaled</key>
+	<integer>0</integer>
+	<key>index_cx_count_update_processed</key>
 	<integer>0</integer>
 	<key>index_cx_count_update_request</key>
 	<integer>0</integer>
@@ -223,13 +259,13 @@
 	<key>index_cx_size_bytes</key>
 	<integer>1062469</integer>
 	<key>index_cx_time_since_last_open_clean</key>
-	<integer>71628</integer>
+	<integer>23169</integer>
 	<key>index_cx_time_since_merge_vacuum_end</key>
-	<integer>161277</integer>
+	<integer>184447</integer>
 	<key>index_cx_time_since_merge_vacuum_start</key>
-	<integer>161277</integer>
+	<integer>184447</integer>
 	<key>index_mail_age</key>
-	<integer>6588333</integer>
+	<integer>6611503</integer>
 	<key>index_mail_config</key>
 	<integer>0</integer>
 	<key>index_mail_count_add_journaled</key>
@@ -247,7 +283,7 @@
 	<key>index_mail_count_drop</key>
 	<integer>0</integer>
 	<key>index_mail_count_open_clean</key>
-	<integer>1</integer>
+	<integer>0</integer>
 	<key>index_mail_count_open_dirty</key>
 	<integer>0</integer>
 	<key>index_mail_count_update_journaled</key>
@@ -281,27 +317,27 @@
 	<key>index_mail_size_bytes</key>
 	<integer>1062476</integer>
 	<key>index_mail_time_since_last_open_clean</key>
-	<integer>6132</integer>
+	<integer>29302</integer>
 	<key>index_mail_time_since_merge_vacuum_end</key>
-	<integer>161273</integer>
+	<integer>184443</integer>
 	<key>index_mail_time_since_merge_vacuum_start</key>
-	<integer>161274</integer>
+	<integer>184444</integer>
 	<key>index_priority_age</key>
-	<integer>6631717</integer>
+	<integer>6654887</integer>
 	<key>index_priority_config</key>
 	<integer>0</integer>
 	<key>index_priority_count_add_journaled</key>
-	<integer>97</integer>
+	<integer>45</integer>
 	<key>index_priority_count_add_processed</key>
-	<integer>97</integer>
+	<integer>45</integer>
 	<key>index_priority_count_add_request</key>
-	<integer>88</integer>
+	<integer>45</integer>
 	<key>index_priority_count_delete_journaled</key>
-	<integer>4</integer>
+	<integer>56</integer>
 	<key>index_priority_count_delete_processed</key>
-	<integer>0</integer>
+	<integer>26</integer>
 	<key>index_priority_count_delete_request</key>
-	<integer>4</integer>
+	<integer>30</integer>
 	<key>index_priority_count_drop</key>
 	<integer>0</integer>
 	<key>index_priority_count_drop_total</key>
@@ -309,51 +345,51 @@
 	<key>index_priority_count_open_clean</key>
 	<integer>0</integer>
 	<key>index_priority_count_open_dirty</key>
-	<integer>1</integer>
+	<integer>0</integer>
 	<key>index_priority_count_update_journaled</key>
-	<integer>975</integer>
+	<integer>809</integer>
 	<key>index_priority_count_update_processed</key>
-	<integer>971</integer>
+	<integer>805</integer>
 	<key>index_priority_count_update_request</key>
-	<integer>413</integer>
+	<integer>806</integer>
 	<key>index_priority_max_index_gen_merge_level</key>
 	<integer>1</integer>
 	<key>index_priority_max_journal_file_bytes</key>
-	<integer>384</integer>
+	<integer>189858</integer>
 	<key>index_priority_num_file</key>
-	<integer>89</integer>
+	<integer>110</integer>
 	<key>index_priority_num_index_gen_compacted</key>
 	<integer>1</integer>
 	<key>index_priority_num_index_gen_non_compacted</key>
-	<integer>1</integer>
+	<integer>2</integer>
 	<key>index_priority_num_index_gen_read_only</key>
-	<integer>1</integer>
+	<integer>2</integer>
 	<key>index_priority_num_index_gen_writeable</key>
 	<integer>1</integer>
 	<key>index_priority_num_journal_file</key>
 	<integer>3</integer>
 	<key>index_priority_num_object_sdb</key>
-	<integer>3425</integer>
+	<integer>3396</integer>
 	<key>index_priority_sdb_file_size_bytes</key>
 	<integer>1708032</integer>
 	<key>index_priority_sdb_shadow_file_size_bytes</key>
 	<integer>1708032</integer>
 	<key>index_priority_size_bytes</key>
-	<integer>17227451</integer>
+	<integer>15778357</integer>
 	<key>index_priority_time_since_last_open_clean</key>
-	<integer>75241</integer>
+	<integer>98411</integer>
 	<key>index_priority_time_since_last_open_dirty</key>
-	<integer>6131</integer>
+	<integer>29301</integer>
 	<key>index_priority_time_since_merge_end</key>
-	<integer>507802</integer>
+	<integer>530972</integer>
 	<key>index_priority_time_since_merge_start</key>
-	<integer>507811</integer>
+	<integer>530981</integer>
 	<key>index_priority_time_since_merge_vacuum_end</key>
-	<integer>161257</integer>
+	<integer>184427</integer>
 	<key>index_priority_time_since_merge_vacuum_start</key>
-	<integer>161259</integer>
+	<integer>184429</integer>
 	<key>system_fs_free_space_bytes</key>
-	<integer>15820967936</integer>
+	<integer>15395536896</integer>
 	<key>system_fs_mount_flags</key>
 	<integer>343969944</integer>
 	<key>system_fs_total_space_bytes</key>
@@ -365,15 +401,15 @@
 	<key>system_volume_flags</key>
 	<integer>18296925792237518977</integer>
 	<key>time_since_last_heartbeat</key>
-	<integer>33317</integer>
+	<integer>11618</integer>
 	<key>time_since_launch_1</key>
-	<integer>6132</integer>
+	<integer>29302</integer>
 	<key>time_since_launch_2</key>
-	<integer>71628</integer>
+	<integer>94798</integer>
 	<key>time_since_launch_3</key>
-	<integer>75243</integer>
+	<integer>98413</integer>
 	<key>time_since_software_update</key>
-	<integer>1774454</integer>
+	<integer>1797624</integer>
 	<key>version_build</key>
 	<string>23D127</string>
 	<key>version_build_previous</key>
