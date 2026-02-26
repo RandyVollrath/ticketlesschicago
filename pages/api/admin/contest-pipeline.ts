@@ -225,13 +225,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Compute mail-by deadline (21 days from violation date = legal deadline)
+      // Use Chicago timezone (America/Chicago) for calendar-day math so
+      // "days until deadline" matches what a Chicago user sees on their calendar.
       let mailByDeadline: string | null = null;
       let daysUntilDeadline: number | null = null;
       if (ticket.violation_date) {
         const vDate = new Date(ticket.violation_date);
         const deadline = new Date(vDate.getTime() + 21 * 24 * 60 * 60 * 1000);
         mailByDeadline = deadline.toISOString();
-        daysUntilDeadline = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+        // Calendar-day diff in Chicago time
+        const chicagoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+        const chicagoDeadline = new Date(deadline.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+        const nowDateOnly = new Date(chicagoNow.getFullYear(), chicagoNow.getMonth(), chicagoNow.getDate());
+        const deadlineDateOnly = new Date(chicagoDeadline.getFullYear(), chicagoDeadline.getMonth(), chicagoDeadline.getDate());
+        daysUntilDeadline = Math.round((deadlineDateOnly.getTime() - nowDateOnly.getTime()) / (1000 * 60 * 60 * 24));
       }
 
       // Evidence email tracking

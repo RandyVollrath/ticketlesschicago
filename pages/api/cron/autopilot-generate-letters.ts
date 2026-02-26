@@ -537,7 +537,13 @@ async function gatherAllEvidence(
             location: ticket.location || '',
             amount: ticket.amount || 0,
             daysSinceTicket: ticket.violation_date
-              ? Math.floor((Date.now() - new Date(ticket.violation_date).getTime()) / (1000 * 60 * 60 * 24))
+              ? (() => {
+                  const cNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+                  const cTkt = new Date(new Date(ticket.violation_date).toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+                  const nD = new Date(cNow.getFullYear(), cNow.getMonth(), cNow.getDate());
+                  const tD = new Date(cTkt.getFullYear(), cTkt.getMonth(), cTkt.getDate());
+                  return Math.round((nD.getTime() - tD.getTime()) / (1000 * 60 * 60 * 24));
+                })()
               : 0,
             hasSignageIssue: false,
             hasEmergency: false,

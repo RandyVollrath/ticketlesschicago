@@ -189,8 +189,13 @@ async function sendEvidenceRequestEmail(
     : 'Unknown date';
 
   // Calculate days remaining from ticket date (21-day contest window)
+  // Use Chicago timezone for calendar-day math
   const ticketDate = violationDate ? new Date(violationDate) : new Date();
-  const daysSinceTicket = Math.floor((Date.now() - ticketDate.getTime()) / (1000 * 60 * 60 * 24));
+  const chicagoNowCP = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const chicagoTicketCP = new Date(ticketDate.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const nowDateOnlyCP = new Date(chicagoNowCP.getFullYear(), chicagoNowCP.getMonth(), chicagoNowCP.getDate());
+  const ticketDateOnlyCP = new Date(chicagoTicketCP.getFullYear(), chicagoTicketCP.getMonth(), chicagoTicketCP.getDate());
+  const daysSinceTicket = Math.round((nowDateOnlyCP.getTime() - ticketDateOnlyCP.getTime()) / (1000 * 60 * 60 * 24));
   const daysRemaining = Math.max(0, 21 - daysSinceTicket);
   const contestDeadlineDate = new Date(ticketDate.getTime() + 21 * 24 * 60 * 60 * 1000);
   const formattedContestDeadline = contestDeadlineDate.toLocaleDateString('en-US', {
