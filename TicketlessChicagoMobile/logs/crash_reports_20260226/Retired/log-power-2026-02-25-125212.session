@@ -1,0 +1,7143 @@
+{"bug_type":"278","os_version":"iPhone OS 26.3 (23D127)"}
+{
+  "energy_consumed" : 15349397,
+  "log_timestamp" : "2026-02-25T18:52:12+0000",
+  "hangtracer_enabled" : 1000,
+  "init_count" : 1,
+  "gms_opt_in" : false,
+  "machine_config" : "iPhone14,4",
+  "language" : "en-US",
+  "total_drain" : 244,
+  "os_variant" : 0,
+  "plugged_in_duration" : 39828,
+  "region_format" : "001",
+  "os_version" : "iPhone OS 26.3 (23D127)",
+  "log_version" : 13,
+  "metrics" : [
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1642.4.3",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.Passbook",
+      "slice_uuid" : "1335847E-D450-302D-9E1B-6D4DAEAC3952",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          },
+          "wifi" : {
+            "totalUpload" : 33862,
+            "totalDownload" : 49209
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 67,
+            "6" : 1035,
+            "4" : 1080,
+            "2" : 3564,
+            "11" : 131
+          },
+          "fg" : {
+            "1" : 614,
+            "6" : 3,
+            "4" : 5,
+            "2" : 123
+          },
+          "total" : {
+            "10" : 67,
+            "1" : 614,
+            "6" : 2134,
+            "4" : 2266,
+            "2" : 9174,
+            "11" : 131
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 3,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 6,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 4,
+            "location" : 0
+          },
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 2,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 3
+          },
+          "fg_total" : 3
+        }
+      },
+      "performance_metrics" : {
+        "memory" : {
+          "average" : 38523701,
+          "peak" : 40354616
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "2" : [
+                600,
+                650,
+                700
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 3,
+              "sessions" : [
+                600,
+                650,
+                700
+              ]
+            }
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 4
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "225.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "12.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.calculator",
+      "slice_uuid" : "C475C50E-DD8F-339B-A6C7-379E8C5AD560",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "display_apl" : {
+          "totalFrameCount" : 1131,
+          "averagePixelLuminance" : 11
+        },
+        "app_energy" : {
+          "bg" : {
+            "2" : 5,
+            "4" : 1,
+            "6" : 1
+          },
+          "fg" : {
+            "3" : 278,
+            "1" : 1436,
+            "6" : 176,
+            "4" : 181,
+            "2" : 917
+          },
+          "total" : {
+            "3" : 278,
+            "1" : 1436,
+            "6" : 177,
+            "4" : 182,
+            "2" : 922
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 3,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 18,
+          "fg_unplugged" : 18,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 18
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 24576,
+          "totalReads" : 53530624
+        },
+        "memory" : {
+          "average" : 1245648,
+          "peak" : 1343952
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                500
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 1,
+              "sessions" : [
+                500
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 1
+            },
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "0634E17F-69C1-4867-AC30-03E2E948F984",
+      "app_build_version" : "531626.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771030800000&sf=143441",
+      "app_version" : "5.40.0",
+      "app_adamid" : 933944389,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.whoop.iphone",
+      "slice_uuid" : "A6B984D9-612C-30CB-8B56-88985696A53C",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 46750,
+            "totalDownload" : 82823
+          },
+          "wifi" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 4,
+            "4" : 5,
+            "2" : 18,
+            "11" : 23
+          },
+          "total" : {
+            "6" : 4,
+            "4" : 5,
+            "2" : 18,
+            "11" : 23
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 2,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 11,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 11,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 11,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 7864320,
+          "totalReads" : 190259200
+        },
+        "memory" : {
+          "average" : 59851672,
+          "peak" : 64258992
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "2" : [
+                4250
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 1,
+              "sessions" : [
+                4250
+              ]
+            }
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 1
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "1390EF48-09AD-4CDE-98C4-22A7FE1A01B8",
+      "app_build_version" : "9.31.8338",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771030800000&sf=143441",
+      "app_version" : "2026.0211.1820",
+      "app_adamid" : 288429040,
+      "app_arch" : "",
+      "app_bundleid" : "com.linkedin.LinkedIn",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 778778,
+            "totalDownload" : 18241101
+          },
+          "wifi" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 9116,
+          "averagePixelLuminance" : 72
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 13,
+            "4" : 13,
+            "2" : 58,
+            "11" : 290
+          },
+          "fg" : {
+            "3" : 334,
+            "1" : 11919,
+            "6" : 2228,
+            "4" : 2230,
+            "2" : 9575,
+            "11" : 47633
+          },
+          "total" : {
+            "3" : 334,
+            "1" : 11919,
+            "6" : 2241,
+            "4" : 2243,
+            "2" : 9633,
+            "11" : 47923
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 28,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 151,
+          "fg_unplugged" : 95,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 60,
+            "signalBar3" : 69,
+            "signalBar2" : 23
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 105807872,
+          "totalReads" : 1181958144
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                1350,
+                1850
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 1,
+            "sessions" : [
+              380
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeNormalAppExitCount" : 2
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 2,
+              "sessions" : [
+                1350,
+                1850
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 20,
+            "glitchDuration" : 144,
+            "glitchCount" : 9,
+            "scrollDuration" : 26702,
+            "glitchTimeRatio" : 5.4061193847029081
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "83A39F75-3C35-4205-8663-322499C4836C",
+      "app_build_version" : "1893.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771030800000&sf=143441",
+      "app_version" : "4.64.1",
+      "app_adamid" : 379693831,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.audible.iphone",
+      "slice_uuid" : "0B4D46C3-8BE8-3DA9-93D2-8E5AE49E2D83",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          },
+          "wifi" : {
+            "totalUpload" : 169101,
+            "totalDownload" : 788879
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 3,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 15,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 15,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 9502720,
+          "totalReads" : 252698624
+        },
+        "memory" : {
+          "average" : 15122960,
+          "peak" : 49038400
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 1
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "145B6D8A-1045-4C62-B845-6C480D5C72A8",
+      "app_build_version" : "12070.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1738645200000&sf=143441&rdom=sng.link&rapp=com.apple.mobilesafari&pgtp=Software&pgid=1130616675&ctxt=Today&lngid=1",
+      "app_version" : "12.15.0",
+      "app_adamid" : 1130616675,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.truebill.truebillnative",
+      "slice_uuid" : "BD196B45-43B5-3BA6-8ACE-44FDE452184A",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 24444928
+        },
+        "memory" : {
+          "average" : 1114600,
+          "peak" : 1114600
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 1
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "21.7.4",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1552755600000&sf=143441&pgtp=Search&pgid=8a415ffb-910c-4615-89bb-fa77f16e787c&ctxt=Search",
+      "app_version" : "21.07.4",
+      "app_adamid" : 544007664,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.ios.youtube",
+      "slice_uuid" : "12EEFA25-415E-352F-A0CD-BE977D78A7F0",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 70794457,
+            "totalDownload" : 9000306
+          },
+          "wifi" : {
+            "totalUpload" : 4756979,
+            "totalDownload" : 55294109
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 9345,
+          "averagePixelLuminance" : 13
+        },
+        "app_energy" : {
+          "bg_audio" : {
+            "10" : 1769,
+            "6" : 995,
+            "4" : 1121,
+            "2" : 4588,
+            "7" : 442,
+            "11" : 1296
+          },
+          "bg" : {
+            "10" : 4758,
+            "6" : 2678,
+            "4" : 3014,
+            "2" : 12336,
+            "7" : 1190,
+            "11" : 3486
+          },
+          "fg" : {
+            "7" : 1905,
+            "3" : 2411,
+            "11" : 2197,
+            "4" : 1933,
+            "1" : 15334,
+            "6" : 1873,
+            "2" : 9069,
+            "10" : 2998
+          },
+          "total" : {
+            "7" : 3538,
+            "3" : 2411,
+            "11" : 6980,
+            "4" : 6069,
+            "1" : 15334,
+            "6" : 5547,
+            "2" : 25994,
+            "10" : 9526
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 128,
+          "bg_unplugged" : {
+            "audio" : 45,
+            "location_audio" : 0,
+            "total" : 166,
+            "location" : 0
+          },
+          "fg_total" : 156,
+          "fg_unplugged" : 156,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 47,
+            "signalBar0" : 0,
+            "signalBar4" : 13,
+            "signalBar3" : 56,
+            "signalBar2" : 371
+          },
+          "bg_total" : {
+            "audio" : 45,
+            "location_audio" : 0,
+            "total" : 341,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 1086255104,
+          "totalReads" : 4138745856
+        },
+        "memory" : {
+          "average" : 85455450,
+          "peak" : 304006712
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                900,
+                1050,
+                1100
+              ]
+            },
+            "bg" : {
+              "2" : [
+                1000,
+                1450,
+                1550,
+                1550,
+                2450,
+                2800,
+                4750
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 5,
+            "sessions" : [
+              280,
+              450,
+              530,
+              560,
+              780
+            ]
+          },
+          "resume" : {
+            "count" : 2,
+            "sessions" : [
+              405,
+              860
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 10,
+              "cumulativeNormalAppExitCount" : 1
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 3,
+              "sessions" : [
+                900,
+                1050,
+                1100
+              ]
+            },
+            "bg" : {
+              "count" : 7,
+              "sessions" : [
+                1000,
+                1450,
+                1550,
+                1550,
+                2450,
+                2800,
+                4750
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 25,
+            "glitchDuration" : 145,
+            "glitchCount" : 8,
+            "scrollDuration" : 41407,
+            "glitchTimeRatio" : 1.7774817870395929
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "1DCD6FD3-22F8-4716-9765-86AC92869B55",
+      "app_build_version" : "1078.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1763618400000&sf=143441&app=com.apple.AppStore&pgtp=Search&pgid=SearchTopResults&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "18.4.4",
+      "app_adamid" : 1594898306,
+      "app_arch" : "",
+      "app_bundleid" : "sh.blink.blinkshell",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 1,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 8007680
+        },
+        "memory" : {
+          "average" : 2605520,
+          "peak" : 3326416
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "14D5965F-8713-4E6A-BA19-7562334F513D",
+      "app_build_version" : "11.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1557883800000&sf=143441&rapp=com.zellepay.zelle&pgtp=Software&pgid=303113127&prpg=Search_9f1d57e0-047a-4eae-b9ac-bc3a9ead1af1&ctxt=Today",
+      "app_version" : "360628422",
+      "app_adamid" : 303113127,
+      "app_arch" : "",
+      "app_bundleid" : "com.pnc.pncmobile",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 2,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 2,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 884736
+        },
+        "memory" : {
+          "average" : 315724,
+          "peak" : 360816
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 4
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "731EEC00-FC06-49D3-9A1A-3D1B29AF7DA5",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1552777200000&sf=143441&pgtp=Search&pgid=dfb3d07e-98c1-4d48-8f26-4f7455a723c0&ctxt=Search&issrch=1",
+      "app_version" : "26.3.1",
+      "app_adamid" : 351727428,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "net.kortina.labs.Venmo",
+      "slice_uuid" : "429DEC3E-2271-34E3-9031-74C40159C151",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 21581824
+        },
+        "memory" : {
+          "average" : 2081112,
+          "peak" : 3965296
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.GradientPoster",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 3,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.NanoUniverse.AegirProxyApp",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 3,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "3ED47259-3EA0-48EB-9E36-64A925407F4A",
+      "app_build_version" : "890844927.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1552523400000&sf=143441&pgtp=Search&pgid=cf92f15c-3771-481f-a735-c8f31ce6aa39&prpg=Today_today&ctxt=Search",
+      "app_version" : "550.0.0",
+      "app_adamid" : 454638411,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.facebook.Messenger",
+      "slice_uuid" : "4C4C447B-5555-3144-A1D6-813432FF34D3",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 884048,
+            "totalDownload" : 2037619
+          },
+          "wifi" : {
+            "totalUpload" : 246782,
+            "totalDownload" : 256772
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 6550,
+          "averagePixelLuminance" : 77
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 771,
+            "4" : 757,
+            "2" : 3614,
+            "11" : 2726
+          },
+          "fg" : {
+            "3" : 2691,
+            "1" : 26036,
+            "6" : 1676,
+            "4" : 1645,
+            "2" : 7844,
+            "11" : 5917
+          },
+          "total" : {
+            "3" : 2691,
+            "1" : 26036,
+            "6" : 2447,
+            "4" : 2402,
+            "2" : 11458,
+            "11" : 8643
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 30,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 32,
+            "location" : 0
+          },
+          "fg_total" : 109,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 0,
+            "bestAccuracyForNavigation" : 0,
+            "kilometerAccuracy" : 0,
+            "bestAccuracy" : 0,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 109,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 140,
+            "signalBar3" : 1,
+            "signalBar2" : 16
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 50,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 28323840,
+          "totalReads" : 922120192
+        },
+        "memory" : {
+          "average" : 37408058,
+          "peak" : 175342728
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                350,
+                1150
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 1,
+            "sessions" : [
+              290
+            ]
+          },
+          "resume" : {
+            "count" : 1,
+            "sessions" : [
+              125
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 5,
+              "cumulativeNormalAppExitCount" : 2
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 2,
+              "sessions" : [
+                350,
+                1150
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 9,
+            "glitchDuration" : 0,
+            "glitchCount" : 0,
+            "scrollDuration" : 9768,
+            "glitchTimeRatio" : 1.4396593566881399
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "73ABAB66-98CB-43FE-BB86-22EC0614344E",
+      "app_build_version" : "11833.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1571758200000&sf=143441&pgtp=Search&pgid=2f2de253-eec6-49be-90fe-2e3f0a10a085&ctxt=Search&issrch=1",
+      "app_version" : "3.4.0",
+      "app_adamid" : 1451094657,
+      "app_arch" : "",
+      "app_bundleid" : "com.calendly.Calendly",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 520192,
+          "totalReads" : 10829824
+        },
+        "memory" : {
+          "average" : 2015828,
+          "peak" : 2359760
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "4097.80.14",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "2.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.camera",
+      "slice_uuid" : "0E2CA343-5355-31A3-8F71-A74B89F8D917",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "display_apl" : {
+          "totalFrameCount" : 40545,
+          "averagePixelLuminance" : 23
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 342,
+            "4" : 732,
+            "2" : 1311,
+            "14" : 64
+          },
+          "fg" : {
+            "3" : 35845,
+            "8" : 34330,
+            "4" : 28245,
+            "14" : 2483,
+            "5" : 22034,
+            "1" : 97592,
+            "12" : 4322,
+            "6" : 13214,
+            "2" : 50584
+          },
+          "total" : {
+            "3" : 35845,
+            "8" : 34330,
+            "4" : 28977,
+            "14" : 2547,
+            "5" : 22034,
+            "1" : 97592,
+            "12" : 4322,
+            "6" : 13556,
+            "2" : 51895
+          }
+        },
+        "app_time" : {
+          "GPU" : 1,
+          "CPU" : 70,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 18,
+            "location" : 0
+          },
+          "fg_total" : 675,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 0,
+            "bestAccuracyForNavigation" : 0,
+            "kilometerAccuracy" : 0,
+            "bestAccuracy" : 307,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 675,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 634,
+            "signalBar3" : 50,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 18,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 16056320,
+          "totalReads" : 827076608
+        },
+        "memory" : {
+          "average" : 21045970,
+          "peak" : 128811904
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                400,
+                800
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 1,
+            "sessions" : [
+              390
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 4
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 1,
+              "sessions" : [
+                800
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 32,
+            "glitchDuration" : 0,
+            "glitchCount" : 0,
+            "scrollDuration" : 19152,
+            "glitchTimeRatio" : 0.47349856043865152
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "39E0D5F0-D285-430A-B733-C2D95760A1C0",
+      "app_build_version" : "22010171090.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771030800000&sf=143441",
+      "app_version" : "1.2026.041",
+      "app_adamid" : 6448311069,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.openai.chat",
+      "slice_uuid" : "BE1263D7-8257-3075-B1ED-E1FBFC87E84A",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 13238848,
+            "totalDownload" : 13235616
+          },
+          "wifi" : {
+            "totalUpload" : 19502481,
+            "totalDownload" : 23417970
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 924574,
+          "averagePixelLuminance" : 48
+        },
+        "app_energy" : {
+          "bg_audio" : {
+            "7" : 450,
+            "11" : 4657,
+            "4" : 2775,
+            "12" : 108,
+            "6" : 5059,
+            "10" : 1198,
+            "2" : 12773
+          },
+          "bg" : {
+            "7" : 2085,
+            "11" : 21553,
+            "4" : 12848,
+            "12" : 502,
+            "6" : 23414,
+            "10" : 5549,
+            "2" : 59117
+          },
+          "fg" : {
+            "7" : 46446,
+            "3" : 191424,
+            "11" : 187486,
+            "4" : 111759,
+            "1" : 1167521,
+            "12" : 4372,
+            "6" : 203672,
+            "2" : 514219,
+            "10" : 48270
+          },
+          "total" : {
+            "7" : 48982,
+            "3" : 191424,
+            "11" : 213697,
+            "4" : 127383,
+            "1" : 1167521,
+            "12" : 4983,
+            "6" : 232146,
+            "2" : 586110,
+            "10" : 55018
+          }
+        },
+        "app_time" : {
+          "GPU" : 938,
+          "CPU" : 3240,
+          "bg_unplugged" : {
+            "audio" : 382,
+            "location_audio" : 0,
+            "total" : 2150,
+            "location" : 0
+          },
+          "fg_total" : 15974,
+          "fg_unplugged" : 10116,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 2154,
+            "signalBar0" : 0,
+            "signalBar4" : 1669,
+            "signalBar3" : 5925,
+            "signalBar2" : 5672
+          },
+          "bg_total" : {
+            "audio" : 437,
+            "location_audio" : 0,
+            "total" : 2233,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 133169152,
+          "totalReads" : 8582434816
+        },
+        "memory" : {
+          "average" : 151405001,
+          "peak" : 432293360
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                550,
+                650,
+                750,
+                750,
+                800,
+                800,
+                800,
+                800
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 56,
+            "sessions" : [
+              250,
+              260,
+              260,
+              270,
+              290,
+              290,
+              300,
+              300,
+              310,
+              320,
+              320,
+              320,
+              330,
+              330,
+              330,
+              340,
+              350,
+              350,
+              350,
+              350,
+              360,
+              360,
+              360,
+              360,
+              360,
+              360,
+              380,
+              380,
+              390,
+              390,
+              410,
+              410,
+              420,
+              430,
+              450,
+              450,
+              450,
+              450,
+              480,
+              480,
+              500,
+              500,
+              540,
+              560,
+              590,
+              610,
+              610,
+              720,
+              730,
+              770,
+              890,
+              1050,
+              1160,
+              1230,
+              1240,
+              1260
+            ]
+          },
+          "resume" : {
+            "count" : 40,
+            "sessions" : [
+              60,
+              65,
+              70,
+              70,
+              75,
+              85,
+              95,
+              95,
+              100,
+              115,
+              135,
+              135,
+              140,
+              145,
+              150,
+              155,
+              170,
+              175,
+              190,
+              200,
+              210,
+              215,
+              235,
+              240,
+              245,
+              260,
+              305,
+              320,
+              365,
+              445,
+              495,
+              495,
+              505,
+              620,
+              650,
+              74000,
+              969095,
+              1003150,
+              2127405,
+              7802565
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 9,
+              "cumulativeNormalAppExitCount" : 1
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 8,
+              "sessions" : [
+                550,
+                650,
+                750,
+                750,
+                800,
+                800,
+                800,
+                800
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 615,
+            "glitchDuration" : 754,
+            "glitchCount" : 45,
+            "scrollDuration" : 1066654,
+            "glitchTimeRatio" : 1.1406308162216037
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "26.7.2",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1560801600000&sf=143441&cmp=ml-base2-nlu-i&cpr=9008&cid=585027354&rdom=goo.gl&rapp=com.apple.mobilesafari&pgtp=Software&pgid=585027354&ctxt=Today",
+      "app_version" : "26.07.2",
+      "app_adamid" : 585027354,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.Maps",
+      "slice_uuid" : "A14B3E14-59DD-3187-9CA7-DB4216EF3D36",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 2120483,
+            "totalDownload" : 4352913
+          },
+          "wifi" : {
+            "totalUpload" : 169723,
+            "totalDownload" : 301725
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 894,
+            "6" : 5542,
+            "4" : 4615,
+            "2" : 14467,
+            "11" : 91763,
+            "14" : 7255
+          },
+          "total" : {
+            "10" : 894,
+            "6" : 5542,
+            "4" : 4615,
+            "2" : 14467,
+            "11" : 91763,
+            "14" : 7255
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 22,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1272,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 0,
+            "bestAccuracyForNavigation" : 0,
+            "kilometerAccuracy" : 0,
+            "bestAccuracy" : 396,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 31,
+            "signalBar0" : 0,
+            "signalBar4" : 702,
+            "signalBar3" : 295,
+            "signalBar2" : 124
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1928,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 5697536,
+          "totalReads" : 711602176
+        },
+        "memory" : {
+          "average" : 78304899,
+          "peak" : 87704544
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "2" : [
+                900,
+                1200,
+                1250
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 3,
+              "sessions" : [
+                900,
+                1200,
+                1250
+              ]
+            }
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 3
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.PridePoster",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 4,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 2,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "09D11676-96AA-470C-BDAF-706574D69ADC",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771975800000&sf=143441&rapp=com.apple.Spotlight&happ=com.apple.Spotlight&app=&ctxt=com.apple.Spotlight",
+      "app_version" : "3.62.3",
+      "app_adamid" : 346080608,
+      "app_arch" : "",
+      "app_bundleid" : "com.fiverr.fiverr",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 336825,
+            "totalDownload" : 814553
+          },
+          "wifi" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 1833,
+          "averagePixelLuminance" : 67
+        },
+        "app_energy" : {
+          "fg" : {
+            "1" : 9942,
+            "6" : 120,
+            "4" : 158,
+            "2" : 1132,
+            "11" : 53,
+            "12" : 225
+          },
+          "total" : {
+            "1" : 9942,
+            "6" : 1672,
+            "4" : 1811,
+            "2" : 9062,
+            "11" : 518,
+            "12" : 296
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 3,
+          "bg_unplugged" : {
+            "audio" : 4,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 30,
+          "fg_unplugged" : 30,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 30,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 4,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 13701120,
+          "totalReads" : 294789120
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                1200
+              ]
+            }
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 1
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 1,
+              "sessions" : [
+                1200
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 2,
+            "glitchDuration" : 16,
+            "glitchCount" : 1,
+            "scrollDuration" : 2031,
+            "glitchTimeRatio" : 1.2944753087932863
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "9.8.2",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1770944400000&sf=143441",
+      "app_version" : "9.08.2",
+      "app_adamid" : 1017492454,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.ios.youtubemusic",
+      "slice_uuid" : "BA643CEF-6E7C-3CF4-887F-F9284D7083D0",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "A2F59B99-396C-441D-874D-8266D9C001B6",
+      "app_build_version" : "15.40.37",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771533000000&sf=143441&rapp=com.google.chrome.ios&happ=com.google.chrome.ios&app=com.apple.AppStore.ProductPageExtension&pgtp=Software&pgid=392796698&ctxt=Sheet&lngid=1",
+      "app_version" : "15.40.37",
+      "app_adamid" : 392796698,
+      "app_arch" : "",
+      "app_bundleid" : "com.groupme.iphone-app",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 1,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 7237632
+        },
+        "memory" : {
+          "average" : 713048,
+          "peak" : 1229168
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "145.0.7632",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1735245000000&sf=143441&pgtp=Search&pgid=4e43357b-9d71-4786-8d97-7a74d97b57a8&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&pgcid=a4377288-3721-4586-8e8a-755d38da0b8f&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "145.7632.108",
+      "app_adamid" : 535886823,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.chrome.ios",
+      "slice_uuid" : "4C4C449E-5555-3144-A111-C11FCC3BDC9E",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 1,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 21164032
+        },
+        "memory" : {
+          "average" : 942616,
+          "peak" : 1147416
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "8469292C-F194-414B-A8AD-5A525A8D1200",
+      "app_build_version" : "",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771632000000&sf=143441&rapp=com.apple.Spotlight&app=com.apple.AppStore&pgtp=Software&pgid=323229106&ctxt=Today&lngid=1",
+      "app_version" : "5.16.1",
+      "app_adamid" : 323229106,
+      "app_arch" : "",
+      "app_bundleid" : "com.waze.iphone",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 1,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 172032
+        },
+        "memory" : {
+          "average" : 814122,
+          "peak" : 1638912
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 3
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.EmojiPoster",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "app_energy" : {
+          "bg" : {
+            "2" : 152
+          },
+          "total" : {
+            "2" : 152
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 4,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 2,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "1AE32BC5-3B73-4E28-9E52-2009D4826829",
+      "app_build_version" : "890980569.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771979400000&sf=143441&app=com.apple.AppStore&pgtp=SearchLanding&pgid=SearchLanding&ctxt=Search&imptyp=lockup&kind=iosSoftware&itpltyp=APPLOCKUP&lngid=1&iadsp=1",
+      "app_version" : "418.1.0",
+      "app_adamid" : 389801252,
+      "app_arch" : "",
+      "app_bundleid" : "com.burbn.instagram",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 53390896,
+            "totalDownload" : 111089018
+          },
+          "wifi" : {
+            "totalUpload" : 10908255,
+            "totalDownload" : 363674815
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 51422,
+          "averagePixelLuminance" : 9
+        },
+        "app_energy" : {
+          "bg_audio" : {
+            "10" : 493,
+            "6" : 265,
+            "4" : 370,
+            "2" : 1748,
+            "7" : 42,
+            "11" : 101
+          },
+          "bg" : {
+            "10" : 2702,
+            "6" : 1454,
+            "4" : 2032,
+            "2" : 9577,
+            "7" : 230,
+            "11" : 557
+          },
+          "fg" : {
+            "7" : 60319,
+            "3" : 15090,
+            "11" : 17696,
+            "4" : 63323,
+            "1" : 165247,
+            "6" : 45315,
+            "2" : 296627,
+            "10" : 85813
+          },
+          "total" : {
+            "7" : 60592,
+            "3" : 15090,
+            "11" : 18355,
+            "4" : 65726,
+            "1" : 165247,
+            "6" : 47035,
+            "2" : 307953,
+            "10" : 89009
+          }
+        },
+        "app_time" : {
+          "GPU" : 3,
+          "CPU" : 498,
+          "bg_unplugged" : {
+            "audio" : 23,
+            "location_audio" : 0,
+            "total" : 149,
+            "location" : 0
+          },
+          "fg_total" : 1886,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 0,
+            "bestAccuracyForNavigation" : 0,
+            "kilometerAccuracy" : 0,
+            "bestAccuracy" : 0,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 1886,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 151,
+            "signalBar0" : 0,
+            "signalBar4" : 14,
+            "signalBar3" : 0,
+            "signalBar2" : 1790
+          },
+          "bg_total" : {
+            "audio" : 23,
+            "location_audio" : 0,
+            "total" : 149,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 597368832,
+          "totalReads" : 5005926400
+        },
+        "memory" : {
+          "average" : 260463477,
+          "peak" : 403932728
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                950,
+                1050,
+                1050,
+                1150,
+                3550
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 11,
+            "sessions" : [
+              310,
+              320,
+              350,
+              350,
+              380,
+              380,
+              390,
+              410,
+              550,
+              1290,
+              1490
+            ]
+          },
+          "resume" : {
+            "count" : 3,
+            "sessions" : [
+              75,
+              80,
+              175
+            ]
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 2
+            },
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 9,
+              "cumulativeNormalAppExitCount" : 6
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 5,
+              "sessions" : [
+                950,
+                1050,
+                1050,
+                1150,
+                3550
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 68,
+            "glitchDuration" : 194,
+            "glitchCount" : 9,
+            "scrollDuration" : 80556,
+            "glitchTimeRatio" : 2.19062626745092
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "EECCFC72-4A63-4781-8962-8552DE99D3FD",
+      "app_build_version" : "9.33.7",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771030800000&sf=143441",
+      "app_version" : "9.33.7",
+      "app_adamid" : 647922896,
+      "app_arch" : "",
+      "app_bundleid" : "com.quip.Quip",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          },
+          "wifi" : {
+            "totalUpload" : 25729897,
+            "totalDownload" : 2509355
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 9737,
+          "averagePixelLuminance" : 11
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 5283,
+            "6" : 3784,
+            "4" : 3518,
+            "2" : 15301
+          },
+          "fg" : {
+            "3" : 1475,
+            "1" : 7527,
+            "6" : 3624,
+            "4" : 3370,
+            "2" : 14650,
+            "10" : 5059
+          },
+          "total" : {
+            "3" : 1475,
+            "1" : 7527,
+            "6" : 7408,
+            "4" : 6888,
+            "2" : 29951,
+            "10" : 10342
+          }
+        },
+        "app_time" : {
+          "GPU" : 6,
+          "CPU" : 100,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 128,
+            "location" : 0
+          },
+          "fg_total" : 162,
+          "fg_unplugged" : 162,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 16,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 2,
+            "signalBar2" : 312
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 169,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 109473792,
+          "totalReads" : 2795851776
+        },
+        "memory" : {
+          "average" : 50269955,
+          "peak" : 135005584
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "6" : [
+                550
+              ],
+              "2" : [
+                500,
+                500,
+                550,
+                650,
+                650,
+                650,
+                950,
+                1600,
+                2000,
+                3000
+              ]
+            }
+          },
+          "resume" : {
+            "count" : 2,
+            "sessions" : [
+              15,
+              85
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 12
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 11,
+              "sessions" : [
+                500,
+                500,
+                550,
+                550,
+                650,
+                650,
+                650,
+                950,
+                1600,
+                2000,
+                3000
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 1,
+            "glitchDuration" : 0,
+            "glitchCount" : 0,
+            "scrollDuration" : 538,
+            "glitchTimeRatio" : 0.20147054658280614
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "8B4E9AE2-2F50-430C-B225-EF68CD8CF5F4",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1737664200000&sf=143441&pgtp=Search&pgid=8b9a5e21-9f4d-4f5f-8f21-cc75c07b4cd2&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "3.0.10",
+      "app_adamid" : 6499554412,
+      "app_arch" : "",
+      "app_bundleid" : "com.moredays.app",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 245905,
+            "totalDownload" : 361351
+          },
+          "wifi" : {
+            "totalUpload" : 139509,
+            "totalDownload" : 192824
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "2" : 154,
+            "4" : 37,
+            "6" : 322
+          },
+          "total" : {
+            "2" : 154,
+            "4" : 37,
+            "6" : 322
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 12,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 33,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 33,
+            "signalBar3" : 109,
+            "signalBar2" : 82
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 258,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 3424256,
+          "totalReads" : 553426944
+        },
+        "memory" : {
+          "average" : 77492524,
+          "peak" : 89752424
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "2" : [
+                2750,
+                4100,
+                6450,
+                16200
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 4,
+              "sessions" : [
+                2750,
+                4100,
+                6450,
+                16200
+              ]
+            }
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 4
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "CDA7626C-1A04-4572-829B-19F0130A5F5C",
+      "app_build_version" : "32502.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1734033600000&sf=143441&rdom=zoom.us&rapp=com.apple.SafariViewService&pgtp=Software&pgid=546505307&ctxt=Today&lngid=1",
+      "app_version" : "6.7.5",
+      "app_adamid" : 546505307,
+      "app_arch" : "",
+      "app_bundleid" : "us.zoom.videomeetings",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          },
+          "wifi" : {
+            "totalUpload" : 13813,
+            "totalDownload" : 189819
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 530
+          },
+          "total" : {
+            "10" : 530
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 6,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 6,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 98304,
+          "totalReads" : 116006912
+        },
+        "memory" : {
+          "average" : 46203824,
+          "peak" : 49054640
+        },
+        "app_performance" : {
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 1,
+              "sessions" : [
+                2300
+              ]
+            }
+          },
+          "activation" : {
+            "bg" : {
+              "2" : [
+                2300
+              ]
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "4.2607.11401",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1770944400000&sf=143441",
+      "app_version" : "4.2607.11401",
+      "app_adamid" : 507874739,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.Drive",
+      "slice_uuid" : "8D7DE490-2786-3C25-BDA6-BF281FC146C6",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 6,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "performance_metrics" : {
+        "memory" : {
+          "average" : 152388600,
+          "peak" : 152404984
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 1
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "1AE32BC5-3B73-4E28-9E52-2009D4826829",
+      "app_build_version" : "890679309.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1753977600000&sf=143441&rapp=com.burbn.instagram&happ=com.apple.AppStore.overlay&ctxt=com.burbn.instagram",
+      "app_version" : "418.1.0",
+      "app_adamid" : 6446901002,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.burbn.barcelona",
+      "slice_uuid" : "4C4C4427-5555-3144-A1EC-6F25514BD3BF",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 33850,
+            "totalDownload" : 78059
+          },
+          "wifi" : {
+            "totalUpload" : 1019284,
+            "totalDownload" : 3089654
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 14812,
+          "averagePixelLuminance" : 7
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 1165,
+            "4" : 465,
+            "2" : 1835,
+            "11" : 117
+          },
+          "fg" : {
+            "3" : 2848,
+            "6" : 2708,
+            "4" : 1983,
+            "2" : 7999,
+            "11" : 274
+          },
+          "total" : {
+            "3" : 2848,
+            "6" : 3873,
+            "4" : 2448,
+            "2" : 9834,
+            "11" : 391
+          }
+        },
+        "app_time" : {
+          "GPU" : 1,
+          "CPU" : 26,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 48,
+            "location" : 0
+          },
+          "fg_total" : 246,
+          "fg_unplugged" : 246,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 29,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 323
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 107,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 9650176,
+          "totalReads" : 766627840
+        },
+        "memory" : {
+          "average" : 39940932,
+          "peak" : 44057424
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                750
+              ]
+            },
+            "bg" : {
+              "2" : [
+                8750
+              ]
+            }
+          },
+          "resume" : {
+            "count" : 1,
+            "sessions" : [
+              305
+            ]
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 1
+            },
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 1,
+              "cumulativeNormalAppExitCount" : 1
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 1,
+              "sessions" : [
+                750
+              ]
+            },
+            "bg" : {
+              "count" : 1,
+              "sessions" : [
+                8750
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 33,
+            "glitchDuration" : 144,
+            "glitchCount" : 9,
+            "scrollDuration" : 72159,
+            "glitchTimeRatio" : 1.5043729261298819
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "6200.4.9",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.Health",
+      "slice_uuid" : "9370660A-F9EF-3EC2-8342-017FD7B12473",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 4149,
+            "totalDownload" : 10752
+          },
+          "wifi" : {
+            "totalUpload" : 3798,
+            "totalDownload" : 9573
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "2" : 681,
+            "4" : 149,
+            "6" : 131
+          },
+          "total" : {
+            "2" : 681,
+            "4" : 149,
+            "6" : 131
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 6,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 5,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "832.0.107",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.mobileslideshow",
+      "slice_uuid" : "89AA69A2-739B-3FB6-BAA9-85C73CFC9418",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 63244,
+            "totalDownload" : 143440
+          },
+          "wifi" : {
+            "totalUpload" : 806396389,
+            "totalDownload" : 37822985
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 912,
+          "averagePixelLuminance" : 16
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 70632,
+            "6" : 1581,
+            "4" : 3803,
+            "2" : 12863,
+            "11" : 858
+          },
+          "fg" : {
+            "3" : 95,
+            "11" : 23,
+            "4" : 12,
+            "1" : 1248,
+            "6" : 11,
+            "2" : 68,
+            "10" : 1849
+          },
+          "total" : {
+            "3" : 95,
+            "11" : 881,
+            "4" : 3815,
+            "1" : 1248,
+            "6" : 1592,
+            "2" : 12931,
+            "10" : 72481
+          }
+        },
+        "app_time" : {
+          "GPU" : 15,
+          "CPU" : 8,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 49,
+            "location" : 0
+          },
+          "fg_total" : 15,
+          "fg_unplugged" : 15,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 14
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 574,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 5173248,
+          "totalReads" : 639311872
+        },
+        "memory" : {
+          "average" : 16507470,
+          "peak" : 150864840
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                700,
+                700
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 1,
+            "sessions" : [
+              310
+            ]
+          },
+          "resume" : {
+            "count" : 1,
+            "sessions" : [
+              60
+            ]
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 1
+            },
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 4
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 2,
+              "sessions" : [
+                700,
+                700
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "glitchTimeRatio" : 5.920676990160648
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "72A22803-1ECE-4BA7-89A7-BDB4A112FC37",
+      "app_build_version" : "213142246.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1754240400000&sf=143441&rapp=com.burbn.instagram&happ=com.burbn.instagram&pgtp=Software&pgid=1497465230&ctxt=Sheet&lngid=1",
+      "app_version" : "3.149",
+      "app_adamid" : 1497465230,
+      "app_arch" : "",
+      "app_bundleid" : "com.withopal.opal",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 7009,
+            "totalDownload" : 9761
+          },
+          "wifi" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "2" : 403,
+            "4" : 142,
+            "6" : 152
+          },
+          "total" : {
+            "2" : 403,
+            "4" : 142,
+            "6" : 152
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 60228,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 28057,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "5.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1733929200000&sf=143441&rapp=com.apple.Spotlight&happ=com.apple.Spotlight&ctxt=com.apple.Spotlight",
+      "app_version" : "5.0.0",
+      "app_adamid" : 388497605,
+      "app_arch" : "",
+      "app_bundleid" : "com.google.Authenticator",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          },
+          "wifi" : {
+            "totalUpload" : 239124,
+            "totalDownload" : 887621
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 2542,
+          "averagePixelLuminance" : 86
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 174,
+            "6" : 311,
+            "4" : 303,
+            "2" : 1319
+          },
+          "fg" : {
+            "3" : 425,
+            "1" : 3096,
+            "6" : 418,
+            "4" : 408,
+            "2" : 1773,
+            "10" : 236
+          },
+          "total" : {
+            "3" : 425,
+            "1" : 3096,
+            "6" : 729,
+            "4" : 711,
+            "2" : 3092,
+            "10" : 410
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 18,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 42,
+          "fg_unplugged" : 42,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 31,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 42
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 31,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 1196032,
+          "totalReads" : 162754560
+        },
+        "memory" : {
+          "average" : 6707141,
+          "peak" : 42271472
+        },
+        "app_performance" : {
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 1
+            },
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          },
+          "resume" : {
+            "count" : 1,
+            "sessions" : [
+              155
+            ]
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 1,
+              "sessions" : [
+                950
+              ]
+            }
+          },
+          "activation" : {
+            "bg" : {
+              "2" : [
+                950
+              ]
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "2911.33.11",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.Maps",
+      "slice_uuid" : "C8DFAD15-4975-3B9F-A6B5-D0DA7338F496",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 773950,
+            "totalDownload" : 6111821
+          },
+          "wifi" : {
+            "totalUpload" : 48724,
+            "totalDownload" : 175958
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 7525,
+          "averagePixelLuminance" : 61
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 78,
+            "6" : 726,
+            "4" : 837,
+            "2" : 3721,
+            "11" : 3599,
+            "14" : 51
+          },
+          "fg" : {
+            "3" : 12663,
+            "11" : 17873,
+            "4" : 14134,
+            "14" : 1102,
+            "1" : 13054,
+            "6" : 11702,
+            "2" : 63564,
+            "10" : 1687
+          },
+          "total" : {
+            "3" : 12663,
+            "11" : 21472,
+            "4" : 14971,
+            "14" : 1153,
+            "1" : 13054,
+            "6" : 12428,
+            "2" : 67285,
+            "10" : 1765
+          }
+        },
+        "app_time" : {
+          "GPU" : 744,
+          "CPU" : 34,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 102,
+            "location" : 0
+          },
+          "fg_total" : 325,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 0,
+            "bestAccuracyForNavigation" : 0,
+            "kilometerAccuracy" : 0,
+            "bestAccuracy" : 80,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 267,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 17,
+            "signalBar3" : 322,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 138,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 48099328,
+          "totalReads" : 2223304704
+        },
+        "memory" : {
+          "average" : 129295175,
+          "peak" : 488555896
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                500,
+                650,
+                650
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 7,
+            "sessions" : [
+              260,
+              370,
+              380,
+              410,
+              410,
+              420,
+              420
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 8
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 3,
+              "sessions" : [
+                500,
+                650,
+                650
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "glitchTimeRatio" : 10.288718507896608
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "1.2026.7100",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1770944400000&sf=143441",
+      "app_version" : "1.2026.07100",
+      "app_adamid" : 842849113,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.Sheets",
+      "slice_uuid" : "257B19EB-48FA-369E-BB7D-E75BBBAB7CED",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 203584,
+            "totalDownload" : 160021
+          },
+          "wifi" : {
+            "totalUpload" : 1593615,
+            "totalDownload" : 1578162
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 193,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 181,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 1,
+            "signalBar2" : 118
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 301,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 34381824,
+          "totalReads" : 1368276992
+        },
+        "memory" : {
+          "average" : 68960754,
+          "peak" : 158172368
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "2" : [
+                700
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 1,
+              "sessions" : [
+                700
+              ]
+            }
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 1
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "7E1AD61A-C1FD-40B7-9622-220877D56619",
+      "app_build_version" : "1153.28621",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1765155600000&sf=143441&app=com.apple.AppStore&pgtp=Search&pgid=SearchTopResults&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "4.235.0",
+      "app_adamid" : 898358948,
+      "app_arch" : "",
+      "app_bundleid" : "fm.dice.Dice",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          },
+          "wifi" : {
+            "totalUpload" : 14436,
+            "totalDownload" : 386781
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 5,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 5,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "AFE90296-5004-47EE-B891-207856B3E5F9",
+      "app_build_version" : "881409977.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1770944400000&sf=143441",
+      "app_version" : "26.5.77",
+      "app_adamid" : 310633997,
+      "app_arch" : "",
+      "app_bundleid" : "net.whatsapp.WhatsApp",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 447744,
+            "totalDownload" : 4232751
+          },
+          "wifi" : {
+            "totalUpload" : 323322,
+            "totalDownload" : 6880196
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 17126,
+          "averagePixelLuminance" : 66
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 1802,
+            "6" : 4725,
+            "4" : 4132,
+            "2" : 19671,
+            "11" : 32873
+          },
+          "fg" : {
+            "3" : 2769,
+            "11" : 10900,
+            "4" : 1590,
+            "1" : 38162,
+            "6" : 1578,
+            "2" : 7118,
+            "10" : 641
+          },
+          "total" : {
+            "3" : 2769,
+            "11" : 43773,
+            "4" : 5722,
+            "1" : 38162,
+            "6" : 6303,
+            "2" : 26789,
+            "10" : 2443
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 118,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 274,
+            "location" : 0
+          },
+          "fg_total" : 285,
+          "fg_unplugged" : 238,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 345,
+            "signalBar0" : 0,
+            "signalBar4" : 64,
+            "signalBar3" : 160,
+            "signalBar2" : 448
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1115,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 83714048,
+          "totalReads" : 5571891200
+        },
+        "memory" : {
+          "average" : 59951011,
+          "peak" : 192234728
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "6" : [
+                1150
+              ],
+              "2" : [
+                1350,
+                1550,
+                1650,
+                1650
+              ]
+            },
+            "bg" : {
+              "2" : [
+                1150,
+                1200,
+                1250,
+                1900,
+                2250,
+                2750,
+                3750,
+                8600,
+                9500
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 4,
+            "sessions" : [
+              260,
+              280,
+              320,
+              330
+            ]
+          },
+          "resume" : {
+            "count" : 4,
+            "sessions" : [
+              50,
+              55,
+              60,
+              100
+            ]
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 1
+            },
+            "bg" : {
+              "cumulativeNormalAppExitCount" : 2,
+              "cumulativeMemoryPressureExitCount" : 12
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 5,
+              "sessions" : [
+                1150,
+                1350,
+                1550,
+                1650,
+                1650
+              ]
+            },
+            "bg" : {
+              "count" : 9,
+              "sessions" : [
+                1150,
+                1200,
+                1250,
+                1900,
+                2250,
+                2750,
+                3750,
+                8600,
+                9500
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 36,
+            "glitchDuration" : 64,
+            "glitchCount" : 4,
+            "scrollDuration" : 50727,
+            "glitchTimeRatio" : 1.5497482708916648
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "23C4F3C6-EA9D-4413-A91F-BAC7D8A1C0AC",
+      "app_build_version" : "504.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771030800000&sf=143441",
+      "app_version" : "0.0.22",
+      "app_adamid" : 6745097949,
+      "app_arch" : "",
+      "app_bundleid" : "com.vercel.v0",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1450.400.42",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "26.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.MobileSMS",
+      "slice_uuid" : "7D11E40D-BF3B-389D-B041-72ECC4B6B496",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 9106,
+            "totalDownload" : 55389
+          },
+          "wifi" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 143012,
+          "averagePixelLuminance" : 44
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 2610,
+            "4" : 2431,
+            "2" : 14367,
+            "11" : 230
+          },
+          "fg" : {
+            "3" : 39151,
+            "1" : 149862,
+            "6" : 24981,
+            "4" : 23269,
+            "2" : 137506,
+            "11" : 2205
+          },
+          "total" : {
+            "3" : 39151,
+            "1" : 149862,
+            "6" : 27591,
+            "4" : 25700,
+            "2" : 151873,
+            "11" : 2435
+          }
+        },
+        "app_time" : {
+          "GPU" : 9,
+          "CPU" : 414,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 2393,
+          "fg_unplugged" : 1608,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 61,
+            "signalBar0" : 0,
+            "signalBar4" : 474,
+            "signalBar3" : 838,
+            "signalBar2" : 421
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 250,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 112316416,
+          "totalReads" : 6492852224
+        },
+        "memory" : {
+          "average" : 54805395,
+          "peak" : 137413600
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "6" : [
+                1200
+              ],
+              "2" : [
+                700,
+                850,
+                850,
+                900,
+                1000,
+                1000,
+                1050,
+                1050,
+                1150,
+                1250,
+                2100
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 65,
+            "sessions" : [
+              250,
+              250,
+              260,
+              260,
+              260,
+              260,
+              270,
+              270,
+              280,
+              290,
+              290,
+              290,
+              310,
+              310,
+              310,
+              310,
+              310,
+              320,
+              350,
+              350,
+              360,
+              360,
+              370,
+              370,
+              370,
+              390,
+              400,
+              410,
+              410,
+              410,
+              420,
+              420,
+              430,
+              430,
+              440,
+              450,
+              460,
+              460,
+              460,
+              460,
+              460,
+              460,
+              460,
+              470,
+              470,
+              470,
+              500,
+              510,
+              530,
+              540,
+              540,
+              570,
+              580,
+              580,
+              600,
+              630,
+              660,
+              690,
+              740,
+              770,
+              810,
+              830,
+              950,
+              1330,
+              3030
+            ]
+          },
+          "resume" : {
+            "count" : 28,
+            "sessions" : [
+              10,
+              20,
+              20,
+              25,
+              30,
+              40,
+              50,
+              60,
+              60,
+              60,
+              60,
+              70,
+              80,
+              95,
+              100,
+              110,
+              120,
+              140,
+              145,
+              145,
+              170,
+              185,
+              215,
+              235,
+              235,
+              275,
+              305,
+              365
+            ]
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 2
+            },
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 10,
+              "cumulativeNormalAppExitCount" : 6
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 11,
+              "sessions" : [
+                700,
+                850,
+                850,
+                900,
+                1000,
+                1000,
+                1050,
+                1050,
+                1150,
+                1250,
+                2100
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 494,
+            "glitchDuration" : 400,
+            "glitchCount" : 25,
+            "scrollDuration" : 468152,
+            "glitchTimeRatio" : 3.8840617816305349
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "4025.400.1",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "3.9",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.podcasts",
+      "slice_uuid" : "1B0BB2E9-9752-30EB-A92B-C0C7E2FF0411",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 6,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "1.2026.7101",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1770944400000&sf=143441",
+      "app_version" : "1.2026.07101",
+      "app_adamid" : 842842640,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.Docs",
+      "slice_uuid" : "64D1D4B4-EFA8-38D0-84DA-15D6541C6175",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 70295,
+            "totalDownload" : 76459
+          },
+          "wifi" : {
+            "totalUpload" : 1555748,
+            "totalDownload" : 1706174
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 300,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 420,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 1,
+            "signalBar2" : 23
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 444,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 10780672,
+          "totalReads" : 2148888576
+        },
+        "memory" : {
+          "average" : 65836376,
+          "peak" : 121685176
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "2" : [
+                700,
+                800,
+                2200
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 3,
+              "sessions" : [
+                700,
+                800,
+                2200
+              ]
+            }
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "27A1E208-F37A-490E-8337-2198C68CF7E6",
+      "app_build_version" : "8040101.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1580940000000&sf=143441&pgtp=Search&pgid=a278f9cd-94ae-495c-9d63-10ca3e6e7519&prpg=Genre_179183&ctxt=Search&issrch=1",
+      "app_version" : "8.4.1",
+      "app_adamid" : 542701020,
+      "app_arch" : "",
+      "app_bundleid" : "com.withings.wiScaleNG",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 771068,
+            "totalDownload" : 1317805
+          },
+          "wifi" : {
+            "totalUpload" : 220576,
+            "totalDownload" : 345876
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 5040,
+          "averagePixelLuminance" : 8
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 1591,
+            "4" : 1509,
+            "2" : 7310,
+            "11" : 129
+          },
+          "fg" : {
+            "3" : 1013,
+            "1" : 9175,
+            "6" : 419,
+            "4" : 397,
+            "2" : 1920,
+            "11" : 34
+          },
+          "total" : {
+            "3" : 1013,
+            "1" : 9175,
+            "6" : 2010,
+            "4" : 1906,
+            "2" : 9230,
+            "11" : 163
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 97,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 44,
+            "location" : 0
+          },
+          "fg_total" : 83,
+          "fg_unplugged" : 83,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 83,
+            "signalBar0" : 0,
+            "signalBar4" : 48,
+            "signalBar3" : 194,
+            "signalBar2" : 77
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 319,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 69570560,
+          "totalReads" : 2034950144
+        },
+        "memory" : {
+          "average" : 56463134,
+          "peak" : 95339680
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                2050
+              ]
+            },
+            "bg" : {
+              "2" : [
+                3400,
+                3850,
+                4450,
+                5950,
+                8000,
+                24850
+              ]
+            }
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 1
+            },
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 6
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 1,
+              "sessions" : [
+                2050
+              ]
+            },
+            "bg" : {
+              "count" : 6,
+              "sessions" : [
+                3400,
+                3850,
+                4450,
+                5950,
+                8000,
+                24850
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 7,
+            "glitchDuration" : 0,
+            "glitchCount" : 0,
+            "scrollDuration" : 7188,
+            "glitchTimeRatio" : 3.3904030185519982
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "418822AD-B2A9-4FAB-ABD6-4830062D61AD",
+      "app_build_version" : "10.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771979400000&sf=143441&app=com.apple.AppStore&pgtp=Search&pgid=SearchTopResults&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "11.67",
+      "app_adamid" : 333903271,
+      "app_arch" : "",
+      "app_bundleid" : "com.atebits.Tweetie2",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 6939895,
+            "totalDownload" : 43445645
+          },
+          "wifi" : {
+            "totalUpload" : 743507,
+            "totalDownload" : 2831088
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 86480,
+          "averagePixelLuminance" : 6
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 123,
+            "6" : 1218,
+            "4" : 1157,
+            "2" : 5433,
+            "11" : 1508
+          },
+          "fg" : {
+            "3" : 27087,
+            "11" : 48858,
+            "4" : 37483,
+            "1" : 63892,
+            "12" : 77,
+            "6" : 39464,
+            "2" : 175925,
+            "10" : 3988
+          },
+          "total" : {
+            "3" : 27087,
+            "11" : 50366,
+            "4" : 38640,
+            "1" : 63892,
+            "12" : 77,
+            "6" : 40682,
+            "2" : 181358,
+            "10" : 4111
+          }
+        },
+        "app_time" : {
+          "GPU" : 11,
+          "CPU" : 183,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 95,
+            "location" : 0
+          },
+          "fg_total" : 2805,
+          "fg_unplugged" : 2446,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 377,
+            "signalBar0" : 0,
+            "signalBar4" : 255,
+            "signalBar3" : 954,
+            "signalBar2" : 1304
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 95,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 202248192,
+          "totalReads" : 5415796736
+        },
+        "memory" : {
+          "average" : 123749837,
+          "peak" : 214828528
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 8,
+              "cumulativeNormalAppExitCount" : 5
+            }
+          },
+          "hang" : {
+            "count" : 3,
+            "sessions" : [
+              260,
+              270,
+              470
+            ]
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "500E1D52-C15B-4941-BBF5-6B2EBEC37E5F",
+      "app_build_version" : "101.94.1",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1763618400000&sf=143441&app=com.apple.AppStore&pgtp=Search&pgid=SearchTopResults&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "1.94.1",
+      "app_adamid" : 1470499037,
+      "app_arch" : "",
+      "app_bundleid" : "io.tailscale.ipn.ios",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 245296,
+            "totalDownload" : 588650
+          },
+          "wifi" : {
+            "totalUpload" : 226930,
+            "totalDownload" : 337791
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 1080,
+            "6" : 135,
+            "4" : 186,
+            "2" : 1285,
+            "11" : 35594
+          },
+          "total" : {
+            "10" : 1080,
+            "6" : 135,
+            "4" : 186,
+            "2" : 1285,
+            "11" : 35594
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 89762,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 49316,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "C576C99B-4C79-46B4-B20E-E61C9EEF91CB",
+      "app_build_version" : "15.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0.13",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "fyi.ticketless.app",
+      "slice_uuid" : "16F94602-A2B7-3014-948F-7E6041A03D1B",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 686630,
+            "totalDownload" : 816508
+          },
+          "wifi" : {
+            "totalUpload" : 585505,
+            "totalDownload" : 809558
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 110243,
+          "averagePixelLuminance" : 77
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 2528,
+            "6" : 335460,
+            "4" : 19149,
+            "2" : 103178,
+            "11" : 88057,
+            "14" : 412854
+          },
+          "fg" : {
+            "3" : 122,
+            "11" : 1838,
+            "4" : 400,
+            "14" : 8616,
+            "1" : 1679,
+            "6" : 7001,
+            "2" : 2154,
+            "10" : 53
+          },
+          "total" : {
+            "3" : 122,
+            "11" : 89895,
+            "4" : 19549,
+            "14" : 421470,
+            "1" : 1679,
+            "6" : 342461,
+            "2" : 105332,
+            "10" : 2581
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 602,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 49611,
+            "location" : 0
+          },
+          "fg_total" : 1804,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 17501,
+            "bestAccuracyForNavigation" : 0,
+            "kilometerAccuracy" : 0,
+            "bestAccuracy" : 67408,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 21,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 29637,
+            "signalBar0" : 0,
+            "signalBar4" : 13843,
+            "signalBar3" : 17853,
+            "signalBar2" : 23510
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 86454,
+            "location" : 2463
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 2537730048,
+          "totalReads" : 3550220288
+        },
+        "memory" : {
+          "average" : 41878160,
+          "peak" : 106841104
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "3.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.AppStore",
+      "slice_uuid" : "E4045E59-C8AA-3A60-AFC4-A8292BB02A79",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 1905416,
+            "totalDownload" : 713035816
+          },
+          "wifi" : {
+            "totalUpload" : 4706107,
+            "totalDownload" : 361533075
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 13274,
+          "averagePixelLuminance" : 64
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 326,
+            "6" : 2082,
+            "4" : 2628,
+            "2" : 13376,
+            "11" : 44308
+          },
+          "fg" : {
+            "3" : 1641,
+            "11" : 33956,
+            "4" : 1458,
+            "1" : 25298,
+            "6" : 1204,
+            "2" : 7034,
+            "10" : 250
+          },
+          "total" : {
+            "3" : 1641,
+            "11" : 78264,
+            "4" : 4086,
+            "1" : 25298,
+            "6" : 3286,
+            "2" : 20410,
+            "10" : 576
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 18,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 34,
+            "location" : 0
+          },
+          "fg_total" : 220,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 0,
+            "bestAccuracyForNavigation" : 0,
+            "kilometerAccuracy" : 242,
+            "bestAccuracy" : 0,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 220,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 72,
+            "signalBar2" : 147
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 287,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 6586368,
+          "totalReads" : 1112743936
+        },
+        "memory" : {
+          "average" : 107549592,
+          "peak" : 166020184
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                250,
+                450
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 6,
+            "sessions" : [
+              260,
+              370,
+              390,
+              410,
+              520,
+              590
+            ]
+          },
+          "resume" : {
+            "count" : 2,
+            "sessions" : [
+              380,
+              430
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2,
+              "cumulativeNormalAppExitCount" : 1
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 2,
+              "sessions" : [
+                250,
+                450
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "glitchTimeRatio" : 5.1034780622741929
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "9ADB68A4-A89B-4726-AFBA-0B64C77F7804",
+      "app_build_version" : "2510.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1582345800000&sf=143441&pgtp=Search&pgid=29857774-9d3f-4b62-9d0c-e87526398965&ctxt=Search&issrch=1",
+      "app_version" : "6.25.0",
+      "app_adamid" : 505800761,
+      "app_arch" : "",
+      "app_bundleid" : "com.adhoclabs.burner",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_energy" : {
+          "bg" : {
+            "11" : 1654,
+            "10" : 127
+          },
+          "total" : {
+            "11" : 1654,
+            "10" : 127
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "8623.2.7",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "26.3",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.mobilesafari",
+      "slice_uuid" : "32733536-5EF2-31D6-98A1-DC8A9B814AAD",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 9974097,
+            "totalDownload" : 268457187
+          },
+          "wifi" : {
+            "totalUpload" : 1235801,
+            "totalDownload" : 7491096
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 77347,
+          "averagePixelLuminance" : 62
+        },
+        "app_energy" : {
+          "bg_audio" : {
+            "10" : 7,
+            "6" : 4,
+            "4" : 5,
+            "2" : 27,
+            "11" : 19
+          },
+          "bg" : {
+            "10" : 5514,
+            "6" : 3439,
+            "4" : 3867,
+            "2" : 20333,
+            "11" : 14109,
+            "12" : 351
+          },
+          "fg" : {
+            "3" : 7081,
+            "11" : 77349,
+            "4" : 19121,
+            "1" : 64931,
+            "6" : 16715,
+            "2" : 99023,
+            "10" : 6358
+          },
+          "total" : {
+            "3" : 7081,
+            "11" : 91478,
+            "4" : 22994,
+            "1" : 64931,
+            "12" : 352,
+            "6" : 20159,
+            "2" : 119384,
+            "10" : 11880
+          }
+        },
+        "app_time" : {
+          "GPU" : 515,
+          "CPU" : 639,
+          "bg_unplugged" : {
+            "audio" : 23,
+            "location_audio" : 0,
+            "total" : 17039,
+            "location" : 0
+          },
+          "fg_total" : 1306,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 0,
+            "bestAccuracyForNavigation" : 0,
+            "kilometerAccuracy" : 0,
+            "bestAccuracy" : 0,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 398,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 225,
+            "signalBar3" : 920,
+            "signalBar2" : 252
+          },
+          "bg_total" : {
+            "audio" : 831,
+            "location_audio" : 0,
+            "total" : 21110,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 154165248,
+          "totalReads" : 11054112768
+        },
+        "memory" : {
+          "average" : 65011704,
+          "peak" : 189023440
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "6" : [
+                1000
+              ],
+              "2" : [
+                600,
+                700,
+                700,
+                1050
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 19,
+            "sessions" : [
+              260,
+              270,
+              280,
+              300,
+              300,
+              310,
+              310,
+              320,
+              320,
+              330,
+              330,
+              330,
+              360,
+              380,
+              430,
+              450,
+              450,
+              580,
+              680
+            ]
+          },
+          "resume" : {
+            "count" : 12,
+            "sessions" : [
+              5,
+              10,
+              15,
+              20,
+              20,
+              20,
+              30,
+              35,
+              45,
+              60,
+              105,
+              135
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 9
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 5,
+              "sessions" : [
+                600,
+                700,
+                700,
+                1000,
+                1050
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 86,
+            "glitchDuration" : 224,
+            "glitchCount" : 14,
+            "scrollDuration" : 148334,
+            "glitchTimeRatio" : 1.7080841537564568
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "6.0.260210",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1569508200000&sf=143441&cmp=xpagmwin-ios-2-3&cpr=9008&cid=422689480&rapp=com.apple.mobilesafari&pgtp=Software&pgid=422689480&ctxt=Today",
+      "app_version" : "6.0.260210",
+      "app_adamid" : 422689480,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.Gmail",
+      "slice_uuid" : "65A95B91-5DD3-3681-825E-8BAA63111863",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 3058576,
+            "totalDownload" : 23591658
+          },
+          "wifi" : {
+            "totalUpload" : 6694549,
+            "totalDownload" : 70713429
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 17473,
+          "averagePixelLuminance" : 66
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 6233,
+            "6" : 25113,
+            "4" : 26406,
+            "2" : 113306,
+            "11" : 18959
+          },
+          "fg" : {
+            "3" : 4046,
+            "11" : 5861,
+            "4" : 8163,
+            "1" : 47179,
+            "6" : 7763,
+            "2" : 35026,
+            "10" : 1927
+          },
+          "total" : {
+            "3" : 4046,
+            "11" : 24820,
+            "4" : 34569,
+            "1" : 47179,
+            "6" : 32876,
+            "2" : 148332,
+            "10" : 8160
+          }
+        },
+        "app_time" : {
+          "GPU" : 34,
+          "CPU" : 808,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 321,
+            "location" : 0
+          },
+          "fg_total" : 290,
+          "fg_unplugged" : 282,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 462,
+            "signalBar0" : 0,
+            "signalBar4" : 73,
+            "signalBar3" : 188,
+            "signalBar2" : 430
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 939,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 274120704,
+          "totalReads" : 18638008320
+        },
+        "memory" : {
+          "average" : 97497246,
+          "peak" : 248858216
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                1150,
+                1300,
+                1500,
+                1550,
+                1800
+              ]
+            },
+            "bg" : {
+              "2" : [
+                1650,
+                2100,
+                2350,
+                2350,
+                2450,
+                2550,
+                2650,
+                2650,
+                2650,
+                2650,
+                2950,
+                3000,
+                3400,
+                3450,
+                3700,
+                4450,
+                9950,
+                11050,
+                11700,
+                15050
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 10,
+            "sessions" : [
+              250,
+              270,
+              280,
+              290,
+              290,
+              290,
+              290,
+              330,
+              380,
+              500
+            ]
+          },
+          "resume" : {
+            "count" : 7,
+            "sessions" : [
+              150,
+              170,
+              185,
+              190,
+              210,
+              235,
+              260
+            ]
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 1
+            },
+            "bg" : {
+              "cumulativeNormalAppExitCount" : 6,
+              "cumulativeMemoryPressureExitCount" : 19,
+              "cumulativeBackgroundTaskAssertionTimeoutExitCount" : 1
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 5,
+              "sessions" : [
+                1150,
+                1300,
+                1500,
+                1550,
+                1800
+              ]
+            },
+            "bg" : {
+              "count" : 20,
+              "sessions" : [
+                1650,
+                2100,
+                2350,
+                2350,
+                2450,
+                2550,
+                2650,
+                2650,
+                2650,
+                2650,
+                2950,
+                3000,
+                3400,
+                3450,
+                3700,
+                4450,
+                9950,
+                11050,
+                11700,
+                15050
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 46,
+            "glitchDuration" : 64,
+            "glitchCount" : 4,
+            "scrollDuration" : 61534,
+            "glitchTimeRatio" : 2.0980902729415396
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "544667A2-DD92-4C55-AAC9-41B068F7E8BD",
+      "app_build_version" : "833290.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1552919400000&sf=143441&pgtp=Search&pgid=df5a2acd-3c45-4e8d-85fe-adcd5004626f&prpg=Search_00f066e8-be42-4afa-9673-41152e90c3fa&ctxt=Search&issrch=1",
+      "app_version" : "27.2.0",
+      "app_adamid" : 297606951,
+      "app_arch" : "",
+      "app_bundleid" : "com.amazon.Amazon",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 17647,
+            "totalDownload" : 24384
+          },
+          "wifi" : {
+            "totalUpload" : 1356915,
+            "totalDownload" : 106131
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "11" : 310
+          },
+          "total" : {
+            "11" : 310
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 6,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 7,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 5492736
+        },
+        "memory" : {
+          "average" : 2978232,
+          "peak" : 6029920
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 4
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "5DA85198-27BC-42B8-B0BA-C45D14B21361",
+      "app_build_version" : "22281508857.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1741161600000&sf=143441&pgtp=Search&pgid=6d718e7f-f9de-47b7-be85-65839605c72b&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "1.260223.2",
+      "app_adamid" : 6473753684,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.anthropic.claude",
+      "slice_uuid" : "91593F25-C5DA-3F80-B1F1-8640F281E94A",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1104.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "6.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.weather",
+      "slice_uuid" : "1132FF34-F114-3436-BEE2-9303A4976C88",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 56787,
+            "totalDownload" : 137171
+          },
+          "wifi" : {
+            "totalUpload" : 25084,
+            "totalDownload" : 75541
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 168,
+            "4" : 174,
+            "2" : 642,
+            "11" : 247
+          },
+          "fg" : {
+            "3" : 5
+          },
+          "total" : {
+            "3" : 5,
+            "6" : 168,
+            "4" : 174,
+            "2" : 642,
+            "11" : 247
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 6,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 0,
+            "bestAccuracyForNavigation" : 0,
+            "kilometerAccuracy" : 0,
+            "bestAccuracy" : 0,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 71,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 1499136
+        },
+        "memory" : {
+          "average" : 1442280,
+          "peak" : 1622504
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 1
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "F162C7B0-D748-40C1-A446-A6B04423F2E3",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1744245000000&sf=143441&pgtp=Search&pgid=07ff0f98-e1d0-4f72-8f66-3d3281734965&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "12.3.4",
+      "app_adamid" : 897809583,
+      "app_arch" : "",
+      "app_bundleid" : "sweetch.angels-ios",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 1008256,
+            "totalDownload" : 1985552
+          },
+          "wifi" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 2983,
+            "4" : 2948,
+            "2" : 9201,
+            "11" : 75286,
+            "14" : 2398
+          },
+          "total" : {
+            "6" : 2983,
+            "4" : 2948,
+            "2" : 9201,
+            "11" : 75286,
+            "14" : 2398
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 10,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 409,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "location_activity" : {
+            "threeKilometersAccuracy" : 233,
+            "bestAccuracyForNavigation" : 1,
+            "kilometerAccuracy" : 0,
+            "bestAccuracy" : 0,
+            "nearestTenMetersAccuracy" : 0,
+            "hundredMetersAccuracy" : 0
+          },
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 20,
+            "signalBar0" : 0,
+            "signalBar4" : 283,
+            "signalBar3" : 127,
+            "signalBar2" : 19
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 522,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 11333632,
+          "totalReads" : 932061184
+        },
+        "memory" : {
+          "average" : 22319809,
+          "peak" : 24724472
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "2" : [
+                550,
+                550,
+                700,
+                800,
+                1700
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 5,
+              "sessions" : [
+                550,
+                550,
+                700,
+                800,
+                1700
+              ]
+            }
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 6
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "28ECA54E-0C72-4339-8F31-A6D55B9386BE",
+      "app_build_version" : "1270.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1744419600000&sf=143441&rapp=com.rabbl.Blink.Clip&happ=com.apple.AppStore.clipOverlay&pgtp=Software&pgid=1324102258&ctxt=Today&lngid=1",
+      "app_version" : "1.93.0",
+      "app_adamid" : 1324102258,
+      "app_arch" : "",
+      "app_bundleid" : "com.rabbl.Blink",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 122203,
+            "totalDownload" : 234122
+          },
+          "wifi" : {
+            "totalUpload" : 61910,
+            "totalDownload" : 116731
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "6" : 283,
+            "4" : 292,
+            "2" : 1243,
+            "11" : 1146
+          },
+          "fg" : {
+            "3" : 5
+          },
+          "total" : {
+            "3" : 5,
+            "6" : 283,
+            "4" : 292,
+            "2" : 1243,
+            "11" : 1146
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 14,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 7,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "4407.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "7.0",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.shortcuts",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 5631,
+            "totalDownload" : 7779
+          },
+          "wifi" : {
+            "totalUpload" : 5899,
+            "totalDownload" : 6817
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "2" : 13594,
+            "4" : 4156,
+            "6" : 2835
+          },
+          "total" : {
+            "2" : 13594,
+            "4" : 4156,
+            "6" : 2835
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "2952.80.3",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "2.13",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.mobilenotes",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 7567,
+            "totalDownload" : 9924
+          },
+          "wifi" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "11" : 346
+          },
+          "total" : {
+            "11" : 346
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "442.33.11",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "4.0",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.findmy",
+      "slice_uuid" : "24EB54A3-F27E-3784-A90A-DF38CB398F55",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "3365B2E3-A731-4FAB-B350-9B369E736A7F",
+      "app_build_version" : "615.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1760904000000&sf=143441&app=com.apple.AppStore&pgtp=Search&pgid=SearchTopResults&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "615.0.0",
+      "app_adamid" : 327962480,
+      "app_arch" : "",
+      "app_bundleid" : "com.redfin.redfin",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          },
+          "wifi" : {
+            "totalUpload" : 28763,
+            "totalDownload" : 43498
+          }
+        },
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1353.3.2",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.Preferences",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 1658880
+        },
+        "memory" : {
+          "average" : 1475024,
+          "peak" : 1622480
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "36.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "36",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.mobilephone",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 30586,
+            "totalDownload" : 45798
+          },
+          "wifi" : {
+            "totalUpload" : 104035,
+            "totalDownload" : 152064
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 1143,
+            "6" : 526,
+            "4" : 226,
+            "2" : 1783,
+            "11" : 4871
+          },
+          "fg" : {
+            "3" : 2451,
+            "11" : 16377,
+            "4" : 1263,
+            "1" : 35243,
+            "6" : 1328,
+            "2" : 7152,
+            "10" : 45
+          },
+          "total" : {
+            "3" : 2451,
+            "11" : 21248,
+            "4" : 1489,
+            "1" : 35243,
+            "6" : 1854,
+            "2" : 8935,
+            "10" : 1188
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 0,
+          "totalReads" : 929792
+        },
+        "memory" : {
+          "average" : 1589712,
+          "peak" : 1753552
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 1
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.1",
+      "app_adamid" : 0,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.apple.mobiletimer",
+      "slice_uuid" : "7773DA0F-0576-376D-BC58-EF95FA114A84",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "display_apl" : {
+          "totalFrameCount" : 61,
+          "averagePixelLuminance" : 4
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 0,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 1,
+          "fg_unplugged" : 1,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 0,
+            "signalBar2" : 1
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 8192,
+          "totalReads" : 48377856
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                350
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 1,
+              "sessions" : [
+                350
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "processExits" : {
+            "fg" : {
+              "cumulativeNormalAppExitCount" : 1
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "7.64.871696798",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771030800000&sf=143441",
+      "app_version" : "7.64.0",
+      "app_adamid" : 962194608,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.photos",
+      "slice_uuid" : "0F587039-ABE9-3575-B49F-9FADE38C2D48",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 3086120,
+            "totalDownload" : 57349540
+          },
+          "wifi" : {
+            "totalUpload" : 4482519731,
+            "totalDownload" : 1738738620
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 414639,
+            "6" : 1202,
+            "4" : 1359,
+            "2" : 4779
+          },
+          "total" : {
+            "10" : 414639,
+            "6" : 1202,
+            "4" : 1359,
+            "2" : 4779
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 255,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 36,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 2143,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 186,
+            "signalBar2" : 428
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 2737,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 4132085760,
+          "totalReads" : 5988904960
+        },
+        "memory" : {
+          "average" : 76984021,
+          "peak" : 185681008
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 3
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "AFD9A639-D156-434A-AD10-EB58D3158A17",
+      "app_build_version" : "2992.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1748667600000&sf=143441&pgtp=Search&pgid=SearchTopResults&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "6.15.0",
+      "app_adamid" : 1291898086,
+      "app_arch" : "",
+      "app_bundleid" : "com.toggl.daneel",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 74912,
+            "totalDownload" : 141033
+          },
+          "wifi" : {
+            "totalUpload" : 60078,
+            "totalDownload" : 118556
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "2" : 101,
+            "4" : 18,
+            "6" : 14
+          },
+          "total" : {
+            "2" : 101,
+            "4" : 18,
+            "6" : 14
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 5,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 0,
+          "fg_unplugged" : 0,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 18,
+            "signalBar2" : 0
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 31,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 8781824,
+          "totalReads" : 209043456
+        },
+        "memory" : {
+          "average" : 23266152,
+          "peak" : 25772904
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "2" : [
+                1550,
+                7300
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 2,
+              "sessions" : [
+                1550,
+                7300
+              ]
+            }
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "896D8E65-D0F4-4479-B7A0-B69594F0F92A",
+      "app_build_version" : "69731.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1553815800000&sf=143441&pgtp=Search&pgid=758049cd-9321-4f82-98db-30e0d9d6316d&ctxt=Search&issrch=1",
+      "app_version" : "26.7.0",
+      "app_adamid" : 341232718,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.myfitnesspal.mfp",
+      "slice_uuid" : "5719DDDB-F455-3D0E-A27B-177920DC8FED",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 995328,
+            "totalDownload" : 2239133
+          },
+          "wifi" : {
+            "totalUpload" : 8978129,
+            "totalDownload" : 29166050
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 9107,
+          "averagePixelLuminance" : 54
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 10970,
+            "6" : 5945,
+            "4" : 6207,
+            "2" : 25913,
+            "11" : 2
+          },
+          "fg" : {
+            "3" : 1928,
+            "11" : 4,
+            "4" : 8073,
+            "1" : 9772,
+            "6" : 7733,
+            "2" : 33699,
+            "10" : 14267
+          },
+          "total" : {
+            "3" : 1928,
+            "11" : 6,
+            "4" : 14280,
+            "1" : 9772,
+            "6" : 13678,
+            "2" : 59612,
+            "10" : 25237
+          }
+        },
+        "app_time" : {
+          "GPU" : 20,
+          "CPU" : 119,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 69,
+            "location" : 0
+          },
+          "fg_total" : 151,
+          "fg_unplugged" : 132,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 273,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 75,
+            "signalBar2" : 84
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 116,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 694890496,
+          "totalReads" : 4201771008
+        },
+        "memory" : {
+          "average" : 79465337,
+          "peak" : 248333856
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                800,
+                850,
+                1100
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 12,
+            "sessions" : [
+              280,
+              400,
+              420,
+              500,
+              510,
+              650,
+              650,
+              810,
+              830,
+              860,
+              870,
+              1030
+            ]
+          },
+          "resume" : {
+            "count" : 2,
+            "sessions" : [
+              210,
+              1345315
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeNormalAppExitCount" : 3,
+              "cumulativeMemoryPressureExitCount" : 4
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 3,
+              "sessions" : [
+                800,
+                850,
+                1100
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 18,
+            "glitchDuration" : 16,
+            "glitchCount" : 1,
+            "scrollDuration" : 20445,
+            "glitchTimeRatio" : 5.5405796513378291
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "56FC92DD-BA7C-4DFF-BDF6-3E5939E923AA",
+      "app_build_version" : "26.7",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "7|date=1555718400000&sf=143441&rapp=com.google.chrome.ios&pgtp=Software&pgid=284910350&ctxt=Today",
+      "app_version" : "26.7.0",
+      "app_adamid" : 284910350,
+      "app_arch" : "",
+      "app_bundleid" : "com.yelp.yelpiphone",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 623921,
+            "totalDownload" : 2583522
+          },
+          "wifi" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          }
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 1789,
+            "6" : 2231,
+            "4" : 2611,
+            "2" : 10768,
+            "11" : 53137
+          },
+          "fg" : {
+            "3" : 779,
+            "11" : 4599,
+            "4" : 226,
+            "14" : 189,
+            "1" : 426,
+            "6" : 194,
+            "2" : 932,
+            "10" : 155
+          },
+          "total" : {
+            "3" : 779,
+            "11" : 57736,
+            "4" : 2837,
+            "14" : 189,
+            "1" : 426,
+            "6" : 2425,
+            "2" : 11700,
+            "10" : 1944
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 1,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 151,
+            "location" : 0
+          },
+          "fg_total" : 13,
+          "fg_unplugged" : 3,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 20,
+            "signalBar0" : 0,
+            "signalBar4" : 70,
+            "signalBar3" : 54,
+            "signalBar2" : 9
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 161,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 4337664,
+          "totalReads" : 270561280
+        },
+        "memory" : {
+          "average" : 23444314,
+          "peak" : 35930960
+        },
+        "app_performance" : {
+          "activation" : {
+            "bg" : {
+              "2" : [
+                650,
+                700,
+                750,
+                750,
+                800,
+                1600
+              ]
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            },
+            "bg" : {
+              "count" : 6,
+              "sessions" : [
+                650,
+                700,
+                750,
+                750,
+                800,
+                1600
+              ]
+            }
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 6
+            }
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "1.0",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.Posters.UnityPosterApp",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 13,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 4,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "DE1D66DE-984D-4E7A-B281-80F50F443687",
+      "app_build_version" : "16.8",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771115400000&sf=143441&rapp=com.apple.Spotlight&app=com.apple.AppStore&pgtp=Software&pgid=1500855883&ctxt=Today&lngid=1",
+      "app_version" : "16.8.0",
+      "app_adamid" : 1500855883,
+      "app_arch" : "",
+      "app_bundleid" : "com.lemon.lvoverseas",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 3305088,
+            "totalDownload" : 12509352
+          },
+          "wifi" : {
+            "totalUpload" : 0,
+            "totalDownload" : 0
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 24439,
+          "averagePixelLuminance" : 18
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 1,
+            "6" : 37,
+            "4" : 1871,
+            "2" : 8548,
+            "11" : 1420
+          },
+          "fg" : {
+            "3" : 21681,
+            "11" : 18093,
+            "4" : 23841,
+            "1" : 55941,
+            "6" : 1368,
+            "2" : 108868,
+            "10" : 22
+          },
+          "total" : {
+            "3" : 21681,
+            "11" : 19513,
+            "4" : 25712,
+            "1" : 55941,
+            "6" : 1405,
+            "2" : 117416,
+            "10" : 23
+          }
+        },
+        "app_time" : {
+          "GPU" : 740,
+          "CPU" : 172,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 31,
+            "location" : 0
+          },
+          "fg_total" : 406,
+          "fg_unplugged" : 406,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 284,
+            "signalBar3" : 0,
+            "signalBar2" : 153
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 31,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 315224064,
+          "totalReads" : 1733664768
+        },
+        "memory" : {
+          "average" : 480282720,
+          "peak" : 898697360
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                1600
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 4,
+            "sessions" : [
+              330,
+              410,
+              420,
+              450
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 1
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 1,
+              "sessions" : [
+                1600
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 35,
+            "glitchDuration" : 16,
+            "glitchCount" : 1,
+            "scrollDuration" : 34385,
+            "glitchTimeRatio" : 1.0808333230477183
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "48D22F4F-683E-4496-BD7A-A15668411D1D",
+      "app_build_version" : "26.5",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1770944400000&sf=143441",
+      "app_version" : "26.5.0",
+      "app_adamid" : 909319292,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.google.calendar",
+      "slice_uuid" : "63D83147-309E-378C-9A5E-F999402AFAB1",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 403884,
+            "totalDownload" : 1833432
+          },
+          "wifi" : {
+            "totalUpload" : 138853,
+            "totalDownload" : 958331
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 2267,
+          "averagePixelLuminance" : 31
+        },
+        "app_energy" : {
+          "bg" : {
+            "2" : 6954,
+            "6" : 87,
+            "11" : 8517
+          },
+          "fg" : {
+            "3" : 1408,
+            "1" : 2633,
+            "6" : 63,
+            "2" : 4991,
+            "11" : 6114
+          },
+          "total" : {
+            "3" : 1408,
+            "1" : 2633,
+            "6" : 150,
+            "2" : 11945,
+            "11" : 14631
+          }
+        },
+        "app_time" : {
+          "GPU" : 0,
+          "CPU" : 54,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 0,
+            "location" : 0
+          },
+          "fg_total" : 37,
+          "fg_unplugged" : 25,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 14,
+            "signalBar0" : 0,
+            "signalBar4" : 0,
+            "signalBar3" : 48,
+            "signalBar2" : 2
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 52,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 40095744,
+          "totalReads" : 987713536
+        },
+        "memory" : {
+          "average" : 42711981,
+          "peak" : 110855280
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                1050
+              ]
+            },
+            "bg" : {
+              "2" : [
+                750,
+                1300,
+                1800
+              ]
+            }
+          },
+          "resume" : {
+            "count" : 1,
+            "sessions" : [
+              665
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeNormalAppExitCount" : 1,
+              "cumulativeMemoryPressureExitCount" : 2
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 1,
+              "sessions" : [
+                1050
+              ]
+            },
+            "bg" : {
+              "count" : 3,
+              "sessions" : [
+                750,
+                1300,
+                1800
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 17,
+            "glitchDuration" : 0,
+            "glitchCount" : 0,
+            "scrollDuration" : 20972,
+            "glitchTimeRatio" : 0
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "3ED47259-3EA0-48EB-9E36-64A925407F4A",
+      "app_build_version" : "890804754.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1771979400000&sf=143441&app=com.apple.AppStore&pgtp=Search&pgid=SearchTopResults&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "550.0.0",
+      "app_adamid" : 284882215,
+      "app_arch" : "",
+      "app_bundleid" : "com.facebook.Facebook",
+      "slice_uuid" : "",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 46686427,
+            "totalDownload" : 73866641
+          },
+          "wifi" : {
+            "totalUpload" : 680856,
+            "totalDownload" : 15063617
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 38934,
+          "averagePixelLuminance" : 63
+        },
+        "app_energy" : {
+          "bg" : {
+            "10" : 1660,
+            "6" : 2439,
+            "4" : 3525,
+            "2" : 19660,
+            "11" : 23401,
+            "12" : 4497
+          },
+          "fg" : {
+            "3" : 2567,
+            "11" : 95227,
+            "4" : 14347,
+            "1" : 109814,
+            "12" : 18302,
+            "6" : 9928,
+            "2" : 80006,
+            "10" : 6756
+          },
+          "total" : {
+            "3" : 2567,
+            "11" : 118628,
+            "4" : 17872,
+            "1" : 109814,
+            "12" : 22799,
+            "6" : 12367,
+            "2" : 99666,
+            "10" : 8416
+          }
+        },
+        "app_time" : {
+          "GPU" : 4,
+          "CPU" : 185,
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 178,
+            "location" : 0
+          },
+          "fg_total" : 648,
+          "fg_unplugged" : 648,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 0,
+            "signalBar0" : 0,
+            "signalBar4" : 791,
+            "signalBar3" : 284,
+            "signalBar2" : 12
+          },
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 178,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 358334464,
+          "totalReads" : 2425511936
+        },
+        "memory" : {
+          "average" : 579036998,
+          "peak" : 840697832
+        },
+        "app_performance" : {
+          "activation" : {
+            "fg" : {
+              "2" : [
+                750,
+                1350
+              ]
+            }
+          },
+          "hang" : {
+            "count" : 3,
+            "sessions" : [
+              250,
+              270,
+              280
+            ]
+          },
+          "resume" : {
+            "count" : 3,
+            "sessions" : [
+              135,
+              190,
+              335
+            ]
+          },
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 5,
+              "cumulativeNormalAppExitCount" : 6
+            }
+          },
+          "launch" : {
+            "fg" : {
+              "count" : 2,
+              "sessions" : [
+                750,
+                1350
+              ]
+            },
+            "bg" : {
+              "count" : 0,
+              "sessions" : [
+
+              ]
+            }
+          },
+          "animation" : {
+            "scrollCount" : 175,
+            "glitchDuration" : 48,
+            "glitchCount" : 3,
+            "scrollDuration" : 180131,
+            "glitchTimeRatio" : 0.31902142014211282
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "F5087EF4-CFC8-47DC-8689-D84E00CE0130",
+      "app_build_version" : "438034.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "10|date=1766008800000&sf=143441&app=com.apple.AppStore&pgtp=Search&pgid=SearchTopResults&prpg=SearchLanding_SearchLanding&ctxt=Search&issrch=1&imptyp=card&kind=iosSoftware&lngid=1",
+      "app_version" : "43.8.0",
+      "app_adamid" : 835599320,
+      "app_arch" : "arm-64bit",
+      "app_bundleid" : "com.zhiliaoapp.musically",
+      "slice_uuid" : "45B98B9A-0B81-395B-B120-9C959168A12E",
+      "app_storefront" : 143441,
+      "app_distributorid" : "com.apple.AppStore",
+      "power_metrics" : {
+        "network_io" : {
+          "cellular" : {
+            "totalUpload" : 75243522,
+            "totalDownload" : 128745862
+          },
+          "wifi" : {
+            "totalUpload" : 14582236,
+            "totalDownload" : 287375367
+          }
+        },
+        "display_apl" : {
+          "totalFrameCount" : 170431,
+          "averagePixelLuminance" : 29
+        },
+        "app_energy" : {
+          "bg_audio" : {
+            "7" : 446,
+            "11" : 18004,
+            "4" : 7964,
+            "12" : 341,
+            "6" : 9008,
+            "10" : 9920,
+            "2" : 30965
+          },
+          "bg" : {
+            "7" : 419,
+            "11" : 16933,
+            "4" : 7489,
+            "12" : 321,
+            "6" : 8472,
+            "10" : 9329,
+            "2" : 29121
+          },
+          "fg" : {
+            "7" : 27298,
+            "3" : 45594,
+            "11" : 122721,
+            "4" : 54283,
+            "1" : 221053,
+            "12" : 5001,
+            "6" : 61404,
+            "2" : 211051,
+            "10" : 67615
+          },
+          "total" : {
+            "7" : 28164,
+            "3" : 45594,
+            "11" : 157659,
+            "4" : 69737,
+            "1" : 221053,
+            "12" : 5664,
+            "6" : 78885,
+            "2" : 271138,
+            "10" : 86865
+          }
+        },
+        "app_time" : {
+          "GPU" : 3649,
+          "CPU" : 1083,
+          "bg_unplugged" : {
+            "audio" : 252,
+            "location_audio" : 0,
+            "total" : 489,
+            "location" : 0
+          },
+          "fg_total" : 3258,
+          "fg_unplugged" : 2662,
+          "cellular_condition" : {
+            "signalBarUnknown" : 0,
+            "signalBar1" : 1228,
+            "signalBar0" : 0,
+            "signalBar4" : 71,
+            "signalBar3" : 899,
+            "signalBar2" : 1914
+          },
+          "bg_total" : {
+            "audio" : 308,
+            "location_audio" : 0,
+            "total" : 928,
+            "location" : 0
+          }
+        }
+      },
+      "performance_metrics" : {
+        "disk_io" : {
+          "totalWrites" : 2324213760,
+          "totalReads" : 27265884160
+        },
+        "memory" : {
+          "average" : 359603889,
+          "peak" : 960842112
+        },
+        "app_performance" : {
+          "processExits" : {
+            "bg" : {
+              "cumulativeMemoryPressureExitCount" : 17,
+              "cumulativeNormalAppExitCount" : 11
+            }
+          },
+          "hang" : {
+            "count" : 57,
+            "sessions" : [
+              250,
+              250,
+              260,
+              260,
+              260,
+              270,
+              270,
+              280,
+              280,
+              280,
+              280,
+              290,
+              290,
+              290,
+              290,
+              290,
+              310,
+              310,
+              310,
+              310,
+              320,
+              330,
+              330,
+              330,
+              330,
+              360,
+              390,
+              400,
+              400,
+              410,
+              420,
+              440,
+              440,
+              450,
+              460,
+              460,
+              470,
+              480,
+              480,
+              480,
+              510,
+              520,
+              520,
+              520,
+              530,
+              540,
+              550,
+              550,
+              560,
+              570,
+              570,
+              580,
+              620,
+              630,
+              640,
+              720,
+              840
+            ]
+          }
+        }
+      },
+      "app_is_clip" : "false"
+    },
+    {
+      "app_sessionreporter_key" : "811CB93F-5BB5-4BC6-A3A2-C7A3E4E24F7B",
+      "app_build_version" : "1104.0",
+      "app_is_beta" : "false",
+      "app_multiple_versions" : 0,
+      "app_cohort" : "",
+      "app_version" : "6.0",
+      "app_adamid" : 0,
+      "app_arch" : "",
+      "app_bundleid" : "com.apple.Posters.WeatherPosterApp",
+      "slice_uuid" : "",
+      "app_storefront" : 0,
+      "app_distributorid" : "",
+      "power_metrics" : {
+        "app_time" : {
+          "fg_unplugged" : 0,
+          "bg_total" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 4,
+            "location" : 0
+          },
+          "bg_unplugged" : {
+            "audio" : 0,
+            "location_audio" : 0,
+            "total" : 1,
+            "location" : 0
+          },
+          "fg_total" : 0
+        }
+      },
+      "app_is_clip" : "false"
+    }
+  ]
+}
