@@ -74,19 +74,12 @@ async function speak(message: string): Promise<boolean> {
   log.info(`TTS speak requested: "${message}"`);
 
   if (Platform.OS === 'ios') {
-    if (SpeechModule) {
-      try {
-        await SpeechModule.speak(message);
-        log.info('iOS TTS speak succeeded');
-        return true;
-      } catch (e) {
-        log.error('iOS SpeechModule.speak failed', e);
-        return false;
-      }
-    } else {
-      log.warn('iOS SpeechModule not available — native module not linked');
-      return false;
-    }
+    // On iOS, native BackgroundLocationModule.swift handles ALL camera TTS
+    // (both foreground and background) via AVSpeechSynthesizer. JS TTS is
+    // disabled to avoid double-speak. Native is more reliable because it
+    // doesn't depend on JS camera settings sync (which was silently failing).
+    log.info('iOS TTS: skipping JS speech — native handles camera TTS');
+    return true; // Return true so callers don't treat this as an error
   } else {
     const tts = getAndroidTtsSync();
     if (!tts) {

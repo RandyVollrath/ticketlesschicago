@@ -821,12 +821,14 @@ class LocationServiceClass {
       log.warn(coordValidation.warning);
     }
 
-    // Pass accuracy to server so it can decide whether to snap-to-street
+    // Pass accuracy + heading to server so it can decide whether to snap-to-street
+    // and disambiguate which street the car is on at intersections.
     const accuracyParam = coords.accuracy ? `&accuracy=${coords.accuracy.toFixed(1)}` : '';
     const confidenceParam = (coords as EnhancedCoordinates).confidence
       ? `&confidence=${(coords as EnhancedCoordinates).confidence}`
       : '';
-    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}`;
+    const headingParam = (coords.heading != null && coords.heading >= 0) ? `&heading=${coords.heading.toFixed(1)}` : '';
+    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}`;
 
     // Use rate-limited request with caching
     const response = await RateLimiter.rateLimitedRequest(

@@ -751,6 +751,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var lastConfirmedParkingConfidence: Int = -1
   private var lastConfirmedParkingNearIntersectionRisk = false
 
+  // GPS averaging: ring buffer of recent low-speed GPS fixes (< 3 m/s) for parking location accuracy.
+  // When the car is approaching its parking spot or creeping to a stop, these fixes are collected.
+  // At parking confirmation, they're averaged to reduce urban canyon noise (10-30m).
+  private var recentLowSpeedLocations: [CLLocation] = []
+  private let maxRecentLowSpeedLocations = 10  // Keep last 10 fixes (~10 seconds)
+  private let lowSpeedThresholdMps = 3.0  // Collect when speed < 3 m/s (~7 mph)
+
   // Camera alerts (native iOS fallback for when JS is suspended in background)
   private var cameraAlertsEnabled = false
   private var cameraSpeedEnabled = false
@@ -2733,13 +2740,30 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       ])
     }
 
-    // Native camera alerts: only when backgrounded (JS often suspended)
-    // and only while we believe the user is driving/automotive.
+    // GPS averaging: collect low-speed GPS fixes for parking location accuracy.
+    // When speed drops below threshold, we're approaching the parking spot.
+    // Ring buffer keeps the last N fixes for averaging at confirmation time.
+    if isDriving && location.speed >= 0 && location.speed < lowSpeedThresholdMps && location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
+      recentLowSpeedLocations.append(location)
+      if recentLowSpeedLocations.count > maxRecentLowSpeedLocations {
+        recentLowSpeedLocations.removeFirst()
+      }
+    } else if location.speed >= 0 && location.speed >= lowSpeedThresholdMps {
+      // Still driving fast — clear the buffer, we haven't started stopping yet
+      recentLowSpeedLocations.removeAll()
+    }
+
+    // Native camera alerts: fire in BOTH foreground and background.
+    // Previously only fired when backgrounded, but JS camera alerts were also
+    // failing to fire (settings sync issues), leaving zero camera alerts in any mode.
+    // Native now handles all camera alerts. When foregrounded, native sends local
+    // notifications only (no TTS — JS CameraAlertService handles foreground TTS).
+    // When backgrounded, native sends local notifications AND speaks TTS.
     let appState = UIApplication.shared.applicationState
     let cameraPrewarmed = cameraPrewarmUntil.map { Date() <= $0 } ?? false
     let cameraArmed = isDriving || coreMotionSaysAutomotive || speedSaysMoving || hasRecentVehicleSignal(120) || cameraPrewarmed
-    if appState != .active && cameraArmed {
-      maybeSendNativeCameraAlert(location)
+    if cameraArmed {
+      maybeSendNativeCameraAlert(location, isBackgrounded: appState != .active)
     }
   }
 
@@ -3271,7 +3295,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   ]
   // CAMERA_DATA_END (generated)
 
-  private func maybeSendNativeCameraAlert(_ location: CLLocation) {
+  private func maybeSendNativeCameraAlert(_ location: CLLocation, isBackgrounded: Bool = true) {
     guard cameraAlertsEnabled else { return }
     let speed = location.speed
     let heading = location.course  // -1 if invalid
@@ -3400,6 +3424,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let title = cam.type == "redlight" ? "Red-light camera ahead" : "Speed camera ahead"
     let body = cam.address
     scheduleCameraLocalNotification(title: title, body: body, id: "cam-\(idx)")
+    // TTS: always speak natively. In foreground, JS CameraAlertService MAY also speak,
+    // but since JS camera alerts have been unreliable (settings sync issues), native
+    // TTS is now the primary path for both foreground and background. The JS side
+    // will be disabled from speaking to avoid double-speak (see startCameraAlerts).
     speakCameraAlert(title)
 
     // For red light cameras: capture evidence (accelerometer + GPS) natively.
@@ -3443,13 +3471,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       let content = UNMutableNotificationContent()
       content.title = title
       content.body = body
-      // Only play notification sound if app is in foreground (where native TTS doesn't speak).
-      // In background, native TTS speaks the alert — the notification chime would overlap
-      // and be redundant. The visual banner is still delivered without sound.
-      let appState = UIApplication.shared.applicationState
-      if appState == .active {
-        content.sound = UNNotificationSound.default
-      }
+      // No notification sound — native TTS speaks the alert in both foreground and background.
+      // The visual banner is delivered without sound to avoid overlapping the voice alert.
 
       // Fire immediately (short delay to avoid iOS dropping same-tick notifications)
       let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
@@ -3512,17 +3535,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   /// in background). Combined with UIBackgroundModes "audio" and .playback audio session,
   /// this allows spoken alerts even when the app is backgrounded.
   ///
-  /// Only speaks when the app is backgrounded or inactive. In foreground, JS
-  /// CameraAlertService handles TTS via SpeechModule to avoid double-speak.
+  /// Speaks in both foreground and background. Native TTS is the sole audio
+  /// path for camera alerts — JS CameraAlertService TTS is disabled to avoid double-speak.
   private func speakCameraAlert(_ message: String) {
-    // Only speak natively when app is NOT in foreground.
-    // In foreground, JS CameraAlertService handles TTS via SpeechModule.
-    // Without this check, the user hears the same alert twice.
-    let appState = UIApplication.shared.applicationState
-    if appState == .active {
-      log("Native TTS: skipping — app is in foreground (JS handles TTS)")
-      return
-    }
+    // Speak natively in BOTH foreground and background.
+    // Previously only spoke when backgrounded, relying on JS CameraAlertService for
+    // foreground TTS. But JS camera alerts had persistent settings sync issues causing
+    // zero alerts. Native is now the sole TTS path for camera alerts on iOS.
 
     // Configure audio session if not already done (safety net — should have been
     // done at driving start, but handle the case where driving detection was via
@@ -4729,13 +4748,44 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       body["longitude"] = loc.coordinate.longitude
       body["accuracy"] = loc.horizontalAccuracy
       body["locationSource"] = parkingLocationSource
-      self.log("Parking at (\(body["locationSource"]!)): \(loc.coordinate.latitude), \(loc.coordinate.longitude) ±\(loc.horizontalAccuracy)m")
+      // Include heading (course) for street disambiguation at intersections.
+      // CLLocation.course: 0-360 degrees clockwise from true north, -1 if invalid.
+      // Heading at stop time tells us which street the car was facing when it parked.
+      if loc.course >= 0 {
+        body["heading"] = loc.course
+      }
+      self.log("Parking at (\(body["locationSource"]!)): \(loc.coordinate.latitude), \(loc.coordinate.longitude) ±\(loc.horizontalAccuracy)m heading=\(loc.course >= 0 ? String(format: "%.0f°", loc.course) : "n/a")")
     } else if let loc = currentLocation {
       body["latitude"] = loc.coordinate.latitude
       body["longitude"] = loc.coordinate.longitude
       body["accuracy"] = loc.horizontalAccuracy
       body["locationSource"] = "current_fallback"
+      if loc.course >= 0 {
+        body["heading"] = loc.course
+      }
       self.log("WARNING: Using current location as fallback")
+    }
+
+    // GPS averaging: use recent low-speed GPS fixes to improve parking location accuracy.
+    // During the last seconds before parking, the car is moving slowly or stopped —
+    // averaging multiple fixes reduces urban canyon noise.
+    if !recentLowSpeedLocations.isEmpty {
+      var avgLat = 0.0
+      var avgLng = 0.0
+      var avgAcc = 0.0
+      for fix in recentLowSpeedLocations {
+        avgLat += fix.coordinate.latitude
+        avgLng += fix.coordinate.longitude
+        avgAcc += fix.horizontalAccuracy
+      }
+      avgLat /= Double(recentLowSpeedLocations.count)
+      avgLng /= Double(recentLowSpeedLocations.count)
+      avgAcc /= Double(recentLowSpeedLocations.count)
+      body["averagedLatitude"] = avgLat
+      body["averagedLongitude"] = avgLng
+      body["averagedAccuracy"] = avgAcc
+      body["averagedFixCount"] = recentLowSpeedLocations.count
+      self.log("GPS averaging: \(recentLowSpeedLocations.count) low-speed fixes → (\(String(format: "%.6f", avgLat)), \(String(format: "%.6f", avgLng))) ±\(String(format: "%.0f", avgAcc))m")
     }
 
     if let cur = currentLocation, let park = parkingLocation {

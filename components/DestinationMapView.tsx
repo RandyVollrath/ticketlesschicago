@@ -240,7 +240,7 @@ function offsetByVariant(
   oddEven: string | null | undefined,
   variant: 'restricted' | 'opposite' | 'both_a' | 'both_b',
 ): number[][] {
-  const offsetMeters = 4.5;
+  const offsetMeters = 10;
   const oe = (oddEven || '').toUpperCase();
 
   return coords.map(([lng, lat], i) => {

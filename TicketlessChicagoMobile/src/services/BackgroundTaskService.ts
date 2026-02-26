@@ -587,10 +587,27 @@ class BackgroundTaskServiceClass {
                 `Detected you parked. Duration: ${Math.round(event.drivingDurationSec || 0)}s driving. Checking parking rules...`
               );
               // Pass the stop-start coordinates so we check parking rules
-              // at where the CAR is, not where the user walked to
-              const parkingCoords = event.latitude && event.longitude
-                ? { latitude: event.latitude, longitude: event.longitude, accuracy: event.accuracy }
-                : undefined;
+              // at where the CAR is, not where the user walked to.
+              // Prefer averaged coordinates (multiple low-speed GPS fixes) when available
+              // for better accuracy near intersections. Include heading for street disambiguation.
+              let parkingCoords: { latitude: number; longitude: number; accuracy?: number; heading?: number } | undefined;
+              if (event.averagedLatitude && event.averagedLongitude && event.averagedFixCount >= 3) {
+                // Use averaged GPS position (more accurate than single fix)
+                parkingCoords = {
+                  latitude: event.averagedLatitude,
+                  longitude: event.averagedLongitude,
+                  accuracy: event.averagedAccuracy || event.accuracy,
+                  heading: event.heading,
+                };
+                log.info(`Using averaged GPS (${event.averagedFixCount} fixes) for parking location`);
+              } else if (event.latitude && event.longitude) {
+                parkingCoords = {
+                  latitude: event.latitude,
+                  longitude: event.longitude,
+                  accuracy: event.accuracy,
+                  heading: event.heading,
+                };
+              }
               this.lastAcceptedParkingEventAt = Date.now();
               // Pass the native event timestamp so parking history records
               // when the car ACTUALLY stopped, not when the check completes.
@@ -1429,6 +1446,7 @@ class BackgroundTaskServiceClass {
     latitude: number;
     longitude: number;
     accuracy?: number;
+    heading?: number;
   }, isRealParkingEvent: boolean = true, nativeTimestamp?: number, persistParkingEvent: boolean = true, detectionMeta?: {
     detectionSource?: string;
     locationSource?: string;
@@ -2192,7 +2210,7 @@ class BackgroundTaskServiceClass {
           type: 'permit_zone',
           restrictionStartTime: notifyTime,
           address: result.address || '',
-          details: `${zoneName} — enforcement starts at ${enforcementTimeStr}. Move now or risk a $65 ticket.`,
+          details: `${zoneName} — enforcement starts at ${enforcementTimeStr}. Check posted signs for your specific zone number and hours, then move your car or display a valid permit to avoid a $65 ticket.`,
           latitude: coords.latitude,
           longitude: coords.longitude,
         });

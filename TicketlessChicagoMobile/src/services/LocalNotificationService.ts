@@ -210,8 +210,8 @@ class LocalNotificationServiceClass {
         hoursBefore = 0; // Time is pre-computed (enforcement start minus advance warning)
         notificationId = `${NOTIFICATION_PREFIX.PERMIT_ZONE}${Date.now()}`;
         channelId = 'parking-alerts';
-        title = '🅿️ Permit Zone — Move Your Car!';
-        body = `${address}\n${details || 'Permit zone enforcement starting soon — move your car or risk a $65 ticket.'}`;
+        title = '🅿️ Permit Zone Alert';
+        body = `${address}\n${details || 'You may be in a permit zone. Check posted signs for your specific zone number and hours, then move your car or display a valid permit to avoid a $65 ticket.'}`;
         break;
 
       case 'metered_parking':
