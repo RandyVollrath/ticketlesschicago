@@ -84,13 +84,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
   }
 
-  // Fetch queued FOIA requests (limit to 10 per run to avoid rate limits)
+  // Fetch queued FOIA requests (50 per run — Resend allows 100/day on free tier)
   const { data: queuedRequests, error: fetchError } = await supabaseAdmin
     .from('ticket_foia_requests' as any)
     .select('*')
     .eq('status', 'queued')
     .order('requested_at', { ascending: true })
-    .limit(10);
+    .limit(50);
 
   if (fetchError) {
     console.error('Failed to fetch queued FOIA requests:', fetchError.message);

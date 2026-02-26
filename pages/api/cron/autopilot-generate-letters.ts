@@ -17,6 +17,16 @@ import {
   UserEvidence,
 } from '../../../lib/contest-kits';
 import { getStreetViewEvidence, StreetViewResult, getStreetViewEvidenceWithAnalysis, StreetViewEvidencePackage } from '../../../lib/street-view-service';
+import {
+  getCachedStreetView,
+  get311Evidence,
+  build311DefenseParagraph,
+  getExpandedWeatherDefense,
+  getConstructionPermits,
+  ServiceRequest311,
+  WeatherDefenseResult,
+  ConstructionPermitResult,
+} from '../../../lib/evidence-enrichment-service';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -132,6 +142,11 @@ interface EvidenceBundle {
   streetViewEvidence: StreetViewResult | null;
   streetViewPackage: StreetViewEvidencePackage | null;
   foiaRequest: FoiaRequestStatus;
+  // New enrichment sources
+  nearbyServiceRequests: ServiceRequest311[] | null;
+  serviceRequest311Summary: string | null;
+  expandedWeatherDefense: WeatherDefenseResult | null;
+  constructionPermits: ConstructionPermitResult | null;
 }
 
 // ─── Approval Email ──────────────────────────────────────────
@@ -312,6 +327,10 @@ async function gatherAllEvidence(
       daysElapsed: 0,
       status: 'none',
     },
+    nearbyServiceRequests: null,
+    serviceRequest311Summary: null,
+    expandedWeatherDefense: null,
+    constructionPermits: null,
   };
 
   // Resolve violation code
@@ -549,15 +568,42 @@ async function gatherAllEvidence(
     })());
   }
 
-  // 11. Google Street View imagery (multi-angle with AI analysis)
+  // 11. Google Street View imagery (CACHED — reuses across tickets at same address)
   if (ticket.location) {
     promises.push((async () => {
       try {
-        bundle.streetViewPackage = await getStreetViewEvidenceWithAnalysis(
+        // Use cached Street View to avoid duplicate API calls for same address
+        const cached = await getCachedStreetView(
+          supabaseAdmin,
           ticket.location!,
           ticket.violation_date,
           ticket.id || null,
         );
+        if (cached) {
+          // Convert cache entry to StreetViewEvidencePackage for backward compat
+          bundle.streetViewPackage = {
+            hasImagery: cached.hasImagery,
+            imageDate: cached.imageDate,
+            panoramaId: cached.panoramaId,
+            latitude: cached.latitude,
+            longitude: cached.longitude,
+            address: ticket.location,
+            images: [],
+            analyses: cached.analyses || [],
+            analysisSummary: cached.analysisSummary || '',
+            hasSignageIssue: cached.hasSignageIssue,
+            defenseFindings: cached.defenseFindings || [],
+            exhibitUrls: cached.exhibitUrls || [],
+            timingObservation: null,
+          };
+        } else {
+          // Fallback to direct fetch if cache service fails
+          bundle.streetViewPackage = await getStreetViewEvidenceWithAnalysis(
+            ticket.location!,
+            ticket.violation_date,
+            ticket.id || null,
+          );
+        }
         if (bundle.streetViewPackage?.hasImagery) {
           console.log(`    Street View: ${bundle.streetViewPackage.exhibitUrls.length} images captured, AI analysis: ${bundle.streetViewPackage.analyses.length > 0 ? 'done' : 'skipped'}`);
           if (bundle.streetViewPackage.hasSignageIssue) {
@@ -578,6 +624,65 @@ async function gatherAllEvidence(
           };
         }
       } catch (e) { console.error('    Street View lookup failed:', e); }
+    })());
+  }
+
+  // 12. Chicago 311 Service Requests near ticket location
+  if (ticket.location && ticket.violation_date) {
+    promises.push((async () => {
+      try {
+        // Geocode the address to get lat/lng for 311 search
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
+        if (apiKey) {
+          const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ticket.location + ', Chicago, IL')}&key=${apiKey}`;
+          const geoRes = await fetch(geoUrl);
+          const geoData = await geoRes.json();
+          const loc = geoData.results?.[0]?.geometry?.location;
+          if (loc) {
+            bundle.nearbyServiceRequests = await get311Evidence(loc.lat, loc.lng, ticket.violation_date!, 500);
+            bundle.serviceRequest311Summary = build311DefenseParagraph(bundle.nearbyServiceRequests);
+            if (bundle.serviceRequest311Summary) {
+              console.log(`    311 Evidence: defense-relevant issues found near ticket location`);
+            }
+          }
+        }
+      } catch (e) { console.error('    311 evidence lookup failed:', e); }
+    })());
+  }
+
+  // 13. Expanded weather defense (ALL violation types, not just street cleaning)
+  if (ticket.violation_date) {
+    promises.push((async () => {
+      try {
+        bundle.expandedWeatherDefense = await getExpandedWeatherDefense(
+          ticket.violation_date!,
+          ticket.violation_type,
+        );
+        if (bundle.expandedWeatherDefense?.canUseWeatherDefense) {
+          console.log(`    Expanded weather defense (${bundle.expandedWeatherDefense.relevanceLevel}): usable`);
+        }
+      } catch (e) { console.error('    Expanded weather defense failed:', e); }
+    })());
+  }
+
+  // 14. Construction permits near ticket location
+  if (ticket.location && ticket.violation_date) {
+    promises.push((async () => {
+      try {
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
+        if (apiKey) {
+          const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ticket.location + ', Chicago, IL')}&key=${apiKey}`;
+          const geoRes = await fetch(geoUrl);
+          const geoData = await geoRes.json();
+          const loc = geoData.results?.[0]?.geometry?.location;
+          if (loc) {
+            bundle.constructionPermits = await getConstructionPermits(loc.lat, loc.lng, ticket.violation_date!, 300);
+            if (bundle.constructionPermits?.defenseSummary) {
+              console.log(`    Construction permits: ${bundle.constructionPermits.totalActivePermits} found, defense-relevant`);
+            }
+          }
+        }
+      } catch (e) { console.error('    Construction permit lookup failed:', e); }
     })());
   }
 
@@ -879,6 +984,58 @@ ${sv.signageObservation || ''}
 INSTRUCTIONS: Suggest the hearing officer verify signage presence/visibility using Google Street View for this location.`);
   }
 
+  // ── Section 11b: 311 Service Request Evidence ──
+  if (evidence.serviceRequest311Summary) {
+    const highRelevance = (evidence.nearbyServiceRequests || []).filter(r => r.defenseRelevance === 'high');
+    const medRelevance = (evidence.nearbyServiceRequests || []).filter(r => r.defenseRelevance === 'medium');
+    sections.push(`=== 311 SERVICE REQUEST EVIDENCE (CITY'S OWN RECORDS) ===
+
+Chicago 311 records show the following service requests near the ticket location around the time of the violation:
+
+${highRelevance.length > 0 ? `HIGH RELEVANCE (directly supports defense):
+${highRelevance.map(r => `- ${r.type}: ${r.address} (${r.distanceFeet.toFixed(0)} ft away, reported ${r.createdDate}, status: ${r.status})
+  Defense relevance: ${r.defenseReason}`).join('\n')}` : ''}
+
+${medRelevance.length > 0 ? `MODERATE RELEVANCE (supporting context):
+${medRelevance.map(r => `- ${r.type}: ${r.address} (${r.distanceFeet.toFixed(0)} ft away, reported ${r.createdDate})
+  ${r.defenseReason}`).join('\n')}` : ''}
+
+DEFENSE SUMMARY:
+${evidence.serviceRequest311Summary}
+
+INSTRUCTIONS: Use 311 data to show the city knew about infrastructure problems at this location. These are the city's OWN records — they cannot dispute them. Frame it as: "City of Chicago 311 records show [issue] was reported at/near [address] on [date], demonstrating the city was on notice of [signage/infrastructure problem] that directly affected the enforceability of this citation." This is powerful because it proves the city knew and didn't fix it.`);
+  }
+
+  // ── Section 11c: Expanded Weather Defense ──
+  if (evidence.expandedWeatherDefense?.canUseWeatherDefense) {
+    const ewd = evidence.expandedWeatherDefense;
+    sections.push(`=== EXPANDED WEATHER DEFENSE (${ewd.relevanceLevel.toUpperCase()} for ${ewd.violationType}) ===
+
+${ewd.defenseParagraph}
+
+Weather conditions on violation date: ${ewd.conditions.join(', ')}
+Relevance level for this violation type: ${ewd.relevanceLevel}
+
+INSTRUCTIONS: ${ewd.relevanceLevel === 'primary' ? 'Weather is a PRIMARY defense for this violation type — use it prominently.' :
+  ewd.relevanceLevel === 'supporting' ? 'Weather SUPPORTS the defense — weave it into the argument as a contributing factor (e.g., weather obscured signs, made it difficult to read meter displays, or affected the driver\'s ability to comply).' :
+  'Weather provides helpful CONTEXT — mention it briefly to paint a complete picture of the conditions.'}`);
+  }
+
+  // ── Section 11d: Construction Permit Evidence ──
+  if (evidence.constructionPermits?.defenseSummary) {
+    const cp = evidence.constructionPermits;
+    sections.push(`=== CONSTRUCTION / ROAD WORK PERMITS NEAR TICKET LOCATION ===
+
+Active construction or road work permits found near the ticket location:
+- Total active permits within 300 ft: ${cp.totalActivePermits}
+- Sign-blocking permit found: ${cp.hasSignBlockingPermit ? 'YES' : 'No'}
+- Road work permit found: ${cp.hasRoadWorkPermit ? 'YES' : 'No'}
+
+${cp.defenseSummary}
+
+INSTRUCTIONS: Construction and road work directly affect parking signage visibility and available parking. Argue that active construction near the location may have obscured signage, reduced available parking, or created confusing conditions that affected the driver's ability to comply with parking restrictions. ${cp.hasSignBlockingPermit ? 'The city issued a permit that directly blocked or affected signage visibility — this is a STRONG argument.' : ''}`);
+  }
+
   // ── Section 12: Street Cleaning Schedule ──
   if (evidence.streetCleaningSchedule && evidence.streetCleaningSchedule.length > 0) {
     const scs = evidence.streetCleaningSchedule;
@@ -932,6 +1089,9 @@ Generate a professional, formal contest letter that:
    ${evidence.streetViewPackage?.hasImagery ? `- ${evidence.streetViewPackage.exhibitUrls.length} Google Street View photographs (attached as exhibits — ${evidence.streetViewPackage.hasSignageIssue ? 'SIGNAGE ISSUES FOUND' : 'signage verification'})` : evidence.streetViewEvidence?.hasImagery ? '- Google Street View imagery (signage verification)' : ''}
    ${evidence.foiaData.hasData ? '- FOIA hearing outcomes (INFORM strategy only, do not cite stats)' : ''}
    ${evidence.foiaRequest.hasFoiaRequest ? '- FOIA evidence request filed (use as supplementary argument if city failed to respond)' : ''}
+   ${evidence.serviceRequest311Summary ? '- 311 service requests showing city knew about infrastructure issues near ticket location (STRONG - city\'s own records)' : ''}
+   ${evidence.expandedWeatherDefense?.canUseWeatherDefense ? `- Expanded weather defense (${evidence.expandedWeatherDefense.relevanceLevel} relevance for this violation type)` : ''}
+   ${evidence.constructionPermits?.defenseSummary ? `- Construction/road work permits near location (${evidence.constructionPermits.hasSignBlockingPermit ? 'SIGN-BLOCKING FOUND' : 'active permits'})` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the hearing officer, sign with sender name only (Lob adds return address automatically)
@@ -975,6 +1135,21 @@ function generateFallbackLetter(
 
   if (evidence.weatherData?.defenseRelevant && evidence.weatherRelevanceType === 'primary') {
     body += `\n\nWeather records for ${evidence.weatherData.date} show ${evidence.weatherData.weatherDescription}. These conditions typically result in cancellation of the restriction cited on this ticket.`;
+  }
+
+  if (evidence.serviceRequest311Summary) {
+    body += `\n\n${evidence.serviceRequest311Summary}`;
+  }
+
+  if (evidence.constructionPermits?.defenseSummary) {
+    body += `\n\n${evidence.constructionPermits.defenseSummary}`;
+  }
+
+  if (evidence.expandedWeatherDefense?.canUseWeatherDefense && evidence.expandedWeatherDefense.defenseParagraph) {
+    // Only add if not already covered by primary weather defense above
+    if (evidence.weatherRelevanceType !== 'primary') {
+      body += `\n\n${evidence.expandedWeatherDefense.defenseParagraph}`;
+    }
   }
 
   body += `\n\nI respectfully request that this citation be dismissed based on the evidence provided.`;
@@ -1090,6 +1265,9 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   } else if (evidence.streetViewEvidence?.hasImagery) {
     evidenceSources.push('street_view');
   }
+  if (evidence.serviceRequest311Summary) evidenceSources.push('311_evidence');
+  if (evidence.expandedWeatherDefense?.canUseWeatherDefense) evidenceSources.push('expanded_weather_defense');
+  if (evidence.constructionPermits?.defenseSummary) evidenceSources.push('construction_permits');
 
   if (anthropic) {
     try {
