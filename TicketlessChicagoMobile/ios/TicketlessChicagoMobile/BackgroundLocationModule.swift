@@ -3595,7 +3595,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
 
       self.speechSynthesizer.speak(utterance)
-      self.log("Native TTS: speaking '\(message)' (appState=\(appState == .background ? "background" : "inactive"))")
+      let currentAppState = UIApplication.shared.applicationState
+      self.log("Native TTS: speaking '\(message)' (appState=\(currentAppState == .background ? "background" : currentAppState == .active ? "active" : "inactive"))")
     }
   }
 
