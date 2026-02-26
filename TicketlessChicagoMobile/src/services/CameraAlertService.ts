@@ -24,7 +24,7 @@
  * Haversine for ~2-5 cameras per GPS update, even with 510 total.
  */
 
-import { Platform, NativeModules } from 'react-native';
+import { Platform, NativeModules, NativeEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CHICAGO_CAMERAS, CameraLocation } from '../data/chicago-cameras';
 import CameraPassHistoryService from './CameraPassHistoryService';
@@ -45,6 +45,13 @@ const log = Logger.createLogger('CameraAlertService');
  * No pods needed — it's built into iOS and registered in Xcode project.
  */
 const SpeechModule = Platform.OS === 'ios' ? NativeModules.SpeechModule : null;
+
+/**
+ * Android: Native CameraAlertModule for proximity detection, TTS, and notifications.
+ * Handles all camera alerts natively so they work even when JS is suspended.
+ * This mirrors the iOS BackgroundLocationModule.swift camera alert functionality.
+ */
+const AndroidCameraAlertModule = Platform.OS === 'android' ? NativeModules.CameraAlertModule : null;
 
 /**
  * Android: Lazy-load react-native-tts to avoid NativeEventEmitter crash on iOS.
@@ -80,37 +87,15 @@ async function speak(message: string): Promise<boolean> {
     // doesn't depend on JS camera settings sync (which was silently failing).
     log.info('iOS TTS: skipping JS speech — native handles camera TTS');
     return true; // Return true so callers don't treat this as an error
+  } else if (Platform.OS === 'android') {
+    // On Android, native CameraAlertModule.kt handles TTS via its own
+    // TextToSpeech engine with proper volume control. The native
+    // onLocationUpdate() fires alerts independently, so JS-side TTS
+    // is skipped to avoid double-speak (same pattern as iOS).
+    log.info('Android TTS: skipping JS speech — native CameraAlertModule handles TTS');
+    return true;
   } else {
-    const tts = getAndroidTtsSync();
-    if (!tts) {
-      log.warn('Android TTS module not loaded');
-      return false;
-    }
-
-    try {
-      // Just try to speak — the TTS engine will auto-initialize on most devices.
-      // Wrapping in Promise to handle both callback and promise-based returns.
-      log.info('Android TTS: calling tts.speak()...');
-      const result = tts.speak(message);
-
-      // tts.speak() returns a Promise<string> (utterance ID) on success
-      if (result && typeof result.then === 'function') {
-        await result;
-      }
-
-      log.info('Android TTS speak call completed');
-      return true;
-    } catch (e: any) {
-      log.error('Android TTS speak failed:', e?.message || e);
-
-      // If no TTS engine, prompt user to install one
-      if (e?.code === 'no_engine') {
-        try {
-          tts.requestInstallEngine();
-        } catch (e) { log.debug('Failed to request TTS engine install', e); }
-      }
-      return false;
-    }
+    return false;
   }
 }
 
@@ -458,6 +443,9 @@ class CameraAlertServiceClass {
         await this.initTts();
       }
 
+      // Sync persisted settings to native module on startup
+      await this.syncNativeSettings();
+
       this.hasLoadedSettings = true;
       log.info(`CameraAlertService initialized. Enabled: ${this.isEnabled}, Cameras: ${CHICAGO_CAMERAS.length}, Platform: ${Platform.OS}`);
     } catch (error) {
@@ -524,15 +512,8 @@ class CameraAlertServiceClass {
     await this.persistSettings();
     log.info(`Camera alert volume set to ${this.alertVolume}`);
 
-    // Sync to iOS native layer
-    if (Platform.OS === 'ios') {
-      await BackgroundLocationService.setCameraAlertSettings(
-        this.isEnabled,
-        this.speedAlertsEnabled,
-        this.redLightAlertsEnabled,
-        this.alertVolume
-      );
-    }
+    // Sync to native layer (iOS + Android)
+    await this.syncNativeSettings();
   }
 
   getAlertVolume(): number {
@@ -557,25 +538,11 @@ class CameraAlertServiceClass {
         } else {
           log.warn('iOS SpeechModule native module not found — camera audio alerts will not work');
         }
-      } else {
-        // Android: Configure react-native-tts
-        const tts = getAndroidTtsSync();
-        if (!tts) {
-          log.warn('Android TTS not available');
-          return;
-        }
-
-        await tts.setDefaultLanguage('en-US');
-        await tts.setDefaultRate(0.5);
-        await tts.setDefaultPitch(1.0);
-        // Best-effort: lower other audio while speaking alerts.
-        // (Some players may pause instead of duck depending on device/engine.)
-        if (typeof tts.setDucking === 'function') {
-          await tts.setDucking(true);
-        }
-
+      } else if (Platform.OS === 'android') {
+        // Android: Native CameraAlertModule.kt handles TTS via its own
+        // TextToSpeech engine (initialized in Kotlin). No JS-side TTS setup needed.
         this.ttsInitialized = true;
-        log.info('Android TTS engine initialized (react-native-tts)');
+        log.info('Android TTS: native CameraAlertModule handles TTS');
       }
     } catch (error) {
       log.error('Failed to initialize TTS', error);
@@ -601,15 +568,8 @@ class CameraAlertServiceClass {
 
     log.info(`Camera alerts ${enabled ? 'enabled' : 'disabled'}`);
 
-    // Keep iOS-native background camera notifications in sync with user setting.
-    if (Platform.OS === 'ios') {
-      await BackgroundLocationService.setCameraAlertSettings(
-        this.isEnabled,
-        this.speedAlertsEnabled,
-        this.redLightAlertsEnabled,
-        this.alertVolume
-      );
-    }
+    // Keep native background camera notifications in sync with user setting.
+    await this.syncNativeSettings();
   }
 
   isAlertEnabled(): boolean {
@@ -628,14 +588,7 @@ class CameraAlertServiceClass {
     }
     log.info(`Speed camera alerts ${enabled ? 'enabled' : 'disabled'}`);
 
-    if (Platform.OS === 'ios') {
-      await BackgroundLocationService.setCameraAlertSettings(
-        this.isEnabled,
-        this.speedAlertsEnabled,
-        this.redLightAlertsEnabled,
-        this.alertVolume
-      );
-    }
+    await this.syncNativeSettings();
   }
 
   async setRedLightAlertsEnabled(enabled: boolean): Promise<void> {
@@ -650,13 +603,33 @@ class CameraAlertServiceClass {
     }
     log.info(`Red-light camera alerts ${enabled ? 'enabled' : 'disabled'}`);
 
-    if (Platform.OS === 'ios') {
-      await BackgroundLocationService.setCameraAlertSettings(
-        this.isEnabled,
-        this.speedAlertsEnabled,
-        this.redLightAlertsEnabled,
-        this.alertVolume
-      );
+    await this.syncNativeSettings();
+  }
+
+  /**
+   * Sync camera alert settings to the platform's native module.
+   * iOS: BackgroundLocationModule.swift handles camera alerts natively
+   * Android: CameraAlertModule.kt handles camera alerts natively
+   */
+  private async syncNativeSettings(): Promise<void> {
+    try {
+      if (Platform.OS === 'ios') {
+        await BackgroundLocationService.setCameraAlertSettings(
+          this.isEnabled,
+          this.speedAlertsEnabled,
+          this.redLightAlertsEnabled,
+          this.alertVolume
+        );
+      } else if (Platform.OS === 'android' && AndroidCameraAlertModule) {
+        await AndroidCameraAlertModule.configure(
+          this.isEnabled,
+          this.speedAlertsEnabled,
+          this.redLightAlertsEnabled,
+          this.alertVolume
+        );
+      }
+    } catch (e) {
+      log.warn('Failed to sync native camera alert settings', e);
     }
   }
 
@@ -793,6 +766,14 @@ class CameraAlertServiceClass {
     this.gpsUpdateCount = 0;
     this.lastDiagnostic = null;
     this.hasNotifiedRedlightRejection = false;
+
+    // Clear native module state for fresh drive session
+    if (Platform.OS === 'android' && AndroidCameraAlertModule) {
+      AndroidCameraAlertModule.clearState().catch((e: any) =>
+        log.warn('Failed to clear Android native camera state', e)
+      );
+    }
+
     log.info(`Camera alert monitoring started (session=${this.driveSessionId}, speed=${this.speedAlertsEnabled}, redlight=${this.redLightAlertsEnabled}, cameras=${CHICAGO_CAMERAS.length})`);
   }
 
@@ -866,6 +847,16 @@ class CameraAlertServiceClass {
     horizontalAccuracyMeters: number | null = null
   ): void {
     if (!this.isActive || !this.isEnabled) return;
+
+    // Forward to Android native module for native proximity detection + TTS.
+    // The native module handles its own debounce, heading filter, and TTS
+    // independently — so alerts work even if JS is suspended.
+    // JS still runs its own pipeline below for pass tracking, ground truth, etc.
+    if (Platform.OS === 'android' && AndroidCameraAlertModule) {
+      AndroidCameraAlertModule.onLocationUpdate(
+        latitude, longitude, speed, heading, horizontalAccuracyMeters ?? -1
+      ).catch((e: any) => log.debug('Android native onLocationUpdate failed', e));
+    }
 
     try {
       this.gpsUpdateCount++;
