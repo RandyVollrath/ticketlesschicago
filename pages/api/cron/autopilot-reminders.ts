@@ -41,8 +41,13 @@ interface PendingTicket {
 }
 
 function daysSinceTicket(violationDate: string): number {
-  const ticketDate = new Date(violationDate);
-  return Math.floor((Date.now() - ticketDate.getTime()) / (1000 * 60 * 60 * 24));
+  // Use Chicago timezone for calendar-day math so reminder thresholds
+  // (Day 5, Day 10, Day 17, Day 19) align with Chicago calendar dates.
+  const chicagoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const chicagoTicket = new Date(new Date(violationDate).toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const nowDateOnly = new Date(chicagoNow.getFullYear(), chicagoNow.getMonth(), chicagoNow.getDate());
+  const ticketDateOnly = new Date(chicagoTicket.getFullYear(), chicagoTicket.getMonth(), chicagoTicket.getDate());
+  return Math.round((nowDateOnly.getTime() - ticketDateOnly.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function formatDate(dateStr: string): string {

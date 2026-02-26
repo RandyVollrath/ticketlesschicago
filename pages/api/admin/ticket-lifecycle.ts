@@ -217,11 +217,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // --- Stage computation ---
       const lifecycle_stage = computeLifecycleStage(ticket, letter, outcome);
 
-      // --- Days calculation ---
-      const daysElapsed = ticket.violation_date
-        ? Math.floor((Date.now() - new Date(ticket.violation_date).getTime()) / (1000 * 60 * 60 * 24))
-        : null;
-      const daysRemaining = daysElapsed !== null ? Math.max(0, 21 - daysElapsed) : null;
+      // --- Days calculation (Chicago timezone) ---
+      let daysElapsed: number | null = null;
+      let daysRemaining: number | null = null;
+      if (ticket.violation_date) {
+        const chicagoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+        const chicagoViolation = new Date(new Date(ticket.violation_date).toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+        const nowDateOnly = new Date(chicagoNow.getFullYear(), chicagoNow.getMonth(), chicagoNow.getDate());
+        const violationDateOnly = new Date(chicagoViolation.getFullYear(), chicagoViolation.getMonth(), chicagoViolation.getDate());
+        daysElapsed = Math.round((nowDateOnly.getTime() - violationDateOnly.getTime()) / (1000 * 60 * 60 * 24));
+        daysRemaining = Math.max(0, 21 - daysElapsed);
+      }
 
       return {
         id: ticket.id,
