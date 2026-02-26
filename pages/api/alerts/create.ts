@@ -413,12 +413,15 @@ export default async function handler(
       }
     }
 
-    // Store contest authorization consent + e-signature if provided
-    if (contestConsent && contestSignature?.trim()) {
+    // Store contest authorization consent if user checked the box
+    if (contestConsent) {
       try {
         const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
           || req.socket.remoteAddress
           || 'unknown';
+
+        // Use first/last name as the signature (checkbox = intent to sign under Illinois UETA)
+        const signatureName = [firstName, lastName].filter(Boolean).join(' ') || email;
 
         await supabase
           .from('user_profiles')
@@ -426,11 +429,11 @@ export default async function handler(
             contest_consent: true,
             contest_consent_at: new Date().toISOString(),
             contest_consent_ip: ip,
-            contest_consent_signature: contestSignature.trim(),
+            contest_consent_signature: signatureName,
           })
           .eq('user_id', userId);
 
-        console.log('✍️ Contest e-signature recorded for user:', userId, `(signed as "${contestSignature.trim()}")`);
+        console.log('✅ Contest consent recorded for user:', userId, `(signed as "${signatureName}")`);
       } catch (consentErr) {
         // Non-critical — don't fail signup if consent storage fails
         console.error('⚠️ Failed to store contest consent (non-critical):', consentErr);

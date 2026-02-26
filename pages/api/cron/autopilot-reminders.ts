@@ -515,7 +515,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ── CONSENT REMINDER EMAILS ──
     // Find users with contest letters stuck in 'awaiting_consent' and remind them
     // to reply "I AUTHORIZE" or visit settings to provide their e-signature.
-    // Rate-limited: max once every 3 days per user.
+    // Rate-limited: max once per day per user.
     let consentRemindersSent = 0;
 
     try {
@@ -534,7 +534,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           userLetterCounts[letter.user_id] = (userLetterCounts[letter.user_id] || 0) + 1;
         }
 
-        const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
         for (const [userId, letterCount] of Object.entries(userLetterCounts)) {
           // Check if we've already sent a consent reminder recently
@@ -550,10 +550,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             continue;
           }
 
-          // Rate limit: don't send more than once every 3 days
+          // Rate limit: don't send more than once per day
           if (profile?.consent_reminder_sent_at) {
             const lastSent = new Date(profile.consent_reminder_sent_at).getTime();
-            if (Date.now() - lastSent < THREE_DAYS_MS) {
+            if (Date.now() - lastSent < ONE_DAY_MS) {
               console.log(`  Skipping consent reminder for ${userId}: sent ${Math.round((Date.now() - lastSent) / (1000 * 60 * 60))}h ago`);
               continue;
             }
@@ -571,7 +571,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (sent) {
             consentRemindersSent++;
 
-            // Update the timestamp so we don't re-send for 3 days
+            // Update the timestamp so we don't re-send for 24 hours
             await supabaseAdmin
               .from('user_profiles')
               .update({ consent_reminder_sent_at: new Date().toISOString() })
