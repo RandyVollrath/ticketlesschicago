@@ -79,7 +79,7 @@
       "maxDuration": 300
     },
     "pages/api/cron/autopilot-generate-letters.ts": {
-      "maxDuration": 120
+      "maxDuration": 300
     },
     "pages/api/cron/autopilot-mail-letters.ts": {
       "maxDuration": 120
@@ -103,6 +103,9 @@
       "maxDuration": 60
     },
     "pages/api/cron/send-foia-history-requests.ts": {
+      "maxDuration": 120
+    },
+    "pages/api/cron/autopilot-open-data-monitor.ts": {
       "maxDuration": 120
     }
   },
@@ -206,6 +209,10 @@
     {
       "path": "/api/cron/send-foia-history-requests",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/autopilot-open-data-monitor",
+      "schedule": "0 3 * * 0"
     }
   ],
   "headers": [
