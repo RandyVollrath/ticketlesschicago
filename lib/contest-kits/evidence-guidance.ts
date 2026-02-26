@@ -1066,7 +1066,7 @@ export const DISMISSAL_INSIGHTS: Record<string, DismissalInsight[]> = {
     {
       reason: 'Prima Facie Case Not Established by City',
       translation: 'The city couldn\'t prove its case',
-      evidenceNeeded: 'We handle this — our FOIA request demands the city produce their evidence',
+      evidenceNeeded: 'We handle this — our FOIA request asks the city to produce their evidence',
       shareLabel: 'sometimes',
     },
   ],
@@ -1086,7 +1086,7 @@ export const DISMISSAL_INSIGHTS: Record<string, DismissalInsight[]> = {
     {
       reason: 'Prima Facie Case Not Established by City',
       translation: 'The city couldn\'t prove its case',
-      evidenceNeeded: 'We handle this — our FOIA request demands meter maintenance records',
+      evidenceNeeded: 'We handle this — our FOIA request asks for meter maintenance records',
       shareLabel: 'sometimes',
     },
   ],
@@ -1106,7 +1106,7 @@ export const DISMISSAL_INSIGHTS: Record<string, DismissalInsight[]> = {
     {
       reason: 'Prima Facie Case Not Established by City',
       translation: 'The city couldn\'t prove sweeping actually occurred',
-      evidenceNeeded: 'We handle this — our FOIA request demands sweeper GPS data for your block',
+      evidenceNeeded: 'We handle this — our FOIA request asks for sweeper GPS data for your block',
       shareLabel: 'sometimes',
     },
   ],
@@ -1332,7 +1332,7 @@ export const DISMISSAL_INSIGHTS: Record<string, DismissalInsight[]> = {
     {
       reason: 'Prima Facie Case Not Established by City',
       translation: 'The city couldn\'t prove the snow ban was properly declared',
-      evidenceNeeded: 'We handle this — our FOIA request demands proof of proper snow emergency declaration and notification',
+      evidenceNeeded: 'We handle this — our FOIA request asks for proof of proper snow emergency declaration and notification',
       shareLabel: 'sometimes',
     },
   ],
@@ -1359,40 +1359,29 @@ export const DISMISSAL_INSIGHTS: Record<string, DismissalInsight[]> = {
 };
 
 /**
- * Generate the "What Actually Gets Tickets Dismissed" section HTML
+ * Generate additional evidence request questions derived from FOIA dismissal data.
+ * These are formatted as actionable questions (same style as violation-specific questions)
+ * so the user just sees relevant prompts — not raw hearing data.
+ * Only includes insights that aren't already covered by the main violation questions.
  */
-function generateDismissalInsightsHtml(violationType: string): string {
+function generateDismissalDrivenQuestionsHtml(violationType: string, startIndex: number): string {
   const insights = DISMISSAL_INSIGHTS[violationType];
   if (!insights || insights.length === 0) return '';
 
-  const shareColors: Record<string, string> = {
-    'most common': '#059669',
-    'common': '#d97706',
-    'sometimes': '#6b7280',
-  };
+  // Filter out "We handle this" entries (FOIA-related ones we do ourselves)
+  const userActionable = insights.filter(i => !i.evidenceNeeded.startsWith('We handle this'));
+  if (userActionable.length === 0) return '';
 
-  const insightItems = insights.map(insight => `
-    <div style="margin-bottom: 16px; padding: 12px 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <span style="font-weight: 600; color: #111827; font-size: 14px;">${insight.translation}</span>
-        <span style="font-size: 11px; color: ${shareColors[insight.shareLabel] || '#6b7280'}; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">${insight.shareLabel}</span>
-      </div>
-      <p style="margin: 0 0 8px; color: #4b5563; font-size: 13px; font-style: italic;">
-        Hearing officer reason: "${insight.reason}"
+  return userActionable.map((insight, i) => `
+    <div style="margin-bottom: 24px; padding: 16px; background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0;">
+      <p style="margin: 0 0 8px; font-weight: 600; color: #14532d; font-size: 15px;">
+        ${startIndex + i + 1}. ${insight.evidenceNeeded}
       </p>
-      <p style="margin: 0; color: #1e40af; font-size: 13px; font-weight: 500;">
-        What you need: ${insight.evidenceNeeded}
+      <p style="margin: 0; color: #166534; font-size: 13px; font-style: italic;">
+        This type of evidence has helped people win this kind of ticket.
       </p>
     </div>
   `).join('');
-
-  return `
-    <div style="background: #f0fdf4; border: 2px solid #22c55e; padding: 20px; border-radius: 8px; margin: 0 0 24px;">
-      <h3 style="margin: 0 0 4px; color: #14532d; font-size: 16px;">What Actually Gets These Tickets Dismissed</h3>
-      <p style="margin: 0 0 16px; color: #166534; font-size: 12px;">Based on 1.18 million real Chicago hearing outcomes (FOIA data, 2019-present)</p>
-      ${insightItems}
-    </div>
-  `;
 }
 
 /**
@@ -1445,9 +1434,6 @@ const CAMERA_TICKET_EXTRA_QUESTIONS: EvidenceQuestion[] = [
 export function generateEvidenceQuestionsHtml(guidance: EvidenceGuidance): string {
   let html = '';
 
-  // FOIA-driven insights: what actually gets tickets dismissed
-  html += generateDismissalInsightsHtml(guidance.violationType);
-
   // Main questions (violation-specific)
   guidance.questions.forEach((q, i) => {
     html += `
@@ -1462,6 +1448,11 @@ export function generateEvidenceQuestionsHtml(guidance: EvidenceGuidance): strin
       </div>
     `;
   });
+
+  // Additional evidence prompts derived from FOIA dismissal data.
+  // These appear as actionable requests (same style) — the user just sees
+  // "send us X" prompts, not raw hearing officer reason codes.
+  html += generateDismissalDrivenQuestionsHtml(guidance.violationType, guidance.questions.length);
 
   // Determine which universal questions to add (skip if already covered in violation-specific questions)
   const vtype = guidance.violationType;
@@ -1479,7 +1470,10 @@ export function generateEvidenceQuestionsHtml(guidance: EvidenceGuidance): strin
   const allExtraQuestions = [...universalQuestions, ...extraQuestions];
 
   if (allExtraQuestions.length > 0) {
-    const startIdx = guidance.questions.length;
+    // Account for dismissal-driven questions in the numbering
+    const dismissalInsights = DISMISSAL_INSIGHTS[guidance.violationType] || [];
+    const userActionableDismissalCount = dismissalInsights.filter(i => !i.evidenceNeeded.startsWith('We handle this')).length;
+    const startIdx = guidance.questions.length + userActionableDismissalCount;
     html += `
       <div style="margin: 24px 0 16px; padding: 12px 16px; background: #f0f9ff; border-radius: 8px;">
         <p style="margin: 0; color: #0c4a6e; font-size: 13px; font-weight: 600;">

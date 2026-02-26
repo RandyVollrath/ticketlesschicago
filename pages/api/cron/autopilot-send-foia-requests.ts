@@ -292,45 +292,42 @@ async function notifyUserOfFoiaFiling(
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
         <h1 style="margin: 0; font-size: 22px;">We Filed a Records Request on Your Behalf</h1>
-        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Demanding the city prove their case against you</p>
+        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Requesting the enforcement records for your ticket</p>
       </div>
       <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
         <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${userName},</p>
 
         <p style="color: #374151; font-size: 15px; line-height: 1.6;">
           We just filed an official <strong>Freedom of Information Act (FOIA) request</strong> with the
-          Chicago Department of Finance demanding the enforcement records for your
+          Chicago Department of Finance requesting the enforcement records for your
           ticket <strong>#${ticketNumber}</strong> (${violationDate}).
         </p>
 
         <div style="background: #f5f3ff; border: 1px solid #c4b5fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 12px; color: #5b21b6; font-size: 16px;">What We Requested</h3>
           <ul style="margin: 0; padding-left: 20px; color: #6d28d9; font-size: 14px; line-height: 1.8;">
-            <li>The officer's handwritten notes and observations</li>
-            <li>Any photos taken at the scene</li>
-            <li>Handheld device data and GPS timestamps</li>
-            <li>Violation-specific enforcement records</li>
+            <li>Officer's notes and observations from the scene</li>
+            <li>Any photos taken at the time of the ticket</li>
+            <li>Handheld device data and timestamps</li>
+            <li>Enforcement and equipment records related to your violation</li>
           </ul>
         </div>
 
         <div style="background: #ecfdf5; border: 1px solid #6ee7b7; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 8px; color: #065f46; font-size: 16px;">Why This Matters</h3>
           <p style="margin: 0; color: #047857; font-size: 14px; line-height: 1.6;">
-            The city is required by law to respond within <strong>5 business days</strong>.
-            We file this request as soon as we detect your ticket so that by the time we
-            draft your contest letter, the deadline has already passed. If the city fails
-            to produce these records, your letter will argue
-            <strong>"Prima Facie Case Not Established by City"</strong> &mdash; one of the
-            top reasons tickets get dismissed in Chicago.
+            Under Illinois law, the city is required to respond within <strong>5 business days</strong>.
+            We file this request right away so that by the time we draft your contest letter,
+            we already know whether the city has the records to support the ticket.
+            If they don't produce them, that strengthens your case.
           </p>
         </div>
 
         <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 16px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
             <strong>What happens next:</strong> The city has 5 business days to respond.
-            Whether they produce records or not, it works in your favor &mdash;
-            incomplete or missing records weaken their case.
-            We'll incorporate the results into your contest letter automatically.
+            We'll review whatever they provide (or don't) and factor it into your
+            contest letter automatically.
           </p>
         </div>
 
@@ -339,7 +336,7 @@ async function notifyUserOfFoiaFiling(
         </p>
 
         <p style="color: #6b7280; font-size: 12px; margin-top: 24px; text-align: center;">
-          Autopilot America &mdash; Fighting your ticket from every angle
+          Autopilot America &mdash; Working to get your ticket dismissed
         </p>
       </div>
     </div>
@@ -355,7 +352,7 @@ async function notifyUserOfFoiaFiling(
       body: JSON.stringify({
         from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: [userEmail],
-        subject: `We filed a records request for Ticket #${ticketNumber} - demanding the city prove their case`,
+        subject: `Records request filed for Ticket #${ticketNumber} - requesting the city's enforcement evidence`,
         html,
       }),
     });

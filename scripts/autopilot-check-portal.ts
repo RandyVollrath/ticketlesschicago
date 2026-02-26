@@ -1593,17 +1593,16 @@ async function sendEvidenceRequestEmail(
         </div>
         ${valueDemoHtml}
         <div style="background: #f5f3ff; border: 2px solid #8b5cf6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="margin: 0 0 12px; color: #5b21b6; font-size: 18px;">We're Demanding the City's Evidence</h3>
+          <h3 style="margin: 0 0 12px; color: #5b21b6; font-size: 18px;">We're Requesting the City's Records</h3>
           <p style="margin: 0 0 12px; color: #6d28d9; font-size: 14px; line-height: 1.6;">
-            When your contest letter is mailed, we'll also file an official
-            <strong>Freedom of Information Act request</strong> demanding the city produce the
+            We've already filed an official
+            <strong>Freedom of Information Act (FOIA) request</strong> asking the city to produce the
             officer's notes, photos, and device data for your ticket.
           </p>
           <p style="margin: 0 0 12px; color: #6d28d9; font-size: 14px; line-height: 1.6;">
-            The city has <strong>5 business days</strong> to respond by law.
-            If they fail to produce records, we use it against them &mdash;
-            <em>"Prima Facie Case Not Established by City"</em> is one of the
-            <strong>top reasons tickets get dismissed</strong> in Chicago.
+            Under Illinois law, the city has <strong>5 business days</strong> to respond.
+            By the time we draft your contest letter, we'll already know whether
+            they have the records to support this ticket.
           </p>
           <p style="margin: 0; color: #7c3aed; font-size: 13px; font-style: italic;">
             This is included automatically &mdash; you don't need to do anything.
