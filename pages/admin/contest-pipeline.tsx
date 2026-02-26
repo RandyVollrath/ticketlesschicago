@@ -1040,17 +1040,65 @@ function LifecycleTab() {
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 24px' }}>
-      {/* Summary Cards */}
+      {/* Summary Dashboard */}
       {summary && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
-          <LifecycleSummaryCard label="Users" value={summary.total_users} color={C.accent} />
-          <LifecycleSummaryCard label="Total Tickets" value={summary.total_tickets} color={C.text} />
-          <LifecycleSummaryCard label="Amount at Stake" value={formatCurrency(summary.total_amount_at_stake)} color={C.yellow} />
-          <LifecycleSummaryCard label="Amount Saved" value={formatCurrency(summary.total_saved)} color={C.green} />
-          <LifecycleSummaryCard label="Urgent (<5 days)" value={summary.urgent_tickets} color={summary.urgent_tickets > 0 ? C.red : C.textMuted} />
-          <LifecycleSummaryCard label="Dismissed" value={summary.outcomes.dismissed} color={C.green} />
-          <LifecycleSummaryCard label="Reduced" value={summary.outcomes.reduced} color={C.accent} />
-          <LifecycleSummaryCard label="Upheld" value={summary.outcomes.upheld} color={C.red} />
+        <div style={{ marginBottom: 20 }}>
+          {/* Top row: key metrics */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+            <LifecycleSummaryCard label="Users" value={summary.total_users} color={C.accent} />
+            <LifecycleSummaryCard label="Total Tickets" value={summary.total_tickets} color={C.text} />
+            <LifecycleSummaryCard label="Amount at Stake" value={formatCurrency(summary.total_amount_at_stake)} color={C.yellow} />
+            <LifecycleSummaryCard label="Amount Saved" value={formatCurrency(summary.total_saved)} color={C.green} />
+          </div>
+          {/* Pipeline stage flow + outcomes */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12 }}>
+            {/* Pipeline stages */}
+            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: 14, display: 'flex', gap: 0, alignItems: 'center' }}>
+              {[
+                { key: 'detected', label: 'Detected', color: C.textMuted },
+                { key: 'evidence_gathering', label: 'Evidence', color: C.yellow },
+                { key: 'letter_ready', label: 'Letter Ready', color: C.purple },
+                { key: 'mailed', label: 'Mailed', color: C.accent },
+                { key: 'delivered', label: 'Delivered', color: C.green },
+              ].map((s, i, arr) => {
+                const count = summary.by_stage[s.key] || 0;
+                return (
+                  <React.Fragment key={s.key}>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: count > 0 ? s.color : C.textMuted }}>{count}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: count > 0 ? C.textDim : C.textMuted }}>{s.label}</div>
+                    </div>
+                    {i < arr.length - 1 && (
+                      <div style={{ color: C.textMuted, fontSize: 14, padding: '0 4px' }}>&rarr;</div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            {/* Outcomes + urgent */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+              {summary.urgent_tickets > 0 && (
+                <div style={{ background: C.redDim, border: `1px solid ${C.red}44`, borderRadius: 8, padding: '10px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: C.red }}>{summary.urgent_tickets}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: C.red }}>URGENT</div>
+                </div>
+              )}
+              <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 16px', display: 'flex', gap: 14, alignItems: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: C.green }}>{summary.outcomes.dismissed}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: C.textMuted }}>Dismissed</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: C.accent }}>{summary.outcomes.reduced}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: C.textMuted }}>Reduced</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: C.red }}>{summary.outcomes.upheld}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: C.textMuted }}>Upheld</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1148,35 +1196,152 @@ function LifecycleUserCard({ user, expanded, onToggle, expandedTickets, onToggle
   expandedSections: Set<string>;
   onToggleSection: (key: string) => void;
 }) {
+  // Compute readiness: what % of items needed to mail are done
+  const readinessItems = [
+    { label: 'Consent', done: user.contest_consent },
+    { label: 'Address', done: user.has_mailing_address },
+  ];
+  const readyCount = readinessItems.filter(i => i.done).length;
+  const allReady = readyCount === readinessItems.length;
+
+  // Get initials for avatar
+  const initials = user.name
+    ? user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    : user.email ? user.email[0].toUpperCase() : '?';
+
+  // Compute most urgent ticket
+  const urgentTicket = user.tickets.reduce((most: LifecycleTicket | null, t) => {
+    if (t.days_remaining === null) return most;
+    if (!most || (most.days_remaining === null) || t.days_remaining < most.days_remaining) return t;
+    return most;
+  }, null);
+  const isUrgent = urgentTicket && urgentTicket.days_remaining !== null && urgentTicket.days_remaining <= 5;
+
+  // Border accent based on most advanced stage
+  const stageOrder = ['detected', 'evidence_gathering', 'letter_ready', 'mailed', 'delivered', 'outcome'];
+  const bestStage = user.tickets.reduce((best, t) => {
+    const idx = stageOrder.indexOf(t.lifecycle_stage.key);
+    return idx > best.idx ? { idx, color: t.lifecycle_stage.color } : best;
+  }, { idx: -1, color: C.textMuted });
+
   return (
-    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
+    <div style={{
+      background: C.surface, border: `1px solid ${isUrgent ? C.yellow + '66' : C.border}`,
+      borderRadius: 10, marginBottom: 12, overflow: 'hidden',
+      borderLeft: `3px solid ${bestStage.color}`,
+    }}>
+      {/* User Header */}
       <div
         onClick={onToggle}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', cursor: 'pointer', background: expanded ? C.card : 'transparent', transition: 'background 0.15s' }}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 20px', cursor: 'pointer',
+          background: expanded ? C.card : 'transparent', transition: 'background 0.15s',
+        }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
-          <span style={{ fontSize: 18, transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>&#9656;</span>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>
-              {user.name || user.email}
-              {user.is_paid && <span style={{ marginLeft: 8, fontSize: 10, background: C.green + '22', color: C.green, padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>PAID</span>}
-              {!user.contest_consent && <span style={{ marginLeft: 8, fontSize: 10, background: C.yellowDim, color: C.yellow, padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>NO CONSENT</span>}
-              {!user.has_mailing_address && <span style={{ marginLeft: 8, fontSize: 10, background: C.redDim, color: C.red, padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>NO ADDRESS</span>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1 }}>
+          {/* Expand arrow */}
+          <span style={{ fontSize: 16, transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block', color: C.textMuted }}>&#9656;</span>
+
+          {/* Avatar */}
+          <div style={{
+            width: 38, height: 38, borderRadius: '50%',
+            background: user.is_paid ? C.green + '22' : C.accent + '22',
+            border: `2px solid ${user.is_paid ? C.green + '44' : C.accent + '44'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, fontWeight: 700, color: user.is_paid ? C.green : C.accent, flexShrink: 0,
+          }}>
+            {initials}
+          </div>
+
+          {/* Name + Email + Plate */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600, fontSize: 15, color: C.white }}>
+                {user.name || user.email}
+              </span>
+              {user.is_paid && (
+                <span style={{ fontSize: 10, background: C.green + '22', color: C.green, padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>PAID</span>
+              )}
+              {isUrgent && (
+                <span style={{ fontSize: 10, background: C.redDim, color: C.red, padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+                  URGENT {urgentTicket?.days_remaining}d
+                </span>
+              )}
             </div>
-            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>
-              {user.email}{user.plate ? ` | ${user.plate_state || 'IL'} ${user.plate}` : ''}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 3 }}>
+              {user.name && (
+                <span style={{ fontSize: 12, color: C.textMuted }}>{user.email}</span>
+              )}
+              {user.plate && (
+                <>
+                  {user.name && <span style={{ fontSize: 12, color: C.border }}>|</span>}
+                  <span style={{ fontSize: 12, color: C.textDim, fontWeight: 600 }}>
+                    {user.plate_state || 'IL'} {user.plate}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-          <LifecycleStatPill label="Tickets" value={user.ticket_count} color={C.accent} />
-          <LifecycleStatPill label="At Stake" value={formatCurrency(user.total_amount)} color={C.yellow} />
-          {user.total_saved > 0 && <LifecycleStatPill label="Saved" value={formatCurrency(user.total_saved)} color={C.green} />}
+
+        {/* Right side: readiness + stats */}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          {/* Readiness indicators */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            {readinessItems.map(item => (
+              <span key={item.label} title={item.done ? `${item.label}: Ready` : `${item.label}: Missing`} style={{
+                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+                background: item.done ? C.green + '15' : C.yellowDim,
+                color: item.done ? C.green : C.yellow,
+                border: `1px solid ${item.done ? C.green + '33' : C.yellow + '33'}`,
+              }}>
+                {item.done ? '\u2713' : '\u2717'} {item.label}
+              </span>
+            ))}
+          </div>
+
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', borderLeft: `1px solid ${C.border}`, paddingLeft: 16 }}>
+            <LifecycleStatPill label="Tickets" value={user.ticket_count} color={C.accent} />
+            <LifecycleStatPill label="At Stake" value={formatCurrency(user.total_amount)} color={C.yellow} />
+            {user.total_saved > 0 && <LifecycleStatPill label="Saved" value={formatCurrency(user.total_saved)} color={C.green} />}
+          </div>
         </div>
       </div>
 
+      {/* Expanded: show ticket stage mini-bar then tickets */}
       {expanded && (
         <div style={{ padding: '0 20px 16px' }}>
+          {/* Ticket stage progress bar */}
+          {user.tickets.length > 1 && (
+            <div style={{
+              display: 'flex', gap: 6, padding: '10px 0', marginBottom: 4,
+              borderBottom: `1px solid ${C.border}`,
+            }}>
+              {[
+                { key: 'detected', label: 'Detected', color: C.textMuted },
+                { key: 'evidence_gathering', label: 'Evidence', color: C.yellow },
+                { key: 'letter_ready', label: 'Letter Ready', color: C.purple },
+                { key: 'mailed', label: 'Mailed', color: C.accent },
+                { key: 'delivered', label: 'Delivered', color: C.green },
+                { key: 'outcome', label: 'Outcome', color: C.orange },
+              ].map(stage => {
+                const count = user.tickets.filter(t => t.lifecycle_stage.key === stage.key).length;
+                if (count === 0) return null;
+                return (
+                  <span key={stage.key} style={{
+                    fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 4,
+                    background: stage.color + '18', color: stage.color,
+                    border: `1px solid ${stage.color}33`,
+                  }}>
+                    {stage.label}: {count}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
           {user.tickets.map(ticket => (
             <LifecycleTicketRow
               key={ticket.id}
@@ -1210,6 +1375,10 @@ function LifecycleTicketRow({ ticket, expanded, onToggle, expandedSections, onTo
   onToggleSection: (key: string) => void;
 }) {
   const isUrgent = ticket.days_remaining !== null && ticket.days_remaining <= 5 && !ticket.delivery;
+  const deadlineColor = ticket.days_remaining === null ? C.textMuted
+    : ticket.days_remaining <= 3 ? C.red
+    : ticket.days_remaining <= 7 ? C.yellow
+    : C.textMuted;
 
   return (
     <div style={{
@@ -1217,14 +1386,42 @@ function LifecycleTicketRow({ ticket, expanded, onToggle, expandedSections, onTo
       borderRadius: 8, marginTop: 8, overflow: 'hidden',
       borderLeft: `3px solid ${ticket.lifecycle_stage.color}`,
     }}>
-      <div onClick={onToggle} style={{ display: 'grid', gridTemplateColumns: '1fr auto', padding: '12px 16px', cursor: 'pointer', gap: 12 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 14, transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>&#9656;</span>
-          <span style={{ fontWeight: 600, fontSize: 13 }}>#{ticket.ticket_number}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: ticket.lifecycle_stage.color + '22', color: ticket.lifecycle_stage.color }}>{ticket.lifecycle_stage.label}</span>
-          <span style={{ fontSize: 12, color: C.textDim }}>{ticket.violation_description || ticket.violation_type?.replace(/_/g, ' ') || 'Unknown'}</span>
-          {ticket.amount && <span style={{ fontSize: 12, fontWeight: 600, color: C.yellow }}>{formatCurrency(ticket.amount)}</span>}
-          {isUrgent && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: C.redDim, color: C.red }}>{ticket.days_remaining}d LEFT</span>}
+      {/* Ticket header — two-row layout for clarity */}
+      <div onClick={onToggle} style={{ padding: '12px 16px', cursor: 'pointer' }}>
+        {/* Row 1: ticket number, stage, violation, amount */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <span style={{ fontSize: 13, transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block', color: C.textMuted }}>&#9656;</span>
+          <span style={{ fontWeight: 700, fontSize: 13, color: C.white, fontFamily: 'monospace' }}>#{ticket.ticket_number}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: ticket.lifecycle_stage.color + '22', color: ticket.lifecycle_stage.color }}>
+            {ticket.lifecycle_stage.label}
+          </span>
+          <span style={{ fontSize: 12, color: C.textDim, flex: 1 }}>
+            {ticket.violation_description || ticket.violation_type?.replace(/_/g, ' ') || 'Unknown'}
+          </span>
+          {ticket.amount != null && (
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.yellow }}>{formatCurrency(ticket.amount)}</span>
+          )}
+        </div>
+        {/* Row 2: metadata chips */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 22, flexWrap: 'wrap' }}>
+          {/* Violation date */}
+          <span style={{ fontSize: 11, color: C.textMuted }}>
+            {formatDate(ticket.violation_date)}
+          </span>
+          {/* Days remaining */}
+          {ticket.days_remaining !== null && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 3,
+              background: deadlineColor + '18', color: deadlineColor,
+            }}>
+              {ticket.days_remaining <= 0 ? 'OVERDUE' : `${ticket.days_remaining}d left`}
+            </span>
+          )}
+          {/* Evidence count */}
+          <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3, background: C.surface, color: C.textDim }}>
+            Evidence: {ticket.evidence_used_count}/{ticket.evidence_checked_count}
+          </span>
+          {/* Outcome badge */}
           {ticket.outcome && (
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
@@ -1232,16 +1429,19 @@ function LifecycleTicketRow({ ticket, expanded, onToggle, expandedSections, onTo
               color: ticket.outcome.result === 'dismissed' ? C.green : ticket.outcome.result === 'reduced' ? C.accent : C.red,
             }}>
               {ticket.outcome.result.toUpperCase()}
-              {ticket.outcome.amount_saved ? ` (saved ${formatCurrency(ticket.outcome.amount_saved)})` : ''}
+              {ticket.outcome.amount_saved ? ` \u2014 saved ${formatCurrency(ticket.outcome.amount_saved)}` : ''}
             </span>
           )}
-        </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', fontSize: 11, color: C.textMuted }}>
-          <span>Violation: {formatDate(ticket.violation_date)}</span>
-          {ticket.days_remaining !== null && (
-            <span style={{ color: ticket.days_remaining <= 5 ? C.red : ticket.days_remaining <= 10 ? C.yellow : C.textMuted }}>{ticket.days_remaining}d remaining</span>
+          {/* FOIA status */}
+          {ticket.foia_request && (
+            <span style={{
+              fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3,
+              background: ticket.foia_request.status === 'fulfilled' ? C.green + '18' : ticket.foia_request.status === 'sent' ? C.accent + '18' : C.yellow + '18',
+              color: ticket.foia_request.status === 'fulfilled' ? C.green : ticket.foia_request.status === 'sent' ? C.accent : C.yellow,
+            }}>
+              FOIA: {ticket.foia_request.status}
+            </span>
           )}
-          <span>Evidence: {ticket.evidence_used_count}/{ticket.evidence_checked_count}</span>
         </div>
       </div>
 

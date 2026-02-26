@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ] = await Promise.all([
       supabase.from('contest_letters').select('*').in('ticket_id', ticketIds),
       userIds.length > 0
-        ? supabase.from('user_profiles').select('user_id, email, first_name, last_name, license_plate, license_state, mailing_address, contest_consent, contest_consent_at, consent_contest_signature, is_paid, consent_reminder_sent_at').in('user_id', userIds)
+        ? supabase.from('user_profiles').select('user_id, email, first_name, last_name, license_plate, license_state, mailing_address, contest_consent, contest_consent_at, contest_consent_signature, is_paid, consent_reminder_sent_at').in('user_id', userIds)
         : Promise.resolve({ data: [] }),
       supabase.from('ticket_audit_log').select('*').in('ticket_id', ticketIds).order('created_at', { ascending: true }),
       supabase.from('contest_outcomes').select('*').in('ticket_id', ticketIds),
@@ -309,7 +309,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           plate_state: user?.license_state || null,
           has_mailing_address: !!user?.mailing_address,
           contest_consent: user?.contest_consent || false,
-          consent_signature: user?.consent_contest_signature || null,
+          consent_signature: user?.contest_consent_signature || null,
           is_paid: user?.is_paid || false,
           tickets: [],
         };
