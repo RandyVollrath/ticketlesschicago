@@ -888,9 +888,27 @@ function buildDefenseStrategyHtml(automatedEvidence: AutomatedEvidence): string 
   const winPct = Math.round(evaluation.estimatedWinRate * 100);
   const argWinPct = Math.round(selectedArg.winRate * 100);
 
-  // Separate evidence into provided and needed
-  const providedEvidence = evaluation.evidenceChecklist.filter(e => e.provided);
-  const neededEvidence = evaluation.evidenceChecklist.filter(e => !e.provided);
+  // Filter evidence to items RELEVANT to the selected argument.
+  // Don't show "Police Report (Stolen Vehicle)" when the defense is "Signage Issue".
+  // Show: (1) items that support the selected argument, (2) high-impact required items.
+  // Exclude: situational items for other arguments (emergency docs, stolen vehicle reports, etc.)
+  const supportingIds = new Set(selectedArg.supportingEvidence || []);
+  const relevantEvidence = evaluation.evidenceChecklist.filter(e => {
+    // Always include items that support the selected argument
+    if (supportingIds.has(e.id)) return true;
+    // Include high-impact items (>= 0.25) that are actionable (photos, docs the user can get)
+    if (e.impactScore >= 0.25) {
+      // Exclude situational emergency/theft items unless they're for the selected argument
+      const situationalIds = ['medical_documentation', 'police_report', 'stolen_vehicle_report',
+        'emergency_documentation', 'tow_receipt', 'breakdown_documentation'];
+      if (situationalIds.includes(e.id)) return false;
+      return true;
+    }
+    return false;
+  });
+
+  const providedEvidence = relevantEvidence.filter(e => e.provided);
+  const neededEvidence = relevantEvidence.filter(e => !e.provided);
 
   // Sort needed evidence by impact score (highest first)
   neededEvidence.sort((a, b) => b.impactScore - a.impactScore);
