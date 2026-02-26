@@ -29,6 +29,8 @@ const EVIDENCE_SOURCE_LABELS: Record<string, { label: string; icon: string; desc
   registration: { label: 'Registration Receipt', icon: '📄', description: 'Forwarded renewal receipt from user' },
   red_light_gps: { label: 'Red Light GPS', icon: '🚦', description: 'GPS speed data at camera location' },
   speed_camera_gps: { label: 'Speed Camera GPS', icon: '📹', description: 'GPS speed history at camera location' },
+  camera_school_zone: { label: 'School Zone Calendar', icon: '🏫', description: 'CPS calendar check — was ticket on a school day?' },
+  camera_yellow_light: { label: 'IDOT Yellow Minimum', icon: '🚦', description: 'IDOT minimum yellow light timing reference' },
 };
 
 // Win rates by violation type (from FOIA data)
@@ -49,6 +51,8 @@ const VIOLATION_WIN_RATES: Record<string, number> = {
   bus_lane: 25,
   bus_stop: 20,
   bike_lane: 18,
+  red_light: 21,
+  speed_camera: 18,
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -315,6 +319,16 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
     contestData = data?.[0] || null;
   }
 
+  // Extract email sent data from audit logs
+  const emailSentLog = auditLogs.find(a => a.action === 'evidence_email_sent');
+  const emailInfo = emailSentLog ? {
+    sent_at: emailSentLog.created_at,
+    details: emailSentLog.details || {},
+  } : null;
+
+  // Extract camera check data from automated evidence for dedicated display
+  const cameraCheckData = evidenceDetails.cameraCheck || null;
+
   return res.status(200).json({
     success: true,
     ticket,
@@ -329,6 +343,8 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
       user_submitted: ticket.user_evidence,
       sources: buildEvidenceSources(evidenceDetails, letter),
     },
+    camera_check: cameraCheckData,
+    email_info: emailInfo,
     contest: contestData ? {
       kit_used: contestData.kit_used,
       argument_used: contestData.argument_used,
@@ -420,6 +436,29 @@ function buildEvidenceSources(details: any, letter?: any) {
       ...EVIDENCE_SOURCE_LABELS['court_data'],
       found: !!details.courtData || (hasLetter && /court record|case.*similar|hearing data|adjudication.*record/i.test(letterContent)),
       data: details.courtData || null,
+    },
+    // Camera-specific checks
+    {
+      key: 'camera_school_zone',
+      ...EVIDENCE_SOURCE_LABELS['camera_school_zone'],
+      found: !!details.cameraCheck?.schoolZoneDefenseApplicable || details.cameraCheck?.isSchoolDay === false,
+      data: details.cameraCheck ? {
+        violationType: details.cameraCheck.violationType,
+        isSchoolDay: details.cameraCheck.isSchoolDay,
+        isWeekend: details.cameraCheck.isWeekend,
+        isSummer: details.cameraCheck.isSummer,
+        isCpsHoliday: details.cameraCheck.isCpsHoliday,
+        defenseApplicable: details.cameraCheck.schoolZoneDefenseApplicable,
+      } : null,
+      defense_relevant: !!details.cameraCheck?.schoolZoneDefenseApplicable,
+    },
+    {
+      key: 'camera_yellow_light',
+      ...EVIDENCE_SOURCE_LABELS['camera_yellow_light'],
+      found: details.cameraCheck?.violationType === 'red_light',
+      data: details.cameraCheck?.violationType === 'red_light' ? {
+        message: 'IDOT minimums: 3.0s at 30mph, 3.5s at 35mph, 4.0s at 40mph, 4.5s at 45mph',
+      } : null,
     },
   ];
 

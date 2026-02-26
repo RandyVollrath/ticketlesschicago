@@ -52,6 +52,8 @@ const EVIDENCE_ICONS: Record<string, string> = {
   red_light_gps: '\uD83D\uDEA6',
   speed_camera_gps: '\uD83D\uDCF9',
   court_data: '\uD83D\uDCCA',
+  camera_school_zone: '\uD83C\uDFEB',
+  camera_yellow_light: '\uD83D\uDEA6',
 };
 
 interface PipelineTicket {
@@ -588,6 +590,129 @@ export default function ContestPipelineAdmin() {
                         </div>
                       </Section>
 
+                      {/* Camera Check Details (for red light / speed camera tickets) */}
+                      {ticketDetail.camera_check && (
+                        <Section title="Camera Ticket Analysis">
+                          <div style={{
+                            padding: 12, borderRadius: 8,
+                            background: ticketDetail.camera_check.schoolZoneDefenseApplicable ? C.greenDim : C.card,
+                            border: `1px solid ${ticketDetail.camera_check.schoolZoneDefenseApplicable ? C.green : C.border}`,
+                            marginBottom: 12,
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                              <span style={{ fontSize: 16 }}>{'\uD83C\uDFEB'}</span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: ticketDetail.camera_check.schoolZoneDefenseApplicable ? C.green : C.text }}>
+                                School Zone Calendar Check
+                              </span>
+                              {ticketDetail.camera_check.schoolZoneDefenseApplicable && (
+                                <span style={{
+                                  fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 4,
+                                  background: C.green, color: C.bg,
+                                }}>
+                                  DEFENSE APPLICABLE
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                              <div style={{ fontSize: 12, color: C.textDim }}>
+                                Type: <strong style={{ color: C.text }}>{ticketDetail.camera_check.violationType === 'red_light' ? 'Red Light Camera' : 'Speed Camera'}</strong>
+                              </div>
+                              <div style={{ fontSize: 12, color: C.textDim }}>
+                                School Day: <strong style={{ color: ticketDetail.camera_check.isSchoolDay ? C.text : C.green }}>
+                                  {ticketDetail.camera_check.isSchoolDay ? 'Yes' : 'No'}
+                                </strong>
+                              </div>
+                              <div style={{ fontSize: 12, color: C.textDim }}>
+                                Weekend: <strong style={{ color: ticketDetail.camera_check.isWeekend ? C.green : C.text }}>
+                                  {ticketDetail.camera_check.isWeekend ? 'Yes' : 'No'}
+                                </strong>
+                              </div>
+                              <div style={{ fontSize: 12, color: C.textDim }}>
+                                Summer Break: <strong style={{ color: ticketDetail.camera_check.isSummer ? C.green : C.text }}>
+                                  {ticketDetail.camera_check.isSummer ? 'Yes' : 'No'}
+                                </strong>
+                              </div>
+                              <div style={{ fontSize: 12, color: C.textDim }}>
+                                CPS Holiday: <strong style={{ color: ticketDetail.camera_check.isCpsHoliday ? C.green : C.text }}>
+                                  {ticketDetail.camera_check.isCpsHoliday ? 'Yes' : 'No'}
+                                </strong>
+                              </div>
+                            </div>
+                            {ticketDetail.camera_check.schoolZoneDefenseApplicable && (
+                              <div style={{
+                                marginTop: 8, padding: '8px 10px', background: `${C.green}15`, borderRadius: 6,
+                                fontSize: 12, color: C.green, lineHeight: 1.5,
+                              }}>
+                                Ticket was NOT on a school day. If this camera is in a school zone (not a park zone),
+                                the school zone timing defense applies — camera should not have been actively enforcing.
+                              </div>
+                            )}
+                          </div>
+
+                          {ticketDetail.camera_check.violationType === 'red_light' && (
+                            <div style={{
+                              padding: 12, borderRadius: 8,
+                              background: C.card, border: `1px solid ${C.border}`,
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                <span style={{ fontSize: 16 }}>{'\uD83D\uDEA6'}</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+                                  IDOT Yellow Light Minimums
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.6 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 4 }}>
+                                  <span>30 mph: <strong style={{ color: C.yellow }}>3.0 seconds</strong></span>
+                                  <span>35 mph: <strong style={{ color: C.yellow }}>3.5 seconds</strong></span>
+                                  <span>40 mph: <strong style={{ color: C.yellow }}>4.0 seconds</strong></span>
+                                  <span>45 mph: <strong style={{ color: C.yellow }}>4.5 seconds</strong></span>
+                                </div>
+                                <div style={{ marginTop: 6, fontSize: 11, color: C.textMuted }}>
+                                  User was instructed to time yellow in violation video. Short yellow = automatic dismissal.
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Section>
+                      )}
+
+                      {/* Evidence Email Sent */}
+                      {ticketDetail.email_info && (
+                        <Section title="Evidence Request Email">
+                          <div style={{
+                            padding: 12, borderRadius: 8,
+                            background: C.card, border: `1px solid ${C.accent}`,
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 16 }}>{'\uD83D\uDCE7'}</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Email Sent</span>
+                              </div>
+                              <span style={{
+                                fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                                background: `${C.green}20`, color: C.green,
+                              }}>
+                                DELIVERED
+                              </span>
+                            </div>
+                            <DetailRow label="Sent" value={new Date(ticketDetail.email_info.sent_at).toLocaleString()} />
+                            {ticketDetail.email_info.details?.to && (
+                              <DetailRow label="To" value={ticketDetail.email_info.details.to} />
+                            )}
+                            {ticketDetail.email_info.details?.subject && (
+                              <DetailRow label="Subject" value={ticketDetail.email_info.details.subject} />
+                            )}
+                            {ticketDetail.email_info.details?.resendId && (
+                              <DetailRow label="Resend ID" value={ticketDetail.email_info.details.resendId} />
+                            )}
+                            <div style={{ marginTop: 8, fontSize: 11, color: C.textMuted }}>
+                              Email included: automated evidence checks, violation-specific CTAs, evidence deadline, and FOIA data.
+                              {ticketDetail.camera_check && ' Also included camera-specific school zone and yellow light analysis.'}
+                            </div>
+                          </div>
+                        </Section>
+                      )}
+
                       {/* Contest Kit / Strategy */}
                       {ticketDetail.contest && (
                         <Section title="Contest Strategy">
@@ -731,7 +856,8 @@ const VIOLATION_WIN_RATES: Record<string, number> = {
   expired_plates: 75, no_city_sticker: 70, disabled_zone: 68, expired_meter: 67,
   commercial_loading: 59, no_standing_time_restricted: 58, residential_permit: 54,
   missing_plate: 54, fire_hydrant: 44, street_cleaning: 34, snow_route: 30,
-  double_parking: 25, parking_alley: 25, bus_lane: 25, bus_stop: 20, bike_lane: 18,
+  double_parking: 25, parking_alley: 25, bus_lane: 25, red_light: 21,
+  bus_stop: 20, bike_lane: 18, speed_camera: 18,
 };
 
 function formatViolationType(type: string): string {
