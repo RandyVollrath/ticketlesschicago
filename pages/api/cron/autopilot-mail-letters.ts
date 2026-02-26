@@ -612,12 +612,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (result.success) {
         lettersMailed++;
 
-        await enqueueFoiaRequestForTicket({
-          ticketId: letter.ticket_id,
-          letterId: letter.id,
-          userId: letter.user_id,
-          ticketNumber,
-        });
+        // FOIA requests are now queued at ticket detection time (autopilot-check-plates)
+        // so the 5-business-day deadline expires before the letter is even generated.
+        // The upsert in detection uses onConflict, so no duplicate risk.
 
         // Send email notification to user
         await sendLetterMailedNotification(

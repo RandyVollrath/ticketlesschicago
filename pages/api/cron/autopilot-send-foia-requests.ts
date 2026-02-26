@@ -3,7 +3,12 @@
  *
  * Processes FOIA requests in the `ticket_foia_requests` table with status='queued'.
  * Sends an email to DOFfoia@cityofchicago.org requesting enforcement records
- * for each ticket. This runs AFTER contest letters are mailed (queued by autopilot-mail-letters.ts).
+ * for each ticket.
+ *
+ * FOIA requests are queued at ticket DETECTION time (by autopilot-check-plates.ts),
+ * NOT at mailing time. This ensures the city's 5-business-day response deadline
+ * expires well before the contest letter is generated (~day 17), giving us a
+ * ready-made "Prima Facie Case Not Established" argument.
  *
  * The FOIA request asks for:
  * - Officer's field notes and observations
@@ -11,10 +16,7 @@
  * - Handheld device data and timestamps
  * - Violation-specific records (meter calibration, sign surveys, etc.)
  *
- * If the city fails to respond within 5 business days, that becomes an argument
- * in the contest letter: "Prima Facie Case Not Established by City"
- *
- * Schedule: Daily (runs after autopilot-mail-letters)
+ * Schedule: Daily (sends queued requests filed at detection)
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -307,7 +309,7 @@ async function notifyUserOfFoiaFiling(
             <li>The officer's handwritten notes and observations</li>
             <li>Any photos taken at the scene</li>
             <li>Handheld device data and GPS timestamps</li>
-            <li>Equipment calibration and maintenance records</li>
+            <li>Violation-specific enforcement records</li>
           </ul>
         </div>
 
@@ -315,8 +317,10 @@ async function notifyUserOfFoiaFiling(
           <h3 style="margin: 0 0 8px; color: #065f46; font-size: 16px;">Why This Matters</h3>
           <p style="margin: 0; color: #047857; font-size: 14px; line-height: 1.6;">
             The city is required by law to respond within <strong>5 business days</strong>.
-            If they fail to produce these records, we'll use that in your contest letter &mdash;
-            <strong>"Prima Facie Case Not Established by City"</strong> is one of the
+            We file this request as soon as we detect your ticket so that by the time we
+            draft your contest letter, the deadline has already passed. If the city fails
+            to produce these records, your letter will argue
+            <strong>"Prima Facie Case Not Established by City"</strong> &mdash; one of the
             top reasons tickets get dismissed in Chicago.
           </p>
         </div>
@@ -326,7 +330,7 @@ async function notifyUserOfFoiaFiling(
             <strong>What happens next:</strong> The city has 5 business days to respond.
             Whether they produce records or not, it works in your favor &mdash;
             incomplete or missing records weaken their case.
-            We'll incorporate the results into your contest strategy automatically.
+            We'll incorporate the results into your contest letter automatically.
           </p>
         </div>
 
