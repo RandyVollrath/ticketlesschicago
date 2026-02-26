@@ -1011,6 +1011,138 @@ async function sendEvidenceRequestEmail(
     `;
   }
 
+  // Violation-specific action CTAs for non-sticker/plate types
+  if (!receiptForwardingHtml) {
+    if (violationType === 'red_light' || violationType === 'speed_camera') {
+      const isRedLight = violationType === 'red_light';
+      receiptForwardingHtml = `
+        <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
+            REVIEW YOUR VIOLATION ${isRedLight ? 'VIDEO' : 'PHOTOS'} NOW
+          </h3>
+          <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            The <strong>#1 reason ${isRedLight ? 'red light' : 'speed camera'} tickets get dismissed</strong> is
+            "Violation is Factually Inconsistent" — meaning the ${isRedLight ? 'photos/video don\'t' : 'photos don\'t'}
+            actually prove the violation. <strong>Check if the vehicle is actually yours</strong> (make, model, color, plate).
+            ${isRedLight ? 'Count the seconds of yellow light. Check if you were making a legal right turn on red.' : 'Check the speed reading against your dashcam or GPS data.'}
+          </p>
+          <div style="text-align: center; margin: 16px 0;">
+            <a href="https://www.chicago.gov/city/en/depts/fin/provdrs/parking_702/svcs/pay_for_aparking_702violation.html" style="background: #dc2626; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
+              Review Your Violation ${isRedLight ? 'Video' : 'Photos'}
+            </a>
+          </div>
+        </div>
+        <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #065f46; font-size: 18px;">Found Something? Reply to This Email</h3>
+          <p style="margin: 0 0 8px; color: #065f46; font-size: 14px; line-height: 1.6;">
+            If the vehicle isn't yours, ${isRedLight ? 'the yellow light is under 3 seconds, you were making a right turn,' : 'the speed seems wrong, or the signage is missing,'} or anything else looks off — <strong>reply to this email</strong> and tell us what you found. We'll use it in your contest letter.
+          </p>
+          <p style="margin: 0; color: #065f46; font-size: 13px; line-height: 1.6;">
+            ${isRedLight
+              ? 'Camera tickets do NOT go on your driving record or affect insurance in Illinois.'
+              : `The fine is ${amount && amount <= 50 ? '$35 (6-10 over)' : '$100 (11+ over)'} — but 2 unpaid camera tickets = boot eligibility.`}
+          </p>
+        </div>
+      `;
+    } else if (violationType === 'expired_meter') {
+      receiptForwardingHtml = `
+        <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
+            CHECK YOUR PARKCHICAGO APP NOW
+          </h3>
+          <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            If you paid via the <strong>ParkChicago app</strong>, open it and screenshot your payment history showing
+            you had <strong>active time at this location</strong>. App payment records are the <strong>#1 winning evidence</strong>
+            for expired meter tickets. Also check if you were in the <strong>correct ParkChicago zone</strong> — zone errors
+            mean you paid but the meter reader can't see it.
+          </p>
+          <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            <strong>No app payment?</strong> Did you feed a physical meter? Take a photo of the meter right now — if it's broken or malfunctioning, "Meter was Broken" is a proven dismissal reason.
+          </p>
+        </div>
+        <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #065f46; font-size: 18px;">Have Payment Proof? Reply With It!</h3>
+          <p style="margin: 0; color: #065f46; font-size: 14px; line-height: 1.6;">
+            Screenshot your ParkChicago payment history, credit card statement, or photo of the meter receipt and <strong>reply to this email</strong>. We'll attach it to your contest letter.
+          </p>
+        </div>
+      `;
+    } else if (violationType === 'residential_permit') {
+      receiptForwardingHtml = `
+        <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
+            PHOTOGRAPH YOUR PERMIT NOW
+          </h3>
+          <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            Take a clear photo of your <strong>residential parking permit displayed in your vehicle</strong> right now.
+            Show the permit number, zone, and expiration date. "Required Permit was Properly Displayed" is a
+            <strong>proven FOIA dismissal reason</strong>.
+          </p>
+          <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            <strong>Don't have a permit?</strong> Were you visiting a resident? Visitors can park with a temporary permit from the resident.
+            Also check: was your car parked <strong>outside the restricted hours</strong> listed on the sign?
+          </p>
+        </div>
+      `;
+    } else if (violationType === 'disabled_zone' || violationType === 'handicapped_zone') {
+      receiptForwardingHtml = `
+        <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
+            PHOTOGRAPH YOUR PLACARD/PLATE NOW
+          </h3>
+          <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            If you have a valid <strong>disability placard or disability plate</strong>, take a clear photo showing it
+            was properly displayed. Include the placard number and expiration date. "Disability Plate or Placard Properly
+            Displayed" is a <strong>proven FOIA dismissal reason</strong>. This is a <strong>$250 fine</strong> — definitely worth contesting.
+          </p>
+        </div>
+      `;
+    } else if (violationType === 'fire_hydrant') {
+      receiptForwardingHtml = `
+        <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
+            GO MEASURE & PHOTOGRAPH THE HYDRANT NOW
+          </h3>
+          <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            The law requires <strong>15 feet</strong> from the hydrant. Go to where you parked, measure the distance
+            from the nearest hydrant, and <strong>photograph it with a measuring tape</strong>. If you were 15+ feet away,
+            this is your winning evidence. Also check: was the hydrant visible? Obscured by snow, bushes, or construction?
+            "Violation is Factually Inconsistent" is the <strong>#1 reason</strong> these tickets get dismissed.
+          </p>
+        </div>
+      `;
+    } else if (violationType === 'missing_plate') {
+      receiptForwardingHtml = `
+        <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
+            PHOTOGRAPH YOUR LICENSE PLATE NOW
+          </h3>
+          <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            Go take a <strong>clear photo of your license plate</strong> showing it's properly displayed and visible.
+            If something was temporarily blocking it (bike rack, snow, cargo carrier), remove the obstruction first,
+            then photograph the plate. "Vehicle Defect Did Not Exist" and "Defect Corrected Before Hearing" are
+            <strong>proven FOIA dismissal reasons</strong>.
+          </p>
+        </div>
+      `;
+    } else if (violationType === 'street_cleaning') {
+      receiptForwardingHtml = `
+        <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #065f46; font-size: 18px;">We're Checking the Weather & Signs Automatically</h3>
+          <p style="margin: 0 0 8px; color: #065f46; font-size: 14px; line-height: 1.6;">
+            We're pulling the weather data for your ticket date. If there was snow/ice that would have
+            cancelled street cleaning, we'll include it in your contest letter automatically.
+          </p>
+          <p style="margin: 0; color: #065f46; font-size: 14px; line-height: 1.6;">
+            <strong>Your part:</strong> Go photograph the street cleaning signs on your block. Were they visible?
+            Missing? Obscured by trees? "Signs were Missing or Obscured" is a <strong>proven dismissal reason</strong>.
+            Reply to this email with the photos.
+          </p>
+        </div>
+      `;
+    }
+  }
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
@@ -1069,6 +1201,25 @@ async function sendEvidenceRequestEmail(
           </p>
           <p style="margin: 8px 0 0; color: #1e40af; font-size: 14px;">
             We will send your contest letter with or without evidence after this deadline.
+          </p>
+        </div>
+        <div style="background: #FEF3C7; border: 2px solid #F59E0B; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #92400e; font-size: 16px;">Contest Authorization Required</h3>
+          <p style="margin: 0 0 12px; color: #92400e; font-size: 14px; line-height: 1.6;">
+            Chicago Municipal Code &sect; 9-100-070 requires contest letters to be signed by the registered vehicle owner.
+            To contest this ticket on your behalf, we need your authorization:
+          </p>
+          <div style="background: white; border: 1px solid #F59E0B; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+            <p style="margin: 0 0 8px; color: #374151; font-size: 13px; line-height: 1.6;">
+              <strong>By replying "I AUTHORIZE" to this email</strong>, I, <strong>${userName}</strong>, as the registered owner of the vehicle,
+              authorize Autopilot America to contest ticket <strong>#${ticketNumber}</strong> on my behalf by submitting a
+              correspondence hearing request to the City of Chicago Department of Administrative Hearings.
+              I understand the contest letter will be signed using my name as provided in my account.
+            </p>
+          </div>
+          <p style="margin: 0; color: #92400e; font-size: 13px;">
+            Simply reply to this email with <strong>"I AUTHORIZE"</strong> and we'll handle the rest.
+            Already authorized during signup? You're all set &mdash; no action needed.
           </p>
         </div>
         <p style="color: #6b7280; font-size: 12px; margin-top: 24px; text-align: center;">

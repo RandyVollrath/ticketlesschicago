@@ -55,6 +55,10 @@ export { commercialLoadingKit } from './commercial-loading';
 export { missingPlateKit } from './missing-plate';
 export { busLaneKit } from './bus-lane';
 
+// Kit exports - Camera enforcement
+export { redLightKit } from './red-light';
+export { speedCameraKit } from './speed-camera';
+
 // Import kits for the registry
 import { streetCleaningKit } from './street-cleaning';
 import { cityStickerKit } from './city-sticker';
@@ -72,6 +76,8 @@ import { doubleParkingKit } from './double-parking';
 import { commercialLoadingKit } from './commercial-loading';
 import { missingPlateKit } from './missing-plate';
 import { busLaneKit } from './bus-lane';
+import { redLightKit } from './red-light';
+import { speedCameraKit } from './speed-camera';
 import { ContestKit } from './types';
 
 /**
@@ -102,6 +108,11 @@ export const CONTEST_KITS: Record<string, ContestKit> = {
   // Bus lane (Smart Streets automated enforcement)
   '9-12-060': busLaneKit,
   '9-12-060(b)': busLaneKit, // Subsection alias
+
+  // Camera enforcement
+  '9-102-010': redLightKit,
+  '9-102-020': speedCameraKit,
+  '9-101-020': speedCameraKit, // Alias for speed violation codes
 };
 
 /**
@@ -127,6 +138,8 @@ export const VIOLATION_NAME_TO_CODE: Record<string, string> = {
   'missing_plate': '9-80-040',
   'parking_prohibited': '9-64-140', // Same as no standing
   'bus_lane': '9-12-060',
+  'red_light': '9-102-010',
+  'speed_camera': '9-102-020',
 };
 
 /**
