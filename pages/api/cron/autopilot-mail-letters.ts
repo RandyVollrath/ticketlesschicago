@@ -1,7 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import Anthropic from '@anthropic-ai/sdk';
 import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS } from '../../../lib/lob-service';
+
+const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,6 +69,126 @@ async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string
  */
 function isTestModeEnabled(): boolean {
   return process.env.LOB_TEST_MODE === 'true';
+}
+
+/**
+ * Validate letter has no unfilled placeholders or quality issues.
+ * Returns { pass: true } or { pass: false, issues: string[] }
+ */
+function validateLetterContent(letterContent: string, ticketData: { ticket_number: string; violation_date: string }): { pass: boolean; issues: string[] } {
+  const issues: string[] = [];
+
+  // Check for unfilled [PLACEHOLDER] brackets
+  const placeholderRegex = /\[([A-Z][A-Z0-9_]{2,})\]/g;
+  const placeholders = letterContent.match(placeholderRegex);
+  if (placeholders && placeholders.length > 0) {
+    const unique = [...new Set(placeholders)];
+    issues.push(`Unfilled placeholders found: ${unique.join(', ')}`);
+  }
+
+  // Check for malformed sentences (common patterns)
+  if (letterContent.includes('which was there is')) issues.push('Malformed sentence: "which was there is"');
+  if (letterContent.includes('was was')) issues.push('Malformed sentence: duplicate "was was"');
+  if (letterContent.includes('the the')) issues.push('Malformed sentence: duplicate "the the"');
+  if (/\bI I\b/.test(letterContent)) issues.push('Malformed sentence: duplicate "I I"');
+
+  // Check letter is not too short (likely incomplete)
+  if (letterContent.length < 300) issues.push('Letter is suspiciously short (< 300 chars)');
+
+  // Check date consistency — the letter should reference the correct violation date
+  if (ticketData.violation_date) {
+    const vDate = new Date(ticketData.violation_date);
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const correctDateStr = `${monthNames[vDate.getUTCMonth()]} ${vDate.getUTCDate()}, ${vDate.getUTCFullYear()}`;
+    // Check if the letter mentions the violation date at all in the RE: line or body
+    const dateInLetter = letterContent.match(/Violation Date:\s*(\w+ \d{1,2}, \d{4})/);
+    if (dateInLetter && dateInLetter[1] !== correctDateStr) {
+      issues.push(`Date mismatch: letter says "${dateInLetter[1]}" but ticket date is "${correctDateStr}"`);
+    }
+  }
+
+  return { pass: issues.length === 0, issues };
+}
+
+/**
+ * AI quality review: Uses Claude to check letter for coherence, professionalism,
+ * defense appropriateness, and completeness. Returns corrected letter if fixable.
+ */
+async function aiQualityReview(
+  letterContent: string,
+  ticketData: { ticket_number: string; violation_date: string; violation_description: string; violation_type: string; amount: number; location: string },
+  userName: string
+): Promise<{ pass: boolean; correctedLetter?: string; issues: string[]; qualityScore: number }> {
+  if (!anthropic) {
+    console.log('    ⚠️ No ANTHROPIC_API_KEY — skipping AI quality review');
+    return { pass: true, issues: ['AI review skipped: no API key'], qualityScore: 0 };
+  }
+
+  try {
+    const reviewPrompt = `You are a legal quality assurance reviewer for parking ticket contest letters sent to the City of Chicago Department of Finance.
+
+Review the following letter and return a JSON response (no markdown, just raw JSON):
+
+LETTER TO REVIEW:
+---
+${letterContent}
+---
+
+TICKET FACTS (ground truth):
+- Ticket Number: ${ticketData.ticket_number}
+- Violation Date: ${ticketData.violation_date}
+- Violation: ${ticketData.violation_description} (${ticketData.violation_type})
+- Amount: $${ticketData.amount}
+- Location: ${ticketData.location || 'Unknown'}
+- Respondent: ${userName}
+
+CHECK FOR THESE ISSUES:
+1. PLACEHOLDERS: Any text like [PLACEHOLDER], [POSTED_HOURS], [TIME_EVIDENCE], etc. that should have been filled with real data
+2. DATE ACCURACY: Does the violation date in the letter match the ticket facts? Format should be "Month Day, Year"
+3. DEFENSE COHERENCE: Does the defense strategy make sense for this violation type? (e.g., "outside restricted hours" doesn't work for "PROHIBITED ANYTIME")
+4. MALFORMED SENTENCES: Any grammatically broken or incomplete sentences
+5. PROFESSIONALISM: Is the tone appropriate for a formal legal contest?
+6. COMPLETENESS: Does the letter have all required parts (date, addresses, RE line, salutation, arguments, closing, signature)?
+7. FACTUAL CONSISTENCY: Are ticket number, plate, amounts consistent throughout?
+
+RESPOND WITH THIS JSON FORMAT ONLY:
+{
+  "qualityScore": <0-100>,
+  "issues": ["issue 1", "issue 2"],
+  "canAutoFix": true/false,
+  "correctedLetter": "<if canAutoFix is true, provide the COMPLETE corrected letter text here. Remove ALL placeholders — if data is missing, write around it naturally without brackets. Fix ALL date errors, malformed sentences, and defense mismatches. Keep the same general structure and evidence. Do NOT add made-up facts.>"
+}`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: reviewPrompt }],
+    });
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+
+    // Parse JSON from response (handle potential markdown wrapping)
+    let jsonStr = responseText;
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
+
+    const review = JSON.parse(jsonStr);
+
+    console.log(`    AI Quality Score: ${review.qualityScore}/100`);
+    if (review.issues?.length > 0) {
+      console.log(`    AI Issues: ${review.issues.join('; ')}`);
+    }
+
+    return {
+      pass: review.qualityScore >= 70 && (!review.issues || review.issues.length === 0),
+      correctedLetter: review.canAutoFix ? review.correctedLetter : undefined,
+      issues: review.issues || [],
+      qualityScore: review.qualityScore || 0,
+    };
+  } catch (error) {
+    console.error('    AI quality review failed:', error);
+    return { pass: false, issues: ['AI review failed: ' + (error instanceof Error ? error.message : 'Unknown error')], qualityScore: 0 };
+  }
 }
 
 /**
@@ -140,8 +263,8 @@ async function mailLetter(
 
     console.log(`    Mailed! Lob ID: ${result.id}`);
 
-    // Update letter record (status must be 'sent' per database constraint)
-    await supabaseAdmin
+    // Update letter record
+    const { error: letterUpdateErr, count: letterUpdateCount } = await supabaseAdmin
       .from('contest_letters')
       .update({
         status: 'sent',
@@ -153,11 +276,21 @@ async function mailLetter(
       })
       .eq('id', letter.id);
 
+    if (letterUpdateErr) {
+      console.error(`    ❌ Failed to update contest_letters after mailing:`, letterUpdateErr.message);
+    } else {
+      console.log(`    ✅ Updated contest_letters ${letter.id} to 'sent'`);
+    }
+
     // Update ticket status
-    await supabaseAdmin
+    const { error: ticketUpdateErr } = await supabaseAdmin
       .from('detected_tickets')
       .update({ status: 'mailed' })
       .eq('id', letter.ticket_id);
+
+    if (ticketUpdateErr) {
+      console.error(`    ❌ Failed to update detected_tickets status:`, ticketUpdateErr.message);
+    }
 
     // Log to audit (performed_by is null for system actions)
     await supabaseAdmin
@@ -469,13 +602,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id,
           ticket_number,
           status,
+          violation_date,
+          violation_description,
+          violation_type,
+          amount,
+          location,
           evidence_deadline,
           auto_send_deadline,
           is_test,
           user_evidence
         )
       `)
-      .or(`status.eq.approved,status.eq.pending_evidence,status.eq.draft,status.eq.ready,status.eq.awaiting_consent`)
+      .or(`status.eq.approved,status.eq.pending_evidence,status.eq.draft,status.eq.ready,status.eq.awaiting_consent,status.eq.admin_approved,status.eq.needs_admin_review`)
       .order('created_at', { ascending: true });
 
     if (!letters || letters.length === 0) {
@@ -496,6 +634,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (ticket.is_test) {
         console.log(`  Skipping test ticket ${ticket.ticket_number}`);
         return false;
+      }
+
+      // Case 0: Letter admin-approved — ready to mail
+      if (l.status === 'admin_approved') {
+        return true;
       }
 
       // Case 1: Letter explicitly approved (user clicked link or safety net triggered)
@@ -571,7 +714,130 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         profile.full_name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
       }
 
-      const ticketNumber = (letter as any).detected_tickets?.ticket_number || 'Unknown';
+      const ticket = (letter as any).detected_tickets;
+      const ticketNumber = ticket?.ticket_number || 'Unknown';
+
+      // ── QUALITY GATE: Validate letter before mailing ──
+      const letterText = letter.letter_content || letter.letter_text;
+      if (letterText) {
+        const validation = validateLetterContent(letterText, {
+          ticket_number: ticketNumber,
+          violation_date: ticket?.violation_date || '',
+        });
+
+        if (!validation.pass) {
+          console.log(`    ⚠️ Letter quality issues found: ${validation.issues.join('; ')}`);
+
+          // Try AI auto-fix
+          const aiReview = await aiQualityReview(letterText, {
+            ticket_number: ticketNumber,
+            violation_date: ticket?.violation_date || '',
+            violation_description: ticket?.violation_description || '',
+            violation_type: ticket?.violation_type || '',
+            amount: ticket?.amount || 0,
+            location: ticket?.location || '',
+          }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim());
+
+          if (aiReview.correctedLetter && aiReview.correctedLetter.length > 200) {
+            // AI was able to fix the letter — save corrected version
+            console.log(`    ✅ AI auto-fixed letter (score: ${aiReview.qualityScore}/100)`);
+            const { error: updateErr } = await supabaseAdmin
+              .from('contest_letters')
+              .update({
+                letter_content: aiReview.correctedLetter,
+                status: 'needs_admin_review',
+              })
+              .eq('id', letter.id);
+            if (updateErr) console.error(`    Failed to save AI-corrected letter:`, updateErr.message);
+
+            // Log the auto-fix
+            await supabaseAdmin.from('ticket_audit_log').insert({
+              ticket_id: letter.ticket_id,
+              user_id: letter.user_id,
+              action: 'letter_ai_quality_fix',
+              details: {
+                original_issues: validation.issues,
+                ai_issues: aiReview.issues,
+                ai_quality_score: aiReview.qualityScore,
+                performed_by_system: 'autopilot_cron',
+              },
+              performed_by: null,
+            });
+          } else {
+            // AI couldn't fix — flag for admin review
+            console.log(`    ❌ Letter needs admin review (score: ${aiReview.qualityScore}/100)`);
+            await supabaseAdmin
+              .from('contest_letters')
+              .update({ status: 'needs_admin_review' })
+              .eq('id', letter.id);
+
+            await supabaseAdmin.from('ticket_audit_log').insert({
+              ticket_id: letter.ticket_id,
+              user_id: letter.user_id,
+              action: 'letter_quality_failed',
+              details: {
+                validation_issues: validation.issues,
+                ai_issues: aiReview.issues,
+                ai_quality_score: aiReview.qualityScore,
+                performed_by_system: 'autopilot_cron',
+              },
+              performed_by: null,
+            });
+          }
+          // Either way, don't mail yet — admin must review
+          continue;
+        }
+
+        // Even if placeholder check passed, run AI review for defense coherence
+        const aiReview = await aiQualityReview(letterText, {
+          ticket_number: ticketNumber,
+          violation_date: ticket?.violation_date || '',
+          violation_description: ticket?.violation_description || '',
+          violation_type: ticket?.violation_type || '',
+          amount: ticket?.amount || 0,
+          location: ticket?.location || '',
+        }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim());
+
+        if (!aiReview.pass && aiReview.qualityScore < 70) {
+          console.log(`    ⚠️ AI review flagged issues (score: ${aiReview.qualityScore}/100): ${aiReview.issues.join('; ')}`);
+
+          if (aiReview.correctedLetter && aiReview.correctedLetter.length > 200) {
+            // Save corrected version, still require admin review
+            await supabaseAdmin.from('contest_letters')
+              .update({ letter_content: aiReview.correctedLetter, status: 'needs_admin_review' })
+              .eq('id', letter.id);
+          } else {
+            await supabaseAdmin.from('contest_letters')
+              .update({ status: 'needs_admin_review' })
+              .eq('id', letter.id);
+          }
+
+          await supabaseAdmin.from('ticket_audit_log').insert({
+            ticket_id: letter.ticket_id, user_id: letter.user_id,
+            action: 'letter_ai_review_flagged',
+            details: { ai_issues: aiReview.issues, ai_quality_score: aiReview.qualityScore, performed_by_system: 'autopilot_cron' },
+            performed_by: null,
+          });
+          continue;
+        }
+
+        console.log(`    ✅ Quality check passed (AI score: ${aiReview.qualityScore}/100)`);
+      }
+
+      // ── ADMIN REVIEW GATE: All letters must be admin-approved before mailing ──
+      // Letters with status 'needs_admin_review' are caught above.
+      // Letters with status 'admin_approved' proceed to mailing.
+      // All other letters get flagged for admin review.
+      if (letter.status !== 'admin_approved' && letter.approved_via !== 'admin_review') {
+        console.log(`    ⏸ Letter ${letter.id} requires admin review before mailing`);
+        if (letter.status !== 'needs_admin_review') {
+          await supabaseAdmin
+            .from('contest_letters')
+            .update({ status: 'needs_admin_review' })
+            .eq('id', letter.id);
+        }
+        continue;
+      }
 
       // Extract evidence image URLs from user_evidence JSON
       // Note: user_evidence is stored as a text string, not JSONB, so we need to parse it
