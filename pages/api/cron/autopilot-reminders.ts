@@ -7,6 +7,10 @@
  *   - Day 17 LAST CHANCE: "Your letter will auto-send in 48 hours if not approved"
  *
  * Also handles the day 19 safety-net auto-send (triggers letter generation + approval bypass)
+ *
+ * Additionally sends consent reminder emails to users who have contest letters in
+ * 'awaiting_consent' status — prompting them to reply "I AUTHORIZE" or visit settings
+ * to provide their e-signature so letters can be mailed.
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -146,6 +150,89 @@ async function sendReminderEmail(
     return response.ok;
   } catch (error) {
     console.error(`  Failed reminder email: ${error}`);
+    return false;
+  }
+}
+
+async function sendConsentReminderEmail(
+  email: string,
+  firstName: string,
+  awaitingLetterCount: number,
+): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) return false;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #F59E0B; color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; font-size: 22px;">Authorization Needed to Contest Your Ticket${awaitingLetterCount > 1 ? 's' : ''}</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">${awaitingLetterCount} contest letter${awaitingLetterCount > 1 ? 's are' : ' is'} ready but waiting for your signature</p>
+      </div>
+
+      <div style="background: white; border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
+        <p style="margin: 0 0 16px; font-size: 16px; color: #374151;">Hi ${firstName},</p>
+
+        <p style="margin: 0 0 20px; font-size: 15px; color: #4b5563;">
+          We've prepared ${awaitingLetterCount > 1 ? `${awaitingLetterCount} contest letters` : 'a contest letter'} for your parking ticket${awaitingLetterCount > 1 ? 's' : ''}, but we need your authorization before we can mail ${awaitingLetterCount > 1 ? 'them' : 'it'}.
+        </p>
+
+        <p style="margin: 0 0 20px; font-size: 15px; color: #4b5563;">
+          Under Chicago Municipal Code &sect; 9-100-070, contest letters must be signed by the vehicle owner. We need your electronic signature to proceed.
+        </p>
+
+        <div style="background: #FEF3C7; border: 2px solid #F59E0B; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
+          <p style="margin: 0 0 12px; font-size: 16px; color: #92400E; font-weight: 700;">
+            Option 1: Reply to this email with the words
+          </p>
+          <p style="margin: 0; font-size: 28px; color: #92400E; font-weight: 800; letter-spacing: 2px;">
+            I AUTHORIZE
+          </p>
+          <p style="margin: 12px 0 0; font-size: 13px; color: #92400E;">
+            This will serve as your electronic signature under the Illinois UETA
+          </p>
+        </div>
+
+        <div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 16px; margin-bottom: 20px; text-align: center;">
+          <p style="margin: 0 0 8px; font-size: 14px; color: #166534; font-weight: 600;">
+            Option 2: Sign online
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #166534;">
+            Visit <a href="${BASE_URL}/settings" style="color: #059669; font-weight: 600;">your settings page</a> to provide your typed signature
+          </p>
+        </div>
+
+        <div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px;">
+          <p style="margin: 0; font-size: 13px; color: #6B7280; line-height: 1.6;">
+            <strong>What this means:</strong> By authorizing, you allow Autopilot America to submit contest-by-mail hearing requests to the City of Chicago on your behalf. We'll sign the letters with your name. You can review letters before they're mailed, and revoke authorization at any time in your settings.
+          </p>
+        </div>
+      </div>
+
+      <p style="text-align: center; font-size: 12px; color: #9ca3af; margin-top: 20px;">
+        You're receiving this because you have Autopilot ticket monitoring enabled.<br>
+        <a href="${BASE_URL}/settings" style="color: #6B7280;">Manage settings</a>
+      </p>
+    </div>
+  `;
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        to: [email],
+        subject: `Action needed: Authorize contest${awaitingLetterCount > 1 ? ` for ${awaitingLetterCount} tickets` : ' for your ticket'}`,
+        html,
+        replyTo: 'authorize@autopilotamerica.com',
+      }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error(`  Failed consent reminder email: ${error}`);
     return false;
   }
 }
@@ -425,12 +512,92 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`Complete: ${remindersSent} reminders, ${lastChanceSent} last-chance, ${autoSendTriggered} auto-sends`);
 
+    // ── CONSENT REMINDER EMAILS ──
+    // Find users with contest letters stuck in 'awaiting_consent' and remind them
+    // to reply "I AUTHORIZE" or visit settings to provide their e-signature.
+    // Rate-limited: max once every 3 days per user.
+    let consentRemindersSent = 0;
+
+    try {
+      // Get all letters awaiting consent
+      const { data: awaitingLetters } = await supabaseAdmin
+        .from('contest_letters')
+        .select('id, user_id, ticket_id')
+        .eq('status', 'awaiting_consent');
+
+      if (awaitingLetters && awaitingLetters.length > 0) {
+        console.log(`Found ${awaitingLetters.length} letters awaiting consent`);
+
+        // Group by user_id to send one email per user
+        const userLetterCounts: Record<string, number> = {};
+        for (const letter of awaitingLetters) {
+          userLetterCounts[letter.user_id] = (userLetterCounts[letter.user_id] || 0) + 1;
+        }
+
+        const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
+        for (const [userId, letterCount] of Object.entries(userLetterCounts)) {
+          // Check if we've already sent a consent reminder recently
+          const { data: profile } = await supabaseAdmin
+            .from('user_profiles')
+            .select('first_name, contest_consent, consent_reminder_sent_at')
+            .eq('user_id', userId)
+            .single();
+
+          // Skip if user has since provided consent
+          if (profile?.contest_consent) {
+            console.log(`  Skipping consent reminder for ${userId}: consent already granted`);
+            continue;
+          }
+
+          // Rate limit: don't send more than once every 3 days
+          if (profile?.consent_reminder_sent_at) {
+            const lastSent = new Date(profile.consent_reminder_sent_at).getTime();
+            if (Date.now() - lastSent < THREE_DAYS_MS) {
+              console.log(`  Skipping consent reminder for ${userId}: sent ${Math.round((Date.now() - lastSent) / (1000 * 60 * 60))}h ago`);
+              continue;
+            }
+          }
+
+          // Get user email
+          const { email: userEmail, firstName: userFirstName } = await getUserEmail(userId);
+          if (!userEmail) continue;
+
+          const name = userFirstName || profile?.first_name || 'there';
+
+          console.log(`  Sending consent reminder to ${userEmail} (${letterCount} letter${letterCount > 1 ? 's' : ''} awaiting)`);
+          const sent = await sendConsentReminderEmail(userEmail, name, letterCount);
+
+          if (sent) {
+            consentRemindersSent++;
+
+            // Update the timestamp so we don't re-send for 3 days
+            await supabaseAdmin
+              .from('user_profiles')
+              .update({ consent_reminder_sent_at: new Date().toISOString() })
+              .eq('user_id', userId);
+          }
+
+          // Rate limit between users
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+    } catch (consentError) {
+      console.error('Error sending consent reminders:', consentError);
+      // Non-fatal — don't fail the whole cron
+    }
+
+    if (consentRemindersSent > 0) {
+      console.log(`Sent ${consentRemindersSent} consent reminder email(s)`);
+    }
+
     return res.status(200).json({
       success: true,
       ticketsChecked: tickets.length,
       remindersSent,
       lastChanceSent,
       autoSendTriggered,
+      consentRemindersSent,
       timestamp: new Date().toISOString(),
     });
 

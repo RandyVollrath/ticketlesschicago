@@ -475,7 +475,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           user_evidence
         )
       `)
-      .or(`status.eq.approved,status.eq.pending_evidence,status.eq.draft,status.eq.ready`)
+      .or(`status.eq.approved,status.eq.pending_evidence,status.eq.draft,status.eq.ready,status.eq.awaiting_consent`)
       .order('created_at', { ascending: true });
 
     if (!letters || letters.length === 0) {
@@ -500,6 +500,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Case 1: Letter explicitly approved (user clicked link or safety net triggered)
       if (l.status === 'approved') {
+        return true;
+      }
+
+      // Case 1b: Letter was waiting for consent — re-evaluate if consent is now given
+      if (l.status === 'awaiting_consent') {
+        // Will be checked against profile.contest_consent in the per-letter loop
         return true;
       }
 
@@ -546,6 +552,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!profile || !profile.mailing_address) {
         console.log(`  Skipping letter ${letter.id}: Missing profile/address info`);
         errors++;
+        continue;
+      }
+
+      // AUTHORIZATION GATE: Do not mail letters without contest consent
+      if (!profile.contest_consent) {
+        console.log(`  ⚠️ Skipping letter ${letter.id}: User ${letter.user_id} has not provided contest authorization (no e-signature on file)`);
+        // Update letter status so it's not retried every run
+        await supabaseAdmin
+          .from('contest_letters')
+          .update({ status: 'awaiting_consent' })
+          .eq('id', letter.id);
         continue;
       }
 

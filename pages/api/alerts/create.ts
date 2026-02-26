@@ -33,6 +33,7 @@ const alertSignupSchema = z.object({
   marketingConsent: z.boolean().optional(),
   foiaConsent: z.boolean().optional(),
   contestConsent: z.boolean().optional(),
+  contestSignature: z.string().max(200).optional(),
   authenticatedUserId: z.string().uuid().optional().nullable(),
 });
 
@@ -107,6 +108,7 @@ export default async function handler(
     marketingConsent,
     foiaConsent,
     contestConsent,
+    contestSignature,
     authenticatedUserId
   } = parseResult.data;
 
@@ -411,8 +413,8 @@ export default async function handler(
       }
     }
 
-    // Store contest authorization consent if provided
-    if (contestConsent) {
+    // Store contest authorization consent + e-signature if provided
+    if (contestConsent && contestSignature?.trim()) {
       try {
         const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
           || req.socket.remoteAddress
@@ -424,10 +426,11 @@ export default async function handler(
             contest_consent: true,
             contest_consent_at: new Date().toISOString(),
             contest_consent_ip: ip,
+            contest_consent_signature: contestSignature.trim(),
           })
           .eq('user_id', userId);
 
-        console.log('✍️ Contest authorization consent recorded for user:', userId);
+        console.log('✍️ Contest e-signature recorded for user:', userId, `(signed as "${contestSignature.trim()}")`);
       } catch (consentErr) {
         // Non-critical — don't fail signup if consent storage fails
         console.error('⚠️ Failed to store contest consent (non-critical):', consentErr);
