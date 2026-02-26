@@ -941,6 +941,7 @@ function SettingsPageInner() {
   const [emailOnTicketFound, setEmailOnTicketFound] = useState(true);
   const [emailOnLetterMailed, setEmailOnLetterMailed] = useState(true);
   const [emailOnApprovalNeeded, setEmailOnApprovalNeeded] = useState(true);
+  const [foiaWaitPreference, setFoiaWaitPreference] = useState<'wait_for_foia' | 'send_immediately'>('wait_for_foia');
 
   // Guided Setup Wizard
   const [guidedSetupStep, setGuidedSetupStep] = useState(0);
@@ -1183,6 +1184,11 @@ function SettingsPageInner() {
         setEmailOnApprovalNeeded(settingsData.email_on_approval_needed);
       }
 
+      // Load FOIA wait preference from user_profiles
+      if (profileData?.foia_wait_preference) {
+        setFoiaWaitPreference(profileData.foia_wait_preference);
+      }
+
       // Load dashboard data for ticket display
       if (plateData && plateData.length > 0) {
         setPlatesMonitored(plateData.length);
@@ -1331,6 +1337,7 @@ function SettingsPageInner() {
           tow: towAlerts,
           days_before: notificationDays,
         },
+        foia_wait_preference: foiaWaitPreference,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
@@ -1388,7 +1395,7 @@ function SettingsPageInner() {
       cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
       streetCleaningAlerts, snowBanAlerts, renewalReminders, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
-      emailOnLetterMailed, emailOnApprovalNeeded, isPaidUser]);
+      emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference, isPaidUser]);
 
   useEffect(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -1403,7 +1410,7 @@ function SettingsPageInner() {
       cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
       streetCleaningAlerts, snowBanAlerts, renewalReminders, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
-      emailOnLetterMailed, emailOnApprovalNeeded, autoSave]);
+      emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference, autoSave]);
 
   const toggleNotificationDay = (day: number) => {
     if (notificationDays.includes(day)) {
@@ -3043,6 +3050,62 @@ function SettingsPageInner() {
               }}
               disabled={!isPaidUser}
             />
+          </div>
+
+          {/* FOIA Wait Preference */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: 20,
+            paddingBottom: 16,
+            borderBottom: `1px solid ${COLORS.border}`,
+          }}>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
+                Wait for FOIA deadline before contesting
+              </h4>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                {foiaWaitPreference === 'wait_for_foia'
+                  ? 'We wait for the city\'s 5-business-day FOIA deadline to expire before generating your contest letter. This gives us the strongest "Prima Facie Case Not Established" argument.'
+                  : 'Contest letters are generated as soon as evidence is gathered, without waiting for the FOIA response deadline.'
+                }
+              </p>
+              <div style={{
+                margin: '8px 0 0',
+                padding: '8px 12px',
+                background: foiaWaitPreference === 'wait_for_foia' ? '#ECFDF5' : '#FEF3C7',
+                border: `1px solid ${foiaWaitPreference === 'wait_for_foia' ? '#6EE7B7' : '#F59E0B'}`,
+                borderRadius: 6,
+                fontSize: 12,
+                color: foiaWaitPreference === 'wait_for_foia' ? '#065F46' : '#92400E',
+                lineHeight: 1.5,
+              }}>
+                {foiaWaitPreference === 'wait_for_foia' ? (
+                  <>
+                    <strong>Recommended.</strong> When the city fails to respond to our records request within 5 business days,
+                    your letter includes a &quot;Prima Facie Case Not Established&quot; argument — one of the top reasons tickets
+                    get dismissed in Chicago. This typically adds ~7 calendar days to the timeline but significantly
+                    increases your chances of winning.
+                  </>
+                ) : (
+                  <>
+                    <strong>Faster, but weaker.</strong> Your letter goes out sooner but won&apos;t include the FOIA non-response
+                    argument. If you have a hard deadline approaching (e.g. late penalty date), this may be the right choice.
+                    You can always switch back to waiting for FOIA.
+                  </>
+                )}
+              </div>
+            </div>
+            <div style={{ marginLeft: 16, flexShrink: 0 }}>
+              <Toggle
+                checked={isPaidUser && foiaWaitPreference === 'wait_for_foia'}
+                onChange={(checked) => {
+                  setFoiaWaitPreference(checked ? 'wait_for_foia' : 'send_immediately');
+                }}
+                disabled={!isPaidUser}
+              />
+            </div>
           </div>
 
           <div>

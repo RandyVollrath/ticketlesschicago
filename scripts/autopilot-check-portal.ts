@@ -32,6 +32,13 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { lookupMultiplePlates, LookupResult, PortalTicket } from '../lib/chicago-portal-scraper';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../lib/contest-kits/evidence-guidance';
 import { getStreetViewEvidence, StreetViewResult } from '../lib/street-view-service';
+import {
+  evaluateContest,
+  getContestKitByName,
+  hasContestKitByName,
+  VIOLATION_NAME_TO_CODE,
+} from '../lib/contest-kits';
+import type { TicketFacts, UserEvidence, ContestEvaluation } from '../lib/contest-kits/types';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -260,6 +267,13 @@ interface AutomatedEvidence {
       message: string | null;
     };
   };
+  // Contest kit evaluation from the policy engine
+  kitEvaluation: {
+    checked: boolean;
+    evaluation: ContestEvaluation | null;
+    kitName: string | null;
+    violationCode: string | null;
+  };
 }
 
 /**
@@ -271,6 +285,10 @@ async function gatherAutomatedEvidence(
   violationType: string,
   violationDate: string | null,
   plate: string,
+  ticketNumber?: string,
+  amount?: number | null,
+  location?: string | null,
+  violationDescription?: string | null,
 ): Promise<AutomatedEvidence> {
   const evidence: AutomatedEvidence = {
     weather: { checked: false, data: null },
@@ -284,6 +302,12 @@ async function gatherAutomatedEvidence(
       violationType: null,
       schoolZoneCheck: { checked: false, isSchoolDay: null, dayOfWeek: null, isWeekend: null, isSummer: null, isCpsHoliday: null, message: null, defenseApplicable: false },
       yellowLightCheck: { checked: false, message: null },
+    },
+    kitEvaluation: {
+      checked: false,
+      evaluation: null,
+      kitName: null,
+      violationCode: null,
     },
   };
 
@@ -589,6 +613,65 @@ async function gatherAutomatedEvidence(
     }
   }
 
+  // 8. Contest Kit Evaluation — run the policy engine for violation-specific argument selection
+  const violationCode = VIOLATION_NAME_TO_CODE[violationType] || null;
+  if (violationCode && hasContestKitByName(violationType)) {
+    console.log(`      [Evidence] Running contest kit evaluation for ${violationType} (${violationCode})...`);
+    evidence.kitEvaluation.checked = true;
+    evidence.kitEvaluation.violationCode = violationCode;
+
+    try {
+      const kit = getContestKitByName(violationType);
+      evidence.kitEvaluation.kitName = kit?.name || null;
+
+      // Build TicketFacts from what we know
+      const ticketFacts: TicketFacts = {
+        ticketNumber: ticketNumber || '',
+        violationCode,
+        violationDescription: violationDescription || '',
+        ticketDate: violationDate || '',
+        location: location || evidence.parkingHistory.address || '',
+        amount: amount || 0,
+        daysSinceTicket: violationDate
+          ? Math.floor((Date.now() - new Date(violationDate).getTime()) / (1000 * 60 * 60 * 24))
+          : 0,
+        // Pass contextual facts that could activate situational arguments
+        hasSignageIssue: evidence.streetView.signageObservation?.toLowerCase().includes('no sign') ||
+                         evidence.streetView.signageObservation?.toLowerCase().includes('missing') ||
+                         evidence.streetView.signageObservation?.toLowerCase().includes('obscured') || false,
+        isWeekend: violationDate ? [0, 6].includes(new Date(violationDate).getDay()) : undefined,
+        meterWasBroken: false, // Can't determine from automated data alone
+      };
+
+      // Build UserEvidence — we don't have user-uploaded evidence at this stage,
+      // but we DO have automated evidence we can flag
+      const userEvidence: UserEvidence = {
+        hasPhotos: evidence.streetView.hasImagery, // Street View counts as visual evidence
+        photoTypes: evidence.streetView.hasImagery ? ['street_view'] : [],
+        hasWitnesses: false,
+        hasDocs: false,
+        docTypes: [],
+        hasReceipts: false,
+        hasPoliceReport: false,
+        hasMedicalDocs: false,
+        hasLocationEvidence: evidence.parkingHistory.matchFound, // GPS parking history
+      };
+
+      const evaluation = await evaluateContest(ticketFacts, userEvidence);
+      evidence.kitEvaluation.evaluation = evaluation;
+
+      console.log(`      [Evidence] Kit evaluation: ${kit?.name} — recommended arg: "${evaluation.selectedArgument.name}" (${Math.round(evaluation.selectedArgument.winRate * 100)}% win rate)`);
+      console.log(`      [Evidence] Estimated overall win rate: ${Math.round(evaluation.estimatedWinRate * 100)}%, confidence: ${Math.round(evaluation.confidence * 100)}%`);
+      if (evaluation.weatherDefense.applicable) {
+        console.log(`      [Evidence] Weather defense APPLICABLE — will be incorporated into letter`);
+      }
+    } catch (err: any) {
+      console.log(`      [Evidence] Kit evaluation failed: ${err.message}`);
+    }
+  } else {
+    console.log(`      [Evidence] No contest kit available for violation type: ${violationType}`);
+  }
+
   return evidence;
 }
 
@@ -731,6 +814,23 @@ function buildValueDemonstrationHtml(evidence: AutomatedEvidence, violationType:
         found: true, // Always useful info for red light tickets
       });
     }
+  }
+
+  // Contest kit evaluation
+  if (evidence.kitEvaluation.checked && evidence.kitEvaluation.evaluation) {
+    const eval_ = evidence.kitEvaluation.evaluation;
+    const winPct = Math.round(eval_.estimatedWinRate * 100);
+    const winColor = winPct >= 50 ? '#059669' : winPct >= 30 ? '#d97706' : '#dc2626';
+    checks.push({
+      icon: '&#9878;', // scales of justice
+      label: 'Violation-Specific Defense Strategy',
+      result: `We matched your ticket to our <strong>${evidence.kitEvaluation.kitName}</strong> defense kit. ` +
+        `Best argument: <strong>"${eval_.selectedArgument.name}"</strong> ` +
+        `(<strong style="color:${winColor};">${winPct}% estimated win rate</strong>). ` +
+        `${eval_.backupArgument ? `Backup argument: "${eval_.backupArgument.name}." ` : ''}` +
+        `Your contest letter uses this specialized strategy instead of a generic template.`,
+      found: true,
+    });
   }
 
   if (checks.length === 0) return '';
@@ -957,7 +1057,14 @@ I request that this ticket be dismissed.`,
 };
 
 /**
- * Generate letter content from template (same logic as upload-results.ts)
+ * Generate letter content using the Contest Kit policy engine when available,
+ * falling back to hardcoded templates only for unknown violation types.
+ *
+ * The kit system provides:
+ * - Violation-specific argument templates with proven win rates (from 1.18M FOIA records)
+ * - Weather defense integration when applicable
+ * - Evidence-aware argument selection (best argument chosen based on available evidence)
+ * - Backup arguments for stronger letters
  */
 function generateLetterContent(
   ticketData: {
@@ -981,8 +1088,6 @@ function generateLetterContent(
   },
   automatedEvidence?: AutomatedEvidence | null,
 ): { content: string; defenseType: string } {
-  const template = DEFENSE_TEMPLATES[ticketData.violation_type] || DEFENSE_TEMPLATES.other_unknown;
-
   const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -1006,45 +1111,143 @@ function generateLetterContent(
     `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
     'Vehicle Owner';
 
-  let content = template.template
-    .replace(/{ticket_number}/g, ticketData.ticket_number || 'N/A')
-    .replace(/{violation_date}/g, violationDate)
-    .replace(/{violation_description}/g, ticketData.violation_description || 'parking violation')
-    .replace(/{amount}/g, ticketData.amount ? `$${ticketData.amount.toFixed(2)}` : 'the amount shown')
-    .replace(/{location}/g, ticketData.location || 'the cited location')
-    .replace(/{plate}/g, ticketData.plate)
-    .replace(/{state}/g, ticketData.state);
+  // ── Try contest kit evaluation first (preferred path) ──
+  const kitEval = automatedEvidence?.kitEvaluation?.evaluation;
+  let content: string;
+  let defenseType: string;
 
-  // Inject automated camera check findings into the letter
-  if (automatedEvidence?.cameraCheck.checked) {
-    const cameraFindings: string[] = [];
+  if (kitEval) {
+    // Use the kit's selected argument template (filled by the policy engine)
+    const selectedArg = kitEval.selectedArgument;
+    const backupArg = kitEval.backupArgument;
 
-    // School zone timing defense
-    if (automatedEvidence.cameraCheck.schoolZoneCheck.defenseApplicable) {
-      const szCheck = automatedEvidence.cameraCheck.schoolZoneCheck;
-      let reason = '';
-      if (szCheck.isWeekend) reason = `a ${szCheck.dayOfWeek}`;
-      else if (szCheck.isSummer) reason = 'during CPS summer break (no school in session)';
-      else if (szCheck.isCpsHoliday) reason = 'on a CPS non-attendance day';
+    console.log(`      [Letter] Using contest kit argument: "${selectedArg.name}" (${Math.round(selectedArg.winRate * 100)}% win rate)`);
 
-      cameraFindings.push(
-        `SCHOOL ZONE TIMING: This citation was issued on ${szCheck.dayOfWeek}, ${violationDate}, which is ${reason}. ` +
-        `If this camera is located in a school zone (near a school, not a park), speed camera enforcement should only be active ` +
-        `on school days during authorized hours. School was not in session on this date, and therefore the camera should not have been actively enforcing.`
-      );
+    // Start with the filled argument from the policy engine
+    content = kitEval.filledArgument;
+
+    // Replace any remaining placeholders the policy engine didn't fill
+    content = content
+      .replace(/\[TICKET_NUMBER\]/g, ticketData.ticket_number || 'N/A')
+      .replace(/\[DATE\]/g, violationDate)
+      .replace(/\[LOCATION\]/g, ticketData.location || 'the cited location')
+      .replace(/\[VIOLATION_CODE\]/g, automatedEvidence?.kitEvaluation?.violationCode || '')
+      .replace(/\[AMOUNT\]/g, ticketData.amount ? `$${ticketData.amount.toFixed(2)}` : 'the amount shown')
+      .replace(/\[USER_GROUNDS\]/g, ''); // Autopilot doesn't have user-selected grounds
+
+    // Clean up any leftover bracketed placeholders that need context we don't have
+    // Replace them with generic text instead of leaving ugly brackets
+    content = content
+      .replace(/\[SIGNAGE_ISSUE\]/g, 'signage at the location was inadequate, missing, obscured, or unclear')
+      .replace(/\[SPECIFIC_SIGNAGE_PROBLEM\]/g, 'the posted signage was not clearly visible to approaching motorists')
+      .replace(/\[SIGNAGE_FINDINGS\]/g, 'I found that the posted signs were not clearly visible, were obscured, or did not provide adequate notice of the restriction')
+      .replace(/\[SIGNAGE_PHOTOS\]/g, 'I have documented the signage conditions at this location.')
+      .replace(/\[EVIDENCE_REFERENCE\]/g, 'the automated evidence gathered on my behalf')
+      .replace(/\[MALFUNCTION_DESCRIPTION\]/g, 'the meter was not functioning properly')
+      .replace(/\[PAYMENT_METHOD\]/g, 'the available payment method')
+      .replace(/\[PAYMENT_TIME\]/g, 'the time of payment')
+      .replace(/\[PAYMENT_EXPIRATION\]/g, 'the expiration time shown')
+      .replace(/\[TICKET_TIME\]/g, 'the time indicated on the ticket')
+      .replace(/\[TIME_COMPARISON\]/g, 'there is a discrepancy between the meter time and the ticket time')
+      .replace(/\[IDENTIFICATION_ISSUES\]/g, 'the violation photos do not conclusively establish the identity of my vehicle')
+      .replace(/\[SUPPORTING_INFO\]/g, '')
+      .replace(/\[WEATHER_CONTEXT\]/g, kitEval.weatherDefense.paragraph || '')
+      .replace(/\[WEATHER_CONDITION\]/g, automatedEvidence?.weather?.data?.summary || 'adverse conditions')
+      .replace(/\[WEATHER_DATA\]/g, kitEval.weatherDefense.paragraph || '');
+
+    // Add weather defense paragraph if applicable and not already in the argument
+    if (kitEval.weatherDefense.applicable && kitEval.weatherDefense.paragraph &&
+        !content.includes(kitEval.weatherDefense.paragraph)) {
+      content += '\n\nWEATHER CONDITIONS:\n' + kitEval.weatherDefense.paragraph;
     }
 
-    // Weather findings for camera tickets
-    if (automatedEvidence.weather.data?.isRelevantForDefense) {
-      cameraFindings.push(
-        `WEATHER CONDITIONS: Weather records show ${automatedEvidence.weather.data.summary} on the date of this citation. ` +
-        `Adverse weather conditions may have affected camera accuracy or visibility.`
-      );
+    // Add FOIA win rate data to strengthen the argument
+    if (automatedEvidence?.foiaWinRate.checked && automatedEvidence.foiaWinRate.notLiablePercent) {
+      content += `\n\nI would also note that according to City of Chicago administrative hearing records, ` +
+        `${automatedEvidence.foiaWinRate.notLiablePercent}% of contested ${automatedEvidence.foiaWinRate.violationDescription || 'similar'} tickets ` +
+        `resulted in a finding of Not Liable, out of ${automatedEvidence.foiaWinRate.totalContested?.toLocaleString() || 'thousands of'} decided cases. ` +
+        `This demonstrates that a significant proportion of these citations are issued in error or are successfully contested on their merits.`;
     }
 
-    if (cameraFindings.length > 0) {
-      content += '\n\nADDITIONAL FINDINGS FROM AUTOMATED ANALYSIS:\n\n' + cameraFindings.map((f, i) => `${i + 1}. ${f}`).join('\n\n');
+    // Add backup argument as an additional defense point
+    if (backupArg && backupArg.id !== selectedArg.id && backupArg.id !== 'generic_contest') {
+      content += `\n\nIN THE ALTERNATIVE, I also assert the following defense:\n\n` +
+        `${backupArg.name}: ` + backupArg.template
+          .replace(/\[TICKET_NUMBER\]/g, ticketData.ticket_number || 'N/A')
+          .replace(/\[DATE\]/g, violationDate)
+          .replace(/\[LOCATION\]/g, ticketData.location || 'the cited location')
+          .replace(/\[USER_GROUNDS\]/g, '')
+          .replace(/\[SUPPORTING_INFO\]/g, '')
+          // Truncate the backup to just the core argument (first 2-3 paragraphs)
+          .split('\n\n').slice(0, 3).join('\n\n');
     }
+
+    // Inject camera-specific findings for camera violations
+    if (automatedEvidence?.cameraCheck.checked) {
+      const cameraFindings: string[] = [];
+      if (automatedEvidence.cameraCheck.schoolZoneCheck.defenseApplicable) {
+        const szCheck = automatedEvidence.cameraCheck.schoolZoneCheck;
+        let reason = '';
+        if (szCheck.isWeekend) reason = `a ${szCheck.dayOfWeek}`;
+        else if (szCheck.isSummer) reason = 'during CPS summer break (no school in session)';
+        else if (szCheck.isCpsHoliday) reason = 'on a CPS non-attendance day';
+        cameraFindings.push(
+          `SCHOOL ZONE TIMING: This citation was issued on ${szCheck.dayOfWeek}, ${violationDate}, which is ${reason}. ` +
+          `School zone speed cameras should only enforce on school days during authorized hours. ` +
+          `School was not in session on this date.`
+        );
+      }
+      if (cameraFindings.length > 0) {
+        content += '\n\nADDITIONAL FINDINGS FROM AUTOMATED ANALYSIS:\n\n' + cameraFindings.map((f, i) => `${i + 1}. ${f}`).join('\n\n');
+      }
+    }
+
+    // Add codified defense assertion for all violation types
+    content += `\n\nUnder Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses.`;
+
+    content += `\n\nI respectfully request that this citation be dismissed.`;
+
+    defenseType = `kit_${selectedArg.id}`;
+
+  } else {
+    // ── Fallback to hardcoded templates (only for unknown violation types) ──
+    console.log(`      [Letter] No kit evaluation available, using fallback template for: ${ticketData.violation_type}`);
+    const template = DEFENSE_TEMPLATES[ticketData.violation_type] || DEFENSE_TEMPLATES.other_unknown;
+
+    content = template.template
+      .replace(/{ticket_number}/g, ticketData.ticket_number || 'N/A')
+      .replace(/{violation_date}/g, violationDate)
+      .replace(/{violation_description}/g, ticketData.violation_description || 'parking violation')
+      .replace(/{amount}/g, ticketData.amount ? `$${ticketData.amount.toFixed(2)}` : 'the amount shown')
+      .replace(/{location}/g, ticketData.location || 'the cited location')
+      .replace(/{plate}/g, ticketData.plate)
+      .replace(/{state}/g, ticketData.state);
+
+    // Inject automated camera check findings into the letter
+    if (automatedEvidence?.cameraCheck.checked) {
+      const cameraFindings: string[] = [];
+      if (automatedEvidence.cameraCheck.schoolZoneCheck.defenseApplicable) {
+        const szCheck = automatedEvidence.cameraCheck.schoolZoneCheck;
+        let reason = '';
+        if (szCheck.isWeekend) reason = `a ${szCheck.dayOfWeek}`;
+        else if (szCheck.isSummer) reason = 'during CPS summer break (no school in session)';
+        else if (szCheck.isCpsHoliday) reason = 'on a CPS non-attendance day';
+        cameraFindings.push(
+          `SCHOOL ZONE TIMING: This citation was issued on ${szCheck.dayOfWeek}, ${violationDate}, which is ${reason}. ` +
+          `If this camera is located in a school zone, enforcement should only be active on school days during authorized hours.`
+        );
+      }
+      if (automatedEvidence.weather.data?.isRelevantForDefense) {
+        cameraFindings.push(
+          `WEATHER CONDITIONS: Weather records show ${automatedEvidence.weather.data.summary} on the date of this citation.`
+        );
+      }
+      if (cameraFindings.length > 0) {
+        content += '\n\nADDITIONAL FINDINGS FROM AUTOMATED ANALYSIS:\n\n' + cameraFindings.map((f, i) => `${i + 1}. ${f}`).join('\n\n');
+      }
+    }
+
+    defenseType = template.type;
   }
 
   const fullLetter = `${today}
@@ -1074,7 +1277,7 @@ Sincerely,
 ${fullName}
 ${addressLines.join('\n')}`;
 
-  return { content: fullLetter, defenseType: template.type };
+  return { content: fullLetter, defenseType };
 }
 
 /**
@@ -1563,7 +1766,7 @@ async function processFoundTicket(
       plate: plate.toUpperCase(),
       state: state.toUpperCase(),
       ticket_number: ticket.ticket_number,
-      violation_code: null,
+      violation_code: VIOLATION_NAME_TO_CODE[violationType] || null,
       violation_type: violationType,
       violation_description: ticket.violation_description || null,
       violation_date: violationDate,
@@ -1587,14 +1790,18 @@ async function processFoundTicket(
 
   console.log(`      Created ticket ${ticket.ticket_number} (${violationType}, $${amount || 0})`);
 
-  // Gather ALL automated evidence FIRST (weather, FOIA, GPS, Street View, alerts, camera checks, etc.)
-  // This runs before letter generation so camera check findings can be injected into the letter.
+  // Gather ALL automated evidence FIRST (weather, FOIA, GPS, Street View, alerts, camera checks, kit evaluation)
+  // This runs before letter generation so kit evaluation + evidence findings can be injected into the letter.
   console.log('      Gathering automated evidence...');
   const automatedEvidence = await gatherAutomatedEvidence(
     user_id,
     violationType,
     violationDate,
     plate.toUpperCase(),
+    ticket.ticket_number,
+    amount,
+    null, // Portal doesn't give us street location
+    ticket.violation_description || null,
   );
 
   // Generate contest letter (after evidence gathering so camera check findings can be injected)
@@ -1673,6 +1880,16 @@ async function processFoundTicket(
           isWeekend: automatedEvidence.cameraCheck.schoolZoneCheck.isWeekend,
           isSummer: automatedEvidence.cameraCheck.schoolZoneCheck.isSummer,
           isCpsHoliday: automatedEvidence.cameraCheck.schoolZoneCheck.isCpsHoliday,
+        } : null,
+        kitEvaluation: automatedEvidence.kitEvaluation.checked ? {
+          kitName: automatedEvidence.kitEvaluation.kitName,
+          violationCode: automatedEvidence.kitEvaluation.violationCode,
+          selectedArgument: automatedEvidence.kitEvaluation.evaluation?.selectedArgument.name,
+          argumentWinRate: automatedEvidence.kitEvaluation.evaluation ? Math.round(automatedEvidence.kitEvaluation.evaluation.selectedArgument.winRate * 100) : null,
+          estimatedWinRate: automatedEvidence.kitEvaluation.evaluation ? Math.round(automatedEvidence.kitEvaluation.evaluation.estimatedWinRate * 100) : null,
+          confidence: automatedEvidence.kitEvaluation.evaluation ? Math.round(automatedEvidence.kitEvaluation.evaluation.confidence * 100) : null,
+          weatherDefenseApplicable: automatedEvidence.kitEvaluation.evaluation?.weatherDefense.applicable || false,
+          backupArgument: automatedEvidence.kitEvaluation.evaluation?.backupArgument?.name || null,
         } : null,
       },
       performed_by: 'portal_scraper',
