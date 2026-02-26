@@ -677,139 +677,178 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   red_light: {
     violationType: 'red_light',
-    emailSubject: 'Red Light Camera Ticket - Important Information About Your Case',
-    title: 'Red Light Camera Ticket - Know Your Options',
+    emailSubject: 'Red Light Camera Ticket - 21% Win Rate - Review Your Violation Photos NOW',
+    title: 'Red Light Camera Ticket - Your Best Defenses Based on Real Hearing Data',
     winRate: 0.21,
-    intro: `Red light camera tickets are challenging to contest (about 21% success rate), but there are legitimate defenses including yellow light timing, emergency circumstances, and vehicle identification errors.`,
+    intro: `Red light camera tickets are tough (21% success rate), but the wins that DO happen come from specific, provable defenses. In FOIA hearing data, the #1 dismissal reason is "Violation is Factually Inconsistent" — meaning the photos/video don't actually prove a violation. The #2 reason is "Prima Facie Case Not Established by City." Both require you to carefully review the violation footage and build your case around what the evidence actually shows.`,
     questions: [
       {
-        text: 'Were you already in the intersection when the light turned red? Did it feel unsafe to stop?',
-        whyItMatters: 'Illinois law requires you to enter the intersection before the light turns red. If you entered on yellow and it turned red, that\'s not a violation.',
+        text: 'CRITICAL: Go to chicago.gov/finance and review your violation photos/video RIGHT NOW. Is the vehicle in the photos definitely yours? Check the make, model, color, and license plate carefully.',
+        whyItMatters: '"Violation is Factually Inconsistent" is the #1 reason red light tickets are dismissed. Camera misreads, plate errors, and wrong-vehicle identification are more common than you\'d think. If the vehicle isn\'t yours, this is an automatic win.',
+        impactScore: 0.45,
+        goodExample: '"I reviewed the violation photos. The vehicle appears to be a dark blue sedan but my car is a black SUV. The plate number in the photo is partially obscured by glare."',
+      },
+      {
+        text: 'In the violation video, does it show you entering the intersection BEFORE the light turned red? Or were you already past the stop line when it changed? Count the seconds of yellow light in the video.',
+        whyItMatters: 'Illinois law (625 ILCS 5/11-306) says you must enter the intersection before the light turns red. IDOT minimum yellow time is 3 seconds for 30mph streets, 4 seconds for 35-45mph. If the yellow was shorter, the ticket is invalid. Chicago has been caught with short yellows before.',
+        impactScore: 0.40,
+        goodExample: '"I counted the yellow light in the violation video — it was only 2.5 seconds. The speed limit on this street is 35mph, which requires 4 seconds of yellow per IDOT standards."',
+      },
+      {
+        text: 'Were you making a right turn on red? If so, did you come to a complete stop before turning? Does the video show this?',
+        whyItMatters: 'Right turn on red is legal in Illinois if you come to a complete stop first. Many red light cameras photograph right turns that include a full stop — these should be dismissed. Chicago Municipal Code § 9-8-020(c) requires camera enforcement to exclude permissible right turns.',
         impactScore: 0.35,
-        goodExample: '"I was already past the stop line traveling through when the light changed from yellow to red"',
+        goodExample: '"The video shows me making a right turn. I came to a complete stop before the crosswalk, then proceeded through the turn."',
       },
       {
-        text: 'Did the yellow light seem unusually short at this intersection?',
-        whyItMatters: 'There are minimum yellow light timing requirements. Too-short yellow lights have been grounds for ticket dismissal.',
+        text: 'Was your vehicle stolen, or had you sold/transferred it before the violation date? Do you have documentation?',
+        whyItMatters: '"Plate or Vehicle was Stolen" is a recognized FOIA dismissal reason. If the car wasn\'t in your possession, you\'re not liable.',
+        impactScore: 0.40,
+        goodExample: '"I sold this vehicle 2 weeks before the violation. I have the bill of sale and title transfer receipt showing the sale date."',
+      },
+      {
+        text: 'Were there emergency circumstances — were you yielding to an emergency vehicle, or was there a medical emergency in the car?',
+        whyItMatters: 'Emergency circumstances are a codified defense under § 9-100-060. An ambulance behind you, a medical emergency, or a funeral procession leader can all be valid reasons.',
         impactScore: 0.30,
-        goodExample: '"The yellow light seemed very short - less than 3 seconds"',
+        goodExample: '"An ambulance with sirens was approaching from behind and I proceeded through the intersection to clear the way for it."',
       },
       {
-        text: 'Were there dangerous road conditions (ice, rain, tailgating) that made stopping unsafe?',
-        whyItMatters: 'Safety circumstances that made stopping dangerous can be a valid defense.',
-        impactScore: 0.25,
-        goodExample: '"The roads were icy and I would have lost control or been rear-ended if I slammed on my brakes"',
-      },
-      {
-        text: 'Was your vehicle actually the one that ran the red light? Have you reviewed the photos/video?',
-        whyItMatters: 'Camera errors or plate misreads do happen. Always review the violation footage.',
-        impactScore: 0.30,
-        goodExample: '"The vehicle in the photo is not my car - different make/model"',
+        text: 'Were you pulled over and given a moving violation (traffic ticket) by a police officer for this same incident? If so, send us a photo of the officer\'s citation.',
+        whyItMatters: '"Moving Violation Issued" is a codified defense under § 9-100-060 — you cannot be ticketed by both a camera AND a police officer for the same violation. If a cop gave you a ticket for this same red light, the camera ticket must be dismissed.',
+        impactScore: 0.35,
+        goodExample: '"I was pulled over by CPD at this intersection and received citation #12345 for the same red light. Photo of the officer\'s ticket attached."',
       },
     ],
     quickTips: [
-      'Request to view the violation video - sometimes it shows mitigating factors',
-      'Check if your vehicle was correctly identified in the photos',
-      'Note any road conditions or emergency circumstances',
-      'Some intersections have known yellow light timing issues',
+      'REVIEW YOUR VIOLATION VIDEO at chicago.gov/finance — this is the single most important step',
+      'Count the yellow light seconds in the video — under 3 seconds at 30mph is grounds for dismissal',
+      'Right turns on red WITH a full stop are LEGAL — if the video shows a stop, you should win',
+      'Camera tickets do NOT go on your driving record or affect your insurance in Illinois',
+      'The fine is $100 — but parking boot/registration hold kicks in if you ignore it',
+      'You can contest by mail — you don\'t need to appear in person',
+      'Request camera calibration and maintenance records if you believe the camera malfunctioned',
     ],
     pitfalls: [
-      'Don\'t claim you didn\'t run the light if the video clearly shows it',
-      'Don\'t ignore this ticket - it can affect your credit',
-      'Camera tickets don\'t affect your driving record in Illinois',
+      'Don\'t contest without reviewing the violation photos/video first — know what the evidence shows',
+      '"Failed to Select one of the Codified Defenses" causes many losses — our system handles this for you',
+      'Don\'t claim you didn\'t run the light if the video clearly shows it — focus on yellow timing or vehicle ID instead',
+      'Don\'t ignore the ticket — 2 unpaid tickets can result in a vehicle boot',
     ],
     weatherRelevant: true,
-    weatherQuestion: 'Were road conditions (rain, ice, snow) a factor in why stopping would have been unsafe?',
+    weatherQuestion: 'Were road conditions (rain, ice, snow) a factor that made stopping at the yellow light unsafe? Wet/icy roads increase stopping distance significantly.',
   },
 
   speed_camera: {
     violationType: 'speed_camera',
-    emailSubject: 'Speed Camera Ticket - Review Your Options',
-    title: 'Speed Camera Ticket - Know Your Defenses',
+    emailSubject: 'Speed Camera Ticket - Review Your Violation Photos & Check the Speed Limit Signs',
+    title: 'Speed Camera Ticket - Tough but Not Impossible',
     winRate: 0.18,
-    intro: `Speed camera tickets are challenging to contest (about 17-20% success rate depending on speed), but there are valid defenses including camera accuracy, speed limit signage issues, and vehicle identification errors. The fine is $35-$100, so weigh the effort.`,
+    intro: `Speed camera tickets are the hardest to beat (17-20% success rate), but the wins that DO happen are almost always from two causes: "Violation is Factually Inconsistent" (wrong vehicle, camera error) or signage problems. The fine is $35 for 6-10mph over, $100 for 11+ over. Even at low odds, contesting is worth it because the process costs nothing but 10 minutes of your time.`,
     questions: [
       {
-        text: 'Were the speed limit signs clearly visible at this location? Any obstructions or missing signs?',
-        whyItMatters: 'Speed limits must be properly posted. Missing or obscured signs can be grounds for dismissal.',
-        impactScore: 0.30,
-        goodExample: '"The speed limit sign was blocked by tree branches and not visible"',
+        text: 'FIRST: Review your violation photos at chicago.gov/finance. Is that definitely YOUR vehicle? Check the make, model, color, and license plate number in the photos carefully.',
+        whyItMatters: '"Violation is Factually Inconsistent" is the primary way speed camera tickets get dismissed. Plate misreads, wrong vehicles, and photo quality issues are real. If the vehicle isn\'t yours, this is an automatic win.',
+        impactScore: 0.45,
+        goodExample: '"I reviewed the photos. The license plate captured is partially obscured by a shadow and could be misread. My vehicle is a white Honda Civic but the photo shows what appears to be a silver Toyota."',
       },
       {
-        text: 'Do you believe the speed camera may have malfunctioned or misread your speed? What speed were you actually going?',
-        whyItMatters: 'Speed cameras must be regularly calibrated. If you know you weren\'t speeding, the camera may be faulty.',
-        impactScore: 0.30,
-        goodExample: '"I had cruise control set at 30mph but was ticketed for 41mph"',
+        text: 'Go to the location where you were ticketed. Is the speed limit sign clearly visible? Is the CHILDREN\'S SAFETY ZONE sign posted (speed cameras are only legal near schools/parks)? Photograph everything.',
+        whyItMatters: 'Speed cameras in Chicago are only authorized in "Children\'s Safety Zones" near schools and parks (§ 9-102-020). If the required signage is missing, obscured by trees/construction, or the camera isn\'t actually in a valid safety zone, the ticket is invalid. Photograph the speed limit sign AND the safety zone sign.',
+        impactScore: 0.40,
+        goodExample: '"I went back to the location. The speed limit sign is partially hidden behind overgrown tree branches. The Children\'s Safety Zone sign is faded and difficult to read. Photos attached."',
       },
       {
-        text: 'Was your vehicle actually the one speeding? Have you reviewed the photos?',
-        whyItMatters: 'Camera errors and plate misreads happen. Verify it\'s your vehicle in the photos.',
-        impactScore: 0.30,
-        goodExample: '"The vehicle in the photo has a different color than my car"',
+        text: 'Was your vehicle stolen, sold, or not in your possession on the violation date? Do you have documentation?',
+        whyItMatters: '"Plate or Vehicle was Stolen" is a recognized dismissal reason. If someone else was driving your car (rental, sold, stolen), you may not be liable.',
+        impactScore: 0.40,
+        goodExample: '"My car was stolen 3 days before this ticket. I have the CPD police report (RD# JH-XXXXXX) showing the theft was reported before the violation date."',
       },
       {
-        text: 'Was there an emergency or road condition that affected traffic flow? (construction zone, following emergency vehicle)',
-        whyItMatters: 'Special circumstances may provide a defense.',
-        impactScore: 0.20,
+        text: 'Do you have dashcam footage or GPS data (Google Maps timeline, Waze history) showing your actual speed at the time? Were you using cruise control?',
+        whyItMatters: 'Independent speed evidence (dashcam with speed overlay, GPS logs, cruise control settings) can challenge the camera\'s reading. Speed cameras must be calibrated regularly — if your data contradicts the camera, request calibration records.',
+        impactScore: 0.35,
+        goodExample: '"My dashcam shows I was traveling at 28mph in a 30mph zone. The camera claimed I was doing 42mph. I\'ve exported the dashcam clip with GPS speed overlay."',
+      },
+      {
+        text: 'Was the speed camera active during allowed hours? Check if it was a school zone (Mon-Fri, 7am-7pm school days only) vs. park zone (all day every day).',
+        whyItMatters: 'School zone cameras are only supposed to operate during school days/hours. If you were ticketed on a weekend, holiday, or outside school hours at a school-zone camera, the ticket may be invalid. Park zone cameras operate 24/7.',
+        impactScore: 0.30,
+        goodExample: '"This camera is near a school, and my ticket was issued on a Saturday at 9pm. School zone cameras should only be active on school days."',
       },
     ],
     quickTips: [
-      'Request the camera calibration records if you believe the reading was wrong',
-      'Verify the vehicle in the photos is actually yours',
-      'Check if speed limit signage was properly posted',
-      'Speed camera tickets don\'t affect your driving record in Illinois',
+      'REVIEW YOUR VIOLATION PHOTOS at chicago.gov/finance — vehicle identification errors are the #1 win',
+      'Go photograph the speed limit and Children\'s Safety Zone signs — missing/obscured signs win cases',
+      'Speed camera tickets do NOT go on your driving record or affect insurance in Illinois',
+      'The fine is $35 (6-10 over) or $100 (11+ over) — but unpaid tickets lead to boots',
+      'You can contest by mail for free — it takes 10 minutes',
+      'School zone cameras should only operate Mon-Fri during school hours — check the day/time',
+      'Request camera calibration records if you believe the speed reading was wrong',
     ],
     pitfalls: [
-      'Don\'t claim you weren\'t speeding if you clearly were',
-      'Don\'t ignore this ticket - it can affect your credit',
-      'Radar detectors don\'t help with camera tickets - they\'re based on photos',
+      '"Violated automated speed enforcement ordinance" is the #1 reason tickets are upheld — you need specific evidence, not just "I wasn\'t speeding"',
+      '"Failed to Select one of the Codified Defenses" causes avoidable losses — our system handles this for you',
+      'Don\'t ignore the ticket — 2 unpaid camera tickets = vehicle boot eligibility',
+      'Don\'t rely on "everyone speeds there" — focus on signage, vehicle ID, or camera accuracy',
     ],
     weatherRelevant: false,
   },
 
   snow_route: {
     violationType: 'snow_route',
-    emailSubject: 'Snow Route Ticket - 38% Win Rate - Was the Alert Properly Posted?',
-    title: 'Snow Route Ticket - Documentation Matters!',
+    emailSubject: 'Snow Route Ticket ($150) - 38% Win Rate - Check the Declaration Timeline NOW',
+    title: 'Snow Route Ticket - Timing & Signs Are Your Best Defense',
     winRate: 0.38,
-    intro: `Snow route tickets have about a 38% success rate. The main defenses are: ban wasn't properly announced, signs were obscured, or emergency circumstances prevented you from moving. Autopilot app users get automatic GPS departure verification.`,
+    intro: `Snow route tickets have a 38% success rate when contested. In FOIA data, the top winning reasons are "Violation is Factually Inconsistent" (the ban wasn't properly in effect or the ticket details are wrong) and "Signs were Missing or Obscured." The city must prove: (1) a snow emergency was declared, (2) adequate notice was given, (3) signs were posted and visible. If any of these fail, you win.`,
     questions: [
       {
-        text: 'Do you remember receiving a snow emergency alert? Check your email, phone alerts, and local news for that date.',
-        whyItMatters: 'Snow routes are only in effect when a snow emergency is declared. If it wasn\'t properly announced, that\'s a defense.',
+        text: 'CRITICAL: Check the snow emergency declaration timeline. What date/time was the snow emergency declared? What date/time was your ticket issued? Search "Chicago snow emergency [date]" to find the declaration time.',
+        whyItMatters: '"Violation is Factually Inconsistent" is the top dismissal reason. Chicago must provide adequate notice before enforcement begins. If your ticket was issued within hours of the declaration, or if no snow emergency was actually declared on that date, the ticket is invalid. The city sometimes issues tickets on streets that aren\'t actually designated snow routes.',
+        impactScore: 0.45,
+        goodExample: '"The snow emergency was declared at 11pm on 1/15. My ticket was issued at 5am on 1/16 — only 6 hours later, and I was asleep when it was declared. I had no reasonable opportunity to move my car."',
+      },
+      {
+        text: 'Go photograph the snow route signs near where you were parked. Are they visible? Were they covered by snow/ice at the time of the ticket? Are there signs on BOTH ends of the block?',
+        whyItMatters: '"Signs were Missing or Obscured" is a proven FOIA dismissal reason. Snow route signs must be clearly posted. If they were buried in snow, damaged, missing, or only on one end of the block, that\'s a strong defense. Go photograph them NOW — even if they\'re visible today, note their condition.',
+        impactScore: 0.40,
+        goodExample: '"There is no snow route sign on the south end of my block. The sign on the north end is partially obscured by tree branches and was covered in snow/ice at the time. Photos attached."',
+      },
+      {
+        text: 'Were you out of town, hospitalized, or had a vehicle breakdown that physically prevented you from moving the car? Do you have documentation (flight tickets, hospital records, tow receipt)?',
+        whyItMatters: 'Inability to move the vehicle due to circumstances beyond your control is a recognized defense. You need documentation — a verbal claim alone isn\'t enough.',
         impactScore: 0.35,
-        goodExample: '"I received no alert and the city website shows the ban was declared at 2am - ticket was at 3am, only 1 hour notice"',
+        goodExample: '"I was in the hospital for emergency surgery from 1/14-1/17. I have the hospital discharge paperwork showing I was admitted before the snow emergency was declared."',
       },
       {
-        text: 'Were the snow route signs visible, or were they covered by snow or other obstructions?',
-        whyItMatters: 'Signs must be visible. Snow-covered or obscured signs = valid defense.',
+        text: 'Was there actually enough snow to trigger a snow emergency on that date? What were the actual snow accumulation numbers? Check weather history for that day.',
+        whyItMatters: 'Snow emergencies are supposed to be declared during significant snowfall (typically 2+ inches). If the actual snowfall was minimal or the plows didn\'t need your street, the "Violation is Factually Inconsistent" defense applies.',
         impactScore: 0.30,
-        goodExample: '"The snow route sign was completely covered in snow from the plow"',
+        goodExample: '"According to weather records, only 0.5 inches of snow fell that day. The snow emergency seemed premature — my street didn\'t even need plowing."',
       },
       {
-        text: 'Was there an emergency or circumstance that prevented you from moving your car? (out of town, medical emergency, car wouldn\'t start)',
-        whyItMatters: 'Emergency circumstances are a recognized defense.',
-        impactScore: 0.30,
-        goodExample: '"I was out of town and had no way to get back to move my car"',
-      },
-      {
-        text: 'Can you verify what time the snow emergency was declared vs. when your ticket was issued?',
-        whyItMatters: 'You typically get several hours notice. If your ticket was issued too quickly after declaration, that\'s a defense.',
-        impactScore: 0.25,
+        text: 'Was your car ACTUALLY on a designated snow route? Check the city\'s official snow route map at chicago.gov. Not every major street is a snow route.',
+        whyItMatters: 'Tickets are sometimes issued on streets that aren\'t actually designated snow routes. The city maintains an official list — if your street isn\'t on it, the ticket is invalid.',
+        impactScore: 0.40,
+        goodExample: '"I checked the city\'s official snow route map and my block of N. Kedzie Ave between Fullerton and Diversey is NOT listed as a designated snow route."',
       },
     ],
     quickTips: [
-      'Check chicagoshovels.org for snow emergency declaration times',
-      'Sign up for Chicago snow alerts for the future',
-      'Document any snow-covered signs if you can',
-      'Being out of town is a valid excuse - show travel documentation',
+      'Verify the snow emergency was actually declared for your date — search "Chicago snow emergency" + date',
+      'Check the official snow route map at chicago.gov — your street may not actually be a designated snow route',
+      'Photograph ALL snow route signs on your block — missing or obscured signs is a proven defense',
+      'The fine is $150 + possible tow — definitely worth contesting',
+      'Autopilot users: we automatically check GPS data to verify your parking location and departure time',
+      'If you were out of town, save your flight/hotel confirmation as evidence',
+      'Sign up for Chicago snow alerts (NotifyChicago) to prevent future tickets',
     ],
     pitfalls: [
-      'Don\'t claim you didn\'t know if you got alerts',
-      'Snow route signs are permanent - you should know if you live on one',
+      'Don\'t say "I didn\'t know it was a snow route" if there are clear signs — focus on declaration timing instead',
+      '"I didn\'t see the alert" is weak unless you can show the alert wasn\'t actually sent or was too late',
+      'Don\'t wait to contest — the 21-day deadline applies',
+      'If you live on a snow route, have a plan for where to move your car during snow emergencies',
     ],
     weatherRelevant: true,
-    weatherQuestion: 'Was the heavy snowfall itself making it impossible/dangerous to move your vehicle?',
+    weatherQuestion: 'Was the snowfall itself so severe that driving/moving your vehicle would have been dangerous? Check actual snow accumulation for that date.',
   },
 
   parking_prohibited: {
@@ -869,40 +908,59 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   bus_lane: {
     violationType: 'bus_lane',
-    emailSubject: 'Bus Lane Ticket - 56% Win Rate - Were You Loading Passengers?',
-    title: 'Bus Lane Ticket - Good Odds With Loading Defense!',
+    emailSubject: 'Bus Lane Ticket ($150) - 56% Win Rate - Were You Loading Passengers?',
+    title: 'Bus Lane Ticket - Passenger Loading & Lane Markings Are Your Best Defenses',
     winRate: 0.56,
-    intro: `Bus lane tickets have a 56% success rate when contested. If you were loading/unloading passengers or the lane markings were unclear, these are strong defenses. Definitely worth contesting.`,
+    intro: `Bus lane tickets have a strong 56% success rate when contested. In FOIA data, the top dismissal reasons are "Violation is Factually Inconsistent" (you weren't actually blocking the bus lane or were legally loading passengers) and "Signs were Missing or Obscured." Smart Streets camera enforcement has specific rules about what constitutes a violation — and passenger loading is explicitly exempt.`,
     questions: [
       {
-        text: 'Were you briefly stopped to load or unload passengers? Describe exactly what happened.',
-        whyItMatters: 'Per Chicago Municipal Code 9-103-020(a), stopping to expeditiously load or unload passengers without interfering with any bus is a recognized defense.',
+        text: 'Were you briefly stopped to load or unload passengers? Describe EXACTLY what happened — who was getting in/out, how long you stopped, and whether any bus was blocked.',
+        whyItMatters: '"Violation is Factually Inconsistent" is the #1 dismissal reason. Per Chicago Municipal Code § 9-103-020(a), stopping to "expeditiously load or unload passengers" without interfering with a bus is LEGAL in bus lanes. The key words are: (1) passengers (not cargo), (2) expeditious (brief), (3) no bus interference. If you meet all three, you win.',
+        impactScore: 0.45,
+        goodExample: '"I was picking up my elderly mother from a medical appointment. I pulled to the curb with hazards on for about 45 seconds while she got in. No bus was present or approaching. I drove away immediately."',
+      },
+      {
+        text: 'Go to the location NOW and photograph the bus lane signs and red pavement markings. Are the markings faded? Are signs posted on BOTH ends of the bus lane section?',
+        whyItMatters: '"Signs were Missing or Obscured" is a proven FOIA dismissal reason. Many Chicago bus lanes have faded red paint that\'s hard to distinguish from regular asphalt, especially at night or in rain. If the markings or signs are unclear, photograph them showing the condition.',
         impactScore: 0.40,
-        goodExample: '"I was picking up my partner from the curb. I stopped for about 30 seconds with hazards on."',
+        goodExample: '"The red bus lane paint is almost completely worn away on this block — you can barely tell it\'s a bus lane. The nearest bus lane sign is around the corner, not visible from where I stopped. Photos attached."',
       },
       {
-        text: 'Were the bus lane signs and red pavement markings clearly visible? Were they faded, covered, or hard to see?',
-        whyItMatters: 'Unclear markings = valid defense. Faded red paint or obscured signs are common in Chicago.',
+        text: 'If this is a camera ticket (Smart Streets), review the violation photos/video at chicago.gov/finance. Is the vehicle definitely yours? Were you actually IN the bus lane, or in an adjacent lane?',
+        whyItMatters: '"Violated the Automated Traffic Law Enforcement System Ordinance" is a camera-specific reason. Camera errors, plate misreads, and lane detection errors happen. Review the photos carefully — sometimes the camera captures a vehicle in an adjacent lane or catches a momentary lane change.',
         impactScore: 0.35,
-        goodExample: '"The red lane markings were very faded and barely visible."',
+        goodExample: '"I reviewed the violation photos. My vehicle appears to be partially in the bus lane while changing lanes to avoid a double-parked car ahead. I was not stopped in the bus lane."',
       },
       {
-        text: 'Was this an automated camera ticket (Smart Streets)? Did you receive photos/video with the ticket?',
-        whyItMatters: 'Automated camera systems can produce errors. You can request calibration records.',
-        impactScore: 0.25,
+        text: 'Was there a vehicle breakdown, hazard, or obstruction that forced you into the bus lane? (flat tire, avoiding an accident, construction detour, emergency vehicle)',
+        whyItMatters: 'Emergency circumstances and road hazards that force you into the bus lane are valid defenses. A breakdown, avoiding an accident, or following police/construction directions all qualify.',
+        impactScore: 0.30,
+        goodExample: '"A delivery truck was double-parked in my lane, forcing me to briefly use the bus lane to get around it. The camera captured me in the bus lane during this maneuver."',
+      },
+      {
+        text: 'What time was the violation? Bus lane restrictions typically apply during specific hours (e.g., 7-9 AM and 4-7 PM weekdays). Were you ticketed outside those hours?',
+        whyItMatters: 'Many bus lanes are time-restricted. If you were in the lane outside the restricted hours, the ticket is invalid. Check the posted signs for enforcement hours.',
+        impactScore: 0.35,
+        goodExample: '"The bus lane sign says 7-9 AM and 4-7 PM, but my ticket was issued at 2:30 PM — outside the restricted hours."',
       },
     ],
     quickTips: [
-      'Loading/unloading passengers is the strongest defense',
-      'Photograph the bus lane markings — faded paint is common',
-      'Camera enforcement systems have had accuracy issues in other cities',
+      'Passenger loading/unloading is LEGAL in bus lanes — this is the #1 winning defense (cite § 9-103-020(a))',
+      'Go photograph the bus lane markings NOW — faded red paint is extremely common',
+      'The fine is $150 — definitely worth the 10 minutes to contest by mail',
+      'For camera tickets, review the violation photos at chicago.gov/finance — vehicle/lane errors happen',
+      'Check the enforcement hours on the signs — many bus lanes are only active during rush hours',
+      'If a rideshare app (Uber/Lyft) shows you were picking up a passenger, screenshot the trip details',
+      'Dashcam footage showing a brief passenger pickup is excellent evidence',
     ],
     pitfalls: [
-      'Don\'t claim you were loading if you were parked and left the vehicle',
-      'Running into a store is NOT loading/unloading passengers',
+      'Passenger loading means someone getting IN or OUT of the car — running into a store doesn\'t count',
+      'Don\'t claim "loading" if you left the vehicle unattended — you must stay with the car',
+      '"I didn\'t see the bus lane" is weak — focus on loading, markings, or enforcement hours instead',
+      'Don\'t ignore the ticket — $150 fine plus potential boot for unpaid tickets',
     ],
     weatherRelevant: true,
-    weatherQuestion: 'Did snow, rain, or debris cover the red bus lane markings, making them invisible?',
+    weatherQuestion: 'Did snow, rain, or debris cover the red bus lane pavement markings, making them invisible? Photograph the current condition of the markings.',
   },
 
   other_unknown: {
@@ -1338,6 +1396,50 @@ function generateDismissalInsightsHtml(violationType: string): string {
 }
 
 /**
+ * Universal defense questions that apply to ALL ticket types.
+ * Based on FOIA data showing these defenses account for significant wins:
+ * - "Plate or Vehicle was Stolen" — 26,662 wins (5.3% of all wins)
+ * - "Citizen was Not Owner or Lessee" — 11,359 wins (2.3%)
+ * - "Funeral Procession" — 533 wins
+ * - "Authorized Emergency Vehicle" — 228 wins
+ *
+ * These are appended to every evidence email to ensure no winning defense is missed.
+ */
+const UNIVERSAL_DEFENSE_QUESTIONS: EvidenceQuestion[] = [
+  {
+    text: 'Was your vehicle or license plate stolen at the time of this ticket? Do you have a police report?',
+    whyItMatters: '"Plate or Vehicle was Stolen" accounts for 5.3% of ALL ticket dismissals in Chicago FOIA data (26,000+ wins). If you filed a police report before the ticket date, this is nearly an automatic dismissal.',
+    impactScore: 0.40,
+    goodExample: '"My car was stolen on January 5th and the ticket was January 8th. CPD report #JH-123456 was filed on January 5th."',
+  },
+  {
+    text: 'Were you NOT the owner or driver of this vehicle at the time? Had you sold, transferred, or lent the vehicle to someone else?',
+    whyItMatters: '"Citizen was Not Owner or Lessee" accounts for 2.3% of ALL dismissals (11,000+ wins). If you sold the car, transferred the title, or someone else was driving, you may not be liable. Provide a bill of sale, title transfer receipt, or affidavit identifying the actual driver.',
+    impactScore: 0.35,
+    goodExample: '"I sold this vehicle on January 1st, two weeks before this ticket. I have the signed bill of sale and title transfer receipt."',
+  },
+];
+
+/**
+ * Additional defense questions for camera/traffic tickets only.
+ * These are codified defenses under § 9-100-060 that sometimes win.
+ */
+const CAMERA_TICKET_EXTRA_QUESTIONS: EvidenceQuestion[] = [
+  {
+    text: 'Were you part of a funeral procession at the time? Did you have a funeral flag or sticker on your vehicle?',
+    whyItMatters: '"Funeral Procession" is a codified defense under § 9-100-060 — 533 tickets have been dismissed for this reason in FOIA data. If you were following a hearse or had a funeral flag displayed, this ticket should be dismissed.',
+    impactScore: 0.30,
+    goodExample: '"I was part of the funeral procession for my uncle. The funeral home (Smith & Sons) can confirm I was in the procession. I had the funeral flag on my vehicle."',
+  },
+  {
+    text: 'Were you driving an authorized emergency vehicle (ambulance, fire truck, police) or yielding to one at the time?',
+    whyItMatters: '"Authorized Emergency Vehicle" is a codified defense — 228 tickets dismissed for this reason. If you were operating an emergency vehicle on duty, or forced through the intersection by an emergency vehicle behind you, this applies.',
+    impactScore: 0.25,
+    goodExample: '"An ambulance with sirens was directly behind me and I had to proceed through the intersection to clear the way."',
+  },
+];
+
+/**
  * Generate HTML for evidence request email questions
  */
 export function generateEvidenceQuestionsHtml(guidance: EvidenceGuidance): string {
@@ -1346,7 +1448,7 @@ export function generateEvidenceQuestionsHtml(guidance: EvidenceGuidance): strin
   // FOIA-driven insights: what actually gets tickets dismissed
   html += generateDismissalInsightsHtml(guidance.violationType);
 
-  // Main questions
+  // Main questions (violation-specific)
   guidance.questions.forEach((q, i) => {
     html += `
       <div style="margin-bottom: 24px; padding: 16px; background: #fefce8; border-left: 4px solid #eab308; border-radius: 0 8px 8px 0;">
@@ -1360,6 +1462,45 @@ export function generateEvidenceQuestionsHtml(guidance: EvidenceGuidance): strin
       </div>
     `;
   });
+
+  // Determine which universal questions to add (skip if already covered in violation-specific questions)
+  const vtype = guidance.violationType;
+  const alreadyAsksStolenVehicle = ['red_light', 'speed_camera'].includes(vtype);
+  const isCameraTicket = ['red_light', 'speed_camera'].includes(vtype);
+
+  // Universal defense questions (stolen vehicle, not owner) — add to ALL types that don't already ask
+  const universalQuestions = alreadyAsksStolenVehicle
+    ? UNIVERSAL_DEFENSE_QUESTIONS.filter(q => !q.text.includes('stolen')) // Only add not-owner for camera types
+    : UNIVERSAL_DEFENSE_QUESTIONS;
+
+  // Camera ticket extras (funeral procession, emergency vehicle)
+  const extraQuestions = isCameraTicket ? CAMERA_TICKET_EXTRA_QUESTIONS : [];
+
+  const allExtraQuestions = [...universalQuestions, ...extraQuestions];
+
+  if (allExtraQuestions.length > 0) {
+    const startIdx = guidance.questions.length;
+    html += `
+      <div style="margin: 24px 0 16px; padding: 12px 16px; background: #f0f9ff; border-radius: 8px;">
+        <p style="margin: 0; color: #0c4a6e; font-size: 13px; font-weight: 600;">
+          Additional defenses that win thousands of cases each year:
+        </p>
+      </div>
+    `;
+    allExtraQuestions.forEach((q, i) => {
+      html += `
+        <div style="margin-bottom: 24px; padding: 16px; background: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 0 8px 8px 0;">
+          <p style="margin: 0 0 8px; font-weight: 600; color: #0c4a6e; font-size: 15px;">
+            ${startIdx + i + 1}. ${q.text}
+          </p>
+          <p style="margin: 0; color: #0369a1; font-size: 13px; font-style: italic;">
+            Why this matters: ${q.whyItMatters}
+          </p>
+          ${q.goodExample ? `<p style="margin: 8px 0 0; color: #065f46; font-size: 13px;">Good example: "${q.goodExample}"</p>` : ''}
+        </div>
+      `;
+    });
+  }
 
   // NOTE: Weather section is now handled by the caller (autopilot-check-portal.ts)
   // with ACTUAL weather data from Open-Meteo API, not a generic question.
