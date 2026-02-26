@@ -318,16 +318,16 @@ async function notifyUserOfFoiaFiling(
           <p style="margin: 0; color: #047857; font-size: 14px; line-height: 1.6;">
             Under Illinois law, the city is required to respond within <strong>5 business days</strong>.
             We file this request right away so that by the time we draft your contest letter,
-            we already know whether the city has the records to support the ticket.
-            If they don't produce them, that strengthens your case.
+            we have a complete picture of the evidence. This helps us build the
+            strongest possible defense for you.
           </p>
         </div>
 
         <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 16px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
             <strong>What happens next:</strong> The city has 5 business days to respond.
-            We'll review whatever they provide (or don't) and factor it into your
-            contest letter automatically.
+            We'll review what they provide and use it to build your
+            contest letter.
           </p>
         </div>
 
@@ -352,7 +352,7 @@ async function notifyUserOfFoiaFiling(
       body: JSON.stringify({
         from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: [userEmail],
-        subject: `Records request filed for Ticket #${ticketNumber} - requesting the city's enforcement evidence`,
+        subject: `Records request filed for your Ticket #${ticketNumber}`,
         html,
       }),
     });
