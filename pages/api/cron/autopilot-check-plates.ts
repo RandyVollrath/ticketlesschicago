@@ -649,6 +649,47 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
           },
           performed_by: 'autopilot_cron',
         });
+
+      // Queue FOIA evidence request immediately at detection time.
+      // Filing early means the city's 5-business-day response deadline expires
+      // BEFORE we generate/mail the contest letter, giving us a ready-made
+      // "Prima Facie Case Not Established" argument if they fail to respond.
+      try {
+        const now = new Date().toISOString();
+        await supabaseAdmin
+          .from('ticket_foia_requests' as any)
+          .upsert({
+            ticket_id: newTicket.id,
+            user_id: plate.user_id,
+            request_type: 'ticket_evidence_packet',
+            status: 'queued',
+            source: 'autopilot_detection',
+            request_payload: {
+              ticket_number: ticket.ticket_number,
+              violation_type: violationType,
+              violation_code: ticket.violation_code,
+              queued_by: 'autopilot_check_plates_cron',
+              queued_reason: 'early_filing_for_prima_facie_argument',
+            },
+            requested_at: now,
+            updated_at: now,
+          } as any, { onConflict: 'ticket_id,request_type' });
+
+        await supabaseAdmin
+          .from('ticket_audit_log')
+          .insert({
+            ticket_id: newTicket.id,
+            action: 'foia_request_queued',
+            details: {
+              request_type: 'ticket_evidence_packet',
+              source: 'autopilot_detection',
+              reason: 'Filed at detection for early 5-business-day deadline',
+            },
+            performed_by: null,
+          });
+      } catch (foiaErr: any) {
+        console.error(`    Failed to queue FOIA for ${ticket.ticket_number}: ${foiaErr.message}`);
+      }
     }
   }
 

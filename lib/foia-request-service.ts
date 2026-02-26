@@ -19,7 +19,6 @@ const BASE_RECORDS = [
   'The issuing officer\'s field notes, observations, and contemporaneous written records for this citation',
   'Any photographs taken by the issuing officer at the time of the citation',
   'The handheld citation device data and timestamps for this ticket, including GPS coordinates',
-  'Training and certification records for the issuing officer relevant to this violation type',
 ];
 
 const VIOLATION_SPECIFIC_RECORDS: Record<string, string[]> = {
