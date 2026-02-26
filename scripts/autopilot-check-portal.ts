@@ -239,6 +239,27 @@ interface AutomatedEvidence {
     hasAlerts: boolean;
     alertTypes: string[];
   };
+  // Camera ticket automated checks (red_light, speed_camera)
+  cameraCheck: {
+    checked: boolean;
+    violationType: 'red_light' | 'speed_camera' | null;
+    // School zone timing: was the ticket on a weekend, CPS holiday, or summer break?
+    schoolZoneCheck: {
+      checked: boolean;
+      isSchoolDay: boolean | null;
+      dayOfWeek: string | null;
+      isWeekend: boolean | null;
+      isSummer: boolean | null; // June 15 - Sep 1 approx
+      isCpsHoliday: boolean | null;
+      message: string | null;
+      defenseApplicable: boolean;
+    };
+    // IDOT yellow light minimums (red_light only)
+    yellowLightCheck: {
+      checked: boolean;
+      message: string | null;
+    };
+  };
 }
 
 /**
@@ -258,6 +279,12 @@ async function gatherAutomatedEvidence(
     streetView: { checked: false, hasImagery: false, imageDate: null, imageUrl: null, signageObservation: null },
     streetCleaning: { checked: false, relevant: false, ward: null, section: null, message: null },
     alertSubscriptions: { checked: false, hasAlerts: false, alertTypes: [] },
+    cameraCheck: {
+      checked: false,
+      violationType: null,
+      schoolZoneCheck: { checked: false, isSchoolDay: null, dayOfWeek: null, isWeekend: null, isSummer: null, isCpsHoliday: null, message: null, defenseApplicable: false },
+      yellowLightCheck: { checked: false, message: null },
+    },
   };
 
   // 1. Weather data
@@ -466,6 +493,102 @@ async function gatherAutomatedEvidence(
     console.log(`      [Evidence] Alert subscription check failed: ${err.message}`);
   }
 
+  // 7. Camera ticket automated checks (red_light, speed_camera)
+  if ((violationType === 'red_light' || violationType === 'speed_camera') && violationDate) {
+    console.log('      [Evidence] Running camera ticket checks...');
+    evidence.cameraCheck.checked = true;
+    evidence.cameraCheck.violationType = violationType as 'red_light' | 'speed_camera';
+
+    try {
+      const vDate = new Date(violationDate);
+      const dayOfWeek = vDate.toLocaleDateString('en-US', { weekday: 'long' });
+      const month = vDate.getMonth(); // 0-indexed
+      const dayOfMonth = vDate.getDate();
+
+      evidence.cameraCheck.schoolZoneCheck.checked = true;
+      evidence.cameraCheck.schoolZoneCheck.dayOfWeek = dayOfWeek;
+
+      // Weekend check
+      const isWeekend = vDate.getDay() === 0 || vDate.getDay() === 6;
+      evidence.cameraCheck.schoolZoneCheck.isWeekend = isWeekend;
+
+      // Summer break check (approx June 15 - Sep 1 for CPS)
+      const isSummer = (month === 5 && dayOfMonth >= 15) || month === 6 || month === 7 || (month === 8 && dayOfMonth <= 1);
+      evidence.cameraCheck.schoolZoneCheck.isSummer = isSummer;
+
+      // CPS holidays (approximate — these shift year to year but are consistent patterns)
+      // Major CPS non-attendance days that apply across most years
+      const cpsHolidays: Array<{ month: number; day: number; name: string }> = [
+        { month: 0, day: 1, name: "New Year's Day" },
+        { month: 0, day: 15, name: 'MLK Day (approx)' },       // 3rd Monday in Jan
+        { month: 1, day: 12, name: "Lincoln's Birthday" },
+        { month: 1, day: 19, name: "Presidents' Day (approx)" }, // 3rd Monday in Feb
+        { month: 2, day: 31, name: 'Cesar Chavez Day' },
+        { month: 4, day: 27, name: 'Memorial Day (approx)' },   // Last Monday in May
+        { month: 5, day: 19, name: 'Juneteenth' },
+        { month: 6, day: 4, name: 'Independence Day (observed)' },
+        { month: 8, day: 1, name: 'Labor Day (approx)' },       // 1st Monday in Sep
+        { month: 9, day: 14, name: 'Columbus Day (approx)' },   // 2nd Monday in Oct
+        { month: 10, day: 11, name: 'Veterans Day' },
+        { month: 10, day: 23, name: 'Thanksgiving (approx)' },  // 4th Thursday in Nov
+        { month: 10, day: 24, name: 'Day after Thanksgiving' },
+        { month: 11, day: 25, name: 'Christmas Day' },
+      ];
+
+      // CPS spring break (typically late March / early April — 1 week)
+      // CPS winter break (typically Dec 23 - Jan 3)
+      const isWinterBreak = (month === 11 && dayOfMonth >= 22) || (month === 0 && dayOfMonth <= 5);
+
+      const matchedHoliday = cpsHolidays.find(h => h.month === month && Math.abs(h.day - dayOfMonth) <= 1);
+      const isCpsHoliday = !!matchedHoliday || isWinterBreak;
+      evidence.cameraCheck.schoolZoneCheck.isCpsHoliday = isCpsHoliday;
+
+      // Determine if this was a school day
+      const isSchoolDay = !isWeekend && !isSummer && !isCpsHoliday;
+      evidence.cameraCheck.schoolZoneCheck.isSchoolDay = isSchoolDay;
+
+      // Build the message
+      if (!isSchoolDay) {
+        const reasons: string[] = [];
+        if (isWeekend) reasons.push(`a ${dayOfWeek}`);
+        if (isSummer) reasons.push('during CPS summer break');
+        if (isCpsHoliday && matchedHoliday) reasons.push(`on or near ${matchedHoliday.name}`);
+        if (isWinterBreak) reasons.push('during CPS winter break');
+
+        evidence.cameraCheck.schoolZoneCheck.defenseApplicable = true;
+        evidence.cameraCheck.schoolZoneCheck.message =
+          `Your ticket was issued on ${dayOfWeek}, ${vDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — ${reasons.join(' and ')}. ` +
+          `School zone speed cameras should only be active on school days (Mon-Fri during the school year). ` +
+          `If this camera is near a SCHOOL (not a park), this ticket may be invalid. ` +
+          `Park zone cameras operate every day, so this defense only applies to school zone cameras.`;
+
+        console.log(`      [Evidence] Camera check: NOT a school day (${reasons.join(', ')}) — defense may apply!`);
+      } else {
+        evidence.cameraCheck.schoolZoneCheck.defenseApplicable = false;
+        evidence.cameraCheck.schoolZoneCheck.message =
+          `Your ticket was issued on ${dayOfWeek}, ${vDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} — ` +
+          `this appears to be a regular CPS school day. The school zone timing defense likely does not apply. ` +
+          `However, school zone cameras should only enforce during certain hours (typically 7am-7pm). ` +
+          `Check the time on your ticket.`;
+        console.log(`      [Evidence] Camera check: Appears to be a school day — timing defense less likely`);
+      }
+
+      // Yellow light check (red light only)
+      if (violationType === 'red_light') {
+        evidence.cameraCheck.yellowLightCheck.checked = true;
+        evidence.cameraCheck.yellowLightCheck.message =
+          `Illinois IDOT requires minimum yellow light durations based on speed limit: ` +
+          `3.0 seconds at 30 mph, 3.5 seconds at 35 mph, 4.0 seconds at 40 mph, 4.5 seconds at 45 mph. ` +
+          `Review your violation video at chicago.gov/finance and time the yellow light with a stopwatch. ` +
+          `If the yellow is shorter than the minimum for your intersection's speed limit, ` +
+          `the ticket is automatically invalid. Chicago was caught with illegally short yellows in a 2014 Tribune investigation.`;
+        console.log('      [Evidence] Yellow light IDOT minimum info included');
+      }
+    } catch (err: any) {
+      console.log(`      [Evidence] Camera check failed: ${err.message}`);
+    }
+  }
+
   return evidence;
 }
 
@@ -580,6 +703,32 @@ function buildValueDemonstrationHtml(evidence: AutomatedEvidence, violationType:
         label: 'Your Active Protections',
         result: `You have <strong>${evidence.alertSubscriptions.alertTypes.join(', ')}</strong> alerts enabled — showing you take parking compliance seriously.`,
         found: true,
+      });
+    }
+  }
+
+  // Camera ticket checks (school zone timing, yellow light)
+  if (evidence.cameraCheck.checked) {
+    // School zone timing check
+    if (evidence.cameraCheck.schoolZoneCheck.checked && evidence.cameraCheck.schoolZoneCheck.message) {
+      const defenseApplies = evidence.cameraCheck.schoolZoneCheck.defenseApplicable;
+      checks.push({
+        icon: '&#127979;', // school emoji
+        label: 'School Zone Calendar Check',
+        result: defenseApplies
+          ? `<strong style="color:#dc2626;">POTENTIAL DEFENSE FOUND:</strong> ${evidence.cameraCheck.schoolZoneCheck.message}`
+          : evidence.cameraCheck.schoolZoneCheck.message,
+        found: defenseApplies,
+      });
+    }
+
+    // Yellow light IDOT minimum check (red light only)
+    if (evidence.cameraCheck.yellowLightCheck.checked && evidence.cameraCheck.yellowLightCheck.message) {
+      checks.push({
+        icon: '&#128678;', // traffic light emoji
+        label: 'IDOT Yellow Light Minimum Reference',
+        result: evidence.cameraCheck.yellowLightCheck.message,
+        found: true, // Always useful info for red light tickets
       });
     }
   }
@@ -753,6 +902,44 @@ I respectfully request that this citation be DISMISSED for the following reasons
 
 I request that this ticket be dismissed. If the City cannot provide documentation of adequate, visible signage at the exact location of the citation, dismissal is the appropriate remedy.`,
   },
+  red_light: {
+    type: 'red_light_camera_defense',
+    template: `I am writing to formally contest red light camera citation #{ticket_number} issued on {violation_date} at {location}.
+
+I respectfully request that this citation be DISMISSED for the following reasons:
+
+1. VIOLATION IS FACTUALLY INCONSISTENT: After carefully reviewing the violation photos and video at chicago.gov/finance, the camera evidence does not conclusively establish that a red light violation occurred as defined under Chicago Municipal Code Section 9-102-010 and Illinois Vehicle Code 625 ILCS 5/11-306. I request that the hearing officer review the footage carefully.
+
+2. YELLOW LIGHT TIMING: The Illinois Department of Transportation (IDOT) requires minimum yellow light durations based on speed limit (3.0 seconds at 30 mph, 3.5 seconds at 35 mph, 4.0 seconds at 40 mph, 4.5 seconds at 45 mph). I request the City provide documentation of the yellow light timing at this intersection and evidence that it meets IDOT minimums. Chicago has been found to have improperly timed yellow lights in the past (2014 Chicago Tribune investigation).
+
+3. VEHICLE IDENTIFICATION: I request the City establish that the vehicle in the violation photos is conclusively identified as mine. The photos must clearly show the license plate number, and the vehicle make, model, and color must match my vehicle registration.
+
+4. RIGHT TURN ON RED: If the violation video shows my vehicle making a right turn, a right turn on red is legal under Illinois law (625 ILCS 5/11-306) after coming to a complete stop. Chicago Municipal Code § 9-8-020(c) requires automated enforcement systems to exclude permissible right turns on red.
+
+5. CODIFIED DEFENSES: Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses.
+
+I request that this ticket be dismissed.`,
+  },
+  speed_camera: {
+    type: 'speed_camera_defense',
+    template: `I am writing to formally contest speed camera citation #{ticket_number} issued on {violation_date} at {location}.
+
+I respectfully request that this citation be DISMISSED for the following reasons:
+
+1. VEHICLE IDENTIFICATION: After reviewing the violation photos at chicago.gov/finance, I request the City establish that the vehicle photographed is conclusively identified as mine. The photos must clearly show the license plate number, and the vehicle make, model, and color must match my vehicle registration. Vehicle identification errors are the most common reason speed camera tickets are dismissed.
+
+2. CHILDREN'S SAFETY ZONE REQUIREMENTS: Speed cameras are only authorized in designated Children's Safety Zones near schools and parks per Illinois Vehicle Code § 11-605.1 and Chicago Municipal Code § 9-102-020. I request the City provide documentation that this camera location is within a properly designated safety zone with appropriate signage.
+
+3. SIGNAGE: The speed limit sign and Children's Safety Zone sign must be clearly visible and properly posted at the camera location. I request photographic evidence of the signage at this location. Missing, obscured, or faded signage means drivers cannot be expected to know the applicable speed limit.
+
+4. CAMERA CALIBRATION: I request the City produce the camera's calibration and maintenance records for the period surrounding {violation_date} to verify the camera was functioning properly and the speed reading is accurate. Speed cameras must be regularly calibrated to ensure accurate readings.
+
+5. SCHOOL ZONE OPERATING HOURS: If this camera is in a school zone (near a school, not a park), it should only enforce during school days and authorized hours. I request documentation of the authorized enforcement hours and evidence that the violation occurred during those hours.
+
+6. CODIFIED DEFENSES: Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses.
+
+I request that this ticket be dismissed.`,
+  },
   other_unknown: {
     type: 'general_challenge',
     template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date}.
@@ -791,7 +978,8 @@ function generateLetterContent(
     mailing_city: string | null;
     mailing_state: string | null;
     mailing_zip: string | null;
-  }
+  },
+  automatedEvidence?: AutomatedEvidence | null,
 ): { content: string; defenseType: string } {
   const template = DEFENSE_TEMPLATES[ticketData.violation_type] || DEFENSE_TEMPLATES.other_unknown;
 
@@ -826,6 +1014,38 @@ function generateLetterContent(
     .replace(/{location}/g, ticketData.location || 'the cited location')
     .replace(/{plate}/g, ticketData.plate)
     .replace(/{state}/g, ticketData.state);
+
+  // Inject automated camera check findings into the letter
+  if (automatedEvidence?.cameraCheck.checked) {
+    const cameraFindings: string[] = [];
+
+    // School zone timing defense
+    if (automatedEvidence.cameraCheck.schoolZoneCheck.defenseApplicable) {
+      const szCheck = automatedEvidence.cameraCheck.schoolZoneCheck;
+      let reason = '';
+      if (szCheck.isWeekend) reason = `a ${szCheck.dayOfWeek}`;
+      else if (szCheck.isSummer) reason = 'during CPS summer break (no school in session)';
+      else if (szCheck.isCpsHoliday) reason = 'on a CPS non-attendance day';
+
+      cameraFindings.push(
+        `SCHOOL ZONE TIMING: This citation was issued on ${szCheck.dayOfWeek}, ${violationDate}, which is ${reason}. ` +
+        `If this camera is located in a school zone (near a school, not a park), speed camera enforcement should only be active ` +
+        `on school days during authorized hours. School was not in session on this date, and therefore the camera should not have been actively enforcing.`
+      );
+    }
+
+    // Weather findings for camera tickets
+    if (automatedEvidence.weather.data?.isRelevantForDefense) {
+      cameraFindings.push(
+        `WEATHER CONDITIONS: Weather records show ${automatedEvidence.weather.data.summary} on the date of this citation. ` +
+        `Adverse weather conditions may have affected camera accuracy or visibility.`
+      );
+    }
+
+    if (cameraFindings.length > 0) {
+      content += '\n\nADDITIONAL FINDINGS FROM AUTOMATED ANALYSIS:\n\n' + cameraFindings.map((f, i) => `${i + 1}. ${f}`).join('\n\n');
+    }
+  }
 
   const fullLetter = `${today}
 
@@ -1367,7 +1587,17 @@ async function processFoundTicket(
 
   console.log(`      Created ticket ${ticket.ticket_number} (${violationType}, $${amount || 0})`);
 
-  // Generate contest letter
+  // Gather ALL automated evidence FIRST (weather, FOIA, GPS, Street View, alerts, camera checks, etc.)
+  // This runs before letter generation so camera check findings can be injected into the letter.
+  console.log('      Gathering automated evidence...');
+  const automatedEvidence = await gatherAutomatedEvidence(
+    user_id,
+    violationType,
+    violationDate,
+    plate.toUpperCase(),
+  );
+
+  // Generate contest letter (after evidence gathering so camera check findings can be injected)
   const letterProfile = {
     full_name: profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Vehicle Owner',
     first_name: profile?.first_name || null,
@@ -1389,7 +1619,8 @@ async function processFoundTicket(
       plate: plate.toUpperCase(),
       state: state.toUpperCase(),
     },
-    letterProfile
+    letterProfile,
+    automatedEvidence,
   );
 
   const { error: letterError } = await supabaseAdmin
@@ -1409,15 +1640,6 @@ async function processFoundTicket(
   } else {
     console.log(`      Generated contest letter (${defenseType})`);
   }
-
-  // Gather ALL automated evidence (weather, FOIA, GPS, Street View, alerts, etc.)
-  console.log('      Gathering automated evidence...');
-  const automatedEvidence = await gatherAutomatedEvidence(
-    user_id,
-    violationType,
-    violationDate,
-    plate.toUpperCase(),
-  );
 
   // Store evidence findings in the audit log for reference
   await supabaseAdmin
@@ -1444,6 +1666,14 @@ async function processFoundTicket(
           imageDate: automatedEvidence.streetView.imageDate,
         } : null,
         alertSubscriptions: automatedEvidence.alertSubscriptions.alertTypes,
+        cameraCheck: automatedEvidence.cameraCheck.checked ? {
+          violationType: automatedEvidence.cameraCheck.violationType,
+          schoolZoneDefenseApplicable: automatedEvidence.cameraCheck.schoolZoneCheck.defenseApplicable,
+          isSchoolDay: automatedEvidence.cameraCheck.schoolZoneCheck.isSchoolDay,
+          isWeekend: automatedEvidence.cameraCheck.schoolZoneCheck.isWeekend,
+          isSummer: automatedEvidence.cameraCheck.schoolZoneCheck.isSummer,
+          isCpsHoliday: automatedEvidence.cameraCheck.schoolZoneCheck.isCpsHoliday,
+        } : null,
       },
       performed_by: 'portal_scraper',
     });
