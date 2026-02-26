@@ -58,7 +58,7 @@ interface UserProfile {
 }
 
 /**
- * Use AI (OpenAI GPT-4o-mini) to professionally integrate user evidence into contest letter.
+ * Use AI (Claude Sonnet) to professionally integrate user evidence into contest letter.
  * When a kit evaluation is available, the AI uses the kit's defense strategy instead of guessing.
  */
 async function regenerateLetterWithAI(
@@ -68,19 +68,18 @@ async function regenerateLetterWithAI(
   hasAttachments: boolean,
   kitEvaluation?: ContestEvaluation | null
 ): Promise<string> {
-  // Check for OpenAI API key
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   console.log('=== AI LETTER REGENERATION ===');
-  console.log('OPENAI_API_KEY exists:', !!apiKey);
+  console.log('ANTHROPIC_API_KEY exists:', !!apiKey);
   console.log('Original letter length:', originalLetter?.length || 0);
   console.log('User evidence length:', userEvidence?.length || 0);
 
   if (!apiKey) {
-    console.log('No OPENAI_API_KEY found, using basic evidence integration');
+    console.log('No ANTHROPIC_API_KEY found, using basic evidence integration');
     return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
   }
 
-  console.log('OPENAI_API_KEY found, attempting GPT-4o-mini integration...');
+  console.log('ANTHROPIC_API_KEY found, attempting Claude Sonnet integration...');
 
   // Clean up user evidence first
   const cleanedEvidence = cleanUserEvidence(userEvidence);
@@ -160,43 +159,43 @@ ${hasAttachments ? 'The user has attached supporting documentation (screenshot/p
 Please rewrite the contest letter integrating this evidence professionally. Return ONLY the letter text.`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
         messages: [
           {
             role: 'user',
             content: prompt
           }
         ],
-        max_tokens: 2000,
-        temperature: 0.7,
       }),
     });
 
-    console.log('OpenAI API response status:', response.status);
+    console.log('Anthropic API response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
+      console.error('Anthropic API error:', response.status, errorText);
       return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
     }
 
     const data = await response.json();
-    console.log('OpenAI API response received');
-    const newLetter = data.choices?.[0]?.message?.content?.trim();
+    console.log('Anthropic API response received');
+    const newLetter = data.content?.[0]?.text?.trim();
 
     if (!newLetter || newLetter.length < 200) {
       console.error('AI returned invalid letter, length:', newLetter?.length);
       return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
     }
 
-    console.log('Successfully generated AI-enhanced contest letter with GPT-4o-mini, length:', newLetter.length);
+    console.log('Successfully generated AI-enhanced contest letter with Claude Sonnet 4, length:', newLetter.length);
     return newLetter;
 
   } catch (error: any) {
@@ -396,9 +395,22 @@ DEFENSE STRATEGY (from contest kit policy engine — USE THIS):
     guidance += `- Backup defense: "${backup.name}" (${Math.round(backup.winRate * 100)}% win rate) — include as alternative if space allows\n`;
   }
 
-  // Evidence checklist — what's strong and what's missing
-  const provided = evaluation.evidenceChecklist.filter(e => e.provided);
-  const missing = evaluation.evidenceChecklist.filter(e => !e.provided);
+  // Evidence checklist — filter to items relevant to the selected argument.
+  // Don't tell the AI about "stolen vehicle report" when the defense is "signage issue".
+  const supportingIds = new Set(arg.supportingEvidence || []);
+  const relevantEvidence = evaluation.evidenceChecklist.filter(e => {
+    if (supportingIds.has(e.id)) return true;
+    if (e.impactScore >= 0.25) {
+      const situationalIds = ['medical_documentation', 'police_report', 'stolen_vehicle_report',
+        'emergency_documentation', 'tow_receipt', 'breakdown_documentation'];
+      if (situationalIds.includes(e.id)) return false;
+      return true;
+    }
+    return false;
+  });
+
+  const provided = relevantEvidence.filter(e => e.provided);
+  const missing = relevantEvidence.filter(e => !e.provided);
 
   if (provided.length > 0) {
     guidance += `\nSTRONG EVIDENCE (user provided — emphasize these):\n`;
