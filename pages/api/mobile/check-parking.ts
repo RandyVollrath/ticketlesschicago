@@ -140,11 +140,17 @@ export default async function handler(
     });
   }
 
-  // Accept optional accuracy and confidence from mobile client
+  // Accept optional accuracy, confidence, and heading from mobile client
   const accuracyMeters = parseFloat(
     (req.method === 'GET' ? req.query.accuracy : req.body.accuracy_meters) as string
   ) || undefined;
   const confidence = (req.method === 'GET' ? req.query.confidence : req.body.confidence) as string || undefined;
+  // Heading in degrees (0-360, clockwise from true north). Used for street disambiguation
+  // at intersections: if heading is ~0/180 (N/S), the car is on a N-S street; if ~90/270 (E/W), E-W street.
+  const headingDeg = parseFloat(
+    (req.method === 'GET' ? req.query.heading : req.body.heading) as string
+  );
+  const hasHeading = !isNaN(headingDeg) && headingDeg >= 0 && headingDeg < 360;
 
   try {
     // Step 1: Attempt to snap GPS coordinate to nearest known street segment.
@@ -178,22 +184,65 @@ export default async function handler(
         );
 
         if (!snapError && snapData && snapData.length > 0 && snapData[0].was_snapped) {
-          const snap = snapData[0];
-
-          // Only apply snap if the correction is meaningful but not too large.
-          // If snap distance > reported accuracy, GPS was probably right and we'd be making it worse.
+          let candidates = snapData.filter((s: any) => s.was_snapped);
           const maxSnapDistance = accuracyMeters ? Math.max(accuracyMeters, 30) : 40;
 
-          if (snap.snap_distance_meters <= maxSnapDistance) {
-            checkLat = snap.snapped_lat;
-            checkLng = snap.snapped_lng;
-            snapResult = {
-              wasSnapped: true,
-              snapDistanceMeters: snap.snap_distance_meters,
-              streetName: snap.street_name,
-              snapSource: snap.snap_source,
-            };
-            console.log(`[check-parking] Snapped ${snap.snap_distance_meters.toFixed(1)}m to ${snap.street_name} (${snap.snap_source})`);
+          // Filter by max snap distance
+          candidates = candidates.filter((s: any) => s.snap_distance_meters <= maxSnapDistance);
+
+          if (candidates.length > 0) {
+            let bestCandidate = candidates[0]; // Default: closest
+
+            // Heading-based street disambiguation using Chicago's grid system.
+            // Chicago streets follow a strict grid: streets prefixed W/E run east-west,
+            // streets prefixed N/S run north-south. If we have heading AND multiple
+            // candidates (or a single candidate whose orientation doesn't match heading),
+            // we can pick the right street.
+            //
+            // Example: User parked on Wolcott (N-S) near Lawrence (E-W).
+            // If heading is ~0°/180° (N/S), prefer the N/S street.
+            if (hasHeading && candidates.length > 1) {
+              const headingIsNS = isHeadingNorthSouth(headingDeg);
+              const headingDir = headingIsNS ? 'N-S' : 'E-W';
+
+              for (const c of candidates) {
+                const streetDir = getChicagoStreetOrientation(c.street_name);
+                if (streetDir === headingDir) {
+                  bestCandidate = c;
+                  console.log(`[check-parking] Heading disambiguation: ${headingDeg.toFixed(0)}° (${headingDir}) → chose ${c.street_name} over ${candidates[0].street_name}`);
+                  break;
+                }
+              }
+            } else if (hasHeading && candidates.length === 1) {
+              // Single candidate — verify heading alignment. If mismatched, SKIP the snap
+              // entirely and use original coordinates. The reverse geocode (Nominatim/Google)
+              // will determine the street from the raw GPS, which is often correct for the
+              // street name even when offset by 10-30m.
+              //
+              // Example: Near Lawrence (E-W) & Wolcott (N-S) intersection:
+              //   - Snap picks Lawrence (closest snow route at 8m)
+              //   - Heading is 170° (south) → N-S street
+              //   - Mismatch! Skip snap → reverse geocode finds "Wolcott Ave" ✓
+              const streetDir = getChicagoStreetOrientation(candidates[0].street_name);
+              const headingDir = isHeadingNorthSouth(headingDeg) ? 'N-S' : 'E-W';
+              if (streetDir && streetDir !== headingDir) {
+                console.log(`[check-parking] Heading mismatch: heading ${headingDeg.toFixed(0)}° (${headingDir}) but snap target is ${candidates[0].street_name} (${streetDir}). Skipping snap — using original coordinates for reverse geocode.`);
+                // Don't apply this candidate — fall through with checkLat/checkLng unchanged
+                bestCandidate = null as any;
+              }
+            }
+
+            if (bestCandidate) {
+              checkLat = bestCandidate.snapped_lat;
+              checkLng = bestCandidate.snapped_lng;
+              snapResult = {
+                wasSnapped: true,
+                snapDistanceMeters: bestCandidate.snap_distance_meters,
+                streetName: bestCandidate.street_name,
+                snapSource: bestCandidate.snap_source,
+              };
+              console.log(`[check-parking] Snapped ${bestCandidate.snap_distance_meters.toFixed(1)}m to ${bestCandidate.street_name} (${bestCandidate.snap_source})`);
+            }
           }
         }
       } catch (snapErr) {
@@ -322,4 +371,95 @@ export default async function handler(
       error: sanitizeErrorMessage(error),
     });
   }
+}
+
+// =====================================================
+// Heading-based street disambiguation helpers
+// =====================================================
+
+/**
+ * Determine if heading (0-360°, clockwise from north) indicates N-S travel.
+ * N-S: heading within 45° of 0° (north) or 180° (south)
+ * E-W: heading within 45° of 90° (east) or 270° (west)
+ */
+function isHeadingNorthSouth(headingDeg: number): boolean {
+  // Normalize to 0-360
+  const h = ((headingDeg % 360) + 360) % 360;
+  // N-S if within 45° of 0/360 or 180
+  return (h <= 45 || h >= 315 || (h >= 135 && h <= 225));
+}
+
+/**
+ * Determine a Chicago street's orientation from its name.
+ * Chicago grid convention:
+ *   - Streets prefixed "W " or "E " run EAST-WEST (e.g., "W LAWRENCE AVE")
+ *   - Streets prefixed "N " or "S " run NORTH-SOUTH (e.g., "N WOLCOTT AVE")
+ *   - Some streets lack a prefix — check common known patterns
+ *
+ * Returns 'N-S', 'E-W', or null if unknown.
+ */
+function getChicagoStreetOrientation(streetName: string | null): 'N-S' | 'E-W' | null {
+  if (!streetName) return null;
+  const name = streetName.trim().toUpperCase();
+
+  // Chicago directional prefix convention
+  if (name.startsWith('W ') || name.startsWith('E ')) return 'E-W';
+  if (name.startsWith('N ') || name.startsWith('S ')) return 'N-S';
+
+  // Some streets in the data may use full words
+  if (name.startsWith('WEST ') || name.startsWith('EAST ')) return 'E-W';
+  if (name.startsWith('NORTH ') || name.startsWith('SOUTH ')) return 'N-S';
+
+  // Fallback: major Chicago streets with known orientations
+  // (These are streets that might appear without direction prefix in some data sources)
+  const ewStreets = [
+    'MADISON', 'WASHINGTON', 'RANDOLPH', 'LAKE', 'FULTON',
+    'CHICAGO', 'DIVISION', 'NORTH', 'ARMITAGE', 'FULLERTON',
+    'DIVERSEY', 'BELMONT', 'ADDISON', 'IRVING PARK', 'MONTROSE',
+    'LAWRENCE', 'FOSTER', 'BRYN MAWR', 'DEVON', 'TOUHY',
+    'HOWARD', 'ROOSEVELT', 'CERMAK', 'PERSHING', '31ST',
+    '35TH', '43RD', '47TH', '51ST', '55TH', '63RD', '67TH',
+    '71ST', '75TH', '79TH', '83RD', '87TH', '95TH', '103RD',
+    '111TH', '115TH', '119TH', '127TH', 'GRAND', 'KINZIE',
+    'HUBBARD', 'ERIE', 'OHIO', 'ONTARIO', 'HURON', 'SUPERIOR',
+    'AUGUSTA', 'CORTEZ', 'THOMAS', 'HADDON', 'HIRSCH', 'LEMOYNE',
+    'WABANSIA', 'BLOOMINGDALE', 'CORTLAND', 'SHAKESPEARE', 'DICKENS',
+    'WEBSTER', 'BELDEN', 'GRANT', 'WRIGHTWOOD', 'LILL',
+    'BARRY', 'NELSON', 'WELLINGTON', 'SCHOOL', 'ROSCOE',
+    'HENDERSON', 'CORNELIA', 'EDDY', 'PATTERSON', 'BYRON',
+    'GRACE', 'WARNER', 'BERTEAU', 'BELLE PLAINE', 'CUYLER',
+    'SUNNYSIDE', 'AINSLIE', 'ARGYLE', 'WINONA', 'CARMEN',
+    'BALMORAL', 'CATALPA', 'RASCHER', 'OLIVE', 'GLENLAKE',
+    'GRANVILLE', 'ROSEMONT', 'FARRAGUT', 'PETERSON', 'THORNDALE',
+  ];
+  const nsStreets = [
+    'STATE', 'DEARBORN', 'CLARK', 'LASALLE', 'WELLS',
+    'FRANKLIN', 'WABASH', 'MICHIGAN', 'HALSTED', 'GREEN',
+    'PEORIA', 'SANGAMON', 'MORGAN', 'RACINE', 'ASHLAND',
+    'PAULINA', 'HERMITAGE', 'WOOD', 'WOLCOTT', 'DAMEN',
+    'HOYNE', 'LEAVITT', 'OAKLEY', 'WESTERN', 'CALIFORNIA',
+    'FAIRFIELD', 'WASHTENAW', 'SACRAMENTO', 'RICHMOND', 'FRANCISCO',
+    'MOZART', 'KEDZIE', 'SPAULDING', 'CHRISTIANA', 'ST LOUIS',
+    'DRAKE', 'CENTRAL PARK', 'LAWNDALE', 'HAMLIN', 'AVERS',
+    'SPRINGFIELD', 'HOMAN', 'TRUMBULL', 'KARLOV', 'PULASKI',
+    'KEELER', 'TRIPP', 'KILDARE', 'KOSTNER', 'KOLMAR',
+    'KILPATRICK', 'LARAMIE', 'CICERO', 'LAVERGNE', 'LOCKWOOD',
+    'LONG', 'PINE', 'LOTUS', 'LEAMINGTON', 'LECLAIRE',
+    'LAPORTE', 'MENARD', 'AUSTIN', 'MASON', 'NEVA',
+    'NEWLAND', 'OAK PARK', 'HARLEM', 'CUMBERLAND', 'CANFIELD',
+    'CENTRAL', 'NAGLE', 'NORDICA', 'OKETO', 'ORIOLE',
+    'OVERHILL', 'SAYRE', 'SHEFFIELD', 'SEMINARY', 'KENMORE',
+    'WINTHROP', 'BROADWAY', 'SHERIDAN', 'LAKE SHORE',
+    'SOUTHPORT', 'GREENVIEW', 'BOSWORTH', 'WAYNE', 'CLIFTON',
+    'MAGNOLIA', 'MALDEN', 'BEACON', 'MARSHFIELD', 'LINCOLN',
+  ];
+
+  for (const st of ewStreets) {
+    if (name.includes(st)) return 'E-W';
+  }
+  for (const st of nsStreets) {
+    if (name.includes(st)) return 'N-S';
+  }
+
+  return null;
 }
