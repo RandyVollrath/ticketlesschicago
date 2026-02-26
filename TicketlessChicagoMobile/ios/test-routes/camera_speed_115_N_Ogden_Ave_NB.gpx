@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="TicketlessChicago TestRouteGenerator"
+     xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>speed camera: 115 N Ogden Ave (NB)</name>
+    <desc>Auto-generated test route for parking/camera detection testing</desc>
+    <time>2026-02-26T16:33:17.569Z</time>
+  </metadata>
+  <trk>
+    <name>speed camera: 115 N Ogden Ave (NB)</name>
+    <trkseg>
+      <trkpt lat="41.8787034" lon="-87.6641000">
+        <time>2026-02-26T16:33:17.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8788222" lon="-87.6641000">
+        <time>2026-02-26T16:33:18.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8789409" lon="-87.6641000">
+        <time>2026-02-26T16:33:19.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8790597" lon="-87.6641000">
+        <time>2026-02-26T16:33:20.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8791785" lon="-87.6641000">
+        <time>2026-02-26T16:33:21.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8792973" lon="-87.6641000">
+        <time>2026-02-26T16:33:22.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8794161" lon="-87.6641000">
+        <time>2026-02-26T16:33:23.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8795348" lon="-87.6641000">
+        <time>2026-02-26T16:33:24.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8796536" lon="-87.6641000">
+        <time>2026-02-26T16:33:25.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8797724" lon="-87.6641000">
+        <time>2026-02-26T16:33:26.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8798912" lon="-87.6641000">
+        <time>2026-02-26T16:33:27.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8800100" lon="-87.6641000">
+        <time>2026-02-26T16:33:28.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8801287" lon="-87.6641000">
+        <time>2026-02-26T16:33:29.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8802475" lon="-87.6641000">
+        <time>2026-02-26T16:33:30.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8803663" lon="-87.6641000">
+        <time>2026-02-26T16:33:31.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8804851" lon="-87.6641000">
+        <time>2026-02-26T16:33:32.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8806038" lon="-87.6641000">
+        <time>2026-02-26T16:33:33.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8807226" lon="-87.6641000">
+        <time>2026-02-26T16:33:34.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8808414" lon="-87.6641000">
+        <time>2026-02-26T16:33:35.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8809602" lon="-87.6641000">
+        <time>2026-02-26T16:33:36.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8810790" lon="-87.6641000">
+        <time>2026-02-26T16:33:37.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8811977" lon="-87.6641000">
+        <time>2026-02-26T16:33:38.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8813165" lon="-87.6641000">
+        <time>2026-02-26T16:33:39.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8814353" lon="-87.6641000">
+        <time>2026-02-26T16:33:40.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8815541" lon="-87.6641000">
+        <time>2026-02-26T16:33:41.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8816729" lon="-87.6641000">
+        <time>2026-02-26T16:33:42.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8817916" lon="-87.6641000">
+        <time>2026-02-26T16:33:43.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8819104" lon="-87.6641000">
+        <time>2026-02-26T16:33:44.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8820292" lon="-87.6641000">
+        <time>2026-02-26T16:33:45.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8821480" lon="-87.6641000">
+        <time>2026-02-26T16:33:46.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8822667" lon="-87.6641000">
+        <time>2026-02-26T16:33:47.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8823855" lon="-87.6641000">
+        <time>2026-02-26T16:33:48.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8825043" lon="-87.6641000">
+        <time>2026-02-26T16:33:49.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8826231" lon="-87.6641000">
+        <time>2026-02-26T16:33:50.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8827419" lon="-87.6641000">
+        <time>2026-02-26T16:33:51.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8828606" lon="-87.6641000">
+        <time>2026-02-26T16:33:52.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8829794" lon="-87.6641000">
+        <time>2026-02-26T16:33:53.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8830982" lon="-87.6641000">
+        <time>2026-02-26T16:33:54.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8832170" lon="-87.6641000">
+        <time>2026-02-26T16:33:55.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8833357" lon="-87.6641000">
+        <time>2026-02-26T16:33:56.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8834545" lon="-87.6641000">
+        <time>2026-02-26T16:33:57.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8835733" lon="-87.6641000">
+        <time>2026-02-26T16:33:58.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8836921" lon="-87.6641000">
+        <time>2026-02-26T16:33:59.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8838109" lon="-87.6641000">
+        <time>2026-02-26T16:34:00.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8839296" lon="-87.6641000">
+        <time>2026-02-26T16:34:01.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8840484" lon="-87.6641000">
+        <time>2026-02-26T16:34:02.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8841672" lon="-87.6641000">
+        <time>2026-02-26T16:34:03.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8842860" lon="-87.6641000">
+        <time>2026-02-26T16:34:04.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8844048" lon="-87.6641000">
+        <time>2026-02-26T16:34:05.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8845235" lon="-87.6641000">
+        <time>2026-02-26T16:34:06.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8846423" lon="-87.6641000">
+        <time>2026-02-26T16:34:07.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8847611" lon="-87.6641000">
+        <time>2026-02-26T16:34:08.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8848799" lon="-87.6641000">
+        <time>2026-02-26T16:34:09.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+      <trkpt lat="41.8849986" lon="-87.6641000">
+        <time>2026-02-26T16:34:10.569Z</time>
+        <speed>13.40</speed>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
