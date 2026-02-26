@@ -50,7 +50,7 @@ export interface ArgumentTemplate {
   /** Evidence that strengthens this argument */
   supportingEvidence: string[];
   /** Category of argument for organization */
-  category: 'procedural' | 'signage' | 'emergency' | 'weather' | 'technical' | 'circumstantial' | 'visibility';
+  category: 'procedural' | 'signage' | 'emergency' | 'weather' | 'technical' | 'circumstantial' | 'visibility' | 'compliance';
 }
 
 export interface ArgumentCondition {
