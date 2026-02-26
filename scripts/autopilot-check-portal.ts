@@ -874,6 +874,170 @@ function buildValueDemonstrationHtml(evidence: AutomatedEvidence, violationType:
   `;
 }
 
+/**
+ * Build HTML section showing the user's personalized defense strategy
+ * from the contest kit evaluation. Shows which argument was selected,
+ * what evidence would strengthen it, and what's still needed.
+ */
+function buildDefenseStrategyHtml(automatedEvidence: AutomatedEvidence): string {
+  const kitEval = automatedEvidence.kitEvaluation;
+  if (!kitEval.checked || !kitEval.evaluation) return '';
+
+  const evaluation = kitEval.evaluation;
+  const selectedArg = evaluation.selectedArgument;
+  const winPct = Math.round(evaluation.estimatedWinRate * 100);
+  const argWinPct = Math.round(selectedArg.winRate * 100);
+
+  // Separate evidence into provided and needed
+  const providedEvidence = evaluation.evidenceChecklist.filter(e => e.provided);
+  const neededEvidence = evaluation.evidenceChecklist.filter(e => !e.provided);
+
+  // Sort needed evidence by impact score (highest first)
+  neededEvidence.sort((a, b) => b.impactScore - a.impactScore);
+
+  // Build the "evidence you can provide" rows
+  const neededEvidenceHtml = neededEvidence.slice(0, 5).map((item, i) => {
+    const impactLabel = item.impactScore >= 0.4 ? 'HIGH IMPACT' :
+                        item.impactScore >= 0.2 ? 'MEDIUM IMPACT' : 'HELPFUL';
+    const impactColor = item.impactScore >= 0.4 ? '#dc2626' :
+                        item.impactScore >= 0.2 ? '#d97706' : '#6b7280';
+    const isTopItem = i === 0;
+    return `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px 16px; vertical-align: top;">
+          <p style="margin: 0 0 4px; font-weight: ${isTopItem ? '700' : '600'}; color: #111827; font-size: 14px;">
+            ${isTopItem ? '&#9733; ' : ''}${item.name}
+          </p>
+          <p style="margin: 0; color: #6b7280; font-size: 12px; line-height: 1.4;">
+            ${item.description}
+          </p>
+          ${item.tips && item.tips.length > 0 ? `
+            <p style="margin: 4px 0 0; color: #4b5563; font-size: 12px; font-style: italic;">
+              Tip: ${item.tips[0]}
+            </p>
+          ` : ''}
+        </td>
+        <td style="padding: 12px 8px; vertical-align: top; text-align: right; white-space: nowrap;">
+          <span style="display: inline-block; background: ${impactColor}15; color: ${impactColor}; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px; border: 1px solid ${impactColor}30;">
+            ${impactLabel}
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Build the "evidence we already have" rows
+  const providedEvidenceHtml = providedEvidence.length > 0 ? `
+    <div style="padding: 12px 16px; background: #f0fdf4; border-top: 1px solid #bbf7d0;">
+      <p style="margin: 0 0 8px; font-weight: 600; color: #065f46; font-size: 13px;">Evidence We Already Have:</p>
+      ${providedEvidence.map(item => `
+        <p style="margin: 0 0 4px; color: #047857; font-size: 12px;">&#10003; ${item.name}</p>
+      `).join('')}
+    </div>
+  ` : '';
+
+  // Build warnings section
+  const warningsHtml = evaluation.warnings.length > 0 ? `
+    <div style="padding: 12px 16px; background: #fef2f2; border-top: 1px solid #fecaca;">
+      <p style="margin: 0 0 8px; font-weight: 600; color: #991b1b; font-size: 13px;">Important Notes:</p>
+      ${evaluation.warnings.map(w => `
+        <p style="margin: 0 0 4px; color: #7f1d1d; font-size: 12px;">&#9888; ${w}</p>
+      `).join('')}
+    </div>
+  ` : '';
+
+  // Category display name
+  const categoryNames: Record<string, string> = {
+    procedural: 'Procedural Defense',
+    signage: 'Signage Defense',
+    emergency: 'Emergency Defense',
+    weather: 'Weather Defense',
+    technical: 'Technical Defense',
+    circumstantial: 'Circumstantial Defense',
+    visibility: 'Visibility Defense',
+    compliance: 'Compliance Defense',
+  };
+  const categoryDisplay = categoryNames[selectedArg.category] || 'Defense Strategy';
+
+  // Backup argument note
+  const backupHtml = evaluation.backupArgument && evaluation.backupArgument.id !== selectedArg.id ? `
+    <p style="margin: 8px 0 0; color: #4b5563; font-size: 12px;">
+      Backup strategy: <strong>${evaluation.backupArgument.name}</strong> (${Math.round(evaluation.backupArgument.winRate * 100)}% win rate)
+    </p>
+  ` : '';
+
+  // Most impactful missing item callout
+  const topNeeded = neededEvidence[0];
+  const topNeededCallout = topNeeded ? `
+    <div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 16px 16px 0;">
+      <p style="margin: 0; color: #92400e; font-size: 14px; font-weight: 700;">
+        &#9733; The #1 Thing That Would Strengthen Your Case:
+      </p>
+      <p style="margin: 8px 0 0; color: #92400e; font-size: 14px; line-height: 1.5;">
+        <strong>${topNeeded.name}</strong> — ${topNeeded.description}
+        ${topNeeded.example ? `<br/><span style="font-size: 12px; color: #78716c;">Example: ${topNeeded.example}</span>` : ''}
+      </p>
+    </div>
+  ` : '';
+
+  return `
+    <div style="margin: 24px 0; border: 2px solid #7c3aed; border-radius: 12px; overflow: hidden;">
+      <div style="background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%); padding: 20px;">
+        <h3 style="margin: 0; color: white; font-size: 18px; font-weight: 700;">
+          Your Personalized Defense Strategy
+        </h3>
+        <p style="margin: 8px 0 0; color: #ddd6fe; font-size: 14px;">
+          Based on your ticket details, here's the strategy we've selected for you
+        </p>
+      </div>
+      <div style="padding: 20px; background: white;">
+        <div style="display: flex; margin-bottom: 16px;">
+          <div style="flex: 1;">
+            <p style="margin: 0 0 4px; color: #6b7280; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">
+              ${categoryDisplay}
+            </p>
+            <p style="margin: 0; color: #111827; font-size: 18px; font-weight: 700;">
+              &ldquo;${selectedArg.name}&rdquo;
+            </p>
+            <p style="margin: 8px 0 0; color: #6b7280; font-size: 13px;">
+              This argument has a <strong style="color: ${argWinPct >= 50 ? '#059669' : argWinPct >= 30 ? '#d97706' : '#dc2626'};">${argWinPct}% historical win rate</strong>
+              when used for this violation type.
+              ${neededEvidence.length > 0
+                ? `With the right evidence from you, your odds could be even better.`
+                : `We have strong evidence to support this defense.`}
+            </p>
+            ${backupHtml}
+          </div>
+        </div>
+        ${topNeededCallout}
+      </div>
+      ${neededEvidence.length > 0 ? `
+        <div style="border-top: 2px solid #ede9fe;">
+          <div style="padding: 16px; background: #faf5ff;">
+            <h4 style="margin: 0; color: #5b21b6; font-size: 15px; font-weight: 700;">
+              Evidence That Strengthens This Defense
+            </h4>
+            <p style="margin: 4px 0 0; color: #7c3aed; font-size: 12px;">
+              Reply to this email with any of the following — each one improves your odds
+            </p>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; background: white;">
+            ${neededEvidenceHtml}
+          </table>
+        </div>
+      ` : ''}
+      ${providedEvidenceHtml}
+      ${warningsHtml}
+      <div style="padding: 12px 16px; background: #f5f3ff; border-top: 1px solid #ede9fe;">
+        <p style="margin: 0; color: #6d28d9; font-size: 12px; line-height: 1.5;">
+          We selected this strategy from ${kitEval.kitName ? `our <strong>${kitEval.kitName}</strong> defense kit` : 'our defense library'} based on your specific ticket details.
+          Your contest letter will use this specialized argument instead of a generic template.
+        </p>
+      </div>
+    </div>
+  `;
+}
+
 function mapViolationType(description: string): string {
   const lower = description.toLowerCase();
   for (const [key, value] of Object.entries(VIOLATION_TYPE_MAP)) {
@@ -1329,8 +1493,10 @@ async function sendEvidenceRequestEmail(
 
   // Build the "Here's What We Did For You" section — shows ALL automated checks
   let valueDemoHtml = '';
+  let defenseStrategyHtml = '';
   if (automatedEvidence) {
     valueDemoHtml = buildValueDemonstrationHtml(automatedEvidence, violationType);
+    defenseStrategyHtml = buildDefenseStrategyHtml(automatedEvidence);
   }
 
   // Build weather-specific defense callout (separate from the value demo, gives actionable detail)
@@ -1387,7 +1553,7 @@ async function sendEvidenceRequestEmail(
     receiptForwardingHtml = `
       <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
-          ${violationType === 'no_city_sticker' ? "Don't Have a City Sticker? BUY ONE NOW" : "Haven't Renewed? DO IT NOW"}
+          ${violationType === 'no_city_sticker' ? "Don't Have a City Sticker? Get One Now" : "Haven't Renewed? Renew Now"}
         </h3>
         <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
           ${violationType === 'no_city_sticker'
@@ -1419,15 +1585,14 @@ async function sendEvidenceRequestEmail(
       </div>
       ${violationType === 'no_city_sticker' ? `
       <div style="background: #eff6ff; border: 1px solid #3b82f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
-        <h4 style="margin: 0 0 8px; color: #1e40af; font-size: 15px;">Why This Works (Chicago Municipal Code)</h4>
+        <h4 style="margin: 0 0 8px; color: #1e40af; font-size: 15px;">We Handle the Legal Details</h4>
         <p style="margin: 0 0 8px; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
-          Under <strong>&sect; 9-100-060</strong>, you must select a legally codified defense to contest any parking ticket.
-          Without one, the hearing officer must find you liable — <strong>13.6% of all city sticker losses happen because
-          people didn't select a valid defense</strong>, even when they had a legitimate case.
+          Chicago law requires a specific legal defense to contest a parking ticket.
+          Many people lose simply because they didn't select the right one.
         </p>
         <p style="margin: 0; color: #1e3a8a; font-size: 13px; line-height: 1.6;">
-          <strong>We handle this for you.</strong> We select the correct legal defense and pair it with your evidence.
-          With the right defense + a purchase receipt, your odds improve significantly over the 72% average.
+          <strong>We handle this for you.</strong> We select the correct legal defense and pair it with your evidence
+          so you have the best chance of getting this dismissed.
         </p>
       </div>
       ` : ''}
@@ -1441,11 +1606,11 @@ async function sendEvidenceRequestEmail(
       receiptForwardingHtml = `
         <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
-            REVIEW YOUR VIOLATION ${isRedLight ? 'VIDEO' : 'PHOTOS'} NOW
+            Review Your Violation ${isRedLight ? 'Video' : 'Photos'}
           </h3>
           <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
-            The <strong>#1 reason ${isRedLight ? 'red light' : 'speed camera'} tickets get dismissed</strong> is
-            "Violation is Factually Inconsistent" — meaning the ${isRedLight ? 'photos/video don\'t' : 'photos don\'t'}
+            The most common reason ${isRedLight ? 'red light' : 'speed camera'} tickets get dismissed is
+            that the ${isRedLight ? 'photos/video don\'t' : 'photos don\'t'}
             actually prove the violation. <strong>Check if the vehicle is actually yours</strong> (make, model, color, plate).
             ${isRedLight ? 'Count the seconds of yellow light. Check if you were making a legal right turn on red.' : 'Check the speed reading against your dashcam or GPS data.'}
           </p>
@@ -1471,16 +1636,16 @@ async function sendEvidenceRequestEmail(
       receiptForwardingHtml = `
         <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
-            CHECK YOUR PARKCHICAGO APP NOW
+            Check Your ParkChicago App
           </h3>
           <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
             If you paid via the <strong>ParkChicago app</strong>, open it and screenshot your payment history showing
-            you had <strong>active time at this location</strong>. App payment records are the <strong>#1 winning evidence</strong>
+            you had <strong>active time at this location</strong>. App payment records are the strongest evidence
             for expired meter tickets. Also check if you were in the <strong>correct ParkChicago zone</strong> — zone errors
             mean you paid but the meter reader can't see it.
           </p>
           <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
-            <strong>No app payment?</strong> Did you feed a physical meter? Take a photo of the meter right now — if it's broken or malfunctioning, "Meter was Broken" is a proven dismissal reason.
+            <strong>No app payment?</strong> Did you feed a physical meter? Take a photo of the meter right now — if it's broken or malfunctioning, that's a strong defense.
           </p>
         </div>
         <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -1494,12 +1659,12 @@ async function sendEvidenceRequestEmail(
       receiptForwardingHtml = `
         <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
-            PHOTOGRAPH YOUR PERMIT NOW
+            Photograph Your Permit
           </h3>
           <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
             Take a clear photo of your <strong>residential parking permit displayed in your vehicle</strong> right now.
-            Show the permit number, zone, and expiration date. "Required Permit was Properly Displayed" is a
-            <strong>proven FOIA dismissal reason</strong>.
+            Show the permit number, zone, and expiration date. Proof that your permit was properly displayed
+            is one of the strongest defenses for this type of ticket.
           </p>
           <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
             <strong>Don't have a permit?</strong> Were you visiting a resident? Visitors can park with a temporary permit from the resident.
@@ -1511,12 +1676,12 @@ async function sendEvidenceRequestEmail(
       receiptForwardingHtml = `
         <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
-            PHOTOGRAPH YOUR PLACARD/PLATE NOW
+            Photograph Your Placard or Plate
           </h3>
           <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
             If you have a valid <strong>disability placard or disability plate</strong>, take a clear photo showing it
-            was properly displayed. Include the placard number and expiration date. "Disability Plate or Placard Properly
-            Displayed" is a <strong>proven FOIA dismissal reason</strong>. This is a <strong>$250 fine</strong> — definitely worth contesting.
+            was properly displayed. Include the placard number and expiration date. Proof that your placard was
+            displayed is one of the strongest defenses for this type of ticket.
           </p>
         </div>
       `;
@@ -1524,13 +1689,13 @@ async function sendEvidenceRequestEmail(
       receiptForwardingHtml = `
         <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
-            GO MEASURE & PHOTOGRAPH THE HYDRANT NOW
+            Measure and Photograph the Hydrant
           </h3>
           <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
             The law requires <strong>15 feet</strong> from the hydrant. Go to where you parked, measure the distance
             from the nearest hydrant, and <strong>photograph it with a measuring tape</strong>. If you were 15+ feet away,
-            this is your winning evidence. Also check: was the hydrant visible? Obscured by snow, bushes, or construction?
-            "Violation is Factually Inconsistent" is the <strong>#1 reason</strong> these tickets get dismissed.
+            this is strong evidence. Also check: was the hydrant visible? Obscured by snow, bushes, or construction?
+            Showing the facts didn't support the ticket is the most successful defense for hydrant violations.
           </p>
         </div>
       `;
@@ -1538,13 +1703,13 @@ async function sendEvidenceRequestEmail(
       receiptForwardingHtml = `
         <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
-            PHOTOGRAPH YOUR LICENSE PLATE NOW
+            Photograph Your License Plate
           </h3>
           <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
             Go take a <strong>clear photo of your license plate</strong> showing it's properly displayed and visible.
             If something was temporarily blocking it (bike rack, snow, cargo carrier), remove the obstruction first,
-            then photograph the plate. "Vehicle Defect Did Not Exist" and "Defect Corrected Before Hearing" are
-            <strong>proven FOIA dismissal reasons</strong>.
+            then photograph the plate. Showing the plate was there (or that any issue has been fixed)
+            is a strong defense for this type of ticket.
           </p>
         </div>
       `;
@@ -1558,8 +1723,8 @@ async function sendEvidenceRequestEmail(
           </p>
           <p style="margin: 0; color: #065f46; font-size: 14px; line-height: 1.6;">
             <strong>Your part:</strong> Go photograph the street cleaning signs on your block. Were they visible?
-            Missing? Obscured by trees? "Signs were Missing or Obscured" is a <strong>proven dismissal reason</strong>.
-            Reply to this email with the photos.
+            Missing? Obscured by trees? Missing or hard-to-read signs are one of the most successful defenses
+            for street cleaning tickets. Reply to this email with the photos.
           </p>
         </div>
       `;
@@ -1592,17 +1757,17 @@ async function sendEvidenceRequestEmail(
           </table>
         </div>
         ${valueDemoHtml}
+        ${defenseStrategyHtml}
         <div style="background: #f5f3ff; border: 2px solid #8b5cf6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="margin: 0 0 12px; color: #5b21b6; font-size: 18px;">We're Requesting the City's Records</h3>
+          <h3 style="margin: 0 0 12px; color: #5b21b6; font-size: 18px;">We're Gathering the Official Records</h3>
           <p style="margin: 0 0 12px; color: #6d28d9; font-size: 14px; line-height: 1.6;">
-            We've already filed an official
-            <strong>Freedom of Information Act (FOIA) request</strong> asking the city to produce the
+            We've filed an official
+            <strong>Freedom of Information Act (FOIA) request</strong> to get the
             officer's notes, photos, and device data for your ticket.
           </p>
           <p style="margin: 0 0 12px; color: #6d28d9; font-size: 14px; line-height: 1.6;">
             Under Illinois law, the city has <strong>5 business days</strong> to respond.
-            By the time we draft your contest letter, we'll already know whether
-            they have the records to support this ticket.
+            We'll use whatever we get to build the strongest defense in your contest letter.
           </p>
           <p style="margin: 0; color: #7c3aed; font-size: 13px; font-style: italic;">
             This is included automatically &mdash; you don't need to do anything.

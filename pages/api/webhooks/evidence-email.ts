@@ -3,6 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 import { verifyWebhook } from '../../../lib/webhook-verification';
 import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 import jwt from 'jsonwebtoken';
+import {
+  evaluateContest,
+  getContestKitByName,
+  VIOLATION_NAME_TO_CODE,
+  getContestKit,
+} from '../../../lib/contest-kits';
+import type { TicketFacts, UserEvidence, ContestEvaluation } from '../../../lib/contest-kits/types';
 
 const JWT_SECRET = process.env.APPROVAL_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://autopilotamerica.com';
@@ -51,13 +58,15 @@ interface UserProfile {
 }
 
 /**
- * Use AI (OpenAI GPT-4o-mini) to professionally integrate user evidence into contest letter
+ * Use AI (OpenAI GPT-4o-mini) to professionally integrate user evidence into contest letter.
+ * When a kit evaluation is available, the AI uses the kit's defense strategy instead of guessing.
  */
 async function regenerateLetterWithAI(
   originalLetter: string,
   userEvidence: string,
   ticketDetails: any,
-  hasAttachments: boolean
+  hasAttachments: boolean,
+  kitEvaluation?: ContestEvaluation | null
 ): Promise<string> {
   // Check for OpenAI API key
   const apiKey = process.env.OPENAI_API_KEY;
@@ -107,6 +116,13 @@ CRITICAL: Do NOT claim the user had a sticker if their evidence doesn't show it.
 `;
   }
 
+  // If we have a kit evaluation, build structured defense guidance that overrides generic guidance
+  let kitGuidanceText = '';
+  if (kitEvaluation) {
+    kitGuidanceText = buildKitGuidance(kitEvaluation, violationType);
+    console.log(`Kit evaluation available: "${kitEvaluation.selectedArgument.name}" (${Math.round(kitEvaluation.estimatedWinRate * 100)}% win rate)`);
+  }
+
   const prompt = `You are a legal writing expert specializing in parking ticket contest letters. Your job is to integrate user-provided evidence into an existing contest letter in a professional, persuasive manner that maximizes the chance of winning the contest.
 
 Rules:
@@ -121,6 +137,7 @@ Rules:
 9. Keep the letter concise but thorough - MUST fit on 1 page (max ~400 words in body)
 10. Do not invent facts - only use what the user provided
 11. Do NOT add any commentary, delimiters (like ---), or explanations - return ONLY the letter text
+${kitGuidanceText}
 ${violationGuidance}
 Original contest letter:
 ---
@@ -251,6 +268,182 @@ function cleanUserEvidence(text: string): string {
   }
 
   return cleaned.join('\n').trim();
+}
+
+/**
+ * Parse user evidence text + attachments into a structured UserEvidence object
+ * so the policy engine can re-evaluate which argument is best.
+ */
+function parseUserEvidence(
+  evidenceText: string,
+  hasAttachments: boolean,
+  attachmentFilenames: string[],
+  violationType: string
+): UserEvidence {
+  const text = (evidenceText || '').toLowerCase();
+  const filenames = attachmentFilenames.map(f => f.toLowerCase());
+  const hasImageAttachments = filenames.some(f =>
+    /\.(jpg|jpeg|png|gif|heic|heif|webp)$/i.test(f)
+  );
+  const hasPdfAttachments = filenames.some(f => /\.pdf$/i.test(f));
+
+  // Detect photo evidence
+  const hasPhotos = hasImageAttachments || /photo|picture|image|screenshot|attached|see attached/i.test(text);
+
+  // Detect document evidence
+  const hasDocs = hasPdfAttachments || /receipt|confirmation|document|statement|printout|certificate/i.test(text);
+  const hasReceipts = /receipt|confirmation|purchase|bought|paid|payment|renewed|renewal/i.test(text);
+
+  // Detect specific evidence types
+  const hasPoliceReport = /police report|rd number|rd#|stolen|theft/i.test(text);
+  const hasMedicalDocs = /medical|hospital|emergency room|doctor|ambulance/i.test(text);
+  const hasWitnesses = /witness|someone saw|my friend|passenger/i.test(text);
+
+  // Detect photo types based on text content
+  const photoTypes: string[] = [];
+  if (/sign|signage/i.test(text)) photoTypes.push('signage_photos');
+  if (/meter|parkchicago|park chicago/i.test(text)) photoTypes.push('meter_photo');
+  if (/placard|disability|handicap/i.test(text)) photoTypes.push('permit_photo');
+  if (/sticker|city sticker|wheel tax/i.test(text)) photoTypes.push('sticker_photo');
+  if (/hydrant/i.test(text)) photoTypes.push('location_photos');
+  if (/permit|zone/i.test(text)) photoTypes.push('permit_photo');
+  if (/plate|license/i.test(text)) photoTypes.push('registration_docs');
+  if (/location|street|block|parked/i.test(text)) photoTypes.push('location_photos');
+
+  // Detect document types
+  const docTypes: string[] = [];
+  if (/parkchicago|park chicago|app|mobile pay/i.test(text)) docTypes.push('payment_receipt');
+  if (/credit card|bank statement|charge/i.test(text)) docTypes.push('payment_receipt');
+  if (/sticker.*receipt|purchase.*sticker|bought.*sticker/i.test(text)) docTypes.push('purchase_receipt');
+  if (/renewal|renewed|registration/i.test(text)) docTypes.push('registration_docs');
+  if (/311|service request/i.test(text)) docTypes.push('311_report');
+  if (/tow|aaa|roadside/i.test(text)) docTypes.push('tow_receipt');
+  if (/sold|bill of sale|title transfer/i.test(text)) docTypes.push('bill_of_sale');
+
+  return {
+    hasPhotos,
+    photoTypes,
+    hasWitnesses,
+    witnessCount: hasWitnesses ? 1 : 0,
+    hasDocs,
+    docTypes,
+    hasReceipts,
+    hasPoliceReport,
+    hasMedicalDocs,
+    hasLocationEvidence: /gps|location|app.*park|parked.*at/i.test(text),
+  };
+}
+
+/**
+ * Re-evaluate the contest using the policy engine with updated user evidence.
+ * Returns the evaluation result which tells us the best argument to use.
+ */
+async function reEvaluateWithKit(
+  ticket: any,
+  userEvidence: UserEvidence
+): Promise<ContestEvaluation | null> {
+  const violationType = ticket.violation_type || '';
+  const violationCode = ticket.violation_code || VIOLATION_NAME_TO_CODE[violationType] || null;
+
+  if (!violationCode) return null;
+
+  const kit = getContestKit(violationCode);
+  if (!kit) return null;
+
+  const ticketFacts: TicketFacts = {
+    ticketNumber: ticket.ticket_number || '',
+    violationCode,
+    violationDescription: ticket.violation_description || '',
+    ticketDate: ticket.violation_date || '',
+    location: ticket.location || '',
+    amount: ticket.amount || 0,
+    daysSinceTicket: ticket.violation_date
+      ? Math.floor((Date.now() - new Date(ticket.violation_date).getTime()) / (1000 * 60 * 60 * 24))
+      : 0,
+    // Pass contextual facts from evidence
+    hasSignageIssue: userEvidence.photoTypes.includes('signage_photos'),
+    meterWasBroken: userEvidence.docTypes.includes('311_report'),
+    permitWasDisplayed: userEvidence.photoTypes.includes('permit_photo'),
+    hasEmergency: userEvidence.hasMedicalDocs,
+  };
+
+  try {
+    return await evaluateContest(ticketFacts, userEvidence);
+  } catch (err: any) {
+    console.error('Kit re-evaluation failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Build kit-aware guidance for the AI letter regeneration prompt.
+ * This tells the AI which defense strategy to use and which to avoid.
+ */
+function buildKitGuidance(evaluation: ContestEvaluation, violationType: string): string {
+  const arg = evaluation.selectedArgument;
+  const backup = evaluation.backupArgument;
+  const winPct = Math.round(evaluation.estimatedWinRate * 100);
+
+  let guidance = `
+DEFENSE STRATEGY (from contest kit policy engine — USE THIS):
+- Selected defense: "${arg.name}" (${Math.round(arg.winRate * 100)}% win rate)
+- Category: ${arg.category}
+- This argument was selected because it has the highest win probability given the available evidence.
+- Estimated overall win rate with evidence: ${winPct}%
+`;
+
+  if (backup && backup.id !== arg.id) {
+    guidance += `- Backup defense: "${backup.name}" (${Math.round(backup.winRate * 100)}% win rate) — include as alternative if space allows\n`;
+  }
+
+  // Evidence checklist — what's strong and what's missing
+  const provided = evaluation.evidenceChecklist.filter(e => e.provided);
+  const missing = evaluation.evidenceChecklist.filter(e => !e.provided);
+
+  if (provided.length > 0) {
+    guidance += `\nSTRONG EVIDENCE (user provided — emphasize these):\n`;
+    for (const e of provided) {
+      guidance += `- ${e.name}: ${e.description}\n`;
+    }
+  }
+
+  if (missing.length > 0) {
+    guidance += `\nMISSING EVIDENCE (do NOT claim these exist):\n`;
+    for (const e of missing.slice(0, 3)) {
+      guidance += `- ${e.name}: Not provided — do not reference\n`;
+    }
+  }
+
+  // Warnings — arguments to AVOID
+  if (evaluation.warnings.length > 0) {
+    guidance += `\nWARNINGS:\n`;
+    for (const w of evaluation.warnings) {
+      guidance += `- ${w}\n`;
+    }
+  }
+
+  if (evaluation.disqualifyReasons.length > 0) {
+    guidance += `\nCAUTION — potential issues:\n`;
+    for (const d of evaluation.disqualifyReasons) {
+      guidance += `- ${d}\n`;
+    }
+  }
+
+  // Weather defense
+  if (evaluation.weatherDefense.applicable && evaluation.weatherDefense.paragraph) {
+    guidance += `\nWEATHER DEFENSE (include this):\n${evaluation.weatherDefense.paragraph}\n`;
+  }
+
+  guidance += `
+CRITICAL RULES:
+1. Use the "${arg.name}" defense as the PRIMARY argument structure
+2. Weave the user's evidence into THIS specific defense — don't use a generic structure
+3. Only reference evidence the user actually provided — never fabricate
+4. Include "Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses"
+5. Keep the letter under 400 words in the body
+`;
+
+  return guidance;
 }
 
 /**
@@ -830,6 +1023,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`Updated ticket with evidence, status=${newStatus}`);
 
+    // Parse user evidence into structured form for policy engine
+    const attachmentFilenames = attachments.map((a: any) => a.filename || a.name || 'attachment');
+    const parsedEvidence = parseUserEvidence(
+      evidenceText,
+      attachments.length > 0,
+      attachmentFilenames,
+      ticket.violation_type || ''
+    );
+
+    console.log('Parsed user evidence:', JSON.stringify({
+      hasPhotos: parsedEvidence.hasPhotos,
+      photoTypes: parsedEvidence.photoTypes,
+      hasDocs: parsedEvidence.hasDocs,
+      docTypes: parsedEvidence.docTypes,
+      hasReceipts: parsedEvidence.hasReceipts,
+      hasPoliceReport: parsedEvidence.hasPoliceReport,
+    }));
+
+    // Re-evaluate with contest kit policy engine using user's actual evidence
+    let kitEval: ContestEvaluation | null = null;
+    try {
+      kitEval = await reEvaluateWithKit(ticket, parsedEvidence);
+      if (kitEval) {
+        console.log(`Kit re-evaluation: "${kitEval.selectedArgument.name}" (${Math.round(kitEval.estimatedWinRate * 100)}% win rate, ${Math.round(kitEval.confidence * 100)}% confidence)`);
+        console.log(`  Evidence provided: ${kitEval.evidenceChecklist.filter(e => e.provided).length}/${kitEval.evidenceChecklist.length}`);
+        if (kitEval.backupArgument) {
+          console.log(`  Backup: "${kitEval.backupArgument.name}"`);
+        }
+      }
+    } catch (err: any) {
+      console.error('Kit re-evaluation failed (non-fatal):', err.message);
+    }
+
     // Regenerate letter with AI if we have an existing letter
     let regeneratedLetterContent: string | null = null;
     let currentLetterId: string | null = letter?.id || null;
@@ -837,13 +1063,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (letter) {
       const originalLetter = letter.letter_content || letter.letter_text || '';
 
-      // Use AI to professionally integrate evidence into the letter
+      // Use AI to integrate evidence, guided by kit evaluation strategy
       regeneratedLetterContent = await regenerateLetterWithAI(
         originalLetter,
         evidenceText,
         ticket,
-        attachments.length > 0
+        attachments.length > 0,
+        kitEval
       );
+
+      // Update defense type if kit evaluation selected a different argument
+      const newDefenseType = kitEval
+        ? `kit_${kitEval.selectedArgument.id}`
+        : letter.defense_type;
 
       // Set letter status based on approval requirement
       const letterStatus = needsApproval ? 'pending_approval' : 'ready';
@@ -853,13 +1085,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .update({
           letter_content: regeneratedLetterContent,
           letter_text: regeneratedLetterContent,
+          defense_type: newDefenseType,
           status: letterStatus,
           evidence_integrated: true,
           evidence_integrated_at: new Date().toISOString(),
         })
         .eq('id', letter.id);
 
-      console.log(`Regenerated contest letter with AI-enhanced evidence integration (status=${letterStatus})`);
+      console.log(`Regenerated contest letter with kit-guided AI integration (defense=${newDefenseType}, status=${letterStatus})`);
     } else {
       // No letter exists yet — ticket was found but letter generation cron hasn't run
       // Set ticket status to 'found' temporarily so the generate-letters cron picks it up
@@ -888,6 +1121,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           email_subject: subject,
           attachment_count: attachments.length,
           needs_approval: needsApproval,
+          parsedEvidence: {
+            hasPhotos: parsedEvidence.hasPhotos,
+            photoTypes: parsedEvidence.photoTypes,
+            hasDocs: parsedEvidence.hasDocs,
+            docTypes: parsedEvidence.docTypes,
+            hasReceipts: parsedEvidence.hasReceipts,
+          },
+          kitReEvaluation: kitEval ? {
+            selectedArgument: kitEval.selectedArgument.name,
+            argumentWinRate: Math.round(kitEval.selectedArgument.winRate * 100),
+            estimatedWinRate: Math.round(kitEval.estimatedWinRate * 100),
+            confidence: Math.round(kitEval.confidence * 100),
+            evidenceProvided: kitEval.evidenceChecklist.filter(e => e.provided).length,
+            evidenceTotal: kitEval.evidenceChecklist.length,
+            backupArgument: kitEval.backupArgument?.name || null,
+          } : null,
         },
         performed_by: 'evidence_webhook',
       });
