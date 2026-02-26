@@ -9,6 +9,7 @@ import com.facebook.react.uimanager.ViewManager
  * React Native package that registers the BluetoothMonitorModule
  * native module for JS access.
  */
+@Suppress("DEPRECATION")
 class BluetoothMonitorPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
         return listOf(BluetoothMonitorModule(reactContext))

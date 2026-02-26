@@ -9,6 +9,7 @@ import com.facebook.react.uimanager.ViewManager
  * React Native package that registers the CameraAlertModule
  * native module for JS access.
  */
+@Suppress("DEPRECATION")
 class CameraAlertPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
         return listOf(CameraAlertModule(reactContext))

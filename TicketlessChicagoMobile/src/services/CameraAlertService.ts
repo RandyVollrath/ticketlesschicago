@@ -922,6 +922,13 @@ class CameraAlertServiceClass {
         // high   -> audio (with retry + fallback notification)
         // medium -> notification only (no audio spam)
         // low    -> suppress
+        //
+        // On Android, native CameraAlertModule handles all user-facing alerts
+        // (TTS + notifications) independently. JS still tracks alertedCameras
+        // for pass tracking and records ground truth, but skips delivery to
+        // avoid double notifications/speech.
+        const nativeHandlesAlerts = Platform.OS === 'android' && !!AndroidCameraAlertModule;
+
         if (confidenceTier === 'low') {
           this.tripLowConfidenceSuppressed += 1;
           this.lastAlertDeliveryFailureReason = 'suppressed_low_confidence';
@@ -946,7 +953,7 @@ class CameraAlertServiceClass {
           this.tripMediumConfidenceAlerts += 1;
           this.tripAlertsFired += 1;
           this.lastAlertDeliveryFailureReason = 'medium_confidence_notification_only';
-          if (this.alertDeliveryCallback) {
+          if (!nativeHandlesAlerts && this.alertDeliveryCallback) {
             this.alertDeliveryCallback({
               title: camera.type === 'redlight' ? 'Red-light camera ahead' : 'Speed camera ahead',
               body: `${camera.address}`,
@@ -979,7 +986,9 @@ class CameraAlertServiceClass {
         } else {
           this.tripHighConfidenceAlerts += 1;
           this.tripAlertsFired += 1;
-          void this.announceCamera(camera, distance, speed, confidenceScore, confidenceTier);
+          if (!nativeHandlesAlerts) {
+            void this.announceCamera(camera, distance, speed, confidenceScore, confidenceTier);
+          }
         }
 
         this.alertedCameras.set(index, { index, alertedAt: now });

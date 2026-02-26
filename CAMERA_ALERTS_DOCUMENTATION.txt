@@ -1,0 +1,320 @@
+================================================================================
+iOS CAMERA ALERTS DOCUMENTATION INDEX
+================================================================================
+
+EXTRACTION COMPLETED: 2026-02-26
+PURPOSE: Extract all iOS camera alert logic for Android implementation verification
+
+================================================================================
+DOCUMENTS CREATED
+================================================================================
+
+1. iOS_CAMERA_ALERTS_COMPLETE_EXTRACT.md (754 lines, 29KB)
+   PURPOSE: Complete verbatim extraction of camera alert code
+   INCLUDES:
+   - Struct definitions (NativeCameraDef)
+   - State variables & persistence keys
+   - All tuning constants (150m radius, 3.2 m/s threshold, etc.)
+   - Camera data (510 cameras)
+   - Settings configuration from JS
+   - Main proximity checking logic (core algorithm)
+   - Speed-adaptive radius calculation
+   - Heading & bearing validation
+   - Rejection loop with all checks
+   - Per-camera and global deduplication
+   - TTS implementation (AVSpeechSynthesizer)
+   - Audio session configuration
+   - Interruption handling
+   - Local notifications
+   - Red-light evidence capture
+   - Evidence retrieval/acknowledgment bridges
+   - Decision logging
+   - Edge cases & fail-safes
+   - Integration points
+
+   USAGE: Line-by-line reference when mapping iOS code to Android
+
+2. CAMERA_ALERTS_COMPARISON_GUIDE.md (467 lines, 14KB)
+   PURPOSE: Side-by-side comparison framework for iOS → Android
+   INCLUDES:
+   - 17 major comparison sections
+   - Examples of expected behavior
+   - Tuning constants table
+   - Filtering logic explanation
+   - Heading validation deep-dive
+   - TTS implementation details
+   - Evidence capture format
+   - Decision log format
+   - Edge cases table
+   - 50+ point checklist of questions about Android
+   - Action items for validation
+
+   USAGE: Check Android implementation against each section
+          Use checklist to verify feature parity
+
+3. CAMERA_ALERTS_EXTRACTION_SUMMARY.txt (259 lines, 11KB)
+   PURPOSE: Executive summary & quick reference
+   INCLUDES:
+   - High-level overview of iOS implementation
+   - Key facts & constants
+   - Critical edge cases
+   - Decision log examples
+   - Files to compare against Android
+   - How to use the documentation
+   - Known assumptions & notes
+
+   USAGE: Quick reference when explaining iOS behavior
+          Good for spotting obvious missing pieces in Android
+
+================================================================================
+QUICK REFERENCE: KEY NUMBERS TO VERIFY
+================================================================================
+
+Alert Radius:
+  - Base: 150m (minimum)
+  - Max: 250m (cap)
+  - Formula: speed × 10 seconds, clamped to 150-250m
+
+Speed Thresholds:
+  - Speed cameras: 3.2 m/s (~7.2 mph minimum)
+  - Red-light cameras: 1.0 m/s (~2.2 mph minimum)
+
+Cooldowns & Deduplication:
+  - Per-camera: 3 minutes (180 seconds)
+  - Global: 5 seconds (any alert stops new alerts for 5s)
+  - Cooldown radius clear: 400m
+
+Heading Validation:
+  - Approach tolerance: 45° (heading must match camera approach ±45°)
+  - Bearing tolerance: 30° (camera bearing must be within ±30° of heading)
+
+Time Enforcement:
+  - Speed cameras: 6:00 AM - 11:00 PM (device local time)
+  - Red-light cameras: 24/7 (no time restriction)
+
+GPS Quality:
+  - Max accuracy: 120m (reject location updates with worse accuracy)
+  - Reject triggers: accuracy ≤ 0 OR accuracy > 120m
+
+TTS:
+  - Speech rate: 0.52 (fast, clear)
+  - Volume: 0-1.0 (configurable)
+  - Mode: .playback with .duckOthers (lowers music)
+
+Red-Light Evidence:
+  - Captured for: Red-light cameras ONLY (not speed cameras)
+  - Data: 30s accelerometer trace + GPS + speed + heading
+  - Storage: UserDefaults (max 20 entries)
+  - Expiration: 24 hours
+  - Key: bg_pending_redlight_evidence_v1
+
+================================================================================
+CRITICAL TESTS FOR ANDROID PARITY
+================================================================================
+
+[ ] Camera Definition
+    Does Android have type (speed/redlight) and approaches[] fields?
+
+[ ] Tuning Constants
+    Do all numeric constants match iOS exactly?
+    (radius, speed, cooldown, tolerance values)
+
+[ ] Speed Camera Schedule
+    Is the 6am-11pm local time enforcement present?
+
+[ ] GPS Accuracy
+    Does it reject locations > 120m accuracy?
+
+[ ] Heading Validation
+    Does it have BOTH checks (approach match AND bearing ahead)?
+    Are tolerances 45° and 30°?
+
+[ ] Deduplication
+    Per-camera: 3 minutes?
+    Global: 5 seconds?
+    Cooldown radius: 400m?
+
+[ ] Rejection Reasons
+    Are they logged with same strings?
+    (speed_below_min, outside_radius, heading_mismatch, camera_not_ahead, per_camera_dedupe)
+
+[ ] TTS in Background
+    Can Android speak alerts when app is backgrounded?
+    What speech rate?
+
+[ ] Evidence Capture
+    Red-light only?
+    30s accelerometer trace?
+    Stored in SharedPreferences?
+
+[ ] Decision Logging
+    Are alerts/rejections logged?
+    Can logs be replayed for debugging?
+
+================================================================================
+HOW TO USE THESE DOCUMENTS
+================================================================================
+
+STEP 1: Read CAMERA_ALERTS_EXTRACTION_SUMMARY.txt
+   → Get the 2-minute overview of what iOS does
+
+STEP 2: Use CAMERA_ALERTS_COMPARISON_GUIDE.md
+   → Find the Android implementation sections
+   → Check each of the 17 comparison points
+   → Use the checklist to verify feature parity
+
+STEP 3: Consult iOS_CAMERA_ALERTS_COMPLETE_EXTRACT.md
+   → When you need exact code details
+   → To understand specific edge cases
+   → To verify line-by-line implementation details
+
+STEP 4: Review Critical Tests
+   → Mark off each test as Android is verified
+   → Identify any gaps or discrepancies
+
+================================================================================
+KNOWN PLATFORM DIFFERENCES
+================================================================================
+
+iOS Uses:
+  - AVSpeechSynthesizer (native Apple API)
+  - UserDefaults for persistence
+  - CLLocation.course for heading (0-360, -1 if unavailable)
+  - CoreMotion acceleration data
+  - AVAudioSession for audio control
+
+Android Likely Uses:
+  - TextToSpeech API
+  - SharedPreferences for persistence
+  - SensorManager compass/accelerometer
+  - Different audio APIs
+  
+These are implementation details, but the HIGH-LEVEL LOGIC should be identical.
+
+================================================================================
+COMMON PITFALLS TO CHECK
+================================================================================
+
+1. Speed Thresholds
+   iOS: 3.2 m/s for speed cameras (not km/h, not mph)
+   Check: Is Android using same unit and value?
+
+2. GPS Accuracy Threshold
+   iOS: Rejects ENTIRE location update if accuracy > 120m
+   Check: Does Android also reject entirely, or just degrade?
+
+3. Heading Unavailability
+   iOS: Fail-open (alert anyway) when heading = -1
+   Check: Does Android handle unavailable heading same way?
+
+4. Per-Camera Index
+   iOS: Uses camera array index for deduplication
+   Check: How does Android identify unique cameras?
+
+5. Time Window
+   iOS: Uses device local time (Calendar.current.hour)
+   Check: Is Android also using local time (not UTC)?
+
+6. Approach Mapping
+   iOS: NB=0°, EB=90°, SB=180°, WB=270°, + diagonals
+   Check: Does Android use same degree mappings?
+
+7. Bearing Calculation
+   iOS: atan2(sin(dLon)*cos(lat2), ...) formula
+   Check: Does Android use same bearing formula?
+
+8. TTS in Background
+   iOS: Native speech runs in background (unique)
+   Check: Can Android also speak when backgrounded?
+
+================================================================================
+FILES NOT EXTRACTED
+================================================================================
+
+These iOS components are OUTSIDE camera alert logic:
+  - Parking detection state machine
+  - CoreMotion integration
+  - GPS velocity calculation
+  - Accelerometer buffering
+  - Camera prewarming logic
+  - Global rate limiting outside camera checks
+
+Focus on CAMERA ALERT sections for comparison.
+
+================================================================================
+TECHNICAL NOTES
+================================================================================
+
+1. All distance calculations use Haversine formula
+   - Expected accuracy: ±0.5% over 100m+
+
+2. Angles use compass bearing convention
+   - 0° = North
+   - 90° = East
+   - 180° = South
+   - 270° = West
+
+3. Speed is always in m/s
+   - Conversion: 1 m/s ≈ 2.237 mph ≈ 3.6 km/h
+
+4. Timestamps are milliseconds (JS compatibility)
+   - Persisted as Double in UserDefaults
+
+5. Per-camera cooldown is in-memory
+   - Dictionary: alertedCameraAtByIndex[Int: Date]
+   - Cleared on app restart
+
+6. Bearing tolerance is normalized for wrap-around
+   - 350° to 10° difference = 20° (not 340°)
+
+================================================================================
+QUESTIONS? CHECK...
+================================================================================
+
+Question: Why 150m minimum alert radius?
+Answer: Ensures driver gets at least ~10s warning at slow city speeds (15 m/s)
+
+Question: Why fail-open when heading unavailable?
+Answer: Prevents missing alerts in GPS-only mode (no CoreMotion)
+
+Question: Why 3 minute per-camera cooldown?
+Answer: Prevents repetitive alerts if user circulates near same camera
+
+Question: Why reject accuracy > 120m?
+Answer: Cell-tower GPS is too inaccurate, causes false positives
+
+Question: Why speed cameras only 6am-11pm?
+Answer: Matches Chicago city ordinance enforcement hours
+
+Question: Why both approach AND bearing checks?
+Answer: Approach ensures user heading matches camera direction
+         Bearing ensures camera is actually ahead, not behind/beside
+
+Question: Why red-light evidence only?
+Answer: Speed violations less subjective; red-light has hardware timing questions
+
+Question: Why 45° approach tolerance?
+Answer: Accounts for intersection diagonal approaches (NEB, SWB, etc.)
+
+Question: Why 30° bearing tolerance?
+Answer: Accounts for multi-lane roads where camera may not be directly ahead
+
+Question: Why .duckOthers audio mode?
+Answer: Preserves music listening experience (user notices TTS but stays musical)
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Locate Android camera alert implementation
+2. Map each section from Comparison Guide to Android code
+3. Use checklist to verify feature parity
+4. Extract any discrepancies with line numbers
+5. Create Android-specific extraction document
+6. Compare decision logs from both platforms
+7. Test on physical devices with real drives
+8. Validate all rejection reasons are logged identically
+
+================================================================================
+END OF DOCUMENTATION INDEX
+================================================================================

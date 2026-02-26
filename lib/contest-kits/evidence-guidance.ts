@@ -2,7 +2,8 @@
  * Evidence Guidance System
  *
  * Provides customized evidence request questions and guidance for each ticket type.
- * Questions are designed to elicit the most useful evidence for each violation type.
+ * These are designed to elicit the MOST USEFUL evidence based on what actually
+ * wins cases according to FOIA data.
  */
 
 export interface EvidenceGuidance {
@@ -45,10 +46,10 @@ export interface EvidenceQuestion {
 export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
   expired_plates: {
     violationType: 'expired_plates',
-    emailSubject: 'Expired Plates Ticket — We Need Your Renewal Info',
-    title: 'Your Expired Plates Ticket — Here\'s What We Need',
+    emailSubject: 'Expired Plates Ticket - 76% Win Rate - We Need Your Renewal Info!',
+    title: 'Your Expired Plates Ticket Has Great Odds!',
     winRate: 0.76,
-    intro: `Expired plates tickets are very commonly dismissed when contested with the right evidence. The key is proving you either renewed on time or renewed promptly after. Let's gather what we need.`,
+    intro: `Great news - expired plates tickets have a 76% success rate when contested with the right evidence. The key is proving you either renewed on time or renewed promptly after. Let's get the evidence that wins.`,
     questions: [
       {
         text: 'Did you renew your registration BEFORE or within a few days AFTER the ticket date? Please send a screenshot of your renewal confirmation email or receipt showing the exact renewal date.',
@@ -83,10 +84,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   no_city_sticker: {
     violationType: 'no_city_sticker',
-    emailSubject: 'City Sticker Ticket ($200) — Here\'s How We Can Help',
-    title: 'Your City Sticker Ticket — Let\'s Build Your Defense',
+    emailSubject: 'City Sticker Ticket ($200) - 72% Win Rate - Action Required!',
+    title: 'Your City Sticker Ticket — 72% Win Rate With the Right Defense!',
     winRate: 0.72,
-    intro: `City sticker tickets are commonly dismissed when properly contested. We handle the legal strategy — including selecting the correct codified defense, which is required for a successful contest. If you already have a sticker, send us the receipt. If you don't, read on — buying one now can still save you the $200 fine.`,
+    intro: `City sticker tickets have a 72% success rate when properly contested. The key: you must select one of the legally codified defenses under Chicago Municipal Code § 9-100-060 — without one, you automatically lose (this accounts for 13.6% of all city sticker losses). We select the right defense for you. If you already have a sticker, send us the receipt. If you don't, read on — buying one now and using the right legal defense can still save you the $200 fine.`,
     questions: [
       {
         text: 'Do you already have a current Chicago city vehicle sticker? If yes, please send us your purchase receipt — a confirmation email, online receipt, or credit card statement showing the purchase date.',
@@ -96,7 +97,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
       },
       {
         text: 'If you DON\'T have a city sticker yet — BUY ONE NOW at https://ezbuy.chicityclerk.com/vehicle-stickers ($100-$160 depending on vehicle size). Then forward the confirmation email to us IMMEDIATELY. This is time-sensitive — you need the receipt before we mail your contest letter.',
-        whyItMatters: 'Under § 9-100-060, showing you corrected the violation before your hearing is a recognized defense. Hearing officers frequently dismiss tickets when proof of subsequent purchase is presented. The sticker costs less than the $200 fine, and you need one anyway.',
+        whyItMatters: 'Under § 9-100-060, showing you corrected the violation before your hearing is a recognized defense. A temporary affirmative defense for city stickers was in effect through 2023, and hearing officers still frequently dismiss tickets when proof of subsequent purchase is presented — our FOIA data shows this accounts for a significant share of wins. The sticker costs less than the $200 fine, and you need one anyway.',
         impactScore: 0.45,
         goodExample: '"I just purchased my city sticker online — forwarding the confirmation email now"',
       },
@@ -115,17 +116,17 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     ],
     quickTips: [
       'Already have a sticker? Send us the purchase receipt — that\'s the strongest evidence',
-      'Don\'t have one yet? Buy one at ezbuy.chicityclerk.com — the receipt is key to contesting your $200 ticket',
-      'City stickers cost $100-$160 for passenger vehicles — less than the $200 fine, and you need one anyway',
+      'Don\'t have one yet? BUY ONE NOW at ezbuy.chicityclerk.com — the receipt is key to contesting your $200 ticket',
+      'City stickers cost $100-$160 for passenger vehicles — much less than the $200 fine, and you need one anyway',
       'Forward your purchase confirmation email to us and we\'ll include it with your contest letter',
       'If you set up email forwarding with us, we\'ll automatically capture the receipt',
       'Non-Chicago residents don\'t need a sticker — just prove you live outside the city',
-      'We select the correct codified defense for you — many people lose simply because they don\'t pick one',
+      'We select the correct codified defense for you — 13.6% of people lose simply because they don\'t pick a legal defense',
       'Note: a city sticker (Chicago wheel tax) is different from your IL license plate renewal sticker',
     ],
     pitfalls: [
-      'Don\'t ignore this $200 ticket — contesting is well worth it',
-      'Don\'t write a free-form letter without selecting a codified defense — we handle this for you',
+      'Don\'t ignore this $200 ticket — the 72% win rate makes contesting worthwhile',
+      'Don\'t write a free-form letter without selecting a codified defense — the hearing officer MUST dismiss if you don\'t pick one',
       'Don\'t confuse the city sticker with your Illinois license plate renewal — they\'re separate',
       'Don\'t pay the ticket without trying to contest first — you have 21 days',
     ],
@@ -134,10 +135,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   expired_meter: {
     violationType: 'expired_meter',
-    emailSubject: 'Expired Meter Ticket — Did the Meter Work?',
-    title: 'Your Meter Ticket — Here\'s What We Need',
+    emailSubject: 'Expired Meter Ticket - 67% Win Rate - Did the Meter Work?',
+    title: 'Your Meter Ticket Has Good Odds!',
     winRate: 0.67,
-    intro: `Meter tickets are commonly dismissed when contested with the right evidence. The best defenses are: (1) you paid via the ParkChicago app, (2) the meter was malfunctioning, or (3) there was a timing discrepancy. Check your payment app now — screenshots may expire.`,
+    intro: `Expired meter tickets have a 67% success rate! The best defenses are: (1) you paid via the ParkChicago app, (2) the meter was malfunctioning, or (3) there was a timing discrepancy. Check your payment app NOW — screenshots expire!`,
     questions: [
       {
         text: 'Did you pay via ParkChicago app or any mobile payment? Open your ParkChicago app → tap History → screenshot the session for this date. Include the ZONE NUMBER, start time, and end time.',
@@ -182,10 +183,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   street_cleaning: {
     violationType: 'street_cleaning',
-    emailSubject: 'Street Cleaning Ticket — Did You See the Signs?',
-    title: 'Street Cleaning Ticket — Signage Is Key',
+    emailSubject: 'Street Cleaning Ticket - Important: Did You See the Signs?',
+    title: 'Street Cleaning Ticket - Signage Is Key!',
     winRate: 0.34,
-    intro: `Street cleaning tickets can be dismissed when contested with the right evidence. The most successful defense is proving the signage was missing, obscured, or confusing. We also check weather data automatically — if it rained or snowed, that's a valid defense. If you use the Autopilot app, we'll automatically check your GPS history for departure proof.`,
+    intro: `Street cleaning tickets have about a 34% success rate. The most successful defense is proving the signage was missing, obscured, or confusing. We also check weather data automatically - if it rained or snowed, that's a valid defense! If you use the Autopilot app, we'll automatically check your GPS history for departure proof.`,
     questions: [
       {
         text: 'Do you have ANY photos of the street where you parked? Even if you didn\'t take them that day - can you go back and photograph the signage (or lack of signage)?',
@@ -228,10 +229,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   fire_hydrant: {
     violationType: 'fire_hydrant',
-    emailSubject: 'Fire Hydrant Ticket — Was the Hydrant Visible?',
-    title: 'Fire Hydrant Ticket — Visibility Matters',
+    emailSubject: 'Fire Hydrant Ticket - 46% Win Rate - Was the Hydrant Visible?',
+    title: 'Fire Hydrant Ticket - Visibility Matters!',
     winRate: 0.46,
-    intro: `Fire hydrant tickets are often dismissed when contested with the right evidence. The best defenses are: (1) the hydrant was obscured by snow or vegetation, (2) you were actually more than 15 feet away, or (3) there were no curb markings.`,
+    intro: `Fire hydrant tickets have a 46% success rate! The best defenses are: (1) the hydrant was obscured by snow/vegetation, (2) you were actually more than 15 feet away, or (3) there were no curb markings.`,
     questions: [
       {
         text: 'Was the fire hydrant hidden or obscured by snow, bushes, parked cars, or anything else when you parked?',
@@ -273,10 +274,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   disabled_zone: {
     violationType: 'disabled_zone',
-    emailSubject: 'Handicapped Zone Ticket — Placard Documentation Needed',
-    title: 'Handicapped Zone Ticket — Let\'s Build Your Defense',
+    emailSubject: 'Handicapped Zone Ticket - 69% Win Rate - Placard Documentation Needed!',
+    title: 'Handicapped Zone Ticket Has HIGH Win Rate!',
     winRate: 0.69,
-    intro: `Handicapped zone tickets are frequently dismissed when contested with proper documentation. If you have a valid disability placard or plate, we have a strong case. The $350 fine makes this well worth contesting.`,
+    intro: `Handicapped zone tickets have a 69% success rate - one of the highest! If you have a valid disability placard or plate, we have a strong case. The $350 fine makes this VERY worth contesting.`,
     questions: [
       {
         text: 'Do you have a valid disability parking placard or disability plates? What is your placard/plate number and expiration date?',
@@ -304,7 +305,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     quickTips: [
       'Photograph your placard NOW showing the number and expiration',
       'Print your placard registration from IL Secretary of State',
-      '$350 fine — well worth contesting',
+      '$350 fine - definitely worth the effort to contest',
       'If placard was stolen, file a police report',
     ],
     pitfalls: [
@@ -316,10 +317,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   residential_permit: {
     violationType: 'residential_permit',
-    emailSubject: 'Residential Permit Ticket — Permit Documentation Needed',
-    title: 'Residential Permit Ticket — Here\'s What We Need',
+    emailSubject: 'Residential Permit Ticket - 54% Win Rate - Permit Documentation!',
+    title: 'Residential Permit Ticket - Good Odds!',
     winRate: 0.54,
-    intro: `Residential permit tickets are commonly dismissed when contested with the right documentation. If you had a valid permit or visitor pass, or if the zone signage was confusing, we have a solid case.`,
+    intro: `Residential permit tickets have a 54% success rate! If you had a valid permit or visitor pass, or if the zone signage was confusing, we have a solid case.`,
     questions: [
       {
         text: 'Do you have a valid residential parking permit for this zone? What is your permit number and what zone is it for?',
@@ -361,10 +362,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   bus_stop: {
     violationType: 'bus_stop',
-    emailSubject: 'Bus Stop Ticket — Was the Stop Clearly Marked?',
-    title: 'Bus Stop Ticket — Signage Matters',
+    emailSubject: 'Bus Stop Ticket - Was the Stop Clearly Marked?',
+    title: 'Bus Stop Ticket - Signage Matters!',
     winRate: 0.59,
-    intro: `Bus stop tickets are commonly dismissed when contested. If the signage was missing or unclear, or if your vehicle was disabled, you have a strong case worth pursuing.`,
+    intro: `Bus stop tickets have a 59% success rate! If the signage was missing or unclear, or if your vehicle was disabled, you have a strong case worth pursuing.`,
     questions: [
       {
         text: 'Was there a clear bus stop sign visible where you parked? Go photograph the exact location NOW — include a wide shot showing signage (or lack of it) and any bus shelter/markings.',
@@ -393,7 +394,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     quickTips: [
       'Check CTA website (transitchicago.com) — some stops are discontinued but signs remain, and that\'s a strong defense',
       'Photograph the EXACT spot you parked and all nearby signs TODAY — before anything changes',
-      'Vehicle breakdown? Get tow/mechanic documentation — this is a recognized defense',
+      'Vehicle breakdown? Get tow/mechanic documentation — this is a recognized dismissal reason',
       'No curb markings? Photograph the curb — plain concrete (no paint) supports your case',
     ],
     pitfalls: [
@@ -407,10 +408,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   bike_lane: {
     violationType: 'bike_lane',
-    emailSubject: 'Bike Lane Ticket — Were the Markings Visible?',
-    title: 'Bike Lane Ticket — Lane Markings Are Key',
+    emailSubject: 'Bike Lane Ticket - 50% Win Rate - Were the Markings Visible?',
+    title: 'Bike Lane Ticket - Lane Markings Key!',
     winRate: 0.50,
-    intro: `Bike lane tickets are commonly dismissed when contested with the right evidence. If the lane markings were faded or obscured, you have a strong case.`,
+    intro: `Bike lane tickets have a 50% success rate when contested. If the lane markings were faded or obscured, you have a strong case. The $150 fine makes it very worth contesting.`,
     questions: [
       {
         text: 'Were the bike lane markings (green paint, bike symbols, "BIKE ONLY" text) clearly visible, or were they faded/covered? Go photograph the lane markings NOW.',
@@ -435,7 +436,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
       'Photograph the bike lane markings TODAY — faded green paint is very common in Chicago and is your best defense',
       'Google Street View may show historical images — if markings were faded months ago, screenshot it',
       'Snow, leaves, or construction debris covering markings = valid defense',
-      'The $150 fine makes this well worth contesting',
+      '$150 fine makes this worth contesting even at 50% odds',
       'If the lane has physical barriers/bollards, focus on vehicle breakdown or emergency',
     ],
     pitfalls: [
@@ -449,10 +450,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   parking_alley: {
     violationType: 'parking_alley',
-    emailSubject: 'Alley Parking Ticket — Were You Loading?',
-    title: 'Alley Parking Ticket — Here\'s What We Need',
+    emailSubject: 'Alley Parking Ticket - 71% Win Rate - Were You Loading?',
+    title: 'Alley Parking Ticket - Great Odds!',
     winRate: 0.71,
-    intro: `Alley parking tickets are frequently dismissed when contested. Active loading/unloading is permitted, and if you were loading or had an emergency, we have a strong case.`,
+    intro: `Alley parking tickets have a 71% success rate when contested! Active loading/unloading is permitted, and many alley tickets are dismissed. If you were loading or had an emergency, we have a strong case.`,
     questions: [
       {
         text: 'Were you actively loading or unloading items? Describe EXACTLY what you were loading, to/from where, and how long you were stopped.',
@@ -493,10 +494,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   no_standing_time_restricted: {
     violationType: 'no_standing_time_restricted',
-    emailSubject: 'No Standing/Time Restricted Ticket — Check the Signs',
-    title: 'Time Restricted Ticket — Here\'s What We Need',
+    emailSubject: 'No Standing/Time Restricted Ticket - 59% Win Rate - Check the Signs!',
+    title: 'Time Restricted Ticket - Good Odds!',
     winRate: 0.59,
-    intro: `No standing and time restricted tickets are commonly dismissed when contested. The key is showing signage issues or that you were within the time limit.`,
+    intro: `No standing and time restricted tickets have a 59% success rate! The key is showing signage issues or that you were within the time limit.`,
     questions: [
       {
         text: 'What time did you park, and what time was the ticket issued? Were you within any posted time limit? Check ParkChicago app, credit card/bank statement, or phone location history for exact times.',
@@ -539,10 +540,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   double_parking: {
     violationType: 'double_parking',
-    emailSubject: 'Double Parking Ticket — Were You Loading or in an Emergency?',
-    title: 'Double Parking Ticket — Here\'s What We Need',
+    emailSubject: 'Double Parking Ticket - 72% Win Rate - Were You Loading or in an Emergency?',
+    title: 'Double Parking Ticket - Great Odds!',
     winRate: 0.72,
-    intro: `Double parking tickets are frequently dismissed when contested. The main defenses are active loading/unloading, emergency, or vehicle breakdown.`,
+    intro: `Double parking tickets have a 72% success rate when contested! The main defenses are active loading/unloading, emergency, or vehicle breakdown.`,
     questions: [
       {
         text: 'Were you actively loading or unloading? Describe EXACTLY what you were loading, to/from where, and how long. Were your hazard lights on?',
@@ -584,10 +585,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   commercial_loading: {
     violationType: 'commercial_loading',
-    emailSubject: 'Commercial Loading Zone Ticket — Loading Proof Needed',
-    title: 'Commercial Loading Ticket — Here\'s What We Need',
+    emailSubject: 'Commercial Loading Zone Ticket - 60% Win Rate - Loading Proof Needed!',
+    title: 'Commercial Loading Ticket - Good Odds!',
     winRate: 0.60,
-    intro: `Commercial loading zone tickets are commonly dismissed when contested. If you were actively loading/unloading for commercial purposes, we have a strong case.`,
+    intro: `Commercial loading zone tickets have a 60% success rate! If you were actively loading/unloading for commercial purposes, we have a strong case.`,
     questions: [
       {
         text: 'Were you actively loading or unloading commercial goods? For which business? Describe exactly what you were loading/unloading, the business name and address, and how long you were stopped.',
@@ -629,10 +630,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   missing_plate: {
     violationType: 'missing_plate',
-    emailSubject: 'License Plate Ticket — Plate Documentation Needed',
-    title: 'License Plate Ticket — Here\'s What We Need',
+    emailSubject: 'License Plate Ticket - 55% Win Rate - Plate Documentation!',
+    title: 'License Plate Ticket - Good Odds!',
     winRate: 0.55,
-    intro: `Missing or obscured plate tickets are commonly dismissed when contested. If your plate was visible (or temporarily obscured by weather), we have a good case.`,
+    intro: `Missing/obscured plate tickets have a 55% success rate! If your plate was visible (or temporarily obscured by weather), we can contest.`,
     questions: [
       {
         text: 'Take a clear photo of your license plate RIGHT NOW from the same angle a parking officer would see it. Is it clearly visible and readable?',
@@ -663,7 +664,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
       'Weather (snow, mud, road spray) temporarily covering plates is a valid defense — describe the conditions',
       'Bike rack, cargo carrier, or trailer hitch blocking the plate? Remove it and photograph the plate clean',
       'If you needed a replacement plate, show the IL SOS order confirmation',
-      'Fix any plate visibility issues immediately — correcting the issue before your hearing is a strong defense',
+      'Fix any plate visibility issues immediately — "defect corrected" is a FOIA-proven winning defense',
     ],
     pitfalls: [
       'Don\'t use illegal plate covers or tinted covers — those are intentional concealment',
@@ -676,10 +677,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   red_light: {
     violationType: 'red_light',
-    emailSubject: 'Red Light Camera Ticket — Review Your Violation Photos',
-    title: 'Red Light Camera Ticket — Here\'s How to Build Your Defense',
+    emailSubject: 'Red Light Camera Ticket - 21% Win Rate - Review Your Violation Photos NOW',
+    title: 'Red Light Camera Ticket - Your Best Defenses Based on Real Hearing Data',
     winRate: 0.21,
-    intro: `Red light camera tickets are tough, but the wins that do happen come from specific, provable defenses. The most common reason they get dismissed is that the photos or video don't actually prove a violation. This requires you to carefully review the violation footage and build your case around what the evidence actually shows.`,
+    intro: `Red light camera tickets are tough (21% success rate), but the wins that DO happen come from specific, provable defenses. In FOIA hearing data, the #1 dismissal reason is "Violation is Factually Inconsistent" — meaning the photos/video don't actually prove a violation. The #2 reason is "Prima Facie Case Not Established by City." Both require you to carefully review the violation footage and build your case around what the evidence actually shows.`,
     questions: [
       {
         text: 'CRITICAL: Go to chicago.gov/finance and review your violation photos/video RIGHT NOW. Is the vehicle in the photos definitely yours? Check the make, model, color, and license plate carefully.',
@@ -729,7 +730,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     ],
     pitfalls: [
       'Don\'t contest without reviewing the violation photos/video first — know what the evidence shows',
-      'You must select a codified defense to win — our system handles this for you',
+      '"Failed to Select one of the Codified Defenses" causes many losses — our system handles this for you',
       'Don\'t claim you didn\'t run the light if the video clearly shows it — focus on yellow timing or vehicle ID instead',
       'Don\'t ignore the ticket — 2 unpaid tickets can result in a vehicle boot',
     ],
@@ -739,10 +740,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   speed_camera: {
     violationType: 'speed_camera',
-    emailSubject: 'Speed Camera Ticket — Review Your Violation Photos',
-    title: 'Speed Camera Ticket — Here\'s How to Build Your Defense',
+    emailSubject: 'Speed Camera Ticket - Review Your Violation Photos & Check the Speed Limit Signs',
+    title: 'Speed Camera Ticket - Tough but Not Impossible',
     winRate: 0.18,
-    intro: `Speed camera tickets are the toughest to beat, but the wins that do happen are almost always from wrong vehicle identification or signage problems. The fine is $35 for 6-10mph over, $100 for 11+ over. Contesting costs nothing but a few minutes of your time.`,
+    intro: `Speed camera tickets are the hardest to beat (17-20% success rate), but the wins that DO happen are almost always from two causes: "Violation is Factually Inconsistent" (wrong vehicle, camera error) or signage problems. The fine is $35 for 6-10mph over, $100 for 11+ over. Even at low odds, contesting is worth it because the process costs nothing but 10 minutes of your time.`,
     questions: [
       {
         text: 'FIRST: Review your violation photos at chicago.gov/finance. Is that definitely YOUR vehicle? Check the make, model, color, and license plate number in the photos carefully.',
@@ -785,8 +786,8 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
       'Request camera calibration records if you believe the speed reading was wrong',
     ],
     pitfalls: [
-      'You need specific evidence, not just "I wasn\'t speeding" — general denials rarely succeed',
-      'You must select a codified defense to win — our system handles this for you',
+      '"Violated automated speed enforcement ordinance" is the #1 reason tickets are upheld — you need specific evidence, not just "I wasn\'t speeding"',
+      '"Failed to Select one of the Codified Defenses" causes avoidable losses — our system handles this for you',
       'Don\'t ignore the ticket — 2 unpaid camera tickets = vehicle boot eligibility',
       'Don\'t rely on "everyone speeds there" — focus on signage, vehicle ID, or camera accuracy',
     ],
@@ -795,10 +796,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   snow_route: {
     violationType: 'snow_route',
-    emailSubject: 'Snow Route Ticket ($150) — Check the Declaration Timeline',
-    title: 'Snow Route Ticket — Timing and Signs Are Your Best Defense',
+    emailSubject: 'Snow Route Ticket ($150) - 38% Win Rate - Check the Declaration Timeline NOW',
+    title: 'Snow Route Ticket - Timing & Signs Are Your Best Defense',
     winRate: 0.38,
-    intro: `Snow route tickets can be dismissed when contested with the right evidence. The city must prove: (1) a snow emergency was declared, (2) adequate notice was given, (3) signs were posted and visible. If any of these fail, you win.`,
+    intro: `Snow route tickets have a 38% success rate when contested. In FOIA data, the top winning reasons are "Violation is Factually Inconsistent" (the ban wasn't properly in effect or the ticket details are wrong) and "Signs were Missing or Obscured." The city must prove: (1) a snow emergency was declared, (2) adequate notice was given, (3) signs were posted and visible. If any of these fail, you win.`,
     questions: [
       {
         text: 'CRITICAL: Check the snow emergency declaration timeline. What date/time was the snow emergency declared? What date/time was your ticket issued? Search "Chicago snow emergency [date]" to find the declaration time.',
@@ -852,10 +853,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   parking_prohibited: {
     violationType: 'parking_prohibited',
-    emailSubject: 'Parking Prohibited Ticket ($75) — Signage and Circumstances Matter',
-    title: 'Parking Prohibited Ticket — Signage Is Your Best Defense',
+    emailSubject: 'Parking Prohibited Ticket ($75) - 57% Win Rate - Signage & Circumstances Matter!',
+    title: 'Parking Prohibited Ticket - Signage Is Your Best Defense!',
     winRate: 0.57,
-    intro: `Parking/standing prohibited tickets are commonly dismissed when contested with the right evidence. These tickets are often issued in areas with confusing or missing signage, temporary restrictions, or where you had a legitimate reason to stop. The key is documenting the signs (or lack thereof) and your circumstances.`,
+    intro: `"Parking/Standing Prohibited" tickets have a solid 57% success rate when contested with the right evidence. These tickets are often issued in areas with confusing or missing signage, temporary restrictions, or where you had a legitimate reason to stop. The key is documenting the signs (or lack thereof) and your circumstances.`,
     questions: [
       {
         text: 'Was there a clearly visible "No Parking" or "No Standing" sign where you parked? Can you go back and photograph the signage (or lack of it)?',
@@ -907,10 +908,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   bus_lane: {
     violationType: 'bus_lane',
-    emailSubject: 'Bus Lane Ticket ($150) — Were You Loading Passengers?',
-    title: 'Bus Lane Ticket — Passenger Loading and Lane Markings Are Key',
+    emailSubject: 'Bus Lane Ticket ($150) - 56% Win Rate - Were You Loading Passengers?',
+    title: 'Bus Lane Ticket - Passenger Loading & Lane Markings Are Your Best Defenses',
     winRate: 0.56,
-    intro: `Bus lane tickets are commonly dismissed when contested. The most successful defenses are proving you were legally loading passengers or that the lane markings were missing or unclear. Smart Streets camera enforcement has specific rules about what constitutes a violation — and passenger loading is explicitly exempt.`,
+    intro: `Bus lane tickets have a strong 56% success rate when contested. In FOIA data, the top dismissal reasons are "Violation is Factually Inconsistent" (you weren't actually blocking the bus lane or were legally loading passengers) and "Signs were Missing or Obscured." Smart Streets camera enforcement has specific rules about what constitutes a violation — and passenger loading is explicitly exempt.`,
     questions: [
       {
         text: 'Were you briefly stopped to load or unload passengers? Describe EXACTLY what happened — who was getting in/out, how long you stopped, and whether any bus was blocked.',
@@ -946,7 +947,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     quickTips: [
       'Passenger loading/unloading is LEGAL in bus lanes — this is the #1 winning defense (cite § 9-103-020(a))',
       'Go photograph the bus lane markings NOW — faded red paint is extremely common',
-      'The $150 fine makes this well worth contesting by mail',
+      'The fine is $150 — definitely worth the 10 minutes to contest by mail',
       'For camera tickets, review the violation photos at chicago.gov/finance — vehicle/lane errors happen',
       'Check the enforcement hours on the signs — many bus lanes are only active during rush hours',
       'If a rideshare app (Uber/Lyft) shows you were picking up a passenger, screenshot the trip details',
@@ -964,7 +965,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   other_unknown: {
     violationType: 'other_unknown',
-    emailSubject: 'Parking Ticket Detected — We Need More Information',
+    emailSubject: 'Parking Ticket Detected - We Need More Information',
     title: 'Tell Us About Your Ticket',
     winRate: 0.40,
     intro: `We detected a parking ticket but need more information to build the best defense. Please answer these questions so we can help you contest effectively.`,
@@ -1012,9 +1013,12 @@ export function getEvidenceGuidance(violationType: string): EvidenceGuidance {
 }
 
 /**
- * Dismissal insights mapped from hearing data.
+ * What actually gets tickets dismissed — mapped from real FOIA hearing data.
+ *
+ * The 1.18M FOIA records have ~14 distinct dismissal reason codes.
  * Each maps to a specific defense strategy and evidence type the user should provide.
- * Used internally to drive evidence questions — raw codes are NOT shown to users.
+ * These are shown in evidence emails so users know what ACTUALLY wins, not just
+ * what we think might win.
  */
 export interface DismissalInsight {
   /** Reason from FOIA data (hearing officer's words) */
@@ -1028,8 +1032,8 @@ export interface DismissalInsight {
 }
 
 /**
- * Dismissal insights by violation type.
- * Used to generate actionable evidence prompts for users.
+ * FOIA-driven dismissal insights by violation type.
+ * Based on actual hearing outcomes from 1.18M contested tickets (2019-present).
  */
 export const DISMISSAL_INSIGHTS: Record<string, DismissalInsight[]> = {
   expired_plates: [
@@ -1382,19 +1386,24 @@ function generateDismissalDrivenQuestionsHtml(violationType: string, startIndex:
 
 /**
  * Universal defense questions that apply to ALL ticket types.
- * These defenses account for a significant share of all dismissals
- * and are appended to every evidence email to ensure no winning defense is missed.
+ * Based on FOIA data showing these defenses account for significant wins:
+ * - "Plate or Vehicle was Stolen" — 26,662 wins (5.3% of all wins)
+ * - "Citizen was Not Owner or Lessee" — 11,359 wins (2.3%)
+ * - "Funeral Procession" — 533 wins
+ * - "Authorized Emergency Vehicle" — 228 wins
+ *
+ * These are appended to every evidence email to ensure no winning defense is missed.
  */
 const UNIVERSAL_DEFENSE_QUESTIONS: EvidenceQuestion[] = [
   {
     text: 'Was your vehicle or license plate stolen at the time of this ticket? Do you have a police report?',
-    whyItMatters: 'Stolen vehicles are one of the most commonly successful defenses. If you filed a police report before the ticket date, this is nearly an automatic dismissal.',
+    whyItMatters: '"Plate or Vehicle was Stolen" accounts for 5.3% of ALL ticket dismissals in Chicago FOIA data (26,000+ wins). If you filed a police report before the ticket date, this is nearly an automatic dismissal.',
     impactScore: 0.40,
     goodExample: '"My car was stolen on January 5th and the ticket was January 8th. CPD report #JH-123456 was filed on January 5th."',
   },
   {
     text: 'Were you NOT the owner or driver of this vehicle at the time? Had you sold, transferred, or lent the vehicle to someone else?',
-    whyItMatters: 'If you sold the car, transferred the title, or someone else was driving, you may not be liable. This is a commonly successful defense. Provide a bill of sale, title transfer receipt, or affidavit identifying the actual driver.',
+    whyItMatters: '"Citizen was Not Owner or Lessee" accounts for 2.3% of ALL dismissals (11,000+ wins). If you sold the car, transferred the title, or someone else was driving, you may not be liable. Provide a bill of sale, title transfer receipt, or affidavit identifying the actual driver.',
     impactScore: 0.35,
     goodExample: '"I sold this vehicle on January 1st, two weeks before this ticket. I have the signed bill of sale and title transfer receipt."',
   },
@@ -1407,13 +1416,13 @@ const UNIVERSAL_DEFENSE_QUESTIONS: EvidenceQuestion[] = [
 const CAMERA_TICKET_EXTRA_QUESTIONS: EvidenceQuestion[] = [
   {
     text: 'Were you part of a funeral procession at the time? Did you have a funeral flag or sticker on your vehicle?',
-    whyItMatters: 'Funeral processions are a codified defense under § 9-100-060. If you were following a hearse or had a funeral flag displayed, this ticket should be dismissed.',
+    whyItMatters: '"Funeral Procession" is a codified defense under § 9-100-060 — 533 tickets have been dismissed for this reason in FOIA data. If you were following a hearse or had a funeral flag displayed, this ticket should be dismissed.',
     impactScore: 0.30,
     goodExample: '"I was part of the funeral procession for my uncle. The funeral home (Smith & Sons) can confirm I was in the procession. I had the funeral flag on my vehicle."',
   },
   {
     text: 'Were you driving an authorized emergency vehicle (ambulance, fire truck, police) or yielding to one at the time?',
-    whyItMatters: 'Operating an emergency vehicle on duty, or being forced through an intersection by an emergency vehicle behind you, is a codified defense.',
+    whyItMatters: '"Authorized Emergency Vehicle" is a codified defense — 228 tickets dismissed for this reason. If you were operating an emergency vehicle on duty, or forced through the intersection by an emergency vehicle behind you, this applies.',
     impactScore: 0.25,
     goodExample: '"An ambulance with sirens was directly behind me and I had to proceed through the intersection to clear the way."',
   },
@@ -1468,7 +1477,7 @@ export function generateEvidenceQuestionsHtml(guidance: EvidenceGuidance): strin
     html += `
       <div style="margin: 24px 0 16px; padding: 12px 16px; background: #f0f9ff; border-radius: 8px;">
         <p style="margin: 0; color: #0c4a6e; font-size: 13px; font-weight: 600;">
-          A few more things that could help your case:
+          Additional defenses that win thousands of cases each year:
         </p>
       </div>
     `;

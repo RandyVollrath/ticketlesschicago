@@ -5,6 +5,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -19,6 +22,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.*
 
 /**
@@ -605,16 +609,25 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     private var alertVolume = 1.0f
 
     // Debounce tracking: camera index -> last alert timestamp
-    private val alertedCameras = mutableMapOf<Int, Long>()
-    private var lastGlobalAlertTime = 0L
+    // ConcurrentHashMap for thread safety — RN may call onLocationUpdate
+    // from different threads than the main/handler thread.
+    private val alertedCameras = ConcurrentHashMap<Int, Long>()
+    @Volatile private var lastGlobalAlertTime = 0L
 
     // TTS
     private var tts: TextToSpeech? = null
-    private var ttsReady = false
+    @Volatile private var ttsReady = false
     private val mainHandler = Handler(Looper.getMainLooper())
+    // Pending speech queued before TTS init completes
+    private var pendingSpeech: String? = null
+
+    // Audio focus for ducking music during speech
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
 
     init {
         createNotificationChannel()
+        audioManager = reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     }
 
     override fun getName(): String = "CameraAlertModule"
@@ -688,15 +701,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun speakAlert(message: String, promise: Promise) {
-        if (!ttsReady) {
-            initTts()
-            // Queue speech after init
-            mainHandler.postDelayed({
-                doSpeak(message)
-                promise.resolve(true)
-            }, 500)
-            return
-        }
+        // doSpeak handles the TTS-not-ready case by queuing via pendingSpeech
         doSpeak(message)
         promise.resolve(true)
     }
@@ -901,8 +906,40 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
             if (status == TextToSpeech.SUCCESS) {
                 tts?.language = Locale.US
                 tts?.setSpeechRate(0.9f)
+
+                // Listen for utterance completion to release audio focus
+                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        Log.d(TAG, "TTS utterance started: $utteranceId")
+                    }
+
+                    override fun onDone(utteranceId: String?) {
+                        Log.d(TAG, "TTS utterance done: $utteranceId")
+                        releaseAudioFocus()
+                    }
+
+                    @Deprecated("Deprecated in API level 21")
+                    override fun onError(utteranceId: String?) {
+                        Log.e(TAG, "TTS utterance error: $utteranceId")
+                        releaseAudioFocus()
+                    }
+
+                    override fun onError(utteranceId: String?, errorCode: Int) {
+                        Log.e(TAG, "TTS utterance error: $utteranceId code=$errorCode")
+                        releaseAudioFocus()
+                    }
+                })
+
                 ttsReady = true
                 Log.i(TAG, "TTS initialized successfully")
+
+                // Speak any alert that was queued while TTS was initializing
+                val queued = pendingSpeech
+                if (queued != null) {
+                    pendingSpeech = null
+                    Log.i(TAG, "Speaking queued alert: $queued")
+                    doSpeak(queued)
+                }
             } else {
                 Log.e(TAG, "TTS initialization failed with status: $status")
             }
@@ -911,24 +948,70 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
 
     private fun doSpeak(message: String) {
         if (!ttsReady || tts == null) {
-            Log.w(TAG, "TTS not ready, skipping speech: $message")
+            Log.w(TAG, "TTS not ready, queuing speech: $message")
+            pendingSpeech = message
+            initTts()
             return
         }
 
         try {
-            // Duck other audio while speaking
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                val params = android.os.Bundle().apply {
-                    putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, alertVolume)
-                }
-                tts?.speak(message, TextToSpeech.QUEUE_FLUSH, params, "camera_alert_${System.currentTimeMillis()}")
-            } else {
-                @Suppress("DEPRECATION")
-                tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null)
+            // Request audio focus with ducking — lowers music/podcast volume
+            // instead of pausing it, which is less jarring for a 1-second alert.
+            requestAudioFocus()
+
+            val params = android.os.Bundle().apply {
+                putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, alertVolume)
             }
+            tts?.speak(message, TextToSpeech.QUEUE_FLUSH, params, "camera_alert_${System.currentTimeMillis()}")
             Log.d(TAG, "TTS speaking: $message")
         } catch (e: Exception) {
             Log.e(TAG, "TTS speak failed: ${e.message}")
+            releaseAudioFocus()
+        }
+    }
+
+    private fun requestAudioFocus() {
+        try {
+            val am = audioManager ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val focusReq = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                    .build()
+                audioFocusRequest = focusReq
+                am.requestAudioFocus(focusReq)
+            } else {
+                @Suppress("DEPRECATION")
+                am.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                )
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to request audio focus: ${e.message}")
+        }
+    }
+
+    private fun releaseAudioFocus() {
+        try {
+            val am = audioManager ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val req = audioFocusRequest
+                if (req != null) {
+                    am.abandonAudioFocusRequest(req)
+                    audioFocusRequest = null
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                am.abandonAudioFocus(null)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to release audio focus: ${e.message}")
         }
     }
 
@@ -967,7 +1050,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
             val notification = NotificationCompat.Builder(reactApplicationContext, CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(body)
-                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -1010,13 +1093,16 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     // Cleanup
     // =========================================================================
 
+    @Deprecated("Deprecated in ReactContextBaseJavaModule")
     override fun onCatalystInstanceDestroy() {
         super.onCatalystInstanceDestroy()
         try {
+            releaseAudioFocus()
             tts?.stop()
             tts?.shutdown()
             tts = null
             ttsReady = false
+            pendingSpeech = null
         } catch (e: Exception) {
             Log.w(TAG, "Error shutting down TTS: ${e.message}")
         }
