@@ -156,6 +156,24 @@ interface EvidenceBundle {
   locationPattern: { ticketCount: number; uniqueUsers: number; dismissalRate: number | null; defenseRecommendation: string | null } | null;
 }
 
+// ─── Date Formatting Helper ─────────────────────────────────
+
+/**
+ * Format a violation date string (YYYY-MM-DD) to a readable format using UTC
+ * to prevent timezone shifts. Critical: violation_date is stored as YYYY-MM-DD
+ * in the database and must be displayed exactly as stored.
+ */
+function formatViolationDate(dateString: string | null): string {
+  if (!dateString) return 'Unknown date';
+
+  const date = new Date(dateString + 'T00:00:00Z'); // Force UTC interpretation
+  const month = date.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+  const day = date.getUTCDate();
+  const year = date.getUTCFullYear();
+
+  return `${month} ${day}, ${year}`;
+}
+
 // ─── Approval Email ──────────────────────────────────────────
 
 function generateApprovalToken(ticketId: string, userId: string, letterId: string): string {
@@ -183,9 +201,7 @@ async function sendApprovalEmail(
   const skipUrl = `${BASE_URL}/api/autopilot/approve-letter?token=${token}&action=skip`;
   const viewUrl = `${BASE_URL}/tickets/${ticket.id}`;
 
-  const violationDate = ticket.violation_date
-    ? new Date(ticket.violation_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-    : 'Unknown date';
+  const violationDate = formatViolationDate(ticket.violation_date);
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -778,9 +794,7 @@ function buildClaudePrompt(
   const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
-  const violationDate = ticket.violation_date
-    ? new Date(ticket.violation_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    : 'the date indicated';
+  const violationDate = formatViolationDate(ticket.violation_date);
 
   const sections: string[] = [];
 
@@ -792,6 +806,8 @@ TICKET INFORMATION:
 - Violation: ${ticket.violation_description || ticket.violation_type || 'N/A'}
 - Violation Code: ${violationCode || 'N/A'}
 - Date: ${violationDate}
+
+CRITICAL: The violation date is ${violationDate}. Use this EXACT date in the letter's RE: line and in any references to when the violation occurred. Do not modify or recalculate this date.
 - Location: ${ticket.location || 'N/A'}
 - Amount: $${ticket.amount || 'N/A'}
 - License Plate: ${ticket.plate} (${ticket.state})
@@ -1190,9 +1206,7 @@ function generateFallbackLetter(
   violationCode: string | null,
 ): string {
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const violationDate = ticket.violation_date
-    ? new Date(ticket.violation_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    : 'the date indicated';
+  const violationDate = formatViolationDate(ticket.violation_date);
   const name = profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Vehicle Owner';
 
   let body = `I am writing to formally contest the above-referenced citation. I believe this ticket was issued in error and respectfully request its dismissal.`;
