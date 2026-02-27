@@ -79,11 +79,13 @@ async function getUserEmail(userId: string): Promise<{ email: string | null; fir
 async function getUserPhone(userId: string): Promise<string | null> {
   const { data: profile } = await supabaseAdmin
     .from('user_profiles')
-    .select('phone')
+    .select('phone_number, notify_sms')
     .eq('user_id', userId)
     .single();
 
-  return profile?.phone || null;
+  // Respect TCPA consent — only return phone if user opted in to SMS
+  if (!profile?.phone_number || profile.notify_sms === false) return null;
+  return profile.phone_number;
 }
 
 /**
