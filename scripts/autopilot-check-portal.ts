@@ -425,6 +425,8 @@ async function gatherAutomatedEvidence(
         svLocation,
         violationDate,
         ticketNumber || null,
+        violationType || null,
+        violationDescription || null,
       );
       evidence.streetView.hasImagery = svPackage.hasImagery;
       evidence.streetView.imageDate = svPackage.imageDate;
