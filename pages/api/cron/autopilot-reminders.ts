@@ -1,10 +1,12 @@
 /**
  * Autopilot Reminder Cron — Runs daily at 16:00 UTC
  *
- * Sends follow-up reminder emails to users with pending tickets:
+ * Sends follow-up reminder emails and SMS texts to users with pending tickets:
  *   - Day 5 reminder: "You have X days left — submit evidence to strengthen your letter"
- *   - Days 10-16: DAILY evidence reminders (one per calendar day)
- *   - Day 17 LAST CHANCE: "Your letter will auto-send in 48 hours if not approved"
+ *   - Days 10, 12, 14, 16: Every-other-day email evidence reminders
+ *   - Day 10: SMS text reminder (first SMS)
+ *   - Day 17 LAST CHANCE email: "Your letter will auto-send in 48 hours if not approved"
+ *   - Day 17: SMS text last-chance reminder
  *
  * Also handles the day 19 safety-net auto-send (triggers letter generation + approval bypass)
  *
@@ -15,6 +17,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sendClickSendSMS } from '../../../lib/sms-service';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,6 +41,7 @@ interface PendingTicket {
   last_chance_sent_at: string | null;
   auto_send_deadline: string | null;
   evidence_deadline: string | null;
+  user_evidence: string | null;
 }
 
 function daysSinceTicket(violationDate: string): number {
@@ -70,6 +74,71 @@ async function getUserEmail(userId: string): Promise<{ email: string | null; fir
     .single();
 
   return { email, firstName: profile?.first_name || null };
+}
+
+async function getUserPhone(userId: string): Promise<string | null> {
+  const { data: profile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('phone')
+    .eq('user_id', userId)
+    .single();
+
+  return profile?.phone || null;
+}
+
+/**
+ * Check if user has submitted evidence (photos, documents, etc.)
+ */
+function hasUserEvidence(ticket: PendingTicket): boolean {
+  if (!ticket.user_evidence) return false;
+  try {
+    const evidence = typeof ticket.user_evidence === 'string'
+      ? JSON.parse(ticket.user_evidence)
+      : ticket.user_evidence;
+    // Check if there are any attachment URLs
+    return !!(evidence?.attachment_urls && Array.isArray(evidence.attachment_urls) && evidence.attachment_urls.length > 0);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Send SMS reminder — only if user has a phone number and hasn't submitted evidence
+ */
+async function sendSmsReminder(
+  userId: string,
+  ticket: PendingTicket,
+  type: 'day10' | 'day17',
+): Promise<boolean> {
+  const phone = await getUserPhone(userId);
+  if (!phone) {
+    console.log(`  No phone number for user ${userId}, skipping SMS`);
+    return false;
+  }
+
+  const daysElapsed = daysSinceTicket(ticket.violation_date);
+  const daysRemaining = Math.max(0, 21 - daysElapsed);
+
+  let message: string;
+  if (type === 'day10') {
+    message = `Autopilot America: ${daysRemaining} days left to contest ticket #${ticket.ticket_number} ($${ticket.amount?.toFixed(2) || '??'}). Reply to your email with evidence (photos, receipts) to strengthen your case. We'll handle the rest.`;
+  } else {
+    message = `URGENT - Autopilot America: Only ${daysRemaining} days left for ticket #${ticket.ticket_number}. Your contest letter will auto-send soon. Reply to your email with any evidence ASAP or we'll send with automated evidence only.`;
+  }
+
+  try {
+    const result = await sendClickSendSMS(phone, message);
+    if (result.success) {
+      console.log(`  SMS sent to ${phone} (${type})`);
+      return true;
+    } else {
+      console.error(`  SMS failed for ${phone}: ${result.error}`);
+      return false;
+    }
+  } catch (error) {
+    console.error(`  SMS error for ${phone}:`, error);
+    return false;
+  }
 }
 
 async function sendReminderEmail(
@@ -357,7 +426,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get all tickets in pending states that haven't been mailed yet
     const { data: tickets } = await supabaseAdmin
       .from('detected_tickets')
-      .select('id, user_id, ticket_number, violation_type, violation_description, violation_date, amount, plate, status, reminder_count, last_reminder_sent_at, last_chance_sent_at, auto_send_deadline, evidence_deadline')
+      .select('id, user_id, ticket_number, violation_type, violation_description, violation_date, amount, plate, status, reminder_count, last_reminder_sent_at, last_chance_sent_at, auto_send_deadline, evidence_deadline, user_evidence')
       .in('status', ['pending_evidence', 'needs_approval', 'found', 'letter_generated'])
       .not('violation_date', 'is', null)
       .order('violation_date', { ascending: true });
@@ -372,6 +441,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let remindersSent = 0;
     let lastChanceSent = 0;
     let autoSendTriggered = 0;
+    let smsSent = 0;
 
     for (const ticket of tickets as PendingTicket[]) {
       if (!ticket.violation_date) continue;
@@ -417,16 +487,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })
             .eq('id', ticket.id);
 
-          // Also update the letter status
+          // Also update the letter status — bypass admin review for safety net
           await supabaseAdmin
             .from('contest_letters')
             .update({
-              status: 'approved',
+              status: 'admin_approved',
               approved_at: new Date().toISOString(),
-              approved_via: 'auto_deadline_safety_net',
+              approved_by: 'auto_deadline_safety_net',
             })
             .eq('ticket_id', ticket.id)
-            .in('status', ['pending_evidence', 'pending_approval', 'draft']);
+            .in('status', ['pending_evidence', 'pending_approval', 'draft', 'needs_admin_review', 'awaiting_consent']);
 
           // Audit log
           await supabaseAdmin
@@ -448,7 +518,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
-      // ── Day 17 LAST CHANCE EMAIL ──
+      // ── Day 17 LAST CHANCE EMAIL + SMS ──
       if (daysElapsed >= 17 && !ticket.last_chance_sent_at) {
         console.log(`  Day ${daysElapsed}: Sending last-chance email for ticket ${ticket.ticket_number}`);
         const sent = await sendLastChanceEmail(email, name, ticket);
@@ -474,6 +544,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               performed_by: 'autopilot_cron',
             });
         }
+
+        // Day 17 SMS — only if user hasn't submitted evidence
+        if (!hasUserEvidence(ticket)) {
+          const smsOk = await sendSmsReminder(ticket.user_id, ticket, 'day17');
+          if (smsOk) {
+            smsSent++;
+            await supabaseAdmin
+              .from('ticket_audit_log')
+              .insert({
+                ticket_id: ticket.id,
+                user_id: ticket.user_id,
+                action: 'sms_last_chance_sent',
+                details: { days_elapsed: daysElapsed, days_remaining: daysRemaining },
+                performed_by: 'autopilot_cron',
+              });
+          }
+        }
         continue; // Don't also send a regular reminder
       }
 
@@ -494,8 +581,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
-      // ── Days 10-16: DAILY EVIDENCE REMINDER ──
-      if (daysElapsed >= 10 && daysElapsed < 17 && (ticket.reminder_count || 0) >= 1) {
+      // ── Days 10, 12, 14, 16: EVERY-OTHER-DAY EVIDENCE REMINDER ──
+      const everyOtherDaySchedule = [10, 12, 14, 16];
+      if (everyOtherDaySchedule.includes(daysElapsed) && (ticket.reminder_count || 0) >= 1) {
         // Only send one reminder per calendar day (Chicago time)
         const chicagoToday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
         const todayStr = `${chicagoToday.getFullYear()}-${String(chicagoToday.getMonth()+1).padStart(2,'0')}-${String(chicagoToday.getDate()).padStart(2,'0')}`;
@@ -508,7 +596,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
-        console.log(`  Day ${daysElapsed}: Sending daily evidence reminder for ticket ${ticket.ticket_number}`);
+        console.log(`  Day ${daysElapsed}: Sending every-other-day evidence reminder for ticket ${ticket.ticket_number}`);
         const sent = await sendReminderEmail(email, name, ticket, daysElapsed);
         if (sent) {
           remindersSent++;
@@ -520,6 +608,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })
             .eq('id', ticket.id);
         }
+
+        // Day 10 SMS — only if user hasn't submitted evidence
+        if (daysElapsed === 10 && !hasUserEvidence(ticket)) {
+          const smsOk = await sendSmsReminder(ticket.user_id, ticket, 'day10');
+          if (smsOk) {
+            smsSent++;
+            await supabaseAdmin
+              .from('ticket_audit_log')
+              .insert({
+                ticket_id: ticket.id,
+                user_id: ticket.user_id,
+                action: 'sms_reminder_sent',
+                details: { days_elapsed: daysElapsed, days_remaining: 21 - daysElapsed },
+                performed_by: 'autopilot_cron',
+              });
+          }
+        }
         continue;
       }
 
@@ -527,7 +632,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    console.log(`Complete: ${remindersSent} reminders, ${lastChanceSent} last-chance, ${autoSendTriggered} auto-sends`);
+    console.log(`Complete: ${remindersSent} reminders, ${lastChanceSent} last-chance, ${autoSendTriggered} auto-sends, ${smsSent} SMS`);
 
     // ── CONSENT REMINDER EMAILS ──
     // Find users with contest letters stuck in 'awaiting_consent' and remind them
@@ -614,6 +719,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       remindersSent,
       lastChanceSent,
       autoSendTriggered,
+      smsSent,
       consentRemindersSent,
       timestamp: new Date().toISOString(),
     });

@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .update({
           status: 'approved',
           approved_at: new Date().toISOString(),
-          approved_via: 'email_link'
+          approved_by: 'email_link'
         })
         .eq('id', letter_id);
 

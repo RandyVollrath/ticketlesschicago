@@ -57,7 +57,7 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
         letter_content,
         defense_type,
         status,
-        approved_via,
+        approved_by,
         created_at,
         updated_at
       `);
@@ -146,7 +146,7 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
       letter_content: letter.letter_content,
       defense_type: letter.defense_type,
       status: letter.status,
-      approved_via: letter.approved_via,
+      approved_by: letter.approved_by,
       created_at: letter.created_at,
       updated_at: letter.updated_at,
       quality_score: qualityMap[letter.id]?.quality_score || null,
@@ -198,24 +198,19 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, adminUser: 
     switch (action) {
       case 'approve':
         updateData.status = 'admin_approved';
-        updateData.approved_via = 'admin_review';
-        updateData.admin_approved_at = new Date().toISOString();
-        updateData.admin_approved_by = adminUser.id;
+        updateData.approved_by = 'admin_review';
+        updateData.approved_at = new Date().toISOString();
         break;
 
       case 'reject':
         updateData.status = 'rejected';
-        updateData.rejected_at = new Date().toISOString();
-        updateData.rejected_by = adminUser.id;
         break;
 
       case 'edit':
         updateData.letter_content = editedContent;
         updateData.status = 'admin_approved';
-        updateData.approved_via = 'admin_review';
-        updateData.admin_approved_at = new Date().toISOString();
-        updateData.admin_approved_by = adminUser.id;
-        updateData.admin_edited = true;
+        updateData.approved_by = 'admin_review';
+        updateData.approved_at = new Date().toISOString();
         break;
     }
 

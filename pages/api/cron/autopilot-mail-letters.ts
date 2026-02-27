@@ -594,7 +594,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         letter_text,
         defense_type,
         status,
-        approved_via,
         street_view_exhibit_urls,
         street_view_date,
         street_view_address,
@@ -828,7 +827,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Letters with status 'needs_admin_review' are caught above.
       // Letters with status 'admin_approved' proceed to mailing.
       // All other letters get flagged for admin review.
-      if (letter.status !== 'admin_approved' && letter.approved_via !== 'admin_review') {
+      if (letter.status !== 'admin_approved') {
         console.log(`    ⏸ Letter ${letter.id} requires admin review before mailing`);
         if (letter.status !== 'needs_admin_review') {
           await supabaseAdmin
