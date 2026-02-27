@@ -564,16 +564,30 @@ async function gatherAllEvidence(
             hasSignageIssue: false,
             hasEmergency: false,
           };
+          // Read real user evidence from DB instead of hardcoding to false
+          const dbEvidence = (ticket as any).user_evidence;
+          const hasDbEvidence = !!dbEvidence && (typeof dbEvidence === 'object' || typeof dbEvidence === 'string');
+          let parsedEvidence: any = null;
+          if (hasDbEvidence) {
+            try {
+              parsedEvidence = typeof dbEvidence === 'string' ? JSON.parse(dbEvidence) : dbEvidence;
+            } catch { parsedEvidence = null; }
+          }
+          const hasAttachments = parsedEvidence?.has_attachments === true;
+          const attachmentUrls: string[] = parsedEvidence?.attachment_urls || [];
+          const hasPhotoAttachments = attachmentUrls.some((u: string) => /\.(jpg|jpeg|png|gif|heic|webp)/i.test(u));
+          const hasDocAttachments = attachmentUrls.some((u: string) => /\.(pdf|doc|docx)/i.test(u));
+          const evidenceText: string = parsedEvidence?.text || '';
           const userEvidence: UserEvidence = {
-            hasPhotos: false,
-            hasWitnesses: false,
-            hasDocs: false,
-            photoTypes: [],
-            hasReceipts: false,
-            hasPoliceReport: false,
-            hasMedicalDocs: false,
-            docTypes: [],
-            hasLocationEvidence: false,
+            hasPhotos: hasPhotoAttachments,
+            hasWitnesses: /witness/i.test(evidenceText),
+            hasDocs: hasDocAttachments,
+            photoTypes: hasPhotoAttachments ? ['user_submitted'] : [],
+            hasReceipts: /receipt|payment|transaction/i.test(evidenceText) || attachmentUrls.some((u: string) => /receipt/i.test(u)),
+            hasPoliceReport: /police report|incident report/i.test(evidenceText),
+            hasMedicalDocs: /medical|doctor|hospital|emergency room/i.test(evidenceText),
+            docTypes: hasDocAttachments ? ['user_submitted'] : [],
+            hasLocationEvidence: !!(ticket as any).gps_parking_lat || /gps|location|parked at/i.test(evidenceText),
           };
           bundle.kitEvaluation = await evaluateContest(ticketFacts, userEvidence);
           console.log(`    Contest kit evaluated: ${kit.violationCode} (estimated win: ${Math.round(bundle.kitEvaluation.estimatedWinRate * 100)}%)`);

@@ -127,6 +127,13 @@ const VIOLATION_TYPE_MAP: Record<string, string> = {
   'standing prohibited': 'parking_prohibited',
   'tow zone': 'no_standing_time_restricted',
   'alley': 'parking_alley',
+  // Rush hour and winter ban
+  'rush hour': 'rush_hour',
+  'rush hr': 'rush_hour',
+  'tow zone rush': 'rush_hour',
+  'winter overnight': 'winter_parking_ban',
+  'winter ban': 'winter_parking_ban',
+  'overnight parking ban': 'winter_parking_ban',
 };
 
 /**
@@ -1418,13 +1425,13 @@ function generateLetterContent(
         ? `Attached as exhibits are ${svFindings.exhibitUrls.length} Google Street View images documenting the signage conditions at this location.`
         : 'I have documented the signage conditions at this location.')
       .replace(/\[EVIDENCE_REFERENCE\]/g, 'the automated evidence gathered on my behalf')
-      .replace(/\[MALFUNCTION_DESCRIPTION\]/g, 'the meter was not functioning properly')
-      .replace(/\[PAYMENT_METHOD\]/g, 'the available payment method')
-      .replace(/\[PAYMENT_TIME\]/g, 'the time of payment')
-      .replace(/\[PAYMENT_EXPIRATION\]/g, 'the expiration time shown')
-      .replace(/\[TICKET_TIME\]/g, 'the time indicated on the ticket')
-      .replace(/\[TIME_COMPARISON\]/g, 'there is a discrepancy between the meter time and the ticket time')
-      .replace(/\[IDENTIFICATION_ISSUES\]/g, 'the violation photos do not conclusively establish the identity of my vehicle')
+      .replace(/\[MALFUNCTION_DESCRIPTION\]/g, 'I request the City provide meter maintenance and calibration records for this meter to verify it was functioning properly at the time of the citation')
+      .replace(/\[PAYMENT_METHOD\]/g, 'the payment method I used')
+      .replace(/\[PAYMENT_TIME\]/g, 'the time shown on my payment record')
+      .replace(/\[PAYMENT_EXPIRATION\]/g, 'the expiration time on my payment record')
+      .replace(/\[TICKET_TIME\]/g, 'the time indicated on the citation')
+      .replace(/\[TIME_COMPARISON\]/g, 'I request the City verify the meter time logs against the citation time to confirm accuracy')
+      .replace(/\[IDENTIFICATION_ISSUES\]/g, 'I request the City provide clear violation photos that conclusively identify my vehicle')
       .replace(/\[SUPPORTING_INFO\]/g, '')
       .replace(/\[WEATHER_CONTEXT\]/g, kitEval.weatherDefense.paragraph || '')
       .replace(/\[WEATHER_CONDITION\]/g, automatedEvidence?.weather?.data?.summary || 'adverse conditions')

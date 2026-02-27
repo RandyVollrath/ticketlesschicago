@@ -55,6 +55,10 @@ export { commercialLoadingKit } from './commercial-loading';
 export { missingPlateKit } from './missing-plate';
 export { busLaneKit } from './bus-lane';
 
+// Kit exports - Time/weather-based restrictions
+export { rushHourKit } from './rush-hour';
+export { winterParkingBanKit } from './winter-parking-ban';
+
 // Kit exports - Camera enforcement
 export { redLightKit } from './red-light';
 export { speedCameraKit } from './speed-camera';
@@ -76,6 +80,8 @@ import { doubleParkingKit } from './double-parking';
 import { commercialLoadingKit } from './commercial-loading';
 import { missingPlateKit } from './missing-plate';
 import { busLaneKit } from './bus-lane';
+import { rushHourKit } from './rush-hour';
+import { winterParkingBanKit } from './winter-parking-ban';
 import { redLightKit } from './red-light';
 import { speedCameraKit } from './speed-camera';
 import { ContestKit } from './types';
@@ -104,6 +110,10 @@ export const CONTEST_KITS: Record<string, ContestKit> = {
   '9-64-110': doubleParkingKit,
   '9-64-160': commercialLoadingKit,
   '9-80-040': missingPlateKit,
+
+  // Time/weather-based restrictions
+  '9-64-190': rushHourKit,
+  '9-64-081': winterParkingBanKit,
 
   // Bus lane (Smart Streets automated enforcement)
   '9-12-060': busLaneKit,
@@ -138,6 +148,9 @@ export const VIOLATION_NAME_TO_CODE: Record<string, string> = {
   'missing_plate': '9-80-040',
   'parking_prohibited': '9-64-140', // Same as no standing
   'bus_lane': '9-12-060',
+  'rush_hour': '9-64-190',
+  'winter_parking_ban': '9-64-081',
+  'winter_overnight_ban': '9-64-081',
   'red_light': '9-102-010',
   'speed_camera': '9-102-020',
 };
