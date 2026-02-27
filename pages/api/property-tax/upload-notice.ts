@@ -206,7 +206,7 @@ Return ONLY the JSON object, no other text.`;
   const mediaType = mimeType === 'application/pdf' ? 'application/pdf' : mimeType as any;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20250929',
     max_tokens: 1024,
     messages: [
       {

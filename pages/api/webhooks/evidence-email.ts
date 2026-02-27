@@ -167,7 +167,7 @@ Please rewrite the contest letter integrating this evidence professionally. Retu
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 2000,
         messages: [
           {
@@ -195,7 +195,7 @@ Please rewrite the contest letter integrating this evidence professionally. Retu
       return basicEvidenceIntegration(originalLetter, userEvidence, hasAttachments);
     }
 
-    console.log('Successfully generated AI-enhanced contest letter with Claude Sonnet 4, length:', newLetter.length);
+    console.log('Successfully generated AI-enhanced contest letter with Claude Sonnet 4.5, length:', newLetter.length);
     return newLetter;
 
   } catch (error: any) {
