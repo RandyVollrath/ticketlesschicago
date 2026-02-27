@@ -635,7 +635,7 @@ export default function AdminContestLetters() {
                       AI Evidence Integrated
                     </p>
                     <p style={{ fontSize: '14px', color: '#047857' }}>
-                      User evidence was professionally integrated using GPT-4o-mini on{' '}
+                      User evidence was professionally integrated using Claude Sonnet 4.5 on{' '}
                       {new Date(selectedLetter.evidence_integrated_at!).toLocaleString()}
                     </p>
                   </div>
