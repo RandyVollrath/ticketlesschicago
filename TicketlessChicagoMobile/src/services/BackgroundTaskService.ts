@@ -1385,12 +1385,14 @@ class BackgroundTaskServiceClass {
       await this.finalizePendingDepartureImmediately();
     }
 
-    // Stop GPS pre-caching from driving — we don't want stale driving positions
-    // being used as the parking location. Clear the in-app location cache so
-    // triggerParkingCheck gets a FRESH GPS fix at the actual parking spot.
+    // Stop ALL driving GPS sources before parking check. The Android driving
+    // GPS watcher (1Hz, 5m filter) keeps the OS location cache fresh with
+    // driving positions. If it's still running when triggerParkingCheck fires,
+    // getCurrentPosition can return a stale driving fix even with forceNoCache.
     this.stopGpsCaching();
+    this.stopAndroidDrivingGps();
     LocationService.clearLocationCache();
-    log.info('Cleared driving GPS cache before parking check');
+    log.info('Stopped driving GPS + cleared cache before parking check');
 
     // Record disconnect time
     this.state.lastDisconnectTime = Date.now();
@@ -1493,17 +1495,14 @@ class BackgroundTaskServiceClass {
 
         // Phase 1: Fast single GPS fix (1-3 seconds)
         try {
-          if (Platform.OS === 'android') {
-            // Prioritize speed on Android for immediate user feedback.
-            // Phase 2 burst refinement will correct any drift.
-            coords = await LocationService.getCurrentLocation('balanced', false);
-            resolvedCoords = coords;
-            gpsSource = `fast-single-android (${coords.accuracy?.toFixed(1)}m)`;
-          } else {
-            coords = await LocationService.getCurrentLocation('high', true);
-            resolvedCoords = coords;
-            gpsSource = `fast-single (${coords.accuracy?.toFixed(1)}m)`;
-          }
+          // Force a fresh GPS fix (forceNoCache=true) on both platforms.
+          // The Android OS location cache retains the last driving position
+          // from watchPosition, which can be 2+ blocks away from where the
+          // user actually parked. A stale cache caused false parking at
+          // 2263 N Sheffield when the user was at 2350 N Kenmore.
+          coords = await LocationService.getCurrentLocation('high', true);
+          resolvedCoords = coords;
+          gpsSource = `fast-single (${coords.accuracy?.toFixed(1)}m)`;
           log.info(`Fast GPS fix: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m`);
         } catch (fastError) {
           log.warn('Fast GPS failed, trying balanced:', fastError);
