@@ -2065,7 +2065,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           // Start recording accelerometer data for red light evidence
           self.startAccelerometerRecording()
           // Warm up audio session for background TTS camera alerts
-          self.configureSpeechAudioSession()
+          // TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4)
+          // self.configureSpeechAudioSession()
 
           // DEPARTURE TIMING: Use GPS timestamp if available for more accurate timing.
           var departureTimestamp = Date().timeIntervalSince1970 * 1000
@@ -2363,7 +2364,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         lastDrivingLocation = nil
         locationAtStopStart = nil
         recentLowSpeedLocations.removeAll()
-        configureSpeechAudioSession()
+        // TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4)
+        // configureSpeechAudioSession()
         self.log("Driving started (GPS speed \(String(format: "%.1f", speed)) m/s confirmed CoreMotion automotive)")
 
         var departureTimestamp = Date().timeIntervalSince1970 * 1000
@@ -2439,7 +2441,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             recentLowSpeedLocations.removeAll()
             startContinuousGps()
             startAccelerometerRecording()
-            configureSpeechAudioSession()
+            // TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4)
+            // configureSpeechAudioSession()
             decision("gps_fallback_promoted_to_driving", [
               "durationSec": fallbackDuration,
               "distanceMeters": fallbackDistance,
@@ -3542,7 +3545,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   ///
   /// Speaks in both foreground and background. Native TTS is the sole audio
   /// path for camera alerts — JS CameraAlertService TTS is disabled to avoid double-speak.
+  ///
+  /// TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4 — "audio" background
+  /// mode removed). Local notifications still fire. Re-enable when camera alerts feature
+  /// is approved.
   private func speakCameraAlert(_ message: String) {
+    log("Native TTS: disabled for App Store compliance (2.5.4) — skipping speech for '\(message)'")
+    return
     // Speak natively in BOTH foreground and background.
     // Previously only spoke when backgrounded, relying on JS CameraAlertService for
     // foreground TTS. But JS camera alerts had persistent settings sync issues causing
@@ -3796,7 +3805,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
   /// Speak a camera alert regardless of foreground/background state.
   /// Used only for the App Store test flow.
+  /// TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4).
   private func forceSpeakCameraAlert(_ message: String) {
+    log("Native TTS: disabled for App Store compliance (2.5.4) — skipping forced speech")
+    return
     configureSpeechAudioSession()
     guard speechAudioSessionConfigured else {
       log("forceSpeakCameraAlert: audio session not configured")

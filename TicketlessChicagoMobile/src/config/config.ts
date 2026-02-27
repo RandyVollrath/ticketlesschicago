@@ -1,6 +1,6 @@
 // App version - update this when releasing new versions
-export const APP_VERSION = '1.0.13';
-export const BUILD_NUMBER = '15';
+export const APP_VERSION = '1.0.14';
+export const BUILD_NUMBER = '16';
 
 /**
  * Environment-specific configuration
