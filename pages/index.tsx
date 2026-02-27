@@ -703,10 +703,10 @@ export default function LandingPage() {
 
             <Button
               fullWidth
-              href="/alerts/signup"
+              href="/quick-start"
               style={{ backgroundColor: COLORS.bgSection, color: COLORS.primary, border: `1px solid ${COLORS.border}` }}
             >
-              Start Free
+              Quick Start (Free)
             </Button>
           </div>
 
@@ -865,11 +865,11 @@ export default function LandingPage() {
             Not a generic national template.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button variant="outline" href="/alerts/signup">
-              Start Free
-            </Button>
             <Button primary href="/start">
               Become a Founding Member - $49/year <ArrowRight />
+            </Button>
+            <Button variant="outline" href="/quick-start">
+              Quick Start (Free)
             </Button>
           </div>
         </div>

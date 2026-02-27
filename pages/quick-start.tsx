@@ -26,8 +26,6 @@ const COLORS = {
   amberBg: '#FFFBEB',
 };
 
-const VEHICLE_TYPES = ['Sedan', 'SUV', 'Truck', 'Van', 'Motorcycle', 'Other'];
-
 export default function QuickStart() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('account');
@@ -55,9 +53,6 @@ export default function QuickStart() {
 
   // Step 3: Profile completion
   const [profileData, setProfileData] = useState({
-    vin: '',
-    vehicleType: '',
-    vehicleYear: '',
     citySticker: '',
     plateExpiry: '',
     emissionsTest: '',
@@ -114,12 +109,9 @@ export default function QuickStart() {
             zip: profile.zip_code || prev.zip,
           }));
 
-          if (profile.vin || profile.vehicle_type || profile.vehicle_year) {
+          if (profile.city_sticker_expiry || profile.license_plate_expiry || profile.emissions_test_date) {
             setProfileData(prev => ({
               ...prev,
-              vin: profile.vin || '',
-              vehicleType: profile.vehicle_type || '',
-              vehicleYear: profile.vehicle_year || '',
               citySticker: profile.city_sticker_expiry || '',
               plateExpiry: profile.license_plate_expiry || '',
               emissionsTest: profile.emissions_test_date || '',
@@ -309,9 +301,6 @@ export default function QuickStart() {
 
     try {
       const updates: any = {};
-      if (profileData.vin) updates.vin = profileData.vin.trim().toUpperCase();
-      if (profileData.vehicleType) updates.vehicle_type = profileData.vehicleType;
-      if (profileData.vehicleYear) updates.vehicle_year = profileData.vehicleYear;
       if (profileData.citySticker) updates.city_sticker_expiry = profileData.citySticker;
       if (profileData.plateExpiry) updates.license_plate_expiry = profileData.plateExpiry;
       if (profileData.emissionsTest) updates.emissions_test_date = profileData.emissionsTest;
@@ -1002,52 +991,6 @@ export default function QuickStart() {
               border: `1px solid ${COLORS.border}`,
               boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             }}>
-              {/* Vehicle Info */}
-              <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: COLORS.text, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COLORS.textSecondary} strokeWidth="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-                Vehicle Details
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                <div>
-                  <label style={labelStyle}>Vehicle Type</label>
-                  <select
-                    name="vehicleType"
-                    value={profileData.vehicleType}
-                    onChange={handleProfileChange}
-                    style={inputStyle}
-                  >
-                    <option value="">Select...</option>
-                    {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Vehicle Year</label>
-                  <input
-                    type="text"
-                    name="vehicleYear"
-                    value={profileData.vehicleYear}
-                    onChange={handleProfileChange}
-                    placeholder="2022"
-                    maxLength={4}
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '24px' }}>
-                <label style={labelStyle}>VIN (17 characters)</label>
-                <input
-                  type="text"
-                  name="vin"
-                  value={profileData.vin}
-                  onChange={(e) => setProfileData(prev => ({ ...prev, vin: e.target.value.toUpperCase() }))}
-                  placeholder="1HGCM82633A123456"
-                  maxLength={17}
-                  style={{ ...inputStyle, textTransform: 'uppercase' as const, fontFamily: 'monospace' }}
-                />
-              </div>
-
               {/* Compliance Dates */}
               <h3 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 600, color: COLORS.text, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COLORS.textSecondary} strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
