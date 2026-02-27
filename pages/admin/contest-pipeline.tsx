@@ -208,14 +208,16 @@ interface LifecycleSummary { total_users: number; total_tickets: number; total_a
 
 export default function ContestPipelineAdmin() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'lifecycle'>('pipeline');
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'lifecycle' | 'letters'>('pipeline');
   const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
     checkAuth();
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('tab') === 'lifecycle') setActiveTab('lifecycle');
+      const tab = params.get('tab');
+      if (tab === 'lifecycle') setActiveTab('lifecycle');
+      if (tab === 'letters') setActiveTab('letters');
     }
   }, []);
 
@@ -276,6 +278,7 @@ export default function ContestPipelineAdmin() {
               {[
                 { key: 'pipeline' as const, label: 'Pipeline' },
                 { key: 'lifecycle' as const, label: 'Lifecycle' },
+                { key: 'letters' as const, label: 'Letters' },
               ].map(tab => (
                 <button
                   key={tab.key}
@@ -300,7 +303,7 @@ export default function ContestPipelineAdmin() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'pipeline' ? <PipelineTab /> : <LifecycleTab />}
+        {activeTab === 'pipeline' ? <PipelineTab /> : activeTab === 'lifecycle' ? <LifecycleTab /> : <LettersTab />}
       </div>
     </>
   );
@@ -1719,6 +1722,433 @@ function PipelineBadge({ label, color }: { label: string; color: string }) {
     <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${color}20`, color, border: `1px solid ${color}40` }}>
       {label}
     </span>
+  );
+}
+
+// =====================================================
+// LETTERS TAB
+// =====================================================
+
+interface LetterReview {
+  id: string;
+  user_id: string;
+  user_name: string | null;
+  user_email: string | null;
+  ticket_number: string;
+  violation_type: string;
+  violation_date: string | null;
+  amount: number | null;
+  letter_content: string;
+  quality_score: number | null;
+  quality_issues: string[] | null;
+  created_at: string;
+  status: string;
+}
+
+function LettersTab() {
+  const [loading, setLoading] = useState(true);
+  const [letters, setLetters] = useState<LetterReview[]>([]);
+  const [expandedLetter, setExpandedLetter] = useState<string | null>(null);
+  const [editingLetter, setEditingLetter] = useState<string | null>(null);
+  const [editedContent, setEditedContent] = useState('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadLetters();
+  }, []);
+
+  const loadLetters = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/letter-review');
+      const data = await res.json();
+      if (data.success) {
+        setLetters(data.letters || []);
+      } else {
+        setError(data.error || 'Failed to load letters');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setLoading(false);
+  };
+
+  const handleAction = async (letterId: string, action: 'approve' | 'reject' | 'edit') => {
+    if (action === 'edit') {
+      const letter = letters.find(l => l.id === letterId);
+      if (letter) {
+        setEditingLetter(letterId);
+        setEditedContent(letter.letter_content);
+      }
+      return;
+    }
+
+    setActionLoading(letterId);
+    try {
+      const body: any = { letterId, action };
+      if (action === 'edit' && editedContent) {
+        body.editedContent = editedContent;
+      }
+
+      const res = await fetch('/api/admin/letter-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        await loadLetters();
+        setEditingLetter(null);
+        setEditedContent('');
+      } else {
+        setError(data.error || 'Failed to perform action');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setActionLoading(null);
+  };
+
+  const saveEdit = async (letterId: string) => {
+    setActionLoading(letterId);
+    try {
+      const res = await fetch('/api/admin/letter-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ letterId, action: 'edit', editedContent }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        await loadLetters();
+        setEditingLetter(null);
+        setEditedContent('');
+      } else {
+        setError(data.error || 'Failed to save edit');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setActionLoading(null);
+  };
+
+  const getQualityColor = (score: number | null): string => {
+    if (!score) return C.textMuted;
+    if (score >= 80) return C.green;
+    if (score >= 50) return C.yellow;
+    return C.red;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusMap: Record<string, { label: string; bg: string; text: string }> = {
+      pending: { label: 'Needs Review', bg: C.yellowDim, text: C.yellow },
+      approved: { label: 'Approved', bg: C.greenDim, text: C.green },
+      rejected: { label: 'Rejected', bg: C.redDim, text: C.red },
+    };
+    const s = statusMap[status] || { label: status, bg: C.card, text: C.textDim };
+    return (
+      <span style={{
+        background: s.bg,
+        color: s.text,
+        padding: '3px 8px',
+        borderRadius: 4,
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+      }}>
+        {s.label}
+      </span>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center', color: C.textDim }}>
+        Loading letters...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 24, color: C.red }}>
+        Error: {error}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 24, maxWidth: 1600, margin: '0 auto' }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.white }}>
+          Letters Needing Review ({letters.length})
+        </h2>
+        <button
+          onClick={loadLetters}
+          style={{
+            background: C.card,
+            border: `1px solid ${C.border}`,
+            color: C.textDim,
+            padding: '6px 12px',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: 12,
+          }}
+        >
+          Refresh
+        </button>
+      </div>
+
+      {letters.length === 0 ? (
+        <div style={{
+          background: C.card,
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          padding: 40,
+          textAlign: 'center',
+          color: C.textDim,
+        }}>
+          No letters needing review.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {letters.map(letter => {
+            const isExpanded = expandedLetter === letter.id;
+            const isEditing = editingLetter === letter.id;
+            const isLoading = actionLoading === letter.id;
+
+            return (
+              <div
+                key={letter.id}
+                style={{
+                  background: C.card,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 8,
+                  padding: 16,
+                }}
+              >
+                {/* Header Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 15, fontWeight: 600, color: C.white }}>
+                        {letter.user_name || 'Unknown User'}
+                      </span>
+                      <span style={{ fontSize: 13, color: C.textMuted }}>
+                        {letter.user_email}
+                      </span>
+                      {getStatusBadge(letter.status)}
+                    </div>
+                    <div style={{ fontSize: 13, color: C.textDim }}>
+                      Ticket #{letter.ticket_number} • {formatViolationType(letter.violation_type)} •
+                      {letter.violation_date ? ` ${formatDate(letter.violation_date)}` : ' No date'} •
+                      {letter.amount ? ` ${formatCurrency(letter.amount)}` : ' No amount'}
+                    </div>
+                  </div>
+
+                  {letter.quality_score !== null && (
+                    <div style={{ textAlign: 'right', marginLeft: 16 }}>
+                      <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 2 }}>Quality</div>
+                      <div style={{
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: getQualityColor(letter.quality_score),
+                      }}>
+                        {letter.quality_score}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Quality Issues */}
+                {letter.quality_issues && letter.quality_issues.length > 0 && (
+                  <div style={{
+                    background: C.yellowDim,
+                    border: `1px solid ${C.yellowBorder}`,
+                    borderRadius: 6,
+                    padding: 8,
+                    marginBottom: 12,
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.yellow, marginBottom: 4 }}>
+                      Issues Found:
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: 20, color: C.textDim, fontSize: 12 }}>
+                      {letter.quality_issues.map((issue, idx) => (
+                        <li key={idx}>{issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Letter Content */}
+                {!isEditing && (
+                  <div style={{ marginBottom: 12 }}>
+                    <button
+                      onClick={() => setExpandedLetter(isExpanded ? null : letter.id)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: C.accent,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: 0,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {isExpanded ? '▼' : '▶'} {isExpanded ? 'Hide' : 'Show'} Letter Content
+                    </button>
+
+                    {isExpanded && (
+                      <div style={{
+                        background: C.surface,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 6,
+                        padding: 12,
+                        fontSize: 13,
+                        color: C.text,
+                        fontFamily: 'monospace',
+                        whiteSpace: 'pre-wrap',
+                        maxHeight: 400,
+                        overflow: 'auto',
+                      }}>
+                        {letter.letter_content}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Edit Mode */}
+                {isEditing && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.white, marginBottom: 6 }}>
+                      Edit Letter Content:
+                    </div>
+                    <textarea
+                      value={editedContent}
+                      onChange={(e) => setEditedContent(e.target.value)}
+                      style={{
+                        width: '100%',
+                        minHeight: 300,
+                        background: C.surface,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 6,
+                        padding: 12,
+                        fontSize: 13,
+                        color: C.text,
+                        fontFamily: 'monospace',
+                        resize: 'vertical',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {!isEditing ? (
+                    <>
+                      <button
+                        onClick={() => handleAction(letter.id, 'approve')}
+                        disabled={isLoading}
+                        style={{
+                          background: C.greenDim,
+                          border: `1px solid ${C.greenBorder}`,
+                          color: C.green,
+                          padding: '6px 16px',
+                          borderRadius: 6,
+                          cursor: isLoading ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          opacity: isLoading ? 0.5 : 1,
+                        }}
+                      >
+                        {isLoading ? 'Processing...' : 'Approve'}
+                      </button>
+                      <button
+                        onClick={() => handleAction(letter.id, 'reject')}
+                        disabled={isLoading}
+                        style={{
+                          background: C.redDim,
+                          border: `1px solid ${C.redBorder}`,
+                          color: C.red,
+                          padding: '6px 16px',
+                          borderRadius: 6,
+                          cursor: isLoading ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          opacity: isLoading ? 0.5 : 1,
+                        }}
+                      >
+                        {isLoading ? 'Processing...' : 'Reject'}
+                      </button>
+                      <button
+                        onClick={() => handleAction(letter.id, 'edit')}
+                        disabled={isLoading}
+                        style={{
+                          background: C.card,
+                          border: `1px solid ${C.accent}`,
+                          color: C.accent,
+                          padding: '6px 16px',
+                          borderRadius: 6,
+                          cursor: isLoading ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          opacity: isLoading ? 0.5 : 1,
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => saveEdit(letter.id)}
+                        disabled={isLoading}
+                        style={{
+                          background: C.accentDim,
+                          border: `1px solid ${C.accent}`,
+                          color: C.accent,
+                          padding: '6px 16px',
+                          borderRadius: 6,
+                          cursor: isLoading ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          opacity: isLoading ? 0.5 : 1,
+                        }}
+                      >
+                        {isLoading ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingLetter(null);
+                          setEditedContent('');
+                        }}
+                        disabled={isLoading}
+                        style={{
+                          background: C.card,
+                          border: `1px solid ${C.border}`,
+                          color: C.textDim,
+                          padding: '6px 16px',
+                          borderRadius: 6,
+                          cursor: isLoading ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
