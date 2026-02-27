@@ -2057,6 +2057,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           // we'd fall back to the PREVIOUS drive's lastDrivingLocation.
           self.lastDrivingLocation = nil
           self.locationAtStopStart = nil
+          // Clear GPS averaging buffer — stale fixes from previous parking
+          // spot would contaminate the next parking location average.
+          self.recentLowSpeedLocations.removeAll()
           // Spin up precise GPS now that we know user is driving
           self.startContinuousGps()
           // Start recording accelerometer data for red light evidence
@@ -2359,6 +2362,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         drivingStartTime = Date()
         lastDrivingLocation = nil
         locationAtStopStart = nil
+        recentLowSpeedLocations.removeAll()
         configureSpeechAudioSession()
         self.log("Driving started (GPS speed \(String(format: "%.1f", speed)) m/s confirmed CoreMotion automotive)")
 
@@ -2432,6 +2436,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             drivingStartTime = fallbackStart
             lastDrivingLocation = nil
             locationAtStopStart = nil
+            recentLowSpeedLocations.removeAll()
             startContinuousGps()
             startAccelerometerRecording()
             configureSpeechAudioSession()
@@ -4770,23 +4775,45 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // GPS averaging: use recent low-speed GPS fixes to improve parking location accuracy.
     // During the last seconds before parking, the car is moving slowly or stopped —
     // averaging multiple fixes reduces urban canyon noise.
+    // Filter: only use fixes from the last 60 seconds to prevent stale contamination.
     if !recentLowSpeedLocations.isEmpty {
-      var avgLat = 0.0
-      var avgLng = 0.0
-      var avgAcc = 0.0
-      for fix in recentLowSpeedLocations {
-        avgLat += fix.coordinate.latitude
-        avgLng += fix.coordinate.longitude
-        avgAcc += fix.horizontalAccuracy
+      let now = Date()
+      let recentFixes = recentLowSpeedLocations.filter { now.timeIntervalSince($0.timestamp) <= 60 }
+
+      if recentFixes.count >= 2 {
+        // Spatial coherence check: all fixes must be within 100m of the median.
+        // If they span too wide an area, the buffer is contaminated with fixes
+        // from a different location (e.g. previous parking spot).
+        let medianLat = recentFixes.map { $0.coordinate.latitude }.sorted()[recentFixes.count / 2]
+        let medianLng = recentFixes.map { $0.coordinate.longitude }.sorted()[recentFixes.count / 2]
+        let medianLoc = CLLocation(latitude: medianLat, longitude: medianLng)
+        let coherentFixes = recentFixes.filter { $0.distance(from: medianLoc) <= 100 }
+
+        if coherentFixes.count >= 2 {
+          var avgLat = 0.0
+          var avgLng = 0.0
+          var avgAcc = 0.0
+          for fix in coherentFixes {
+            avgLat += fix.coordinate.latitude
+            avgLng += fix.coordinate.longitude
+            avgAcc += fix.horizontalAccuracy
+          }
+          avgLat /= Double(coherentFixes.count)
+          avgLng /= Double(coherentFixes.count)
+          avgAcc /= Double(coherentFixes.count)
+          body["averagedLatitude"] = avgLat
+          body["averagedLongitude"] = avgLng
+          body["averagedAccuracy"] = avgAcc
+          body["averagedFixCount"] = coherentFixes.count
+          self.log("GPS averaging: \(coherentFixes.count)/\(recentLowSpeedLocations.count) recent coherent fixes → (\(String(format: "%.6f", avgLat)), \(String(format: "%.6f", avgLng))) ±\(String(format: "%.0f", avgAcc))m")
+        } else {
+          self.log("GPS averaging: skipped — only \(coherentFixes.count) spatially coherent fixes (need 2+)")
+        }
+      } else {
+        self.log("GPS averaging: skipped — only \(recentFixes.count) recent fixes within 60s (need 2+)")
       }
-      avgLat /= Double(recentLowSpeedLocations.count)
-      avgLng /= Double(recentLowSpeedLocations.count)
-      avgAcc /= Double(recentLowSpeedLocations.count)
-      body["averagedLatitude"] = avgLat
-      body["averagedLongitude"] = avgLng
-      body["averagedAccuracy"] = avgAcc
-      body["averagedFixCount"] = recentLowSpeedLocations.count
-      self.log("GPS averaging: \(recentLowSpeedLocations.count) low-speed fixes → (\(String(format: "%.6f", avgLat)), \(String(format: "%.6f", avgLng))) ±\(String(format: "%.0f", avgAcc))m")
+      // Clear buffer after use — prevents stale fixes leaking into next parking
+      recentLowSpeedLocations.removeAll()
     }
 
     if let cur = currentLocation, let park = parkingLocation {
