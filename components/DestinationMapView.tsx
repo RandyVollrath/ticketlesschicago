@@ -928,35 +928,6 @@ export default function DestinationMapView() {
         </div>
       )}
 
-      {/* Permit zone banner — shows if destination is in a permit zone */}
-      {permitZone && !loading && (
-        <div style={{
-          position: 'absolute',
-          top: '56px',
-          left: '12px',
-          right: '12px',
-          zIndex: 1000,
-          backgroundColor: '#F3E8FF',
-          border: '1px solid #c4b5fd',
-          borderRadius: '10px',
-          padding: '8px 14px',
-          fontFamily: 'system-ui',
-          fontSize: '12px',
-          color: '#5b21b6',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}>
-          <span style={{
-            width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-            backgroundColor: '#8b5cf6',
-          }} />
-          <span>
-            <strong>Permit Zone {permitZone}</strong> — check posted sign
-          </span>
-        </div>
-      )}
 
       {/* Legend — swipeable: drag down to collapse, tap or swipe up to expand */}
       <div
