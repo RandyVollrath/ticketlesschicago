@@ -196,6 +196,8 @@ export async function getCachedStreetView(
   address: string,
   violationDate?: string | null,
   ticketId?: string | null,
+  violationType?: string | null,
+  violationDescription?: string | null,
 ): Promise<StreetViewCacheEntry | null> {
   const addressKey = normalizeAddressKey(address);
 
@@ -232,7 +234,7 @@ export async function getCachedStreetView(
   // Cache miss — fetch from Google + Claude Vision
   console.log(`    Street View CACHE MISS for "${addressKey}" — fetching fresh`);
   try {
-    const pkg = await getStreetViewEvidenceWithAnalysis(address, violationDate, ticketId);
+    const pkg = await getStreetViewEvidenceWithAnalysis(address, violationDate, ticketId, violationType, violationDescription);
 
     // Store in cache
     const cacheEntry = {
@@ -597,6 +599,7 @@ export async function enrichTicketEvidence(
     location: string | null;
     violation_date: string | null;
     violation_type: string;
+    violation_description?: string | null;
     latitude?: number | null;
     longitude?: number | null;
   },
@@ -620,6 +623,8 @@ export async function enrichTicketEvidence(
         ticket.location!,
         ticket.violation_date,
         ticket.id,
+        ticket.violation_type || null,
+        ticket.violation_description || null,
       );
     })());
   }

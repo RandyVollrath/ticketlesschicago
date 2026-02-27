@@ -635,6 +635,8 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
             contest.ticket_location,
             ticketDate,
             contestId,
+            violationType || null,
+            contest.violation_description || null,
           );
           // Also populate the legacy field for backward-compatible prompt section
           if (streetViewPackage.hasImagery) {

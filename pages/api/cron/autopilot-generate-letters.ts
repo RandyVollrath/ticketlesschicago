@@ -609,6 +609,8 @@ async function gatherAllEvidence(
           ticket.location!,
           ticket.violation_date,
           ticket.id || null,
+          ticket.violation_type || null,
+          ticket.violation_description || null,
         );
         if (cached) {
           // Convert cache entry to StreetViewEvidencePackage for backward compat
@@ -633,6 +635,8 @@ async function gatherAllEvidence(
             ticket.location!,
             ticket.violation_date,
             ticket.id || null,
+            ticket.violation_type || null,
+            ticket.violation_description || null,
           );
         }
         if (bundle.streetViewPackage?.hasImagery) {
