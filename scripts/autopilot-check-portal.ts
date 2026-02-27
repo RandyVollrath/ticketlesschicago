@@ -31,7 +31,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { lookupMultiplePlates, LookupResult, PortalTicket } from '../lib/chicago-portal-scraper';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../lib/contest-kits/evidence-guidance';
-import { getStreetViewEvidence, StreetViewResult } from '../lib/street-view-service';
+import { getStreetViewEvidence, getStreetViewEvidenceWithAnalysis, StreetViewResult, StreetViewEvidencePackage, SignageAnalysis } from '../lib/street-view-service';
 import {
   evaluateContest,
   getContestKitByName,
@@ -224,13 +224,19 @@ interface AutomatedEvidence {
     onSnowRoute: boolean | null;
     permitZone: string | null;
   };
-  // Street View imagery
+  // Street View imagery + AI signage analysis
   streetView: {
     checked: boolean;
     hasImagery: boolean;
     imageDate: string | null;
     imageUrl: string | null;
     signageObservation: string | null;
+    // Full analysis data (when available)
+    analyses: SignageAnalysis[];
+    analysisSummary: string | null;
+    hasSignageIssue: boolean;
+    defenseFindings: string[];
+    exhibitUrls: string[];  // Public URLs for embedding in emails/letters
   };
   // Street cleaning schedule verification (for street_cleaning tickets)
   streetCleaning: {
@@ -294,7 +300,7 @@ async function gatherAutomatedEvidence(
     weather: { checked: false, data: null },
     foiaWinRate: { checked: false, totalContested: null, notLiablePercent: null, liablePercent: null, violationDescription: null },
     parkingHistory: { checked: false, matchFound: false, address: null, parkedAt: null, latitude: null, longitude: null, onSnowRoute: null, permitZone: null },
-    streetView: { checked: false, hasImagery: false, imageDate: null, imageUrl: null, signageObservation: null },
+    streetView: { checked: false, hasImagery: false, imageDate: null, imageUrl: null, signageObservation: null, analyses: [], analysisSummary: null, hasSignageIssue: false, defenseFindings: [], exhibitUrls: [] },
     streetCleaning: { checked: false, relevant: false, ward: null, section: null, message: null },
     alertSubscriptions: { checked: false, hasAlerts: false, alertTypes: [] },
     cameraCheck: {
@@ -402,43 +408,46 @@ async function gatherAutomatedEvidence(
     }
   }
 
-  // 4. Street View imagery
-  // Use parking history GPS if available, otherwise skip (portal doesn't give us location)
-  if (evidence.parkingHistory.matchFound && evidence.parkingHistory.latitude && evidence.parkingHistory.longitude) {
-    console.log('      [Evidence] Fetching Street View imagery...');
+  // 4. Street View imagery + AI signage analysis
+  // Use parking history GPS if available, then address fallback, then location param
+  const svLocation: string | { latitude: number; longitude: number } | null =
+    evidence.parkingHistory.latitude && evidence.parkingHistory.longitude
+      ? { latitude: evidence.parkingHistory.latitude, longitude: evidence.parkingHistory.longitude }
+      : evidence.parkingHistory.address
+        ? evidence.parkingHistory.address
+        : location || null;
+
+  if (svLocation) {
+    console.log('      [Evidence] Fetching Street View imagery with AI signage analysis...');
     evidence.streetView.checked = true;
     try {
-      const svResult = await getStreetViewEvidence(
-        { latitude: evidence.parkingHistory.latitude, longitude: evidence.parkingHistory.longitude },
-        violationDate
+      const svPackage = await getStreetViewEvidenceWithAnalysis(
+        svLocation,
+        violationDate,
+        ticketNumber || null,
       );
-      evidence.streetView.hasImagery = svResult.hasImagery;
-      evidence.streetView.imageDate = svResult.imageDate;
-      evidence.streetView.imageUrl = svResult.imageUrl;
-      evidence.streetView.signageObservation = svResult.signageObservation;
-      if (svResult.hasImagery) {
-        console.log(`      [Evidence] Street View: Imagery from ${svResult.imageDate} available`);
+      evidence.streetView.hasImagery = svPackage.hasImagery;
+      evidence.streetView.imageDate = svPackage.imageDate;
+      evidence.streetView.imageUrl = svPackage.exhibitUrls[0] || null;
+      evidence.streetView.signageObservation = svPackage.timingObservation;
+      evidence.streetView.analyses = svPackage.analyses;
+      evidence.streetView.analysisSummary = svPackage.analysisSummary || null;
+      evidence.streetView.hasSignageIssue = svPackage.hasSignageIssue;
+      evidence.streetView.defenseFindings = svPackage.defenseFindings;
+      evidence.streetView.exhibitUrls = svPackage.exhibitUrls;
+
+      if (svPackage.hasImagery) {
+        console.log(`      [Evidence] Street View: ${svPackage.exhibitUrls.length} images from ${svPackage.imageDate}`);
+        if (svPackage.hasSignageIssue) {
+          console.log(`      [Evidence] SIGNAGE ISSUE DETECTED: ${svPackage.defenseFindings.join('; ')}`);
+        } else if (svPackage.analyses.length > 0) {
+          console.log(`      [Evidence] Signage analysis complete: no issues found`);
+        }
       } else {
         console.log('      [Evidence] Street View: No imagery available at this location');
       }
     } catch (err: any) {
-      console.log(`      [Evidence] Street View lookup failed: ${err.message}`);
-    }
-  } else if (evidence.parkingHistory.matchFound && evidence.parkingHistory.address) {
-    // Fallback: use address string
-    console.log('      [Evidence] Fetching Street View by address...');
-    evidence.streetView.checked = true;
-    try {
-      const svResult = await getStreetViewEvidence(evidence.parkingHistory.address, violationDate);
-      evidence.streetView.hasImagery = svResult.hasImagery;
-      evidence.streetView.imageDate = svResult.imageDate;
-      evidence.streetView.imageUrl = svResult.imageUrl;
-      evidence.streetView.signageObservation = svResult.signageObservation;
-      if (svResult.hasImagery) {
-        console.log(`      [Evidence] Street View: Imagery from ${svResult.imageDate} available`);
-      }
-    } catch (err: any) {
-      console.log(`      [Evidence] Street View lookup failed: ${err.message}`);
+      console.log(`      [Evidence] Street View analysis failed: ${err.message}`);
     }
   }
 
@@ -540,30 +549,48 @@ async function gatherAutomatedEvidence(
       const isSummer = (month === 5 && dayOfMonth >= 15) || month === 6 || month === 7 || (month === 8 && dayOfMonth <= 1);
       evidence.cameraCheck.schoolZoneCheck.isSummer = isSummer;
 
-      // CPS holidays (approximate — these shift year to year but are consistent patterns)
-      // Major CPS non-attendance days that apply across most years
+      // CPS holidays — computed dynamically for the actual violation year.
+      // Uses nth-weekday formulas for floating holidays instead of hardcoded dates.
+      const violationYear = vDate.getFullYear();
+
+      /** Get the nth occurrence of a weekday (0=Sun..6=Sat) in a given month/year. n=1 for 1st, etc. */
+      function nthWeekday(year: number, monthIdx: number, weekday: number, n: number): number {
+        const firstOfMonth = new Date(year, monthIdx, 1);
+        let day = 1 + ((weekday - firstOfMonth.getDay() + 7) % 7);
+        day += (n - 1) * 7;
+        return day;
+      }
+
+      /** Get the LAST occurrence of a weekday in a given month/year */
+      function lastWeekday(year: number, monthIdx: number, weekday: number): number {
+        const lastOfMonth = new Date(year, monthIdx + 1, 0).getDate();
+        let day = lastOfMonth;
+        while (new Date(year, monthIdx, day).getDay() !== weekday) day--;
+        return day;
+      }
+
       const cpsHolidays: Array<{ month: number; day: number; name: string }> = [
         { month: 0, day: 1, name: "New Year's Day" },
-        { month: 0, day: 15, name: 'MLK Day (approx)' },       // 3rd Monday in Jan
+        { month: 0, day: nthWeekday(violationYear, 0, 1, 3), name: 'Martin Luther King Jr. Day' },         // 3rd Monday in Jan
         { month: 1, day: 12, name: "Lincoln's Birthday" },
-        { month: 1, day: 19, name: "Presidents' Day (approx)" }, // 3rd Monday in Feb
-        { month: 2, day: 31, name: 'Cesar Chavez Day' },
-        { month: 4, day: 27, name: 'Memorial Day (approx)' },   // Last Monday in May
+        { month: 1, day: nthWeekday(violationYear, 1, 1, 3), name: "Presidents' Day" },                     // 3rd Monday in Feb
+        { month: 2, day: 31, name: 'Cesar Chavez Day' },                                                     // March 31
+        { month: 4, day: lastWeekday(violationYear, 4, 1), name: 'Memorial Day' },                          // Last Monday in May
         { month: 5, day: 19, name: 'Juneteenth' },
         { month: 6, day: 4, name: 'Independence Day (observed)' },
-        { month: 8, day: 1, name: 'Labor Day (approx)' },       // 1st Monday in Sep
-        { month: 9, day: 14, name: 'Columbus Day (approx)' },   // 2nd Monday in Oct
+        { month: 8, day: nthWeekday(violationYear, 8, 1, 1), name: 'Labor Day' },                           // 1st Monday in Sep
+        { month: 9, day: nthWeekday(violationYear, 9, 1, 2), name: 'Columbus Day' },                        // 2nd Monday in Oct
         { month: 10, day: 11, name: 'Veterans Day' },
-        { month: 10, day: 23, name: 'Thanksgiving (approx)' },  // 4th Thursday in Nov
-        { month: 10, day: 24, name: 'Day after Thanksgiving' },
+        { month: 10, day: nthWeekday(violationYear, 10, 4, 4), name: 'Thanksgiving' },                      // 4th Thursday in Nov
+        { month: 10, day: nthWeekday(violationYear, 10, 4, 4) + 1, name: 'Day after Thanksgiving' },
         { month: 11, day: 25, name: 'Christmas Day' },
       ];
 
       // CPS spring break (typically late March / early April — 1 week)
-      // CPS winter break (typically Dec 23 - Jan 3)
+      // CPS winter break (typically Dec 22 - Jan 5)
       const isWinterBreak = (month === 11 && dayOfMonth >= 22) || (month === 0 && dayOfMonth <= 5);
 
-      const matchedHoliday = cpsHolidays.find(h => h.month === month && Math.abs(h.day - dayOfMonth) <= 1);
+      const matchedHoliday = cpsHolidays.find(h => h.month === month && h.day === dayOfMonth);
       const isCpsHoliday = !!matchedHoliday || isWinterBreak;
       evidence.cameraCheck.schoolZoneCheck.isCpsHoliday = isCpsHoliday;
 
@@ -740,9 +767,42 @@ function buildValueDemonstrationHtml(evidence: AutomatedEvidence, violationType:
     }
   }
 
-  // Street View
+  // Street View + AI Signage Analysis
   if (evidence.streetView.checked) {
-    if (evidence.streetView.hasImagery) {
+    if (evidence.streetView.hasImagery && evidence.streetView.analyses.length > 0) {
+      // Full AI analysis available
+      let analysisDetail = '';
+      if (evidence.streetView.hasSignageIssue) {
+        analysisDetail = `<br><strong style="color:#dc2626;">SIGNAGE ISSUE DETECTED:</strong> ${evidence.streetView.defenseFindings.join('; ')}`;
+      } else {
+        const signViews = evidence.streetView.analyses.filter(a => a.signVisible);
+        analysisDetail = signViews.length > 0
+          ? `<br>Signs detected in ${signViews.length} of ${evidence.streetView.analyses.length} views — all appear properly posted.`
+          : `<br>No restriction signs visible in any of ${evidence.streetView.analyses.length} directional views analyzed.`;
+      }
+
+      checks.push({
+        icon: '&#128247;',
+        label: 'AI Signage Analysis (Google Street View)',
+        result: `We analyzed <strong>${evidence.streetView.analyses.length} directional Street View images</strong> from <strong>${evidence.streetView.imageDate || 'available date'}</strong> using AI vision to check for signage issues at this location.${analysisDetail}`,
+        found: evidence.streetView.hasSignageIssue || evidence.streetView.analyses.some(a => !a.signVisible),
+      });
+
+      // Add thumbnail images to email if we have public URLs
+      if (evidence.streetView.exhibitUrls.length > 0) {
+        checks.push({
+          icon: '',
+          label: '',
+          result: `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">${
+            evidence.streetView.exhibitUrls.slice(0, 4).map((url, i) =>
+              `<img src="${url}" alt="Street View ${['North', 'East', 'South', 'West'][i] || ''}" style="width:140px;height:88px;border-radius:4px;border:1px solid #e5e7eb;object-fit:cover;" />`
+            ).join('')
+          }</div><p style="margin:4px 0 0;font-size:12px;color:#6b7280;">Street View images captured for your contest file</p>`,
+          found: true,
+        });
+      }
+    } else if (evidence.streetView.hasImagery) {
+      // Basic metadata only (no AI analysis)
       checks.push({
         icon: '&#128247;',
         label: 'Google Street View Signage Check',
@@ -998,6 +1058,27 @@ function buildDefenseStrategyHtml(automatedEvidence: AutomatedEvidence): string 
     </div>
   ` : '';
 
+  // Signage findings callout (when AI detected signage issues)
+  const sv = automatedEvidence.streetView;
+  const signageFindingsHtml = sv.hasSignageIssue && sv.defenseFindings.length > 0 ? `
+    <div style="background: #fef2f2; border: 2px solid #ef4444; padding: 16px; border-radius: 8px; margin: 16px 16px 0;">
+      <p style="margin: 0; color: #991b1b; font-size: 14px; font-weight: 700;">
+        &#128270; AI Signage Analysis Found Issues:
+      </p>
+      ${sv.defenseFindings.map(f => `
+        <p style="margin: 4px 0 0; color: #7f1d1d; font-size: 13px; line-height: 1.4;">&#8226; ${f}</p>
+      `).join('')}
+      ${sv.exhibitUrls.length > 0 ? `
+        <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+          ${sv.exhibitUrls.slice(0, 4).map((url, i) =>
+            `<img src="${url}" alt="${['North', 'East', 'South', 'West'][i] || ''}" style="width:120px;height:75px;border-radius:4px;border:1px solid #fca5a5;object-fit:cover;" />`
+          ).join('')}
+        </div>
+        <p style="margin:4px 0 0;font-size:11px;color:#991b1b;">These images will be included as exhibits in your contest letter.</p>
+      ` : ''}
+    </div>
+  ` : '';
+
   return `
     <div style="margin: 24px 0; border: 2px solid #7c3aed; border-radius: 12px; overflow: hidden;">
       <div style="background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%); padding: 20px;">
@@ -1027,6 +1108,7 @@ function buildDefenseStrategyHtml(automatedEvidence: AutomatedEvidence): string 
             ${backupHtml}
           </div>
         </div>
+        ${signageFindingsHtml}
         ${topNeededCallout}
       </div>
       ${neededEvidence.length > 0 ? `
@@ -1317,13 +1399,22 @@ function generateLetterContent(
       .replace(/\[AMOUNT\]/g, ticketData.amount ? `$${ticketData.amount.toFixed(2)}` : 'the amount shown')
       .replace(/\[USER_GROUNDS\]/g, ''); // Autopilot doesn't have user-selected grounds
 
-    // Clean up any leftover bracketed placeholders that need context we don't have
-    // Replace them with generic text instead of leaving ugly brackets
+    // Fill signage placeholders with real AI analysis when available, or generic fallback
+    const svFindings = automatedEvidence?.streetView;
+    const hasRealSignage = svFindings?.hasSignageIssue && svFindings.defenseFindings.length > 0;
     content = content
-      .replace(/\[SIGNAGE_ISSUE\]/g, 'signage at the location was inadequate, missing, obscured, or unclear')
-      .replace(/\[SPECIFIC_SIGNAGE_PROBLEM\]/g, 'the posted signage was not clearly visible to approaching motorists')
-      .replace(/\[SIGNAGE_FINDINGS\]/g, 'I found that the posted signs were not clearly visible, were obscured, or did not provide adequate notice of the restriction')
-      .replace(/\[SIGNAGE_PHOTOS\]/g, 'I have documented the signage conditions at this location.')
+      .replace(/\[SIGNAGE_ISSUE\]/g, hasRealSignage
+        ? svFindings.defenseFindings.join('. ')
+        : 'signage at the location was inadequate, missing, obscured, or unclear')
+      .replace(/\[SPECIFIC_SIGNAGE_PROBLEM\]/g, hasRealSignage
+        ? svFindings.defenseFindings[0]
+        : 'the posted signage was not clearly visible to approaching motorists')
+      .replace(/\[SIGNAGE_FINDINGS\]/g, hasRealSignage
+        ? `AI analysis of Google Street View imagery (from ${svFindings.imageDate || 'available date'}) at this location found: ${svFindings.defenseFindings.join('; ')}`
+        : 'I found that the posted signs were not clearly visible, were obscured, or did not provide adequate notice of the restriction')
+      .replace(/\[SIGNAGE_PHOTOS\]/g, hasRealSignage && svFindings.exhibitUrls.length > 0
+        ? `Attached as exhibits are ${svFindings.exhibitUrls.length} Google Street View images documenting the signage conditions at this location.`
+        : 'I have documented the signage conditions at this location.')
       .replace(/\[EVIDENCE_REFERENCE\]/g, 'the automated evidence gathered on my behalf')
       .replace(/\[MALFUNCTION_DESCRIPTION\]/g, 'the meter was not functioning properly')
       .replace(/\[PAYMENT_METHOD\]/g, 'the available payment method')
@@ -1382,6 +1473,17 @@ function generateLetterContent(
       if (cameraFindings.length > 0) {
         content += '\n\nADDITIONAL FINDINGS FROM AUTOMATED ANALYSIS:\n\n' + cameraFindings.map((f, i) => `${i + 1}. ${f}`).join('\n\n');
       }
+    }
+
+    // Inject Street View signage analysis findings if available
+    if (automatedEvidence?.streetView.hasSignageIssue && automatedEvidence.streetView.defenseFindings.length > 0) {
+      content += '\n\nSTREET VIEW SIGNAGE ANALYSIS:\n' +
+        `Google Street View imagery from ${automatedEvidence.streetView.imageDate || 'available date'} at the cited location was analyzed ` +
+        `to verify the condition and visibility of posted signage:\n\n` +
+        automatedEvidence.streetView.defenseFindings.map((f, i) => `${i + 1}. ${f}`).join('\n') +
+        (automatedEvidence.streetView.exhibitUrls.length > 0
+          ? `\n\nThis analysis is based on ${automatedEvidence.streetView.exhibitUrls.length} directional Street View images which are available as supporting exhibits.`
+          : '');
     }
 
     // Add codified defense assertion for all violation types
