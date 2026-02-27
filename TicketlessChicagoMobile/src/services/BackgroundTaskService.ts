@@ -187,15 +187,16 @@ class BackgroundTaskServiceClass {
         ]);
         const diag = CameraAlertService.getDiagnosticInfo();
         // Keep iOS-native camera alerts in sync so background alerts work even if JS is suspended.
-        if (Platform.OS === 'ios') {
-          const cameraVolume = CameraAlertService.getAlertVolume();
-          await BackgroundLocationService.setCameraAlertSettings(
-            diag.isEnabled,
-            diag.speedAlertsEnabled,
-            diag.redLightAlertsEnabled,
-            cameraVolume
-          );
-        }
+        // TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4)
+        // if (Platform.OS === 'ios') {
+        //   const cameraVolume = CameraAlertService.getAlertVolume();
+        //   await BackgroundLocationService.setCameraAlertSettings(
+        //     diag.isEnabled,
+        //     diag.speedAlertsEnabled,
+        //     diag.redLightAlertsEnabled,
+        //     cameraVolume
+        //   );
+        // }
         await this.sendDiagnosticNotification(
           'Camera Settings Check',
           `AsyncStorage: global=${rawGlobal[1] ?? 'NULL'} speed=${rawSpeed[1] ?? 'NULL'} redlight=${rawRedLight[1] ?? 'NULL'}\n` +
@@ -621,7 +622,10 @@ class BackgroundTaskServiceClass {
               log.info('DRIVING STARTED - user departing', {
                 nativeTimestamp: drivingTimestamp ? new Date(drivingTimestamp).toISOString() : 'none',
               });
-              void CameraAlertService.prewarmAudio('onDrivingStarted');
+              // Camera alerts disabled on iOS for App Store compliance (2.5.4)
+              if (Platform.OS !== 'ios') {
+                void CameraAlertService.prewarmAudio('onDrivingStarted');
+              }
               this.startCameraAlerts();
               this.handleCarReconnection(drivingTimestamp);
             },
@@ -632,7 +636,10 @@ class BackgroundTaskServiceClass {
             () => {
               void this.captureIosHealthSnapshot('onPossibleDriving');
               log.info('POSSIBLE DRIVING - CoreMotion automotive detected, starting camera alerts early');
-              void CameraAlertService.prewarmAudio('onPossibleDriving');
+              // Camera alerts disabled on iOS for App Store compliance (2.5.4)
+              if (Platform.OS !== 'ios') {
+                void CameraAlertService.prewarmAudio('onPossibleDriving');
+              }
               this.startCameraAlerts();
             }
           );
@@ -1181,6 +1188,9 @@ class BackgroundTaskServiceClass {
    * On Android: uses the GPS caching interval to feed camera checks.
    */
   private startCameraAlerts(): void {
+    // TEMPORARILY DISABLED on iOS for App Store compliance (guideline 2.5.4 —
+    // "audio" background mode removed). Camera alerts still work on Android.
+    if (Platform.OS === 'ios') return;
     if (!CameraAlertService.isAlertEnabled()) return;
     void CameraAlertService.prewarmAudio('startCameraAlerts');
 
