@@ -135,6 +135,15 @@ interface FoiaRequestStatus {
   fulfilledAt?: string | null;
 }
 
+interface AlertSubscriptionEvidence {
+  hasAlerts: boolean;
+  signupDate: string | null; // ISO date when user created account (alerts enabled by default)
+  signupBeforeTicket: boolean; // true if user signed up before the ticket date
+  alertTypes: string[]; // e.g. ['street_cleaning', 'snow_route', 'winter_ban']
+  relevantToViolation: boolean; // true if user had the specific alert for this violation type
+  details: string; // human-readable summary
+}
+
 interface EvidenceBundle {
   parkingEvidence: ParkingEvidenceResult | null;
   weatherData: HistoricalWeatherData | null;
@@ -150,6 +159,7 @@ interface EvidenceBundle {
   streetViewEvidence: StreetViewResult | null;
   streetViewPackage: StreetViewEvidencePackage | null;
   foiaRequest: FoiaRequestStatus;
+  alertSubscriptionEvidence: AlertSubscriptionEvidence | null;
   // New enrichment sources
   nearbyServiceRequests: ServiceRequest311[] | null;
   serviceRequest311Summary: string | null;
@@ -353,6 +363,7 @@ async function gatherAllEvidence(
       daysElapsed: 0,
       status: 'none',
     },
+    alertSubscriptionEvidence: null,
     nearbyServiceRequests: null,
     serviceRequest311Summary: null,
     expandedWeatherDefense: null,
@@ -1225,6 +1236,33 @@ INSTRUCTIONS: Mention in the letter that a FOIA request was filed requesting the
     }
   }
 
+  // ── Section 14: Alert Subscription Evidence ──
+  if (evidence.alertSubscriptionEvidence?.hasAlerts && evidence.alertSubscriptionEvidence.signupBeforeTicket) {
+    const alert = evidence.alertSubscriptionEvidence;
+    const signupFormatted = alert.signupDate
+      ? new Date(alert.signupDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      : 'before the citation date';
+
+    if (alert.relevantToViolation) {
+      sections.push(`=== PROACTIVE COMPLIANCE — ALERT SUBSCRIPTION EVIDENCE ===
+
+The respondent proactively subscribed to ${alert.alertTypes.join(', ')} on ${signupFormatted} — BEFORE the date of this citation. This demonstrates a deliberate, good-faith effort to comply with Chicago parking regulations.
+
+INSTRUCTIONS: This is a SUPPORTING argument that strengthens credibility. Include a brief mention (1-2 sentences) in the letter noting that the respondent had actively enrolled in the city's parking alert system for this specific type of violation BEFORE the citation was issued. This demonstrates:
+1. The respondent takes compliance seriously and invested time and effort to avoid violations
+2. Despite proactive monitoring, the citation still occurred — suggesting the circumstances were unusual, unclear, or the enforcement was unreasonable
+3. A pattern of responsible behavior that weighs in favor of dismissal
+
+Frame it naturally: "Prior to this citation, I had proactively enrolled in parking alert monitoring for [violation type] to ensure compliance. Despite this diligent effort to follow city regulations, this citation was still issued, which speaks to the unusual circumstances of this particular situation."`);
+    } else {
+      sections.push(`=== PROACTIVE COMPLIANCE — GENERAL ALERT SUBSCRIPTION ===
+
+The respondent subscribed to parking alert notifications on ${signupFormatted} — before the date of this citation. While not specific to this violation type, it demonstrates a general pattern of compliance and responsibility.
+
+INSTRUCTIONS: If space permits, briefly note (1 sentence) that the respondent had enrolled in parking alert monitoring before this citation, demonstrating a pattern of proactive compliance with city parking regulations. Use only as a supporting character reference, not a primary argument.`);
+    }
+  }
+
   // ── Final Instructions ──
   sections.push(`=== LETTER GENERATION INSTRUCTIONS ===
 
@@ -1248,6 +1286,7 @@ Generate a professional, formal contest letter that:
    ${evidence.constructionPermits?.defenseSummary ? `- Construction/road work permits near location (${evidence.constructionPermits.hasSignBlockingPermit ? 'SIGN-BLOCKING FOUND' : 'active permits'})` : ''}
    ${evidence.officerIntelligence?.hasData ? `- Officer intelligence (${evidence.officerIntelligence.tendency || 'data available'} — INFORM strategy, do NOT cite stats)` : ''}
    ${evidence.locationPattern && evidence.locationPattern.ticketCount >= 3 ? `- Location pattern: ${evidence.locationPattern.ticketCount} tickets from ${evidence.locationPattern.uniqueUsers} drivers (suggests signage/enforcement issues)` : ''}
+   ${evidence.alertSubscriptionEvidence?.hasAlerts ? `- Alert subscription: User enrolled in ${evidence.alertSubscriptionEvidence.alertTypes.join(', ')} before citation (${evidence.alertSubscriptionEvidence.relevantToViolation ? 'RELEVANT to this violation — SUPPORTING argument' : 'general compliance — brief mention only'})` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the hearing officer, sign with sender name only (Lob adds return address automatically)
@@ -1452,6 +1491,71 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   console.log(`    Gathering evidence for ${ticket.violation_type} (${violationCode || 'no code'})...`);
   const evidence = await gatherAllEvidence(ticket, violationCode);
 
+  // ── Alert Subscription Evidence ──
+  // Check if user had relevant alerts enabled before the ticket date
+  try {
+    const alertTypes: string[] = [];
+    // Map violation types to the alert flags they correspond to
+    const VIOLATION_ALERT_MAP: Record<string, { flag: string; label: string }[]> = {
+      street_cleaning: [{ flag: 'notify_email', label: 'street cleaning email alerts' }],
+      snow_route: [
+        { flag: 'notify_snow_forecast', label: 'snow forecast alerts' },
+        { flag: 'notify_snow_confirmation', label: 'snow route activation alerts' },
+        { flag: 'on_snow_route', label: 'snow route monitoring' },
+      ],
+      winter_parking_ban: [
+        { flag: 'notify_winter_ban', label: 'winter parking ban alerts' },
+        { flag: 'notify_winter_parking', label: 'winter overnight parking alerts' },
+      ],
+      residential_permit: [{ flag: 'notify_email', label: 'parking alerts' }],
+      expired_meter: [{ flag: 'notify_email', label: 'parking alerts' }],
+    };
+
+    const relevantAlertFlags = VIOLATION_ALERT_MAP[ticket.violation_type] || [];
+    let relevantToViolation = false;
+
+    // Check each flag on the profile (already fetched with select('*'))
+    for (const alertDef of relevantAlertFlags) {
+      if ((profile as any)[alertDef.flag]) {
+        alertTypes.push(alertDef.label);
+        relevantToViolation = true;
+      }
+    }
+
+    // Also check general alert subscription (notify_email is default true for all signups)
+    if ((profile as any).notify_email && alertTypes.length === 0) {
+      alertTypes.push('general parking alerts');
+    }
+
+    // Check if street cleaning plate is registered
+    if (ticket.violation_type === 'street_cleaning' && (profile as any).license_plate_street_cleaning) {
+      alertTypes.push('street cleaning plate monitoring');
+      relevantToViolation = true;
+    }
+
+    const signupDate = (profile as any).created_at || null;
+    const signupBeforeTicket = signupDate && ticket.violation_date
+      ? new Date(signupDate) < new Date(ticket.violation_date + 'T23:59:59Z')
+      : false;
+
+    if (alertTypes.length > 0 && signupBeforeTicket) {
+      const signupFormatted = signupDate
+        ? new Date(signupDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'before the citation date';
+      evidence.alertSubscriptionEvidence = {
+        hasAlerts: true,
+        signupDate,
+        signupBeforeTicket,
+        alertTypes,
+        relevantToViolation,
+        details: `User subscribed to ${alertTypes.join(', ')} on ${signupFormatted}, before the citation was issued.`,
+      };
+      console.log(`    Alert subscription evidence: ${alertTypes.join(', ')} (signed up ${signupFormatted})`);
+    }
+  } catch (e) {
+    console.error('    Alert subscription evidence lookup failed:', e);
+  }
+
   // ── Generate letter with Claude AI ──
   let letterContent: string;
   let defenseType = 'ai_comprehensive';
@@ -1477,6 +1581,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   if (evidence.constructionPermits?.defenseSummary) evidenceSources.push('construction_permits');
   if (evidence.officerIntelligence?.hasData) evidenceSources.push('officer_intelligence');
   if (evidence.locationPattern && evidence.locationPattern.ticketCount >= 3) evidenceSources.push('location_pattern');
+  if (evidence.alertSubscriptionEvidence?.hasAlerts) evidenceSources.push('alert_subscription');
 
   if (anthropic) {
     try {
@@ -1569,6 +1674,11 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
         foia_total_contested: evidence.foiaData.totalContested,
         has_receipt_evidence: !!(evidence.cityStickerReceipt || evidence.registrationReceipt),
         has_camera_evidence: !!(evidence.redLightReceipt || evidence.cameraPassHistory),
+        alert_subscription: evidence.alertSubscriptionEvidence?.hasAlerts ? {
+          alertTypes: evidence.alertSubscriptionEvidence.alertTypes,
+          relevantToViolation: evidence.alertSubscriptionEvidence.relevantToViolation,
+          signupDate: evidence.alertSubscriptionEvidence.signupDate,
+        } : null,
         street_view_available: evidence.streetViewEvidence?.hasImagery || false,
         street_view_date: evidence.streetViewEvidence?.imageDate || null,
       },

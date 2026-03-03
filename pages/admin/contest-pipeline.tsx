@@ -60,6 +60,7 @@ const EVIDENCE_ICONS: Record<string, string> = {
   court_data: '\uD83D\uDCCA',
   camera_school_zone: '\uD83C\uDFEB',
   camera_yellow_light: '\uD83D\uDEA6',
+  alert_subscription: '\uD83D\uDD14',
 };
 
 interface PipelineTicket {
@@ -993,6 +994,56 @@ function PipelineDetailPanel({ selectedTicket, ticketDetail, detailLoading, onCl
                         </a>
                       ))}
                     </div>
+                  </div>
+                )}
+                {ticketDetail.street_view_ai && (
+                  <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${ticketDetail.street_view_ai.has_signage_issue ? '#F59E0B' : C.border}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <span style={{ fontSize: 16 }}>🤖</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>AI Signage Analysis</span>
+                      {ticketDetail.street_view_ai.has_signage_issue && (
+                        <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: '#F59E0B22', color: '#F59E0B', fontWeight: 600 }}>ISSUE FOUND</span>
+                      )}
+                    </div>
+                    {ticketDetail.street_view_ai.analysis_summary && (
+                      <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.6, marginBottom: 8 }}>
+                        {ticketDetail.street_view_ai.analysis_summary}
+                      </div>
+                    )}
+                    {ticketDetail.street_view_ai.analyses?.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {ticketDetail.street_view_ai.analyses.map((a: any, idx: number) => (
+                          <div key={idx} style={{ padding: '6px 10px', borderRadius: 6, background: `${C.card}`, border: `1px solid ${C.border}`, fontSize: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                              <span style={{ fontWeight: 600, color: C.text }}>{a.direction || `View ${idx + 1}`}</span>
+                              {a.signVisible !== undefined && (
+                                <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 3, background: a.signVisible ? '#10B98122' : '#EF444422', color: a.signVisible ? '#10B981' : '#EF4444', fontWeight: 500 }}>
+                                  {a.signVisible ? 'Sign visible' : 'No sign visible'}
+                                </span>
+                              )}
+                              {a.signCondition && a.signCondition !== 'good' && a.signCondition !== 'not_visible' && (
+                                <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 3, background: '#F59E0B22', color: '#F59E0B', fontWeight: 500 }}>
+                                  {a.signCondition}
+                                </span>
+                              )}
+                            </div>
+                            {a.observation && <div style={{ color: C.textDim, lineHeight: 1.5 }}>{a.observation}</div>}
+                            {a.signText && <div style={{ color: C.textDim, marginTop: 2 }}><span style={{ color: C.text, fontWeight: 500 }}>Sign text:</span> {a.signText}</div>}
+                            {a.obstructionDescription && <div style={{ color: '#F59E0B', marginTop: 2 }}><span style={{ fontWeight: 500 }}>Obstruction:</span> {a.obstructionDescription}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {ticketDetail.street_view_ai.defense_findings?.length > 0 && (
+                      <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: '#10B98110', border: '1px solid #10B98133' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#10B981', marginBottom: 4 }}>Defense Findings</div>
+                        {ticketDetail.street_view_ai.defense_findings.map((f: any, idx: number) => (
+                          <div key={idx} style={{ fontSize: 12, color: C.textDim, lineHeight: 1.5 }}>
+                            • {typeof f === 'string' ? f : f.finding || f.description || JSON.stringify(f)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </PipelineSection>

@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { normalizeAddressKey } from '../../../lib/evidence-enrichment-service';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,6 +32,7 @@ const EVIDENCE_SOURCE_LABELS: Record<string, { label: string; icon: string; desc
   speed_camera_gps: { label: 'Speed Camera GPS', icon: '📹', description: 'GPS speed history at camera location' },
   camera_school_zone: { label: 'School Zone Calendar', icon: '🏫', description: 'CPS calendar check — was ticket on a school day?' },
   camera_yellow_light: { label: 'IDOT Yellow Minimum', icon: '🚦', description: 'IDOT minimum yellow light timing reference' },
+  alert_subscription: { label: 'Alert Subscription', icon: '🔔', description: 'User had relevant parking alerts enabled before citation' },
 };
 
 // Win rates by violation type (from FOIA data)
@@ -443,6 +445,29 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
     };
   }
 
+  // Get Street View AI analysis from cache
+  let streetViewAI = null;
+  if (ticket.location) {
+    try {
+      const addressKey = normalizeAddressKey(ticket.location);
+      const { data: svCache } = await supabase
+        .from('street_view_cache')
+        .select('analyses, analysis_summary, defense_findings, has_signage_issue')
+        .eq('address_key', addressKey)
+        .maybeSingle();
+      if (svCache && (svCache.analysis_summary || svCache.analyses)) {
+        streetViewAI = {
+          analysis_summary: svCache.analysis_summary || null,
+          analyses: svCache.analyses || [],
+          defense_findings: svCache.defense_findings || [],
+          has_signage_issue: svCache.has_signage_issue || false,
+        };
+      }
+    } catch (e) {
+      // Non-critical — don't break detail view if cache query fails
+    }
+  }
+
   // Fallback: extract name from letter content if profile is empty
   let userName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : null;
   if (!userName && letter?.letter_content) {
@@ -492,6 +517,7 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
     foia_request: foiaRequest,
     foia_wait_preference: user?.foia_wait_preference || 'wait_for_foia',
     email_info: emailInfo,
+    street_view_ai: streetViewAI,
     contest: contestData ? {
       kit_used: contestData.kit_used,
       argument_used: contestData.argument_used,
