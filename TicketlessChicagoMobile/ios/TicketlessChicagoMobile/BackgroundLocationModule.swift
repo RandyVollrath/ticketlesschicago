@@ -9,10 +9,15 @@ import React
 @objc(BackgroundLocationModule)
 class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSpeechSynthesizerDelegate {
 
+  /// Shared reference for AppDelegate to call startMonitoringFromBackground().
+  /// Weak to avoid retain cycles — React Native owns the module's lifecycle.
+  static weak var shared: BackgroundLocationModule?
+
   private let locationManager = CLLocationManager()
   private let activityManager = CMMotionActivityManager()
   private let motionManager = CMMotionManager()  // Accelerometer/gyro for evidence
   private var isMonitoring = false
+  private let kWasMonitoringKey = "bg_wasMonitoring"
 
   // Accelerometer rolling buffer for red light evidence (30s at 10Hz = 300 entries)
   private let accelBufferCapacity = 300
@@ -907,6 +912,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
   override init() {
     super.init()
+    BackgroundLocationModule.shared = self
     setupLogFile()
     setupDecisionLogFile()
     restorePersistedCameraSettings()
@@ -1344,6 +1350,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     startVehicleSignalMonitoring()
     isMonitoring = true
+    UserDefaults.standard.set(true, forKey: kWasMonitoringKey)
     decision("start_monitoring_success", [
       "authStatusRaw": locationManager.authorizationStatus.rawValue,
       "coreMotionAvailable": coreMotionAvailable,
@@ -1386,6 +1393,94 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
   }
 
+  /// Called from AppDelegate when iOS relaunches the app in the background
+  /// (e.g. via significantLocationChange). This is a native-only entry point
+  /// that doesn't require the React Native bridge to be ready.
+  /// It restarts the same monitoring that startMonitoring() sets up.
+  func startMonitoringFromBackground() {
+    guard CLLocationManager.locationServicesEnabled() else {
+      self.log("Background relaunch: location services disabled — cannot restart monitoring")
+      return
+    }
+
+    let status = locationManager.authorizationStatus
+    guard status == .authorizedAlways else {
+      self.log("Background relaunch: location permission is \(status.rawValue), need authorizedAlways — cannot restart monitoring")
+      return
+    }
+
+    guard !isMonitoring else {
+      self.log("Background relaunch: already monitoring — skipping")
+      return
+    }
+
+    self.log("=== BACKGROUND RELAUNCH: restarting monitoring ===")
+    decision("background_relaunch_start_monitoring")
+
+    // Always-on: significantLocationChange is low-power (~0% battery impact)
+    locationManager.startMonitoringSignificantLocationChanges()
+
+    // CLVisit monitoring for dwell-based parking recovery
+    locationManager.startMonitoringVisits()
+    loadPersistedVisits()
+    self.log("Background relaunch: CLVisit monitoring started")
+
+    // Start CoreMotion
+    let coreMotionAvailable = CMMotionActivityManager.isActivityAvailable()
+    let coreMotionAuthStatus = CMMotionActivityManager.authorizationStatus()
+    self.log("Background relaunch: CoreMotion available=\(coreMotionAvailable), auth=\(coreMotionAuthStatus.rawValue)")
+
+    if coreMotionAvailable && (coreMotionAuthStatus == .authorized || coreMotionAuthStatus == .notDetermined) {
+      startMotionActivityMonitoring()
+      gpsOnlyMode = false
+      self.log("Background relaunch: CoreMotion activity monitoring started")
+      if !continuousGpsActive {
+        locationManager.distanceFilter = 200
+        locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+        locationManager.startUpdatingLocation()
+        continuousGpsActive = true
+        gpsInKeepaliveMode = true
+        self.log("Background relaunch: Keepalive GPS started (200m, 3km)")
+      }
+    } else {
+      gpsOnlyMode = true
+      self.log("Background relaunch: CoreMotion unavailable/denied — GPS-only mode")
+      locationManager.distanceFilter = 20
+      locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+      locationManager.startUpdatingLocation()
+      continuousGpsActive = true
+    }
+
+    startVehicleSignalMonitoring()
+    isMonitoring = true
+    UserDefaults.standard.set(true, forKey: kWasMonitoringKey)
+    decision("background_relaunch_monitoring_started", [
+      "coreMotionAvailable": coreMotionAvailable,
+      "coreMotionAuthStatus": coreMotionAuthStatus.rawValue,
+      "gpsOnlyMode": gpsOnlyMode,
+    ])
+    lastLocationCallbackTime = Date()
+    startLocationWatchdog()
+    startMonitoringHeartbeat()
+    startBootstrapGpsWindow(reason: "background_relaunch")
+    self.log("Background relaunch: monitoring fully restarted (gpsOnly=\(gpsOnlyMode))")
+
+    // Check for missed parking after 2s delay (same as regular startMonitoring)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+      guard let self = self, self.isMonitoring else { return }
+      guard !self.isDriving else {
+        self.log("Background relaunch recovery: skipping — already driving")
+        return
+      }
+      if let currentLoc = self.locationManager.location {
+        self.log("Background relaunch recovery: checking CoreMotion history (loc: \(currentLoc.coordinate.latitude), \(currentLoc.coordinate.longitude) ±\(currentLoc.horizontalAccuracy)m)")
+        self.checkForMissedParking(currentLocation: currentLoc)
+      } else {
+        self.log("Background relaunch recovery: no location — will check on first update")
+      }
+    }
+  }
+
   /// Stop all monitoring
   @objc func stopMonitoring(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     decision("stop_monitoring_called")
@@ -1415,6 +1510,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     recoveryGpsTimer = nil
     waitingForAccurateGpsForRecovery = false
     isMonitoring = false
+    UserDefaults.standard.set(false, forKey: kWasMonitoringKey)
     isDriving = false
     coreMotionSaysAutomotive = false
     speedSaysMoving = false
