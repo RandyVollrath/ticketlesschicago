@@ -160,6 +160,13 @@ interface EvidenceBundle {
   streetViewPackage: StreetViewEvidencePackage | null;
   foiaRequest: FoiaRequestStatus;
   alertSubscriptionEvidence: AlertSubscriptionEvidence | null;
+  userSubmittedEvidence: {
+    hasEvidence: boolean;
+    text: string | null;
+    attachmentUrls: string[];
+    photoAnalyses: { url: string; filename: string; description: string }[];
+    receivedAt: string | null;
+  } | null;
   // New enrichment sources
   nearbyServiceRequests: ServiceRequest311[] | null;
   serviceRequest311Summary: string | null;
@@ -364,6 +371,7 @@ async function gatherAllEvidence(
       status: 'none',
     },
     alertSubscriptionEvidence: null,
+    userSubmittedEvidence: null,
     nearbyServiceRequests: null,
     serviceRequest311Summary: null,
     expandedWeatherDefense: null,
@@ -1236,7 +1244,53 @@ INSTRUCTIONS: Mention in the letter that a FOIA request was filed requesting the
     }
   }
 
-  // ── Section 14: Alert Subscription Evidence ──
+  // ── Section 14: User-Submitted Evidence ──
+  if (evidence.userSubmittedEvidence?.hasEvidence) {
+    const ue = evidence.userSubmittedEvidence;
+    let userEvidenceSection = `=== USER-SUBMITTED EVIDENCE ===
+
+The user submitted their own evidence for this ticket contest. This is CRITICAL — it shows they took initiative to provide supporting documentation. Integrate this evidence prominently into the letter.`;
+
+    if (ue.text) {
+      userEvidenceSection += `
+
+USER'S WRITTEN STATEMENT:
+"${ue.text}"
+
+INSTRUCTIONS: The user wrote the above in their own words. Extract any factual claims (dates, locations, circumstances) and incorporate them into the letter as first-person statements. Do NOT quote the email directly — rewrite professionally. If the user describes circumstances (e.g., "the meter was broken," "I had my sticker displayed"), use these as specific factual assertions in the letter.`;
+    }
+
+    if (ue.photoAnalyses.length > 0) {
+      userEvidenceSection += `
+
+USER-SUBMITTED PHOTO ANALYSIS (AI-analyzed):`;
+      for (const photo of ue.photoAnalyses) {
+        userEvidenceSection += `
+- Photo "${photo.filename}": ${photo.description}`;
+      }
+      userEvidenceSection += `
+
+INSTRUCTIONS: These photos were submitted by the user and analyzed by AI. Reference the attached photographs in the letter as evidence. For each relevant finding:
+- If a photo shows a broken/malfunctioning meter → "As shown in the attached photograph, the parking meter was non-functional at the time of the citation"
+- If a photo shows an obscured/missing sign → "The attached photograph demonstrates that the parking restriction sign was [obscured/missing/unreadable]"
+- If a photo shows a valid sticker/permit displayed → "As evidenced by the attached photograph, the required [sticker/permit] was properly displayed on the vehicle"
+- If a photo shows a receipt → reference the specific date and amount from the receipt
+
+These are the user's OWN photographs — they are the STRONGEST possible evidence because they show conditions at the actual time and location. Treat them as primary evidence.`;
+    } else if (ue.attachmentUrls.length > 0) {
+      const photoCount = ue.attachmentUrls.filter((u: string) => /\.(jpg|jpeg|png|gif|heic|webp)/i.test(u)).length;
+      const docCount = ue.attachmentUrls.filter((u: string) => /\.(pdf|doc|docx)/i.test(u)).length;
+      userEvidenceSection += `
+
+The user attached ${ue.attachmentUrls.length} file(s): ${photoCount > 0 ? `${photoCount} photograph(s)` : ''}${photoCount > 0 && docCount > 0 ? ' and ' : ''}${docCount > 0 ? `${docCount} document(s)` : ''}.
+
+INSTRUCTIONS: Reference the attached documentation in the letter (e.g., "As shown in the attached photographs..." or "The attached documentation demonstrates..."). The user took the effort to provide these — make sure the letter references them as supporting evidence.`;
+    }
+
+    sections.push(userEvidenceSection);
+  }
+
+  // ── Section 15: Alert Subscription Evidence ──
   if (evidence.alertSubscriptionEvidence?.hasAlerts && evidence.alertSubscriptionEvidence.signupBeforeTicket) {
     const alert = evidence.alertSubscriptionEvidence;
     const signupFormatted = alert.signupDate
@@ -1287,6 +1341,7 @@ Generate a professional, formal contest letter that:
    ${evidence.officerIntelligence?.hasData ? `- Officer intelligence (${evidence.officerIntelligence.tendency || 'data available'} — INFORM strategy, do NOT cite stats)` : ''}
    ${evidence.locationPattern && evidence.locationPattern.ticketCount >= 3 ? `- Location pattern: ${evidence.locationPattern.ticketCount} tickets from ${evidence.locationPattern.uniqueUsers} drivers (suggests signage/enforcement issues)` : ''}
    ${evidence.alertSubscriptionEvidence?.hasAlerts ? `- Alert subscription: User enrolled in ${evidence.alertSubscriptionEvidence.alertTypes.join(', ')} before citation (${evidence.alertSubscriptionEvidence.relevantToViolation ? 'RELEVANT to this violation — SUPPORTING argument' : 'general compliance — brief mention only'})` : ''}
+   ${evidence.userSubmittedEvidence?.hasEvidence ? `- User-submitted evidence: ${evidence.userSubmittedEvidence.text ? 'written statement' : ''}${evidence.userSubmittedEvidence.text && evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? ' + ' : ''}${evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? `${evidence.userSubmittedEvidence.photoAnalyses.length} AI-analyzed photo(s) (STRONGEST — user's own documentation)` : evidence.userSubmittedEvidence.attachmentUrls.length > 0 ? `${evidence.userSubmittedEvidence.attachmentUrls.length} attachment(s)` : ''}` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the reviewer for their consideration, sign with sender name only (Lob adds return address automatically). Do NOT suggest or request an in-person hearing — users want dismissal by mail, not additional time commitments
@@ -1556,6 +1611,85 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
     console.error('    Alert subscription evidence lookup failed:', e);
   }
 
+  // ── User-Submitted Evidence (photos, text, documents) ──
+  try {
+    const dbEvidence = (ticket as any).user_evidence;
+    if (dbEvidence) {
+      const parsed = typeof dbEvidence === 'string' ? JSON.parse(dbEvidence) : dbEvidence;
+      const attachmentUrls: string[] = parsed?.attachment_urls || [];
+      const evidenceText = parsed?.text || '';
+      const receivedAt = parsed?.received_at || (ticket as any).user_evidence_uploaded_at || null;
+
+      if (evidenceText || attachmentUrls.length > 0) {
+        const photoUrls = attachmentUrls.filter((u: string) => /\.(jpg|jpeg|png|gif|heic|webp)/i.test(u));
+        const photoAnalyses: { url: string; filename: string; description: string }[] = [];
+
+        // Run Claude Vision on user-submitted photos to describe what they show
+        if (photoUrls.length > 0 && anthropic) {
+          console.log(`    Analyzing ${photoUrls.length} user-submitted photo(s) with Claude Vision...`);
+          for (const photoUrl of photoUrls.slice(0, 4)) { // Max 4 photos to stay within budget
+            try {
+              // Fetch the image and convert to base64
+              const imgResponse = await fetch(photoUrl);
+              if (!imgResponse.ok) continue;
+              const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
+              const base64 = imgBuffer.toString('base64');
+              const ext = photoUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)?.[1]?.toLowerCase() || 'jpeg';
+              const mediaType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+              const visionResponse = await anthropic.messages.create({
+                model: 'claude-sonnet-4-5-20250929',
+                max_tokens: 300,
+                messages: [{
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'image',
+                      source: { type: 'base64', media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: base64 },
+                    },
+                    {
+                      type: 'text',
+                      text: `This photo was submitted as evidence for a Chicago parking ticket contest (${ticket.violation_type || 'parking'} violation at ${ticket.location || 'unknown location'}).
+
+Describe what this photo shows in 2-3 sentences, focusing ONLY on facts relevant to contesting a parking ticket:
+- If it shows a sign: describe the sign text, condition (faded/obscured/missing), and visibility
+- If it shows a receipt or document: describe the date, amount, and what it proves
+- If it shows a parking meter: describe its condition (broken screen, error message, etc.)
+- If it shows a vehicle: describe its position relative to signs, hydrants, or markings
+- If it shows a city sticker or permit: note where it's displayed and whether it's visible
+
+Be specific and factual. Do NOT speculate or add legal analysis.`,
+                    },
+                  ],
+                }],
+              });
+
+              const description = visionResponse.content[0]?.type === 'text' ? visionResponse.content[0].text : '';
+              if (description) {
+                const filename = photoUrl.split('/').pop() || 'photo';
+                photoAnalyses.push({ url: photoUrl, filename, description });
+                console.log(`    Photo analysis: ${description.substring(0, 80)}...`);
+              }
+            } catch (photoErr) {
+              console.error(`    Photo analysis failed for ${photoUrl}:`, photoErr);
+            }
+          }
+        }
+
+        evidence.userSubmittedEvidence = {
+          hasEvidence: true,
+          text: evidenceText || null,
+          attachmentUrls,
+          photoAnalyses,
+          receivedAt,
+        };
+        console.log(`    User evidence: ${evidenceText ? 'text' : 'no text'}, ${attachmentUrls.length} attachment(s), ${photoAnalyses.length} photo(s) analyzed`);
+      }
+    }
+  } catch (e) {
+    console.error('    User evidence parsing failed:', e);
+  }
+
   // ── Generate letter with Claude AI ──
   let letterContent: string;
   let defenseType = 'ai_comprehensive';
@@ -1582,6 +1716,10 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   if (evidence.officerIntelligence?.hasData) evidenceSources.push('officer_intelligence');
   if (evidence.locationPattern && evidence.locationPattern.ticketCount >= 3) evidenceSources.push('location_pattern');
   if (evidence.alertSubscriptionEvidence?.hasAlerts) evidenceSources.push('alert_subscription');
+  if (evidence.userSubmittedEvidence?.hasEvidence) {
+    evidenceSources.push('user_evidence');
+    if (evidence.userSubmittedEvidence.photoAnalyses.length > 0) evidenceSources.push('user_photo_analysis');
+  }
 
   if (anthropic) {
     try {
@@ -1678,6 +1816,12 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
           alertTypes: evidence.alertSubscriptionEvidence.alertTypes,
           relevantToViolation: evidence.alertSubscriptionEvidence.relevantToViolation,
           signupDate: evidence.alertSubscriptionEvidence.signupDate,
+        } : null,
+        user_evidence: evidence.userSubmittedEvidence?.hasEvidence ? {
+          hasText: !!evidence.userSubmittedEvidence.text,
+          attachmentCount: evidence.userSubmittedEvidence.attachmentUrls.length,
+          photoAnalysisCount: evidence.userSubmittedEvidence.photoAnalyses.length,
+          receivedAt: evidence.userSubmittedEvidence.receivedAt,
         } : null,
         street_view_available: evidence.streetViewEvidence?.hasImagery || false,
         street_view_date: evidence.streetViewEvidence?.imageDate || null,

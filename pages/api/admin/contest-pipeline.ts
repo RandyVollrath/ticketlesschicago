@@ -33,6 +33,8 @@ const EVIDENCE_SOURCE_LABELS: Record<string, { label: string; icon: string; desc
   camera_school_zone: { label: 'School Zone Calendar', icon: '🏫', description: 'CPS calendar check — was ticket on a school day?' },
   camera_yellow_light: { label: 'IDOT Yellow Minimum', icon: '🚦', description: 'IDOT minimum yellow light timing reference' },
   alert_subscription: { label: 'Alert Subscription', icon: '🔔', description: 'User had relevant parking alerts enabled before citation' },
+  user_evidence: { label: 'User Evidence', icon: '📎', description: 'User-submitted text and/or photo attachments via email' },
+  user_photo_analysis: { label: 'Photo AI Analysis', icon: '👁', description: 'Claude Vision analysis of user-submitted photos' },
 };
 
 // Win rates by violation type (from FOIA data)

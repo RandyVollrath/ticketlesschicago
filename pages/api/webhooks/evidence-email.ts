@@ -66,7 +66,8 @@ async function regenerateLetterWithAI(
   userEvidence: string,
   ticketDetails: any,
   hasAttachments: boolean,
-  kitEvaluation?: ContestEvaluation | null
+  kitEvaluation?: ContestEvaluation | null,
+  photoAnalyses?: { url: string; filename: string; description: string }[]
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   console.log('=== AI LETTER REGENERATION ===');
@@ -154,7 +155,15 @@ Ticket details:
 - Violation Type: ${violationType || 'Unknown'}
 - Issue Date: ${ticketDetails?.issue_date || ticketDetails?.violation_date || 'Unknown'}
 
-${hasAttachments ? 'The user has attached supporting documentation (screenshot/photo) that should be referenced.' : 'No attachments were provided.'}
+${photoAnalyses && photoAnalyses.length > 0 ? `The user attached ${photoAnalyses.length} photo(s) which have been analyzed by AI:
+${photoAnalyses.map(p => `- "${p.filename}": ${p.description}`).join('\n')}
+
+INSTRUCTIONS: Reference these photographs as evidence in the letter. For each relevant finding:
+- If a photo shows a broken meter → "As shown in the attached photograph, the parking meter was non-functional"
+- If a photo shows an obscured/missing sign → "The attached photograph demonstrates that the parking restriction sign was [obscured/missing/unreadable]"
+- If a photo shows a valid sticker/permit → "As evidenced by the attached photograph, the required [sticker/permit] was properly displayed"
+- If a photo shows a receipt → reference the specific date and amount
+These are the user's OWN photographs — treat them as the STRONGEST possible evidence.` : hasAttachments ? 'The user has attached supporting documentation (screenshot/photo) that should be referenced in the letter as evidence.' : 'No attachments were provided.'}
 
 Please rewrite the contest letter integrating this evidence professionally. Return ONLY the letter text.`;
 
@@ -994,6 +1003,76 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       evidenceData.attachment_urls = attachmentUrls;
       console.log(`Total attachments uploaded: ${attachmentUrls.length}`);
+
+      // Run Claude Vision analysis on uploaded photos
+      const photoUrls = attachmentUrls.filter((u: string) => /\.(jpg|jpeg|png|gif|heic|webp)/i.test(u));
+      if (photoUrls.length > 0 && process.env.ANTHROPIC_API_KEY) {
+        console.log(`Analyzing ${photoUrls.length} user-submitted photo(s) with Claude Vision...`);
+        const photoAnalysisResults: { url: string; filename: string; description: string }[] = [];
+
+        for (const photoUrl of photoUrls.slice(0, 4)) { // Max 4 photos
+          try {
+            const imgResponse = await fetch(photoUrl);
+            if (!imgResponse.ok) continue;
+            const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
+            const base64 = imgBuffer.toString('base64');
+            const ext = photoUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)?.[1]?.toLowerCase() || 'jpeg';
+            const mediaType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+            const visionResponse = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'x-api-key': process.env.ANTHROPIC_API_KEY!,
+                'anthropic-version': '2023-06-01',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'claude-sonnet-4-5-20250929',
+                max_tokens: 300,
+                messages: [{
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'image',
+                      source: { type: 'base64', media_type: mediaType, data: base64 },
+                    },
+                    {
+                      type: 'text',
+                      text: `This photo was submitted as evidence for a Chicago parking ticket contest (${ticket.violation_type || 'parking'} violation at ${ticket.location || 'unknown location'}).
+
+Describe what this photo shows in 2-3 sentences, focusing ONLY on facts relevant to contesting a parking ticket:
+- If it shows a sign: describe the sign text, condition (faded/obscured/missing), and visibility
+- If it shows a receipt or document: describe the date, amount, and what it proves
+- If it shows a parking meter: describe its condition (broken screen, error message, etc.)
+- If it shows a vehicle: describe its position relative to signs, hydrants, or markings
+- If it shows a city sticker or permit: note where it's displayed and whether it's visible
+
+Be specific and factual. Do NOT speculate or add legal analysis.`,
+                    },
+                  ],
+                }],
+              }),
+            });
+
+            if (visionResponse.ok) {
+              const visionData = await visionResponse.json();
+              const description = visionData.content?.[0]?.text?.trim() || '';
+              if (description) {
+                const filename = photoUrl.split('/').pop() || 'photo';
+                photoAnalysisResults.push({ url: photoUrl, filename, description });
+                console.log(`  Photo analysis: ${description.substring(0, 80)}...`);
+              }
+            }
+          } catch (photoErr: any) {
+            console.error(`  Photo analysis failed for ${photoUrl}:`, photoErr.message || photoErr);
+          }
+        }
+
+        if (photoAnalysisResults.length > 0) {
+          evidenceData.photo_analyses = photoAnalysisResults;
+          console.log(`Successfully analyzed ${photoAnalysisResults.length} photo(s)`);
+        }
+      }
     }
 
     // Update ticket with evidence and SLA tracking
@@ -1076,12 +1155,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const originalLetter = letter.letter_content || letter.letter_text || '';
 
       // Use AI to integrate evidence, guided by kit evaluation strategy
+      // Pass Claude Vision photo analyses if available
+      const photoAnalysesForPrompt = evidenceData.photo_analyses || [];
       regeneratedLetterContent = await regenerateLetterWithAI(
         originalLetter,
         evidenceText,
         ticket,
         attachments.length > 0,
-        kitEval
+        kitEval,
+        photoAnalysesForPrompt
       );
 
       // Update defense type if kit evaluation selected a different argument
