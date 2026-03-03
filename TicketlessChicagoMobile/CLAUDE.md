@@ -18,8 +18,24 @@ Every time the iPhone is connected (or on each `git pull`), capture and push log
 1. Capture syslog: `idevicesyslog --udid 00008110-001239311461801E` (run in background, kill after 15-30s)
 2. Filter for app entries: `grep -iE 'Autopilot|ticketless|CoreMotion|CLLocation|BackgroundLocation|BluetoothMonitor|locationd.*fyi|CMMotionActivity'`
 3. Pull crash reports: `idevicecrashreport --udid 00008110-001239311461801E logs/crash_reports_YYYYMMDD/`
-4. Save to `logs/` directory and `git add && git commit && git push origin main`
-5. Note: React Native `console.log` does NOT appear in iOS syslog. For JS-level logs, use the debug overlay (long-press hero card on iOS)
+4. **Export parking detection logs from the app container** (do this on every pull):
+   ```
+   xcrun devicectl device copy from \
+     --device 00008110-001239311461801E \
+     --domain-type appDataContainer \
+     --domain-identifier fyi.ticketless.app \
+     --source Documents/parking_detection.log \
+     --destination logs/parking_detection.log
+   xcrun devicectl device copy from \
+     --device 00008110-001239311461801E \
+     --domain-type appDataContainer \
+     --domain-identifier fyi.ticketless.app \
+     --source Documents/parking_decisions.ndjson \
+     --destination logs/parking_decisions.ndjson
+   ```
+   Also pull `.prev` variants (same command, append `.prev` to source/destination).
+5. Save to `logs/` directory and `git add -f && git commit && git push origin main`
+6. Note: React Native `console.log` does NOT appear in iOS syslog. For JS-level logs, use the debug overlay (long-press hero card on iOS)
 
 ## Parking/Camera Reliability Workflow
 
