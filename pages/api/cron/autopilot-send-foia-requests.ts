@@ -139,7 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Fetch user profile for name and address
       const { data: profile, error: profileError } = await supabaseAdmin
         .from('user_profiles')
-        .select('first_name, last_name, full_name, mailing_address, mailing_city, mailing_state, mailing_zip, street_address, zip_code, email')
+        .select('first_name, last_name, mailing_address, mailing_city, mailing_state, mailing_zip, street_address, zip_code, email')
         .eq('user_id', request.user_id)
         .single();
 
@@ -151,8 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Build requester name
-      const requesterName = profile.full_name
-        || [profile.first_name, profile.last_name].filter(Boolean).join(' ')
+      const requesterName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
         || 'Vehicle Owner';
 
       // Build requester address

@@ -111,7 +111,7 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
     // Fetch user profiles
     const { data: profiles } = await supabase
       .from('user_profiles')
-      .select('user_id, email, first_name, last_name, full_name')
+      .select('user_id, email, first_name, last_name')
       .in('user_id', userIds);
 
     const userMap: Record<string, any> = {};

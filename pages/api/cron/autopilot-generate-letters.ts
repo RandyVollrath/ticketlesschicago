@@ -1071,7 +1071,7 @@ ${pkg.analysisSummary}
 ${pkg.hasSignageIssue ? `DEFENSE-RELEVANT FINDINGS:
 ${pkg.defenseFindings.map(f => `- ${f}`).join('\n')}
 
-INSTRUCTIONS: These signage issues are STRONG defense arguments. The ${pkg.exhibitUrls.length} Street View photos will be included as physical exhibits in the mailed letter. Reference the attached Street View photographs as evidence showing the signage conditions. The hearing officer can also independently verify these conditions on Google Street View. Emphasize that inadequate, obscured, faded, or missing signage is grounds for dismissal under Chicago Municipal Code.` : `INSTRUCTIONS: ${pkg.exhibitUrls.length} Street View photographs from this location will be included as physical exhibits in the mailed letter. Reference them as evidence showing the area's signage conditions. If the signs appear to be in good condition, focus other defense arguments but still note that the photographs are provided for the record.`}`);
+INSTRUCTIONS: These signage issues are STRONG defense arguments. The ${pkg.exhibitUrls.length} Street View photos will be included as physical exhibits in the mailed letter. Reference the attached Street View photographs as evidence showing the signage conditions. The reviewer can also independently verify these conditions on Google Street View. Emphasize that inadequate, obscured, faded, or missing signage is grounds for dismissal under Chicago Municipal Code.` : `INSTRUCTIONS: ${pkg.exhibitUrls.length} Street View photographs from this location will be included as physical exhibits in the mailed letter. Reference them as evidence showing the area's signage conditions. If the signs appear to be in good condition, focus other defense arguments but still note that the photographs are provided for the record.`}`);
   } else if (evidence.streetViewEvidence?.hasImagery) {
     const sv = evidence.streetViewEvidence;
     sections.push(`=== GOOGLE STREET VIEW SIGNAGE EVIDENCE ===
@@ -1079,7 +1079,7 @@ Location: ${sv.address || `${sv.latitude}, ${sv.longitude}`}
 Imagery Date: ${sv.imageDate || 'Unknown'}
 ${sv.signageObservation || ''}
 
-INSTRUCTIONS: Suggest the hearing officer verify signage presence/visibility using Google Street View for this location.`);
+INSTRUCTIONS: Suggest the reviewer verify signage presence/visibility using Google Street View for this location.`);
   }
 
   // ── Section 11b: 311 Service Request Evidence ──
@@ -1232,7 +1232,7 @@ INSTRUCTIONS: Include a paragraph in the contest letter noting that a FOIA reque
 
 A Freedom of Information Act request was submitted on ${sentFormatted} for the enforcement records for this citation. The city's response is still pending (${evidence.foiaRequest.daysElapsed} days elapsed).
 
-INSTRUCTIONS: Mention in the letter that a FOIA request was filed requesting the officer's field notes and enforcement records. Note that the results are pending and the respondent reserves the right to supplement this contest with any records produced. This shows diligence and puts the hearing officer on notice that the enforcement documentation is being scrutinized.`);
+INSTRUCTIONS: Mention in the letter that a FOIA request was filed requesting the officer's field notes and enforcement records. Note that the results are pending and the respondent reserves the right to supplement this contest with any records produced. This shows diligence and puts the reviewer on notice that the enforcement documentation is being scrutinized.`);
     }
   }
 
@@ -1289,7 +1289,7 @@ Generate a professional, formal contest letter that:
    ${evidence.alertSubscriptionEvidence?.hasAlerts ? `- Alert subscription: User enrolled in ${evidence.alertSubscriptionEvidence.alertTypes.join(', ')} before citation (${evidence.alertSubscriptionEvidence.relevantToViolation ? 'RELEVANT to this violation — SUPPORTING argument' : 'general compliance — brief mention only'})` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
-7. CLOSING: Request dismissal, thank the hearing officer, sign with sender name only (Lob adds return address automatically)
+7. CLOSING: Request dismissal, thank the reviewer for their consideration, sign with sender name only (Lob adds return address automatically). Do NOT suggest or request an in-person hearing — users want dismissal by mail, not additional time commitments
 8. CRITICAL: Do NOT include any placeholder text like [YOUR NAME] or [DETAILS]. Use the actual data provided above
 9. Do NOT include the sender's address in the letter body - Lob adds it as the return address on the envelope
 
@@ -1308,7 +1308,7 @@ function generateFallbackLetter(
 ): string {
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const violationDate = formatViolationDate(ticket.violation_date);
-  const name = profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Vehicle Owner';
+  const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Vehicle Owner';
 
   let body = `I am writing to formally contest the above-referenced citation. I believe this ticket was issued in error and respectfully request its dismissal.`;
 
