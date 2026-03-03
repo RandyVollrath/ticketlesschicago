@@ -33,6 +33,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Autopilot may use Bluetooth to detect nearby devices and improve your experience</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to quickly and securely sign in to Autopilot</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
