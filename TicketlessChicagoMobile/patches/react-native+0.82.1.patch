@@ -1,0 +1,21 @@
+diff --git a/node_modules/react-native/Libraries/Core/Devtools/getDevServer.js b/node_modules/react-native/Libraries/Core/Devtools/getDevServer.js
+index a158d98..bf3eacd 100644
+--- a/node_modules/react-native/Libraries/Core/Devtools/getDevServer.js
++++ b/node_modules/react-native/Libraries/Core/Devtools/getDevServer.js
+@@ -26,6 +26,16 @@ type DevServerInfo = {
+  * @return URL to packager with trailing slash
+  */
+ export default function getDevServer(): DevServerInfo {
++  // In release builds, never attempt to connect to localhost dev server.
++  // This prevents useless TCP connection spam in device logs.
++  if (!__DEV__) {
++    return {
++      url: '',
++      fullBundleUrl: null,
++      bundleLoadedFromServer: false,
++    };
++  }
++
+   if (_cachedDevServerURL === undefined) {
+     const scriptUrl = NativeSourceCode.getConstants().scriptURL;
+     const match = scriptUrl.match(/^https?:\/\/.*?\//);
