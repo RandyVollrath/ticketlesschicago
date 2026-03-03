@@ -423,12 +423,12 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
 
   const { data: profileData } = await supabaseAdmin
     .from('user_profiles')
-    .select('first_name, last_name, full_name, mailing_address, mailing_city, mailing_state, mailing_zip')
+    .select('first_name, last_name, mailing_address, mailing_city, mailing_state, mailing_zip')
     .eq('user_id', plate.user_id)
     .single();
 
   const userProfile: UserProfile = {
-    full_name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`.trim() || 'Vehicle Owner',
+    full_name: `${profileData?.first_name || ''} ${profileData?.last_name || ''}`.trim() || 'Vehicle Owner',
     first_name: profileData?.first_name || null,
     last_name: profileData?.last_name || null,
     mailing_address: profileData?.mailing_address || DEFAULT_SENDER_ADDRESS.address,

@@ -429,7 +429,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: tickets } = await supabaseAdmin
       .from('detected_tickets')
       .select('id, user_id, ticket_number, violation_type, violation_description, violation_date, amount, plate, status, reminder_count, last_reminder_sent_at, last_chance_sent_at, auto_send_deadline, evidence_deadline, user_evidence')
-      .in('status', ['pending_evidence', 'needs_approval', 'found', 'letter_generated'])
+      .in('status', ['pending_evidence', 'needs_approval', 'found', 'letter_generated', 'approved'])
       .not('violation_date', 'is', null)
       .order('violation_date', { ascending: true });
 
@@ -479,8 +479,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (daysElapsed >= 19) {
         // Trigger auto-send: update ticket status so mail-letters cron picks it up
         // This bypasses the approval requirement
-        if (ticket.status === 'pending_evidence' || ticket.status === 'needs_approval') {
-          console.log(`  Day ${daysElapsed}: Auto-sending ticket ${ticket.ticket_number} (safety net)`);
+        if (ticket.status === 'pending_evidence' || ticket.status === 'needs_approval' || ticket.status === 'found' || ticket.status === 'letter_generated') {
+          console.log(`  Day ${daysElapsed}: Auto-sending ticket ${ticket.ticket_number} (safety net - updating ticket to approved)`);
           await supabaseAdmin
             .from('detected_tickets')
             .update({
@@ -488,17 +488,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               auto_send_deadline: new Date().toISOString(),
             })
             .eq('id', ticket.id);
+        }
 
-          // Also update the letter status — bypass admin review for safety net
-          await supabaseAdmin
-            .from('contest_letters')
-            .update({
-              status: 'admin_approved',
-              approved_at: new Date().toISOString(),
-              approved_by: 'auto_deadline_safety_net',
-            })
-            .eq('ticket_id', ticket.id)
-            .in('status', ['pending_evidence', 'pending_approval', 'draft', 'needs_admin_review', 'awaiting_consent']);
+        // Force-promote the letter to admin_approved regardless of ticket status.
+        // This catches the case where ticket is already 'approved' (e.g. from a
+        // previous test-mode send) but the letter is still in draft/needs_admin_review.
+        const { data: letterUpdate } = await supabaseAdmin
+          .from('contest_letters')
+          .update({
+            status: 'admin_approved',
+            approved_at: new Date().toISOString(),
+            approved_by: 'auto_deadline_safety_net',
+          })
+          .eq('ticket_id', ticket.id)
+          .in('status', ['pending_evidence', 'pending_approval', 'draft', 'needs_admin_review', 'awaiting_consent'])
+          .select('id');
+
+        if (letterUpdate && letterUpdate.length > 0) {
+          console.log(`  Day ${daysElapsed}: Safety net force-approved letter for ticket ${ticket.ticket_number}`);
 
           // Audit log
           await supabaseAdmin
@@ -511,6 +518,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 days_elapsed: daysElapsed,
                 days_remaining: daysRemaining,
                 reason: 'Day 19 safety net - auto-sending before 21-day deadline',
+                ticket_status: ticket.status,
+                letters_promoted: letterUpdate.length,
               },
               performed_by: 'autopilot_cron',
             });
