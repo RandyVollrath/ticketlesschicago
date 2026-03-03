@@ -507,12 +507,19 @@ export async function processFoiaResponse(
     lowerBody.includes('enclosed') ||
     lowerBody.includes('responsive documents');
 
-  const status = isDenial ? 'fulfilled' : isFulfillment ? 'fulfilled' : 'fulfilled';
+  // Distinguish FOIA outcomes: denial strengthens prima facie argument,
+  // fulfillment with records means we can analyze what city produced,
+  // partial response (some records but not all) is also useful.
+  const status = isDenial
+    ? 'fulfilled_denial'
+    : isFulfillment
+    ? 'fulfilled_with_records'
+    : 'fulfilled_denial'; // Generic response without records = effectively a denial
   const notes = isDenial
     ? 'City responded: no responsive records found. This strengthens the "Prima Facie Case Not Established" argument.'
     : isFulfillment
     ? `City produced ${attachments.length} document(s). Review for defense-relevant information.`
-    : 'City responded to FOIA request. Review content for defense relevance.';
+    : 'City responded to FOIA request but produced no records. Strengthens prima facie argument.';
 
   // Update the FOIA request
   await supabase

@@ -98,6 +98,8 @@ interface PipelineTicket {
   evidence_sources: PipelineEvidenceSource[];
   has_user_evidence: boolean;
   base_win_rate: number | null;
+  foia_request: FoiaInfo | null;
+  letter_regeneration: { triggered_at: string; reason: string; action: string } | null;
 }
 
 interface PipelineEvidenceSource {
@@ -197,7 +199,7 @@ interface CommItem { type: string; label: string; date: string; details: string;
 interface EvidenceItem { key: string; label: string; icon: string; description: string; status: string; reason: string; data: any; }
 interface LetterStep { step: string; label: string; date: string | null; completed: boolean; }
 interface DeliveryInfo { lob_letter_id: string | null; lob_status: string | null; mailed_at: string | null; expected_delivery_date: string | null; delivered_at: string | null; returned_at: string | null; tracking_events: any[] | null; last_tracking_update: string | null; }
-interface FoiaInfo { status: string; requested_at: string; sent_at: string | null; fulfilled_at: string | null; notes: string | null; }
+interface FoiaInfo { status: string; requested_at: string; sent_at: string | null; fulfilled_at: string | null; notes: string | null; response_received?: boolean; is_denial?: boolean; is_with_records?: boolean; attachment_count?: number; response_date?: string | null; prima_facie_eligible?: boolean; deadline_expired?: boolean; business_days_elapsed?: number; }
 interface OutcomeInfo { result: string; outcome_date: string | null; original_amount: number | null; final_amount: number | null; amount_saved: number | null; hearing_type: string | null; hearing_date: string | null; primary_defense: string | null; }
 interface AuditItem { action: string; details: any; date: string; performed_by: string; }
 interface LifecycleSummary { total_users: number; total_tickets: number; total_amount_at_stake: number; total_saved: number; by_stage: Record<string, number>; outcomes: Record<string, number>; urgent_tickets: number; }
@@ -613,6 +615,36 @@ function PipelineTab() {
                   >
                     {ticket.has_evidence_reply ? 'EVIDENCE' : 'WAITING'}
                   </span>
+                  {ticket.foia_request && (() => {
+                    const f = ticket.foia_request;
+                    const isDenial = f.is_denial || f.status === 'fulfilled_denial';
+                    const isRecords = f.is_with_records || f.status === 'fulfilled_with_records';
+                    const isResponded = f.response_received || isDenial || isRecords || f.status === 'fulfilled';
+                    const foiaColor = isDenial ? C.purple : isRecords ? C.green : isResponded ? C.green : f.status === 'sent' ? C.accent : C.yellow;
+                    const foiaBg = isDenial ? C.purpleDim : isRecords ? C.greenDim : isResponded ? C.greenDim : f.status === 'sent' ? `${C.accent}20` : `${C.yellow}20`;
+                    const foiaLabel = isDenial ? 'FOIA: DENIAL' : isRecords ? 'FOIA: RECORDS' : isResponded ? 'FOIA: RESPONDED' : f.status === 'sent' ? 'FOIA: SENT' : `FOIA: ${f.status.toUpperCase()}`;
+                    const foiaTitle = isDenial
+                      ? 'City denied records exist - strengthens prima facie argument'
+                      : isRecords
+                      ? `City produced ${f.attachment_count || 0} document(s)`
+                      : f.status === 'sent'
+                      ? `Sent ${f.business_days_elapsed || 0} business days ago${f.deadline_expired ? ' - DEADLINE EXPIRED' : ''}`
+                      : f.status;
+                    return (
+                      <span title={foiaTitle} style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: foiaBg, color: foiaColor, border: `1px solid ${foiaColor}30` }}>
+                        {foiaLabel}
+                        {f.prima_facie_eligible && !isDenial ? ' \u2757' : ''}
+                      </span>
+                    );
+                  })()}
+                  {ticket.letter_regeneration && (
+                    <span
+                      title={`Letter re-generation triggered: ${ticket.letter_regeneration.reason}`}
+                      style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: `${C.orange}20`, color: C.orange, border: `1px solid ${C.orange}30` }}
+                    >
+                      REGEN
+                    </span>
+                  )}
                 </div>
 
                 {/* Row 4: Stage + Evidence pills */}
@@ -880,6 +912,64 @@ function PipelineDetailPanel({ selectedTicket, ticketDetail, detailLoading, onCl
                     {ticketDetail.camera_check && ' Also included camera-specific school zone and yellow light analysis.'}
                   </div>
                 </div>
+              </PipelineSection>
+            )}
+
+            {ticketDetail.foia_request && (
+              <PipelineSection title="FOIA Evidence Request">
+                {(() => {
+                  const f = ticketDetail.foia_request;
+                  const isDenial = f.is_denial || f.status === 'fulfilled_denial';
+                  const isRecords = f.is_with_records || f.status === 'fulfilled_with_records';
+                  const isResponded = f.response_received || isDenial || isRecords || f.status === 'fulfilled';
+                  const statusColor = isDenial ? C.purple : isRecords ? C.green : isResponded ? C.green : f.status === 'sent' ? C.accent : f.status === 'failed' ? C.red : C.yellow;
+                  const statusLabel = isDenial ? 'DENIAL — No Records' : isRecords ? 'RECORDS RECEIVED' : isResponded ? 'FULFILLED' : f.status === 'sent' ? 'AWAITING RESPONSE' : f.status?.toUpperCase() || 'UNKNOWN';
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{
+                        padding: 12, borderRadius: 8,
+                        background: isDenial ? C.purpleDim : isRecords ? C.greenDim : isResponded ? C.greenDim : C.card,
+                        border: `1px solid ${statusColor}`,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 16 }}>{isDenial ? '\u2696\uFE0F' : isRecords ? '\uD83D\uDCC4' : '\uD83D\uDCE8'}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>City of Chicago FOIA</span>
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: `${statusColor}20`, color: statusColor }}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <PipelineDetailRow label="Requested" value={f.requested_at ? new Date(f.requested_at).toLocaleString() : 'N/A'} />
+                        <PipelineDetailRow label="Sent to City" value={f.sent_at ? new Date(f.sent_at).toLocaleString() : 'Not yet'} />
+                        {f.business_days_elapsed != null && f.status === 'sent' && (
+                          <PipelineDetailRow
+                            label="Business Days Elapsed"
+                            value={`${f.business_days_elapsed} / 5 day statutory deadline`}
+                            color={f.deadline_expired ? C.red : f.business_days_elapsed >= 4 ? C.yellow : undefined}
+                          />
+                        )}
+                        {isResponded && <PipelineDetailRow label="Response Date" value={f.response_date ? new Date(f.response_date).toLocaleString() : f.fulfilled_at ? new Date(f.fulfilled_at).toLocaleString() : 'Unknown'} color={statusColor} />}
+                        {isRecords && <PipelineDetailRow label="Documents Received" value={`${f.attachment_count || 0} file(s)`} />}
+                        {f.prima_facie_eligible && (
+                          <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 6, background: `${C.purple}15`, border: `1px solid ${C.purple}40` }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: C.purple }}>Prima Facie Eligible</span>
+                            <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>
+                              {isDenial
+                                ? 'City denied records exist. They cannot establish a prima facie case without enforcement records.'
+                                : 'City failed to respond within 5 business days. FOIA non-compliance strengthens dismissal argument.'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {f.notes && (
+                        <div style={{ padding: '8px 12px', borderRadius: 6, background: C.bg, border: `1px solid ${C.border}`, fontSize: 12, color: C.textDim }}>
+                          <span style={{ fontWeight: 600, color: C.text }}>Notes: </span>{f.notes}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </PipelineSection>
             )}
 
@@ -1436,15 +1526,19 @@ function LifecycleTicketRow({ ticket, expanded, onToggle, expandedSections, onTo
             </span>
           )}
           {/* FOIA status */}
-          {ticket.foia_request && (
-            <span style={{
-              fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3,
-              background: ticket.foia_request.status === 'fulfilled' ? C.green + '18' : ticket.foia_request.status === 'sent' ? C.accent + '18' : C.yellow + '18',
-              color: ticket.foia_request.status === 'fulfilled' ? C.green : ticket.foia_request.status === 'sent' ? C.accent : C.yellow,
-            }}>
-              FOIA: {ticket.foia_request.status}
-            </span>
-          )}
+          {ticket.foia_request && (() => {
+            const fs = ticket.foia_request.status;
+            const isDenial = fs === 'fulfilled_denial';
+            const isRecords = fs === 'fulfilled_with_records';
+            const isAnyFulfilled = isDenial || isRecords || fs === 'fulfilled';
+            const color = isDenial ? C.purple : isAnyFulfilled ? C.green : fs === 'sent' ? C.accent : C.yellow;
+            const label = isDenial ? 'FOIA: DENIAL' : isRecords ? 'FOIA: RECORDS' : isAnyFulfilled ? 'FOIA: FULFILLED' : fs === 'sent' ? 'FOIA: SENT' : `FOIA: ${fs}`;
+            return (
+              <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3, background: color + '18', color }}>
+                {label}
+              </span>
+            );
+          })()}
         </div>
       </div>
 
@@ -1580,26 +1674,41 @@ function LifecycleTicketRow({ ticket, expanded, onToggle, expandedSections, onTo
               </LifecycleCollapsibleSection>
             )}
 
-            {ticket.foia_request && (
-              <LifecycleCollapsibleSection
-                id={`${ticket.id}-foia`}
-                title="FOIA Evidence Request"
-                expanded={expandedSections.has(`${ticket.id}-foia`)}
-                onToggle={() => onToggleSection(`${ticket.id}-foia`)}
-              >
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, fontSize: 12 }}>
-                  <LifecycleInfoField label="Status" value={ticket.foia_request.status} highlight={
-                    ticket.foia_request.status === 'fulfilled' ? C.green :
-                    ticket.foia_request.status === 'sent' ? C.accent :
-                    ticket.foia_request.status === 'failed' ? C.red : C.yellow
-                  } />
-                  <LifecycleInfoField label="Requested" value={formatDateTime(ticket.foia_request.requested_at)} />
-                  <LifecycleInfoField label="Sent" value={formatDateTime(ticket.foia_request.sent_at)} />
-                  <LifecycleInfoField label="Fulfilled" value={formatDateTime(ticket.foia_request.fulfilled_at)} />
-                  {ticket.foia_request.notes && <LifecycleInfoField label="Notes" value={ticket.foia_request.notes} />}
-                </div>
-              </LifecycleCollapsibleSection>
-            )}
+            {ticket.foia_request && (() => {
+              const fs = ticket.foia_request.status;
+              const isDenial = fs === 'fulfilled_denial';
+              const isRecords = fs === 'fulfilled_with_records';
+              const isAnyFulfilled = isDenial || isRecords || fs === 'fulfilled';
+              const statusLabel = isDenial ? 'Denial (No Records)' : isRecords ? 'Records Received' : isAnyFulfilled ? 'Fulfilled' : fs === 'sent' ? 'Awaiting Response' : fs;
+              const statusColor = isDenial ? C.purple : isAnyFulfilled ? C.green : fs === 'sent' ? C.accent : fs === 'failed' ? C.red : C.yellow;
+              return (
+                <LifecycleCollapsibleSection
+                  id={`${ticket.id}-foia`}
+                  title={`FOIA Evidence Request${isAnyFulfilled ? ' - RESPONDED' : ''}`}
+                  expanded={expandedSections.has(`${ticket.id}-foia`)}
+                  onToggle={() => onToggleSection(`${ticket.id}-foia`)}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, fontSize: 12 }}>
+                    <LifecycleInfoField label="Status" value={statusLabel} highlight={statusColor} />
+                    <LifecycleInfoField label="Requested" value={formatDateTime(ticket.foia_request.requested_at)} />
+                    <LifecycleInfoField label="Sent" value={formatDateTime(ticket.foia_request.sent_at)} />
+                    <LifecycleInfoField label="Response Date" value={formatDateTime(ticket.foia_request.fulfilled_at)} />
+                    {isRecords && <LifecycleInfoField label="Documents" value={`${ticket.foia_request.attachment_count || 0} file(s)`} />}
+                    {ticket.foia_request.notes && <LifecycleInfoField label="Notes" value={ticket.foia_request.notes} />}
+                  </div>
+                  {isDenial && (
+                    <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 6, background: `${C.purple}15`, border: `1px solid ${C.purple}30`, fontSize: 11, color: C.purple }}>
+                      City denied records exist. This strengthens the prima facie argument for dismissal.
+                    </div>
+                  )}
+                  {ticket.foia_request.prima_facie_eligible && !isDenial && (
+                    <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 6, background: `${C.purple}15`, border: `1px solid ${C.purple}30`, fontSize: 11, color: C.purple }}>
+                      5+ business days elapsed without response. Prima facie non-compliance argument eligible.
+                    </div>
+                  )}
+                </LifecycleCollapsibleSection>
+              );
+            })()}
 
             {ticket.outcome && (
               <LifecycleCollapsibleSection

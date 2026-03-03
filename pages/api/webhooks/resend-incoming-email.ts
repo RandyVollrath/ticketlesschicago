@@ -86,7 +86,156 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           })),
         );
         console.log(`  FOIA result: ${foiaResult.action} (matched: ${foiaResult.matched})`);
-        if (foiaResult.matched) {
+        if (foiaResult.matched && foiaResult.ticketNumber) {
+          // ── Trigger letter re-generation if letter hasn't been mailed ──
+          try {
+            // Get the ticket_id from the FOIA request
+            const { data: foiaReqData } = await supabaseAdmin
+              .from('ticket_foia_requests')
+              .select('ticket_id')
+              .eq('id', foiaResult.requestId || '')
+              .single();
+
+            if (foiaReqData) {
+              const { data: letter } = await supabaseAdmin
+                .from('contest_letters')
+                .select('id, status, mailed_at')
+                .eq('ticket_id', foiaReqData.ticket_id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (letter && !letter.mailed_at) {
+                // Letter exists but hasn't been mailed — clear content to force re-generation
+                await supabaseAdmin
+                  .from('contest_letters')
+                  .update({
+                    letter_content: null,
+                    letter_text: null,
+                    status: 'pending_evidence',
+                  })
+                  .eq('id', letter.id);
+
+                console.log(`  Letter ${letter.id} marked for re-generation (FOIA response received)`);
+
+                // Audit log
+                await supabaseAdmin.from('ticket_audit_log').insert({
+                  ticket_id: foiaReqData.ticket_id,
+                  action: 'letter_regeneration_triggered',
+                  details: {
+                    reason: 'foia_response_received',
+                    foia_action: foiaResult.action,
+                    letter_id: letter.id,
+                    attachment_count: attachments.length,
+                  },
+                  performed_by: null,
+                });
+              } else if (letter && letter.mailed_at) {
+                console.log(`  Letter ${letter.id} already mailed — cannot re-generate`);
+                await supabaseAdmin.from('ticket_audit_log').insert({
+                  ticket_id: foiaReqData.ticket_id,
+                  action: 'foia_response_after_mailing',
+                  details: {
+                    foia_action: foiaResult.action,
+                    letter_id: letter.id,
+                    mailed_at: letter.mailed_at,
+                    note: 'FOIA response arrived after letter was already mailed',
+                  },
+                  performed_by: null,
+                });
+              }
+
+              // ── Notify the user that FOIA response arrived ──
+              const { data: ticketData } = await supabaseAdmin
+                .from('detected_tickets')
+                .select('user_id, ticket_number')
+                .eq('id', foiaReqData.ticket_id)
+                .single();
+
+              if (ticketData) {
+                const { data: userData } = await supabaseAdmin.auth.admin.getUserById(ticketData.user_id);
+                const userEmail = userData?.user?.email;
+
+                if (userEmail && process.env.RESEND_API_KEY) {
+                  const isDenial = foiaResult.action === 'foia_denial_recorded';
+                  const userSubject = isDenial
+                    ? `FOIA Update: No Records Found — Ticket #${ticketData.ticket_number}`
+                    : `FOIA Update: City Responded — Ticket #${ticketData.ticket_number}`;
+                  const userMessage = isDenial
+                    ? `The City of Chicago responded to our FOIA request for ticket #${ticketData.ticket_number} and stated that no responsive records were found. This actually strengthens your contest — the city cannot establish a prima facie case without enforcement records. Your contest letter will be updated to include this argument.`
+                    : `The City of Chicago responded to our FOIA request for ticket #${ticketData.ticket_number} and provided ${attachments.length} document(s). We're reviewing the records and updating your contest letter accordingly.`;
+
+                  await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      from: 'Autopilot America <alerts@autopilotamerica.com>',
+                      to: [userEmail],
+                      subject: userSubject,
+                      html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                          <div style="background: ${isDenial ? '#7C3AED' : '#2563EB'}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                            <h1 style="margin: 0; font-size: 20px;">${isDenial ? '📋 FOIA: No Records Found' : '📋 FOIA Response Received'}</h1>
+                          </div>
+                          <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                            <p>${userMessage}</p>
+                            ${isDenial ? '<p style="background: #f3e8ff; padding: 12px; border-radius: 8px; border-left: 4px solid #7C3AED;"><strong>What this means:</strong> Under the Illinois FOIA Act (5 ILCS 140), the city had 5 business days to produce the enforcement records. Their failure to do so — or denial that records exist — means they cannot prove the violation occurred as described. This is one of the strongest supplementary arguments for dismissal.</p>' : ''}
+                            <p style="color: #6b7280; font-size: 13px; margin-top: 16px;">No action needed from you — we'll handle everything automatically.</p>
+                          </div>
+                        </div>
+                      `,
+                    }),
+                  });
+                  console.log(`  User ${userEmail} notified of FOIA response`);
+                }
+              }
+            }
+          } catch (regenErr: any) {
+            console.error('  Letter re-generation/notification failed:', regenErr.message);
+          }
+
+          // ── Notify admin ──
+          try {
+            if (process.env.RESEND_API_KEY) {
+              const isDenial = foiaResult.action === 'foia_denial_recorded';
+              await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: 'Autopilot America <alerts@autopilotamerica.com>',
+                  to: ['randyvollrath@gmail.com'],
+                  subject: `📋 FOIA ${isDenial ? 'Denial' : 'Response'} — Ticket ${foiaResult.ticketNumber}`,
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <div style="background: ${isDenial ? '#7C3AED' : '#2563EB'}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0; font-size: 20px;">${isDenial ? '📋 FOIA Denial Received' : '📋 FOIA Response Received'}</h1>
+                      </div>
+                      <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                        <p><strong>Ticket:</strong> ${foiaResult.ticketNumber}</p>
+                        <p><strong>From:</strong> ${fromEmail}</p>
+                        <p><strong>Subject:</strong> ${subject}</p>
+                        <p><strong>Attachments:</strong> ${attachments.length}</p>
+                        <p><strong>Action:</strong> ${foiaResult.action}</p>
+                        <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <p><strong>Body Preview:</strong></p>
+                        <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px;">${text.substring(0, 500)}</div>
+                      </div>
+                    </div>
+                  `,
+                }),
+              });
+              console.log('  Admin notified of FOIA response');
+            }
+          } catch (adminNotifErr: any) {
+            console.error('  Admin notification failed:', adminNotifErr.message);
+          }
+
           return res.status(200).json({
             message: 'FOIA response processed',
             ...foiaResult,

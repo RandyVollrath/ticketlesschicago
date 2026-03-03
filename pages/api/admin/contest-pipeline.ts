@@ -133,11 +133,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('ticket_audit_log')
         .select('ticket_id, action, details, created_at')
         .in('ticket_id', ticketIds)
-        .in('action', ['evidence_email_sent', 'evidence_submitted', 'user_evidence_received'])
+        .in('action', ['evidence_email_sent', 'evidence_submitted', 'user_evidence_received', 'letter_regeneration_triggered', 'foia_response_after_mailing'])
         .order('created_at', { ascending: false }),
       supabase
         .from('ticket_foia_requests')
-        .select('ticket_id, status, sent_at, requested_at')
+        .select('ticket_id, status, sent_at, requested_at, notes, response_payload, fulfilled_at, updated_at')
         .in('ticket_id', ticketIds)
         .eq('request_type', 'ticket_evidence_packet'),
     ]);
@@ -167,14 +167,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const sentDate = foia.sent_at ? new Date(foia.sent_at) : null;
         const daysElapsed = sentDate ? Math.floor((Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
         const businessDaysElapsed = sentDate ? countBusinessDays(sentDate, new Date()) : 0;
+        const isDenial = foia.status === 'fulfilled_denial';
+        const isWithRecords = foia.status === 'fulfilled_with_records';
+        const isAnyFulfilled = isDenial || isWithRecords || foia.status === 'fulfilled';
+        const responsePayload = foia.response_payload || {};
         foiaMap[foia.ticket_id] = {
           status: foia.status,
           sent_at: foia.sent_at,
           requested_at: foia.requested_at,
+          fulfilled_at: foia.fulfilled_at || foia.updated_at || null,
+          notes: foia.notes || null,
           days_elapsed: daysElapsed,
           business_days_elapsed: businessDaysElapsed,
           deadline_expired: businessDaysElapsed >= 5,
-          prima_facie_eligible: businessDaysElapsed >= 5 && (foia.status === 'sent' || foia.status === 'no_response'),
+          prima_facie_eligible: (businessDaysElapsed >= 5 && (foia.status === 'sent' || foia.status === 'no_response')) || isDenial,
+          // FOIA response details
+          response_received: isAnyFulfilled,
+          is_denial: isDenial,
+          is_with_records: isWithRecords,
+          attachment_count: responsePayload.attachment_count || 0,
+          response_date: foia.fulfilled_at || (isAnyFulfilled ? foia.updated_at : null),
         };
       }
     }
@@ -182,12 +194,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Build email/evidence audit maps per ticket
     const emailSentMap: Record<string, any> = {};
     const evidenceReceivedMap: Record<string, any> = {};
+    const letterRegenMap: Record<string, any> = {};
     for (const audit of (emailAuditResult.data || [])) {
       if (audit.action === 'evidence_email_sent' && !emailSentMap[audit.ticket_id]) {
         emailSentMap[audit.ticket_id] = audit;
       }
       if ((audit.action === 'evidence_submitted' || audit.action === 'user_evidence_received') && !evidenceReceivedMap[audit.ticket_id]) {
         evidenceReceivedMap[audit.ticket_id] = audit;
+      }
+      if ((audit.action === 'letter_regeneration_triggered' || audit.action === 'foia_response_after_mailing') && !letterRegenMap[audit.ticket_id]) {
+        letterRegenMap[audit.ticket_id] = audit;
       }
     }
 
@@ -199,6 +215,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const foia = foiaMap[ticket.id] || null;
       const emailSentAudit = emailSentMap[ticket.id];
       const evidenceReceivedAudit = evidenceReceivedMap[ticket.id];
+      const letterRegenAudit = letterRegenMap[ticket.id];
       let violationType = ticket.violation_type || normalizeViolationType(ticket.violation_description);
 
       // If still unknown, try to infer from defense_type
@@ -299,6 +316,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         base_win_rate: VIOLATION_WIN_RATES[violationType] || null,
         // FOIA evidence request tracking
         foia_request: foia,
+        // Letter re-generation (triggered by FOIA response)
+        letter_regeneration: letterRegenAudit ? {
+          triggered_at: letterRegenAudit.created_at,
+          reason: letterRegenAudit.details?.reason || letterRegenAudit.action,
+          action: letterRegenAudit.action,
+        } : null,
       };
     });
 
@@ -410,8 +433,11 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
       business_days_elapsed: businessDaysElapsed,
       deadline_expired: deadlineExpired,
       deadline_date: deadlineDate?.toISOString() || null,
-      prima_facie_eligible: deadlineExpired && (req.status === 'sent' || req.status === 'no_response'),
-      response_received: req.status === 'fulfilled' || req.status === 'partial_response',
+      prima_facie_eligible: (deadlineExpired && (req.status === 'sent' || req.status === 'no_response')) || req.status === 'fulfilled_denial',
+      response_received: req.status === 'fulfilled' || req.status === 'fulfilled_with_records' || req.status === 'fulfilled_denial' || req.status === 'partial_response',
+      is_denial: req.status === 'fulfilled_denial',
+      is_with_records: req.status === 'fulfilled_with_records',
+      attachment_count: req.response_payload?.attachment_count || 0,
       notes: req.notes,
       resend_email_id: req.response_payload?.resend_email_id || null,
     };
