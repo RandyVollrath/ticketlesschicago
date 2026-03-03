@@ -129,7 +129,10 @@ interface FoiaRequestStatus {
   hasFoiaRequest: boolean;
   sentDate: string | null;
   daysElapsed: number;
-  status: string; // 'sent' | 'fulfilled' | 'failed' | etc.
+  status: string; // 'sent' | 'fulfilled_with_records' | 'fulfilled_denial' | 'fulfilled' | 'failed' | etc.
+  responsePayload?: any | null;
+  notes?: string | null;
+  fulfilledAt?: string | null;
 }
 
 interface EvidenceBundle {
@@ -771,7 +774,7 @@ async function gatherAllEvidence(
     try {
       const { data: foiaReq } = await supabaseAdmin
         .from('ticket_foia_requests' as any)
-        .select('status, sent_at')
+        .select('status, sent_at, response_payload, notes, fulfilled_at')
         .eq('ticket_id', ticket.id)
         .eq('request_type', 'ticket_evidence_packet')
         .single();
@@ -785,6 +788,10 @@ async function gatherAllEvidence(
           sentDate: foiaReq.sent_at,
           daysElapsed,
           status: foiaReq.status,
+          // Extended fields for response integration
+          responsePayload: foiaReq.response_payload || null,
+          notes: foiaReq.notes || null,
+          fulfilledAt: foiaReq.fulfilled_at || null,
         };
         console.log(`    FOIA request: ${foiaReq.status}, sent ${daysElapsed} days ago`);
       }
@@ -1161,8 +1168,44 @@ NOTE: This is the city's schedule. We do NOT have data confirming whether cleani
     const sentFormatted = new Date(evidence.foiaRequest.sentDate).toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
+    const foiaStatus = evidence.foiaRequest.status;
+    const responsePayload = evidence.foiaRequest.responsePayload;
 
-    if (evidence.foiaRequest.status === 'sent' && evidence.foiaRequest.daysElapsed >= 7) {
+    if (foiaStatus === 'fulfilled_denial' || (foiaStatus === 'fulfilled' && responsePayload?.is_denial)) {
+      // City responded but denied records exist — strongest prima facie argument
+      sections.push(`=== FOIA EVIDENCE REQUEST — CITY DENIED RECORDS EXIST ===
+
+On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to the Department of Finance requesting the enforcement records for this citation, including the issuing officer's field notes, photographs, handheld device data, and violation-specific records.
+
+The City RESPONDED to the FOIA request and stated that NO RESPONSIVE RECORDS WERE FOUND. This is a critical admission — the city's own records system cannot produce the enforcement documentation for this citation.
+
+INSTRUCTIONS: This is a VERY STRONG argument — possibly the strongest supplementary argument available. Include a paragraph stating:
+1. A FOIA request was filed on ${sentFormatted} for the enforcement records
+2. The City's Department of Finance responded that no responsive records were found
+3. This means the city cannot produce the officer's contemporaneous notes, photographs, or device data that would establish a prima facie case
+4. Without enforcement documentation, the city has not met its burden of proof that the violation occurred as described
+5. Under Illinois administrative law, the respondent (city) bears the burden of establishing the violation by a preponderance of the evidence. The absence of records from the city's own system is dispositive.
+
+Frame this as: "The city's own records system confirms that the enforcement documentation for this citation does not exist, which renders the city unable to establish a prima facie case."`);
+
+    } else if (foiaStatus === 'fulfilled_with_records' || (foiaStatus === 'fulfilled' && !responsePayload?.is_denial)) {
+      // City responded with actual records — analyze what was produced
+      const attachmentCount = responsePayload?.attachment_count || 0;
+      const bodyPreview = responsePayload?.body_preview || '';
+      sections.push(`=== FOIA EVIDENCE REQUEST — CITY PRODUCED RECORDS ===
+
+On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted for the enforcement records for this citation. The City responded and produced ${attachmentCount} document(s).
+
+City's response summary: "${bodyPreview}"
+
+INSTRUCTIONS: The city produced some records in response to our FOIA request. This means:
+1. Mention that a FOIA request was filed and the city responded
+2. If the records produced are INCOMPLETE (e.g., no officer field notes, no photographs, no device data), argue that the incomplete production means key evidence is missing — the city cannot fully establish a prima facie case
+3. If the response only includes generic records (e.g., a copy of the citation itself), argue that mere reproduction of the citation is not independent evidence of the violation
+4. Note that the respondent has reviewed the records produced and they do not establish the factual basis for the citation
+5. Do NOT assume or fabricate what the records contain — use general language about what would be expected vs what was (or wasn't) produced`);
+
+    } else if (foiaStatus === 'sent' && evidence.foiaRequest.daysElapsed >= 7) {
       // City has exceeded the 5-business-day deadline (7 calendar days is conservative)
       sections.push(`=== FOIA EVIDENCE REQUEST — CITY FAILED TO RESPOND ===
 
@@ -1171,7 +1214,8 @@ On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submi
 As of this letter, ${evidence.foiaRequest.daysElapsed} days have elapsed and the Department has NOT produced the requested records, exceeding the statutory five-business-day response period.
 
 INSTRUCTIONS: Include a paragraph in the contest letter noting that a FOIA request was filed on ${sentFormatted} for the enforcement records and the city failed to respond within the statutory deadline. Argue that the absence of these records means the city cannot establish a prima facie case. This is a STRONG supplementary argument — "Prima Facie Case Not Established by City" is one of the top reasons tickets are dismissed. Frame it as: without the officer's contemporaneous notes and photographic evidence, the city has not met its burden of proving the violation occurred as described.`);
-    } else if (evidence.foiaRequest.status === 'sent') {
+
+    } else if (foiaStatus === 'sent') {
       // FOIA was sent but city still has time to respond
       sections.push(`=== FOIA EVIDENCE REQUEST — PENDING ===
 
@@ -1378,7 +1422,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
         }
 
         const foiaDeadlineExpired = businessDays >= 5;
-        const foiaResponded = foiaReq.status === 'fulfilled' || foiaReq.status === 'partial_response' || foiaReq.status === 'denied';
+        const foiaResponded = foiaReq.status === 'fulfilled' || foiaReq.status === 'fulfilled_with_records' || foiaReq.status === 'fulfilled_denial' || foiaReq.status === 'partial_response' || foiaReq.status === 'denied';
 
         if (!foiaDeadlineExpired && !foiaResponded) {
           console.log(`    Waiting for FOIA deadline: ${businessDays}/5 business days elapsed (user preference: wait_for_foia)`);

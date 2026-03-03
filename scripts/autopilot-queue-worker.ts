@@ -73,7 +73,7 @@ const supabaseAdmin = createClient(
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
-const CHECK_INTERVAL_HOURS = parseInt(process.env.WORKER_CHECK_INTERVAL_HOURS || '84'); // 3.5 days
+const CHECK_INTERVAL_HOURS = parseInt(process.env.WORKER_CHECK_INTERVAL_HOURS || '48'); // 2 days
 const MIN_DELAY_MS = parseInt(process.env.WORKER_MIN_DELAY_MS || '8000');
 const MAX_DELAY_MS = parseInt(process.env.WORKER_MAX_DELAY_MS || '20000');
 const BATCH_SIZE = parseInt(process.env.WORKER_BATCH_SIZE || '25');
