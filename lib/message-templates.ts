@@ -741,7 +741,7 @@ Most stickers arrive within 10-14 days. If you don't receive it within a week, c
     const firstPermit = permits[0];
     const subject = permitCount === 1
       ? `Parking alert: ${firstPermit.workType} on ${firstPermit.streetName}`
-      : `Parking alert: ${permitCount} DOT permits near your address`;
+      : `Parking alert: ${permitCount} block events near your address`;
 
     const permitRows = permits.map(p => {
       const closureLabel = p.streetClosure && p.streetClosure !== 'None'
@@ -762,12 +762,12 @@ Most stickers arrive within 10-14 days. If you don't receive it within a week, c
     }).join('');
 
     const html = emailComponents.wrapper(`
-      ${emailComponents.header('Parking Alert', 'DOT Permit Near Your Address')}
+      ${emailComponents.header('Parking Alert', 'Block Event Near Your Address')}
       ${emailComponents.body(`
         <p style="color:${COLORS.text};font-size:16px;line-height:1.6;margin:0 0 16px;">
           Hi${user.firstName ? ` ${user.firstName}` : ''},
         </p>
-        ${emailComponents.alertBox('warning', 'Upcoming DOT Permit' + (permitCount > 1 ? 's' : ''),
+        ${emailComponents.alertBox('warning', 'Upcoming Block Event' + (permitCount > 1 ? 's' : ''),
           `<strong>${permitCount}</strong> permit${permitCount > 1 ? 's have' : ' has'} been issued near your address that could affect street parking.`
         )}
         <table style="width:100%;border-collapse:collapse;margin:20px 0;">
@@ -801,7 +801,7 @@ Most stickers arrive within 10-14 days. If you don't receive it within a week, c
     const text = `
 Hi${user.firstName ? ` ${user.firstName}` : ''},
 
-${permitCount} DOT permit${permitCount > 1 ? 's have' : ' has'} been issued near your address:
+${permitCount} block event${permitCount > 1 ? 's have' : ' has'} been issued near your address:
 
 ${permitLines}
 

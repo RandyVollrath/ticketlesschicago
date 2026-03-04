@@ -244,7 +244,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // 4. Build notification data
         const permitData = actionablePermits.map((p: DotPermit) => ({
-          workType: p.work_type || 'DOT Permit',
+          workType: p.work_type || 'Street Permit',
           streetName: buildStreetName(p),
           startDate: formatPermitDate(p.start_date),
           endDate: formatPermitDate(p.end_date),

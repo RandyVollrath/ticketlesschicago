@@ -450,7 +450,7 @@ export default async function handler(
         // Only send once per parking session
         if (vehicle.dot_permit_active && !vehicle.dot_permit_notified_at) {
           const permitStartDate = vehicle.dot_permit_start_date;
-          const permitType = vehicle.dot_permit_type || 'DOT permit';
+          const permitType = vehicle.dot_permit_type || 'Street permit';
 
           let shouldNotify = false;
           let notifTitle = '';

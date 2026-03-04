@@ -233,16 +233,16 @@ class LocalNotificationServiceClass {
         notificationId = `${NOTIFICATION_PREFIX.DOT_PERMIT}${Date.now()}`;
         // Detect subtype from details: active today = urgent, upcoming = reminder
         if (details?.includes('ACTIVE TODAY') || details?.includes('active on this block')) {
-          title = '🚧 DOT Permit Active — Move Your Car!';
+          title = '🚧 Block Event Active — Move Your Car!';
           channelId = 'parking-alerts';
         } else if (details?.includes('starts tomorrow') || details?.includes('MOVE YOUR CAR')) {
-          title = '🚧 DOT Permit Starts Tomorrow';
+          title = '🚧 Block Event Starts Tomorrow';
           channelId = 'parking-alerts';
         } else {
-          title = '🚧 DOT Permit Alert';
+          title = '🚧 Block Event Alert';
           channelId = 'reminders';
         }
-        body = `${address}\n${details || 'A DOT permit is active near your parking spot. Check posted signs — risk of towing.'}`;
+        body = `${address}\n${details || 'A street permit is active near your parking spot. Check posted signs — risk of towing.'}`;
         break;
 
       default:

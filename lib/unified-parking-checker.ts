@@ -156,7 +156,7 @@ export async function checkAllParkingRestrictions(
       isActiveNow: false,
       hoursUntilStart: 999,
       severity: 'none',
-      message: 'No DOT permits on this block',
+      message: 'No block events on this block',
     },
     timestamp,
   };
@@ -469,7 +469,7 @@ export async function checkAllParkingRestrictions(
       }
 
       const eventName = permit.application_name || permit.comments || permit.work_description || permit.work_type;
-      const permitLabel = permit.work_type || 'DOT permit';
+      const permitLabel = permit.work_type || 'Street permit';
       const closureDesc = permit.street_closure
         ? (permit.street_closure === 'Full' ? 'Full street closure' :
            permit.street_closure === 'Curblane' ? 'Curb/lane closure' :

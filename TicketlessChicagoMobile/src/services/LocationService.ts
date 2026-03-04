@@ -926,7 +926,7 @@ class LocationServiceClass {
       const severity = data.dotPermit.severity || (data.dotPermit.isActiveNow ? 'critical' : 'warning');
       rules.push({
         type: 'dot_permit',
-        message: data.dotPermit.message || 'DOT permit activity near your parking spot.',
+        message: data.dotPermit.message || 'Block event activity near your parking spot.',
         severity: severity as 'critical' | 'warning' | 'info',
         isActiveNow: data.dotPermit.isActiveNow || false,
       });
