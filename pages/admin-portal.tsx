@@ -823,8 +823,6 @@ export default function AdminPortal() {
   const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals' | 'upcoming-renewals' | 'remitters' | 'ticket-contesting'>('ticket-contesting');
 
   // Ticket contesting state (uses autopilot tables - monitored_plates, autopilot_subscriptions, etc.)
-  const [ticketContestingEmail, setTicketContestingEmail] = useState<string>('');
-  const [ticketContestingEmailSaved, setTicketContestingEmailSaved] = useState<string>('');
   const [autopilotStats, setAutopilotStats] = useState({
     totalUsers: 0,
     totalPlates: 0,
@@ -832,17 +830,11 @@ export default function AdminPortal() {
     pendingEvidence: 0,
     lettersSent: 0,
   });
-  const [exportingPlates, setExportingPlates] = useState(false);
-  const [uploadingFindings, setUploadingFindings] = useState(false);
-  const [uploadResults, setUploadResults] = useState<any>(null);
-  const vaFileInputRef = useRef<HTMLInputElement>(null);
   const [generatingLetters, setGeneratingLetters] = useState(false);
   const [letterResults, setLetterResults] = useState<any>(null);
   const [pendingTickets, setPendingTickets] = useState<any[]>([]);
   const [pendingTicketsCount, setPendingTicketsCount] = useState(0);
   const [pendingEvidenceTickets, setPendingEvidenceTickets] = useState<any[]>([]);
-  const [exportJobs, setExportJobs] = useState<any[]>([]);
-  const [vaUploads, setVaUploads] = useState<any[]>([]);
 
   // Ticket pipeline state
   const [pipelineTickets, setPipelineTickets] = useState<any[]>([]);
@@ -1323,12 +1315,6 @@ export default function AdminPortal() {
       const data = await response.json();
 
       if (data.success) {
-        // Set VA email
-        if (data.vaEmail) {
-          setTicketContestingEmail(data.vaEmail);
-          setTicketContestingEmailSaved(data.vaEmail);
-        }
-
         // Set stats
         setAutopilotStats(data.stats);
 
@@ -1337,12 +1323,6 @@ export default function AdminPortal() {
 
         // Set pending tickets count from stats
         setPendingTicketsCount(data.stats.pendingTickets || 0);
-
-        // Set export jobs
-        setExportJobs(data.exportJobs || []);
-
-        // Set VA uploads
-        setVaUploads(data.vaUploads || []);
       } else {
         console.error('Error fetching autopilot stats:', data.error);
       }
@@ -1380,90 +1360,6 @@ export default function AdminPortal() {
       }
     } catch (error) {
       console.error('Error fetching pipeline data:', error);
-    }
-  };
-
-  const saveTicketContestingEmail = async () => {
-    try {
-      const { error } = await supabase
-        .from('autopilot_admin_settings')
-        .upsert({
-          key: 'va_email',
-          value: { email: ticketContestingEmail },
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'key' });
-
-      if (!error) {
-        setTicketContestingEmailSaved(ticketContestingEmail);
-        setMessage('VA email address saved successfully!');
-      } else {
-        setMessage(`Error: ${error.message}`);
-      }
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
-    }
-  };
-
-  const exportLicensePlates = async () => {
-    setExportingPlates(true);
-    try {
-      // Use the new autopilot export endpoint (POST, sends email to VA)
-      const response = await fetch('/api/admin/autopilot/export-plates', {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (data.success) {
-        setMessage(`Export sent! ${data.plateCount} plates emailed to ${data.recipientEmail}`);
-        fetchTicketContestingData(); // Refresh to show new export job
-      } else {
-        setMessage(`Error: ${data.error}`);
-      }
-    } catch (error: any) {
-      setMessage(`Error exporting: ${error.message}`);
-    } finally {
-      setExportingPlates(false);
-    }
-  };
-
-  const handleVAFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingFindings(true);
-    setUploadResults(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Use the new autopilot upload endpoint
-      const response = await fetch('/api/admin/autopilot/upload-results', {
-        method: 'POST',
-        body: formData
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        setUploadResults({
-          total: result.processed,
-          inserted: result.ticketsCreated,
-          matchedToUser: result.ticketsCreated, // All tickets are matched in the new system
-          skipped: result.skipped,
-          errors: result.errors || [],
-          rowDetails: result.rowDetails || [],
-        });
-        setMessage(`Processed ${result.processed} rows: ${result.ticketsCreated} tickets created, ${result.lettersGenerated} letters generated, ${result.emailsSent} emails sent`);
-      } else {
-        setMessage(`Error: ${result.error}`);
-      }
-    } catch (error: any) {
-      setMessage(`Error uploading: ${error.message}`);
-    } finally {
-      setUploadingFindings(false);
-      if (vaFileInputRef.current) {
-        vaFileInputRef.current.value = '';
-      }
-      fetchTicketContestingData();
     }
   };
 
@@ -1856,449 +1752,35 @@ export default function AdminPortal() {
 
             <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                Ticket Contesting Workflow
+                Ticket Detection
               </h2>
 
-              <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #3b82f6', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
-                <div style={{ fontWeight: '600', color: '#1e40af', marginBottom: '8px' }}>
-                  How This Works
+              <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #10b981', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+                <div style={{ fontWeight: '600', color: '#065f46', marginBottom: '8px' }}>
+                  Automated Portal Scraping
                 </div>
-                <ol style={{ margin: 0, paddingLeft: '20px', color: '#1e3a5f', lineHeight: '1.8', fontSize: '14px' }}>
-                  <li>Click &quot;Email Export to VA&quot; - this sends the plate list to your VA&apos;s email</li>
-                  <li>VA searches for tickets against each license plate on the Chicago portal</li>
-                  <li>VA fills in ticket details in the CSV and uploads it below</li>
-                  <li>System automatically creates tickets, generates letters, and emails users for evidence</li>
-                  <li>After Day 17 deadline, letters are ready to mail via Lob</li>
-                </ol>
-              </div>
-
-              {/* Settings Section */}
-              <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '24px', marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
-                  VA Email Settings
-                </h3>
-                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
-                  Configure the email address that will receive the license plate export for ticket checking.
+                <p style={{ margin: 0, color: '#065f46', lineHeight: '1.8', fontSize: '14px' }}>
+                  Tickets are now detected automatically via daily portal scrapes. The scraper runs every day at ~2pm CT
+                  with adaptive pacing and alerts you via email when new tickets are found or if any errors occur.
+                  No manual VA uploads needed.
                 </p>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <input
-                    type="email"
-                    value={ticketContestingEmail}
-                    onChange={(e) => setTicketContestingEmail(e.target.value)}
-                    placeholder="va@example.com"
-                    style={{
-                      flex: 1,
-                      maxWidth: '400px',
-                      padding: '10px 14px',
-                      borderRadius: '6px',
-                      border: '1px solid #d1d5db',
-                      fontSize: '14px'
-                    }}
-                  />
-                  <button
-                    onClick={saveTicketContestingEmail}
-                    disabled={ticketContestingEmail === ticketContestingEmailSaved}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: ticketContestingEmail === ticketContestingEmailSaved ? '#d1d5db' : '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: ticketContestingEmail === ticketContestingEmailSaved ? 'not-allowed' : 'pointer',
-                      fontSize: '14px'
-                    }}
-                  >
-                    Save Email
-                  </button>
-                </div>
-                {ticketContestingEmailSaved && (
-                  <p style={{ fontSize: '12px', color: '#10b981', marginTop: '8px' }}>
-                    Currently configured: {ticketContestingEmailSaved}
-                  </p>
-                )}
               </div>
 
-              {/* Export Section */}
-              <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '24px', marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
-                  Step 1: Export License Plates
-                </h3>
-                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
-                  Exports automatically run every <strong>Monday and Thursday at 9 AM CT</strong>. Use the button below to manually trigger an export.
-                </p>
-                <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-                  <p style={{ fontSize: '14px', margin: 0 }}>
-                    <strong>{autopilotStats.totalPlates}</strong> active monitored plates from <strong>{autopilotStats.totalUsers}</strong> subscribers
-                  </p>
+              {/* Stats grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px 0' }}>Monitored Plates</p>
+                  <p style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', margin: 0 }}>{autopilotStats.totalPlates}</p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <button
-                    onClick={() => exportLicensePlates()}
-                    disabled={exportingPlates || !ticketContestingEmailSaved}
-                    style={{
-                      padding: '12px 24px',
-                      backgroundColor: (exportingPlates || !ticketContestingEmailSaved) ? '#d1d5db' : '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: (exportingPlates || !ticketContestingEmailSaved) ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500'
-                    }}
-                  >
-                    {exportingPlates ? 'Exporting...' : 'Email Export to VA'}
-                  </button>
-                  {!ticketContestingEmailSaved && (
-                    <span style={{ fontSize: '13px', color: '#ef4444' }}>Please configure VA email first</span>
-                  )}
+                <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px 0' }}>Active Subscribers</p>
+                  <p style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', margin: 0 }}>{autopilotStats.totalUsers}</p>
+                </div>
+                <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px 0' }}>Letters Sent</p>
+                  <p style={{ fontSize: '24px', fontWeight: '700', color: '#10b981', margin: 0 }}>{autopilotStats.lettersSent}</p>
                 </div>
               </div>
-
-              {/* Upload Section */}
-              <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '24px', marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
-                  Step 2: Upload VA Findings
-                </h3>
-                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
-                  Upload the CSV file from the VA containing tickets found for your users.
-                </p>
-
-                <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                  <div style={{ fontWeight: '600', color: '#92400e', marginBottom: '8px', fontSize: '14px' }}>
-                    Expected CSV Format (from plate export email)
-                  </div>
-                  <p style={{ fontSize: '13px', color: '#78350f', marginBottom: '8px' }}>
-                    Use the same CSV that was emailed to the VA. Fill in columns F-I for each ticket found:
-                  </p>
-                  <code style={{ fontSize: '11px', backgroundColor: 'rgba(0,0,0,0.05)', padding: '8px 12px', borderRadius: '4px', display: 'block', marginBottom: '8px', wordBreak: 'break-all' }}>
-                    last_name, first_name, plate, state, user_id, ticket_number, violation_type, violation_date, amount
-                  </code>
-                  <p style={{ fontSize: '12px', color: '#78350f', margin: '8px 0' }}>
-                    violation_type can be any text (e.g. &quot;Expired Plates&quot;, &quot;No City Sticker&quot;) - it will be auto-normalized.
-                  </p>
-                  <button
-                    onClick={() => {
-                      // Generate example CSV content matching the export format
-                      const exampleCSV = `last_name,first_name,plate,state,user_id,ticket_number,violation_type,violation_date,amount
-Smith,John,ABC1234,IL,user-id-123,987654321,Expired Plates,2025-01-15,100.00
-Doe,Jane,XYZ5678,IL,user-id-456,123456789,No City Sticker,2025-01-14,250.00
-Brown,Bob,DEF9012,IL,user-id-789,,,,(no ticket found - leave empty)
-Wilson,Amy,GHI3456,IL,user-id-012,555666777,Expired Meter,2025-01-13,75.00`;
-
-                      const blob = new Blob([exampleCSV], { type: 'text/csv' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = 'va-upload-example.csv';
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    }}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#f59e0b',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    Download Example CSV
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <input
-                    type="file"
-                    ref={vaFileInputRef}
-                    accept=".csv"
-                    onChange={handleVAFileUpload}
-                    disabled={uploadingFindings}
-                    style={{ display: 'none' }}
-                  />
-                  <button
-                    onClick={() => vaFileInputRef.current?.click()}
-                    disabled={uploadingFindings}
-                    style={{
-                      padding: '12px 24px',
-                      backgroundColor: uploadingFindings ? '#d1d5db' : '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: uploadingFindings ? 'wait' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500'
-                    }}
-                  >
-                    {uploadingFindings ? 'Uploading...' : 'Upload CSV File'}
-                  </button>
-                </div>
-
-                {/* Upload Results */}
-                {uploadResults && (
-                  <div style={{ marginTop: '16px' }}>
-                    {/* Big Status Banner */}
-                    {uploadResults.errors && uploadResults.errors.length > 0 ? (
-                      <div style={{
-                        backgroundColor: '#fef2f2',
-                        border: '2px solid #dc2626',
-                        borderRadius: '8px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        textAlign: 'center'
-                      }}>
-                        <div style={{ fontSize: '48px', marginBottom: '8px' }}>&#9888;</div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#dc2626', marginBottom: '4px' }}>
-                          Upload Had Errors
-                        </div>
-                        <div style={{ fontSize: '14px', color: '#991b1b' }}>
-                          {uploadResults.inserted} of {uploadResults.total} tickets created - please review errors below
-                        </div>
-                      </div>
-                    ) : uploadResults.inserted === 0 ? (
-                      <div style={{
-                        backgroundColor: '#fef3c7',
-                        border: '2px solid #f59e0b',
-                        borderRadius: '8px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        textAlign: 'center'
-                      }}>
-                        <div style={{ fontSize: '48px', marginBottom: '8px' }}>&#9888;</div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#b45309', marginBottom: '4px' }}>
-                          No Tickets Created
-                        </div>
-                        <div style={{ fontSize: '14px', color: '#92400e' }}>
-                          {uploadResults.skipped} rows skipped (already exist or plate not found)
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{
-                        backgroundColor: '#f0fdf4',
-                        border: '2px solid #10b981',
-                        borderRadius: '8px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        textAlign: 'center'
-                      }}>
-                        <div style={{ fontSize: '48px', marginBottom: '8px' }}>&#10004;</div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#166534', marginBottom: '4px' }}>
-                          Upload Successful
-                        </div>
-                        <div style={{ fontSize: '14px', color: '#15803d' }}>
-                          {uploadResults.inserted} ticket{uploadResults.inserted !== 1 ? 's' : ''} created from {uploadResults.total} rows
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Detailed Stats */}
-                    <div style={{
-                      backgroundColor: uploadResults.errors?.length > 0 ? '#fef2f2' : uploadResults.inserted === 0 ? '#fef3c7' : '#f0fdf4',
-                      border: `1px solid ${uploadResults.errors?.length > 0 ? '#fecaca' : uploadResults.inserted === 0 ? '#fde68a' : '#bbf7d0'}`,
-                      borderRadius: '8px',
-                      padding: '16px'
-                    }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
-                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#374151' }}>{uploadResults.total}</div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Total Rows</div>
-                        </div>
-                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '24px', fontWeight: '700', color: uploadResults.inserted > 0 ? '#10b981' : '#dc2626' }}>{uploadResults.inserted}</div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Created</div>
-                        </div>
-                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#f59e0b' }}>{uploadResults.skipped}</div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Skipped</div>
-                        </div>
-                        <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '24px', fontWeight: '700', color: uploadResults.errors?.length > 0 ? '#dc2626' : '#10b981' }}>{uploadResults.errors?.length || 0}</div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>Errors</div>
-                        </div>
-                      </div>
-
-                      {/* Row Details Table - Show why each row was skipped/errored */}
-                      {uploadResults.rowDetails && uploadResults.rowDetails.length > 0 && (
-                        <div style={{
-                          marginTop: '16px',
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          overflow: 'hidden'
-                        }}>
-                          <div style={{
-                            backgroundColor: '#f9fafb',
-                            padding: '12px 16px',
-                            fontWeight: '600',
-                            fontSize: '14px',
-                            color: '#374151',
-                            borderBottom: '1px solid #e5e7eb'
-                          }}>
-                            Row-by-Row Details
-                          </div>
-                          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                              <thead>
-                                <tr style={{ backgroundColor: '#f9fafb' }}>
-                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Row</th>
-                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Plate</th>
-                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Ticket #</th>
-                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Status</th>
-                                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: '600' }}>Reason</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {uploadResults.rowDetails.map((row: any, i: number) => (
-                                  <tr key={i} style={{ backgroundColor: row.status === 'created' ? '#f0fdf4' : row.status === 'error' ? '#fef2f2' : '#fef3c7' }}>
-                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>{row.row}</td>
-                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', fontFamily: 'monospace' }}>{row.plate} ({row.state})</td>
-                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', fontFamily: 'monospace' }}>{row.ticket_number}</td>
-                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>
-                                      <span style={{
-                                        display: 'inline-block',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px',
-                                        fontSize: '11px',
-                                        fontWeight: '600',
-                                        textTransform: 'uppercase',
-                                        backgroundColor: row.status === 'created' ? '#dcfce7' : row.status === 'error' ? '#fecaca' : '#fde68a',
-                                        color: row.status === 'created' ? '#166534' : row.status === 'error' ? '#991b1b' : '#92400e'
-                                      }}>
-                                        {row.status}
-                                      </span>
-                                    </td>
-                                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', color: row.status === 'created' ? '#166534' : '#6b7280' }}>
-                                      {row.reason || (row.status === 'created' ? (
-                                        <span>
-                                          Ticket + letter created
-                                          {row.usingDefaultAddress && <span style={{ color: '#b45309', fontSize: '11px' }}> (default addr)</span>}
-                                          {row.emailFailed && <span style={{ color: '#dc2626', fontSize: '11px' }}> (email failed)</span>}
-                                          {row.noEmail && <span style={{ color: '#dc2626', fontSize: '11px' }}> (no email)</span>}
-                                        </span>
-                                      ) : '-')}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Step 3: Pending Evidence */}
-              <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '24px', marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
-                  Step 3: Evidence Collection
-                </h3>
-                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
-                  After upload, users are automatically emailed asking for evidence. Letters auto-send on Day 17 from the ticket issue date (4-day buffer before the Day 21 legal deadline).
-                </p>
-
-                {pendingEvidenceTickets.length > 0 ? (
-                  <div>
-                    <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                      <div style={{ fontSize: '24px', fontWeight: '700', color: '#f59e0b' }}>{pendingEvidenceTickets.length}</div>
-                      <div style={{ fontSize: '13px', color: '#92400e' }}>Tickets Awaiting Evidence</div>
-                    </div>
-
-                    <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-                      <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ backgroundColor: '#f9fafb' }}>
-                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
-                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plate</th>
-                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Ticket #</th>
-                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
-                            <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Deadline</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pendingEvidenceTickets.slice(0, 15).map((ticket: any) => {
-                            const profile = ticket.user_profiles;
-                            const userName = profile?.first_name || profile?.full_name?.split(' ')[0] || 'Unknown';
-                            const deadline = ticket.evidence_deadline ? new Date(ticket.evidence_deadline) : null;
-                            const isOverdue = deadline && deadline < new Date();
-                            return (
-                              <tr key={ticket.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                <td style={{ padding: '8px' }}>{userName}</td>
-                                <td style={{ padding: '8px', fontFamily: 'monospace' }}>{ticket.plate}</td>
-                                <td style={{ padding: '8px' }}>{ticket.ticket_number || '-'}</td>
-                                <td style={{ padding: '8px' }}>{(ticket.violation_type || 'unknown').replace(/_/g, ' ')}</td>
-                                <td style={{ padding: '8px', color: isOverdue ? '#ef4444' : '#6b7280' }}>
-                                  {deadline ? deadline.toLocaleDateString() : '-'}
-                                  {isOverdue && <span style={{ marginLeft: '4px', fontSize: '10px', color: '#ef4444' }}>OVERDUE</span>}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    {pendingEvidenceTickets.length > 15 && (
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-                        ...and {pendingEvidenceTickets.length - 15} more tickets
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div style={{ backgroundColor: '#f0fdf4', padding: '24px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '14px', color: '#166534' }}>
-                      No tickets currently awaiting evidence. All clear!
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Recent VA Uploads */}
-              {vaUploads.length > 0 && (
-                <div>
-                  <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
-                    Recent VA Uploads
-                  </h3>
-                  <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: '#f9fafb' }}>
-                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Rows</th>
-                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Tickets</th>
-                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Letters</th>
-                          <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {vaUploads.map((upload: any) => (
-                          <tr key={upload.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '8px' }}>{new Date(upload.created_at).toLocaleString()}</td>
-                            <td style={{ padding: '8px' }}>{upload.row_count}</td>
-                            <td style={{ padding: '8px' }}>{upload.tickets_created}</td>
-                            <td style={{ padding: '8px' }}>{upload.letters_generated}</td>
-                            <td style={{ padding: '8px' }}>
-                              <span style={{
-                                padding: '2px 8px',
-                                borderRadius: '10px',
-                                fontSize: '11px',
-                                backgroundColor: upload.status === 'complete' ? '#dcfce7' : '#fef3c7',
-                                color: upload.status === 'complete' ? '#166534' : '#92400e',
-                              }}>
-                                {upload.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* ============ Ticket Pipeline Section ============ */}
