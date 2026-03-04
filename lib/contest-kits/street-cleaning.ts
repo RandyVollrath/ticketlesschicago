@@ -88,6 +88,19 @@ export const streetCleaningKit: ContestKit = {
     ],
     optional: [
       {
+        id: 'schedule_verification',
+        name: 'Street Cleaning Schedule Verification',
+        description: 'Automated verification of whether street cleaning was actually scheduled at the ticket location on the ticket date',
+        impactScore: 0.35,
+        example: 'Schedule data showing no cleaning was scheduled in Ward 24, Section 3 on the citation date',
+        tips: [
+          'This is automatically checked when you generate a contest letter',
+          'Uses the City of Chicago\'s official street cleaning schedule data',
+          'If no cleaning was scheduled, this becomes a strong primary defense',
+          'Even if cleaning was scheduled, requesting proof it actually occurred is valuable',
+        ],
+      },
+      {
         id: 'gps_departure_proof',
         name: 'GPS Departure Evidence (Autopilot App)',
         description: 'GPS-verified proof from the Autopilot app showing you left your parking spot before street cleaning began',
@@ -221,20 +234,24 @@ As my vehicle was not present during the actual street cleaning period, I should
       },
       {
         id: 'cleaning_did_not_occur',
-        name: 'Street Cleaning Did Not Occur',
-        template: `I respectfully contest this citation on the grounds that street cleaning did not actually occur on [DATE] at [LOCATION].
+        name: 'Street Cleaning Did Not Occur / Not Scheduled',
+        template: `I respectfully contest this citation on the grounds that street cleaning was not scheduled and did not occur on [DATE] at [LOCATION].
+
+According to the City of Chicago's official published street cleaning schedule, no cleaning operations were listed for this zone on the date of this citation. The city's own records show this area was not subject to street cleaning restrictions on [DATE].
 
 [CLEANING_EVIDENCE]
 
-The purpose of street cleaning restrictions is to allow city sweeping equipment to effectively clean the street. When cleaning does not occur, ticketing vehicles serves no public purpose and unfairly penalizes motorists.
+The purpose of street cleaning parking restrictions is to allow city sweeping equipment unobstructed access to clean the street. When cleaning is not even scheduled for a location on a given date, there is no lawful basis for enforcing parking restrictions or issuing citations. Ticketing vehicles when no cleaning is planned serves no public purpose and unfairly penalizes motorists.
+
+I request the City provide its official street cleaning schedule for this ward and section, as well as GPS tracking data for street sweepers on this date, to confirm that no cleaning took place.
 
 I respectfully request that this citation be dismissed.`,
         requiredFacts: ['date', 'location'],
-        winRate: 0.35,
+        winRate: 0.50,
         conditions: [
           { field: 'cleaningDidNotOccur', operator: 'equals', value: true },
         ],
-        supportingEvidence: ['no_cleaning_evidence', 'witness_statement'],
+        supportingEvidence: ['no_cleaning_evidence', 'schedule_verification', 'witness_statement'],
         category: 'circumstantial',
       },
       {

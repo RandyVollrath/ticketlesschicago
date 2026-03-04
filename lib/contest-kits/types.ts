@@ -190,6 +190,7 @@ export interface TicketFacts {
   vehicleWasMoved?: boolean;
   meterWasBroken?: boolean;
   permitWasDisplayed?: boolean;
+  cleaningDidNotOccur?: boolean;
 
   // Time-based calculations
   daysSinceTicket: number;
@@ -212,4 +213,6 @@ export interface UserEvidence {
   hasMedicalDocs: boolean;
   /** Whether GPS parking/departure evidence is available from the mobile app */
   hasLocationEvidence?: boolean;
+  /** Whether we verified the street cleaning schedule for the ticket location/date */
+  hasScheduleVerification?: boolean;
 }

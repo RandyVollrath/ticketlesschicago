@@ -446,6 +446,14 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
     let streetViewEvidence: StreetViewResult | null = null;
     let streetViewPackage: StreetViewEvidencePackage | null = null;
     let streetCleaningSchedule: any[] | null = null;
+    let streetCleaningVerification: {
+      checked: boolean;
+      ward: string | null;
+      section: string | null;
+      scheduledOnDate: boolean;
+      matchingRecords: any[];
+      message: string;
+    } = { checked: false, ward: null, section: null, scheduledOnDate: false, matchingRecords: [], message: '' };
     let foiaData: {
       hasData: boolean;
       totalContested: number;
@@ -657,24 +665,125 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
       })());
     }
 
-    // 8. Street Cleaning Schedule (for street cleaning violations)
+    // 8. Street Cleaning Schedule Verification (for street cleaning violations)
+    // Uses ticket coordinates to find the ward/section, then checks if cleaning
+    // was actually scheduled at that location on the ticket date.
     if ((violationType === 'street_cleaning' || contest.violation_code === '9-64-010') && ticketDate) {
       evidencePromises.push((async () => {
         try {
-          const { data } = await supabase
-            .from('street_cleaning_schedule')
-            .select('*')
-            .eq('date', ticketDate)
-            .limit(5);
-          if (data && data.length > 0) {
-            streetCleaningSchedule = data;
+          const ticketLat = contest.ticket_latitude || contest.extracted_data?.latitude;
+          const ticketLng = contest.ticket_longitude || contest.extracted_data?.longitude;
+
+          let ward: string | null = null;
+          let section: string | null = null;
+
+          // Step 1: Determine ward/section from ticket coordinates using PostGIS
+          if (ticketLat && ticketLng) {
+            const { data: zoneData, error: zoneError } = await supabase.rpc(
+              'find_section_for_point',
+              { lon: ticketLng, lat: ticketLat }
+            );
+            if (!zoneError && zoneData && zoneData.length > 0) {
+              ward = zoneData[0].ward;
+              section = zoneData[0].section;
+            }
           }
-        } catch (e) { /* Schedule lookup is optional */ }
+
+          // Step 2: If we have ward/section, check if cleaning was scheduled on the ticket date
+          if (ward && section) {
+            const { data: scheduleData, error: scheduleError } = await supabase
+              .from('street_cleaning_schedule')
+              .select('ward, section, cleaning_date, street_name, side')
+              .eq('ward', ward)
+              .eq('section', section)
+              .eq('cleaning_date', ticketDate)
+              .limit(10);
+
+            if (!scheduleError) {
+              streetCleaningSchedule = scheduleData;
+              streetCleaningVerification = {
+                checked: true,
+                ward,
+                section,
+                scheduledOnDate: !!(scheduleData && scheduleData.length > 0),
+                matchingRecords: scheduleData || [],
+                message: scheduleData && scheduleData.length > 0
+                  ? `Street cleaning WAS scheduled in Ward ${ward}, Section ${section} on ${ticketDate} (${scheduleData.length} block(s) in this zone).`
+                  : `NO street cleaning was scheduled in Ward ${ward}, Section ${section} on ${ticketDate}. This ticket may have been issued in error.`,
+              };
+            }
+          } else {
+            // Fallback: query by date only (less precise but better than nothing)
+            const { data: fallbackData } = await supabase
+              .from('street_cleaning_schedule')
+              .select('ward, section, cleaning_date, street_name, side')
+              .eq('cleaning_date', ticketDate)
+              .limit(10);
+            if (fallbackData && fallbackData.length > 0) {
+              streetCleaningSchedule = fallbackData;
+              streetCleaningVerification = {
+                checked: true,
+                ward: null,
+                section: null,
+                scheduledOnDate: true,
+                matchingRecords: fallbackData,
+                message: `Could not determine exact ward/section from ticket location. Street cleaning was scheduled in ${fallbackData.length} zone(s) city-wide on ${ticketDate}.`,
+              };
+            } else {
+              streetCleaningVerification = {
+                checked: true,
+                ward: null,
+                section: null,
+                scheduledOnDate: false,
+                matchingRecords: [],
+                message: `No street cleaning was scheduled anywhere in the city on ${ticketDate}. This ticket may have been issued in error.`,
+              };
+            }
+          }
+        } catch (e) {
+          console.error('Street cleaning schedule verification failed:', e);
+          // Continue without schedule data
+        }
       })());
     }
 
     // Wait for ALL evidence lookups to complete in parallel
     await Promise.all(evidencePromises);
+
+    // Update userEvidence with schedule verification results
+    if (streetCleaningVerification.checked) {
+      userEvidence.hasScheduleVerification = true;
+    }
+
+    // Re-evaluate contest kit if street cleaning schedule verification found that
+    // cleaning was NOT scheduled — this unlocks the "cleaning didn't occur" argument
+    if (streetCleaningVerification.checked && !streetCleaningVerification.scheduledOnDate
+        && contestKit && contest.violation_code) {
+      const updatedFacts: TicketFacts = {
+        ticketNumber: contest.ticket_number || '',
+        violationCode: contest.violation_code,
+        violationDescription: contest.violation_description || '',
+        ticketDate: contest.ticket_date || contest.extracted_data?.date || '',
+        ticketTime: contest.extracted_data?.time,
+        location: contest.ticket_location || '',
+        amount: contest.ticket_amount || 0,
+        daysSinceTicket: contest.ticket_date
+          ? Math.floor((Date.now() - new Date(contest.ticket_date).getTime()) / (1000 * 60 * 60 * 24))
+          : 0,
+        hasSignageIssue: contestGrounds?.some(g =>
+          g.toLowerCase().includes('sign') || g.toLowerCase().includes('signage')
+        ),
+        hasEmergency: contestGrounds?.some(g =>
+          g.toLowerCase().includes('emergency')
+        ),
+        cleaningDidNotOccur: true,
+      };
+      try {
+        kitEvaluation = await evaluateContest(updatedFacts, userEvidence, contestGrounds);
+      } catch (e) {
+        console.error('Re-evaluation with schedule data failed:', e);
+      }
+    }
 
     // Generate evidence checklist (after all evidence lookups)
     const evidenceChecklist = generateEvidenceChecklist(contest, contestGrounds, ordinanceInfo, parkingEvidence);
@@ -801,11 +910,30 @@ STRATEGY INSTRUCTIONS (DO NOT cite stats in the letter):
 1. The top dismissal reason tells you what argument to lead with
 2. DO NOT mention FOIA data, statistics, or win rates in the letter
 3. Write the letter using the STRATEGY these outcomes suggest, not citing the data itself` : ''}
-${streetCleaningSchedule && streetCleaningSchedule.length > 0 ? `
-STREET CLEANING SCHEDULE DATA:
-Records for ticket date (${ticketDate}):
-${streetCleaningSchedule.map((s: any) => `- Ward ${s.ward}, Section ${s.section}: ${s.status || 'scheduled'}`).join('\n')}
-NOTE: Request the city provide proof that cleaning actually took place on this date and block.` : ''}
+${streetCleaningVerification.checked ? `
+=== STREET CLEANING SCHEDULE VERIFICATION ===
+${streetCleaningVerification.ward ? `Ticket Location Zone: Ward ${streetCleaningVerification.ward}, Section ${streetCleaningVerification.section}` : 'Ticket location zone: Could not be determined from coordinates'}
+Verification Result: ${streetCleaningVerification.message}
+${!streetCleaningVerification.scheduledOnDate ? `
+*** CRITICAL DEFENSE FINDING: NO CLEANING SCHEDULED ***
+Our database of the City of Chicago's official street cleaning schedule shows that NO street cleaning was scheduled at this location on the date of this ticket (${ticketDate}).
+${streetCleaningVerification.ward ? `Specifically, Ward ${streetCleaningVerification.ward}, Section ${streetCleaningVerification.section} had no cleaning operations listed for this date.` : ''}
+
+INSTRUCTIONS FOR LETTER:
+1. This is a POWERFUL primary argument — the ticket was issued for violating street cleaning restrictions on a date when NO cleaning was scheduled
+2. State clearly that according to the City's own published street cleaning schedule, no cleaning was scheduled for this zone on this date
+3. Argue that tickets should not be issued when the underlying restriction has no active enforcement purpose
+4. Request that the city provide their official cleaning schedule for this ward/section to confirm
+5. This argument should be the LEAD argument in the letter, ahead of signage or weather defenses
+` : `
+Street cleaning WAS scheduled at this location on ${ticketDate}.
+${streetCleaningVerification.matchingRecords.length > 0 ? `Scheduled blocks:\n${streetCleaningVerification.matchingRecords.map((r: any) => `- ${r.street_name || 'Block'} (${r.side || 'side N/A'})`).join('\n')}` : ''}
+
+INSTRUCTIONS FOR LETTER:
+1. Since cleaning was scheduled, focus on other defenses (signage, weather, departure proof, etc.)
+2. Request that the city provide proof the street sweeper ACTUALLY serviced this specific block on this date
+3. The city's schedule showing cleaning was planned does NOT prove it occurred — request sweeper GPS logs
+`}` : ''}
 ${courtData.hasData ? `HISTORICAL COURT DATA (analyzed ${courtData.totalCasesAnalyzed} cases, found ${courtData.matchingCasesCount} matching user's evidence):
 
 User's Evidence Availability:
