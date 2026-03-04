@@ -2764,7 +2764,7 @@ function SettingsPageInner() {
               <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary, display: 'flex', alignItems: 'center', gap: 6 }}>
                 Block closure &amp; permit alerts
                 <span
-                  title="Get notified when a DOT permit (moving vans, filming, block parties, construction) is issued near your address that could affect parking. Alerts are sent the day before and morning of the permit."
+                  title="Get notified when a city permit (moving vans, filming, block parties, construction) is issued near your address that could affect parking. Alerts are sent the day before and morning of the event."
                   style={{
                     cursor: 'help',
                     display: 'inline-flex',
@@ -2781,7 +2781,7 @@ function SettingsPageInner() {
                 >i</span>
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                DOT permits near your address (closures, filming, events)
+                Block events near your address (closures, filming, construction)
               </p>
             </div>
             <Toggle checked={dotPermitAlerts} onChange={setDotPermitAlerts} />

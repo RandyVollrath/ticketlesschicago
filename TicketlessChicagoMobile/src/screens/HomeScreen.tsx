@@ -140,7 +140,7 @@ const PROTECTION_ITEMS = [
   { icon: 'snowflake', label: 'Winter' },
   { icon: 'weather-snowy-heavy', label: 'Snow' },
   { icon: 'parking', label: 'Permits' },
-  { icon: 'clipboard-text-clock', label: 'DOT Permits' },
+  { icon: 'clipboard-text-clock', label: 'Block Events' },
   { icon: 'traffic-light', label: 'Red Light' },
   { icon: 'speedometer', label: 'Speed' },
 ];

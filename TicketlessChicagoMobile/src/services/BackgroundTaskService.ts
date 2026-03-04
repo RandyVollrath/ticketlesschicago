@@ -2357,7 +2357,7 @@ class BackgroundTaskServiceClass {
 
     // DOT permit reminders — night before + morning of + 2 hours before
     if (result.dotPermit?.hasActivePermit) {
-      const permitType = result.dotPermit.permitType || 'DOT permit';
+      const permitType = result.dotPermit.permitType || 'Street permit';
       const closureInfo = result.dotPermit.streetClosure
         ? (result.dotPermit.streetClosure === 'Full' ? 'Full street closure' :
            result.dotPermit.streetClosure === 'Curblane' ? 'Curb/lane closure' :
@@ -2542,7 +2542,7 @@ class BackgroundTaskServiceClass {
 
     // DOT permit (construction, filming, moving van, etc.)
     if (rawData?.dotPermit?.hasActivePermit) {
-      const permitType = rawData.dotPermit.permitType || 'DOT permit';
+      const permitType = rawData.dotPermit.permitType || 'Street permit';
       if (rawData.dotPermit.isActiveNow) {
         parts.push(`🚧 ${permitType} active on this block — risk of towing`);
       } else if (rawData.dotPermit.startDate) {

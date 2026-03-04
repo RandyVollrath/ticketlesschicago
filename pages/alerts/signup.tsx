@@ -794,7 +794,7 @@ export default function AlertsSignup() {
                   style={{ marginTop: '2px', width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
                 />
                 <label htmlFor="dotPermitAlerts" style={{ fontSize: '14px', color: COLORS.graphite, lineHeight: '1.5', cursor: 'pointer' }}>
-                  <strong>Block closure &amp; permit alerts.</strong> Get notified when a DOT permit (moving vans, filming, block parties, construction) is issued near your address that could affect parking.
+                  <strong>Block closure &amp; event alerts.</strong> Get notified when a city permit (moving vans, filming, block parties, construction) is issued near your address that could affect parking.
                 </label>
               </div>
 
