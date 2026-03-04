@@ -97,6 +97,18 @@ interface MobileCheckParkingResponse {
     isEnforcedNow?: boolean;
     estimatedRate?: string;
   };
+  dotPermit: {
+    hasActivePermit: boolean;
+    message: string;
+    severity?: 'critical' | 'warning' | 'info' | 'none';
+    permitType?: string;
+    startDate?: string;
+    endDate?: string;
+    streetClosure?: string;
+    meterBagging?: boolean;
+    description?: string;
+    isActiveNow?: boolean;
+  };
   /** Enforcement risk scoring based on 1.18M FOIA ticket records */
   enforcementRisk?: EnforcementRisk;
   /** Map-snap metadata - if the GPS coordinate was snapped to a known street */
@@ -342,6 +354,19 @@ export default async function handler(
         estimatedRate: meteredParkingResult.estimatedRate || undefined,
       },
 
+      dotPermit: {
+        hasActivePermit: result.dotPermit.found,
+        message: result.dotPermit.message,
+        severity: result.dotPermit.severity,
+        permitType: result.dotPermit.permitType || undefined,
+        startDate: result.dotPermit.startDate || undefined,
+        endDate: result.dotPermit.endDate || undefined,
+        streetClosure: result.dotPermit.streetClosure || undefined,
+        meterBagging: result.dotPermit.meterBagging || undefined,
+        description: result.dotPermit.description || undefined,
+        isActiveNow: result.dotPermit.isActiveNow || undefined,
+      },
+
       // Enforcement risk scoring from 1.18M FOIA ticket records
       enforcementRisk,
 
@@ -367,6 +392,7 @@ export default async function handler(
       twoInchSnowBan: { active: false, message: 'Error checking restrictions' },
       permitZone: { inPermitZone: false, message: 'Error checking restrictions' },
       meteredParking: { inMeteredZone: false, message: 'Error checking restrictions' },
+      dotPermit: { hasActivePermit: false, message: 'Error checking restrictions' },
       timestamp: new Date().toISOString(),
       error: sanitizeErrorMessage(error),
     });

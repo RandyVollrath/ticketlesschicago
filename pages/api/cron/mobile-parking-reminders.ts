@@ -29,10 +29,15 @@ interface ParkedVehicle {
   permit_zone: string | null;
   permit_restriction_schedule: string | null;
   parked_at: string;
+  // DOT permit fields
+  dot_permit_active: boolean;
+  dot_permit_type: string | null;
+  dot_permit_start_date: string | null;
   // Notification tracking
   winter_ban_notified_at: string | null;
   street_cleaning_notified_at: string | null;
   permit_zone_notified_at: string | null;
+  dot_permit_notified_at: string | null;
 }
 
 /**
@@ -152,6 +157,7 @@ export default async function handler(
       winterBanReminders: 0,
       streetCleaningReminders: 0,
       permitZoneReminders: 0,
+      dotPermitReminders: 0,
       errors: 0,
     };
 
@@ -316,6 +322,66 @@ export default async function handler(
                   .eq('id', vehicle.id);
                 console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
               }
+            }
+          }
+        }
+
+        // DOT permit reminder — night before (8-9pm) and morning of (6-8am)
+        // Only send once per parking session
+        if (vehicle.dot_permit_active && !vehicle.dot_permit_notified_at) {
+          const permitStartDate = vehicle.dot_permit_start_date;
+          const permitType = vehicle.dot_permit_type || 'DOT permit';
+
+          let shouldNotify = false;
+          let notifTitle = '';
+          let notifBody = '';
+
+          if (permitStartDate) {
+            const isPermitTomorrow = permitStartDate === tomorrowStr;
+            const isPermitToday = permitStartDate === today;
+
+            if (chicagoHour >= 19 && chicagoHour <= 21 && isPermitTomorrow) {
+              // Night before notification
+              shouldNotify = true;
+              notifTitle = `${permitType} Tomorrow on Your Block`;
+              notifBody = `A ${permitType.toLowerCase()} permit starts tomorrow at ${vehicle.address}. Consider moving your car tonight to avoid towing.`;
+            } else if (chicagoHour >= 6 && chicagoHour <= 8 && isPermitToday) {
+              // Morning of notification
+              shouldNotify = true;
+              notifTitle = `${permitType} Active Today - Move Now!`;
+              notifBody = `A ${permitType.toLowerCase()} permit is active today at ${vehicle.address}. Move your car NOW to avoid towing.`;
+            }
+          } else {
+            // No specific start date — permit was already active when user parked
+            // Send one notification during morning hours
+            if (chicagoHour >= 6 && chicagoHour <= 8) {
+              shouldNotify = true;
+              notifTitle = `${permitType} Active on Your Block`;
+              notifBody = `A ${permitType.toLowerCase()} permit is active at ${vehicle.address}. Check posted signs — risk of towing.`;
+            }
+          }
+
+          if (shouldNotify) {
+            const result = await sendPushNotification(vehicle.fcm_token, {
+              title: notifTitle,
+              body: notifBody,
+              data: {
+                type: 'dot_permit_reminder',
+                lat: vehicle.latitude?.toString(),
+                lng: vehicle.longitude?.toString(),
+              },
+            });
+            if (result.success) {
+              await supabaseAdmin.from('user_parked_vehicles')
+                .update({ dot_permit_notified_at: new Date().toISOString() })
+                .eq('id', vehicle.id);
+              results.dotPermitReminders++;
+              console.log(`Sent DOT permit reminder to ${vehicle.user_id} (${permitType})`);
+            } else if (result.invalidToken) {
+              await supabaseAdmin.from('user_parked_vehicles')
+                .update({ is_active: false })
+                .eq('id', vehicle.id);
+              console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
             }
           }
         }

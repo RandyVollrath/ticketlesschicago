@@ -445,6 +445,73 @@ export async function checkAllParkingRestrictions(
       }
     }
 
+    // --- DOT Permit (from synced Chicago DOT permit data) ---
+    if (dotPermitData && dotPermitData.length > 0) {
+      // Pick the most relevant permit (closest, with most parking impact)
+      const permit = dotPermitData[0]; // Already sorted by distance in the RPC
+
+      const now = getChicagoTime();
+      const today = now.toISOString().split('T')[0];
+      const permitStart = permit.start_date ? new Date(permit.start_date) : null;
+      const permitEnd = permit.end_date ? new Date(permit.end_date) : null;
+      const permitStartDate = permitStart ? permitStart.toISOString().split('T')[0] : null;
+
+      const isActiveToday = permitStartDate
+        ? permitStartDate <= today && (permitEnd ? permitEnd.toISOString().split('T')[0] >= today : true)
+        : false;
+
+      // Calculate hours until permit starts
+      let hoursUntilStart = 999;
+      if (permitStart) {
+        const msUntilStart = permitStart.getTime() - now.getTime();
+        hoursUntilStart = msUntilStart > 0 ? msUntilStart / (1000 * 60 * 60) : 0;
+      }
+
+      const eventName = permit.application_name || permit.comments || permit.work_description || permit.work_type;
+      const permitLabel = permit.work_type || 'DOT permit';
+      const closureDesc = permit.street_closure
+        ? (permit.street_closure === 'Full' ? 'Full street closure' :
+           permit.street_closure === 'Curblane' ? 'Curb/lane closure' :
+           permit.street_closure === 'Sidewalk' ? 'Sidewalk closure' :
+           `${permit.street_closure} closure`)
+        : (permit.parking_meter_bagging ? 'Meters bagged (no parking)' : '');
+
+      result.dotPermit.found = true;
+      result.dotPermit.permitType = permit.work_type || null;
+      result.dotPermit.startDate = permit.start_date || null;
+      result.dotPermit.endDate = permit.end_date || null;
+      result.dotPermit.streetClosure = permit.street_closure || null;
+      result.dotPermit.meterBagging = permit.parking_meter_bagging || false;
+      result.dotPermit.description = eventName || null;
+      result.dotPermit.isActiveNow = isActiveToday;
+      result.dotPermit.hoursUntilStart = hoursUntilStart;
+
+      if (isActiveToday) {
+        // Permit is active RIGHT NOW
+        if (permit.street_closure === 'Full' || permit.parking_meter_bagging) {
+          result.dotPermit.severity = 'critical';
+          result.dotPermit.message = `${permitLabel} active on this block today! ${closureDesc}. Risk of towing.`;
+        } else {
+          result.dotPermit.severity = 'warning';
+          result.dotPermit.message = `${permitLabel} active on this block today. ${closureDesc}. Check posted signs.`;
+        }
+      } else if (hoursUntilStart <= 24) {
+        // Starts within 24 hours
+        result.dotPermit.severity = 'warning';
+        const startStr = permitStart
+          ? permitStart.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Chicago' })
+          : 'soon';
+        result.dotPermit.message = `${permitLabel} starts ${startStr} on this block. ${closureDesc}. Plan to move.`;
+      } else {
+        // More than 24 hours away
+        result.dotPermit.severity = 'info';
+        const startStr = permitStart
+          ? permitStart.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Chicago' })
+          : 'upcoming';
+        result.dotPermit.message = `${permitLabel} scheduled ${startStr} on this block. ${closureDesc}.`;
+      }
+    }
+
     return result;
 
   } catch (error) {

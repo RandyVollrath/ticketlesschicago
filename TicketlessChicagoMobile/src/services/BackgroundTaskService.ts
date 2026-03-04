@@ -2288,6 +2288,81 @@ class BackgroundTaskServiceClass {
     // Snow ban - weather dependent, handled by push notifications from backend
     // Server cron sends push to users with on_snow_route=true in user_parked_vehicles
 
+    // DOT permit reminders — night before + morning of + 2 hours before
+    if (result.dotPermit?.hasActivePermit) {
+      const permitType = result.dotPermit.permitType || 'DOT permit';
+      const closureInfo = result.dotPermit.streetClosure
+        ? (result.dotPermit.streetClosure === 'Full' ? 'Full street closure' :
+           result.dotPermit.streetClosure === 'Curblane' ? 'Curb/lane closure' :
+           `${result.dotPermit.streetClosure} closure`)
+        : (result.dotPermit.meterBagging ? 'Meters bagged (no parking)' : '');
+      const description = result.dotPermit.description || permitType;
+
+      if (result.dotPermit.isActiveNow) {
+        // Already active — schedule immediate-ish notification (1 minute from now)
+        const alertTime = new Date(Date.now() + 60 * 1000);
+        restrictions.push({
+          type: 'dot_permit',
+          restrictionStartTime: alertTime,
+          address: result.address || '',
+          details: `${permitType} ACTIVE TODAY on this block! ${closureInfo}. ${description}. Risk of towing — move your car.`,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+      } else if (result.dotPermit.startDate) {
+        // Upcoming — schedule night before + morning of
+        const permitStart = new Date(result.dotPermit.startDate);
+        if (!isNaN(permitStart.getTime()) && permitStart.getTime() > Date.now()) {
+          const dayName = permitStart.toLocaleDateString('en-US', { weekday: 'long' });
+          const monthDay = permitStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+          // Night before at 9pm
+          const nightBefore9pm = new Date(permitStart);
+          nightBefore9pm.setDate(nightBefore9pm.getDate() - 1);
+          nightBefore9pm.setHours(21, 0, 0, 0);
+
+          if (nightBefore9pm.getTime() > Date.now()) {
+            restrictions.push({
+              type: 'dot_permit',
+              restrictionStartTime: nightBefore9pm,
+              address: result.address || '',
+              details: `${permitType} starts tomorrow (${dayName} ${monthDay}) on this block. ${closureInfo}. ${description}. Move your car tonight.`,
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            });
+          }
+
+          // Morning of at 7am
+          const morningOf7am = new Date(permitStart);
+          morningOf7am.setHours(7, 0, 0, 0);
+
+          if (morningOf7am.getTime() > Date.now()) {
+            restrictions.push({
+              type: 'dot_permit',
+              restrictionStartTime: morningOf7am,
+              address: result.address || '',
+              details: `${permitType} starts today (${dayName} ${monthDay}) on this block! ${closureInfo}. ${description}. MOVE YOUR CAR NOW.`,
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            });
+          }
+
+          // 2 hours before start (if specific time is available)
+          const twoHoursBefore = new Date(permitStart.getTime() - 2 * 60 * 60 * 1000);
+          if (twoHoursBefore.getTime() > Date.now() && twoHoursBefore.getTime() > morningOf7am.getTime()) {
+            restrictions.push({
+              type: 'dot_permit',
+              restrictionStartTime: twoHoursBefore,
+              address: result.address || '',
+              details: `${permitType} active on this block in 2 hours! ${closureInfo}. ${description}. Move your car now.`,
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            });
+          }
+        }
+      }
+    }
+
     // Enforcement risk follow-up — HIGH urgency only, max once per parking event.
     // Schedule a reminder partway through the peak enforcement window so users
     // feel the data actively watching out for them.
@@ -2396,6 +2471,23 @@ class BackgroundTaskServiceClass {
       const rate = rawData.meteredParking.estimatedRate || '$2.50/hr';
       const meterLimitHours = (rawData.meteredParking.timeLimitMinutes || 120) / 60;
       parts.push(`⏰ Metered zone — ${rate}, ${meterLimitHours}-hour max. $65 expired meter ticket`);
+    }
+
+    // DOT permit (construction, filming, moving van, etc.)
+    if (rawData?.dotPermit?.hasActivePermit) {
+      const permitType = rawData.dotPermit.permitType || 'DOT permit';
+      if (rawData.dotPermit.isActiveNow) {
+        parts.push(`🚧 ${permitType} active on this block — risk of towing`);
+      } else if (rawData.dotPermit.startDate) {
+        try {
+          const startDate = new Date(rawData.dotPermit.startDate);
+          const dayName = startDate.toLocaleDateString('en-US', { weekday: 'short' });
+          const monthDay = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          parts.push(`🚧 ${permitType} starts ${dayName} ${monthDay} — plan to move`);
+        } catch {
+          parts.push(`🚧 ${permitType} upcoming — plan to move`);
+        }
+      }
     }
 
     return parts.join('\n');
