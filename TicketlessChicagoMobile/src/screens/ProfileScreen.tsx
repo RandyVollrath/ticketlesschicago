@@ -147,6 +147,10 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [homePermitZone, setHomePermitZone] = useState<string>('');
   const [permitZoneEditing, setPermitZoneEditing] = useState(false);
   const [permitZoneInput, setPermitZoneInput] = useState('');
+  const [phoneCallAlertsEnabled, setPhoneCallAlertsEnabled] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [phoneNumberEditing, setPhoneNumberEditing] = useState(false);
+  const [phoneNumberInput, setPhoneNumberInput] = useState('');
 
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const feedbackOpacity = useRef(new RNAnimated.Value(0)).current;
@@ -187,6 +191,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     loadHomePermitZone();
     loadCameraAlertSettings();
     loadMeterExpiryAlertSetting();
+    loadPhoneCallAlertSettings();
     const unsubscribe = AuthService.subscribe((state: AuthState) => {
       if (isMountedRef.current) setUser(state.user);
     });
@@ -259,6 +264,75 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     await AsyncStorage.setItem('meterExpiryAlertsEnabled', value.toString());
     showFeedback(value ? 'Meter expiry alerts enabled' : 'Meter expiry alerts disabled');
   }, [showFeedback]);
+
+  const loadPhoneCallAlertSettings = useCallback(async () => {
+    try {
+      const [enabledStr, storedPhone] = await Promise.all([
+        AsyncStorage.getItem(StorageKeys.PHONE_CALL_ALERTS_ENABLED),
+        AsyncStorage.getItem(StorageKeys.PHONE_NUMBER),
+      ]);
+      if (!isMountedRef.current) return;
+      setPhoneCallAlertsEnabled(enabledStr === 'true');
+      if (storedPhone) {
+        setPhoneNumber(storedPhone);
+        setPhoneNumberInput(storedPhone);
+      }
+    } catch (error) {
+      log.error('Error loading phone call alert settings', error);
+    }
+  }, []);
+
+  const formatPhoneNumber = (raw: string): string => {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    if (digits.length === 11 && digits[0] === '1') return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+    return raw;
+  };
+
+  const savePhoneNumber = useCallback(async (num: string) => {
+    const digits = num.replace(/\D/g, '');
+    // Accept 10-digit or 11-digit (with leading 1) US numbers
+    if (digits.length !== 10 && !(digits.length === 11 && digits[0] === '1')) {
+      Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit US phone number.');
+      return;
+    }
+    const normalized = digits.length === 10 ? `1${digits}` : digits;
+    try {
+      await AsyncStorage.setItem(StorageKeys.PHONE_NUMBER, normalized);
+      setPhoneNumber(normalized);
+      setPhoneNumberEditing(false);
+      showFeedback('Phone number saved');
+      // Sync to server
+      syncPhoneCallSettingsToServer(phoneCallAlertsEnabled, normalized);
+    } catch (error) {
+      log.error('Error saving phone number', error);
+    }
+  }, [showFeedback, phoneCallAlertsEnabled]);
+
+  const togglePhoneCallAlerts = useCallback(async (value: boolean) => {
+    if (value && !phoneNumber) {
+      // Prompt to enter phone number first
+      setPhoneNumberEditing(true);
+      showFeedback('Enter your phone number to enable call alerts');
+      return;
+    }
+    setPhoneCallAlertsEnabled(value);
+    await AsyncStorage.setItem(StorageKeys.PHONE_CALL_ALERTS_ENABLED, value.toString());
+    showFeedback(value ? 'Phone call alerts enabled' : 'Phone call alerts disabled');
+    syncPhoneCallSettingsToServer(value, phoneNumber);
+  }, [phoneNumber, showFeedback]);
+
+  const syncPhoneCallSettingsToServer = useCallback(async (enabled: boolean, phone: string) => {
+    if (!AuthService.isAuthenticated()) return;
+    try {
+      await ApiClient.authPost('/api/mobile/update-call-alert-settings', {
+        phone_call_enabled: enabled,
+        phone_number: phone,
+      }, { retries: 1, timeout: 10000, showErrorAlert: false });
+    } catch (error) {
+      log.debug('Failed to sync call alert settings to server (non-fatal):', error);
+    }
+  }, []);
 
   /**
    * Load home permit zone from AsyncStorage (local cache).
@@ -679,6 +753,75 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             value={meterExpiryAlertsEnabled}
             onValueChange={toggleMeterExpiryAlerts}
           />
+        </Section>
+
+        {/* Phone Call Alerts */}
+        <Section title="Call Alerts">
+          <SettingRow
+            icon="phone-ring"
+            iconColor={colors.error}
+            title="Call Me for Urgent Alerts"
+            subtitle="We'll call your phone when your car is at risk of being ticketed"
+            value={phoneCallAlertsEnabled}
+            onValueChange={togglePhoneCallAlerts}
+          />
+          <Divider />
+          <View style={styles.permitZoneRow}>
+            <MaterialCommunityIcons name="phone" size={20} color={colors.textSecondary} style={styles.rowIcon} />
+            <View style={styles.settingInfo}>
+              {phoneNumberEditing ? (
+                <View style={styles.permitZoneEditRow}>
+                  <TextInput
+                    style={styles.permitZoneInput}
+                    value={phoneNumberInput}
+                    onChangeText={setPhoneNumberInput}
+                    placeholder="(312) 555-1234"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="phone-pad"
+                    autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={() => savePhoneNumber(phoneNumberInput)}
+                    accessibilityLabel="Phone number for call alerts"
+                    accessibilityHint="Enter your 10-digit phone number"
+                  />
+                  <TouchableOpacity
+                    style={styles.permitZoneSaveBtn}
+                    onPress={() => savePhoneNumber(phoneNumberInput)}
+                    accessibilityLabel="Save phone number"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.permitZoneSaveBtnText}>Save</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.permitZoneCancelBtn}
+                    onPress={() => { setPhoneNumberEditing(false); setPhoneNumberInput(phoneNumber); }}
+                    accessibilityLabel="Cancel editing"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.permitZoneCancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => { setPhoneNumberEditing(true); setPhoneNumberInput(phoneNumber); }}
+                  accessibilityLabel={phoneNumber ? `Phone number ${formatPhoneNumber(phoneNumber)}. Tap to edit.` : 'Set your phone number'}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.settingTitle}>
+                    {phoneNumber ? formatPhoneNumber(phoneNumber) : 'Set your phone number'}
+                  </Text>
+                  <Text style={styles.settingSubtitle}>
+                    {phoneNumber
+                      ? 'Number used for urgent parking violation calls'
+                      : 'Required for call alerts'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {!phoneNumberEditing && (
+              <MaterialCommunityIcons name="pencil" size={18} color={colors.textTertiary} />
+            )}
+          </View>
         </Section>
 
         {/* Permit Zone */}

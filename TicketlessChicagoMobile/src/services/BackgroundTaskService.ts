@@ -1621,13 +1621,17 @@ class BackgroundTaskServiceClass {
       // - 8pm night-before + 7am morning-of street cleaning reminders
       // - 7am permit zone reminder (before 8am enforcement)
       // - Snow ban push notifications to parked users on snow routes
+      let parkingSessionId: string | undefined;
       if (persistParkingEvent) {
         try {
           const fcmToken = await PushNotificationService.getToken();
           if (fcmToken && AuthService.isAuthenticated()) {
             // Use raw API response data for mapping to server fields
             const rawData = result.rawApiData || await this.getRawParkingData(result);
-            await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
+            const saveResult = await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
+            if (saveResult.success && saveResult.id) {
+              parkingSessionId = saveResult.id;
+            }
           } else {
             log.debug('Skipping server save: no FCM token or not authenticated');
           }
@@ -1663,6 +1667,13 @@ class BackgroundTaskServiceClass {
       const rawData = result.rawApiData || await this.getRawParkingData(result);
       if (filteredResult.rules.length > 0) {
         await this.sendParkingNotification(filteredResult, coords.accuracy, rawData);
+
+        // Trigger phone call alert if user has it enabled and there are active restrictions
+        if (persistParkingEvent) {
+          this.triggerCallAlertIfEnabled(filteredResult, parkingSessionId).catch(err =>
+            log.warn('Call alert trigger failed (non-fatal):', err)
+          );
+        }
       } else {
         await this.sendSafeNotification(filteredResult.address, coords.accuracy, rawData);
       }
@@ -2110,6 +2121,62 @@ class BackgroundTaskServiceClass {
     }
 
     return bestNotifyTime;
+  }
+
+  /**
+   * Trigger a phone call alert if the user has it enabled.
+   * Reads the setting from AsyncStorage (local-first) and fires a server-side
+   * call via the trigger-call-alert endpoint. The server handles rate limiting
+   * (1 call per parking session, 1 per hour per user).
+   */
+  private async triggerCallAlertIfEnabled(
+    result: { rules: any[]; address: string },
+    parkingSessionId?: string
+  ): Promise<void> {
+    try {
+      const enabled = await AsyncStorage.getItem(StorageKeys.PHONE_CALL_ALERTS_ENABLED);
+      if (enabled !== 'true') return;
+
+      const phoneNumber = await AsyncStorage.getItem(StorageKeys.PHONE_NUMBER);
+      if (!phoneNumber) {
+        log.debug('Call alerts enabled but no phone number set — skipping');
+        return;
+      }
+
+      if (!AuthService.isAuthenticated()) {
+        log.debug('Not authenticated — skipping call alert');
+        return;
+      }
+
+      // Build a concise TTS message from the restriction rules
+      const ruleMessages = result.rules
+        .filter((r: any) => r.severity === 'critical' || r.severity === 'warning')
+        .map((r: any) => r.message)
+        .slice(0, 3); // Cap at 3 rules for brevity
+
+      if (ruleMessages.length === 0) return;
+
+      const alertType = result.rules[0]?.type || 'parking_restriction';
+      const message = ruleMessages.join('. ');
+
+      log.info('Triggering call alert', { alertType, address: result.address, parkingSessionId });
+
+      await ApiClient.authPost('/api/mobile/trigger-call-alert', {
+        alert_type: alertType,
+        message,
+        address: result.address,
+        parking_session_id: parkingSessionId || null,
+      }, {
+        retries: 1,
+        timeout: 15000,
+        showErrorAlert: false,
+      });
+
+      log.info('Call alert request sent');
+    } catch (error) {
+      // Non-fatal — push notification already sent
+      log.warn('Failed to trigger call alert (non-fatal):', error);
+    }
   }
 
   private async scheduleRestrictionReminders(

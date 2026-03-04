@@ -15,6 +15,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { getChicagoTime } from '../../../lib/chicago-timezone-utils';
 import { sendPushNotification, isFirebaseConfigured } from '../../../lib/firebase-admin';
+import { sendClickSendVoiceCall } from '../../../lib/sms-service';
 
 interface ParkedVehicle {
   id: string;
@@ -83,6 +84,92 @@ function parseDayRange(dayStr: string): number[] {
 }
 
 const ADVANCE_WARNING_MINUTES = 30;
+
+/**
+ * Send a voice call alert for a parking restriction, if the user has it enabled.
+ * Rate limits: 1 call per parking session (via parking_call_alerts table), 1 per hour per user.
+ */
+async function sendCallAlertIfEnabled(
+  userId: string,
+  parkingSessionId: string,
+  alertType: string,
+  message: string,
+  address: string
+): Promise<boolean> {
+  if (!supabaseAdmin) return false;
+
+  try {
+    // Check if user has phone call alerts enabled
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('phone_call_enabled, phone_number')
+      .eq('id', userId)
+      .single();
+
+    if (!profile?.phone_call_enabled || !profile?.phone_number) return false;
+
+    // Rate limit: check if we already called for this parking session
+    const { data: existingCall } = await supabaseAdmin
+      .from('parking_call_alerts')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('parking_session_id', parkingSessionId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingCall) {
+      console.log(`Skipping cron call alert for user ${userId} — already called for session ${parkingSessionId}`);
+      return false;
+    }
+
+    // Rate limit: no more than 1 call per hour per user
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: recentCalls } = await supabaseAdmin
+      .from('parking_call_alerts')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('called_at', oneHourAgo)
+      .limit(1);
+
+    if (recentCalls && recentCalls.length > 0) {
+      console.log(`Skipping cron call alert for user ${userId} — already called within the last hour`);
+      return false;
+    }
+
+    // Place the call
+    const voiceMessage = `Autopilot parking alert. ${message}. This is an automated call from Autopilot America.`;
+    console.log(`Cron: Placing call alert to ${profile.phone_number} for user ${userId}: ${alertType}`);
+    const callResult = await sendClickSendVoiceCall(profile.phone_number, voiceMessage);
+
+    // Log the call attempt
+    await supabaseAdmin
+      .from('parking_call_alerts')
+      .insert({
+        user_id: userId,
+        phone_number: profile.phone_number,
+        alert_type: alertType,
+        message: voiceMessage,
+        address: address || null,
+        parking_session_id: parkingSessionId,
+        success: callResult.success,
+        error: callResult.error || null,
+      })
+      .then(r => {
+        if (r.error) console.error('Failed to log cron call alert:', r.error);
+      });
+
+    if (callResult.success) {
+      console.log(`Cron: Call alert sent successfully to ${profile.phone_number}`);
+    } else {
+      console.error(`Cron: Call alert failed for user ${userId}:`, callResult.error);
+    }
+
+    return callResult.success;
+  } catch (error) {
+    console.error(`Cron: Error sending call alert for user ${userId}:`, error);
+    return false;
+  }
+}
 
 /**
  * Check if enforcement starts within the next 30 minutes for this vehicle.
@@ -158,6 +245,7 @@ export default async function handler(
       streetCleaningReminders: 0,
       permitZoneReminders: 0,
       dotPermitReminders: 0,
+      callAlertsSent: 0,
       errors: 0,
     };
 
@@ -205,6 +293,14 @@ export default async function handler(
               .eq('id', vehicle.id);
             results.winterBanReminders++;
             console.log(`Sent winter ban reminder to ${vehicle.user_id}`);
+
+            // Also send call alert
+            const callSent = await sendCallAlertIfEnabled(
+              vehicle.user_id, vehicle.id, 'winter_ban',
+              `Your car at ${vehicle.address} is on a winter ban street. Move before 3 AM to avoid towing.`,
+              vehicle.address
+            );
+            if (callSent) results.callAlertsSent++;
           } else if (result.invalidToken) {
             // Mark vehicle as inactive if token is invalid
             await supabaseAdmin.from('user_parked_vehicles')
@@ -236,6 +332,14 @@ export default async function handler(
               .eq('id', vehicle.id);
             results.streetCleaningReminders++;
             console.log(`Sent night-before street cleaning reminder to ${vehicle.user_id}`);
+
+            // Also send call alert
+            const callSent = await sendCallAlertIfEnabled(
+              vehicle.user_id, vehicle.id, 'street_cleaning',
+              `Street cleaning is scheduled tomorrow at ${vehicle.address}. Move your car tonight to avoid a 65 dollar ticket.`,
+              vehicle.address
+            );
+            if (callSent) results.callAlertsSent++;
           } else if (result.invalidToken) {
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })
@@ -262,6 +366,14 @@ export default async function handler(
               .eq('id', vehicle.id);
             results.streetCleaningReminders++;
             console.log(`Sent morning-of street cleaning reminder to ${vehicle.user_id}`);
+
+            // Also send call alert (morning-of is more urgent)
+            const callSent = await sendCallAlertIfEnabled(
+              vehicle.user_id, vehicle.id, 'street_cleaning',
+              `Street cleaning starts at 9 AM at ${vehicle.address}. Move your car now to avoid a 65 dollar ticket.`,
+              vehicle.address
+            );
+            if (callSent) results.callAlertsSent++;
           } else if (result.invalidToken) {
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })
@@ -316,6 +428,14 @@ export default async function handler(
                   .eq('id', vehicle.id);
                 results.permitZoneReminders++;
                 console.log(`Sent permit zone reminder to ${vehicle.user_id}`);
+
+                // Also send call alert
+                const callSent = await sendCallAlertIfEnabled(
+                  vehicle.user_id, vehicle.id, 'permit_zone',
+                  `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit rules may be active. Check posted signs to avoid a 75 dollar ticket.`,
+                  vehicle.address
+                );
+                if (callSent) results.callAlertsSent++;
               } else if (result.invalidToken) {
                 await supabaseAdmin.from('user_parked_vehicles')
                   .update({ is_active: false })
@@ -377,6 +497,14 @@ export default async function handler(
                 .eq('id', vehicle.id);
               results.dotPermitReminders++;
               console.log(`Sent DOT permit reminder to ${vehicle.user_id} (${permitType})`);
+
+              // Also send call alert
+              const callSent = await sendCallAlertIfEnabled(
+                vehicle.user_id, vehicle.id, 'dot_permit',
+                notifBody,
+                vehicle.address
+              );
+              if (callSent) results.callAlertsSent++;
             } else if (result.invalidToken) {
               await supabaseAdmin.from('user_parked_vehicles')
                 .update({ is_active: false })
