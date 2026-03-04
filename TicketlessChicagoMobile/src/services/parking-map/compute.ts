@@ -185,7 +185,7 @@ export function isRestrictionActive(
     }
   }
 
-  // Check permit zones during restricted hours
+  // Check permit zones during restricted hours — only if we have verified hours
   if (restriction.type === 'permit-zone' && schedule.permitHours) {
     const [startHour, endHour] = parsePermitHours(schedule.permitHours);
     const hour = time.getHours();
@@ -298,7 +298,7 @@ function getWeekOfMonth(date: Date): number {
 function parsePermitHours(hours: string): [number, number] {
   const match = hours.match(/(\d+)(am|pm)-(\d+)(am|pm)/i);
   if (!match) {
-    return [18, 6]; // Default 6pm-6am
+    return [0, 0]; // Unparseable — treat as never restricted (caller should have verified hours exist)
   }
 
   let startHour = parseInt(match[1]);

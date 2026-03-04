@@ -86,8 +86,9 @@ const ADVANCE_WARNING_MINUTES = 30;
  */
 function getEnforcementStartingSoon(schedule: string | null, chicagoTime: Date): { enforcementStart: Date; enforcementTimeStr: string } | null {
   if (!schedule) {
-    // Default: Mon-Fri 8am
-    schedule = 'Mon-Fri 8am-6pm';
+    // No verified hours for this zone — cannot determine enforcement timing.
+    // Never assume default hours.
+    return null;
   }
 
   const chicagoDay = chicagoTime.getDay();

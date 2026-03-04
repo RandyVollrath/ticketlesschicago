@@ -13,10 +13,6 @@ import { parseChicagoAddress, ParsedAddress } from './address-parser';
 import { validatePermitZone } from './permit-zone-time-validator';
 import { getChicagoTime } from './chicago-timezone-utils';
 
-// Internal fallback for permit-zone validation only.
-// Never shown to users.
-const DEFAULT_PERMIT_RESTRICTION = 'Mon-Fri 6am-6pm';
-
 export interface UnifiedParkingResult {
   // Location info (from single geocode call)
   location: {
@@ -328,29 +324,39 @@ export async function checkAllParkingRestrictions(
 
       if (matchingZones.length > 0) {
         const zone = matchingZones[0];
-        // Look up zone-specific hours for internal validation only.
+        // Only use verified schedules from permit_zone_hours table.
+        // The Chicago Data Portal has NO hours data for permit zones.
+        // Without FOIA-verified hours, we cannot tell users when enforcement applies.
         const knownSchedule = zoneHoursMap.get(`residential:${zone.zone}`);
-        const restrictionSchedule = knownSchedule || DEFAULT_PERMIT_RESTRICTION;
 
         result.permitZone.found = true;
         result.permitZone.zoneName = `Zone ${zone.zone}`;
         result.permitZone.zoneType = 'residential';
         result.permitZone.restrictionSchedule = null;
 
-        // Validate current time against restrictions
-        const zoneStatus = validatePermitZone(zone.zone, restrictionSchedule);
-        result.permitZone.isCurrentlyRestricted = zoneStatus.is_currently_restricted;
-        result.permitZone.hoursUntilRestriction = zoneStatus.hours_until_restriction;
+        if (knownSchedule) {
+          // We have verified hours for this zone — use time-based validation
+          const zoneStatus = validatePermitZone(zone.zone, knownSchedule);
+          result.permitZone.isCurrentlyRestricted = zoneStatus.is_currently_restricted;
+          result.permitZone.hoursUntilRestriction = zoneStatus.hours_until_restriction;
 
-        if (zoneStatus.is_currently_restricted) {
-          result.permitZone.severity = 'critical';
-          result.permitZone.message = `PERMIT MAY BE REQUIRED NOW - Zone ${zone.zone}. Check posted signs.`;
-        } else if (zoneStatus.hours_until_restriction <= 3) {
-          result.permitZone.severity = 'warning';
-          result.permitZone.message = `Zone ${zone.zone} - Permit enforcement may start soon. Check posted signs.`;
+          if (zoneStatus.is_currently_restricted) {
+            result.permitZone.severity = 'critical';
+            result.permitZone.message = `PERMIT REQUIRED NOW - Zone ${zone.zone} (${knownSchedule}). Check posted signs.`;
+          } else if (zoneStatus.hours_until_restriction <= 3) {
+            result.permitZone.severity = 'warning';
+            result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts soon (${knownSchedule}). Check posted signs.`;
+          } else {
+            result.permitZone.severity = 'info';
+            result.permitZone.message = `Zone ${zone.zone} - Permit required ${knownSchedule}. Check posted signs.`;
+          }
         } else {
-          result.permitZone.severity = 'info';
-          result.permitZone.message = `Zone ${zone.zone} - Permit rules apply by posted signs.`;
+          // No verified hours — we know the zone but NOT the enforcement times.
+          // Never assume times. Just tell the user they're in a permit zone.
+          result.permitZone.isCurrentlyRestricted = false;
+          result.permitZone.hoursUntilRestriction = 999;
+          result.permitZone.severity = 'warning';
+          result.permitZone.message = `Permit Zone ${zone.zone} — enforcement hours unknown. Check posted signs for times. $75 fine.`;
         }
       }
     }
@@ -358,7 +364,8 @@ export async function checkAllParkingRestrictions(
     // --- Industrial Permit Zone (only if no residential zone found) ---
     if (!result.permitZone.found && industrialZones.length > 0) {
       const iZone = industrialZones[0];
-      // Check zone hours lookup first, then fall back to DB fields, then default
+      // Check zone hours lookup first, then fall back to DB fields.
+      // Industrial zones often have hours stored in the DB (unlike residential).
       const knownIndustrialSchedule = zoneHoursMap.get(`industrial:${iZone.zone}`);
       // DB stores "8:00 AM - 3:00 PM", validator expects "8am-3pm"
       const formatHours = (h: string) => h
@@ -369,29 +376,35 @@ export async function checkAllParkingRestrictions(
       const restrictionSchedule = knownIndustrialSchedule
         || (iZone.restriction_hours && iZone.restriction_days
           ? `${iZone.restriction_days} ${formatHours(iZone.restriction_hours)}`
-          : iZone.restriction_days
-            ? `${iZone.restriction_days} 8am-3pm`
-            : 'Mon-Fri 8am-3pm');
+          : null); // No default — if DB has no hours, we don't know
 
       result.permitZone.found = true;
       result.permitZone.zoneName = `Industrial Zone ${iZone.zone}`;
       result.permitZone.zoneType = 'industrial';
       result.permitZone.restrictionSchedule = null;
 
-      // Validate current time against industrial zone restrictions
-      const zoneStatus = validatePermitZone(`Industrial Zone ${iZone.zone}`, restrictionSchedule);
-      result.permitZone.isCurrentlyRestricted = zoneStatus.is_currently_restricted;
-      result.permitZone.hoursUntilRestriction = zoneStatus.hours_until_restriction;
+      if (restrictionSchedule) {
+        // We have hours from DB or verified table — use time-based validation
+        const zoneStatus = validatePermitZone(`Industrial Zone ${iZone.zone}`, restrictionSchedule);
+        result.permitZone.isCurrentlyRestricted = zoneStatus.is_currently_restricted;
+        result.permitZone.hoursUntilRestriction = zoneStatus.hours_until_restriction;
 
-      if (zoneStatus.is_currently_restricted) {
-        result.permitZone.severity = 'critical';
-        result.permitZone.message = `INDUSTRIAL PERMIT MAY BE REQUIRED NOW - Zone ${iZone.zone}. Check posted signs.`;
-      } else if (zoneStatus.hours_until_restriction <= 3) {
-        result.permitZone.severity = 'warning';
-        result.permitZone.message = `Industrial Zone ${iZone.zone} - Restrictions may start soon. Check posted signs.`;
+        if (zoneStatus.is_currently_restricted) {
+          result.permitZone.severity = 'critical';
+          result.permitZone.message = `INDUSTRIAL PERMIT REQUIRED NOW - Zone ${iZone.zone} (${restrictionSchedule}). Check posted signs.`;
+        } else if (zoneStatus.hours_until_restriction <= 3) {
+          result.permitZone.severity = 'warning';
+          result.permitZone.message = `Industrial Zone ${iZone.zone} - Restrictions start soon (${restrictionSchedule}). Check posted signs.`;
+        } else {
+          result.permitZone.severity = 'info';
+          result.permitZone.message = `Industrial Zone ${iZone.zone} - Permit required ${restrictionSchedule}. Check posted signs.`;
+        }
       } else {
-        result.permitZone.severity = 'info';
-        result.permitZone.message = `Industrial Zone ${iZone.zone} - Permit rules apply by posted signs.`;
+        // No verified hours
+        result.permitZone.isCurrentlyRestricted = false;
+        result.permitZone.hoursUntilRestriction = 999;
+        result.permitZone.severity = 'warning';
+        result.permitZone.message = `Industrial Zone ${iZone.zone} — enforcement hours unknown. Check posted signs for times.`;
       }
     }
 

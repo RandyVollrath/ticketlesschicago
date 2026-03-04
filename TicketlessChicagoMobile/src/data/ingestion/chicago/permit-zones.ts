@@ -96,10 +96,13 @@ function parsePermitZoneFeature(
     properties.PERMIT_ZONE ||
     'Unknown';
 
+  // Only use hours from the source data — never assume defaults.
+  // The Chicago Data Portal dataset has no hours field; without verified
+  // FOIA data we cannot know when a zone is enforced.
   const permitHours =
     properties.HOURS ||
     properties.PERMIT_HOURS ||
-    '6pm-6am'; // Default permit hours
+    null;
 
   const streetName =
     properties.STREET_NAM ||
@@ -121,9 +124,11 @@ function parsePermitZoneFeature(
           type: 'permit-zone',
           schedule: {
             permitZone: zoneNumber,
-            permitHours: normalizePermitHours(permitHours),
+            permitHours: permitHours ? normalizePermitHours(permitHours) : undefined,
           },
-          description: `Permit Zone ${zoneNumber} - ${permitHours}`,
+          description: permitHours
+            ? `Permit Zone ${zoneNumber} - ${permitHours}`
+            : `Permit Zone ${zoneNumber} - Check posted signs for hours`,
         },
       ],
       currentStatus: 'unknown',
@@ -200,7 +205,7 @@ function normalizePermitHours(hours: string): string {
     return `${start}${startPeriod}-${end}${endPeriod}`;
   }
 
-  return '6pm-6am'; // Default
+  return hours; // Return as-is if we can't normalize — caller handles null/unknown
 }
 
 /**
@@ -230,7 +235,7 @@ export function ingestPermitZonesFromFlat(
       row.HOURS ||
       row.PERMIT_HOURS ||
       row.hours ||
-      '6pm-6am';
+      null;
 
     segments.push({
       type: 'Feature',
@@ -250,8 +255,11 @@ export function ingestPermitZonesFromFlat(
             type: 'permit-zone',
             schedule: {
               permitZone: zoneNumber,
-              permitHours: normalizePermitHours(permitHours),
+              permitHours: permitHours ? normalizePermitHours(permitHours) : undefined,
             },
+            description: permitHours
+              ? `Permit Zone ${zoneNumber} - ${permitHours}`
+              : `Permit Zone ${zoneNumber} - Check posted signs for hours`,
           },
         ],
         currentStatus: 'unknown',

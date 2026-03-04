@@ -80,16 +80,9 @@ export function parsePermitRestriction(restrictionStr: string): PermitRestrictio
     }
   }
 
-  // Default if no restrictions parsed
-  if (restrictions.length === 0) {
-    // Assume Mon-Fri 8am-6pm as default Chicago permit zone hours
-    restrictions.push({
-      days: [1, 2, 3, 4, 5], // Mon-Fri
-      startHour: 8,
-      endHour: 18,
-      description: 'Mon-Fri 8am-6pm (default)',
-    });
-  }
+  // If no restrictions parsed, return empty — caller must handle
+  // the case where we have no verified hours for this zone.
+  // Never assume default hours.
 
   return restrictions;
 }
