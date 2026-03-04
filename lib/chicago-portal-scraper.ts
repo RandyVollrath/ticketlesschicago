@@ -46,6 +46,9 @@ export interface PortalTicket {
   notice_number: string | null;
   balance_due: number;
   raw_text: string; // Raw JSON from the API for debugging
+  // Plate data from the ticket itself (for clerical error detection)
+  ticket_plate: string | null; // The plate number ON the ticket (may differ from user's actual plate)
+  ticket_state: string | null; // The plate state ON the ticket
 }
 
 export interface LookupResult {
@@ -172,6 +175,8 @@ function parseItemRow(row: any, rawJson: string): PortalTicket | null {
     notice_number: null,
     balance_due: amountDue,
     raw_text: rawJson.substring(0, 500),
+    ticket_plate: fields['Lic Plate Number'] || null,
+    ticket_state: fields['Lic Plate State'] || null,
   };
 }
 
@@ -208,6 +213,8 @@ function parseReceivable(recv: any, rawJson: string): PortalTicket {
     notice_number: recv.noticeNumber || recv.notice_number || null,
     balance_due: parseFloat(recv.balanceDue || recv.balance_due || recv.currentAmountDue || recv.amountDue || 0),
     raw_text: rawJson.substring(0, 500),
+    ticket_plate: recv.licPlateNumber || recv.lic_plate_number || recv.plateNumber || null,
+    ticket_state: recv.licPlateState || recv.lic_plate_state || recv.plateState || null,
   };
 }
 

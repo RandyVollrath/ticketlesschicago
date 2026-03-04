@@ -122,9 +122,9 @@ ${foiaStats.top_dismissal_reasons?.map((r: any, i: number) => `  ${i + 1}. "${r.
 
         const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-        // Generate letter using Claude Sonnet 4.5
+        // Generate letter using Claude Sonnet 4.6
         const message = await anthropic.messages.create({
-          model: 'claude-sonnet-4-5-20250929',
+          model: 'claude-sonnet-4-6',
           max_tokens: 2048,
           messages: [{
             role: 'user',
