@@ -65,12 +65,29 @@ const supabaseAdmin = createClient(
 );
 
 // Configuration
-const MAX_PLATES = parseInt(process.env.PORTAL_CHECK_MAX_PLATES || '50');
-const DELAY_MS = parseInt(process.env.PORTAL_CHECK_DELAY_MS || '5000');
 const SCREENSHOT_DIR = process.env.PORTAL_CHECK_SCREENSHOT_DIR || path.resolve(__dirname, '../debug-screenshots');
 // Evidence deadline is calculated per-ticket based on issue date (day 17 from ticket date)
 // Unified across all code paths — auto-send on day 17, hard legal deadline is day 21
 const AUTO_SEND_DAY = 17; // Day 17 from ticket issue date
+
+// Adaptive pacing — adjusts automatically based on plate count
+// The script tunes its own delay and batch size so we never have to
+// manually reconfigure as the user base grows.
+function getAdaptivePacing(plateCount: number): { delayMs: number; maxPlates: number; description: string } {
+  if (plateCount <= 50) {
+    // Small: fast, minimal delay
+    return { delayMs: 3000, maxPlates: 50, description: '1-50 plates: fast mode (3s delay)' };
+  } else if (plateCount <= 200) {
+    // Medium: moderate delay
+    return { delayMs: 8000, maxPlates: 200, description: '51-200 plates: moderate mode (8s delay)' };
+  } else if (plateCount <= 500) {
+    // Large: slower, more polite
+    return { delayMs: 15000, maxPlates: 500, description: '201-500 plates: careful mode (15s delay)' };
+  } else {
+    // Very large: very slow, spread out
+    return { delayMs: 25000, maxPlates: 1000, description: '500+ plates: slow mode (25s delay)' };
+  }
+}
 
 // Default sender address (same as upload-results.ts)
 const DEFAULT_SENDER_ADDRESS = {
@@ -2371,7 +2388,7 @@ async function main() {
   }
 
   // Build lookup list
-  const lookupPlates = plates.map(p => {
+  const allLookupPlates = plates.map(p => {
     const profile = profileMap.get(p.user_id);
     return {
       plate: p.plate,
@@ -2382,15 +2399,77 @@ async function main() {
     };
   });
 
-  console.log(`Checking ${lookupPlates.length} plates (max ${MAX_PLATES})...\n`);
+  // --- Adaptive pacing: auto-tune based on plate count ---
+  const pacing = getAdaptivePacing(allLookupPlates.length);
+  console.log(`\nAdaptive pacing: ${pacing.description}`);
+  console.log(`  Total plates: ${allLookupPlates.length}, max per run: ${pacing.maxPlates}, delay: ${pacing.delayMs / 1000}s\n`);
 
-  // Run the portal lookups
+  // --- Skip recently checked plates (no tickets found in last 20 hours) ---
+  // Plates that had tickets last time are always re-checked (to catch new ones or status changes).
+  // Plates with no tickets can wait — daily checks are frequent enough.
+  const SKIP_HOURS = 20; // Skip if checked within this window (gives buffer for daily runs)
+  const skipCutoff = new Date(Date.now() - SKIP_HOURS * 60 * 60 * 1000).toISOString();
+
+  // Find plates that were checked recently with 0 tickets
+  const { data: recentRuns } = await supabaseAdmin
+    .from('ticket_audit_log')
+    .select('details')
+    .eq('action', 'portal_check_complete')
+    .gte('created_at', skipCutoff)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const recentlyCheckedNoTickets = new Set<string>();
+  if (recentRuns && recentRuns.length > 0) {
+    try {
+      const details = recentRuns[0].details as any;
+      const plateResults = details?.plate_results;
+      if (Array.isArray(plateResults)) {
+        for (const r of plateResults) {
+          if (r.tickets === 0 && r.plate) {
+            recentlyCheckedNoTickets.add(r.plate.toUpperCase());
+          }
+        }
+      }
+    } catch (e) {
+      console.log('  Could not parse recent run results, checking all plates');
+    }
+  }
+
+  // Partition: prioritize plates not recently checked, then add recent-no-ticket ones if room
+  const priorityPlates: typeof allLookupPlates = [];
+  const lowPriorityPlates: typeof allLookupPlates = [];
+  for (const p of allLookupPlates) {
+    if (recentlyCheckedNoTickets.has(p.plate.toUpperCase())) {
+      lowPriorityPlates.push(p);
+    } else {
+      priorityPlates.push(p);
+    }
+  }
+
+  if (lowPriorityPlates.length > 0) {
+    console.log(`  Skipping ${lowPriorityPlates.length} plates checked recently with no tickets`);
+    console.log(`  Priority plates to check: ${priorityPlates.length}`);
+  }
+
+  // Combine: priority first, then low-priority if under the cap
+  const lookupPlates = [...priorityPlates, ...lowPriorityPlates].slice(0, pacing.maxPlates);
+
+  // Shuffle order so the portal sees different access patterns each run
+  for (let i = lookupPlates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [lookupPlates[i], lookupPlates[j]] = [lookupPlates[j], lookupPlates[i]];
+  }
+
+  console.log(`Checking ${lookupPlates.length} plates...\n`);
+
+  // Run the portal lookups with adaptive delay
   const results = await lookupMultiplePlates(
     lookupPlates.map(p => ({ plate: p.plate, state: p.state, lastName: p.lastName })),
     {
       screenshotDir: SCREENSHOT_DIR,
-      delayBetweenMs: DELAY_MS,
-      maxPlates: MAX_PLATES,
+      delayBetweenMs: pacing.delayMs,
+      maxPlates: pacing.maxPlates,
     }
   );
 
@@ -2441,7 +2520,7 @@ async function main() {
     }
   }
 
-  // Log the run
+  // Log the run — include per-plate results so future runs can skip recently-checked clean plates
   await supabaseAdmin
     .from('ticket_audit_log')
     .insert({
@@ -2455,7 +2534,15 @@ async function main() {
         tickets_skipped: totalSkipped,
         errors: totalErrors,
         captcha_cost: totalCaptchaCost,
+        pacing: pacing.description,
+        plates_skipped_recently_checked: lowPriorityPlates.length,
         timestamp: new Date().toISOString(),
+        // Per-plate results for skip-recently-checked logic
+        plate_results: results.map((r, idx) => ({
+          plate: lookupPlates[idx]?.plate || r.plate,
+          tickets: r.tickets.length,
+          error: r.error || null,
+        })),
       },
       performed_by: 'portal_scraper',
     });
