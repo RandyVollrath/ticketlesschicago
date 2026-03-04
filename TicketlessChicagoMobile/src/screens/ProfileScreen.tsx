@@ -37,6 +37,46 @@ interface AppSettings {
   criticalAlertsEnabled: boolean;
 }
 
+interface CallAlertPref {
+  enabled: boolean;
+  hours_before: number;
+}
+
+interface CallAlertPreferences {
+  street_cleaning: CallAlertPref;
+  winter_ban: CallAlertPref;
+  permit_zone: CallAlertPref;
+  snow_route: CallAlertPref;
+  dot_permit: CallAlertPref;
+}
+
+type CallAlertType = keyof CallAlertPreferences;
+
+const DEFAULT_CALL_ALERT_PREFS: CallAlertPreferences = {
+  street_cleaning: { enabled: false, hours_before: 2 },
+  winter_ban: { enabled: false, hours_before: 6 },
+  permit_zone: { enabled: false, hours_before: 0 },
+  snow_route: { enabled: false, hours_before: 0 },
+  dot_permit: { enabled: false, hours_before: 0 },
+};
+
+const HOURS_BEFORE_OPTIONS = [
+  { label: 'Immediately', value: 0 },
+  { label: '1 hr before', value: 1 },
+  { label: '2 hrs before', value: 2 },
+  { label: '4 hrs before', value: 4 },
+  { label: '6 hrs before', value: 6 },
+  { label: '12 hrs before', value: 12 },
+];
+
+const ALERT_TYPE_CONFIG: { key: CallAlertType; label: string; subtitle: string; icon: string; iconColor: string; showHoursBefore: boolean }[] = [
+  { key: 'street_cleaning', label: 'Street Cleaning', subtitle: 'Call before sweeper arrives', icon: 'broom', iconColor: '#F59E0B', showHoursBefore: true },
+  { key: 'winter_ban', label: 'Winter Parking Ban', subtitle: 'Call before tow trucks come', icon: 'snowflake', iconColor: '#3B82F6', showHoursBefore: true },
+  { key: 'permit_zone', label: 'Permit Zone', subtitle: 'Call when parked in a permit zone', icon: 'parking', iconColor: '#8B5CF6', showHoursBefore: false },
+  { key: 'snow_route', label: 'Snow Route', subtitle: 'Call when parked on a snow route', icon: 'weather-snowy-heavy', iconColor: '#06B6D4', showHoursBefore: false },
+  { key: 'dot_permit', label: 'Block Closure / DOT Permit', subtitle: 'Call for construction, filming, events', icon: 'road-variant', iconColor: '#EF4444', showHoursBefore: true },
+];
+
 const DEFAULT_SETTINGS: AppSettings = {
   notificationsEnabled: true,
   criticalAlertsEnabled: true,
@@ -151,6 +191,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [phoneNumberEditing, setPhoneNumberEditing] = useState(false);
   const [phoneNumberInput, setPhoneNumberInput] = useState('');
+  const [callAlertPrefs, setCallAlertPrefs] = useState<CallAlertPreferences>({ ...DEFAULT_CALL_ALERT_PREFS });
 
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const feedbackOpacity = useRef(new RNAnimated.Value(0)).current;
@@ -267,15 +308,22 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const loadPhoneCallAlertSettings = useCallback(async () => {
     try {
-      const [enabledStr, storedPhone] = await Promise.all([
+      const [enabledStr, storedPhone, prefsStr] = await Promise.all([
         AsyncStorage.getItem(StorageKeys.PHONE_CALL_ALERTS_ENABLED),
         AsyncStorage.getItem(StorageKeys.PHONE_NUMBER),
+        AsyncStorage.getItem(StorageKeys.CALL_ALERT_PREFERENCES),
       ]);
       if (!isMountedRef.current) return;
       setPhoneCallAlertsEnabled(enabledStr === 'true');
       if (storedPhone) {
         setPhoneNumber(storedPhone);
         setPhoneNumberInput(storedPhone);
+      }
+      if (prefsStr) {
+        try {
+          const parsed = JSON.parse(prefsStr);
+          setCallAlertPrefs(prev => ({ ...prev, ...parsed }));
+        } catch { /* ignore bad JSON */ }
       }
     } catch (error) {
       log.error('Error loading phone call alert settings', error);
@@ -322,17 +370,28 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     syncPhoneCallSettingsToServer(value, phoneNumber);
   }, [phoneNumber, showFeedback]);
 
-  const syncPhoneCallSettingsToServer = useCallback(async (enabled: boolean, phone: string) => {
+  const syncPhoneCallSettingsToServer = useCallback(async (enabled: boolean, phone: string, prefs?: CallAlertPreferences) => {
     if (!AuthService.isAuthenticated()) return;
     try {
       await ApiClient.authPost('/api/mobile/update-call-alert-settings', {
         phone_call_enabled: enabled,
         phone_number: phone,
+        call_alert_preferences: prefs || undefined,
       }, { retries: 1, timeout: 10000, showErrorAlert: false });
     } catch (error) {
       log.debug('Failed to sync call alert settings to server (non-fatal):', error);
     }
   }, []);
+
+  const updateCallAlertPref = useCallback(async (alertType: CallAlertType, update: Partial<CallAlertPref>) => {
+    const newPrefs = {
+      ...callAlertPrefs,
+      [alertType]: { ...callAlertPrefs[alertType], ...update },
+    };
+    setCallAlertPrefs(newPrefs);
+    await AsyncStorage.setItem(StorageKeys.CALL_ALERT_PREFERENCES, JSON.stringify(newPrefs));
+    syncPhoneCallSettingsToServer(phoneCallAlertsEnabled, phoneNumber, newPrefs);
+  }, [callAlertPrefs, phoneCallAlertsEnabled, phoneNumber, syncPhoneCallSettingsToServer]);
 
   /**
    * Load home permit zone from AsyncStorage (local cache).
@@ -760,68 +819,138 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <SettingRow
             icon="phone-ring"
             iconColor={colors.error}
-            title="Call Me for Urgent Alerts"
+            title="Call Me for Parking Alerts"
             subtitle="We'll call your phone when your car is at risk of being ticketed"
             value={phoneCallAlertsEnabled}
             onValueChange={togglePhoneCallAlerts}
           />
-          <Divider />
-          <View style={styles.permitZoneRow}>
-            <MaterialCommunityIcons name="phone" size={20} color={colors.textSecondary} style={styles.rowIcon} />
-            <View style={styles.settingInfo}>
-              {phoneNumberEditing ? (
-                <View style={styles.permitZoneEditRow}>
-                  <TextInput
-                    style={styles.permitZoneInput}
-                    value={phoneNumberInput}
-                    onChangeText={setPhoneNumberInput}
-                    placeholder="(312) 555-1234"
-                    placeholderTextColor={colors.textTertiary}
-                    keyboardType="phone-pad"
-                    autoFocus
-                    returnKeyType="done"
-                    onSubmitEditing={() => savePhoneNumber(phoneNumberInput)}
-                    accessibilityLabel="Phone number for call alerts"
-                    accessibilityHint="Enter your 10-digit phone number"
-                  />
-                  <TouchableOpacity
-                    style={styles.permitZoneSaveBtn}
-                    onPress={() => savePhoneNumber(phoneNumberInput)}
-                    accessibilityLabel="Save phone number"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.permitZoneSaveBtnText}>Save</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.permitZoneCancelBtn}
-                    onPress={() => { setPhoneNumberEditing(false); setPhoneNumberInput(phoneNumber); }}
-                    accessibilityLabel="Cancel editing"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.permitZoneCancelBtnText}>Cancel</Text>
-                  </TouchableOpacity>
+
+          {phoneCallAlertsEnabled && (
+            <>
+              <Divider />
+              {/* Phone number */}
+              <View style={styles.permitZoneRow}>
+                <MaterialCommunityIcons name="phone" size={20} color={colors.textSecondary} style={styles.rowIcon} />
+                <View style={styles.settingInfo}>
+                  {phoneNumberEditing ? (
+                    <View style={styles.permitZoneEditRow}>
+                      <TextInput
+                        style={styles.permitZoneInput}
+                        value={phoneNumberInput}
+                        onChangeText={setPhoneNumberInput}
+                        placeholder="(312) 555-1234"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="phone-pad"
+                        autoFocus
+                        returnKeyType="done"
+                        onSubmitEditing={() => savePhoneNumber(phoneNumberInput)}
+                        accessibilityLabel="Phone number for call alerts"
+                        accessibilityHint="Enter your 10-digit phone number"
+                      />
+                      <TouchableOpacity
+                        style={styles.permitZoneSaveBtn}
+                        onPress={() => savePhoneNumber(phoneNumberInput)}
+                        accessibilityLabel="Save phone number"
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.permitZoneSaveBtnText}>Save</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.permitZoneCancelBtn}
+                        onPress={() => { setPhoneNumberEditing(false); setPhoneNumberInput(phoneNumber); }}
+                        accessibilityLabel="Cancel editing"
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.permitZoneCancelBtnText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => { setPhoneNumberEditing(true); setPhoneNumberInput(phoneNumber); }}
+                      accessibilityLabel={phoneNumber ? `Phone number ${formatPhoneNumber(phoneNumber)}. Tap to edit.` : 'Set your phone number'}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.settingTitle}>
+                        {phoneNumber ? formatPhoneNumber(phoneNumber) : 'Set your phone number'}
+                      </Text>
+                      <Text style={styles.settingSubtitle}>
+                        {phoneNumber
+                          ? 'Number used for parking alert calls'
+                          : 'Required for call alerts'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => { setPhoneNumberEditing(true); setPhoneNumberInput(phoneNumber); }}
-                  accessibilityLabel={phoneNumber ? `Phone number ${formatPhoneNumber(phoneNumber)}. Tap to edit.` : 'Set your phone number'}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.settingTitle}>
-                    {phoneNumber ? formatPhoneNumber(phoneNumber) : 'Set your phone number'}
-                  </Text>
-                  <Text style={styles.settingSubtitle}>
-                    {phoneNumber
-                      ? 'Number used for urgent parking violation calls'
-                      : 'Required for call alerts'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {!phoneNumberEditing && (
-              <MaterialCommunityIcons name="pencil" size={18} color={colors.textTertiary} />
-            )}
-          </View>
+                {!phoneNumberEditing && (
+                  <MaterialCommunityIcons name="pencil" size={18} color={colors.textTertiary} />
+                )}
+              </View>
+
+              {/* Per-alert-type preferences */}
+              <View style={styles.callAlertTypesHeader}>
+                <Text style={styles.callAlertTypesTitle}>Call me for:</Text>
+              </View>
+
+              {ALERT_TYPE_CONFIG.map((config, index) => {
+                const pref = callAlertPrefs[config.key];
+                return (
+                  <View key={config.key}>
+                    {index > 0 && <Divider />}
+                    <View style={styles.callAlertTypeRow}>
+                      <MaterialCommunityIcons
+                        name={config.icon as any}
+                        size={18}
+                        color={pref.enabled ? config.iconColor : colors.textTertiary}
+                        style={styles.callAlertTypeIcon}
+                      />
+                      <View style={styles.callAlertTypeInfo}>
+                        <Text style={[styles.settingTitle, !pref.enabled && styles.callAlertTypeDisabledText]}>
+                          {config.label}
+                        </Text>
+                        {pref.enabled && config.showHoursBefore ? (
+                          <View style={styles.hoursBeforeRow}>
+                            {HOURS_BEFORE_OPTIONS.map((opt) => (
+                              <TouchableOpacity
+                                key={opt.value}
+                                style={[
+                                  styles.hoursBeforeChip,
+                                  pref.hours_before === opt.value && styles.hoursBeforeChipActive,
+                                ]}
+                                onPress={() => updateCallAlertPref(config.key, { hours_before: opt.value })}
+                                accessibilityLabel={`Call ${opt.label}`}
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: pref.hours_before === opt.value }}
+                              >
+                                <Text style={[
+                                  styles.hoursBeforeChipText,
+                                  pref.hours_before === opt.value && styles.hoursBeforeChipTextActive,
+                                ]}>
+                                  {opt.label}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        ) : pref.enabled ? (
+                          <Text style={styles.settingSubtitle}>Calls immediately when detected</Text>
+                        ) : (
+                          <Text style={styles.settingSubtitle}>{config.subtitle}</Text>
+                        )}
+                      </View>
+                      <Switch
+                        value={pref.enabled}
+                        onValueChange={(value) => updateCallAlertPref(config.key, { enabled: value })}
+                        trackColor={{ false: colors.border, true: colors.primaryLight }}
+                        thumbColor={pref.enabled ? colors.primary : colors.textTertiary}
+                        accessibilityLabel={`${config.label} call alerts`}
+                        accessibilityRole="switch"
+                        accessibilityState={{ checked: pref.enabled }}
+                      />
+                    </View>
+                  </View>
+                );
+              })}
+            </>
+          )}
         </Section>
 
         {/* Permit Zone */}
@@ -1085,6 +1214,66 @@ const styles = StyleSheet.create({
   permitZoneCancelBtnText: {
     color: colors.textSecondary,
     fontSize: typography.sizes.sm,
+  },
+
+  // Call alert per-type preferences
+  callAlertTypesHeader: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  callAlertTypesTitle: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  callAlertTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.base,
+  },
+  callAlertTypeIcon: {
+    marginRight: spacing.sm,
+    width: 22,
+    textAlign: 'center',
+  },
+  callAlertTypeInfo: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  callAlertTypeDisabledText: {
+    color: colors.textTertiary,
+  },
+  hoursBeforeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 4,
+    gap: 4,
+  },
+  hoursBeforeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  hoursBeforeChipActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  hoursBeforeChipText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  hoursBeforeChipTextActive: {
+    color: colors.primary,
+    fontWeight: typography.weights.semibold,
   },
 
   // Volume slider

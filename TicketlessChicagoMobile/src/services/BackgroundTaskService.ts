@@ -2124,10 +2124,31 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Trigger a phone call alert if the user has it enabled.
-   * Reads the setting from AsyncStorage (local-first) and fires a server-side
-   * call via the trigger-call-alert endpoint. The server handles rate limiting
-   * (1 call per parking session, 1 per hour per user).
+   * Map a parking rule type string to a call alert preference key.
+   * Multiple rule type aliases map to the same 5 preference categories.
+   */
+  private mapRuleTypeToCallAlertKey(ruleType: string): string | null {
+    const mapping: Record<string, string> = {
+      street_cleaning: 'street_cleaning',
+      winter_ban: 'winter_ban',
+      winter_overnight_ban: 'winter_ban',
+      permit_zone: 'permit_zone',
+      snow_route: 'snow_route',
+      snow_ban: 'snow_route',
+      two_inch_snow_ban: 'snow_route',
+      dot_permit: 'dot_permit',
+    };
+    return mapping[ruleType] || null;
+  }
+
+  /**
+   * Trigger a phone call alert if the user has it enabled for this alert type.
+   * Reads per-type preferences from AsyncStorage (local-first) and fires a
+   * server-side call via the trigger-call-alert endpoint. The server handles
+   * rate limiting (1 call per parking session, 1 per hour per user).
+   *
+   * Only fires immediately (hours_before === 0) calls here. Advance-warning
+   * calls (hours_before > 0) are handled by the server-side cron.
    */
   private async triggerCallAlertIfEnabled(
     result: { rules: any[]; address: string },
@@ -2148,15 +2169,32 @@ class BackgroundTaskServiceClass {
         return;
       }
 
-      // Build a concise TTS message from the restriction rules
-      const ruleMessages = result.rules
-        .filter((r: any) => r.severity === 'critical' || r.severity === 'warning')
-        .map((r: any) => r.message)
-        .slice(0, 3); // Cap at 3 rules for brevity
+      // Load per-type preferences
+      let callPrefs: Record<string, { enabled: boolean; hours_before: number }> = {};
+      try {
+        const prefsStr = await AsyncStorage.getItem(StorageKeys.CALL_ALERT_PREFERENCES);
+        if (prefsStr) callPrefs = JSON.parse(prefsStr);
+      } catch { /* use empty prefs */ }
 
-      if (ruleMessages.length === 0) return;
+      // Filter rules to those the user wants immediate calls for
+      const callableRules = result.rules
+        .filter((r: any) => {
+          if (r.severity !== 'critical' && r.severity !== 'warning') return false;
+          const prefKey = this.mapRuleTypeToCallAlertKey(r.type);
+          if (!prefKey) return false;
+          const pref = callPrefs[prefKey];
+          // Only call immediately if enabled AND hours_before is 0
+          // (advance warnings are handled by the server cron)
+          return pref?.enabled === true && (pref.hours_before || 0) === 0;
+        });
 
-      const alertType = result.rules[0]?.type || 'parking_restriction';
+      if (callableRules.length === 0) {
+        log.debug('No call-eligible rules after per-type filtering');
+        return;
+      }
+
+      const ruleMessages = callableRules.map((r: any) => r.message).slice(0, 3);
+      const alertType = callableRules[0]?.type || 'parking_restriction';
       const message = ruleMessages.join('. ');
 
       log.info('Triggering call alert', { alertType, address: result.address, parkingSessionId });

@@ -2,11 +2,15 @@
  * Update Call Alert Settings
  *
  * Syncs the user's phone call alert preferences from the mobile app to the server.
- * Stores phone_call_enabled and phone_number on user_profiles.
+ * Stores phone_call_enabled, phone_number, and per-alert-type call_alert_preferences
+ * on user_profiles.
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
+
+const VALID_ALERT_TYPES = ['street_cleaning', 'winter_ban', 'permit_zone', 'snow_route', 'dot_permit'];
+const VALID_HOURS_BEFORE = [0, 1, 2, 4, 6, 12];
 
 export default async function handler(
   req: NextApiRequest,
@@ -33,7 +37,7 @@ export default async function handler(
       return res.status(401).json({ error: 'Invalid authorization token' });
     }
 
-    const { phone_call_enabled, phone_number } = req.body;
+    const { phone_call_enabled, phone_number, call_alert_preferences } = req.body;
 
     if (typeof phone_call_enabled !== 'boolean') {
       return res.status(400).json({ error: 'phone_call_enabled must be a boolean' });
@@ -52,12 +56,31 @@ export default async function handler(
       }
     }
 
+    // Validate per-alert-type preferences if provided
+    let validatedPrefs: Record<string, { enabled: boolean; hours_before: number }> | undefined;
+    if (call_alert_preferences && typeof call_alert_preferences === 'object') {
+      validatedPrefs = {};
+      for (const [alertType, pref] of Object.entries(call_alert_preferences)) {
+        if (!VALID_ALERT_TYPES.includes(alertType)) continue;
+        const p = pref as any;
+        if (typeof p?.enabled !== 'boolean') continue;
+        const hoursBefore = typeof p?.hours_before === 'number' && VALID_HOURS_BEFORE.includes(p.hours_before)
+          ? p.hours_before : 0;
+        validatedPrefs[alertType] = { enabled: p.enabled, hours_before: hoursBefore };
+      }
+    }
+
+    const updateData: Record<string, any> = {
+      phone_call_enabled,
+      phone_number: normalizedPhone,
+    };
+    if (validatedPrefs) {
+      updateData.call_alert_preferences = validatedPrefs;
+    }
+
     const { error: updateError } = await supabaseAdmin
       .from('user_profiles')
-      .update({
-        phone_call_enabled,
-        phone_number: normalizedPhone,
-      })
+      .update(updateData)
       .eq('id', user.id);
 
     if (updateError) {
