@@ -2577,9 +2577,30 @@ async function main() {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'key' });
 
-  // Send admin notification
-  if (process.env.RESEND_API_KEY && totalCreated > 0) {
+  // Determine if this run had problems worth alerting about
+  const errorRate = results.length > 0 ? totalErrors / results.length : 0;
+  const abortedEarly = results.length < lookupPlates.length; // Didn't finish all plates (backoff abort)
+  const hasProblems = abortedEarly || errorRate > 0.5 || (totalErrors > 0 && results.length <= 3);
+
+  // Send admin notification — always on new tickets, always on problems
+  if (process.env.RESEND_API_KEY && (totalCreated > 0 || hasProblems)) {
     try {
+      const isAlert = hasProblems;
+      const subject = isAlert
+        ? `Portal Check ALERT: ${abortedEarly ? 'Run aborted early' : `${totalErrors} error(s)`} — ${totalCreated} new ticket(s)`
+        : `Portal Check: ${totalCreated} new ticket(s) found`;
+
+      const alertBanner = isAlert ? `
+              <div style="background: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <strong style="color: #dc2626;">Scraper encountered problems:</strong>
+                <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #991b1b;">
+                  ${abortedEarly ? `<li>Run aborted early — only checked ${results.length}/${lookupPlates.length} plates (5 consecutive errors = portal likely down)</li>` : ''}
+                  ${errorRate > 0.5 ? `<li>High error rate: ${(errorRate * 100).toFixed(0)}% of lookups failed</li>` : ''}
+                  ${totalErrors > 0 ? `<li>${totalErrors} total error(s) across ${results.length} lookups</li>` : ''}
+                </ul>
+                <p style="margin: 8px 0 0 0; color: #991b1b; font-size: 13px;">Check the systemd journal for details: <code>journalctl --user -u autopilot-portal-check -n 200</code></p>
+              </div>` : '';
+
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -2589,34 +2610,78 @@ async function main() {
         body: JSON.stringify({
           from: 'Autopilot America <alerts@autopilotamerica.com>',
           to: ['randyvollrath@gmail.com'],
-          subject: `Portal Check: ${totalCreated} new ticket(s) found`,
+          subject,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2>Autopilot Portal Check Complete</h2>
+              <h2>${isAlert ? 'Portal Check Alert' : 'Autopilot Portal Check Complete'}</h2>
+              ${alertBanner}
               <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">Plates checked:</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">${results.length}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">Plates checked:</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">${results.length}${abortedEarly ? ` / ${lookupPlates.length} (aborted)` : ''}</td></tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">Tickets found:</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">${results.reduce((sum, r) => sum + r.tickets.length, 0)}</td></tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">New tickets created:</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #dc2626;">${totalCreated}</td></tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">Duplicates skipped:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${totalSkipped}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">Errors:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${totalErrors}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">Captcha cost:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">$${totalCaptchaCost.toFixed(3)}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">Errors:</td><td style="padding: 8px; border-bottom: 1px solid #eee;${totalErrors > 0 ? ' color: #dc2626; font-weight: bold;' : ''}">${totalErrors}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">Pacing:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${pacing.description}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #eee;">Plates skipped (recent):</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${lowPriorityPlates.length}</td></tr>
               </table>
-              <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">Evidence request emails have been sent to users for new tickets.</p>
+              <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">${totalCreated > 0 ? 'Evidence request emails have been sent to users for new tickets.' : 'No new tickets this run.'}</p>
             </div>
           `,
         }),
       });
-      console.log('Admin notification email sent');
+      console.log(`Admin notification email sent${isAlert ? ' (ALERT)' : ''}`);
     } catch (err: any) {
       console.error('Failed to send admin notification:', err.message);
     }
   }
 }
 
+// Helper to send alert email for fatal crashes (called from catch block)
+async function sendCrashAlert(error: Error) {
+  try {
+    const dotenv = await import('dotenv');
+    const path = await import('path');
+    dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
+    dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) return;
+
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        to: ['randyvollrath@gmail.com'],
+        subject: 'Portal Scraper CRASHED',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #dc2626; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+              <h2 style="margin: 0;">Portal Scraper Fatal Error</h2>
+            </div>
+            <div style="padding: 24px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0 0 8px 8px;">
+              <p>The daily portal scraper crashed and could not complete its run.</p>
+              <pre style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px;">${error.stack || error.message}</pre>
+              <p style="color: #6b7280; font-size: 13px; margin-top: 16px;">Check full logs: <code>journalctl --user -u autopilot-portal-check -n 200</code></p>
+            </div>
+          </div>
+        `,
+      }),
+    });
+    console.log('Crash alert email sent');
+  } catch (emailErr: any) {
+    console.error('Failed to send crash alert email:', emailErr.message);
+  }
+}
+
 // Run
 main()
   .then(() => process.exit(0))
-  .catch(err => {
+  .catch(async (err) => {
     console.error('Fatal error:', err);
+    await sendCrashAlert(err);
     process.exit(1);
   });
