@@ -72,9 +72,6 @@
     "pages/api/cron/notify-free-user-renewals.ts": {
       "maxDuration": 60
     },
-    "pages/api/cron/autopilot-export-plates.ts": {
-      "maxDuration": 60
-    },
     "pages/api/cron/autopilot-check-plates.ts": {
       "maxDuration": 300
     },
@@ -182,10 +179,6 @@
     {
       "path": "/api/cron/mobile-parking-reminders",
       "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/autopilot-export-plates",
-      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/cron/autopilot-check-plates",
