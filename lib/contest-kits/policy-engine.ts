@@ -302,6 +302,11 @@ function scoreArgument(arg: ArgumentTemplate, context: ArgumentContext): number 
     score += 25;
   }
 
+  // Boost for "cleaning did not occur" argument when schedule verification confirms it
+  if (arg.id === 'cleaning_did_not_occur' && context.ticketFacts.cleaningDidNotOccur) {
+    score += 40; // Strong boost — verified schedule data is compelling evidence
+  }
+
   // Boost if argument matches user's selected grounds
   if (context.selectedGrounds.some(g => arg.name.toLowerCase().includes(g.toLowerCase()))) {
     score += 15;
@@ -382,6 +387,9 @@ function hasEvidence(evidenceId: string, userEvidence: UserEvidence): boolean {
       return userEvidence.hasDocs || userEvidence.hasReceipts;
     case 'police_report':
       return userEvidence.hasPoliceReport;
+    case 'no_cleaning_evidence':
+    case 'schedule_verification':
+      return userEvidence.hasScheduleVerification || false;
     default:
       return false;
   }
