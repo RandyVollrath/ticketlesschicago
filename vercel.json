@@ -110,6 +110,9 @@
     },
     "pages/api/cron/autopilot-check-outcomes.ts": {
       "maxDuration": 120
+    },
+    "pages/api/cron/sync-dot-permits.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -220,6 +223,10 @@
     {
       "path": "/api/cron/autopilot-check-outcomes",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/sync-dot-permits",
+      "schedule": "0 10 * * *"
     }
   ],
   "headers": [

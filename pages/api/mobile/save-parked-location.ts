@@ -27,6 +27,11 @@ const SaveParkedLocationSchema = z.object({
   street_cleaning_section: z.string().max(50).optional(),
   permit_zone: z.string().max(50).nullable().optional(),
   permit_restriction_schedule: z.string().max(100).optional(),
+
+  // DOT permit flags
+  dot_permit_active: z.boolean().default(false),
+  dot_permit_type: z.string().max(100).optional(),
+  dot_permit_start_date: z.string().max(50).optional(),
 });
 
 type SaveParkedLocationInput = z.infer<typeof SaveParkedLocationSchema>;
@@ -96,7 +101,8 @@ export default async function handler(
       !input.on_winter_ban_street &&
       !input.on_snow_route &&
       !streetCleaningDate &&
-      !input.permit_zone
+      !input.permit_zone &&
+      !input.dot_permit_active
     ) {
       console.log(`Ignoring likely false-positive parking event for user ${userId} at ${addressValue}`);
       return res.status(200).json({
@@ -125,6 +131,10 @@ export default async function handler(
         street_cleaning_section: input.street_cleaning_section || null,
         permit_zone: input.permit_zone || null,
         permit_restriction_schedule: null,
+
+        dot_permit_active: input.dot_permit_active,
+        dot_permit_type: input.dot_permit_type || null,
+        dot_permit_start_date: input.dot_permit_start_date || null,
 
         is_active: true,
         parked_at: parkedAt,
@@ -240,6 +250,7 @@ export default async function handler(
       snowRoute: input.on_snow_route,
       streetCleaning: streetCleaningDate,
       permitZone: input.permit_zone,
+      dotPermit: input.dot_permit_active ? input.dot_permit_type : false,
     });
 
     return res.status(200).json({

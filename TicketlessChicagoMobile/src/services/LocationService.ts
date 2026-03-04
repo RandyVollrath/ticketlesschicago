@@ -12,7 +12,7 @@ import { StorageKeys } from '../constants';
 const log = Logger.createLogger('LocationService');
 
 export interface ParkingRule {
-  type: 'street_cleaning' | 'snow_route' | 'permit_zone' | 'winter_ban' | 'tow_zone' | 'metered_parking';
+  type: 'street_cleaning' | 'snow_route' | 'permit_zone' | 'winter_ban' | 'tow_zone' | 'metered_parking' | 'dot_permit';
   message: string;
   severity: 'critical' | 'warning' | 'info';
   // Additional metadata for enhanced display
@@ -921,6 +921,17 @@ class LocationServiceClass {
       });
     }
 
+    // DOT permit — show if any active or upcoming permit found near parking spot
+    if (data?.dotPermit?.hasActivePermit) {
+      const severity = data.dotPermit.severity || (data.dotPermit.isActiveNow ? 'critical' : 'warning');
+      rules.push({
+        type: 'dot_permit',
+        message: data.dotPermit.message || 'DOT permit activity near your parking spot.',
+        severity: severity as 'critical' | 'warning' | 'info',
+        isActiveNow: data.dotPermit.isActiveNow || false,
+      });
+    }
+
     // Metered parking zone — only show when meters are currently enforced.
     // If parked outside enforcement hours, BackgroundTaskService schedules
     // a notification for when meters become active (8am next weekday).
@@ -982,6 +993,11 @@ class LocationServiceClass {
         street_cleaning_section: parkingData?.streetCleaning?.section || null,
         permit_zone: parkingData?.permitZone?.zoneName || null,
         permit_restriction_schedule: parkingData?.permitZone?.restrictionSchedule || null,
+
+        // DOT permit flags
+        dot_permit_active: !!(parkingData?.dotPermit?.hasActivePermit),
+        dot_permit_type: parkingData?.dotPermit?.permitType || null,
+        dot_permit_start_date: parkingData?.dotPermit?.startDate || null,
       };
 
       const response = await ApiClient.authPost<any>('/api/mobile/save-parked-location', payload, {

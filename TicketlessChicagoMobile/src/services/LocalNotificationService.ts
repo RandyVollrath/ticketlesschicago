@@ -31,6 +31,7 @@ const NOTIFICATION_PREFIX = {
   SNOW_BAN: 'snow-ban-',
   PERMIT_ZONE: 'permit-zone-',
   METERED_PARKING: 'metered-parking-',
+  DOT_PERMIT: 'dot-permit-',
 };
 
 // Default reminder times (hours before restriction starts)
@@ -51,7 +52,7 @@ export interface ReminderPreferences {
 }
 
 export interface ParkingRestriction {
-  type: 'street_cleaning' | 'winter_ban' | 'snow_ban' | 'permit_zone' | 'metered_parking';
+  type: 'street_cleaning' | 'winter_ban' | 'snow_ban' | 'permit_zone' | 'metered_parking' | 'dot_permit';
   restrictionStartTime: Date;
   address: string;
   details?: string;
@@ -227,6 +228,23 @@ class LocalNotificationServiceClass {
         body = `${address}\n${details || 'Your 2-hour meter is about to expire. Move your car or add time to avoid a $65 ticket.'}`;
         break;
 
+      case 'dot_permit':
+        hoursBefore = 0; // Time is pre-computed by BackgroundTaskService
+        notificationId = `${NOTIFICATION_PREFIX.DOT_PERMIT}${Date.now()}`;
+        // Detect subtype from details: active today = urgent, upcoming = reminder
+        if (details?.includes('ACTIVE TODAY') || details?.includes('active on this block')) {
+          title = '🚧 DOT Permit Active — Move Your Car!';
+          channelId = 'parking-alerts';
+        } else if (details?.includes('starts tomorrow') || details?.includes('MOVE YOUR CAR')) {
+          title = '🚧 DOT Permit Starts Tomorrow';
+          channelId = 'parking-alerts';
+        } else {
+          title = '🚧 DOT Permit Alert';
+          channelId = 'reminders';
+        }
+        body = `${address}\n${details || 'A DOT permit is active near your parking spot. Check posted signs — risk of towing.'}`;
+        break;
+
       default:
         return null;
     }
@@ -363,6 +381,7 @@ class LocalNotificationServiceClass {
           id.startsWith(NOTIFICATION_PREFIX.SNOW_BAN) ||
           id.startsWith(NOTIFICATION_PREFIX.PERMIT_ZONE) ||
           id.startsWith(NOTIFICATION_PREFIX.METERED_PARKING) ||
+          id.startsWith(NOTIFICATION_PREFIX.DOT_PERMIT) ||
           id.startsWith('custom-reminder-')
       );
 
