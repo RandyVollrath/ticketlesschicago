@@ -666,26 +666,40 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     }
 
     // 8. Street Cleaning Schedule Verification (for street cleaning violations)
-    // Uses ticket coordinates to find the ward/section, then checks if cleaning
-    // was actually scheduled at that location on the ticket date.
+    // Geocodes ticket_location to coordinates, finds ward/section via PostGIS RPC,
+    // then checks if cleaning was actually scheduled at that location on the ticket date.
     if ((violationType === 'street_cleaning' || contest.violation_code === '9-64-010') && ticketDate) {
       evidencePromises.push((async () => {
         try {
-          const ticketLat = contest.ticket_latitude || contest.extracted_data?.latitude;
-          const ticketLng = contest.ticket_longitude || contest.extracted_data?.longitude;
-
           let ward: string | null = null;
           let section: string | null = null;
 
-          // Step 1: Determine ward/section from ticket coordinates using PostGIS
-          if (ticketLat && ticketLng) {
-            const { data: zoneData, error: zoneError } = await supabase.rpc(
-              'find_section_for_point',
-              { lon: ticketLng, lat: ticketLat }
-            );
-            if (!zoneError && zoneData && zoneData.length > 0) {
-              ward = zoneData[0].ward;
-              section = zoneData[0].section;
+          // Step 1: Geocode ticket_location to get coordinates, then find ward/section
+          const ticketAddress = contest.ticket_location || contest.extracted_data?.location;
+          if (ticketAddress) {
+            const googleApiKey = process.env.GOOGLE_API_KEY;
+            if (googleApiKey) {
+              try {
+                const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ticketAddress + ', Chicago, IL, USA')}&key=${googleApiKey}`;
+                const geocodeResponse = await fetch(geocodeUrl);
+                if (geocodeResponse.ok) {
+                  const geocodeData = await geocodeResponse.json();
+                  if (geocodeData.status === 'OK' && geocodeData.results?.length > 0) {
+                    const { lat, lng } = geocodeData.results[0].geometry.location;
+                    // Use PostGIS to find ward/section from coordinates
+                    const { data: zoneData, error: zoneError } = await supabase.rpc(
+                      'find_section_for_point',
+                      { lon: lng, lat: lat }
+                    );
+                    if (!zoneError && zoneData && zoneData.length > 0) {
+                      ward = zoneData[0].ward;
+                      section = zoneData[0].section;
+                    }
+                  }
+                }
+              } catch (geocodeErr) {
+                console.error('Geocoding for schedule verification failed:', geocodeErr);
+              }
             }
           }
 
@@ -701,44 +715,47 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
 
             if (!scheduleError) {
               streetCleaningSchedule = scheduleData;
+              const hasData = !!(scheduleData && scheduleData.length > 0);
+
+              // Check if the ticket date falls outside our schedule data range.
+              // If so, we can't draw conclusions — absence of data ≠ absence of cleaning.
+              let outsideDataRange = false;
+              let latestScheduleDate: string | null = null;
+              if (!hasData) {
+                const { data: rangeData } = await supabase
+                  .from('street_cleaning_schedule')
+                  .select('cleaning_date')
+                  .order('cleaning_date', { ascending: false })
+                  .limit(1);
+                latestScheduleDate = rangeData?.[0]?.cleaning_date || null;
+                if (latestScheduleDate && ticketDate > latestScheduleDate) {
+                  outsideDataRange = true;
+                }
+              }
+
               streetCleaningVerification = {
                 checked: true,
                 ward,
                 section,
-                scheduledOnDate: !!(scheduleData && scheduleData.length > 0),
+                scheduledOnDate: hasData || outsideDataRange, // Assume scheduled when data is missing
                 matchingRecords: scheduleData || [],
-                message: scheduleData && scheduleData.length > 0
-                  ? `Street cleaning WAS scheduled in Ward ${ward}, Section ${section} on ${ticketDate} (${scheduleData.length} block(s) in this zone).`
-                  : `NO street cleaning was scheduled in Ward ${ward}, Section ${section} on ${ticketDate}. This ticket may have been issued in error.`,
+                message: hasData
+                  ? `Street cleaning WAS scheduled in Ward ${ward}, Section ${section} on ${ticketDate} (${scheduleData!.length} block(s) in this zone).`
+                  : outsideDataRange
+                    ? `Ticket date ${ticketDate} is beyond our schedule data range (latest data: ${latestScheduleDate}). Cannot verify whether cleaning was scheduled. Ward ${ward}, Section ${section}.`
+                    : `NO street cleaning was scheduled in Ward ${ward}, Section ${section} on ${ticketDate}. This ticket may have been issued in error.`,
               };
             }
           } else {
-            // Fallback: query by date only (less precise but better than nothing)
-            const { data: fallbackData } = await supabase
-              .from('street_cleaning_schedule')
-              .select('ward, section, cleaning_date, street_name, side')
-              .eq('cleaning_date', ticketDate)
-              .limit(10);
-            if (fallbackData && fallbackData.length > 0) {
-              streetCleaningSchedule = fallbackData;
-              streetCleaningVerification = {
-                checked: true,
-                ward: null,
-                section: null,
-                scheduledOnDate: true,
-                matchingRecords: fallbackData,
-                message: `Could not determine exact ward/section from ticket location. Street cleaning was scheduled in ${fallbackData.length} zone(s) city-wide on ${ticketDate}.`,
-              };
-            } else {
-              streetCleaningVerification = {
-                checked: true,
-                ward: null,
-                section: null,
-                scheduledOnDate: false,
-                matchingRecords: [],
-                message: `No street cleaning was scheduled anywhere in the city on ${ticketDate}. This ticket may have been issued in error.`,
-              };
-            }
+            // Could not geocode or find ward/section — note this in verification
+            streetCleaningVerification = {
+              checked: true,
+              ward: null,
+              section: null,
+              scheduledOnDate: true, // Assume scheduled when we can't verify
+              matchingRecords: [],
+              message: `Could not determine ward/section from ticket location "${ticketAddress || 'unknown'}". Unable to verify schedule.`,
+            };
           }
         } catch (e) {
           console.error('Street cleaning schedule verification failed:', e);
@@ -1031,7 +1048,11 @@ Use a formal letter format with proper salutation and closing.`
     if (courtData.hasData) evidenceSources.push('court_data');
     if (streetCleaningSchedule) evidenceSources.push('street_cleaning_schedule');
 
-    // Update contest record with kit tracking data
+    // Update contest record with letter and evidence data
+    // Note: Only columns that exist on ticket_contests table are included.
+    // Kit tracking fields (kit_used, argument_used, etc.) and street_view_*
+    // columns are NOT on this table — they belong to contest_outcomes and
+    // detected_tickets respectively.
     const { error: updateError } = await supabase
       .from('ticket_contests')
       .update({
@@ -1039,17 +1060,6 @@ Use a formal letter format with proper salutation and closing.`
         evidence_checklist: evidenceChecklist,
         contest_grounds: contestGrounds || [],
         status: 'pending_review',
-        // Kit tracking fields
-        kit_used: kitEvaluation ? contest.violation_code : null,
-        argument_used: kitEvaluation?.selectedArgument.id || null,
-        weather_defense_used: kitEvaluation?.weatherDefense.applicable || (weatherDefenseText ? true : false),
-        location_evidence_used: parkingEvidence?.hasEvidence || false,
-        location_evidence_strength: parkingEvidence?.hasEvidence ? Math.round(parkingEvidence.evidenceStrength * 100) : null,
-        estimated_win_rate: kitEvaluation ? Math.round(kitEvaluation.estimatedWinRate * 100) : null,
-        // Street View exhibit data for the mailing step
-        street_view_exhibit_urls: streetViewPackage?.exhibitUrls || null,
-        street_view_date: streetViewPackage?.imageDate || streetViewEvidence?.imageDate || null,
-        street_view_address: streetViewPackage?.address || null,
       })
       .eq('id', contestId);
 
