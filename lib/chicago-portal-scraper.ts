@@ -778,6 +778,8 @@ function parseTicketFromText(text: string): PortalTicket | null {
     notice_number: noticeMatch ? noticeMatch[1] : null,
     balance_due: currentAmount,
     raw_text: text.substring(0, 500),
+    ticket_plate: null, // Not available from text parsing
+    ticket_state: null,
   };
 }
 
@@ -812,6 +814,9 @@ export async function lookupMultiplePlates(
       ],
     });
 
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 5; // Abort run if portal seems down
+
     for (let i = 0; i < platesToCheck.length; i++) {
       const { plate, state, lastName } = platesToCheck[i];
       console.log(`\n[${i + 1}/${platesToCheck.length}] Checking ${plate} (${state})...`);
@@ -825,14 +830,30 @@ export async function lookupMultiplePlates(
 
       if (result.error) {
         console.log(`  FAILED: ${result.error}`);
+        consecutiveErrors++;
+
+        // If we hit too many errors in a row, the portal is probably down
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          console.log(`\n  ⚠ ${MAX_CONSECUTIVE_ERRORS} consecutive errors — portal may be down. Aborting remaining lookups.`);
+          break;
+        }
       } else {
         console.log(`  Found ${result.tickets.length} ticket(s) (${result.lookup_duration_ms}ms, free)`);
+        consecutiveErrors = 0; // Reset on success
       }
 
-      // Rate limit between lookups
+      // Rate limit between lookups — with exponential backoff on errors
       if (i < platesToCheck.length - 1) {
-        console.log(`  Waiting ${delay / 1000}s before next lookup...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // Back off: double the delay for each consecutive error (up to 60s)
+        const backoffMultiplier = consecutiveErrors > 0 ? Math.min(Math.pow(2, consecutiveErrors), 12) : 1;
+        const actualDelay = Math.min(delay * backoffMultiplier, 60000);
+
+        if (backoffMultiplier > 1) {
+          console.log(`  Backing off: ${actualDelay / 1000}s (${backoffMultiplier}x due to ${consecutiveErrors} consecutive error(s))`);
+        } else {
+          console.log(`  Waiting ${actualDelay / 1000}s before next lookup...`);
+        }
+        await new Promise(resolve => setTimeout(resolve, actualDelay));
       }
     }
 
