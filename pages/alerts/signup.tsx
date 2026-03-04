@@ -55,6 +55,7 @@ export default function AlertsSignup() {
     marketingConsent: true,
     foiaConsent: true,
     contestConsent: true,
+    dotPermitAlerts: true,
   });
 
   // Track page view on mount
@@ -771,6 +772,29 @@ export default function AlertsSignup() {
                 />
                 <label htmlFor="contestConsent" style={{ fontSize: '14px', color: COLORS.graphite, lineHeight: '1.5', cursor: 'pointer' }}>
                   <strong>Contest my tickets automatically.</strong> I authorize Autopilot America to contest parking and compliance tickets on my behalf by submitting hearing-by-mail requests to the City of Chicago. I can review letters before they&apos;re mailed and revoke this at any time.
+                </label>
+              </div>
+
+              {/* DOT Permit Alerts */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                padding: '16px',
+                backgroundColor: '#FFF7ED',
+                borderRadius: '8px',
+                border: '1px solid #FDBA74'
+              }}>
+                <input
+                  type="checkbox"
+                  name="dotPermitAlerts"
+                  id="dotPermitAlerts"
+                  checked={formData.dotPermitAlerts}
+                  onChange={handleInputChange}
+                  style={{ marginTop: '2px', width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                />
+                <label htmlFor="dotPermitAlerts" style={{ fontSize: '14px', color: COLORS.graphite, lineHeight: '1.5', cursor: 'pointer' }}>
+                  <strong>Block closure &amp; permit alerts.</strong> Get notified when a DOT permit (moving vans, filming, block parties, construction) is issued near your address that could affect parking.
                 </label>
               </div>
 

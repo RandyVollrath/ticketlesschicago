@@ -113,6 +113,9 @@
     },
     "pages/api/cron/sync-dot-permits.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/notify-dot-permits.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -227,6 +230,10 @@
     {
       "path": "/api/cron/sync-dot-permits",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/notify-dot-permits",
+      "schedule": "0 13 * * *"
     }
   ],
   "headers": [

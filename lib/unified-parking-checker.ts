@@ -257,11 +257,12 @@ export async function checkAllParkingRestrictions(
         .eq('confidence', 'confirmed')
         .then(r => r.data || []).catch(() => []),
 
-      // DOT permits spatial query (proximity check for active/upcoming permits)
+      // DOT permits spatial query — 30m radius = same block face only.
+      // 100m was too wide and caught permits on adjacent blocks.
       supabaseAdmin.rpc('get_dot_permits_at_location', {
         user_lat: latitude,
         user_lng: longitude,
-        distance_meters: 100,
+        distance_meters: 30,
         check_date: getChicagoTime().toISOString().split('T')[0],
       }).then(r => r.data || []).catch(() => []),
     ]);

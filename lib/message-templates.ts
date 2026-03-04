@@ -237,6 +237,16 @@ export const sms = {
   profileIncomplete(missingFields: string[]): string {
     const fieldList = missingFields.join(', ');
     return `Autopilot: Your profile is incomplete! Missing: ${fieldList}. Complete it at ${URLS.SETTINGS} to get full protection. Reply STOP to opt out.`;
+  },
+
+  /**
+   * DOT permit alert — upcoming permit near user's address
+   */
+  dotPermitAlert(permit: { workType: string; streetName: string; startDate: string; endDate: string; streetClosure?: string | null }): string {
+    const closureNote = permit.streetClosure && permit.streetClosure !== 'None'
+      ? ` (${permit.streetClosure} closure)`
+      : '';
+    return `Autopilot: ${permit.workType}${closureNote} on ${permit.streetName} from ${permit.startDate} to ${permit.endDate}. Parking may be affected — plan ahead! ${URLS.DASHBOARD} Reply STOP to opt out.`;
   }
 };
 
@@ -718,6 +728,87 @@ Questions? ${EMAIL.SUPPORT}
 Your city sticker for ${user.licensePlate} should arrive soon!
 
 Most stickers arrive within 10-14 days. If you don't receive it within a week, contact us at ${EMAIL.SUPPORT}.
+    `.trim();
+
+    return { subject, html, text };
+  },
+
+  /**
+   * DOT permit alert email — upcoming permit near user's address
+   */
+  dotPermitAlert(user: UserContext, permits: Array<{ workType: string; streetName: string; startDate: string; endDate: string; streetClosure?: string | null; applicationName?: string | null; comments?: string | null }>): { subject: string; html: string; text: string } {
+    const permitCount = permits.length;
+    const firstPermit = permits[0];
+    const subject = permitCount === 1
+      ? `Parking alert: ${firstPermit.workType} on ${firstPermit.streetName}`
+      : `Parking alert: ${permitCount} DOT permits near your address`;
+
+    const permitRows = permits.map(p => {
+      const closureLabel = p.streetClosure && p.streetClosure !== 'None'
+        ? `<span style="display:inline-block;background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:13px;font-weight:600;">${p.streetClosure} closure</span>`
+        : '';
+      const nameLabel = p.applicationName ? `<br><span style="color:${COLORS.textLight};font-size:13px;">${p.applicationName}</span>` : '';
+      const commentsLabel = p.comments ? `<br><span style="color:${COLORS.textLight};font-size:13px;font-style:italic;">${p.comments}</span>` : '';
+      return `
+        <tr>
+          <td style="padding:12px;border-bottom:1px solid #e5e7eb;">
+            <strong>${p.workType}</strong>${nameLabel}${commentsLabel}
+          </td>
+          <td style="padding:12px;border-bottom:1px solid #e5e7eb;">${p.streetName}</td>
+          <td style="padding:12px;border-bottom:1px solid #e5e7eb;">${p.startDate} &ndash; ${p.endDate}</td>
+          <td style="padding:12px;border-bottom:1px solid #e5e7eb;">${closureLabel || 'None'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const html = emailComponents.wrapper(`
+      ${emailComponents.header('Parking Alert', 'DOT Permit Near Your Address')}
+      ${emailComponents.body(`
+        <p style="color:${COLORS.text};font-size:16px;line-height:1.6;margin:0 0 16px;">
+          Hi${user.firstName ? ` ${user.firstName}` : ''},
+        </p>
+        ${emailComponents.alertBox('warning', 'Upcoming DOT Permit' + (permitCount > 1 ? 's' : ''),
+          `<strong>${permitCount}</strong> permit${permitCount > 1 ? 's have' : ' has'} been issued near your address that could affect street parking.`
+        )}
+        <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+          <thead>
+            <tr style="background:${COLORS.background};">
+              <th style="padding:10px 12px;text-align:left;font-size:13px;color:${COLORS.textLight};border-bottom:2px solid #d1d5db;">Type</th>
+              <th style="padding:10px 12px;text-align:left;font-size:13px;color:${COLORS.textLight};border-bottom:2px solid #d1d5db;">Street</th>
+              <th style="padding:10px 12px;text-align:left;font-size:13px;color:${COLORS.textLight};border-bottom:2px solid #d1d5db;">Dates</th>
+              <th style="padding:10px 12px;text-align:left;font-size:13px;color:${COLORS.textLight};border-bottom:2px solid #d1d5db;">Closure</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${permitRows}
+          </tbody>
+        </table>
+        <p style="color:${COLORS.text};font-size:14px;line-height:1.6;margin:16px 0 24px;">
+          Check posted signs on your block for specific no-parking times and tow warnings. Move your car in advance to avoid tickets or towing.
+        </p>
+        <div style="text-align:center;">
+          ${emailComponents.button('View My Dashboard', URLS.DASHBOARD)}
+        </div>
+      `)}
+      ${emailComponents.footer()}
+    `);
+
+    const permitLines = permits.map(p => {
+      const closure = p.streetClosure && p.streetClosure !== 'None' ? ` (${p.streetClosure} closure)` : '';
+      return `- ${p.workType}${closure} on ${p.streetName}: ${p.startDate} to ${p.endDate}`;
+    }).join('\n');
+
+    const text = `
+Hi${user.firstName ? ` ${user.firstName}` : ''},
+
+${permitCount} DOT permit${permitCount > 1 ? 's have' : ' has'} been issued near your address:
+
+${permitLines}
+
+Check posted signs and move your car in advance to avoid tickets or towing.
+
+Dashboard: ${URLS.DASHBOARD}
+Questions? ${EMAIL.SUPPORT}
     `.trim();
 
     return { subject, html, text };
