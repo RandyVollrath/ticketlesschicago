@@ -33,6 +33,7 @@ const alertSignupSchema = z.object({
   marketingConsent: z.boolean().optional(),
   foiaConsent: z.boolean().optional(),
   contestConsent: z.boolean().optional(),
+  dotPermitAlerts: z.boolean().optional(),
   contestSignature: z.string().max(200).optional(),
   authenticatedUserId: z.string().uuid().optional().nullable(),
 });
@@ -108,6 +109,7 @@ export default async function handler(
     marketingConsent,
     foiaConsent,
     contestConsent,
+    dotPermitAlerts,
     contestSignature,
     authenticatedUserId
   } = parseResult.data;
@@ -219,6 +221,7 @@ export default async function handler(
       is_paid: false, // Free alert signups are not paid users
       has_contesting: false,
       marketing_consent: marketingConsent === true, // CAN-SPAM compliance
+      notify_dot_permits: dotPermitAlerts !== false, // Default opt-in for DOT permit alerts
       updated_at: new Date().toISOString()
     };
 

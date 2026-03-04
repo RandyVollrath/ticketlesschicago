@@ -48,7 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_dot_permits_active_with_parking
 CREATE OR REPLACE FUNCTION get_dot_permits_at_location(
   user_lat double precision,
   user_lng double precision,
-  distance_meters double precision DEFAULT 100,
+  distance_meters double precision DEFAULT 30,
   check_date date DEFAULT CURRENT_DATE
 )
 RETURNS TABLE (
@@ -112,6 +112,15 @@ ALTER TABLE user_parked_vehicles
   ADD COLUMN IF NOT EXISTS dot_permit_type text,
   ADD COLUMN IF NOT EXISTS dot_permit_start_date text,
   ADD COLUMN IF NOT EXISTS dot_permit_notified_at timestamp with time zone;
+
+-- Add notify_dot_permits preference to user_profiles (default true = opt-in)
+ALTER TABLE user_profiles
+  ADD COLUMN IF NOT EXISTS notify_dot_permits boolean DEFAULT true;
+
+-- Add cached geocoded coordinates for user home address (avoids repeated geocoding)
+ALTER TABLE user_profiles
+  ADD COLUMN IF NOT EXISTS home_address_lat double precision,
+  ADD COLUMN IF NOT EXISTS home_address_lng double precision;
 
 -- RLS: dot_permits is read-only public data, no user-specific access needed
 -- The table is populated by the sync cron (using service role key)
