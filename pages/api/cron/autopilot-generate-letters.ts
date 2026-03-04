@@ -144,6 +144,22 @@ interface AlertSubscriptionEvidence {
   details: string; // human-readable summary
 }
 
+interface ClericalErrorCheck {
+  checked: boolean; // true = we ran the check (even if no errors found)
+  hasErrors: boolean; // true = at least one clerical error found
+  errors: {
+    type: 'plate_mismatch' | 'state_mismatch' | 'plate_digit_error' | 'date_format_error';
+    description: string;
+    ticketValue: string;
+    actualValue: string;
+    severity: 'strong' | 'moderate'; // strong = instant dismissal, moderate = supporting argument
+  }[];
+  ticketPlate: string | null; // plate from ticket
+  ticketState: string | null; // state from ticket
+  userPlate: string; // user's actual plate
+  userState: string; // user's actual state
+}
+
 interface EvidenceBundle {
   parkingEvidence: ParkingEvidenceResult | null;
   weatherData: HistoricalWeatherData | null;
@@ -167,6 +183,7 @@ interface EvidenceBundle {
     photoAnalyses: { url: string; filename: string; description: string }[];
     receivedAt: string | null;
   } | null;
+  clericalErrorCheck: ClericalErrorCheck | null;
   // New enrichment sources
   nearbyServiceRequests: ServiceRequest311[] | null;
   serviceRequest311Summary: string | null;
@@ -174,6 +191,28 @@ interface EvidenceBundle {
   constructionPermits: ConstructionPermitResult | null;
   officerIntelligence: { hasData: boolean; officerBadge: string | null; totalCases: number; dismissalRate: number | null; tendency: string | null; recommendation: string | null } | null;
   locationPattern: { ticketCount: number; uniqueUsers: number; dismissalRate: number | null; defenseRecommendation: string | null } | null;
+}
+
+// ─── Levenshtein Distance (for clerical error detection) ────
+
+/**
+ * Compute the Levenshtein distance between two strings.
+ * Used to detect near-miss plate numbers (transcription errors).
+ */
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
 }
 
 // ─── Date Formatting Helper ─────────────────────────────────
@@ -372,6 +411,7 @@ async function gatherAllEvidence(
     },
     alertSubscriptionEvidence: null,
     userSubmittedEvidence: null,
+    clericalErrorCheck: null,
     nearbyServiceRequests: null,
     serviceRequest311Summary: null,
     expandedWeatherDefense: null,
@@ -1244,6 +1284,41 @@ INSTRUCTIONS: Mention in the letter that a FOIA request was filed requesting the
     }
   }
 
+  // ── Section 13: Clerical Error Detection ──
+  if (evidence.clericalErrorCheck?.checked) {
+    const cc = evidence.clericalErrorCheck;
+    if (cc.hasErrors) {
+      let clericalSection = `=== CLERICAL ERROR DETECTION — CRITICAL DEFENSE ===
+
+Our automated system cross-referenced the plate information ON the ticket with the respondent's actual vehicle registration data and found ${cc.errors.length} clerical error(s). Under Chicago Municipal Code, an incorrect plate number or other identifying information on the citation is grounds for dismissal.
+
+ERRORS FOUND:`;
+      for (const err of cc.errors) {
+        clericalSection += `
+- [${err.severity.toUpperCase()}] ${err.description}`;
+      }
+      clericalSection += `
+
+INSTRUCTIONS: This is a PRIMARY defense. A clerical error in the license plate number means the citation does not properly identify the respondent's vehicle. Lead with this argument:
+- State: "The citation contains a clerical error in the license plate number. The ticket lists plate '${cc.ticketPlate}' but the respondent's actual Illinois license plate is '${cc.userPlate}'."
+- Argue: "Because the citation fails to correctly identify the respondent's vehicle, it is defective on its face and should be dismissed."
+- If it's a single-character difference: emphasize it was likely a handwriting or data-entry transcription error by the enforcement officer
+- If the state is also wrong: note both errors to strengthen the argument
+- Reference Municipal Code § 9-100-060 regarding defective citations
+- This argument is INDEPENDENT of the merits — even if the violation occurred, a defective citation should be dismissed
+
+Do NOT undermine this argument by conceding the violation. Keep it procedural: the citation is defective, period.`;
+      sections.push(clericalSection);
+    } else {
+      // No errors found — still useful to note in the prompt so Claude knows the check was done
+      sections.push(`=== CLERICAL ERROR CHECK — NO ERRORS FOUND ===
+
+The license plate on the ticket ("${cc.ticketPlate}") was cross-referenced against the respondent's actual plate ("${cc.userPlate}") and they match. No clerical errors were detected in the plate or state information.
+
+INSTRUCTIONS: Do NOT raise a clerical error defense — the citation correctly identifies the vehicle. Focus on other available defenses.`);
+    }
+  }
+
   // ── Section 14: User-Submitted Evidence ──
   if (evidence.userSubmittedEvidence?.hasEvidence) {
     const ue = evidence.userSubmittedEvidence;
@@ -1342,6 +1417,7 @@ Generate a professional, formal contest letter that:
    ${evidence.locationPattern && evidence.locationPattern.ticketCount >= 3 ? `- Location pattern: ${evidence.locationPattern.ticketCount} tickets from ${evidence.locationPattern.uniqueUsers} drivers (suggests signage/enforcement issues)` : ''}
    ${evidence.alertSubscriptionEvidence?.hasAlerts ? `- Alert subscription: User enrolled in ${evidence.alertSubscriptionEvidence.alertTypes.join(', ')} before citation (${evidence.alertSubscriptionEvidence.relevantToViolation ? 'RELEVANT to this violation — SUPPORTING argument' : 'general compliance — brief mention only'})` : ''}
    ${evidence.userSubmittedEvidence?.hasEvidence ? `- User-submitted evidence: ${evidence.userSubmittedEvidence.text ? 'written statement' : ''}${evidence.userSubmittedEvidence.text && evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? ' + ' : ''}${evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? `${evidence.userSubmittedEvidence.photoAnalyses.length} AI-analyzed photo(s) (STRONGEST — user's own documentation)` : evidence.userSubmittedEvidence.attachmentUrls.length > 0 ? `${evidence.userSubmittedEvidence.attachmentUrls.length} attachment(s)` : ''}` : ''}
+   ${evidence.clericalErrorCheck?.hasErrors ? `- CLERICAL ERROR DETECTED: Plate mismatch — ticket says "${evidence.clericalErrorCheck.ticketPlate}" but actual plate is "${evidence.clericalErrorCheck.userPlate}" (STRONGEST — grounds for immediate dismissal)` : evidence.clericalErrorCheck?.checked ? '- Clerical error check: PASSED (ticket plate matches user plate)' : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the reviewer for their consideration, sign with sender name only (Lob adds return address automatically). Do NOT suggest or request an in-person hearing — users want dismissal by mail, not additional time commitments
@@ -1638,7 +1714,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
               const mediaType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
 
               const visionResponse = await anthropic.messages.create({
-                model: 'claude-sonnet-4-5-20250929',
+                model: 'claude-sonnet-4-6',
                 max_tokens: 300,
                 messages: [{
                   role: 'user',
@@ -1690,6 +1766,103 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
     console.error('    User evidence parsing failed:', e);
   }
 
+  // ── Clerical Error Detection ──
+  // Compare the plate/state ON the ticket against the user's actual plate/state.
+  // Mismatches are grounds for dismissal under Chicago Municipal Code.
+  try {
+    const ticketPlate = ((ticket as any).ticket_plate || '').toUpperCase().trim();
+    const ticketState = ((ticket as any).ticket_state || '').toUpperCase().trim();
+    const userPlate = (ticket.plate || '').toUpperCase().trim();
+    const userState = (ticket.state || '').toUpperCase().trim();
+
+    const clericalErrors: ClericalErrorCheck['errors'] = [];
+
+    if (ticketPlate && userPlate) {
+      // Exact plate mismatch
+      if (ticketPlate !== userPlate) {
+        // Check if it's a single-digit/character difference (transposition, wrong digit)
+        const distance = levenshteinDistance(ticketPlate, userPlate);
+        if (distance === 1) {
+          clericalErrors.push({
+            type: 'plate_digit_error',
+            description: `Ticket plate "${ticketPlate}" differs from actual plate "${userPlate}" by one character — likely a transcription error by the enforcement officer`,
+            ticketValue: ticketPlate,
+            actualValue: userPlate,
+            severity: 'strong',
+          });
+        } else if (distance === 2 && ticketPlate.length === userPlate.length) {
+          // Check for transposition (two adjacent characters swapped)
+          let transpositions = 0;
+          for (let i = 0; i < ticketPlate.length - 1; i++) {
+            if (ticketPlate[i] === userPlate[i + 1] && ticketPlate[i + 1] === userPlate[i]) {
+              transpositions++;
+              i++; // skip next
+            }
+          }
+          if (transpositions > 0) {
+            clericalErrors.push({
+              type: 'plate_digit_error',
+              description: `Ticket plate "${ticketPlate}" has characters transposed compared to actual plate "${userPlate}" — a common handwriting/data entry error`,
+              ticketValue: ticketPlate,
+              actualValue: userPlate,
+              severity: 'strong',
+            });
+          } else {
+            clericalErrors.push({
+              type: 'plate_mismatch',
+              description: `Ticket plate "${ticketPlate}" does not match actual plate "${userPlate}" — ${distance} characters differ`,
+              ticketValue: ticketPlate,
+              actualValue: userPlate,
+              severity: distance <= 3 ? 'strong' : 'moderate',
+            });
+          }
+        } else {
+          clericalErrors.push({
+            type: 'plate_mismatch',
+            description: `Ticket plate "${ticketPlate}" does not match actual plate "${userPlate}"`,
+            ticketValue: ticketPlate,
+            actualValue: userPlate,
+            severity: 'strong',
+          });
+        }
+      }
+
+      // State mismatch
+      if (ticketState && userState && ticketState !== userState) {
+        clericalErrors.push({
+          type: 'state_mismatch',
+          description: `Ticket lists plate state as "${ticketState}" but actual plate state is "${userState}"`,
+          ticketValue: ticketState,
+          actualValue: userState,
+          severity: 'strong',
+        });
+      }
+    }
+
+    evidence.clericalErrorCheck = {
+      checked: !!(ticketPlate && userPlate), // only "checked" if we had data to compare
+      hasErrors: clericalErrors.length > 0,
+      errors: clericalErrors,
+      ticketPlate: ticketPlate || null,
+      ticketState: ticketState || null,
+      userPlate,
+      userState,
+    };
+
+    if (clericalErrors.length > 0) {
+      console.log(`    CLERICAL ERRORS FOUND (${clericalErrors.length}):`);
+      for (const err of clericalErrors) {
+        console.log(`      [${err.severity}] ${err.type}: ${err.description}`);
+      }
+    } else if (ticketPlate && userPlate) {
+      console.log(`    Clerical error check: PASSED (ticket plate "${ticketPlate}" matches user plate "${userPlate}")`);
+    } else {
+      console.log(`    Clerical error check: SKIPPED (no ticket plate data available)`);
+    }
+  } catch (e) {
+    console.error('    Clerical error check failed:', e);
+  }
+
   // ── Generate letter with Claude AI ──
   let letterContent: string;
   let defenseType = 'ai_comprehensive';
@@ -1720,6 +1893,10 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
     evidenceSources.push('user_evidence');
     if (evidence.userSubmittedEvidence.photoAnalyses.length > 0) evidenceSources.push('user_photo_analysis');
   }
+  if (evidence.clericalErrorCheck?.checked) {
+    evidenceSources.push('clerical_error_check');
+    if (evidence.clericalErrorCheck.hasErrors) evidenceSources.push('clerical_error_found');
+  }
 
   if (anthropic) {
     try {
@@ -1728,7 +1905,7 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
       const prompt = buildClaudePrompt(ticket, profile as UserProfile, evidence, violationCode);
 
       const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       });
@@ -1823,6 +2000,14 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
           photoAnalysisCount: evidence.userSubmittedEvidence.photoAnalyses.length,
           receivedAt: evidence.userSubmittedEvidence.receivedAt,
         } : null,
+        clerical_error_check: evidence.clericalErrorCheck?.checked ? {
+          checked: true,
+          hasErrors: evidence.clericalErrorCheck.hasErrors,
+          errorCount: evidence.clericalErrorCheck.errors.length,
+          errors: evidence.clericalErrorCheck.errors.map(e => ({ type: e.type, severity: e.severity, ticketValue: e.ticketValue, actualValue: e.actualValue })),
+          ticketPlate: evidence.clericalErrorCheck.ticketPlate,
+          userPlate: evidence.clericalErrorCheck.userPlate,
+        } : { checked: false },
         street_view_available: evidence.streetViewEvidence?.hasImagery || false,
         street_view_date: evidence.streetViewEvidence?.imageDate || null,
       },

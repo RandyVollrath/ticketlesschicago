@@ -176,7 +176,7 @@ Please rewrite the contest letter integrating this evidence professionally. Retu
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         messages: [
           {
@@ -1027,7 +1027,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'claude-sonnet-4-5-20250929',
+                model: 'claude-sonnet-4-6',
                 max_tokens: 300,
                 messages: [{
                   role: 'user',

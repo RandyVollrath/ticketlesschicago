@@ -70,6 +70,21 @@ export interface UnifiedParkingResult {
     message: string;
   };
 
+  // DOT Permit (spatial query against synced Chicago DOT permits)
+  dotPermit: {
+    found: boolean;
+    permitType: string | null;       // 'Moving Van', 'Filming', 'Construction', etc.
+    startDate: string | null;
+    endDate: string | null;
+    streetClosure: string | null;    // 'Full', 'Curblane', 'Sidewalk', etc.
+    meterBagging: boolean;
+    description: string | null;      // Work description or event name
+    isActiveNow: boolean;            // Permit date range includes today
+    hoursUntilStart: number;
+    severity: 'critical' | 'warning' | 'info' | 'none';
+    message: string;
+  };
+
   timestamp: string;
 }
 
@@ -130,6 +145,19 @@ export async function checkAllParkingRestrictions(
       severity: 'none',
       message: 'Not in a permit parking zone',
     },
+    dotPermit: {
+      found: false,
+      permitType: null,
+      startDate: null,
+      endDate: null,
+      streetClosure: null,
+      meterBagging: false,
+      description: null,
+      isActiveNow: false,
+      hoursUntilStart: 999,
+      severity: 'none',
+      message: 'No DOT permits on this block',
+    },
     timestamp,
   };
 
@@ -167,6 +195,7 @@ export async function checkAllParkingRestrictions(
       permitZones,
       industrialZones,
       zoneHoursData,
+      dotPermitData,
     ] = await Promise.all([
       // Street cleaning spatial query
       supabaseAdmin.rpc('get_street_cleaning_at_location_enhanced', {
@@ -227,6 +256,14 @@ export async function checkAllParkingRestrictions(
         .select('zone, zone_type, restriction_schedule')
         .eq('confidence', 'confirmed')
         .then(r => r.data || []).catch(() => []),
+
+      // DOT permits spatial query (proximity check for active/upcoming permits)
+      supabaseAdmin.rpc('get_dot_permits_at_location', {
+        user_lat: latitude,
+        user_lng: longitude,
+        distance_meters: 100,
+        check_date: getChicagoTime().toISOString().split('T')[0],
+      }).then(r => r.data || []).catch(() => []),
     ]);
 
     // ==========================================

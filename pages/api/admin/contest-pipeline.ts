@@ -35,6 +35,8 @@ const EVIDENCE_SOURCE_LABELS: Record<string, { label: string; icon: string; desc
   alert_subscription: { label: 'Alert Subscription', icon: '🔔', description: 'User had relevant parking alerts enabled before citation' },
   user_evidence: { label: 'User Evidence', icon: '📎', description: 'User-submitted text and/or photo attachments via email' },
   user_photo_analysis: { label: 'Photo AI Analysis', icon: '👁', description: 'Claude Vision analysis of user-submitted photos' },
+  clerical_error_check: { label: 'Clerical Error Check', icon: '🔍', description: 'Cross-referenced ticket plate/state against user registration' },
+  clerical_error_found: { label: 'Clerical Error Found', icon: '🚨', description: 'Plate mismatch detected — grounds for dismissal' },
 };
 
 // Win rates by violation type (from FOIA data)

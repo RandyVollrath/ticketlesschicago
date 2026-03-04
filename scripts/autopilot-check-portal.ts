@@ -2072,6 +2072,9 @@ async function processFoundTicket(
       evidence_deadline: evidenceDeadline.toISOString(),
       auto_send_deadline: evidenceDeadline.toISOString(),
       reminder_count: 0,
+      // Store the plate/state from the ticket itself for clerical error detection
+      ticket_plate: ticket.ticket_plate || null,
+      ticket_state: ticket.ticket_state || null,
     })
     .select()
     .single();
