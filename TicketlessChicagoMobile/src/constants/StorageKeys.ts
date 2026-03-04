@@ -40,6 +40,7 @@ export const StorageKeys = {
   HOME_PERMIT_ZONE: 'homePermitZone', // User's home permit zone number
   PHONE_CALL_ALERTS_ENABLED: 'phoneCallAlertsEnabled', // 'true' if user wants voice call alerts for parking violations
   PHONE_NUMBER: 'phoneNumber', // User's phone number for call alerts
+  CALL_ALERT_PREFERENCES: 'callAlertPreferences', // JSON: per-alert-type call preferences { type: { enabled, hours_before } }
 
   // Cache
   LAST_API_RESPONSE_CACHE: 'lastApiResponseCache',
@@ -91,6 +92,7 @@ export const PERSISTENT_KEYS: StorageKey[] = [
   StorageKeys.LAST_PARKED_COORDS,
   StorageKeys.PHONE_CALL_ALERTS_ENABLED,
   StorageKeys.PHONE_NUMBER,
+  StorageKeys.CALL_ALERT_PREFERENCES,
 ];
 
 export default StorageKeys;

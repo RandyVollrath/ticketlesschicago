@@ -13,6 +13,21 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sendClickSendVoiceCall } from '../../../lib/sms-service';
 
+/** Map rule type aliases to the 5 canonical call alert preference keys. */
+function mapAlertTypeToKey(alertType: string): string | null {
+  const mapping: Record<string, string> = {
+    street_cleaning: 'street_cleaning',
+    winter_ban: 'winter_ban',
+    winter_overnight_ban: 'winter_ban',
+    permit_zone: 'permit_zone',
+    snow_route: 'snow_route',
+    snow_ban: 'snow_route',
+    two_inch_snow_ban: 'snow_route',
+    dot_permit: 'dot_permit',
+  };
+  return mapping[alertType] || null;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -47,7 +62,7 @@ export default async function handler(
     // Check if user has phone call alerts enabled
     const { data: profile } = await supabaseAdmin
       .from('user_profiles')
-      .select('phone_call_enabled, phone_number')
+      .select('phone_call_enabled, phone_number, call_alert_preferences')
       .eq('id', user.id)
       .single();
 
@@ -56,6 +71,18 @@ export default async function handler(
         success: false,
         reason: 'Phone call alerts not enabled or no phone number',
       });
+    }
+
+    // Check per-alert-type preference (defense in depth — mobile already checks)
+    const callPrefs = (profile.call_alert_preferences as Record<string, { enabled: boolean; hours_before: number }>) || {};
+    const alertTypeKey = mapAlertTypeToKey(alert_type);
+    if (alertTypeKey && callPrefs[alertTypeKey]) {
+      if (!callPrefs[alertTypeKey].enabled) {
+        return res.status(200).json({
+          success: false,
+          reason: `Call alerts disabled for ${alertTypeKey}`,
+        });
+      }
     }
 
     // Rate limit: check if we already called for this parking session

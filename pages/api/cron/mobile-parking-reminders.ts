@@ -85,40 +85,119 @@ function parseDayRange(dayStr: string): number[] {
 
 const ADVANCE_WARNING_MINUTES = 30;
 
+/** Map rule type aliases to the 5 canonical call alert preference keys. */
+function mapAlertTypeToCallKey(alertType: string): string | null {
+  const mapping: Record<string, string> = {
+    street_cleaning: 'street_cleaning',
+    winter_ban: 'winter_ban',
+    winter_overnight_ban: 'winter_ban',
+    permit_zone: 'permit_zone',
+    snow_route: 'snow_route',
+    snow_ban: 'snow_route',
+    two_inch_snow_ban: 'snow_route',
+    dot_permit: 'dot_permit',
+  };
+  return mapping[alertType] || null;
+}
+
+interface CallAlertPref {
+  enabled: boolean;
+  hours_before: number;
+}
+
 /**
- * Send a voice call alert for a parking restriction, if the user has it enabled.
- * Rate limits: 1 call per parking session (via parking_call_alerts table), 1 per hour per user.
+ * Check if now is the right time to place a call for this alert type,
+ * given the user's hours_before preference and the enforcement start time.
+ *
+ * @param hoursBefore - User's preferred hours before enforcement to be called
+ * @param enforcementTime - When enforcement starts (Chicago time Date)
+ * @param chicagoNow - Current Chicago time
+ * @returns true if current time is within a 15-minute window of (enforcementTime - hoursBefore)
+ */
+function isCallTimeWindow(
+  hoursBefore: number,
+  enforcementTime: Date,
+  chicagoNow: Date
+): boolean {
+  if (hoursBefore === 0) {
+    // "Immediately" — call alongside the push notification (caller decides when)
+    return true;
+  }
+  const callTargetMs = enforcementTime.getTime() - hoursBefore * 60 * 60 * 1000;
+  const nowMs = chicagoNow.getTime();
+  const diffMs = nowMs - callTargetMs;
+  // Call if we're within 0-15 minutes AFTER the target call time
+  // (the cron runs every 15 minutes, so this catches the right window)
+  return diffMs >= 0 && diffMs <= 15 * 60 * 1000;
+}
+
+/**
+ * Send a voice call alert for a parking restriction, if the user has it enabled
+ * and the timing is right based on their hours_before preference.
+ *
+ * @param userId - User ID
+ * @param parkingSessionId - Parking session ID (for rate limiting)
+ * @param alertType - Alert type key (e.g., 'winter_ban', 'street_cleaning')
+ * @param message - Voice message to speak
+ * @param address - Parking address
+ * @param enforcementTime - When enforcement starts (for hours_before timing). If null, only fires for hours_before === 0.
+ * @param chicagoNow - Current Chicago time
+ * @param cachedProfile - Optional pre-fetched profile to avoid redundant DB queries within the same vehicle loop
  */
 async function sendCallAlertIfEnabled(
   userId: string,
   parkingSessionId: string,
   alertType: string,
   message: string,
-  address: string
+  address: string,
+  enforcementTime: Date | null,
+  chicagoNow: Date,
+  cachedProfile?: { phone_call_enabled: boolean; phone_number: string | null; call_alert_preferences: Record<string, CallAlertPref> | null } | null
 ): Promise<boolean> {
   if (!supabaseAdmin) return false;
 
   try {
-    // Check if user has phone call alerts enabled
-    const { data: profile } = await supabaseAdmin
+    // Fetch profile if not cached
+    const profile = cachedProfile ?? (await supabaseAdmin
       .from('user_profiles')
-      .select('phone_call_enabled, phone_number')
+      .select('phone_call_enabled, phone_number, call_alert_preferences')
       .eq('id', userId)
-      .single();
+      .single()).data;
 
     if (!profile?.phone_call_enabled || !profile?.phone_number) return false;
 
-    // Rate limit: check if we already called for this parking session
+    // Check per-type preference
+    const callKey = mapAlertTypeToCallKey(alertType);
+    if (!callKey) return false;
+
+    const prefs = (profile.call_alert_preferences as Record<string, CallAlertPref>) || {};
+    const typePref = prefs[callKey];
+    if (!typePref?.enabled) {
+      return false;
+    }
+
+    // Check timing: is now the right time to call based on hours_before?
+    if (enforcementTime) {
+      if (!isCallTimeWindow(typePref.hours_before, enforcementTime, chicagoNow)) {
+        return false;
+      }
+    } else {
+      // No enforcement time known — only fire for "immediately" (hours_before === 0)
+      if (typePref.hours_before !== 0) return false;
+    }
+
+    // Rate limit: check if we already called for this parking session + alert type
     const { data: existingCall } = await supabaseAdmin
       .from('parking_call_alerts')
       .select('id')
       .eq('user_id', userId)
       .eq('parking_session_id', parkingSessionId)
+      .eq('alert_type', alertType)
       .limit(1)
       .maybeSingle();
 
     if (existingCall) {
-      console.log(`Skipping cron call alert for user ${userId} — already called for session ${parkingSessionId}`);
+      console.log(`Skipping cron call alert for user ${userId} — already called for session ${parkingSessionId} type ${alertType}`);
       return false;
     }
 
@@ -138,7 +217,7 @@ async function sendCallAlertIfEnabled(
 
     // Place the call
     const voiceMessage = `Autopilot parking alert. ${message}. This is an automated call from Autopilot America.`;
-    console.log(`Cron: Placing call alert to ${profile.phone_number} for user ${userId}: ${alertType}`);
+    console.log(`Cron: Placing call alert to ${profile.phone_number} for user ${userId}: ${alertType} (hours_before=${typePref.hours_before})`);
     const callResult = await sendClickSendVoiceCall(profile.phone_number, voiceMessage);
 
     // Log the call attempt
@@ -274,6 +353,10 @@ export default async function handler(
 
     for (const vehicle of parkedVehicles as ParkedVehicle[]) {
       try {
+        // ——————————————————————————————————————————————
+        // PUSH NOTIFICATIONS (unchanged timing windows)
+        // ——————————————————————————————————————————————
+
         // Winter ban reminder (9pm check, ban starts at 3am)
         // Changed from 10pm to 9pm to give users more time
         // Only send once per parking session
@@ -293,14 +376,6 @@ export default async function handler(
               .eq('id', vehicle.id);
             results.winterBanReminders++;
             console.log(`Sent winter ban reminder to ${vehicle.user_id}`);
-
-            // Also send call alert
-            const callSent = await sendCallAlertIfEnabled(
-              vehicle.user_id, vehicle.id, 'winter_ban',
-              `Your car at ${vehicle.address} is on a winter ban street. Move before 3 AM to avoid towing.`,
-              vehicle.address
-            );
-            if (callSent) results.callAlertsSent++;
           } else if (result.invalidToken) {
             // Mark vehicle as inactive if token is invalid
             await supabaseAdmin.from('user_parked_vehicles')
@@ -332,14 +407,6 @@ export default async function handler(
               .eq('id', vehicle.id);
             results.streetCleaningReminders++;
             console.log(`Sent night-before street cleaning reminder to ${vehicle.user_id}`);
-
-            // Also send call alert
-            const callSent = await sendCallAlertIfEnabled(
-              vehicle.user_id, vehicle.id, 'street_cleaning',
-              `Street cleaning is scheduled tomorrow at ${vehicle.address}. Move your car tonight to avoid a 65 dollar ticket.`,
-              vehicle.address
-            );
-            if (callSent) results.callAlertsSent++;
           } else if (result.invalidToken) {
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })
@@ -366,14 +433,6 @@ export default async function handler(
               .eq('id', vehicle.id);
             results.streetCleaningReminders++;
             console.log(`Sent morning-of street cleaning reminder to ${vehicle.user_id}`);
-
-            // Also send call alert (morning-of is more urgent)
-            const callSent = await sendCallAlertIfEnabled(
-              vehicle.user_id, vehicle.id, 'street_cleaning',
-              `Street cleaning starts at 9 AM at ${vehicle.address}. Move your car now to avoid a 65 dollar ticket.`,
-              vehicle.address
-            );
-            if (callSent) results.callAlertsSent++;
           } else if (result.invalidToken) {
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })
@@ -428,14 +487,6 @@ export default async function handler(
                   .eq('id', vehicle.id);
                 results.permitZoneReminders++;
                 console.log(`Sent permit zone reminder to ${vehicle.user_id}`);
-
-                // Also send call alert
-                const callSent = await sendCallAlertIfEnabled(
-                  vehicle.user_id, vehicle.id, 'permit_zone',
-                  `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit rules may be active. Check posted signs to avoid a 75 dollar ticket.`,
-                  vehicle.address
-                );
-                if (callSent) results.callAlertsSent++;
               } else if (result.invalidToken) {
                 await supabaseAdmin.from('user_parked_vehicles')
                   .update({ is_active: false })
@@ -497,20 +548,110 @@ export default async function handler(
                 .eq('id', vehicle.id);
               results.dotPermitReminders++;
               console.log(`Sent DOT permit reminder to ${vehicle.user_id} (${permitType})`);
-
-              // Also send call alert
-              const callSent = await sendCallAlertIfEnabled(
-                vehicle.user_id, vehicle.id, 'dot_permit',
-                notifBody,
-                vehicle.address
-              );
-              if (callSent) results.callAlertsSent++;
             } else if (result.invalidToken) {
               await supabaseAdmin.from('user_parked_vehicles')
                 .update({ is_active: false })
                 .eq('id', vehicle.id);
               console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
             }
+          }
+        }
+
+        // ——————————————————————————————————————————————
+        // CALL ALERTS (independent timing based on hours_before)
+        // ——————————————————————————————————————————————
+        // Calls run on their own schedule, decoupled from push notifications.
+        // sendCallAlertIfEnabled checks per-type enabled flag, hours_before timing,
+        // and rate limits (1 per session per type, 1 per hour per user).
+
+        // Build enforcement times for each alert type
+        // Winter ban: enforcement at 3am tomorrow (if evening) or 3am today (if after midnight)
+        if (isWinterSeason && vehicle.on_winter_ban_street) {
+          const winterEnforcement = new Date(chicagoTime);
+          if (chicagoHour >= 12) {
+            // Evening — enforcement is 3am tomorrow
+            winterEnforcement.setDate(winterEnforcement.getDate() + 1);
+          }
+          winterEnforcement.setHours(3, 0, 0, 0);
+
+          const callSent = await sendCallAlertIfEnabled(
+            vehicle.user_id, vehicle.id, 'winter_ban',
+            `Your car at ${vehicle.address} is on a winter ban street. Move before 3 AM to avoid towing.`,
+            vehicle.address,
+            winterEnforcement,
+            chicagoTime
+          );
+          if (callSent) results.callAlertsSent++;
+        }
+
+        // Street cleaning: enforcement at 9am on cleaning date
+        if (vehicle.street_cleaning_date) {
+          const cleaningDate = vehicle.street_cleaning_date; // YYYY-MM-DD
+          const isCleaningToday = cleaningDate === today;
+          const isCleaningTomorrow = cleaningDate === (tomorrow ? tomorrowStr : '');
+
+          if (isCleaningToday || isCleaningTomorrow) {
+            const cleaningEnforcement = new Date(chicagoTime);
+            if (isCleaningTomorrow) {
+              cleaningEnforcement.setDate(cleaningEnforcement.getDate() + 1);
+            }
+            cleaningEnforcement.setHours(9, 0, 0, 0);
+
+            const callSent = await sendCallAlertIfEnabled(
+              vehicle.user_id, vehicle.id, 'street_cleaning',
+              isCleaningToday
+                ? `Street cleaning starts at 9 AM at ${vehicle.address}. Move your car now to avoid a 65 dollar ticket.`
+                : `Street cleaning is scheduled tomorrow at ${vehicle.address}. Move your car to avoid a 65 dollar ticket.`,
+              vehicle.address,
+              cleaningEnforcement,
+              chicagoTime
+            );
+            if (callSent) results.callAlertsSent++;
+          }
+        }
+
+        // Permit zone: use enforcement start time from schedule
+        if (vehicle.permit_zone) {
+          const enforcement = getEnforcementStartingSoon(vehicle.permit_restriction_schedule, chicagoTime);
+          if (enforcement) {
+            const callSent = await sendCallAlertIfEnabled(
+              vehicle.user_id, vehicle.id, 'permit_zone',
+              `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit rules are about to start. Check posted signs to avoid a 75 dollar ticket.`,
+              vehicle.address,
+              enforcement.enforcementStart,
+              chicagoTime
+            );
+            if (callSent) results.callAlertsSent++;
+          }
+        }
+
+        // DOT permit: enforcement at 7am on permit date (typical construction start)
+        if (vehicle.dot_permit_active) {
+          const permitStartDate = vehicle.dot_permit_start_date;
+          const permitType = vehicle.dot_permit_type || 'Street permit';
+
+          let dotEnforcement: Date | null = null;
+          if (permitStartDate) {
+            const isPermitToday = permitStartDate === today;
+            const isPermitTomorrow = permitStartDate === tomorrowStr;
+            if (isPermitToday || isPermitTomorrow) {
+              dotEnforcement = new Date(chicagoTime);
+              if (isPermitTomorrow) {
+                dotEnforcement.setDate(dotEnforcement.getDate() + 1);
+              }
+              dotEnforcement.setHours(7, 0, 0, 0); // Typical construction start
+            }
+          }
+
+          if (dotEnforcement) {
+            const callSent = await sendCallAlertIfEnabled(
+              vehicle.user_id, vehicle.id, 'dot_permit',
+              `A ${permitType.toLowerCase()} permit is active at ${vehicle.address}. Move your car to avoid towing.`,
+              vehicle.address,
+              dotEnforcement,
+              chicagoTime
+            );
+            if (callSent) results.callAlertsSent++;
           }
         }
 
