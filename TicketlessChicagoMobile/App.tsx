@@ -21,6 +21,7 @@ import AuthService, { AuthState } from './src/services/AuthService';
 import PushNotificationService from './src/services/PushNotificationService';
 import DeepLinkingService from './src/services/DeepLinkingService';
 import ApiClient from './src/utils/ApiClient';
+import AnalyticsService from './src/services/AnalyticsService';
 
 // Components
 import TabBar from './src/navigation/TabBar';
@@ -186,8 +187,20 @@ function App(): React.JSX.Element {
       // Defer non-critical services
       setTimeout(async () => {
         try {
+          // Initialize analytics early so it captures sessions
+          await AnalyticsService.initialize();
+          await AnalyticsService.logAppOpen();
+
           await PushNotificationService.initialize();
           if (AuthService.isAuthenticated()) {
+            const user = AuthService.getUser();
+            if (user) {
+              await AnalyticsService.setUserId(user.id);
+              await AnalyticsService.setUserProperties({
+                email_domain: user.email?.split('@')[1] || 'unknown',
+              });
+            }
+
             const pushEnabled = await PushNotificationService.isEnabled();
             if (pushEnabled) {
               await PushNotificationService.registerTokenWithBackend();
@@ -223,6 +236,13 @@ function App(): React.JSX.Element {
   const handleLoginComplete = async () => {
     await AsyncStorage.setItem(StorageKeys.HAS_SEEN_LOGIN, 'true');
     setHasSeenLogin(true);
+
+    // Track login/signup
+    const user = AuthService.getUser();
+    if (user) {
+      await AnalyticsService.setUserId(user.id);
+      await AnalyticsService.logLogin('magic_link');
+    }
 
     // Navigate to main app FIRST so the user sees immediate feedback
     if (navigationRef.current) {
@@ -262,6 +282,12 @@ function App(): React.JSX.Element {
         <NavigationContainer
         ref={navigationRef}
         linking={DeepLinkingService.getLinkingConfig()}
+        onStateChange={() => {
+          const currentRoute = navigationRef.current?.getCurrentRoute();
+          if (currentRoute?.name) {
+            AnalyticsService.logScreenView(currentRoute.name);
+          }
+        }}
         onReady={() => {
           // Initialize navigation refs for deep linking and push notifications
           // This is called when navigation container is ready, ensuring safe navigation
