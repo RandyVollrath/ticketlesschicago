@@ -19,6 +19,7 @@ import {
   ParkingEvidenceResult,
 } from '../../../lib/parking-evidence';
 import { getStreetViewEvidence, StreetViewResult, getStreetViewEvidenceWithAnalysis, StreetViewEvidencePackage } from '../../../lib/street-view-service';
+import { getOfficerIntelligence } from '../../../lib/contest-outcome-tracker';
 
 // Weather relevance by violation type
 // PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
@@ -993,6 +994,53 @@ INSTRUCTIONS: Apply these proven lessons to strengthen the letter. Do NOT cite t
       // Learnings table may not exist yet — continue without them
     }
 
+    // =====================================================================
+    // OFFICER INTELLIGENCE: Look up issuing officer's historical record
+    // Cross-references the officer badge from detected_tickets with hearing
+    // outcome data to determine the officer's ticket dismissal rate.
+    // =====================================================================
+    let officerIntelText = '';
+    try {
+      // Look up detected_ticket by ticket_number to get officer_badge
+      const { data: detectedTicket } = await supabase
+        .from('detected_tickets')
+        .select('officer_badge')
+        .eq('ticket_number', contest.ticket_number || '')
+        .limit(1)
+        .maybeSingle();
+
+      const officerBadge = detectedTicket?.officer_badge || null;
+
+      if (officerBadge) {
+        const officerIntel = await getOfficerIntelligence(supabase, officerBadge);
+
+        if (officerIntel?.hasData) {
+          const dismissalPct = Math.round((officerIntel.dismissalRate || 0) * 100);
+          officerIntelText = `
+=== ISSUING OFFICER INTELLIGENCE ===
+Officer Badge: ${officerBadge}
+Historical Record: ${officerIntel.totalCases} tickets contested in hearings
+Dismissal Rate: ${dismissalPct}% of this officer's tickets are dismissed when contested
+Tendency: ${officerIntel.tendency === 'lenient' ? 'FAVORABLE — This officer\'s tickets are dismissed more often than average' : officerIntel.tendency === 'strict' ? 'CHALLENGING — This officer\'s tickets are upheld more often than average' : 'MIXED — Average dismissal rate'}
+
+STRATEGY GUIDANCE: ${officerIntel.recommendation}
+
+INSTRUCTIONS:
+1. Use this intelligence to calibrate confidence and argument selection
+2. If dismissal rate is high (>55%), present arguments assertively — this officer's tickets are frequently overturned
+3. If dismissal rate is low (<35%), focus ONLY on the single strongest argument with the best evidence
+4. For mixed records, present a balanced case with multiple supporting points
+5. Do NOT mention the officer's dismissal rate or statistics in the letter itself
+6. Do NOT reference any intelligence analysis — use it only to guide writing strategy
+`;
+          console.log(`  Officer ${officerBadge}: ${dismissalPct}% dismissal rate (${officerIntel.totalCases} cases, ${officerIntel.tendency})`);
+        }
+      }
+    } catch (e) {
+      // Officer tables may not exist or officer not found — continue without
+      console.log('  Officer intelligence lookup skipped:', (e as Error).message);
+    }
+
     // Generate contest letter using Claude
     let contestLetter = '';
     if (anthropic) {
@@ -1198,7 +1246,7 @@ Generate a professional contest letter that:
 ${courtData.hasData && courtData.similarCases.length > 0 ? '\n9. May briefly mention that "similar circumstances" or "comparable violations in this area" have led to dismissals when appropriate' : ''}
 
 Use a formal letter format with proper salutation and closing.
-${learningsText}`
+${learningsText}${officerIntelText}`
             }
           ]
         });
@@ -1236,6 +1284,7 @@ ${learningsText}`
     }
     if (courtData.hasData) evidenceSources.push('court_data');
     if (streetCleaningSchedule) evidenceSources.push('street_cleaning_schedule');
+    if (officerIntelText) evidenceSources.push('officer_intelligence');
 
     // =====================================================================
     // LAYER 1: Post-Generation Self-Audit
