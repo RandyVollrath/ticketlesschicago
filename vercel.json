@@ -113,6 +113,9 @@
     },
     "pages/api/cron/notify-dot-permits.ts": {
       "maxDuration": 120
+    },
+    "pages/api/cron/contest-letter-learnings.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -227,6 +230,10 @@
     {
       "path": "/api/cron/notify-dot-permits",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/contest-letter-learnings",
+      "schedule": "0 6 * * 1"
     }
   ],
   "headers": [
