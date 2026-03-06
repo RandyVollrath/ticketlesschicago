@@ -802,8 +802,196 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
       }
     }
 
+    // =====================================================================
+    // LAYER 2: Evidence Gap Detection
+    // Compare what evidence we found vs what the contest kit says matters most.
+    // This catches silent failures (like broken schedule lookups) and identifies
+    // missing evidence the user could still provide.
+    // =====================================================================
+    const evidenceGaps: Array<{
+      evidenceId: string;
+      name: string;
+      impactScore: number;
+      status: 'found' | 'not_found' | 'error' | 'user_can_provide';
+      reason: string;
+    }> = [];
+
+    if (contestKit) {
+      const allKitEvidence = [
+        ...contestKit.evidence.required.map(e => ({ ...e, tier: 'required' as const })),
+        ...contestKit.evidence.recommended.map(e => ({ ...e, tier: 'recommended' as const })),
+        ...contestKit.evidence.optional.filter(e => e.impactScore >= 0.20).map(e => ({ ...e, tier: 'optional' as const })),
+      ];
+
+      for (const ev of allKitEvidence) {
+        let status: 'found' | 'not_found' | 'error' | 'user_can_provide' = 'not_found';
+        let reason = '';
+
+        switch (ev.id) {
+          case 'signage_photos':
+          case 'location_photos':
+            if (streetViewPackage?.hasImagery) {
+              status = 'found';
+              reason = 'Street View imagery available';
+            } else if (userEvidence.hasPhotos && userEvidence.photoTypes.includes(ev.id)) {
+              status = 'found';
+              reason = 'User-provided photos';
+            } else {
+              status = 'user_can_provide';
+              reason = 'No photos of signage/location. User could strengthen case by uploading photos.';
+            }
+            break;
+
+          case 'schedule_verification':
+            if (streetCleaningVerification.checked && streetCleaningVerification.ward) {
+              status = 'found';
+              reason = streetCleaningVerification.message;
+            } else if (streetCleaningVerification.checked) {
+              status = 'error';
+              reason = 'Schedule check ran but could not determine ward/section — geocoding may have failed.';
+            } else {
+              status = 'not_found';
+              reason = 'Schedule verification did not run (not a street cleaning violation or missing ticket date).';
+            }
+            break;
+
+          case 'weather_records':
+            if (weatherData?.hasAdverseWeather) {
+              status = 'found';
+              reason = `Adverse weather found: ${weatherData.weatherDescription}`;
+            } else if (weatherData) {
+              status = 'found';
+              reason = 'Weather checked but no adverse conditions found.';
+            } else {
+              status = 'not_found';
+              reason = 'Weather data not retrieved.';
+            }
+            break;
+
+          case 'gps_departure_proof':
+            if (parkingEvidence?.hasEvidence && parkingEvidence.departureProof) {
+              status = 'found';
+              reason = `GPS departure proof: left ${parkingEvidence.departureProof.minutesBeforeTicket} min before ticket`;
+            } else if (parkingEvidence?.hasEvidence) {
+              status = 'found';
+              reason = 'GPS parking evidence available (no departure proof).';
+            } else {
+              status = 'not_found';
+              reason = 'No GPS parking/departure data from mobile app.';
+            }
+            break;
+
+          case 'timestamp_evidence':
+            if (parkingEvidence?.departureProof) {
+              status = 'found';
+              reason = 'GPS timestamps serve as timestamped evidence.';
+            } else {
+              status = 'user_can_provide';
+              reason = 'No timestamped evidence. User could provide parking app receipts or timestamped photos.';
+            }
+            break;
+
+          case 'meter_receipt':
+          case 'parking_receipt':
+            if (userEvidence.hasReceipts) {
+              status = 'found';
+              reason = 'Receipt evidence provided.';
+            } else {
+              status = 'user_can_provide';
+              reason = 'No receipt evidence. User could upload parking meter or payment receipts.';
+            }
+            break;
+
+          case 'city_sticker_receipt':
+            if (cityStickerReceipt) {
+              status = 'found';
+              reason = `City sticker receipt found: purchased ${cityStickerReceipt.purchase_date}`;
+            } else {
+              status = 'user_can_provide';
+              reason = 'No city sticker receipt on file.';
+            }
+            break;
+
+          case 'registration_renewal':
+            if (registrationReceipt) {
+              status = 'found';
+              reason = `Registration receipt found: ${registrationReceipt.receipt_type}`;
+            } else {
+              status = 'user_can_provide';
+              reason = 'No registration receipt on file.';
+            }
+            break;
+
+          default:
+            // Generic check
+            if (userEvidence.hasDocs && userEvidence.docTypes.includes(ev.id)) {
+              status = 'found';
+              reason = 'Documentation provided.';
+            } else {
+              status = 'user_can_provide';
+              reason = `${ev.name} not provided. This evidence has ${Math.round(ev.impactScore * 100)}% impact on win probability.`;
+            }
+        }
+
+        evidenceGaps.push({
+          evidenceId: ev.id,
+          name: ev.name,
+          impactScore: ev.impactScore,
+          status,
+          reason,
+        });
+      }
+    }
+
+    const missingHighImpactEvidence = evidenceGaps.filter(
+      g => (g.status === 'not_found' || g.status === 'error') && g.impactScore >= 0.20
+    );
+    const userCanProvide = evidenceGaps.filter(g => g.status === 'user_can_provide' && g.impactScore >= 0.15);
+
     // Generate evidence checklist (after all evidence lookups)
     const evidenceChecklist = generateEvidenceChecklist(contest, contestGrounds, ordinanceInfo, parkingEvidence);
+
+    // =====================================================================
+    // LAYER 3 (injection): Fetch learnings from past outcomes
+    // These are insights derived from analyzing won/lost cases, stored by
+    // the weekly contest-letter-learnings cron job.
+    // =====================================================================
+    let learningsText = '';
+    try {
+      // Fetch violation-specific learnings AND cross-cutting (_ALL_) learnings
+      const [specificResult, crossCuttingResult] = await Promise.all([
+        supabase
+          .from('contest_learnings')
+          .select('learning_type, learning, sample_size, win_rate_impact')
+          .eq('violation_code', contest.violation_code || '')
+          .eq('is_active', true)
+          .order('win_rate_impact', { ascending: false })
+          .limit(4),
+        supabase
+          .from('contest_learnings')
+          .select('learning_type, learning, sample_size, win_rate_impact')
+          .eq('violation_code', '_ALL_')
+          .eq('is_active', true)
+          .order('win_rate_impact', { ascending: false })
+          .limit(2),
+      ]);
+
+      const allLearnings = [
+        ...(specificResult.data || []),
+        ...(crossCuttingResult.data || []),
+      ].slice(0, 5);
+
+      if (allLearnings.length > 0) {
+        learningsText = `\n=== LESSONS FROM PAST OUTCOMES (${allLearnings.length} insights) ===
+These insights were derived from analyzing real contest outcomes for this violation type:
+${allLearnings.map(l => `- [${l.learning_type.toUpperCase()}] ${l.learning} (based on ${l.sample_size} cases${l.win_rate_impact ? `, ${l.win_rate_impact > 0 ? '+' : ''}${l.win_rate_impact}% win rate impact` : ''})`).join('\n')}
+
+INSTRUCTIONS: Apply these proven lessons to strengthen the letter. Do NOT cite these insights directly — use them to guide your writing strategy.
+`;
+      }
+    } catch (e) {
+      // Learnings table may not exist yet — continue without them
+    }
 
     // Generate contest letter using Claude
     let contestLetter = '';
@@ -1009,7 +1197,8 @@ Generate a professional contest letter that:
 8. ${courtData.hasData ? 'Writes like an experienced attorney who knows what works - confident but never citing percentages or internal data' : 'Uses standard legal contest language'}
 ${courtData.hasData && courtData.similarCases.length > 0 ? '\n9. May briefly mention that "similar circumstances" or "comparable violations in this area" have led to dismissals when appropriate' : ''}
 
-Use a formal letter format with proper salutation and closing.`
+Use a formal letter format with proper salutation and closing.
+${learningsText}`
             }
           ]
         });
@@ -1048,11 +1237,165 @@ Use a formal letter format with proper salutation and closing.`
     if (courtData.hasData) evidenceSources.push('court_data');
     if (streetCleaningSchedule) evidenceSources.push('street_cleaning_schedule');
 
-    // Update contest record with letter and evidence data
-    // Note: Only columns that exist on ticket_contests table are included.
-    // Kit tracking fields (kit_used, argument_used, etc.) and street_view_*
-    // columns are NOT on this table — they belong to contest_outcomes and
-    // detected_tickets respectively.
+    // =====================================================================
+    // LAYER 1: Post-Generation Self-Audit
+    // Run an adversarial review of the generated letter against the evidence
+    // we provided. Uses Haiku for speed/cost ($0.001 per audit).
+    // If critical issues are found, regenerate the letter once with feedback.
+    // =====================================================================
+    let letterAudit: {
+      overallScore: number;
+      issues: Array<{
+        severity: 'critical' | 'warning' | 'suggestion';
+        category: string;
+        description: string;
+        fix: string;
+      }>;
+      unusedEvidence: string[];
+      strengthScore: number;
+      completenessScore: number;
+      wasRegenerated: boolean;
+    } = {
+      overallScore: 0,
+      issues: [],
+      unusedEvidence: [],
+      strengthScore: 0,
+      completenessScore: 0,
+      wasRegenerated: false,
+    };
+
+    if (anthropic && contestLetter) {
+      try {
+        // Build a summary of all evidence that was available
+        const availableEvidenceSummary: string[] = [];
+        if (parkingEvidence?.hasEvidence) {
+          availableEvidenceSummary.push(`GPS Parking Evidence: departure ${parkingEvidence.departureProof ? `at ${parkingEvidence.departureProof.departureTimeFormatted}, ${parkingEvidence.departureProof.minutesBeforeTicket} min before ticket` : 'data available'}`);
+        }
+        if (weatherData?.hasAdverseWeather) {
+          availableEvidenceSummary.push(`Weather: ${weatherData.weatherDescription} (defense relevant: ${weatherData.defenseReason})`);
+        }
+        if (streetCleaningVerification.checked) {
+          availableEvidenceSummary.push(`Schedule Verification: ${streetCleaningVerification.message}`);
+        }
+        if (streetViewPackage?.hasImagery) {
+          availableEvidenceSummary.push(`Street View: ${streetViewPackage.analyses.length} angles analyzed. ${streetViewPackage.hasSignageIssue ? 'SIGNAGE ISSUE FOUND.' : 'No signage issues found.'} Summary: ${streetViewPackage.analysisSummary}`);
+        }
+        if (cityStickerReceipt) {
+          availableEvidenceSummary.push(`City Sticker Receipt: purchased ${cityStickerReceipt.purchase_date}`);
+        }
+        if (registrationReceipt) {
+          availableEvidenceSummary.push(`Registration Receipt: ${registrationReceipt.receipt_type}, purchased ${registrationReceipt.purchase_date}`);
+        }
+        if (courtData.hasData) {
+          availableEvidenceSummary.push(`FOIA Court Data: ${courtData.totalDismissed}/${courtData.totalContested} dismissed (${Math.round(courtData.winRate)}% win rate)`);
+        }
+        if (kitEvaluation) {
+          availableEvidenceSummary.push(`Contest Kit: recommended "${kitEvaluation.selectedArgument.name}" (${Math.round(kitEvaluation.selectedArgument.winRate * 100)}% win rate)`);
+        }
+
+        const auditMessage = await anthropic.messages.create({
+          model: 'claude-haiku-4-20250414',
+          max_tokens: 1024,
+          messages: [
+            {
+              role: 'user',
+              content: `You are reviewing a parking ticket contest letter for quality and completeness. Analyze the letter against the available evidence and return a JSON assessment.
+
+LETTER TO REVIEW:
+${contestLetter}
+
+EVIDENCE THAT WAS AVAILABLE TO THE LETTER WRITER:
+${availableEvidenceSummary.length > 0 ? availableEvidenceSummary.map((e, i) => `${i + 1}. ${e}`).join('\n') : 'No automated evidence was gathered.'}
+
+TICKET DETAILS:
+- Violation: ${contest.violation_description || 'N/A'} (${contest.violation_code || 'N/A'})
+- Date: ${contest.ticket_date || 'N/A'}
+- Location: ${contest.ticket_location || 'N/A'}
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "overallScore": <0-100>,
+  "issues": [
+    {"severity": "critical|warning|suggestion", "category": "unused_evidence|unsupported_claim|missing_defense|factual_error|tone|structure", "description": "<what's wrong>", "fix": "<how to fix>"}
+  ],
+  "unusedEvidence": ["<evidence type that was available but not mentioned in the letter>"],
+  "strengthScore": <0-100 how compelling the arguments are>,
+  "completenessScore": <0-100 how much available evidence was used>
+}`
+            }
+          ]
+        });
+
+        const auditContent = auditMessage.content[0];
+        if (auditContent.type === 'text') {
+          try {
+            // Extract JSON from the response (handle markdown code blocks)
+            let jsonText = auditContent.text.trim();
+            const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) jsonText = jsonMatch[1].trim();
+
+            const auditResult = JSON.parse(jsonText);
+            letterAudit = {
+              overallScore: auditResult.overallScore || 0,
+              issues: (auditResult.issues || []).slice(0, 10),
+              unusedEvidence: auditResult.unusedEvidence || [],
+              strengthScore: auditResult.strengthScore || 0,
+              completenessScore: auditResult.completenessScore || 0,
+              wasRegenerated: false,
+            };
+
+            // Auto-retry: If there are critical issues AND unused evidence, regenerate once
+            const criticalIssues = letterAudit.issues.filter(i => i.severity === 'critical');
+            if (criticalIssues.length > 0 && letterAudit.completenessScore < 60) {
+              console.log(`Letter audit found ${criticalIssues.length} critical issues (completeness: ${letterAudit.completenessScore}%). Regenerating...`);
+
+              const retryMessage = await anthropic.messages.create({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 2048,
+                messages: [
+                  {
+                    role: 'user',
+                    content: `You previously generated a contest letter but a quality review found critical issues. Please regenerate the letter fixing these problems:
+
+CRITICAL ISSUES FOUND:
+${criticalIssues.map(i => `- ${i.description}: ${i.fix}`).join('\n')}
+
+UNUSED EVIDENCE (must include in revised letter):
+${letterAudit.unusedEvidence.map(e => `- ${e}`).join('\n')}
+
+ORIGINAL LETTER:
+${contestLetter}
+
+AVAILABLE EVIDENCE SUMMARY:
+${availableEvidenceSummary.map((e, i) => `${i + 1}. ${e}`).join('\n')}
+
+TICKET: ${contest.violation_description} (${contest.violation_code}) on ${contest.ticket_date} at ${contest.ticket_location}
+
+Generate an improved version of the letter that addresses all critical issues and incorporates all available evidence. Keep the same formal letter format.`
+                  }
+                ]
+              });
+
+              const retryContent = retryMessage.content[0];
+              if (retryContent.type === 'text') {
+                contestLetter = retryContent.text;
+                letterAudit.wasRegenerated = true;
+                // Bump scores since we addressed the issues
+                letterAudit.overallScore = Math.min(100, letterAudit.overallScore + 20);
+                letterAudit.completenessScore = Math.min(100, letterAudit.completenessScore + 25);
+              }
+            }
+          } catch (parseErr) {
+            console.error('Failed to parse audit response:', parseErr);
+          }
+        }
+      } catch (auditErr) {
+        console.error('Letter audit failed (non-blocking):', auditErr);
+      }
+    }
+
+    // Update contest record with letter, evidence data, and audit results
+    // Primary update: columns that always exist on ticket_contests
     const { error: updateError } = await supabase
       .from('ticket_contests')
       .update({
@@ -1062,6 +1405,32 @@ Use a formal letter format with proper salutation and closing.`
         status: 'pending_review',
       })
       .eq('id', contestId);
+
+    // Secondary update: audit/gap columns (may not exist yet if migration not applied)
+    // These are non-blocking — letter generation succeeds even without these columns.
+    try {
+      await supabase
+        .from('ticket_contests')
+        .update({
+          letter_audit: letterAudit,
+          evidence_gaps: evidenceGaps,
+          letter_quality_score: letterAudit.overallScore || null,
+          evidence_sources: evidenceSources,
+          kit_metadata: kitEvaluation ? {
+            kit_violation_code: contest.violation_code,
+            selected_argument: kitEvaluation.selectedArgument.id,
+            selected_argument_name: kitEvaluation.selectedArgument.name,
+            backup_argument: kitEvaluation.backupArgument?.id || null,
+            estimated_win_rate: Math.round(kitEvaluation.estimatedWinRate * 100),
+            weather_defense_used: kitEvaluation.weatherDefense.applicable,
+            confidence: Math.round(kitEvaluation.confidence * 100),
+          } : null,
+        })
+        .eq('id', contestId);
+    } catch (e) {
+      // Audit columns may not exist yet — this is expected before migration
+      console.log('Audit fields not saved (migration may not be applied yet):', (e as any)?.message);
+    }
 
     if (updateError) {
       console.error('Update error:', updateError);
@@ -1188,6 +1557,29 @@ Use a formal letter format with proper salutation and closing.`
       } : { hasData: false },
       // All evidence sources used
       evidenceSources,
+      // Letter quality audit results (Layer 1)
+      letterAudit: {
+        overallScore: letterAudit.overallScore,
+        strengthScore: letterAudit.strengthScore,
+        completenessScore: letterAudit.completenessScore,
+        issueCount: letterAudit.issues.length,
+        criticalIssueCount: letterAudit.issues.filter(i => i.severity === 'critical').length,
+        wasRegenerated: letterAudit.wasRegenerated,
+        issues: letterAudit.issues,
+      },
+      // Evidence gap analysis (Layer 2)
+      evidenceGaps: {
+        totalChecked: evidenceGaps.length,
+        found: evidenceGaps.filter(g => g.status === 'found').length,
+        missing: missingHighImpactEvidence.length,
+        userCanProvide: userCanProvide.length,
+        gaps: evidenceGaps,
+        suggestions: userCanProvide.map(g => ({
+          evidence: g.name,
+          impact: Math.round(g.impactScore * 100),
+          reason: g.reason,
+        })),
+      },
     });
 
   } catch (error: any) {
