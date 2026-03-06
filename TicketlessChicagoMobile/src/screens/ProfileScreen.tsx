@@ -708,8 +708,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <View style={styles.settingRow}>
                   <MaterialCommunityIcons name="camera" size={20} color={colors.info} style={styles.rowIcon} />
                   <View style={styles.settingInfo}>
-                    <Text style={styles.settingTitle}>Camera Alerts (BETA)</Text>
-                    <Text style={styles.settingSubtitle}>Loading saved camera alert setting...</Text>
+                    <Text style={styles.settingTitle}>Driving Camera Alerts</Text>
+                    <Text style={styles.settingSubtitle}>Loading camera alert settings...</Text>
                   </View>
                   <ActivityIndicator size="small" color={colors.primary} />
                 </View>
@@ -717,8 +717,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <SettingRow
                   icon="camera"
                   iconColor={colors.info}
-                  title="Camera Alerts (BETA)"
-                  subtitle="Audio alerts when approaching speed & red light cameras while driving"
+                  title="Driving Camera Alerts"
+                  subtitle="Spoken audio warnings when you approach speed or red-light cameras while driving"
                   value={cameraAlertsEnabled}
                   onValueChange={toggleCameraAlerts}
                 />

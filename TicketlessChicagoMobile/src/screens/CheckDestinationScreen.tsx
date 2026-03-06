@@ -142,7 +142,13 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
       ]);
 
       if (!geoRes.success || !geoRes.data?.coordinates) {
-        setErrorMsg('Could not find that address in Chicago. Try including the street number and name.');
+        // Distinguish between "not found" and "no street cleaning data"
+        const apiMsg = geoRes.data?.message || geoRes.data?.error || '';
+        if (apiMsg.toLowerCase().includes('street cleaning') || apiMsg.toLowerCase().includes('not available')) {
+          setErrorMsg('This address is in an area without scheduled street cleaning (e.g. private property, parking garages, or certain downtown blocks). You can still park here — just no street cleaning to worry about.');
+        } else {
+          setErrorMsg('Could not find that address in Chicago. Try including the street number and name.');
+        }
         setIsChecking(false);
         return;
       }

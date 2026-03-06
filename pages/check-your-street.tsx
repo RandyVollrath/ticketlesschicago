@@ -85,7 +85,12 @@ export default function CheckYourStreet() {
       const data = await sectionResponse.json()
 
       if (!sectionResponse.ok) {
-        setError(data.message || data.error || 'Address not found')
+        const msg = data.message || data.error || '';
+        if (msg.toLowerCase().includes('street cleaning') || sectionResponse.status === 404) {
+          setError('No street cleaning schedule found for this address. This area may not have scheduled street cleaning (e.g. parking garages, private property, or certain downtown blocks).')
+        } else {
+          setError(msg || 'Could not find that address. Try including the street number and name.')
+        }
         return
       }
 
