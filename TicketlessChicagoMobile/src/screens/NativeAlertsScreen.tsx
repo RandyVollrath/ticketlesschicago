@@ -749,26 +749,28 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Upgrade CTA */}
-        <View style={[styles.card, { borderColor: '#F97316', borderWidth: 1 }]}>
-          <View style={styles.cardBody}>
-            <Text style={[styles.cardTitle, { marginBottom: 4 }]}>Upgrade to Autopilot</Text>
-            <Text style={[styles.bodyText, { marginBottom: 4 }]}>$49/year</Text>
-            <Text style={styles.mutedText}>
-              We monitor your plate twice a week and mail contest letters automatically. 54% average dismissal rate.
-            </Text>
-            <TouchableOpacity
-              style={[styles.primaryButton, styles.upgradeButton]}
-              onPress={handleUpgrade}
-              disabled={checkoutLoading}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryButtonText}>
-                {checkoutLoading ? 'Loading...' : 'Upgrade Now'}
+        {/* Upgrade CTA — hidden on iOS to comply with App Store Guideline 3.1.1 */}
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.card, { borderColor: '#F97316', borderWidth: 1 }]}>
+            <View style={styles.cardBody}>
+              <Text style={[styles.cardTitle, { marginBottom: 4 }]}>Upgrade to Autopilot</Text>
+              <Text style={[styles.bodyText, { marginBottom: 4 }]}>$49/year</Text>
+              <Text style={styles.mutedText}>
+                We monitor your plate twice a week and mail contest letters automatically. 54% average dismissal rate.
               </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.primaryButton, styles.upgradeButton]}
+                onPress={handleUpgrade}
+                disabled={checkoutLoading}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {checkoutLoading ? 'Loading...' : 'Upgrade Now'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
 
         <Text style={styles.sectionSubtitle}>
           Complete your profile in the Settings tab to ensure alerts work correctly.
@@ -898,8 +900,8 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   function renderSettings() {
     return (
       <View>
-        {/* Upgrade banner for free users */}
-        {!isPaidUser && (
+        {/* Upgrade banner for free users — hidden on iOS to comply with App Store Guideline 3.1.1 */}
+        {!isPaidUser && Platform.OS !== 'ios' && (
           <View style={[styles.card, { backgroundColor: '#FFF7ED', borderColor: '#F97316', borderWidth: 1 }]}>
             <View style={styles.cardBody}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1184,17 +1186,21 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {!isPaidUser && (
             <View style={{ paddingVertical: 8 }}>
               <Text style={styles.mutedText}>
-                Upgrade to Autopilot to set your mailing address for contest letters.
+                {Platform.OS === 'ios'
+                  ? 'Available on Autopilot plan. Visit autopilotamerica.com to learn more.'
+                  : 'Upgrade to Autopilot to set your mailing address for contest letters.'}
               </Text>
-              <TouchableOpacity
-                style={[styles.primaryButton, styles.upgradeButton, { marginTop: 12 }]}
-                onPress={handleUpgrade}
-                disabled={checkoutLoading}
-              >
-                <Text style={styles.primaryButtonText}>
-                  {checkoutLoading ? 'Loading...' : 'Upgrade — $49/year'}
-                </Text>
-              </TouchableOpacity>
+              {Platform.OS !== 'ios' && (
+                <TouchableOpacity
+                  style={[styles.primaryButton, styles.upgradeButton, { marginTop: 12 }]}
+                  onPress={handleUpgrade}
+                  disabled={checkoutLoading}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {checkoutLoading ? 'Loading...' : 'Upgrade — $49/year'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </SettingsCard>
@@ -1387,17 +1393,21 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           ) : (
             <View style={{ paddingVertical: 8 }}>
               <Text style={styles.mutedText}>
-                Upgrade to Autopilot for automatic ticket detection and contesting with 54% average dismissal rate.
+                {Platform.OS === 'ios'
+                  ? 'Available on Autopilot plan. Visit autopilotamerica.com to learn more.'
+                  : 'Upgrade to Autopilot for automatic ticket detection and contesting with 54% average dismissal rate.'}
               </Text>
-              <TouchableOpacity
-                style={[styles.primaryButton, styles.upgradeButton, { marginTop: 12 }]}
-                onPress={handleUpgrade}
-                disabled={checkoutLoading}
-              >
-                <Text style={styles.primaryButtonText}>
-                  {checkoutLoading ? 'Loading...' : 'Upgrade — $49/year'}
-                </Text>
-              </TouchableOpacity>
+              {Platform.OS !== 'ios' && (
+                <TouchableOpacity
+                  style={[styles.primaryButton, styles.upgradeButton, { marginTop: 12 }]}
+                  onPress={handleUpgrade}
+                  disabled={checkoutLoading}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {checkoutLoading ? 'Loading...' : 'Upgrade — $49/year'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </SettingsCard>
