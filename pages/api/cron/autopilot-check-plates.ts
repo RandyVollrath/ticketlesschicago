@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../../../lib/contest-kits/evidence-guidance';
 import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
+import { pushService } from '../../../lib/push-service';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -635,6 +636,36 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         if (sent) {
           emailsSent++;
         }
+      }
+
+      // Send push notification for evidence gathering
+      // Uses the evidence guidance to create a short, actionable notification
+      try {
+        const guidance = getEvidenceGuidance(violationType);
+        const daysRemaining = Math.max(0, 21 - Math.round(
+          (Date.now() - new Date(ticket.issue_date).getTime()) / (1000 * 60 * 60 * 24)
+        ));
+        const topQuestion = guidance.questions?.[0];
+        const pushBody = topQuestion
+          ? `${daysRemaining} days to contest. ${topQuestion.question} Reply to the email we sent with any evidence.`
+          : `${daysRemaining} days to contest. Check your email for evidence we need to build your case.`;
+
+        await pushService.sendToUser(plate.user_id, {
+          title: `New Ticket Detected: $${amount.toFixed(0)} ${ticket.violation_description || violationType.replace(/_/g, ' ')}`,
+          body: pushBody,
+          data: {
+            type: 'ticket_detected',
+            ticketId: newTicket.id,
+            ticketNumber: ticket.ticket_number,
+            violationType,
+            daysRemaining: String(daysRemaining),
+          },
+          category: 'evidence_request',
+          userId: plate.user_id,
+        });
+      } catch (pushErr) {
+        // Push failure is non-critical — email already sent
+        console.log(`  Push notification failed for ${ticket.ticket_number}:`, (pushErr as Error).message);
       }
 
       // Log to audit

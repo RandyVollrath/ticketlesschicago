@@ -141,14 +141,13 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         ).catch(() => null),
       ]);
 
-      if (!geoRes.success || !geoRes.data?.coordinates) {
-        // Distinguish between "not found" and "no street cleaning data"
-        const apiMsg = geoRes.data?.message || geoRes.data?.error || '';
-        if (apiMsg.toLowerCase().includes('street cleaning') || apiMsg.toLowerCase().includes('not available')) {
-          setErrorMsg('This address is in an area without scheduled street cleaning (e.g. private property, parking garages, or certain downtown blocks). You can still park here — just no street cleaning to worry about.');
-        } else {
-          setErrorMsg('Could not find that address in Chicago. Try including the street number and name.');
-        }
+      // Check if geocoding succeeded but street cleaning data is missing
+      // (e.g. parking garages, private property, certain downtown blocks)
+      const geocodingSucceeded = geoRes.data?.geocoding_successful && geoRes.data?.coordinates;
+
+      if (!geoRes.success && !geocodingSucceeded) {
+        // True failure — address not found at all
+        setErrorMsg('Could not find that address in Chicago. Try including the street number and name.');
         setIsChecking(false);
         return;
       }

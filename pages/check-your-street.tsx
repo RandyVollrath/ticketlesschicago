@@ -85,11 +85,18 @@ export default function CheckYourStreet() {
       const data = await sectionResponse.json()
 
       if (!sectionResponse.ok) {
-        const msg = data.message || data.error || '';
-        if (msg.toLowerCase().includes('street cleaning') || sectionResponse.status === 404) {
-          setError('No street cleaning schedule found for this address. This area may not have scheduled street cleaning (e.g. parking garages, private property, or certain downtown blocks).')
+        // If geocoding succeeded but no street cleaning data, still show partial results
+        if (data.geocoding_successful && data.coordinates) {
+          // Show what we have — no street cleaning but map + other info still useful
+          setSearchResult({
+            ...data,
+            ward: null,
+            section: null,
+            nextCleaningDate: null,
+            noStreetCleaning: true,
+          })
         } else {
-          setError(msg || 'Could not find that address. Try including the street number and name.')
+          setError(data.message || data.error || 'Could not find that address. Try including the street number and name.')
         }
         return
       }
@@ -627,10 +634,10 @@ export default function CheckYourStreet() {
                 letterSpacing: '0.1em',
                 fontWeight: '600'
               }}>
-                Next Street Cleaning
+                {searchResult.noStreetCleaning ? 'Street Cleaning' : 'Next Street Cleaning'}
               </div>
               <div style={{
-                fontSize: '42px',
+                fontSize: searchResult.noStreetCleaning ? '28px' : '42px',
                 fontWeight: '700',
                 color: COLORS.graphite,
                 marginBottom: '16px',
@@ -638,8 +645,16 @@ export default function CheckYourStreet() {
                 lineHeight: '1.1',
                 fontFamily: '"Space Grotesk", sans-serif'
               }}>
-                {formatDate(searchResult.nextCleaningDate)}
+                {searchResult.noStreetCleaning
+                  ? 'Not applicable at this address'
+                  : formatDate(searchResult.nextCleaningDate)}
               </div>
+              {searchResult.noStreetCleaning && (
+                <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '8px' }}>
+                  This area may not have scheduled street cleaning (e.g. parking garages, private property, or certain downtown blocks).
+                  Other restrictions like permit zones, snow bans, and winter bans may still apply.
+                </div>
+              )}
               {searchResult.nextCleaningDate && (
                 <div style={{
                   display: 'inline-block',

@@ -267,9 +267,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       console.log('No match found:', searchValue, coordinates);
       
-      return res.status(404).json({ 
+      // Return coordinates so the client can still show a map and check other restrictions
+      // (permit zones, winter bans, snow routes, etc.) even without street cleaning data
+      return res.status(404).json({
         error: 'Street cleaning information not available for this location',
         message: `No street cleaning schedule found for this location. This could mean the address is in an area where street cleaning doesn't apply (such as private property, parks, or certain downtown areas), is located in a boundary area between sections, or is outside our coverage area. Our database covers ${wardCoverage} with detailed section boundaries.`,
+        coordinates: coordinates,
+        address: searchValue,
+        geocoding_successful: true,
         debug: {
           coordinates: coordinates,
           postgis_attempted: true,
