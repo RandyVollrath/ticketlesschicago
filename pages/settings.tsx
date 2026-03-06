@@ -919,6 +919,7 @@ function SettingsPageInner() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
   const [phoneCallNotifications, setPhoneCallNotifications] = useState(false);
+  const prevPhoneRef = useRef<string>(''); // Track previous phone value for auto-enable SMS
   const [streetCleaningAlerts, setStreetCleaningAlerts] = useState(true);
   const [snowBanAlerts, setSnowBanAlerts] = useState(true);
   const [renewalReminders, setRenewalReminders] = useState(true);
@@ -1094,7 +1095,9 @@ function SettingsPageInner() {
       if (profileData) {
         setFirstName(profileData.first_name || '');
         setLastName(profileData.last_name || '');
-        setPhone(profileData.phone || profileData.phone_number || '');
+        const loadedPhone = profileData.phone || profileData.phone_number || '';
+        setPhone(loadedPhone);
+        prevPhoneRef.current = loadedPhone; // Track initial phone for auto-enable SMS
         setHomeAddress(profileData.street_address || profileData.home_address_full || '');
         // Parse ward from home_address_ward if available
         if (profileData.home_address_ward) {
@@ -1416,6 +1419,17 @@ function SettingsPageInner() {
       streetCleaningAlerts, snowBanAlerts, renewalReminders, dotPermitAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference, autoSave]);
+
+  // Auto-enable SMS when phone number is first entered
+  useEffect(() => {
+    if (initialLoadRef.current) return; // Don't trigger during initial load
+    const hadPhone = prevPhoneRef.current.trim().length > 0;
+    const hasPhone = phone.trim().length > 0;
+    if (!hadPhone && hasPhone && !smsNotifications) {
+      setSmsNotifications(true);
+    }
+    prevPhoneRef.current = phone;
+  }, [phone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleNotificationDay = (day: number) => {
     if (notificationDays.includes(day)) {
@@ -2388,29 +2402,29 @@ function SettingsPageInner() {
           greyed={!isPaidUser}
           upgradeContent={!isPaidUser ? (
             <div style={{
-              backgroundColor: '#FFF7ED',
-              border: `1px solid ${COLORS.highlight}`,
+              backgroundColor: '#EFF6FF',
+              border: '1px solid #BFDBFE',
               borderRadius: 8,
               padding: 16,
             }}>
-              <p style={{ margin: 0, fontSize: 14, color: '#9A3412' }}>
-                <strong>Upgrade to Autopilot - $49/year</strong>
+              <p style={{ margin: 0, fontSize: 14, color: '#1E3A5F' }}>
+                <strong>Upgrade to Autopilot &mdash; $49/year</strong>
               </p>
-              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#9A3412' }}>
+              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#475569' }}>
                 Automatic ticket detection and contesting with 54% average dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
               </p>
               <Link href="/get-started" style={{
                 display: 'inline-block',
                 marginTop: 12,
                 padding: '10px 20px',
-                backgroundColor: COLORS.highlight,
+                backgroundColor: '#2563EB',
                 color: '#fff',
                 borderRadius: 6,
                 fontSize: 14,
                 fontWeight: 600,
                 textDecoration: 'none',
               }}>
-                Upgrade Now - $49/year
+                Upgrade &mdash; $49/year
               </Link>
             </div>
           ) : undefined}
@@ -2620,8 +2634,28 @@ function SettingsPageInner() {
           </div>
         </Card>
 
-        {/* Notification Preferences */}
-        <Card title="Notification Preferences">
+        {/* How You Receive Alerts */}
+        <Card title="How You Receive Alerts">
+          {/* Push notifications — always on */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+            paddingBottom: 16,
+            borderBottom: `1px solid ${COLORS.border}`,
+          }}>
+            <div>
+              <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.textMuted }}>
+                Push notifications
+              </h4>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
+                Always enabled in the mobile app
+              </p>
+            </div>
+            <Toggle checked={true} onChange={() => {}} disabled />
+          </div>
+
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -2654,7 +2688,7 @@ function SettingsPageInner() {
                 SMS notifications
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                Receive alerts via text message
+                {phone ? 'Receive alerts via text message' : 'Add a phone number above to enable'}
               </p>
             </div>
             <Toggle checked={smsNotifications} onChange={setSmsNotifications} disabled={!phone} />
@@ -2664,21 +2698,21 @@ function SettingsPageInner() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 16,
-            paddingBottom: 16,
-            borderBottom: `1px solid ${COLORS.border}`,
           }}>
             <div>
               <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
                 Phone call alerts
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                Receive automated voice call reminders
+                {phone ? 'Receive automated voice call reminders' : 'Add a phone number above to enable'}
               </p>
             </div>
             <Toggle checked={phoneCallNotifications} onChange={setPhoneCallNotifications} disabled={!phone} />
           </div>
+        </Card>
 
+        {/* What You Get Alerted About */}
+        <Card title="What You Get Alerted About">
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -2800,7 +2834,9 @@ function SettingsPageInner() {
                 Renewal reminders
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                Reminders for city sticker, plates, and emissions
+                City sticker, plates, and emissions &mdash; {(!cityStickerExpiry && !licensePlateExpiry && !emissionsDate)
+                  ? 'enter your expiry dates below for reminders to work'
+                  : 'based on your expiry dates below'}
               </p>
             </div>
             <Toggle checked={renewalReminders} onChange={setRenewalReminders} />

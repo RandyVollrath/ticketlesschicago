@@ -721,7 +721,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         const permitZone = result.rawApiData?.permitZone?.zoneName;
         const zoneLine = permitZone ? `\nPermit zone: ${permitZone}` : '';
         const accuracyInfo = coords.accuracy
-          ? ` (accuracy: ${coords.accuracy.toFixed(0)}m)`
+          ? ` (within ~${coords.accuracy.toFixed(0)} meters)`
           : '';
         Alert.alert('All Clear!', `No parking restrictions at ${result.address}${accuracyInfo}${zoneLine}`);
       }
@@ -1644,7 +1644,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               { backgroundColor: LocationService.getAccuracyDescription(locationAccuracy).color }
             ]} />
             <Text style={styles.accuracyText}>
-              {LocationService.getAccuracyDescription(locationAccuracy).label} ({locationAccuracy.toFixed(0)}m)
+              GPS {LocationService.getAccuracyDescription(locationAccuracy).label.toLowerCase()} (within ~{locationAccuracy.toFixed(0)} meters)
             </Text>
           </View>
         )}
