@@ -255,7 +255,8 @@ export async function checkMeteredParking(
     // address numbers are generally assigned on the side the meters are on.
     //
     // If the user is across the street from the metered side, we should NOT warn.
-    // We approximate this by requiring parity match when we have both numbers.
+    // Meters only exist on one side — if parity doesn't match, user is on the
+    // non-metered side and should not get meter notifications.
     let candidateMeters = meters;
     if (parsed.number) {
       const userParity = parsed.number % 2;
@@ -272,10 +273,12 @@ export async function checkMeteredParking(
         );
         candidateMeters = parityMatched;
       } else {
+        // All meters are on the opposite side of the street — user is NOT in a metered zone
         console.log(
           `[metered-parking] Parity filter: user ${parsed.number} (${userParity ? 'odd' : 'even'}) ` +
-            `kept 0/${meters.length} candidates; falling back to unfiltered meters`,
+            `is on the opposite side of the street from ${meters.length} meter(s); not in metered zone`,
         );
+        return makeNoMeterResult();
       }
     }
 
