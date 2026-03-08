@@ -53,6 +53,7 @@ export const StorageKeys = {
   // Periodic Rescan
   LAST_PARKED_COORDS: 'lastParkedCoords', // { lat, lng, parkedAt (ISO), address }
   RESCAN_LAST_RUN: 'rescanLastRun', // ISO timestamp of last periodic rescan
+  RESCAN_LAST_RULES: 'rescanLastRules', // Dedupe key: sorted rule summaries from last rescan
 
   // Snow Forecast Monitoring
   SNOW_FORECAST_LAST_CHECK: 'snowForecastLastCheck', // ISO timestamp

@@ -3275,6 +3275,7 @@ class BackgroundTaskServiceClass {
         StorageKeys.LAST_PARKING_LOCATION,
         StorageKeys.LAST_PARKED_COORDS,
         StorageKeys.RESCAN_LAST_RUN,
+        StorageKeys.RESCAN_LAST_RULES,
         StorageKeys.SNOW_FORECAST_LAST_CHECK,
         StorageKeys.SNOW_FORECAST_NOTIFIED,
       ]);
@@ -3844,22 +3845,35 @@ class BackgroundTaskServiceClass {
       const filteredResult = await this.filterOwnPermitZone(result);
       const rawData = result.rawApiData || await this.getRawParkingData(result);
 
-      // Only notify if there are active restrictions (don't spam "All Clear" every 4 hours)
+      // Only notify if restrictions actually changed since last rescan.
+      // Without this check, the user gets the same notification every 4 hours.
       if (filteredResult.rules.length > 0) {
-        await notifee.displayNotification({
-          title: '🔄 Parking Update — Conditions Changed',
-          body: `${filteredResult.address}\n${filteredResult.rules.map((r: any) => r.message).join('\n')}`,
-          android: {
-            channelId: 'parking-monitoring',
-            importance: AndroidImportance.HIGH,
-            pressAction: { id: 'default' },
-            smallIcon: 'ic_notification',
-          },
-          ios: {
-            sound: 'default',
-          },
-        });
-        log.info('Rescan found active restrictions — notified user');
+        const currentRulesSummary = filteredResult.rules
+          .map((r: any) => `${r.type}:${r.message}`)
+          .sort()
+          .join('|');
+        const prevRulesSummary = await AsyncStorage.getItem(StorageKeys.RESCAN_LAST_RULES);
+
+        if (currentRulesSummary !== prevRulesSummary) {
+          await notifee.displayNotification({
+            title: '⚠️ Parking Restriction Reminder',
+            body: `${filteredResult.address}\n${filteredResult.rules.map((r: any) => r.message).join('\n')}`,
+            android: {
+              channelId: 'parking-monitoring',
+              importance: AndroidImportance.HIGH,
+              pressAction: { id: 'default' },
+              smallIcon: 'ic_notification',
+            },
+            ios: {
+              sound: 'default',
+            },
+          });
+          log.info('Rescan found new/changed restrictions — notified user');
+        } else {
+          log.debug('Rescan restrictions unchanged — skipping duplicate notification');
+        }
+
+        await AsyncStorage.setItem(StorageKeys.RESCAN_LAST_RULES, currentRulesSummary);
       }
 
       // Re-schedule advance reminders with updated data
