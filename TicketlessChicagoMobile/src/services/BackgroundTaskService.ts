@@ -390,9 +390,10 @@ class BackgroundTaskServiceClass {
       // Start foreground monitoring
       await this.startForegroundMonitoring();
 
-      // Check for red-light evidence captured natively while JS was dead
+      // Check for camera evidence captured natively while JS was dead
       if (Platform.OS === 'ios') {
         void this.ingestPendingNativeRedLightEvidence();
+        void this.ingestPendingNativeSpeedCameraEvidence();
       }
 
       await this.saveState();
@@ -3147,9 +3148,10 @@ class BackgroundTaskServiceClass {
       void this.captureIosHealthSnapshot('app-foreground', { force: true, includeLogTail: true });
       // Upload diagnostic logs on foreground (fire-and-forget)
       void this.uploadDiagnosticLogs('app-foreground');
-      // Check for red-light evidence captured natively while JS was suspended
+      // Check for camera evidence captured natively while JS was suspended
       if (Platform.OS === 'ios') {
         void this.ingestPendingNativeRedLightEvidence();
+        void this.ingestPendingNativeSpeedCameraEvidence();
       }
       // App came to foreground - only restart periodic check timer if needed
       // Do NOT re-register BT listeners (they persist across app state changes)
@@ -3192,6 +3194,58 @@ class BackgroundTaskServiceClass {
       log.info(`Ingested ${ingested}/${evidence.length} native red-light evidence entries`);
     } catch (error) {
       log.error('Error ingesting pending native red-light evidence', error);
+    }
+  }
+
+  /**
+   * Check for speed camera evidence captured natively while JS was suspended.
+   * Stores each entry in AsyncStorage and acknowledges the native queue.
+   */
+  private async ingestPendingNativeSpeedCameraEvidence(): Promise<void> {
+    try {
+      const evidence = await BackgroundLocationService.getPendingSpeedCameraEvidence();
+      if (!evidence || evidence.length === 0) return;
+
+      log.info(`Found ${evidence.length} pending native speed camera evidence entries`);
+
+      // Store in AsyncStorage for later retrieval/display
+      const SPEED_EVIDENCE_KEY = 'speed_camera_evidence_v1';
+      const existingJson = await AsyncStorage.getItem(SPEED_EVIDENCE_KEY);
+      const existing: any[] = existingJson ? JSON.parse(existingJson) : [];
+
+      let ingested = 0;
+      for (const entry of evidence) {
+        if (!entry.id || !entry.cameraAddress || !entry.deviceTimestamp) {
+          log.warn('Invalid native speed camera evidence - missing required fields');
+          continue;
+        }
+        // Deduplicate
+        if (existing.some((e: any) => e.id === entry.id)) {
+          log.debug('Speed camera evidence already ingested, skipping duplicate', { id: entry.id });
+          continue;
+        }
+        existing.unshift(entry);
+        ingested++;
+        log.info('Ingested native speed camera evidence', {
+          id: entry.id,
+          address: entry.cameraAddress,
+          tracePoints: entry.tracePointCount ?? 1,
+          approachMph: entry.approachSpeedMph,
+          maxMph: entry.maxSpeedMph,
+          avgMph: entry.avgSpeedMph,
+          aboveLimit: entry.speedAboveLimit,
+        });
+      }
+
+      // Cap at 50 entries
+      const capped = existing.slice(0, 50);
+      await AsyncStorage.setItem(SPEED_EVIDENCE_KEY, JSON.stringify(capped));
+
+      // Clear native queue after processing
+      await BackgroundLocationService.acknowledgeSpeedCameraEvidence();
+      log.info(`Ingested ${ingested}/${evidence.length} native speed camera evidence entries`);
+    } catch (error) {
+      log.error('Error ingesting pending native speed camera evidence', error);
     }
   }
 

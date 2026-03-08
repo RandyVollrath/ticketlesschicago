@@ -775,6 +775,21 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let maxRecentLowSpeedLocations = 10  // Keep last 10 fixes (~10 seconds)
   private let lowSpeedThresholdMps = 3.0  // Collect when speed < 3 m/s (~7 mph)
 
+  // GPS trace ring buffer for camera evidence capture.
+  // Keeps last 60 seconds of driving GPS fixes so evidence has a multi-point
+  // trace showing approach path, speed changes, and deceleration — not just a single snapshot.
+  private struct GpsTracePoint {
+    let timestamp: TimeInterval  // Unix ms
+    let latitude: Double
+    let longitude: Double
+    let speedMps: Double
+    let heading: Double
+    let accuracy: Double
+  }
+  private var gpsTraceBuffer: [GpsTracePoint] = []
+  private let gpsTraceMaxAgeSec: TimeInterval = 60  // Keep 60 seconds of history
+  private let gpsTraceMaxPoints = 120  // Cap at 120 points (~2/sec at full GPS rate)
+
   // Camera alerts (native iOS fallback for when JS is suspended in background)
   private var cameraAlertsEnabled = false
   private var cameraSpeedEnabled = false
@@ -2359,6 +2374,27 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
     lastLocationCallbackTime = Date()
     let speed = location.speed  // m/s, -1 if unknown
+
+    // Append to GPS trace ring buffer (for camera evidence capture).
+    // Only record when driving/moving to avoid filling with parked-state noise.
+    if isDriving || coreMotionSaysAutomotive || speedSaysMoving {
+      let nowMs = Date().timeIntervalSince1970 * 1000
+      gpsTraceBuffer.append(GpsTracePoint(
+        timestamp: nowMs,
+        latitude: location.coordinate.latitude,
+        longitude: location.coordinate.longitude,
+        speedMps: max(speed, 0),
+        heading: location.course,
+        accuracy: location.horizontalAccuracy
+      ))
+      // Prune old entries (>60s) and cap size
+      let cutoffMs = nowMs - (gpsTraceMaxAgeSec * 1000)
+      gpsTraceBuffer = gpsTraceBuffer.filter { $0.timestamp >= cutoffMs }
+      if gpsTraceBuffer.count > gpsTraceMaxPoints {
+        gpsTraceBuffer = Array(gpsTraceBuffer.suffix(gpsTraceMaxPoints))
+      }
+    }
+
     if tripSummaryId != nil {
       if speed >= 0 {
         tripSummaryMaxSpeedMps = max(tripSummaryMaxSpeedMps, speed)
@@ -3589,10 +3625,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // will be disabled from speaking to avoid double-speak (see startCameraAlerts).
     speakCameraAlert(title)
 
-    // For red light cameras: capture evidence (accelerometer + GPS) natively.
+    // Capture evidence natively for BOTH camera types.
     // JS may be suspended in background, so save to UserDefaults for JS to retrieve later.
     if cam.type == "redlight" {
       captureRedLightEvidenceNatively(cam: cam, speed: speed, heading: heading, accuracy: acc, distance: bestDist)
+    } else {
+      captureSpeedCameraEvidenceNatively(cam: cam, speed: speed, heading: heading, accuracy: acc, distance: bestDist)
     }
 
     alertedCameraAtByIndex[idx] = Date()
@@ -3831,21 +3869,53 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
     }
 
-    // 3. Build GPS trace point from current location
+    // 3. Build GPS trace from ring buffer (multi-point, up to 60 seconds of approach data)
     let speedMps = max(speed, 0)
     let speedMph = speedMps * 2.2369362920544
     let loc = locationManager.location
-    let gpsTrace: [[String: Any]] = [
-      [
-        "timestamp": ts,
-        "latitude": loc?.coordinate.latitude ?? cam.lat,
-        "longitude": loc?.coordinate.longitude ?? cam.lng,
-        "speedMps": speedMps,
-        "speedMph": round(speedMph * 10) / 10,
-        "heading": heading,
-        "horizontalAccuracyMeters": accuracy,
+
+    var gpsTrace: [[String: Any]]
+    var minSpeedMph: Double = speedMph
+    var maxSpeedMph: Double = speedMph
+    var fullStopDetected = false
+
+    if gpsTraceBuffer.count >= 2 {
+      // Use multi-point trace from ring buffer
+      gpsTrace = gpsTraceBuffer.map { pt in
+        let ptSpeedMph = pt.speedMps * 2.2369362920544
+        return [
+          "timestamp": pt.timestamp,
+          "latitude": pt.latitude,
+          "longitude": pt.longitude,
+          "speedMps": pt.speedMps,
+          "speedMph": round(ptSpeedMph * 10) / 10,
+          "heading": pt.heading,
+          "horizontalAccuracyMeters": pt.accuracy,
+        ] as [String: Any]
+      }
+      // Calculate min/max speed from trace
+      for pt in gpsTraceBuffer {
+        let ptMph = pt.speedMps * 2.2369362920544
+        if ptMph < minSpeedMph { minSpeedMph = ptMph }
+        if ptMph > maxSpeedMph { maxSpeedMph = ptMph }
+        if pt.speedMps < 0.5 { fullStopDetected = true }  // <1.1 mph = essentially stopped
+      }
+    } else {
+      // Fallback: single point (buffer empty or just started driving)
+      gpsTrace = [
+        [
+          "timestamp": ts,
+          "latitude": loc?.coordinate.latitude ?? cam.lat,
+          "longitude": loc?.coordinate.longitude ?? cam.lng,
+          "speedMps": speedMps,
+          "speedMph": round(speedMph * 10) / 10,
+          "heading": heading,
+          "horizontalAccuracyMeters": accuracy,
+        ]
       ]
-    ]
+    }
+
+    let speedDeltaMph = maxSpeedMph - minSpeedMph
 
     // 4. Build receipt-compatible payload
     let receiptId = "\(Int(ts))-\(String(format: "%.5f", cam.lat))-\(String(format: "%.5f", cam.lng))"
@@ -3862,10 +3932,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "intersectionId": intersectionId,
       "heading": heading,
       "approachSpeedMph": round(speedMph * 10) / 10,
-      "minSpeedMph": round(speedMph * 10) / 10,  // single point, same as approach
-      "speedDeltaMph": 0,
-      "fullStopDetected": false,  // can't detect from single GPS point
+      "minSpeedMph": round(minSpeedMph * 10) / 10,
+      "speedDeltaMph": round(speedDeltaMph * 10) / 10,
+      "fullStopDetected": fullStopDetected,
       "trace": gpsTrace,
+      "tracePointCount": gpsTrace.count,
+      "traceDurationSec": gpsTraceBuffer.count >= 2 ? round((gpsTraceBuffer.last!.timestamp - gpsTraceBuffer.first!.timestamp) / 1000 * 10) / 10 : 0,
       "accelerometerTrace": accelTrace,
       "peakDecelerationG": round(peakG * 1000) / 1000,
       "expectedYellowDurationSec": expectedYellowSec,
@@ -3884,7 +3956,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
     UserDefaults.standard.set(queue, forKey: kPendingRedLightEvidenceKey)
 
-    log("Native red-light evidence captured: \(cam.address) (\(accelTrace.count) accel samples, speed=\(String(format: "%.1f", speedMph))mph, peakG=\(String(format: "%.3f", peakG)))")
+    log("Native red-light evidence captured: \(cam.address) (\(gpsTrace.count) GPS points, \(accelTrace.count) accel samples, speed=\(String(format: "%.1f", speedMph))mph, min=\(String(format: "%.1f", minSpeedMph))mph, delta=\(String(format: "%.1f", speedDeltaMph))mph, fullStop=\(fullStopDetected), peakG=\(String(format: "%.3f", peakG)))")
   }
 
   /// JS bridge: retrieve all pending red-light evidence captured natively while JS was suspended.
@@ -3912,6 +3984,144 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   @objc func acknowledgeRedLightEvidence(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     UserDefaults.standard.removeObject(forKey: kPendingRedLightEvidenceKey)
     log("Cleared pending red-light evidence from UserDefaults")
+    resolve(true)
+  }
+
+  // MARK: - Native Speed Camera Evidence Capture (background-safe)
+  //
+  // Same pattern as red-light evidence: when JS is suspended in background,
+  // this captures GPS trace + speed data and queues it in UserDefaults.
+  // JS retrieves it on next wake via getPendingSpeedCameraEvidence().
+
+  private let kPendingSpeedCameraEvidenceKey = "bg_pending_speed_camera_evidence_v1"
+
+  private func captureSpeedCameraEvidenceNatively(cam: NativeCameraDef, speed: Double, heading: Double, accuracy: Double, distance: Double) {
+    let now = Date()
+    let ts = now.timeIntervalSince1970 * 1000  // ms for JS compatibility
+
+    // 1. Build GPS trace from ring buffer (multi-point approach data)
+    let speedMps = max(speed, 0)
+    let speedMph = speedMps * 2.2369362920544
+    let loc = locationManager.location
+
+    var gpsTrace: [[String: Any]]
+    var minSpeedMph: Double = speedMph
+    var maxSpeedMph: Double = speedMph
+    var avgSpeedMph: Double = speedMph
+    var speedAboveLimit = false
+
+    // Chicago speed cameras ticket at >10 mph over in school zones (20 mph limit)
+    // and >6 mph over in park/playground zones.
+    // Default speed limit near cameras is 30 mph, school zones 20 mph.
+    let postedSpeedMph = 30  // Chicago default; school zones are 20
+    let speedCameraThresholdMph = Double(postedSpeedMph) + 6.0  // Trigger threshold
+
+    if gpsTraceBuffer.count >= 2 {
+      gpsTrace = gpsTraceBuffer.map { pt in
+        let ptSpeedMph = pt.speedMps * 2.2369362920544
+        return [
+          "timestamp": pt.timestamp,
+          "latitude": pt.latitude,
+          "longitude": pt.longitude,
+          "speedMps": pt.speedMps,
+          "speedMph": round(ptSpeedMph * 10) / 10,
+          "heading": pt.heading,
+          "horizontalAccuracyMeters": pt.accuracy,
+        ] as [String: Any]
+      }
+      // Calculate speed statistics from trace
+      var totalSpeedMph: Double = 0
+      for pt in gpsTraceBuffer {
+        let ptMph = pt.speedMps * 2.2369362920544
+        if ptMph < minSpeedMph { minSpeedMph = ptMph }
+        if ptMph > maxSpeedMph { maxSpeedMph = ptMph }
+        totalSpeedMph += ptMph
+        if ptMph > speedCameraThresholdMph { speedAboveLimit = true }
+      }
+      avgSpeedMph = totalSpeedMph / Double(gpsTraceBuffer.count)
+    } else {
+      // Fallback: single point
+      gpsTrace = [
+        [
+          "timestamp": ts,
+          "latitude": loc?.coordinate.latitude ?? cam.lat,
+          "longitude": loc?.coordinate.longitude ?? cam.lng,
+          "speedMps": speedMps,
+          "speedMph": round(speedMph * 10) / 10,
+          "heading": heading,
+          "horizontalAccuracyMeters": accuracy,
+        ]
+      ]
+      speedAboveLimit = speedMph > speedCameraThresholdMph
+    }
+
+    let speedDeltaMph = maxSpeedMph - minSpeedMph
+
+    // 2. Build speed camera receipt payload
+    let receiptId = "spd-\(Int(ts))-\(String(format: "%.5f", cam.lat))-\(String(format: "%.5f", cam.lng))"
+    let intersectionId = "\(String(format: "%.4f", cam.lat)),\(String(format: "%.4f", cam.lng))"
+
+    let receipt: [String: Any] = [
+      "id": receiptId,
+      "type": "speed_camera",
+      "deviceTimestamp": ts,
+      "cameraAddress": cam.address,
+      "cameraLatitude": cam.lat,
+      "cameraLongitude": cam.lng,
+      "intersectionId": intersectionId,
+      "heading": heading,
+      "approachSpeedMph": round(speedMph * 10) / 10,
+      "minSpeedMph": round(minSpeedMph * 10) / 10,
+      "maxSpeedMph": round(maxSpeedMph * 10) / 10,
+      "avgSpeedMph": round(avgSpeedMph * 10) / 10,
+      "speedDeltaMph": round(speedDeltaMph * 10) / 10,
+      "speedAboveLimit": speedAboveLimit,
+      "postedSpeedLimitMph": postedSpeedMph,
+      "speedCameraThresholdMph": speedCameraThresholdMph,
+      "trace": gpsTrace,
+      "tracePointCount": gpsTrace.count,
+      "traceDurationSec": gpsTraceBuffer.count >= 2 ? round((gpsTraceBuffer.last!.timestamp - gpsTraceBuffer.first!.timestamp) / 1000 * 10) / 10 : 0,
+      "distanceMeters": distance,
+      "_capturedNatively": true,
+      "_persistedAt": now.timeIntervalSince1970,
+    ]
+
+    // 3. Append to pending queue
+    var queue = UserDefaults.standard.array(forKey: kPendingSpeedCameraEvidenceKey) as? [[String: Any]] ?? []
+    queue.append(receipt)
+    if queue.count > 20 {
+      queue = Array(queue.suffix(20))
+    }
+    UserDefaults.standard.set(queue, forKey: kPendingSpeedCameraEvidenceKey)
+
+    log("Native speed camera evidence captured: \(cam.address) (\(gpsTrace.count) GPS points, speed=\(String(format: "%.1f", speedMph))mph, min=\(String(format: "%.1f", minSpeedMph))mph, max=\(String(format: "%.1f", maxSpeedMph))mph, avg=\(String(format: "%.1f", avgSpeedMph))mph, aboveLimit=\(speedAboveLimit))")
+  }
+
+  /// JS bridge: retrieve all pending speed camera evidence captured natively while JS was suspended.
+  @objc func getPendingSpeedCameraEvidence(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let queue = UserDefaults.standard.array(forKey: kPendingSpeedCameraEvidenceKey) as? [[String: Any]] ?? []
+    if queue.isEmpty {
+      resolve([])
+    } else {
+      // Expire entries older than 24 hours
+      let now = Date().timeIntervalSince1970
+      let fresh = queue.filter { entry in
+        guard let persistedAt = entry["_persistedAt"] as? Double else { return false }
+        return (now - persistedAt) < 86400
+      }
+      if fresh.count != queue.count {
+        UserDefaults.standard.set(fresh, forKey: kPendingSpeedCameraEvidenceKey)
+        log("Expired \(queue.count - fresh.count) stale speed camera evidence entries")
+      }
+      log("Returning \(fresh.count) pending native speed camera evidence entries to JS")
+      resolve(fresh)
+    }
+  }
+
+  /// JS bridge: acknowledge that pending speed camera evidence has been processed.
+  @objc func acknowledgeSpeedCameraEvidence(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    UserDefaults.standard.removeObject(forKey: kPendingSpeedCameraEvidenceKey)
+    log("Cleared pending speed camera evidence from UserDefaults")
     resolve(true)
   }
 
