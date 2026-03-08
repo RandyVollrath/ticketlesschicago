@@ -224,6 +224,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     tripSummaryCameraRejectHeading = 0
     tripSummaryCameraRejectAhead = 0
     tripSummaryCameraRejectDedupe = 0
+    tripSummaryCameraScanCount = 0
+    tripSummaryCameraSkippedDisabledCount = 0
+    tripSummaryCameraSkippedNotArmedCount = 0
     tripSummaryLowConfidenceBlockedCount = 0
     tripSummaryStaleLocationBlockedCount = 0
     tripLastMotionState = nil
@@ -342,6 +345,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "cameraRejectHeadingCount": tripSummaryCameraRejectHeading,
       "cameraRejectAheadCount": tripSummaryCameraRejectAhead,
       "cameraRejectDedupeCount": tripSummaryCameraRejectDedupe,
+      "cameraScanCount": tripSummaryCameraScanCount,
+      "cameraSkippedDisabledCount": tripSummaryCameraSkippedDisabledCount,
+      "cameraSkippedNotArmedCount": tripSummaryCameraSkippedNotArmedCount,
       "parkingCancelledAutomotiveCount": tripSummaryFinalizationCancelledAutomotive,
       "parkingCancelledSpeedCount": tripSummaryFinalizationCancelledSpeed,
       "parkingCancelledDriftCount": tripSummaryFinalizationCancelledDrift,
@@ -382,6 +388,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     tripSummaryCameraRejectHeading = 0
     tripSummaryCameraRejectAhead = 0
     tripSummaryCameraRejectDedupe = 0
+    tripSummaryCameraScanCount = 0
+    tripSummaryCameraSkippedDisabledCount = 0
+    tripSummaryCameraSkippedNotArmedCount = 0
     tripSummaryLowConfidenceBlockedCount = 0
     tripSummaryStaleLocationBlockedCount = 0
     tripLastMotionState = nil
@@ -738,6 +747,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var tripSummaryCameraRejectHeading = 0
   private var tripSummaryCameraRejectAhead = 0
   private var tripSummaryCameraRejectDedupe = 0
+  private var tripSummaryCameraScanCount = 0
+  private var tripSummaryCameraSkippedDisabledCount = 0
+  private var tripSummaryCameraSkippedNotArmedCount = 0
   private var tripSummaryLowConfidenceBlockedCount = 0
   private var tripSummaryStaleLocationBlockedCount = 0
   private var tripLastMotionState: String? = nil
@@ -771,6 +783,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var alertedCameraAtByIndex: [Int: Date] = [:]
   private var lastCameraAlertAt: Date? = nil
   private var lastCameraRejectLogAt: Date? = nil
+  private var lastCameraDisabledLogAt: Date? = nil
+  private var lastCameraScanLogAt: Date? = nil
 
   // Native TTS for background camera alerts (AVSpeechSynthesizer runs natively,
   // unlike JS SpeechModule which is suspended when the app is backgrounded)
@@ -2861,13 +2875,33 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // Previously only fired when backgrounded, but JS camera alerts were also
     // failing to fire (settings sync issues), leaving zero camera alerts in any mode.
     // Native now handles all camera alerts. When foregrounded, native sends local
-    // notifications only (no TTS — JS CameraAlertService handles foreground TTS).
-    // When backgrounded, native sends local notifications AND speaks TTS.
+    // notifications only (no TTS for App Store 2.5.4 compliance).
     let appState = UIApplication.shared.applicationState
     let cameraPrewarmed = cameraPrewarmUntil.map { Date() <= $0 } ?? false
     let cameraArmed = isDriving || coreMotionSaysAutomotive || speedSaysMoving || hasRecentVehicleSignal(120) || cameraPrewarmed
     if cameraArmed {
-      maybeSendNativeCameraAlert(location, isBackgrounded: appState != .active)
+      if cameraAlertsEnabled {
+        tripSummaryCameraScanCount += 1
+        maybeSendNativeCameraAlert(location, isBackgrounded: appState != .active)
+      } else {
+        tripSummaryCameraSkippedDisabledCount += 1
+        // Log periodically (every 30s) so we can see this in decision logs
+        if lastCameraDisabledLogAt.map({ Date().timeIntervalSince($0) >= 30 }) ?? true {
+          lastCameraDisabledLogAt = Date()
+          decision("camera_check_skipped_disabled", [
+            "reason": "cameraAlertsEnabled is false",
+            "speedMps": location.speed,
+            "heading": location.course,
+            "accuracy": location.horizontalAccuracy,
+            "isDriving": isDriving,
+            "coreMotionAutomotive": coreMotionSaysAutomotive,
+            "speedSaysMoving": speedSaysMoving,
+            "appState": appState == .active ? "active" : (appState == .background ? "background" : "inactive"),
+          ])
+        }
+      }
+    } else {
+      tripSummaryCameraSkippedNotArmedCount += 1
     }
   }
 
@@ -3407,6 +3441,24 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let lng = location.coordinate.longitude
     let acc = location.horizontalAccuracy
 
+    // Periodic scan heartbeat log (every 15s) — shows the pipeline is alive
+    let shouldLogScan = lastCameraScanLogAt.map { Date().timeIntervalSince($0) >= 15 } ?? true
+    if shouldLogScan {
+      lastCameraScanLogAt = Date()
+      decision("camera_scan_heartbeat", [
+        "speedMps": speed,
+        "heading": heading,
+        "accuracy": acc,
+        "lat": lat,
+        "lng": lng,
+        "alertedCameraCount": alertedCameraAtByIndex.count,
+        "isBackgrounded": isBackgrounded,
+        "speedEnabled": cameraSpeedEnabled,
+        "redlightEnabled": cameraRedlightEnabled,
+        "totalCameras": Self.chicagoCameras.count,
+      ])
+    }
+
     // Require at least somewhat-credible GPS in background before alerting
     if acc <= 0 || acc > 120 { return }
 
@@ -3438,6 +3490,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     var nearestRejectedDist: Double = Double.greatestFiniteMagnitude
     var nearestRejectedReason: String? = nil
     let rejectDebugRadius = max(alertRadius * 1.4, 220)
+    var bboxCandidateCount = 0
 
     for i in 0..<Self.chicagoCameras.count {
       let cam = Self.chicagoCameras[i]
@@ -3454,6 +3507,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       // Fast bbox
       if cam.lat < latMin || cam.lat > latMax { continue }
       if cam.lng < lngMin || cam.lng > lngMax { continue }
+      bboxCandidateCount += 1
 
       let dist = haversineMeters(lat1: lat, lon1: lng, lat2: cam.lat, lon2: cam.lng)
       let minSpeed = (cam.type == "speed") ? camMinSpeedSpeedCamMps : camMinSpeedRedlightMps
@@ -3517,6 +3571,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             "speedMps": speed,
             "heading": heading,
             "accuracy": acc,
+            "bboxCandidates": bboxCandidateCount,
           ])
         }
       }
@@ -3552,6 +3607,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "speedMps": speed,
       "heading": heading,
       "accuracy": acc,
+      "bboxCandidates": bboxCandidateCount,
+      "isBackgrounded": isBackgrounded,
+      "notificationOnly": true,  // TTS disabled for App Store 2.5.4
     ])
     log("NATIVE CAMERA ALERT: \(title) @ \(cam.address) (dist=\(Int(bestDist))m, radius=\(Int(alertRadius))m)")
   }

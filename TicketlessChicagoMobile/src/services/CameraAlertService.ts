@@ -466,13 +466,24 @@ class CameraAlertServiceClass {
     const redLightValue = storedRedLight[1];
     const volumeValue = storedVolume[1];
 
-    this.isEnabled = globalValue === 'true';
+    // On iOS, default to enabled for new installs (notification-only, no TTS/audio).
+    // On Android, default to disabled (requires user opt-in for TTS audio alerts).
+    const isNewInstall = globalValue == null && speedValue == null && redLightValue == null;
+    const defaultEnabled = isNewInstall && Platform.OS === 'ios';
+
+    this.isEnabled = globalValue == null ? defaultEnabled : globalValue === 'true';
     // Backward compatibility:
     // - If per-type toggles don't exist yet, inherit from global setting.
     // - If they exist, compute global from either being enabled.
-    this.speedAlertsEnabled = speedValue == null ? this.isEnabled : speedValue === 'true';
-    this.redLightAlertsEnabled = redLightValue == null ? this.isEnabled : redLightValue === 'true';
+    this.speedAlertsEnabled = speedValue == null ? (defaultEnabled || this.isEnabled) : speedValue === 'true';
+    this.redLightAlertsEnabled = redLightValue == null ? (defaultEnabled || this.isEnabled) : redLightValue === 'true';
     this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
+
+    // Persist the defaults so subsequent loads don't re-trigger defaulting logic
+    if (isNewInstall && defaultEnabled) {
+      log.info('New iOS install: defaulting camera alerts to enabled (notification-only)');
+      await this.persistSettings();
+    }
 
     if (volumeValue != null) {
       const parsed = parseFloat(volumeValue);
