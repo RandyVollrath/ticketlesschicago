@@ -219,9 +219,11 @@ class LocalNotificationServiceClass {
         hoursBefore = 0; // Time is pre-computed by BackgroundTaskService
         notificationId = `${NOTIFICATION_PREFIX.METERED_PARKING}${Date.now()}`;
         channelId = 'parking-alerts';
-        // Detect subtype: expiry warning vs enforcement activation
+        // Detect subtype: expiry warning, legal limit reached, or enforcement activation
         if (details?.includes('expires in 30 minutes')) {
           title = '⏰ Meter Expiring in 30 Minutes!';
+        } else if (details?.includes('maximum time limit')) {
+          title = '⏰ Meter Time Limit Reached';
         } else {
           title = '⏰ Meter Enforcement Starting!';
         }
