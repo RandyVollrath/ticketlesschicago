@@ -459,6 +459,35 @@ class BackgroundLocationServiceClass {
   }
 
   /**
+   * Get pending speed camera evidence captured natively while JS was suspended.
+   * Returns an array of receipt-compatible objects (may be empty).
+   * Call acknowledgeSpeedCameraEvidence() after processing to clear the queue.
+   */
+  async getPendingSpeedCameraEvidence(): Promise<any[]> {
+    if (!this.isAvailable()) return [];
+    try {
+      const evidence = await BackgroundLocationModule.getPendingSpeedCameraEvidence();
+      return evidence || [];
+    } catch (error) {
+      log.error('Error getting pending speed camera evidence', error);
+      return [];
+    }
+  }
+
+  /**
+   * Acknowledge that pending speed camera evidence has been processed.
+   * Clears the native UserDefaults queue.
+   */
+  async acknowledgeSpeedCameraEvidence(): Promise<void> {
+    if (!this.isAvailable()) return;
+    try {
+      await BackgroundLocationModule.acknowledgeSpeedCameraEvidence();
+    } catch (error) {
+      log.error('Error acknowledging speed camera evidence', error);
+    }
+  }
+
+  /**
    * Returns the native parking-detection debug log tail.
    */
   async getDebugLogs(lineCount: number = 200): Promise<string> {
