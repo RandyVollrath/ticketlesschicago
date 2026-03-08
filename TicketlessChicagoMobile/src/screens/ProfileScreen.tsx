@@ -699,110 +699,115 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             value={settings.criticalAlertsEnabled}
             onValueChange={v => updateSetting('criticalAlertsEnabled', v)}
           />
-          {/* Camera Alerts — hidden on iOS for App Store compliance (guideline 2.5.4).
-              Android camera alerts still work via foreground service. */}
-          {Platform.OS !== 'ios' && (
-            <>
-              <Divider />
-              {!cameraSettingsLoaded ? (
-                <View style={styles.settingRow}>
-                  <MaterialCommunityIcons name="camera" size={20} color={colors.info} style={styles.rowIcon} />
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingTitle}>Driving Camera Alerts</Text>
-                    <Text style={styles.settingSubtitle}>Loading camera alert settings...</Text>
-                  </View>
-                  <ActivityIndicator size="small" color={colors.primary} />
+          {/* Camera Alerts — notification-only on iOS (no background audio / TTS).
+              Android uses foreground service with TTS. */}
+          <>
+            <Divider />
+            {!cameraSettingsLoaded ? (
+              <View style={styles.settingRow}>
+                <MaterialCommunityIcons name="camera" size={20} color={colors.info} style={styles.rowIcon} />
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>Driving Camera Alerts</Text>
+                  <Text style={styles.settingSubtitle}>Loading camera alert settings...</Text>
                 </View>
-              ) : (
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : (
+              <SettingRow
+                icon="camera"
+                iconColor={colors.info}
+                title="Driving Camera Alerts"
+                subtitle={Platform.OS === 'ios'
+                  ? "Notification alerts when you approach speed or red-light cameras while driving"
+                  : "Spoken audio warnings when you approach speed or red-light cameras while driving"}
+                value={cameraAlertsEnabled}
+                onValueChange={toggleCameraAlerts}
+              />
+            )}
+            {cameraSettingsLoaded && cameraAlertsEnabled && (
+              <>
+                <Divider />
                 <SettingRow
-                  icon="camera"
+                  icon="speedometer"
                   iconColor={colors.info}
-                  title="Driving Camera Alerts"
-                  subtitle="Spoken audio warnings when you approach speed or red-light cameras while driving"
-                  value={cameraAlertsEnabled}
-                  onValueChange={toggleCameraAlerts}
+                  title="Speed Cameras"
+                  subtitle={Platform.OS === 'ios' ? "Notification before known speed cameras" : "Audio cue before known speed cameras"}
+                  value={speedCameraAlertsEnabled}
+                  onValueChange={toggleSpeedCameraAlerts}
                 />
-              )}
-              {cameraSettingsLoaded && cameraAlertsEnabled && (
-                <>
-                  <Divider />
-                  <SettingRow
-                    icon="speedometer"
-                    iconColor={colors.info}
-                    title="Speed Cameras"
-                    subtitle="Audio cue before known speed cameras"
-                    value={speedCameraAlertsEnabled}
-                    onValueChange={toggleSpeedCameraAlerts}
-                  />
-                  <Divider />
-                  <SettingRow
-                    icon="traffic-light"
-                    iconColor={colors.info}
-                    title="Red-Light Cameras"
-                    subtitle="Audio cue before known red-light cameras"
-                    value={redLightCameraAlertsEnabled}
-                    onValueChange={toggleRedLightCameraAlerts}
-                  />
-                  <Divider />
-                  <LinkRow
-                    icon="volume-high"
-                    iconColor={colors.info}
-                    title="Preview Alert Sound"
-                    onPress={async () => {
-                      Alert.alert('Testing...', 'Attempting to speak. Check your volume is up.');
-                      try {
-                        const success = await CameraAlertService.previewAlert();
-                        if (!success) {
-                          Alert.alert(
-                            'Text-to-Speech Unavailable',
-                            'Could not initialize TTS. Please check Settings > Accessibility > Text-to-Speech and ensure a TTS engine is installed.',
-                            [{ text: 'OK' }]
-                          );
-                        }
-                      } catch (err: any) {
-                        Alert.alert('TTS Error', err?.message || String(err));
-                      }
-                    }}
-                  />
-                  <Divider />
-                  <View style={styles.volumeRow}>
-                    <MaterialCommunityIcons name="volume-low" size={20} color={colors.info} style={styles.rowIcon} />
-                    <View style={styles.settingInfo}>
-                      <Text style={styles.settingTitle}>Alert Volume</Text>
-                      <Text style={styles.settingSubtitle}>
-                        {cameraAlertVolume === 0 ? 'Muted' : `${Math.round(cameraAlertVolume * 100)}%`}
-                      </Text>
-                    </View>
-                    <MaterialCommunityIcons name="volume-high" size={18} color={colors.textTertiary} />
-                  </View>
-                  <View style={styles.sliderContainer}>
-                    <Slider
-                      style={styles.slider}
-                      minimumValue={0}
-                      maximumValue={1}
-                      step={0.05}
-                      value={cameraAlertVolume}
-                      onSlidingComplete={async (value: number) => {
-                        setCameraAlertVolume(value);
+                <Divider />
+                <SettingRow
+                  icon="traffic-light"
+                  iconColor={colors.info}
+                  title="Red-Light Cameras"
+                  subtitle={Platform.OS === 'ios' ? "Notification before known red-light cameras" : "Audio cue before known red-light cameras"}
+                  value={redLightCameraAlertsEnabled}
+                  onValueChange={toggleRedLightCameraAlerts}
+                />
+                {/* Audio preview + volume slider — Android only (iOS has no TTS for cameras) */}
+                {Platform.OS !== 'ios' && (
+                  <>
+                    <Divider />
+                    <LinkRow
+                      icon="volume-high"
+                      iconColor={colors.info}
+                      title="Preview Alert Sound"
+                      onPress={async () => {
+                        Alert.alert('Testing...', 'Attempting to speak. Check your volume is up.');
                         try {
-                          await CameraAlertService.setAlertVolume(value);
-                          showFeedback(value === 0 ? 'Camera alerts muted' : `Volume set to ${Math.round(value * 100)}%`);
-                        } catch (err) {
-                          log.error('Error setting alert volume', err);
+                          const success = await CameraAlertService.previewAlert();
+                          if (!success) {
+                            Alert.alert(
+                              'Text-to-Speech Unavailable',
+                              'Could not initialize TTS. Please check Settings > Accessibility > Text-to-Speech and ensure a TTS engine is installed.',
+                              [{ text: 'OK' }]
+                            );
+                          }
+                        } catch (err: any) {
+                          Alert.alert('TTS Error', err?.message || String(err));
                         }
                       }}
-                      onValueChange={(value: number) => setCameraAlertVolume(value)}
-                      minimumTrackTintColor={colors.primary}
-                      maximumTrackTintColor={colors.border}
-                      thumbTintColor={colors.primary}
-                      accessibilityLabel="Camera alert volume"
-                      accessibilityValue={{ min: 0, max: 100, now: Math.round(cameraAlertVolume * 100) }}
                     />
-                  </View>
-                </>
-              )}
-            </>
-          )}
+                    <Divider />
+                    <View style={styles.volumeRow}>
+                      <MaterialCommunityIcons name="volume-low" size={20} color={colors.info} style={styles.rowIcon} />
+                      <View style={styles.settingInfo}>
+                        <Text style={styles.settingTitle}>Alert Volume</Text>
+                        <Text style={styles.settingSubtitle}>
+                          {cameraAlertVolume === 0 ? 'Muted' : `${Math.round(cameraAlertVolume * 100)}%`}
+                        </Text>
+                      </View>
+                      <MaterialCommunityIcons name="volume-high" size={18} color={colors.textTertiary} />
+                    </View>
+                    <View style={styles.sliderContainer}>
+                      <Slider
+                        style={styles.slider}
+                        minimumValue={0}
+                        maximumValue={1}
+                        step={0.05}
+                        value={cameraAlertVolume}
+                        onSlidingComplete={async (value: number) => {
+                          setCameraAlertVolume(value);
+                          try {
+                            await CameraAlertService.setAlertVolume(value);
+                            showFeedback(value === 0 ? 'Camera alerts muted' : `Volume set to ${Math.round(value * 100)}%`);
+                          } catch (err) {
+                            log.error('Error setting alert volume', err);
+                          }
+                        }}
+                        onValueChange={(value: number) => setCameraAlertVolume(value)}
+                        minimumTrackTintColor={colors.primary}
+                        maximumTrackTintColor={colors.border}
+                        thumbTintColor={colors.primary}
+                        accessibilityLabel="Camera alert volume"
+                        accessibilityValue={{ min: 0, max: 100, now: Math.round(cameraAlertVolume * 100) }}
+                      />
+                    </View>
+                  </>
+                )}
+              </>
+            )}
+          </>
           <Divider />
           <SettingRow
             icon="timer-alert-outline"

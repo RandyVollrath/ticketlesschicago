@@ -187,16 +187,17 @@ class BackgroundTaskServiceClass {
         ]);
         const diag = CameraAlertService.getDiagnosticInfo();
         // Keep iOS-native camera alerts in sync so background alerts work even if JS is suspended.
-        // TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4)
-        // if (Platform.OS === 'ios') {
-        //   const cameraVolume = CameraAlertService.getAlertVolume();
-        //   await BackgroundLocationService.setCameraAlertSettings(
-        //     diag.isEnabled,
-        //     diag.speedAlertsEnabled,
-        //     diag.redLightAlertsEnabled,
-        //     cameraVolume
-        //   );
-        // }
+        // TTS remains disabled in native for App Store compliance (2.5.4) — only local
+        // notifications fire. But the detection + logging pipeline must be active.
+        if (Platform.OS === 'ios') {
+          const cameraVolume = CameraAlertService.getAlertVolume();
+          await BackgroundLocationService.setCameraAlertSettings(
+            diag.isEnabled,
+            diag.speedAlertsEnabled,
+            diag.redLightAlertsEnabled,
+            cameraVolume
+          );
+        }
         await this.sendDiagnosticNotification(
           'Camera Settings Check',
           `AsyncStorage: global=${rawGlobal[1] ?? 'NULL'} speed=${rawSpeed[1] ?? 'NULL'} redlight=${rawRedLight[1] ?? 'NULL'}\n` +
