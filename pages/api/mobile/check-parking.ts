@@ -48,6 +48,10 @@ interface EnforcementRisk {
   top_violation?: string;
   /** Human-readable risk insight */
   insight: string;
+  /** Estimated total ticket revenue on this block from FOIA data */
+  estimated_block_revenue?: number;
+  /** Year range of the FOIA data (e.g., "2024-2025") */
+  data_year_range?: string;
 }
 
 interface MobileCheckParkingResponse {
@@ -297,6 +301,56 @@ export default async function handler(
       } catch (riskErr) {
         // Risk scoring is non-critical — log and continue
         console.warn('[check-parking] Risk scoring failed (non-fatal):', riskErr);
+      }
+    }
+
+    // Step 4: Enrich with block_enforcement_stats (revenue, violation breakdown)
+    // from the FOIA ticket data aggregation table (645K tickets, ~20K blocks)
+    if (result.location.parsedAddress && supabaseAdmin) {
+      try {
+        const addr = result.location.parsedAddress;
+        const streetNum = String(addr.number);
+        const blockNum = Math.floor(parseInt(streetNum) / 100) * 100;
+        const direction = (addr.direction || '').toUpperCase().trim();
+        const streetName = (addr.name || '').toUpperCase().trim();
+
+        const { data: blockData, error: blockError } = await supabaseAdmin
+          .from('block_enforcement_stats')
+          .select('estimated_revenue, total_tickets, city_rank, peak_hour_start, peak_hour_end, top_violation_code, top_violation_pct, year_range, violation_breakdown')
+          .eq('block_number', blockNum)
+          .eq('street_direction', direction)
+          .eq('street_name', streetName)
+          .limit(1)
+          .maybeSingle();
+
+        if (!blockError && blockData) {
+          // Merge block stats into enforcementRisk (create if needed)
+          if (!enforcementRisk) {
+            enforcementRisk = {
+              risk_score: 0,
+              urgency: 'low',
+              has_block_data: true,
+              block_address: `${blockNum} ${direction} ${streetName}`.trim(),
+              insight: '',
+            };
+          }
+          enforcementRisk.estimated_block_revenue = blockData.estimated_revenue;
+          enforcementRisk.data_year_range = blockData.year_range;
+
+          // Override ticket count and rank with FOIA data if available
+          if (blockData.total_tickets) {
+            enforcementRisk.total_block_tickets = blockData.total_tickets;
+            enforcementRisk.has_block_data = true;
+          }
+          if (blockData.city_rank) {
+            enforcementRisk.city_rank = blockData.city_rank;
+          }
+
+          console.log(`[check-parking] Block stats: ${blockNum} ${direction} ${streetName} — $${blockData.estimated_revenue?.toLocaleString()} (${blockData.total_tickets} tickets, rank #${blockData.city_rank})`);
+        }
+      } catch (blockErr) {
+        // Block stats are non-critical
+        console.warn('[check-parking] Block stats lookup failed (non-fatal):', blockErr);
       }
     }
 

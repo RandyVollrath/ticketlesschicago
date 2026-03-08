@@ -2509,9 +2509,17 @@ class BackgroundTaskServiceClass {
       todayEndHour.setHours(end_hour, 0, 0, 0);
 
       if (followUpTime.getTime() < todayEndHour.getTime()) {
-        const blockInfo = risk.total_block_tickets
-          ? `${risk.total_block_tickets.toLocaleString()} tickets on record`
-          : 'High enforcement activity';
+        // Format revenue for notification: "$148K in tickets issued here"
+      const revenueInfo = risk.estimated_block_revenue && risk.estimated_block_revenue >= 10000
+        ? (risk.estimated_block_revenue >= 1_000_000
+            ? `$${(risk.estimated_block_revenue / 1_000_000).toFixed(1)}M`
+            : `$${Math.round(risk.estimated_block_revenue / 1_000)}K`)
+        : null;
+      const blockInfo = revenueInfo
+          ? `${revenueInfo} in tickets issued on this block`
+          : risk.total_block_tickets
+            ? `${risk.total_block_tickets.toLocaleString()} tickets on record`
+            : 'High enforcement activity';
         const endFormatted = end_hour > 12
           ? `${end_hour - 12}pm`
           : end_hour === 12 ? '12pm' : `${end_hour}am`;
@@ -2631,7 +2639,17 @@ class BackgroundTaskServiceClass {
 
     const { urgency, risk_score, has_block_data, insight, in_peak_window,
             peak_window, total_block_tickets, city_rank, top_violation,
-            current_hour_pct } = risk;
+            current_hour_pct, estimated_block_revenue } = risk;
+
+    // Format revenue: $148,000 -> "$148K"
+    const formatRevenue = (amount: number): string => {
+      if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
+      if (amount >= 1_000) return `$${Math.round(amount / 1_000)}K`;
+      return `$${amount}`;
+    };
+    const revenueStr = estimated_block_revenue && estimated_block_revenue >= 10000
+      ? formatRevenue(estimated_block_revenue)
+      : null;
 
     switch (urgency) {
       case 'high': {
@@ -2646,7 +2664,11 @@ class BackgroundTaskServiceClass {
           parts.push(`Peak enforcement window — ends at ${endFormatted}`);
         }
 
-        if (has_block_data && total_block_tickets) {
+        // Prefer revenue over raw ticket count — more visceral
+        if (revenueStr) {
+          const rankStr = city_rank ? ` (#${city_rank} most ticketed block)` : '';
+          parts.push(`${revenueStr} in tickets issued on this block${rankStr}`);
+        } else if (has_block_data && total_block_tickets) {
           const rankStr = city_rank ? ` (#${city_rank} most ticketed block)` : '';
           parts.push(`${total_block_tickets.toLocaleString()} tickets issued here${rankStr}`);
         }
@@ -2667,7 +2689,9 @@ class BackgroundTaskServiceClass {
         const parts: string[] = [];
         parts.push(`Risk: MEDIUM (${risk_score}/100)`);
 
-        if (insight) {
+        if (revenueStr) {
+          parts.push(`${revenueStr} in tickets issued on this block`);
+        } else if (insight) {
           // Use the server-generated insight which is already well-written
           parts.push(insight);
         } else if (has_block_data && total_block_tickets) {
