@@ -2339,14 +2339,13 @@ class BackgroundTaskServiceClass {
       const rate = result.meteredParking.estimatedRate || '$2.50/hr';
 
       if (result.meteredParking.isEnforcedNow) {
-        // Currently enforced — schedule 1h45m timer (15 min before 2-hour limit)
         const timeLimitMin = result.meteredParking.timeLimitMinutes || 120;
-        // This is a product decision: warn early enough to move or add time.
-        const warningMinutesBefore = 30;
-        const delayMs = (timeLimitMin - warningMinutesBefore) * 60 * 1000;
-
-        const meterExpiryWarningTime = new Date(Date.now() + delayMs);
         const limitHours = timeLimitMin / 60;
+
+        // Notification 1: 30 minutes before limit — early warning to add time
+        const warningMinutesBefore = 30;
+        const warningDelayMs = (timeLimitMin - warningMinutesBefore) * 60 * 1000;
+        const meterExpiryWarningTime = new Date(Date.now() + warningDelayMs);
 
         restrictions.push({
           type: 'metered_parking',
@@ -2358,6 +2357,24 @@ class BackgroundTaskServiceClass {
         });
 
         log.info(`Scheduled metered parking expiry reminder in ${timeLimitMin - warningMinutesBefore} minutes (${meterExpiryWarningTime.toLocaleTimeString()})`);
+
+        // Notification 2: At the time limit — legal maximum reached
+        // ParkChicago allows paying for more time, but the posted time limit
+        // is the legal maximum. Staying past the limit — even if you pay —
+        // can result in a ticket.
+        const limitDelayMs = timeLimitMin * 60 * 1000;
+        const meterLimitReachedTime = new Date(Date.now() + limitDelayMs);
+
+        restrictions.push({
+          type: 'metered_parking',
+          restrictionStartTime: meterLimitReachedTime,
+          address: result.address || '',
+          details: `You've reached the posted ${limitHours}-hour maximum time limit. While ParkChicago allows you to add time remotely, the city's posted limit is ${limitHours} hours — you can still be ticketed ($65) for exceeding it regardless of payment. Move your car to be safe.`,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+
+        log.info(`Scheduled metered parking legal limit notification in ${timeLimitMin} minutes (${meterLimitReachedTime.toLocaleTimeString()})`);
       } else {
         // Not currently enforced — schedule notification for when meters activate.
         // Mon–Sat 8am. If parked on Sat evening, next enforcement is Mon 8am.
