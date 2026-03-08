@@ -1391,8 +1391,30 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   : risk.urgency === 'medium' ? 'shield-half-full' : 'shield-check';
                 const riskLabel = risk.urgency === 'high' ? 'HIGH RISK'
                   : risk.urgency === 'medium' ? 'MEDIUM RISK' : 'LOW RISK';
+
+                // Format revenue: $182,000 -> "$182K", $1,200,000 -> "$1.2M"
+                const formatRevenue = (amount: number): string => {
+                  if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
+                  if (amount >= 1_000) return `$${Math.round(amount / 1_000)}K`;
+                  return `$${amount}`;
+                };
+
+                const hasSignificantRevenue = risk.estimated_block_revenue && risk.estimated_block_revenue >= 5000;
+                const revenueStr = hasSignificantRevenue ? formatRevenue(risk.estimated_block_revenue!) : null;
+                const yearRange = risk.data_year_range || '';
+
                 return (
                   <View style={styles.heroRiskSection}>
+                    {/* Revenue callout — only show when block has significant ticket history */}
+                    {hasSignificantRevenue && (
+                      <View style={styles.heroRevenueRow}>
+                        <MaterialCommunityIcons name="alert-circle" size={14} color="#FFD700" />
+                        <Text style={styles.heroRevenueText}>
+                          {revenueStr} in tickets issued on this block
+                          {yearRange ? ` (${yearRange})` : ''}
+                        </Text>
+                      </View>
+                    )}
                     <View style={styles.heroRiskHeader}>
                       <MaterialCommunityIcons name={riskIcon} size={14} color="rgba(255,255,255,0.9)" />
                       <Text style={styles.heroRiskLabel}>
@@ -2122,6 +2144,22 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(255,255,255,0.2)',
+  },
+  heroRevenueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderRadius: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    marginBottom: spacing.xs,
+  },
+  heroRevenueText: {
+    marginLeft: spacing.xs,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semiBold as any,
+    color: '#FFD700',
+    flex: 1,
   },
   heroRiskHeader: {
     flexDirection: 'row',
