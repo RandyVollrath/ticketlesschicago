@@ -8,9 +8,10 @@
  * This approach is immune to GPS drift across streets — a user on Belden Ave
  * will never match meters on nearby Sheffield or Fullerton.
  *
- * Data source: 4,312 active payboxes scraped from map.chicagometers.com (Feb 2026)
- * with block ranges from City of Chicago Schedule 10.
- * Includes per-meter time limits, rates, and enforcement schedules.
+ * Data source: City of Chicago Dept. of Finance FOIA F126827-020326 (March 2026)
+ * 4,849 payboxes with official rates, enforcement schedules, rush hour windows,
+ * Sunday hours, seasonal restrictions, and rate zones.
+ * GPS coordinates preserved from original chicagometers.com scrape.
  */
 
 import { supabaseAdmin } from './supabase';
@@ -37,6 +38,16 @@ export interface MeteredParkingStatus {
   isEnforcedNow: boolean;
   /** Actual hourly rate from meter data */
   estimatedRate: string | null;
+  /** Rate zone (1-5) from FOIA data */
+  rateZone: number | null;
+  /** Whether this is a seasonal meter (Memorial Day–Labor Day only) */
+  isSeasonal: boolean;
+  /** Rush hour details if applicable */
+  rushHourInfo: string | null;
+  /** Whether currently in a rush hour window */
+  isRushHour: boolean;
+  /** Full enforcement schedule breakdown */
+  scheduleText: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,22 +118,57 @@ async function reverseGeocodeNominatim(
 }
 
 // ---------------------------------------------------------------------------
-// Enforcement schedule parser
+// Enforcement schedule parser (FOIA-upgraded)
 // ---------------------------------------------------------------------------
 
 interface EnforcementInfo {
   isEnforced: boolean;
   scheduleText: string;
+  isRushHour: boolean;
+  rushHourInfo: string | null;
+  isSeasonal: boolean;
+}
+
+/**
+ * Parse hour from "12 AM" / "10 PM" / "11:59 PM" format → 0–23.
+ */
+function parseHour(hourStr: string, ampm: string): number {
+  let h = parseInt(hourStr, 10);
+  const ap = ampm.toUpperCase();
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return h;
+}
+
+/**
+ * Check if a day-of-week (0=Sun..6=Sat) falls within a day range string.
+ */
+function isDayInRange(day: number, dayRange: string): boolean {
+  const dr = dayRange.toLowerCase().trim();
+  if (dr === 'mon-sun') return true;
+  if (dr === 'mon-sat') return day >= 1 && day <= 6;
+  if (dr === 'mon-fri') return day >= 1 && day <= 5;
+  if (dr === 'sat-sun' || dr === 'sat–sun') return day === 0 || day === 6;
+  if (dr === 'sun') return day === 0;
+  if (dr === 'sat') return day === 6;
+  if (dr === 'fri') return day === 5;
+  // Handle individual day names
+  const dayNames: { [k: string]: number } = {
+    sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+  };
+  if (dayNames[dr] !== undefined) return day === dayNames[dr];
+  return false;
 }
 
 /**
  * Parse the enforcement schedule from the meter's rate_description.
  *
- * Examples:
- *   "$2.50, Mon-Sat 8 AM-10 PM, 2 hr POS"  → Mon-Sat 8am–10pm
- *   "$7.00, 24/7, 2 hr POS"                 → always enforced
- *   "$2.50, Mon-Sat 9 AM-6 PM, 2 hr POS"   → Mon-Sat 9am–6pm
- *   "$2.50, Mon-Fri 8 AM-6 PM, 2 hr POS"   → Mon-Fri 8am–6pm
+ * Handles all FOIA formats including:
+ *   "$2.50, Mon-Sat 8 AM-10 PM, 2 hr POS"
+ *   "$2.50, Mon-Sat 8 AM-10 PM, Sun 10 AM-8 PM, 2 hr POS"
+ *   "$14.00, Mon-Sun 12 AM-11:59 PM, RH1: Mon-Fri 7 AM-9 AM, RH2: Mon-Fri 4 PM-6 PM, 2 hr POS"
+ *   "$0.50, Fri 6 PM-11 PM, Sat-Sun 8 AM-11 PM, 10 hr POS - Between Memorial Day and Labor Day Only"
+ *   "$2.50, Mon-Sat 12 AM-12 AM, Sun 10 AM-8 PM, 6 hr POS, LOT"
  */
 function parseEnforcementSchedule(rateDescription: string): EnforcementInfo {
   const now = new Date(
@@ -131,48 +177,193 @@ function parseEnforcementSchedule(rateDescription: string): EnforcementInfo {
   const hour = now.getHours();
   const day = now.getDay(); // 0 = Sun … 6 = Sat
 
-  // 24/7 meters (some downtown)
-  if (rateDescription.includes('24/7')) {
-    return { isEnforced: true, scheduleText: '24/7' };
+  // --- Seasonal check ---
+  const isSeasonal = /Memorial Day|Labor Day/i.test(rateDescription);
+  if (isSeasonal) {
+    // Memorial Day is last Monday of May, Labor Day is first Monday of September
+    const month = now.getMonth(); // 0-indexed: May=4, Sep=8
+    // Rough: active June–August, edge months depend on exact dates
+    // Memorial Day: late May. Labor Day: early Sep.
+    const isInSeason = month >= 4 && month <= 8; // May through September (generous)
+    if (!isInSeason) {
+      return {
+        isEnforced: false,
+        scheduleText: 'Seasonal (Memorial Day–Labor Day only)',
+        isRushHour: false,
+        rushHourInfo: null,
+        isSeasonal: true,
+      };
+    }
   }
 
-  // Parse "Mon-Sat X AM-Y PM" / "Mon-Fri …" / "Mon-Sun …"
-  const m = rateDescription.match(
-    /(Mon-Sat|Mon-Fri|Mon-Sun)\s+(\d{1,2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*(AM|PM)/i,
-  );
-  if (!m) {
-    // Default: Mon-Sat 8am-10pm (most common Chicago schedule)
-    if (day === 0) return { isEnforced: false, scheduleText: 'Mon–Sat 8am–10pm' };
-    return { isEnforced: hour >= 8 && hour < 22, scheduleText: 'Mon–Sat 8am–10pm' };
+  // --- 24/7 meters ---
+  if (rateDescription.includes('24/7') || /12\s*AM\s*-\s*11:59\s*PM/i.test(rateDescription)) {
+    // Check rush hours even for 24/7 meters
+    const rh = parseRushHours(rateDescription, day, hour);
+    return {
+      isEnforced: true,
+      scheduleText: '24/7',
+      isRushHour: rh.isInRushHour,
+      rushHourInfo: rh.info,
+      isSeasonal,
+    };
   }
 
-  const [, dayRange, startStr, startAP, endStr, endAP] = m;
+  // --- "12 AM-12 AM" = 24 hours (midnight to midnight) ---
+  if (/12\s*AM\s*-\s*12\s*AM/i.test(rateDescription)) {
+    // This is 24-hour enforcement. Check if there's a Sunday override.
+    const sundayMatch = rateDescription.match(
+      /Sun\s+(\d{1,2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*(AM|PM)/i,
+    );
 
-  let startHour = parseInt(startStr, 10);
-  if (startAP.toUpperCase() === 'PM' && startHour !== 12) startHour += 12;
-  if (startAP.toUpperCase() === 'AM' && startHour === 12) startHour = 0;
+    if (day === 0 && sundayMatch) {
+      // Sunday with specific hours
+      const sunStart = parseHour(sundayMatch[1], sundayMatch[2]);
+      const sunEnd = parseHour(sundayMatch[3], sundayMatch[4]);
+      const rh = parseRushHours(rateDescription, day, hour);
+      return {
+        isEnforced: hour >= sunStart && hour < sunEnd,
+        scheduleText: `Mon–Sat 24hr, Sun ${sundayMatch[1]}${sundayMatch[2].toLowerCase()}–${sundayMatch[3]}${sundayMatch[4].toLowerCase()}`,
+        isRushHour: rh.isInRushHour,
+        rushHourInfo: rh.info,
+        isSeasonal,
+      };
+    }
 
-  let endHour = parseInt(endStr, 10);
-  if (endAP.toUpperCase() === 'PM' && endHour !== 12) endHour += 12;
-  if (endAP.toUpperCase() === 'AM' && endHour === 12) endHour = 0;
+    // Weekday 24hr enforcement
+    const dayRangeMatch = rateDescription.match(/(Mon-Sat|Mon-Fri)/i);
+    const mainRange = dayRangeMatch ? dayRangeMatch[1] : 'Mon-Sat';
+    const mainDayInRange = isDayInRange(day, mainRange);
+    const rh = parseRushHours(rateDescription, day, hour);
 
-  let dayInRange = false;
-  switch (dayRange.toLowerCase()) {
-    case 'mon-sat':
-      dayInRange = day >= 1 && day <= 6;
-      break;
-    case 'mon-fri':
-      dayInRange = day >= 1 && day <= 5;
-      break;
-    case 'mon-sun':
-      dayInRange = true;
-      break;
+    return {
+      isEnforced: mainDayInRange,
+      scheduleText: `${mainRange} 24hr`,
+      isRushHour: rh.isInRushHour,
+      rushHourInfo: rh.info,
+      isSeasonal,
+    };
   }
 
-  const isEnforced = dayInRange && hour >= startHour && hour < endHour;
-  const scheduleText = `${dayRange} ${startStr}${startAP.toLowerCase()}–${endStr}${endAP.toLowerCase()}`;
+  // --- Standard format: "DayRange StartTime-EndTime" ---
+  // Match all schedule segments (there can be multiple: weekday + Sunday)
+  const schedulePattern =
+    /(Mon-Sat|Mon-Fri|Mon-Sun|Sat-Sun|Sun|Sat|Fri)\s+(\d{1,2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*(AM|PM)/gi;
 
-  return { isEnforced, scheduleText };
+  const segments: Array<{
+    dayRange: string;
+    startHour: number;
+    endHour: number;
+    text: string;
+  }> = [];
+
+  let match;
+  while ((match = schedulePattern.exec(rateDescription)) !== null) {
+    // Skip rush hour segments (they start with "RH")
+    const prefix = rateDescription.substring(Math.max(0, match.index - 5), match.index);
+    if (/RH\d*:\s*$/i.test(prefix)) continue;
+
+    const startH = parseHour(match[2], match[3]);
+    const endH = parseHour(match[4], match[5]);
+    segments.push({
+      dayRange: match[1],
+      startHour: startH,
+      endHour: endH,
+      text: `${match[1]} ${match[2]}${match[3].toLowerCase()}–${match[4]}${match[5].toLowerCase()}`,
+    });
+  }
+
+  if (segments.length === 0) {
+    // No parseable schedule — default to Mon-Sat 8am-10pm
+    if (day === 0) {
+      return {
+        isEnforced: false,
+        scheduleText: 'Mon–Sat 8am–10pm (default)',
+        isRushHour: false,
+        rushHourInfo: null,
+        isSeasonal,
+      };
+    }
+    return {
+      isEnforced: hour >= 8 && hour < 22,
+      scheduleText: 'Mon–Sat 8am–10pm (default)',
+      isRushHour: false,
+      rushHourInfo: null,
+      isSeasonal,
+    };
+  }
+
+  // Check if current time falls within any segment
+  let isEnforced = false;
+  const scheduleTexts: string[] = [];
+
+  for (const seg of segments) {
+    scheduleTexts.push(seg.text);
+    if (isDayInRange(day, seg.dayRange) && hour >= seg.startHour && hour < seg.endHour) {
+      isEnforced = true;
+    }
+  }
+
+  const rh = parseRushHours(rateDescription, day, hour);
+
+  return {
+    isEnforced,
+    scheduleText: scheduleTexts.join(', '),
+    isRushHour: rh.isInRushHour,
+    rushHourInfo: rh.info,
+    isSeasonal,
+  };
+}
+
+/**
+ * Parse rush hour windows from rate description.
+ *
+ * Examples:
+ *   "RH1: Mon-Fri 7 AM-9 AM"
+ *   "RH1: Mon-Fri 7 AM-9 AM, RH2: Mon-Fri 4 PM-6 PM"
+ *   "RH1: Mon-Fri 7 AM-9 AM, RH2: Mon-Fri 4 PM-6 PM, RH3: Mon-Sun 11 PM-5 AM"
+ */
+function parseRushHours(
+  rateDescription: string,
+  day: number,
+  hour: number,
+): { isInRushHour: boolean; info: string | null } {
+  const rhPattern =
+    /RH\d+:\s*(Mon-Sat|Mon-Fri|Mon-Sun|Sat-Sun)\s+(\d{1,2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*(AM|PM)/gi;
+
+  const windows: Array<{ dayRange: string; startHour: number; endHour: number; text: string }> =
+    [];
+  let match;
+
+  while ((match = rhPattern.exec(rateDescription)) !== null) {
+    const startH = parseHour(match[2], match[3]);
+    const endH = parseHour(match[4], match[5]);
+    windows.push({
+      dayRange: match[1],
+      startHour: startH,
+      endHour: endH,
+      text: `${match[1]} ${match[2]}${match[3].toLowerCase()}–${match[4]}${match[5].toLowerCase()}`,
+    });
+  }
+
+  if (windows.length === 0) return { isInRushHour: false, info: null };
+
+  let isInRushHour = false;
+  for (const w of windows) {
+    if (isDayInRange(day, w.dayRange)) {
+      // Handle overnight windows (e.g., 11 PM–5 AM)
+      if (w.startHour > w.endHour) {
+        if (hour >= w.startHour || hour < w.endHour) {
+          isInRushHour = true;
+        }
+      } else if (hour >= w.startHour && hour < w.endHour) {
+        isInRushHour = true;
+      }
+    }
+  }
+
+  const infoText = windows.map((w) => w.text).join(', ');
+  return { isInRushHour, info: `Rush hours: ${infoText}` };
 }
 
 // ---------------------------------------------------------------------------
@@ -221,7 +412,8 @@ export async function checkMeteredParking(
       .from('metered_parking_locations')
       .select(
         'address, spaces, time_limit_hours, rate, rate_description, is_clz, ' +
-          'block_start, block_end, latitude, longitude',
+          'block_start, block_end, latitude, longitude, rate_zone, is_seasonal, ' +
+          'rush_hour_schedule, sunday_schedule, side_of_street',
       )
       .eq('status', 'Active')
       .eq('street_name', parsed.name);
@@ -297,10 +489,19 @@ export async function checkMeteredParking(
     let message: string;
     let severity: 'warning' | 'info';
 
-    if (enforcement.isEnforced) {
+    if (enforcement.isSeasonal && !enforcement.isEnforced) {
+      message =
+        `Seasonal metered parking (Memorial Day–Labor Day only). ` +
+        `Free parking right now!`;
+      severity = 'info';
+    } else if (enforcement.isEnforced) {
       message =
         `Metered parking zone. ${rate}, ${timeLimitHours}-hour max. ` +
         `Feed the meter or risk a $65 ticket.`;
+      // Add rush hour warning
+      if (enforcement.isRushHour && enforcement.rushHourInfo) {
+        message += ` Rush hour restrictions active.`;
+      }
       severity = 'warning';
     } else {
       message =
@@ -320,6 +521,11 @@ export async function checkMeteredParking(
       timeLimitMinutes: timeLimitHours * 60,
       isEnforcedNow: enforcement.isEnforced,
       estimatedRate: rate,
+      rateZone: meter.rate_zone || null,
+      isSeasonal: enforcement.isSeasonal,
+      rushHourInfo: enforcement.rushHourInfo,
+      isRushHour: enforcement.isRushHour,
+      scheduleText: enforcement.scheduleText,
     };
   } catch (err) {
     console.warn('[metered-parking] Check failed:', err);
@@ -343,5 +549,10 @@ function makeNoMeterResult(): MeteredParkingStatus {
     timeLimitMinutes: 120,
     isEnforcedNow: false,
     estimatedRate: null,
+    rateZone: null,
+    isSeasonal: false,
+    rushHourInfo: null,
+    isRushHour: false,
+    scheduleText: '',
   };
 }

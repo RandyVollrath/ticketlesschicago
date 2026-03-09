@@ -3,14 +3,12 @@
  *
  * Runs weekly to verify our metered parking data is still current.
  *
- * Strategy: Since Chicago Parking Meters LLC (private operator) does not
- * provide a bulk data API, we spot-check a random sample of meters against
- * their search API at map.chicagometers.com. If discrepancies are found,
- * an alert email is sent for manual investigation.
+ * Strategy: Our authoritative data source is the City of Chicago Dept. of Finance
+ * FOIA response (F126827-020326, March 2026) — 4,849 payboxes with official rates,
+ * rush hour windows, Sunday hours, seasonal restrictions, and rate zones.
  *
- * Data source: map.chicagometers.com (ParkChicago)
- * - /search endpoint: POST with CSRF token, returns max 5 results per query
- * - /terminals endpoint: broken/500 (not usable for bulk fetch)
+ * We spot-check a random sample against the chicagometers.com search API
+ * to detect any rate changes between FOIA updates.
  *
  * Schedule: Weekly on Sundays at 3 AM CT (with cameras + permit zones)
  */

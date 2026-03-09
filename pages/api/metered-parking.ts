@@ -25,7 +25,8 @@ export default async function handler(
       const { data: page, error: pageError } = await (supabaseAdmin as any)
         .from('metered_parking_locations')
         .select('meter_id, address, latitude, longitude, spaces, status, meter_type, ' +
-          'street_name, direction, block_start, block_end, time_limit_hours, rate, rate_description, is_clz')
+          'street_name, direction, block_start, block_end, time_limit_hours, rate, rate_description, is_clz, ' +
+          'rate_zone, rush_hour_schedule, sunday_schedule, is_seasonal, is_lot, side_of_street, foia_verified')
         .eq('status', 'Active')
         .order('meter_id')
         .range(offset, offset + pageSize - 1);
@@ -40,7 +41,7 @@ export default async function handler(
       offset += pageSize;
     }
 
-    // Cache for 6 hours - data rarely changes (awaiting FOIA for updates)
+    // Cache for 6 hours — data is FOIA-sourced (F126827, March 2026)
     res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=86400');
 
     return res.status(200).json({
