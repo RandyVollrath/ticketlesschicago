@@ -1,0 +1,170 @@
+{"roots_installed":0,"app_name":"GooglePhotos","timestamp":"2026-03-07 06:18:50.00 -0600","app_version":"7.65.0","slice_uuid":"95D050BA-AB01-3B09-BAA0-627B50FCD461","adam_id":"962194608","build_version":"7.65.874235213","bundleID":"com.google.photos","duration_ms":"14208442","is_first_party":0,"share_with_app_devs":1,"bug_type":"145","os_version":"iPhone OS 26.3.1 (23D8133)","distributor_id":"com.apple.AppStore","name":"GooglePhotos","incident_id":"CD41F98B-00EE-4749-92FB-407983D19AE3"}
+Date/Time:        2026-03-07 02:21:55.456 -0600
+End time:         2026-03-07 06:18:43.898 -0600
+OS Version:       iPhone OS 26.3.1 (Build 23D8133)
+Architecture:     arm64e
+Report Version:   67
+Incident Identifier: CD41F98B-00EE-4749-92FB-407983D19AE3
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     D6B932CE-D5D5-3B6A-A2E5-FDED45AA0995 slid base address 0x184918000, slide 0x4918000
+
+Command:          GooglePhotos
+Path:             /private/var/containers/Bundle/Application/67402CDF-57B1-4510-8648-E364133F3812/GooglePhotos.app/GooglePhotos
+Identifier:       com.google.photos
+Version:          7.65.0 (7.65.874235213)
+Adam ID:          962194608
+Is First Party:   No
+Beta Identifier:  48D22F4F-683E-4496-BD7A-A15668411D1D
+Resource Coalition: "com.google.photos"(867)
+On Behalf Of:     59 samples UNKNOWN [35, 84] (54 samples originated by UNKNOWN [84], 5 samples originated by GooglePhotos (Google Photos) [2002])
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+PID:              2002
+
+Event:            disk writes
+Action taken:     none
+Writes:           1081.56 MB of file backed memory dirtied over 14208 seconds (76.12 KB per second average), exceeding limit of 12.43 KB per second over 86400 seconds
+Writes limit:     1073.74 MB
+Limit duration:   86400s
+Writes caused:    1081.56 MB
+Writes duration:  14208s
+Duration:         14208.44s
+Duration Sampled: 14190.95s (event starts 0.78s before samples, event ends 16.71s after samples)
+Steps:            60 (10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 7.14% (409.91 MB / 5742.41 MB)
+
+Time Since Boot:  10337s
+Time Awake Since Boot: 10337s
+Time Since Wake:  n/a (machine hasn't slept)
+
+Total CPU Time:   127.039s
+Advisory levels:  Battery -> 3, User -> 3, ThermalPressure -> 0, Combined -> 3
+Free disk space:  15.09 GB/238.29 GB, low space threshold 150 MB
+Vnodes Available: 51.27% (10254/20000, 10000 allocated, 10000 soft limit)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+Keyboards:        en_US QWERTY, emoji Emoji
+OS Cryptex File Extents: 19018
+
+Heaviest stack for the target process:
+  59  ??? (libsystem_pthread.dylib + 2240) [0x1e45b08c0]
+  58  ??? (libsystem_pthread.dylib + 4988) [0x1e45b137c]
+  58  ??? (libdispatch.dylib + 83708) [0x1c07776fc]
+  58  ??? (libdispatch.dylib + 81736) [0x1c0776f48]
+  58  ??? (libdispatch.dylib + 25340) [0x1c07692fc]
+  58  ??? (libdispatch.dylib + 227300) [0x1c079a7e4]
+  58  ??? (libdispatch.dylib + 112636) [0x1c077e7fc]
+  58  ??? (libdispatch.dylib + 6876) [0x1c0764adc]
+  58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25501688) [0x11078dff8]
+  58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25503644) [0x11078e79c]
+  58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25511332) [0x1107905a4]
+  58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25521036) [0x110792b8c]
+  58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25525664) [0x110793da0]
+  58  ??? (Foundation + 457364) [0x1850e4a94]
+  58  ??? (Foundation + 457820) [0x1850e4c5c]
+  57  ??? (Foundation + 1164620) [0x18519154c]
+  57  ??? (libsystem_kernel.dylib + 20516) [0x235203024]
+
+
+Powerstats for:   GooglePhotos (Google Photos) [2002]
+UUID:             95D050BA-AB01-3B09-BAA0-627B50FCD461
+Path:             /private/var/containers/Bundle/Application/67402CDF-57B1-4510-8648-E364133F3812/GooglePhotos.app/GooglePhotos
+Identifier:       com.google.photos
+Version:          7.65.0 (7.65.874235213)
+Adam ID:          962194608
+Is First Party:   No
+Beta Identifier:  48D22F4F-683E-4496-BD7A-A15668411D1D
+Resource Coalition: 60 samples "com.google.photos"(867)
+On Behalf Of:     59 samples UNKNOWN [35, 84] (54 samples originated by UNKNOWN [84], 5 samples originated by GooglePhotos (Google Photos) [2002])
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+UID:              501
+Footprint:        5552 KB -> 150.73 MB (+145.31 MB) (max 164.91 MB )
+Pageins:          9485 pages
+Start time:       2026-03-07 02:21:56.237 -0600
+End time:         2026-03-07 06:18:27.191 -0600
+Num samples:      60 (100%)
+Num threads:      34
+Primary state:    58 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Default, Requested Thread QoS User Initiated, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 60 samples Active
+Power Source:     0 samples on Battery, 60 samples on AC
+  59  ??? (libsystem_pthread.dylib + 2240) [0x1e45b08c0]
+    58  ??? (libsystem_pthread.dylib + 4988) [0x1e45b137c]
+      58  ??? (libdispatch.dylib + 83708) [0x1c07776fc]
+        58  ??? (libdispatch.dylib + 81736) [0x1c0776f48]
+          58  ??? (libdispatch.dylib + 25340) [0x1c07692fc]
+            58  ??? (libdispatch.dylib + 227300) [0x1c079a7e4]
+              58  ??? (libdispatch.dylib + 112636) [0x1c077e7fc]
+                58  ??? (libdispatch.dylib + 6876) [0x1c0764adc]
+                  58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25501688) [0x11078dff8]
+                    58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25503644) [0x11078e79c]
+                      58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25511332) [0x1107905a4]
+                        58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25521036) [0x110792b8c]
+                          58  ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 25525664) [0x110793da0]
+                            58  ??? (Foundation + 457364) [0x1850e4a94]
+                              58  ??? (Foundation + 457820) [0x1850e4c5c]
+                                57  ??? (Foundation + 1164620) [0x18519154c]
+                                  57  ??? (libsystem_kernel.dylib + 20516) [0x235203024]
+                                    49  <on behalf of UNKNOWN [84] (originated by UNKNOWN [84])>
+                                    4   <on behalf of UNKNOWN [84] (originated by UNKNOWN [84]), p-core>
+                                    3   <on behalf of UNKNOWN [35] (originated by GooglePhotos (Google Photos) [2002])>
+                                    1   <on behalf of UNKNOWN [35] (originated by GooglePhotos (Google Photos) [2002]), p-core>
+                                1   ??? (Foundation + 1164316) [0x18519141c]
+                                  1   ??? (Foundation + 449568) [0x1850e2c20]
+                                    1   ??? (libsystem_kernel.dylib + 21300) [0x235203334]
+                                      1   <on behalf of UNKNOWN [84] (originated by UNKNOWN [84])>
+    1   ??? (libsystem_pthread.dylib + 5048) [0x1e45b13b8]
+      1   ??? (libdispatch.dylib + 85220) [0x1c0777ce4]
+        1   ??? (libdispatch.dylib + 87020) [0x1c07783ec]
+          1   ??? (libdispatch.dylib + 44868) [0x1c076df44]
+            1   ??? (libdispatch.dylib + 42088) [0x1c076d468]
+              1   ??? (libdispatch.dylib + 112636) [0x1c077e7fc]
+                1   ??? (libdispatch.dylib + 70736) [0x1c0774450]
+                  1   ??? (Foundation + 96152) [0x18508c798]
+                    1   ??? (Foundation + 98012) [0x18508cedc]
+                      1   ??? (Foundation + 97044) [0x18508cb14]
+                        1   ??? (Foundation + 98420) [0x18508d074]
+                          1   ??? (Foundation + 98116) [0x18508cf44]
+                            1   ??? (Foundation + 99156) [0x18508d354]
+                              1   ??? (CFNetwork + 575148) [0x19c7ef6ac]
+                                1   ??? (CFNetwork + 882404) [0x19c83a6e4]
+                                  1   ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 26007404) [0x11080976c]
+                                    1   ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 26008832) [0x110809d00]
+                                      1   ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 26002696) [0x110808508]
+                                        1   ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 26004184) [0x110808ad8]
+                                          1   ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 26012388) [0x11080aae4]
+                                            1   ??? (<044CCBBE-5AF1-3498-B78B-7B61132153C3> + 26015336) [0x11080b668]
+                                              1   ??? (Foundation + 457364) [0x1850e4a94]
+                                                1   ??? (Foundation + 457956) [0x1850e4ce4]
+                                                  1   ??? (Foundation + 268096) [0x1850b6740]
+                                                    1   ??? (Foundation + 461316) [0x1850e5a04]
+                                                      1   ??? (Foundation + 461292) [0x1850e59ec]
+                                                        1   ??? (Foundation + 461264) [0x1850e59d0]
+                                                          1   ??? (Foundation + 474232) [0x1850e8c78]
+                                                            1   ??? (libsystem_kernel.dylib + 20516) [0x235203024]
+                                                              1   <on behalf of UNKNOWN [35] (originated by GooglePhotos (Google Photos) [2002]), Effective Thread QoS Utility, Requested Thread QoS Utility>
+  1   ??? (dyld + 19928) [0x184a32dd8]
+    1   ??? (dyld + 87816) [0x184a43708]
+      1   ??? (dyld + 345368) [0x184a82518]
+        1   ??? (dyld + 310680) [0x184a79d98]
+          1   <Requested Thread QoS User Interactive, p-core>
+
+  Binary Images:
+           0x100244000 -                ???  com.google.photos 7.65.0 (7.65.874235213) <95D050BA-AB01-3B09-BAA0-627B50FCD461>  /private/var/containers/Bundle/Application/67402CDF-57B1-4510-8648-E364133F3812/GooglePhotos.app/GooglePhotos
+           0x10ef3c000 -                ???  ???                                       <044CCBBE-5AF1-3498-B78B-7B61132153C3>
+           0x184a2e000 -        0x184acd34b  dyld                                      <8ACDB580-8AB7-38C0-A586-E667ADB1C11C>  /usr/lib/dyld
+           0x185075000 -        0x185ebbc9f  Foundation                                <42C593BB-89FB-3EC4-8220-C746811E7A43>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x19c763000 -        0x19cb198bf  CFNetwork                                 <AC6CB884-3740-3320-9994-36594AF6AD73>  /System/Library/Frameworks/CFNetwork.framework/CFNetwork
+           0x1c0763000 -        0x1c07a921f  libdispatch.dylib                         <904D48A3-D99E-3962-BFA9-C3DFB66BBA83>  /usr/lib/system/libdispatch.dylib
+           0x1e45b0000 -        0x1e45bc45f  libsystem_pthread.dylib                   <4F94107B-94D2-3E88-8542-F5403C581B50>  /usr/lib/system/libsystem_pthread.dylib
+           0x2351fe000 -        0x235238d2b  libsystem_kernel.dylib                    <8D830129-2CBE-32A9-B61E-CE493EECB399>  /usr/lib/system/libsystem_kernel.dylib

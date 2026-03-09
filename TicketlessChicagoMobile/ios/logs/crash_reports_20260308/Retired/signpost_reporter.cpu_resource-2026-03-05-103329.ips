@@ -1,0 +1,481 @@
+{"duration_ms":"104103","share_with_app_devs":1,"roots_installed":0,"bug_type":"202","os_version":"iPhone OS 26.3 (23D127)","slice_uuid":"04A72ACE-9116-331D-9AC9-DE15D821389C","is_first_party":0,"incident_id":"5473A506-60B7-4586-BADF-F17754036C69","timestamp":"2026-03-05 10:33:29.00 -0600","app_name":"signpost_reporter","name":"signpost_reporter"}
+Date/Time:        2026-03-05 10:31:40.832 -0600
+End time:         2026-03-05 10:33:24.935 -0600
+OS Version:       iPhone OS 26.3 (Build 23D127)
+Architecture:     arm64e
+Report Version:   67
+Incident Identifier: 5473A506-60B7-4586-BADF-F17754036C69
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     2D5A6D2E-6405-3FF7-83AF-C0BD2F74AF46 slid base address 0x19e23c000, slide 0x1e23c000
+Shared Cache:     02288A32-6441-37FE-A007-6871D96AF241 slid base address 0x19a38c000, slide 0x1a38c000
+
+Command:          signpost_reporter
+Path:             /usr/libexec/signpost_reporter
+Resource Coalition: "com.apple.signpost.signpost_reporter"(1078)
+On Behalf Of:     6 samples UNKNOWN [32] (6 samples originated by UNKNOWN [32])
+Architecture:     arm64e
+Parent:           UNKNOWN [1]
+PID:              4327
+
+Event:            cpu usage
+Action taken:     none
+CPU:              90 seconds cpu time over 104 seconds (86% cpu average), exceeding limit of 50% cpu over 180 seconds
+CPU limit:        90s
+Limit duration:   180s
+CPU used:         90s
+CPU duration:     104s
+Duration:         104.10s
+Duration Sampled: 96.04s (event starts 6.99s before samples, event ends 1.07s after samples)
+Steps:            20 (10 gigacycles/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 6.26% (359.12 MB / 5741.06 MB)
+
+Time Since Boot:  50494s
+Time Awake Since Boot: 18071s
+Time Since Wake:  12022s
+
+Total CPU Time:   81.448s
+Advisory levels:  Battery -> 3, User -> 3, ThermalPressure -> 10, Combined -> 1
+Free disk space:  13.82 GB/238.29 GB, low space threshold 150 MB
+Vnodes Available: 59.17% (11834/20000, 10000 allocated, 10000 soft limit)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+Keyboards:        en_US QWERTY, emoji Emoji
+OS Cryptex File Extents: 17577
+
+Heaviest stack for the target process:
+  6  ??? (libsystem_pthread.dylib + 2240) [0x1fdecc8c0]
+  6  ??? (libsystem_pthread.dylib + 5048) [0x1fdecd3b8]
+  6  ??? (libdispatch.dylib + 85220) [0x1da097ce4]
+  6  ??? (libdispatch.dylib + 87020) [0x1da0983ec]
+  6  ??? (libdispatch.dylib + 44868) [0x1da08df44]
+  6  ??? (libdispatch.dylib + 42088) [0x1da08d468]
+  6  ??? (libdispatch.dylib + 112636) [0x1da09e7fc]
+  6  ??? (libdispatch.dylib + 6876) [0x1da084adc]
+  6  ??? (LoggingSupport + 187892) [0x24fd54df4]
+  6  ??? (LoggingSupport + 188540) [0x24fd5507c]
+  6  ??? (LoggingSupport + 130820) [0x24fd46f04]
+  6  ??? (LoggingSupport + 127856) [0x24fd46370]
+  6  ??? (LoggingSupport + 138552) [0x24fd48d38]
+  6  ??? (LoggingSupport + 128576) [0x24fd46640]
+  5  ??? (LoggingSupport + 131304) [0x24fd470e8]
+  5  ??? (LoggingSupport + 189040) [0x24fd55270]
+  4  ??? (SignpostCollection + 23332) [0x2888abb24]
+  4  ??? (SignpostCollection + 22036) [0x2888ab614]
+  2  ??? (SignpostCollection + 19880) [0x2888aada8]
+  1  ??? (SignpostCollection + 16072) [0x2888a9ec8]
+  1  ??? (LoggingSupport + 89104) [0x24fd3cc10]
+  1  ??? (CoreFoundation + 6272) [0x1a1360880]
+  1  ??? (CoreFoundation + 6116) [0x1a13607e4]
+  1  ??? (libsystem_malloc.dylib + 6516) [0x1ac8a1974]
+
+
+Powerstats for:   signpost_reporter [4327]
+UUID:             04A72ACE-9116-331D-9AC9-DE15D821389C
+Path:             /usr/libexec/signpost_reporter
+Shared Cache:     2D5A6D2E-6405-3FF7-83AF-C0BD2F74AF46 slid base address 0x19e23c000, slide 0x1e23c000
+Resource Coalition: 6 samples "com.apple.signpost.signpost_reporter"(1078)
+On Behalf Of:     6 samples UNKNOWN [32] (6 samples originated by UNKNOWN [32])
+Architecture:     arm64e
+Parent:           UNKNOWN [1]
+UID:              0
+Sudden Term:      Tracked (allows idle exit)
+Footprint:        20.91 MB -> 29.36 MB (+8656 KB)
+Pageins:          971 pages
+Start time:       2026-03-05 10:31:57.164 -0600
+End time:         2026-03-05 10:32:59.841 -0600
+Num samples:      6 (30%)
+Num threads:      1
+Primary state:    6 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Background, Requested Thread QoS Background, Override Thread QoS Unspecified, e-core
+User Activity:    6 samples Idle, 0 samples Active
+Power Source:     0 samples on Battery, 6 samples on AC
+  6  ??? (libsystem_pthread.dylib + 2240) [0x1fdecc8c0]
+    6  ??? (libsystem_pthread.dylib + 5048) [0x1fdecd3b8]
+      6  ??? (libdispatch.dylib + 85220) [0x1da097ce4]
+        6  ??? (libdispatch.dylib + 87020) [0x1da0983ec]
+          6  ??? (libdispatch.dylib + 44868) [0x1da08df44]
+            6  ??? (libdispatch.dylib + 42088) [0x1da08d468]
+              6  ??? (libdispatch.dylib + 112636) [0x1da09e7fc]
+                6  ??? (libdispatch.dylib + 6876) [0x1da084adc]
+                  6  ??? (LoggingSupport + 187892) [0x24fd54df4]
+                    6  ??? (LoggingSupport + 188540) [0x24fd5507c]
+                      6  ??? (LoggingSupport + 130820) [0x24fd46f04]
+                        6  ??? (LoggingSupport + 127856) [0x24fd46370]
+                          6  ??? (LoggingSupport + 138552) [0x24fd48d38]
+                            6  ??? (LoggingSupport + 128576) [0x24fd46640]
+                              5  ??? (LoggingSupport + 131304) [0x24fd470e8]
+                                5  ??? (LoggingSupport + 189040) [0x24fd55270]
+                                  4  ??? (SignpostCollection + 23332) [0x2888abb24]
+                                    4  ??? (SignpostCollection + 22036) [0x2888ab614]
+                                      2  ??? (SignpostCollection + 19880) [0x2888aada8]
+                                        1  ??? (SignpostCollection + 16072) [0x2888a9ec8]
+                                          1  ??? (LoggingSupport + 89104) [0x24fd3cc10]
+                                            1  ??? (CoreFoundation + 6272) [0x1a1360880]
+                                              1  ??? (CoreFoundation + 6116) [0x1a13607e4]
+                                                1  ??? (libsystem_malloc.dylib + 6516) [0x1ac8a1974]
+                                                  1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                                        1  ??? (SignpostCollection + 16028) [0x2888a9e9c]
+                                          1  ??? (CoreFoundation + 52188) [0x1a136bbdc]
+                                            1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                                      1  ??? (SignpostCollection + 19504) [0x2888aac30]
+                                        1  ??? (LoggingSupport + 7276) [0x24fd28c6c]
+                                          1  ??? (LoggingSupport + 10148) [0x24fd297a4]
+                                            1  ??? (libsystem_c.dylib + 90224) [0x1acc9f070]
+                                              1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                                      1  ??? (SignpostCollection + 19052) [0x2888aaa6c]
+                                        1  ??? (LoggingSupport + 5912) [0x24fd28718]
+                                          1  ??? (LoggingSupport + 82348) [0x24fd3b1ac]
+                                            1  ??? (CoreFoundation + 1331548) [0x1a14a415c]
+                                              1  ??? (CoreFoundation + 73284) [0x1a1370e44]
+                                                1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                                  1  ??? (libobjc.A.dylib + 12288) [0x19e2d3000]
+                                    1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+                              1  ??? (LoggingSupport + 131020) [0x24fd46fcc]
+                                1  ??? (LoggingSupport + 92504) [0x24fd3d958]
+                                  1  ??? (LoggingSupport + 5976) [0x24fd28758]
+                                    1  ??? (CoreFoundation + 53836) [0x1a136c24c]
+                                      1  ??? (libobjc.A.dylib + 8268) [0x19e2d204c]
+                                        1  <on behalf of UNKNOWN [32] (originated by UNKNOWN [32])>
+
+  Binary Images:
+           0x100cd4000 -                ???  signpost_reporter       <04A72ACE-9116-331D-9AC9-DE15D821389C>  /usr/libexec/signpost_reporter
+           0x19e2d0000 -        0x19e321b5f  libobjc.A.dylib         <4358DAF9-7758-3542-A1E1-9F185534A911>  /usr/lib/libobjc.A.dylib
+           0x1a135f000 -        0x1a18e573f  CoreFoundation          <D52BCEEE-E890-347C-8461-1537154E22D9>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x1ac8a0000 -        0x1ac8e3d2f  libsystem_malloc.dylib  <A643AD3A-F242-3041-BE40-A951A67176D4>  /usr/lib/system/libsystem_malloc.dylib
+           0x1acc89000 -        0x1acd095af  libsystem_c.dylib       <61A33AA9-D668-3B35-A859-B6925C4047B9>  /usr/lib/system/libsystem_c.dylib
+           0x1da083000 -        0x1da0c921f  libdispatch.dylib       <904D48A3-D99E-3962-BFA9-C3DFB66BBA83>  /usr/lib/system/libdispatch.dylib
+           0x1fdecc000 -        0x1fded845f  libsystem_pthread.dylib <4F94107B-94D2-3E88-8542-F5403C581B50>  /usr/lib/system/libsystem_pthread.dylib
+           0x24fd27000 -        0x24fdace9f  LoggingSupport          <D975D4DD-CB61-373E-B2B5-2F07C6FC607C>  /System/Library/PrivateFrameworks/LoggingSupport.framework/LoggingSupport
+           0x2888a6000 -        0x2888b30ff  SignpostCollection      <FCCA4471-5A87-3B27-BBF0-AE017B607C43>  /System/Library/PrivateFrameworks/SignpostCollection.framework/SignpostCollection
+
+
+Powerstats for:   Sheets
+UUID:             E02025F3-3D89-3D05-B2CA-A02A3F7AD9EC
+Path:             /private/var/containers/Bundle/Application/6CAA50A8-4D9A-458A-9487-9881B7292DE2/Sheets.app/Sheets
+Identifier:       com.google.Sheets
+Version:          1.2026.07501 (1.2026.07501)
+Adam ID:          842849113
+Is First Party:   No
+Beta Identifier:  48D22F4F-683E-4496-BD7A-A15668411D1D
+Shared Cache:     2D5A6D2E-6405-3FF7-83AF-C0BD2F74AF46 slid base address 0x19e23c000, slide 0x1e23c000
+Resource Coalition: 4 samples "com.google.Sheets"(1171)
+On Behalf Of:     1 sample UNKNOWN [35] (1 sample originated by Sheets [4465])
+Architecture:     arm64
+Start time:       2026-03-05 10:31:47.824 -0600
+End time:         2026-03-05 10:32:10.420 -0600
+Num samples:      4 (20%)
+Primary state:    3 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Background, Requested Thread QoS User Initiated, Override Thread QoS Unspecified, e-core
+User Activity:    4 samples Idle, 0 samples Active
+Power Source:     0 samples on Battery, 4 samples on AC
+  3  ??? (libsystem_pthread.dylib + 2240) [0x1fdecc8c0]
+    3  ??? (libsystem_pthread.dylib + 5048) [0x1fdecd3b8]
+      3  ??? (libdispatch.dylib + 85220) [0x1da097ce4]
+        3  ??? (libdispatch.dylib + 87020) [0x1da0983ec]
+          3  ??? (libdispatch.dylib + 44868) [0x1da08df44]
+            3  ??? (libdispatch.dylib + 42088) [0x1da08d468]
+              3  ??? (libdispatch.dylib + 112636) [0x1da09e7fc]
+                3  ??? (libdispatch.dylib + 6876) [0x1da084adc]
+                  2  ??? (Sheets + 3209812) [0x10511fa54]
+                    1  ??? (Sheets + 3211864) [0x105120258]
+                      1  ??? (Sheets + 3224972) [0x10512358c]
+                        1  ??? (CoreFoundation + 56352) [0x1a136cc20]
+                    1  ??? (Sheets + 3211776) [0x105120200]
+                      1  ??? (Sheets + 27367040) [0x106829680]
+                        1  ??? (Foundation + 9492576) [0x19f2a6860]
+                          1  ??? (CoreServicesInternal + 36836) [0x1b44fefe4]
+                            1  ??? (CoreServicesInternal + 40644) [0x1b44ffec4]
+                              1  ??? (CoreServicesInternal + 41096) [0x1b4500088]
+                                1  ??? (libsystem_kernel.dylib + 32520) [0x24eb15f08]
+                  1  ??? (Sheets + 27272720) [0x106812610]
+                    1  ??? (Sheets + 27299504) [0x106818eb0]
+                      1  ??? (Sheets + 27297716) [0x1068187b4]
+                        1  ??? (Sheets + 27308696) [0x10681b298]
+                          1  ??? (Sheets + 27676160) [0x106874e00]
+                            1  ??? (Sheets + 27665964) [0x10687262c]
+                              1  ??? (Sheets + 27675984) [0x106874d50]
+                                1  ??? (Sheets + 27678604) [0x10687578c]
+                                  1  ??? (Sheets + 27531300) [0x106851824]
+                                    1  ??? (Sheets + 27679304) [0x106875a48]
+                                      1  ??? (Sheets + 27665860) [0x1068725c4]
+                                        1  ??? (libobjc.A.dylib + 36016) [0x19e2d8cb0]
+  1  ??? (dyld + 20008) [0x19e356e28]
+    1  ??? (Sheets + 18728) [0x104e14928]
+      1  ??? (UIKitCore + 290388) [0x1a6dd4e54]
+        1  ??? (UIKitCore + 646648) [0x1a6e2bdf8]
+          1  ??? (GraphicsServices + 5272) [0x245ce9498]
+            1  ??? (CoreFoundation + 117356) [0x1a137ba6c]
+              1  ??? (CoreFoundation + 120536) [0x1a137c6d8]
+                1  ??? (CoreFoundation + 289484) [0x1a13a5acc]
+                  1  ??? (CoreFoundation + 429700) [0x1a13c7e84]
+                    1  ??? (CoreFoundation + 429840) [0x1a13c7f10]
+                      1  ??? (BoardServices + 36948) [0x1b8c34054]
+                        1  ??? (BoardServices + 37332) [0x1b8c341d4]
+                          1  ??? (libdispatch.dylib + 27572) [0x1da089bb4]
+                            1  ??? (libdispatch.dylib + 112636) [0x1da09e7fc]
+                              1  ??? (FrontBoardServices + 180068) [0x1c1544f64]
+                                1  ??? (FrontBoardServices + 305000) [0x1c1563768]
+                                  1  ??? (FrontBoardServices + 298500) [0x1c1561e04]
+                                    1  ??? (FrontBoardServices + 180068) [0x1c1544f64]
+                                      1  ??? (FrontBoardServices + 576460) [0x1c15a5bcc]
+                                        1  ??? (FrontBoardServices + 123396) [0x1c1537204]
+                                          1  ??? (FrontBoardServices + 125092) [0x1c15378a4]
+                                            1  ??? (FrontBoardServices + 123884) [0x1c15373ec]
+                                              1  ??? (UIKitCore + 15551668) [0x1a7c62cb4]
+                                                1  ??? (UIKitCore + 21121304) [0x1a81b2918]
+                                                  1  ??? (UIKitCore + 8879696) [0x1a7605e50]
+                                                    1  ??? (UIKitCore + 8876664) [0x1a7605278]
+                                                      1  ??? (UIKitCore + 8880612) [0x1a76061e4]
+                                                        1  ??? (UIKitCore + 10719108) [0x1a77c6f84]
+                                                          1  ??? (UIKitCore + 892104) [0x1a6e67cc8]
+                                                            1  ??? (UIKitCore + 15384260) [0x1a7c39ec4]
+                                                              1  ??? (UIKitCore + 10719880) [0x1a77c7288]
+                                                                1  ??? (UIKitCore + 10673672) [0x1a77bbe08]
+                                                                  1  ??? (UIKitCore + 10675068) [0x1a77bc37c]
+                                                                    1  ??? (UIKitCore + 10674392) [0x1a77bc0d8]
+                                                                      1  ??? (UIKitCore + 10675556) [0x1a77bc564]
+                                                                        1  ??? (UIKitCore + 888496) [0x1a6e66eb0]
+                                                                          1  ??? (UIKitCore + 10673384) [0x1a77bbce8]
+                                                                            1  ??? (UIKitCore + 21125452) [0x1a81b394c]
+                                                                              1  ??? (UIKitCore + 21109032) [0x1a81af928]
+                                                                                1  ??? (UIKitCore + 21103372) [0x1a81ae30c]
+                                                                                  1  ??? (Sheets + 2837412) [0x1050c4ba4]
+                                                                                    1  ??? (Sheets + 10705304) [0x105845998]
+                                                                                      1  ??? (Sheets + 10693004) [0x10584298c]
+                                                                                        1  ??? (Sheets + 10700044) [0x10584450c]
+                                                                                          1  ??? (Sheets + 10700812) [0x10584480c]
+                                                                                            1  ??? (Sheets + 10718480) [0x105848d10]
+                                                                                              1  ??? (Sheets + 10718056) [0x105848b68]
+                                                                                                1  ??? (Sheets + 10715084) [0x105847fcc]
+                                                                                                  1  ??? (Sheets + 2848244) [0x1050c75f4]
+                                                                                                    1  ??? (Sheets + 2993520) [0x1050ead70]
+                                                                                                      1  ??? (Sheets + 3052452) [0x1050f93a4]
+                                                                                                        1  ??? (Sheets + 3050096) [0x1050f8a70]
+                                                                                                          1  ??? (Sheets + 20436520) [0x10618d628]
+                                                                                                            1  ??? (UIFoundation + 887212) [0x1acb929ac]
+                                                                                                              1  ??? (UIFoundation + 21564) [0x1acabf43c]
+                                                                                                                1  ??? (CoreText + 125480) [0x1a2873a28]
+                                                                                                                  1  ??? (CoreText + 124968) [0x1a2873828]
+                                                                                                                    1  ??? (CoreText + 79840) [0x1a28687e0]
+                                                                                                                      1  ??? (CoreText + 76956) [0x1a2867c9c]
+                                                                                                                        1  ??? (CoreText + 15760) [0x1a2858d90]
+                                                                                                                          1  ??? (libdispatch.dylib + 18912) [0x1da0879e0]
+                                                                                                                            1  ??? (libdispatch.dylib + 112636) [0x1da09e7fc]
+                                                                                                                              1  ??? (libdispatch.dylib + 18912) [0x1da0879e0]
+                                                                                                                                1  ??? (libdispatch.dylib + 112636) [0x1da09e7fc]
+                                                                                                                                  1  ??? (CoreGraphics + 1766584) [0x1a22d14b8]
+                                                                                                                                    1  ??? (CoreGraphics + 146240) [0x1a2145b40]
+                                                                                                                                      1  ??? (libGSFont.dylib + 4052) [0x1f7153fd4]
+                                                                                                                                        1  ??? (libdispatch.dylib + 18912) [0x1da0879e0]
+                                                                                                                                          1  ??? (libdispatch.dylib + 112636) [0x1da09e7fc]
+                                                                                                                                            1  ??? (libGSFont.dylib + 5320) [0x1f71544c8]
+                                                                                                                                              1  ??? (libGSFont.dylib + 7760) [0x1f7154e50]
+                                                                                                                                                1  ??? (CoreFoundation + 1465012) [0x1a14c4ab4]
+                                                                                                                                                  1  ??? (CoreFoundation + 1459524) [0x1a14c3544]
+                                                                                                                                                    1  ??? (CoreFoundation + 73704) [0x1a1370fe8]
+                                                                                                                                                      1  ??? (CoreFoundation + 49700) [0x1a136b224]
+                                                                                                                                                        1  <on behalf of UNKNOWN [35] (originated by Sheets [4465]), Effective Thread QoS Default, Requested Thread QoS User Interactive, p-core>
+
+  Binary Images:
+           0x104e10000 -                ???  com.google.Sheets 1.2026.07501 (1.2026.07501) <E02025F3-3D89-3D05-B2CA-A02A3F7AD9EC>  /private/var/containers/Bundle/Application/6CAA50A8-4D9A-458A-9487-9881B7292DE2/Sheets.app/Sheets
+           0x19e2d0000 -        0x19e321b5f  libobjc.A.dylib                               <4358DAF9-7758-3542-A1E1-9F185534A911>  /usr/lib/libobjc.A.dylib
+           0x19e352000 -        0x19e3f1347  dyld                                          <7631B298-C24E-3532-B625-00A1AD73C1FD>  /usr/lib/dyld
+           0x19e999000 -        0x19f7dfc9f  Foundation                                    <4C3912D2-E14A-3A21-926B-54BEF625BE89>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x1a135f000 -        0x1a18e573f  CoreFoundation                                <D52BCEEE-E890-347C-8461-1537154E22D9>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x1a2122000 -        0x1a285403f  CoreGraphics                                  <C427A863-FB18-3CF9-95F4-1BC252D57567>  /System/Library/Frameworks/CoreGraphics.framework/CoreGraphics
+           0x1a2855000 -        0x1a2a57e1f  CoreText                                      <ADF94C1D-6425-3F12-8E65-5F7D3367F029>  /System/Library/Frameworks/CoreText.framework/CoreText
+           0x1a6d8e000 -        0x1a91ed9bf  UIKitCore                                     <A70D8D96-F3A5-3099-9011-27EEB49D7BE8>  /System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore
+           0x1acaba000 -        0x1acc2527f  UIFoundation                                  <68151BCE-CE74-3783-90D6-126F0D619C4D>  /System/Library/PrivateFrameworks/UIFoundation.framework/UIFoundation
+           0x1b44f6000 -        0x1b452ad43  CoreServicesInternal                          <D617059F-F626-3460-8EE0-F741E1336DE0>  /System/Library/PrivateFrameworks/CoreServicesInternal.framework/CoreServicesInternal
+           0x1b8c2b000 -        0x1b8cad87f  BoardServices                                 <76C29400-A366-344E-90A3-C79063A02BFC>  /System/Library/PrivateFrameworks/BoardServices.framework/BoardServices
+           0x1c1519000 -        0x1c15fd37f  FrontBoardServices                            <A22C8550-B61B-345D-8096-A663707AAC84>  /System/Library/PrivateFrameworks/FrontBoardServices.framework/FrontBoardServices
+           0x1da083000 -        0x1da0c921f  libdispatch.dylib                             <904D48A3-D99E-3962-BFA9-C3DFB66BBA83>  /usr/lib/system/libdispatch.dylib
+           0x1f7153000 -        0x1f715eb3f  libGSFont.dylib                               <4C80B225-CC4A-31EC-858E-3AB613AF9ECC>  /System/Library/PrivateFrameworks/FontServices.framework/libGSFont.dylib
+           0x1fdecc000 -        0x1fded845f  libsystem_pthread.dylib                       <4F94107B-94D2-3E88-8542-F5403C581B50>  /usr/lib/system/libsystem_pthread.dylib
+           0x245ce8000 -        0x245cf07ff  GraphicsServices                              <12A401FF-9664-3602-9F17-F3047446E62B>  /System/Library/PrivateFrameworks/GraphicsServices.framework/GraphicsServices
+           0x24eb0e000 -        0x24eb48d2b  libsystem_kernel.dylib                        <8D830129-2CBE-32A9-B61E-CE493EECB399>  /usr/lib/system/libsystem_kernel.dylib
+
+
+Powerstats for:   videocodecd
+UUID:             4CA9A845-6519-380F-A3E3-811D44A389BA
+Path:             /usr/libexec/videocodecd
+Shared Cache:     2D5A6D2E-6405-3FF7-83AF-C0BD2F74AF46 slid base address 0x19e23c000, slide 0x1e23c000
+Resource Coalition: 3 samples "com.apple.videocodecd"(420)
+On Behalf Of:     2 samples mediaplaybackd [279] (2 samples originated by dasd [84])
+Architecture:     arm64e
+Start time:       2026-03-05 10:32:57.233 -0600
+End time:         2026-03-05 10:33:14.759 -0600
+Num samples:      3 (15%)
+Primary state:    1 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Background, Requested Thread QoS Unspecified, Override Thread QoS Unspecified, e-core
+User Activity:    3 samples Idle, 0 samples Active
+Power Source:     0 samples on Battery, 3 samples on AC
+  2  ??? (libsystem_pthread.dylib + 2240) [0x1fdecc8c0]
+    1  ??? (libsystem_pthread.dylib + 5104) [0x1fdecd3f0]
+      1  ??? (libdispatch.dylib + 84224) [0x1da097900]
+        1  ??? (libdispatch.dylib + 141324) [0x1da0a580c]
+          1  ??? (libdispatch.dylib + 153536) [0x1da0a87c0]
+            1  ??? (libdispatch.dylib + 153788) [0x1da0a88bc]
+              1  ??? (libdispatch.dylib + 143996) [0x1da0a627c]
+                1  <Effective Thread QoS Unspecified>
+    1  ??? (libsystem_pthread.dylib + 5048) [0x1fdecd3b8]
+      1  ??? (libdispatch.dylib + 85220) [0x1da097ce4]
+        1  ??? (libdispatch.dylib + 87020) [0x1da0983ec]
+          1  ??? (libdispatch.dylib + 44868) [0x1da08df44]
+            1  ??? (libdispatch.dylib + 42292) [0x1da08d534]
+              1  ??? (libdispatch.dylib + 112636) [0x1da09e7fc]
+                1  ??? (VideoToolbox + 2361392) [0x1adf52830]
+                  1  ??? (VideoToolbox + 30236) [0x1add1961c]
+                    1  ??? (VideoToolbox + 4442312) [0x1ae14e8c8]
+                      1  ??? (VideoToolbox + 4442916) [0x1ae14eb24]
+                        1  ??? (CoreVideo + 72144) [0x1bb5509d0]
+                          1  ??? (CoreVideo + 30208) [0x1bb546600]
+                            1  ??? (IOSurface + 10640) [0x1ceadb990]
+                              1  ??? (IOKit + 5996) [0x1b566476c]
+                                1  ??? (IOKit + 6560) [0x1b56649a0]
+                                  1  ??? (libsystem_kernel.dylib + 3284) [0x24eb0ecd4]
+                                    1  <on behalf of mediaplaybackd [279] (originated by dasd [84]), Effective Thread QoS Utility, Requested Thread QoS Utility>
+  1  ??? (libsystem_pthread.dylib + 2252) [0x1fdecc8cc]
+    1  ??? (libsystem_pthread.dylib + 17484) [0x1fded044c]
+      1  ??? (CoreMedia + 391020) [0x1b54d376c]
+        1  ??? (CoreMedia + 1551736) [0x1b55eed78]
+          1  ??? (VideoToolbox + 5252592) [0x1ae2145f0]
+            1  ??? (VideoToolbox + 2350892) [0x1adf4ff2c]
+              1  ??? (VideoToolbox + 27780) [0x1add18c84]
+                1  ??? (VideoToolbox + 4441328) [0x1ae14e4f0]
+                  1  ??? (VideoToolbox + 2350892) [0x1adf4ff2c]
+                    1  ??? (VideoToolbox + 27780) [0x1add18c84]
+                      1  ??? (AVD.videodecoder + 85288) [0x2b6d1ed28]
+                        1  ??? (AVD.videodecoder + 68648) [0x2b6d1ac28]
+                          1  ??? (AVD.videodecoder + 64964) [0x2b6d19dc4]
+                            1  ??? (AVD.videodecoder + 72548) [0x2b6d1bb64]
+                              1  ??? (VideoToolbox + 2349760) [0x1adf4fac0]
+                                1  ??? (CoreVideo + 64264) [0x1bb54eb08]
+                                  1  ??? (CoreVideo + 61576) [0x1bb54e088]
+                                    1  ??? (CoreVideo + 65700) [0x1bb54f0a4]
+                                      1  ??? (IOKit + 5664) [0x1b5664620]
+                                        1  <on behalf of mediaplaybackd [279] (originated by dasd [84])>
+
+  Binary Images:
+           0x1009f8000 -                ???  videocodecd             <4CA9A845-6519-380F-A3E3-811D44A389BA>  /usr/libexec/videocodecd
+           0x1add12000 -        0x1ae26ba3f  VideoToolbox            <F7C47B1F-7C1E-3E93-85A0-63130C3F8D5C>  /System/Library/Frameworks/VideoToolbox.framework/VideoToolbox
+           0x1b5474000 -        0x1b5662f9f  CoreMedia               <22C4040C-E237-3AD9-8D2B-EF0B631CDF95>  /System/Library/Frameworks/CoreMedia.framework/CoreMedia
+           0x1b5663000 -        0x1b573047f  IOKit                   <70D18D5F-008A-33AD-A866-4F61B4E0B637>  /System/Library/Frameworks/IOKit.framework/Versions/A/IOKit
+           0x1bb53f000 -        0x1bb5a71ff  CoreVideo               <897191F9-7CE8-3BD4-83F6-5F06EC2E51AF>  /System/Library/Frameworks/CoreVideo.framework/CoreVideo
+           0x1cead9000 -        0x1ceaf59df  IOSurface               <5E881E57-7B15-3AA8-94F4-C14BCEFCFC76>  /System/Library/Frameworks/IOSurface.framework/IOSurface
+           0x1da083000 -        0x1da0c921f  libdispatch.dylib       <904D48A3-D99E-3962-BFA9-C3DFB66BBA83>  /usr/lib/system/libdispatch.dylib
+           0x1fdecc000 -        0x1fded845f  libsystem_pthread.dylib <4F94107B-94D2-3E88-8542-F5403C581B50>  /usr/lib/system/libsystem_pthread.dylib
+           0x24eb0e000 -        0x24eb48d2b  libsystem_kernel.dylib  <8D830129-2CBE-32A9-B61E-CE493EECB399>  /usr/lib/system/libsystem_kernel.dylib
+           0x2b6d0a000 -        0x2b6e834a3  AVD.videodecoder        <E76A047A-8826-3ED1-8340-611AA546DCE0>  /System/Library/VideoDecoders/AVD.videodecoder
+
+
+Powerstats for:   com.apple.DriverKit-AppleBCMWLAN
+UUID:             13EF20EB-88AC-3F71-8FE9-1ED8ACEB91B7
+Path:             /System/Library/DriverExtensions/com.apple.DriverKit-AppleBCMWLAN.dext/com.apple.DriverKit-AppleBCMWLAN
+Identifier:       com.apple.DriverKit-AppleBCMWLAN
+Version:          1.0 (1)
+Shared Cache:     02288A32-6441-37FE-A007-6871D96AF241 slid base address 0x19a38c000, slide 0x1a38c000
+Resource Coalition: 2 samples "com.apple.DriverKit-AppleBCMWLAN"(169)
+Architecture:     arm64e
+Start time:       2026-03-05 10:32:46.706 -0600
+End time:         2026-03-05 10:33:23.865 -0600
+Num samples:      2 (10%)
+Primary state:    2 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Unspecified, Requested Thread QoS Unspecified, Override Thread QoS Unspecified, e-core
+User Activity:    2 samples Idle, 0 samples Active
+Power Source:     0 samples on Battery, 2 samples on AC
+  1  ??? (libsystem_pthread.dylib + 40904) [0x19b1c1fc8]
+    1  ??? (libsystem_pthread.dylib + 4088) [0x19b1b8ff8]
+      1  ??? (DriverKit + 33316) [0x19a3c4224]
+  1  ??? (libsystem_pthread.dylib + 40892) [0x19b1c1fbc]
+    1  ??? (libsystem_pthread.dylib + 12076) [0x19b1baf2c]
+      1  ??? (libdispatch.dylib + 91688) [0x19b1e0628]
+        1  ??? (libdispatch.dylib + 93496) [0x19b1e0d38]
+          1  ??? (libdispatch.dylib + 55700) [0x19b1d7994]
+            1  ??? (libdispatch.dylib + 50808) [0x19b1d6678]
+              1  ??? (libdispatch.dylib + 47564) [0x19b1d59cc]
+                1  ??? (libdispatch.dylib + 128104) [0x19b1e9468]
+                  1  ??? (libdispatch.dylib + 47564) [0x19b1d59cc]
+                    1  ??? (libdispatch.dylib + 124100) [0x19b1e84c4]
+                      1  ??? (libdispatch.dylib + 18764) [0x19b1ce94c]
+                        1  ??? (libdispatch.dylib + 19228) [0x19b1ceb1c]
+                          1  ??? (libsystem_malloc.dylib + 158276) [0x19b192a44]
+                            1  ??? (libsystem_kernel.dylib + 18980) [0x19b0f9a24]
+
+  Binary Images:
+           0x102fc4000 -                ???  com.apple.DriverKit-AppleBCMWLAN 1.0 (1) <13EF20EB-88AC-3F71-8FE9-1ED8ACEB91B7>  /System/Library/DriverExtensions/com.apple.DriverKit-AppleBCMWLAN.dext/com.apple.DriverKit-AppleBCMWLAN
+           0x19a3bc000 -        0x19a3fbd17  DriverKit                                <2795DA5E-1A5B-30BB-82CC-2CC7BB36CE68>  /System/DriverKit/System/Library/Frameworks/DriverKit.framework/DriverKit
+           0x19b0f5000 -        0x19b12dc07  libsystem_kernel.dylib                   <3088EF18-7BE2-3EE1-9BCF-3F861800F25C>  /System/DriverKit/usr/lib/system/libsystem_kernel.dylib
+           0x19b16c000 -        0x19b1afa2f  libsystem_malloc.dylib                   <B7B63B54-9127-3428-87D8-8D80B521BFAA>  /System/DriverKit/usr/lib/system/libsystem_malloc.dylib
+           0x19b1b8000 -        0x19b1c3b8f  libsystem_pthread.dylib                  <B6897C11-27D8-30B1-B87B-F9FB6132FAC3>  /System/DriverKit/usr/lib/system/libsystem_pthread.dylib
+           0x19b1ca000 -        0x19b20f81b  libdispatch.dylib                        <490FB67E-DDF4-33C2-8491-FF51C60165D3>  /System/DriverKit/usr/lib/system/libdispatch.dylib
+
+
+Powerstats for:   PerfPowerServicesSignpostReader
+UUID:             79A6E95D-5405-304E-ABB7-2BA8B91B7A3A
+Path:             /System/Library/PrivateFrameworks/PowerlogCore.framework/XPCServices/PerfPowerServicesSignpostReader.xpc/PerfPowerServicesSignpostReader
+Identifier:       com.apple.PerfPowerServicesSignpostReader
+Version:          1.0 (1)
+Shared Cache:     2D5A6D2E-6405-3FF7-83AF-C0BD2F74AF46 slid base address 0x19e23c000, slide 0x1e23c000
+Resource Coalition: 2 samples "com.apple.powerlogHelperd"(1176)
+On Behalf Of:     2 samples UNKNOWN [4321] (2 samples originated by UNKNOWN [477])
+Architecture:     arm64
+Start time:       2026-03-05 10:31:51.516 -0600
+End time:         2026-03-05 10:32:14.642 -0600
+Num samples:      2 (10%)
+Primary state:    2 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Background, Requested Thread QoS Background, Override Thread QoS Unspecified, e-core
+User Activity:    2 samples Idle, 0 samples Active
+Power Source:     0 samples on Battery, 2 samples on AC
+  2  ??? (libsystem_pthread.dylib + 2240) [0x1fdecc8c0]
+    2  ??? (libsystem_pthread.dylib + 5048) [0x1fdecd3b8]
+      2  ??? (libdispatch.dylib + 85220) [0x1da097ce4]
+        2  ??? (libdispatch.dylib + 87020) [0x1da0983ec]
+          2  ??? (libdispatch.dylib + 44868) [0x1da08df44]
+            2  ??? (libdispatch.dylib + 42088) [0x1da08d468]
+              2  ??? (libdispatch.dylib + 112636) [0x1da09e7fc]
+                2  ??? (libdispatch.dylib + 6876) [0x1da084adc]
+                  2  ??? (LoggingSupport + 187892) [0x24fd54df4]
+                    2  ??? (LoggingSupport + 188540) [0x24fd5507c]
+                      2  ??? (LoggingSupport + 130820) [0x24fd46f04]
+                        2  ??? (LoggingSupport + 127856) [0x24fd46370]
+                          2  ??? (LoggingSupport + 138552) [0x24fd48d38]
+                            2  ??? (LoggingSupport + 128576) [0x24fd46640]
+                              2  ??? (LoggingSupport + 131304) [0x24fd470e8]
+                                2  ??? (LoggingSupport + 188964) [0x24fd55224]
+                                  2  ??? (Foundation + 9359076) [0x19f285ee4]
+                                    2  ??? (Foundation + 9360448) [0x19f286440]
+                                      2  ??? (Foundation + 9359076) [0x19f285ee4]
+                                        1  ??? (Foundation + 9360448) [0x19f286440]
+                                          1  ??? (Foundation + 9359076) [0x19f285ee4]
+                                            1  ??? (Foundation + 9360300) [0x19f2863ac]
+                                              1  ??? (Foundation + 9351984) [0x19f284330]
+                                                1  ??? (Foundation + 10473168) [0x19f395ed0]
+                                                  1  ??? (CoreFoundation + 6272) [0x1a1360880]
+                                                    1  ??? (CoreFoundation + 6116) [0x1a13607e4]
+                                                      1  ??? (libsystem_malloc.dylib + 3616) [0x1ac8a0e20]
+                                                        1  <on behalf of UNKNOWN [4321] (originated by UNKNOWN [477])>
+                                        1  ??? (Foundation + 9360300) [0x19f2863ac]
+                                          1  ??? (Foundation + 9359076) [0x19f285ee4]
+                                            1  ??? (Foundation + 9360448) [0x19f286440]
+                                              1  ??? (Foundation + 9359076) [0x19f285ee4]
+                                                1  ??? (Foundation + 9360300) [0x19f2863ac]
+                                                  1  ??? (Foundation + 9351984) [0x19f284330]
+                                                    1  ??? (Foundation + 10473360) [0x19f395f90]
+                                                      1  ??? (libobjc.A.dylib + 16408) [0x19e2d4018]
+                                                        1  <on behalf of UNKNOWN [4321] (originated by UNKNOWN [477])>
+
+  Binary Images:
+           0x1040cc000 -                ???  com.apple.PerfPowerServicesSignpostReader 1.0 (1) <79A6E95D-5405-304E-ABB7-2BA8B91B7A3A>  /System/Library/PrivateFrameworks/PowerlogCore.framework/XPCServices/PerfPowerServicesSignpostReader.xpc/PerfPowerServicesSignpostReader
+           0x19e2d0000 -        0x19e321b5f  libobjc.A.dylib                                   <4358DAF9-7758-3542-A1E1-9F185534A911>  /usr/lib/libobjc.A.dylib
+           0x19e999000 -        0x19f7dfc9f  Foundation                                        <4C3912D2-E14A-3A21-926B-54BEF625BE89>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x1a135f000 -        0x1a18e573f  CoreFoundation                                    <D52BCEEE-E890-347C-8461-1537154E22D9>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x1ac8a0000 -        0x1ac8e3d2f  libsystem_malloc.dylib                            <A643AD3A-F242-3041-BE40-A951A67176D4>  /usr/lib/system/libsystem_malloc.dylib
+           0x1da083000 -        0x1da0c921f  libdispatch.dylib                                 <904D48A3-D99E-3962-BFA9-C3DFB66BBA83>  /usr/lib/system/libdispatch.dylib
+           0x1fdecc000 -        0x1fded845f  libsystem_pthread.dylib                           <4F94107B-94D2-3E88-8542-F5403C581B50>  /usr/lib/system/libsystem_pthread.dylib
+           0x24fd27000 -        0x24fdace9f  LoggingSupport                                    <D975D4DD-CB61-373E-B2B5-2F07C6FC607C>  /System/Library/PrivateFrameworks/LoggingSupport.framework/LoggingSupport
