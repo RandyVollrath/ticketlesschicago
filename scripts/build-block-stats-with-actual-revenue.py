@@ -45,21 +45,24 @@ LOCATION_FILE = os.path.expanduser(
     "~/Downloads/tickets_where_and_when_written.xlsx"
 )
 
-# Fine fallbacks per violation code (used when no payment record matches)
+# Fallback amounts per violation code (used when no payment record matches).
+# These are MEDIAN ACTUAL PAYMENTS from 384,949 matched tickets — not statutory
+# fines. They include late fees, doubled fines, and penalty escalations that
+# the statutory schedule misses. Updated 2026-03-09 from FOIA data analysis.
 FINE_FALLBACK = {
-    '0964040B': 60,   # Street cleaning
-    '0964060':  60,   # 3-7 AM snow route
-    '0964070':  120,  # Snow route: 2"+ of snow
-    '0964090E': 65,   # Residential permit parking
-    '0964100A': 100,  # Within 15' of fire hydrant
-    '0964110A': 50,   # Double parking or standing
-    '0964125B': 100,  # No city sticker (<=16K lbs)
-    '0964125C': 200,  # No city sticker (>16K lbs)
-    '0964150B': 50,   # Parking/standing prohibited anytime
-    '0964170':  50,   # Within 20' of crosswalk
-    '0964190A': 50,   # Expired meter non-CBD
-    '0964190B': 65,   # Expired meter CBD
-    '0964190C': 150,  # Non-payment commercial loading zone
+    '0964040B': 60,   # Street cleaning — median actual $60 (statutory $60, avg $66)
+    '0964060':  60,   # 3-7 AM snow route — median actual $60 (statutory $60, avg $69)
+    '0964070':  60,   # Snow route: 2"+ of snow — median actual $60 (small sample n=5)
+    '0964090E': 75,   # Residential permit — median actual $75 (statutory $65, avg $83)
+    '0964100A': 100,  # Within 15' of fire hydrant (no matched data, use statutory)
+    '0964110A': 50,   # Double parking or standing (no matched data, use statutory)
+    '0964125B': 200,  # No city sticker (<=16K lbs) — median actual $200 (statutory $100, avg $197)
+    '0964125C': 250,  # No city sticker (>16K lbs) — median actual $250 (statutory $200, avg $235)
+    '0964150B': 50,   # Parking/standing prohibited (no matched data, use statutory)
+    '0964170':  50,   # Within 20' of crosswalk (no matched data, use statutory)
+    '0964190A': 50,   # Expired meter non-CBD — median actual $50 (statutory $50, avg $56)
+    '0964190B': 70,   # Expired meter CBD — median actual $70 (statutory $65, avg $79)
+    '0964190C': 140,  # Commercial loading zone — median actual $140 (statutory $150, avg $152)
 }
 DEFAULT_FINE = 60  # Fallback when violation code is unknown
 
