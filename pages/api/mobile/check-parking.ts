@@ -305,23 +305,44 @@ export default async function handler(
     }
 
     // Step 4: Enrich with block_enforcement_stats (revenue, violation breakdown)
-    // from the FOIA ticket data aggregation table (645K tickets, ~20K blocks)
+    // from the FOIA ticket data aggregation table (645K tickets, ~40K blocks)
+    // Note: FOIA data stores street_name as "ARCHER AVE" (name + type), while
+    // the address parser separates them (name="ARCHER", type="AVE"). We must
+    // concatenate name + type for the lookup, with a fallback to name-only.
     if (result.location.parsedAddress && supabaseAdmin) {
       try {
         const addr = result.location.parsedAddress;
         const streetNum = String(addr.number);
         const blockNum = Math.floor(parseInt(streetNum) / 100) * 100;
         const direction = (addr.direction || '').toUpperCase().trim();
-        const streetName = (addr.name || '').toUpperCase().trim();
+        const namePart = (addr.name || '').toUpperCase().trim();
+        const typePart = (addr.type || '').toUpperCase().trim();
+        // FOIA data format: "ARCHER AVE", so combine name + type
+        const streetNameWithType = typePart ? `${namePart} ${typePart}` : namePart;
 
-        const { data: blockData, error: blockError } = await supabaseAdmin
+        // Try with type first (most FOIA records include it)
+        let { data: blockData, error: blockError } = await supabaseAdmin
           .from('block_enforcement_stats')
           .select('estimated_revenue, total_tickets, city_rank, peak_hour_start, peak_hour_end, top_violation_code, top_violation_pct, year_range, violation_breakdown')
           .eq('block_number', blockNum)
           .eq('street_direction', direction)
-          .eq('street_name', streetName)
+          .eq('street_name', streetNameWithType)
           .limit(1)
           .maybeSingle();
+
+        // Fallback: try without type (some addresses like "53RD" don't have a type)
+        if (!blockData && !blockError && typePart && namePart !== streetNameWithType) {
+          const fallback = await supabaseAdmin
+            .from('block_enforcement_stats')
+            .select('estimated_revenue, total_tickets, city_rank, peak_hour_start, peak_hour_end, top_violation_code, top_violation_pct, year_range, violation_breakdown')
+            .eq('block_number', blockNum)
+            .eq('street_direction', direction)
+            .eq('street_name', namePart)
+            .limit(1)
+            .maybeSingle();
+          blockData = fallback.data;
+          blockError = fallback.error;
+        }
 
         if (!blockError && blockData) {
           // Merge block stats into enforcementRisk (create if needed)
@@ -330,7 +351,7 @@ export default async function handler(
               risk_score: 0,
               urgency: 'low',
               has_block_data: true,
-              block_address: `${blockNum} ${direction} ${streetName}`.trim(),
+              block_address: `${blockNum} ${direction} ${streetNameWithType}`.trim(),
               insight: '',
             };
           }
@@ -346,7 +367,7 @@ export default async function handler(
             enforcementRisk.city_rank = blockData.city_rank;
           }
 
-          console.log(`[check-parking] Block stats: ${blockNum} ${direction} ${streetName} — $${blockData.estimated_revenue?.toLocaleString()} (${blockData.total_tickets} tickets, rank #${blockData.city_rank})`);
+          console.log(`[check-parking] Block stats: ${blockNum} ${direction} ${streetNameWithType} — $${blockData.estimated_revenue?.toLocaleString()} (${blockData.total_tickets} tickets, rank #${blockData.city_rank})`);
         }
       } catch (blockErr) {
         // Block stats are non-critical
