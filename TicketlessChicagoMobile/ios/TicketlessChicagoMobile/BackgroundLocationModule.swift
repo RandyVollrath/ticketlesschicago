@@ -607,7 +607,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     if let currentLoc = locationManager.location {
       self.log("WATCHDOG: running missed-parking recovery check")
-      hasCheckedForMissedParking = false
+      // NOTE: Do NOT reset hasCheckedForMissedParking here.
+      // The flag is reset by confirmParking() (for the next drive) and
+      // appDidBecomeActive() (for app resume). Resetting it here causes
+      // the watchdog to re-emit the same parking event every 60-90s,
+      // spamming the user with duplicate "All Clear" notifications.
       checkForMissedParking(currentLocation: currentLoc)
     } else {
       self.log("WATCHDOG: no current location available for recovery check")
@@ -932,8 +936,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let camAnnounceMinIntervalSec: TimeInterval = 5
   private let camAlertDedupeSec: TimeInterval = 3 * 60
   private let camBBoxDegrees: Double = 0.0025
-  private let camHeadingToleranceDeg: Double = 45
-  private let camMaxBearingOffHeadingDeg: Double = 30
+  private let camHeadingToleranceDeg: Double = 60  // Relaxed from 45° — diagonal streets + intersection geometry
+  private let camMaxBearingOffHeadingDeg: Double = 50  // Relaxed from 30° — curved approaches need wider cone
   private let camRejectLogCooldownSec: TimeInterval = 10
   private let speedCamEnforceStartHour = 6
   private let speedCamEnforceEndHour = 23
@@ -987,6 +991,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
     if d.object(forKey: kCameraAlertVolumeKey) != nil {
       cameraAlertVolume = d.float(forKey: kCameraAlertVolumeKey)
+    }
+    // Restore persisted camera prewarm timer (survives cold start / app kill)
+    let prewarmTs = d.double(forKey: "com.ticketless.cameraPrewarmUntil")
+    if prewarmTs > 0 {
+      let prewarmDate = Date(timeIntervalSince1970: prewarmTs)
+      if prewarmDate > Date() {
+        cameraPrewarmUntil = prewarmDate
+        let remainingSec = prewarmDate.timeIntervalSince(Date())
+        log("Restored camera prewarm: \(String(format: "%.0f", remainingSec))s remaining — camera alerts armed on cold start")
+      } else {
+        log("Persisted camera prewarm expired (\(String(format: "%.0f", Date().timeIntervalSince(prewarmDate)))s ago) — not restoring")
+      }
     }
     log("Restored camera settings: enabled=\(cameraAlertsEnabled) speed=\(cameraSpeedEnabled) redlight=\(cameraRedlightEnabled) volume=\(cameraAlertVolume)")
   }
@@ -1483,6 +1499,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     startVehicleSignalMonitoring()
     isMonitoring = true
     UserDefaults.standard.set(true, forKey: kWasMonitoringKey)
+    // Extend camera prewarm on background relaunch — significantLocationChange
+    // fires because the user moved ~100-500m, likely driving. This eliminates
+    // the cold start arming gap where camera alerts wouldn't fire.
+    extendCameraPrewarm(reason: "background_relaunch", seconds: cameraPrewarmStrongSec)
     decision("background_relaunch_monitoring_started", [
       "coreMotionAvailable": coreMotionAvailable,
       "coreMotionAuthStatus": coreMotionAuthStatus.rawValue,
@@ -1978,6 +1998,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       return
     }
     cameraPrewarmUntil = newUntil
+    // Persist to UserDefaults so prewarm survives cold starts (app killed → relaunched
+    // via significantLocationChange). Without this, there's a 5-20s arming gap where
+    // camera alerts won't fire because all 5 arming conditions start as false.
+    UserDefaults.standard.set(newUntil.timeIntervalSince1970, forKey: "com.ticketless.cameraPrewarmUntil")
     decision("camera_prewarm_extended", [
       "reason": reason,
       "durationSec": duration,
@@ -4515,7 +4539,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     lastConfirmedParkingLocation = location
     hasConfirmedParkingThisSession = true
-    hasCheckedForMissedParking = false  // Allow recovery check on next drive
+    // NOTE: Do NOT reset hasCheckedForMissedParking here. It gets reset by
+    // confirmParking() when the NEXT drive ends. Resetting it here allows
+    // the watchdog + checkForMissedParking to re-emit the same parking
+    // event repeatedly while the user is still parked.
     persistParkingState()
 
     sendEvent(withName: "onParkingDetected", body: body)
