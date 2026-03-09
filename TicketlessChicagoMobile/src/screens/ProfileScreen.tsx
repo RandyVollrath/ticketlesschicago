@@ -830,7 +830,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             onValueChange={togglePhoneCallAlerts}
           />
 
-          {phoneCallAlertsEnabled && (
+          {(phoneCallAlertsEnabled || phoneNumberEditing) && (
             <>
               <Divider />
               {/* Phone number */}
@@ -890,7 +890,11 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <MaterialCommunityIcons name="pencil" size={18} color={colors.textTertiary} />
                 )}
               </View>
+            </>
+          )}
 
+          {phoneCallAlertsEnabled && (
+            <>
               {/* Per-alert-type preferences */}
               <View style={styles.callAlertTypesHeader}>
                 <Text style={styles.callAlertTypesTitle}>Call me for:</Text>

@@ -117,6 +117,9 @@ class BackgroundTaskServiceClass {
   private readonly iosCallbackStaleThresholdSec: number = 120;
   private lastIosDrivingStartedAt: number = 0;
   private lastAcceptedParkingEventAt: number = 0;
+  private lastParkingNotificationAt: number = 0;
+  private lastParkingNotificationAddress: string = '';
+  private readonly PARKING_NOTIFICATION_DEDUP_MS = 3 * 60 * 1000; // 3 minutes between duplicate notifications
   private lowAccuracyRecoveryTimeout: ReturnType<typeof setTimeout> | null = null;
   private pendingNativeDetectionMeta: {
     detectionSource?: string;
@@ -2735,6 +2738,15 @@ class BackgroundTaskServiceClass {
     accuracy?: number,
     rawData?: any
   ): Promise<void> {
+    // Dedup guard: don't spam the same restriction notification within 3 minutes
+    const timeSinceLastNotif = Date.now() - this.lastParkingNotificationAt;
+    if (timeSinceLastNotif < this.PARKING_NOTIFICATION_DEDUP_MS && this.lastParkingNotificationAddress === result.address) {
+      log.info(`Skipping duplicate parking notification for "${result.address}" — sent one ${Math.round(timeSinceLastNotif / 1000)}s ago`);
+      return;
+    }
+    this.lastParkingNotificationAt = Date.now();
+    this.lastParkingNotificationAddress = result.address;
+
     const hasCritical = result.rules.some(r => r.severity === 'critical');
     const accuracyNote = accuracy ? ` (GPS: ${accuracy.toFixed(0)}m)` : '';
 
@@ -2799,6 +2811,17 @@ class BackgroundTaskServiceClass {
    * Includes upcoming restriction context and enforcement risk intelligence.
    */
   private async sendSafeNotification(address: string, accuracy?: number, rawData?: any): Promise<void> {
+    // Dedup guard: don't spam the user with the same "All Clear" notification
+    // for the same address within 3 minutes. This catches duplicate events from
+    // checkForMissedParking recovery re-emitting the same parking event.
+    const timeSinceLastNotif = Date.now() - this.lastParkingNotificationAt;
+    if (timeSinceLastNotif < this.PARKING_NOTIFICATION_DEDUP_MS && this.lastParkingNotificationAddress === address) {
+      log.info(`Skipping duplicate safe notification for "${address}" — sent one ${Math.round(timeSinceLastNotif / 1000)}s ago`);
+      return;
+    }
+    this.lastParkingNotificationAt = Date.now();
+    this.lastParkingNotificationAddress = address;
+
     const accuracyNote = accuracy ? ` (GPS: ±${accuracy.toFixed(0)}m)` : '';
 
     let body = `${address}${accuracyNote}\nNo active restrictions right now.`;
