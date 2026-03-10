@@ -257,7 +257,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         } else {
           result.permitZone = {
             inPermitZone: false,
-            message: 'Not in a residential permit zone',
+            message: 'Permit not currently needed',
             severity: 'none',
           };
         }
@@ -392,7 +392,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           geo.permitZone = String(zone.zone);
           result.permitZone = { inPermitZone: true, message: `Permit Zone ${zone.zone} — permit required`, zoneName: String(zone.zone), severity: 'warning' };
         } else {
-          result.permitZone = { inPermitZone: false, message: 'Not in a residential permit zone', severity: 'none' };
+          result.permitZone = { inPermitZone: false, message: 'Permit not currently needed', severity: 'none' };
         }
       }
 
