@@ -2408,7 +2408,7 @@ class BackgroundTaskServiceClass {
               type: 'metered_parking',
               restrictionStartTime: earlyWarningTime,
               address: result.address || '',
-              details: `Your ${limitDisplay} meter expires in 10 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). You must move your car — you can't add more time once the max is reached. $65 ticket if expired.`,
+              details: `Your ${limitDisplay} meter expires in 10 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car — the posted limit is how long you can park, not just pay. $65 ticket.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -2427,7 +2427,7 @@ class BackgroundTaskServiceClass {
             type: 'metered_parking',
             restrictionStartTime: meterExpiryWarningTime,
             address: result.address || '',
-            details: `Your ${limitDisplay} meter expires in 30 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $65 ticket if expired. You must move once the posted max is reached.`,
+            details: `Your ${limitDisplay} meter expires in 30 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $65 ticket if expired. The posted limit is how long you can park, not just pay.`,
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
@@ -2436,9 +2436,10 @@ class BackgroundTaskServiceClass {
         }
 
         // Notification 3: At the time limit — legal maximum reached
-        // ParkChicago allows paying for more time, but the posted time limit
-        // is the legal maximum. Staying past the limit — even if you pay —
-        // can result in a ticket.
+        // The posted time limit is a legal occupancy limit (9-64-190), not just
+        // a payment limit. Staying past the limit — even with time on the meter —
+        // can result in a $65 ticket. ParkChicago blocks paying past the max;
+        // coin meters accept coins but the legal limit still applies.
         const limitDelayMs = timeLimitMin * 60 * 1000;
         const meterLimitReachedTime = new Date(Date.now() + limitDelayMs);
 
@@ -2446,7 +2447,7 @@ class BackgroundTaskServiceClass {
           type: 'metered_parking',
           restrictionStartTime: meterLimitReachedTime,
           address: result.address || '',
-          details: `Your ${limitDisplay} meter has expired (${expiryTimeStr}). The posted limit is ${limitHours} hours — you can't add more time, so move your car now to avoid a $65 ticket.`,
+          details: `Your ${limitDisplay} meter has expired (${expiryTimeStr}). The ${limitHours}-hour posted limit is a legal max — move your car now to avoid a $65 ticket.`,
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
@@ -2738,7 +2739,7 @@ class BackgroundTaskServiceClass {
       // Calculate and show expiration time
       const expiryTime = new Date(Date.now() + meterLimitMin * 60 * 1000);
       const expiryStr = expiryTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). You can't add more time once the max is reached — move before it expires or risk a $65 ticket.`);
+      parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). The posted limit is how long you can park, not just pay — move before it expires or risk a $65 ticket.`);
     }
 
     // DOT permit (construction, filming, moving van, etc.)
