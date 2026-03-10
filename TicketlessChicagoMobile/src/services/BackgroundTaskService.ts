@@ -606,7 +606,16 @@ class BackgroundTaskServiceClass {
                   heading: event.heading,
                 };
                 log.info(`Using averaged GPS (${event.averagedFixCount} fixes) for parking location`);
-              } else if (event.latitude && event.longitude) {
+              } else if (
+                event.latitude != null && event.longitude != null &&
+                event.latitude !== 0 && event.longitude !== 0 &&
+                event.accuracy !== -1
+              ) {
+                // Use single GPS fix. Guard against recovery events with no coordinates:
+                // native sends lat=0, lng=0, accuracy=-1 when no CLVisit match exists.
+                // Previously `event.latitude && event.longitude` treated 0 as falsy,
+                // falling through to undefined → triggerParkingCheck used current GPS
+                // (which could be hours later at a completely different location).
                 parkingCoords = {
                   latitude: event.latitude,
                   longitude: event.longitude,
@@ -614,6 +623,28 @@ class BackgroundTaskServiceClass {
                   heading: event.heading,
                 };
               }
+
+              // If this is a recovery event with NO coordinates (lat=0, lng=0 or accuracy=-1),
+              // do NOT fall through to triggerParkingCheck which would use current GPS.
+              // Current GPS location could be hours later at a completely different place.
+              if (!parkingCoords && event.locationSource?.startsWith('recovery_')) {
+                log.warn('RECOVERY parking event has no valid coordinates — skipping to prevent wrong-address parking', {
+                  locationSource: event.locationSource,
+                  lat: event.latitude,
+                  lng: event.longitude,
+                  accuracy: event.accuracy,
+                  timestamp: event.timestamp ? new Date(event.timestamp).toISOString() : 'none',
+                });
+                void BackgroundLocationService.appendToDecisionLog('recovery_no_coords_rejected', {
+                  locationSource: event.locationSource,
+                  latitude: event.latitude,
+                  longitude: event.longitude,
+                  accuracy: event.accuracy,
+                  timestamp: event.timestamp,
+                });
+                return;  // Don't create a parking record at the wrong location
+              }
+
               this.lastAcceptedParkingEventAt = Date.now();
               // Pass the native event timestamp so parking history records
               // when the car ACTUALLY stopped, not when the check completes.
@@ -3892,6 +3923,10 @@ class BackgroundTaskServiceClass {
   /**
    * Find the best local parking history row to attach a departure record to.
    * Picks the nearest item by timestamp that doesn't already have departure data.
+   *
+   * When multiple candidates exist with similar timestamps (within 30 min),
+   * prefers records from the normal detection pipeline over recovery-generated
+   * ones (which can have drifted CLVisit coords or wrong addresses).
    */
   private async findBestLocalHistoryItemId(referenceTimestamp: number): Promise<string | undefined> {
     try {
@@ -3905,13 +3940,21 @@ class BackgroundTaskServiceClass {
       }
 
       const DAY_MS = 24 * 60 * 60 * 1000;
+      const THIRTY_MIN_MS = 30 * 60 * 1000;
+
       // Only consider parking records that were created BEFORE or AT the departure
       // time. A departure can't be for a parking event that hasn't happened yet.
       // Using Math.abs() previously allowed matching a NEWER parking record,
       // causing departure_confirmed_at < parked_at (impossible in reality).
       const candidates = history
         .filter(item => !item.departure && item.timestamp <= referenceTimestamp)
-        .map(item => ({ id: item.id, diffMs: referenceTimestamp - item.timestamp }))
+        .map(item => {
+          const diffMs = referenceTimestamp - item.timestamp;
+          // Recovery events (CLVisit-based) have drifted coords and should be
+          // deprioritized when a normal pipeline record exists for the same stop.
+          const isRecovery = item.detectionMeta?.locationSource?.startsWith('recovery_') ?? false;
+          return { id: item.id, diffMs, isRecovery, coords: item.coords, address: item.address };
+        })
         .sort((a, b) => a.diffMs - b.diffMs);
 
       if (candidates.length === 0) {
@@ -3934,14 +3977,35 @@ class BackgroundTaskServiceClass {
         return undefined;
       }
 
+      // If the best candidate (by time) is from recovery and there's a
+      // non-recovery candidate within 30 min of it, prefer the non-recovery one.
+      // This prevents phantom recovery records from stealing departures from
+      // legitimate parking records (the "3857 N Lincoln Ave" bug).
+      let bestCandidate = candidates[0];
+      if (bestCandidate.isRecovery && candidates.length > 1) {
+        const nonRecoveryAlt = candidates.find(
+          c => !c.isRecovery && Math.abs(c.diffMs - bestCandidate.diffMs) < THIRTY_MIN_MS
+        );
+        if (nonRecoveryAlt) {
+          log.info('findBestLocalHistoryItemId: preferring non-recovery candidate over recovery', {
+            recoveryId: bestCandidate.id,
+            recoveryAge: +(bestCandidate.diffMs / 60000).toFixed(1),
+            preferredId: nonRecoveryAlt.id,
+            preferredAge: +(nonRecoveryAlt.diffMs / 60000).toFixed(1),
+          });
+          bestCandidate = nonRecoveryAlt;
+        }
+      }
+
       void BackgroundLocationService.appendToDecisionLog('js_departure_match', {
         result: 'matched',
         referenceTime: new Date(referenceTimestamp).toISOString(),
-        matchedId: candidates[0].id,
-        matchedAgeMin: +(candidates[0].diffMs / 60000).toFixed(1),
+        matchedId: bestCandidate.id,
+        matchedAgeMin: +(bestCandidate.diffMs / 60000).toFixed(1),
+        isRecovery: bestCandidate.isRecovery,
         candidateCount: candidates.length,
       });
-      return candidates[0].id;
+      return bestCandidate.id;
     } catch (error) {
       log.warn('findBestLocalHistoryItemId failed', error);
       return undefined;
