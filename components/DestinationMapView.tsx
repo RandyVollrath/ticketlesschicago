@@ -760,25 +760,30 @@ export default function DestinationMapView() {
               (g as any)._permitDash = style.dashArray;
               g.addTo(permitLayer);
             } else {
-              const bothA = offsetPermitGeometry(feature.geometry, oe, 'both_a');
-              const bothB = offsetPermitGeometry(feature.geometry, oe, 'both_b');
-              [
-                { geom: bothA, color: PERMIT_COLORS.odd },
-                { geom: bothB, color: PERMIT_COLORS.even },
-              ].forEach(({ geom, color }) => {
-                const g = L.geoJSON(geom, {
-                  interactive: false,
-                  style: {
-                    color,
-                    weight: 5,
-                    opacity: 0.85,
-                    dashArray: '8,4',
-                  },
-                });
-                (g as any)._permitColor = color;
-                (g as any)._permitDash = '8,4';
-                g.addTo(permitLayer);
+              // "Both sides" — render as a single solid line (blue+orange stacked)
+              const g = L.geoJSON(feature.geometry, {
+                interactive: false,
+                style: {
+                  color: PERMIT_COLORS.odd,
+                  weight: 6,
+                  opacity: 0.85,
+                },
               });
+              (g as any)._permitColor = PERMIT_COLORS.odd;
+              (g as any)._permitDash = '';
+              g.addTo(permitLayer);
+              // Thinner orange line on top to show both colors
+              const g2 = L.geoJSON(feature.geometry, {
+                interactive: false,
+                style: {
+                  color: PERMIT_COLORS.even,
+                  weight: 2,
+                  opacity: 0.85,
+                },
+              });
+              (g2 as any)._permitColor = PERMIT_COLORS.even;
+              (g2 as any)._permitDash = '';
+              g2.addTo(permitLayer);
             }
           });
           permitLayer.addTo(map);
@@ -813,21 +818,23 @@ export default function DestinationMapView() {
                 },
               }).addTo(permitParkabilityLayer);
             } else {
-              const bothA = offsetPermitGeometry(feature.geometry, oe, 'both_a');
-              const bothB = offsetPermitGeometry(feature.geometry, oe, 'both_b');
-              [
-                { geom: bothA, color: PERMIT_COLORS.odd },
-                { geom: bothB, color: PERMIT_COLORS.even },
-              ].forEach(({ geom, color }) => {
-                L.geoJSON(geom, {
-                  interactive: false,
-                  style: {
-                    color,
-                    weight: 4.5,
-                    opacity: 0.95,
-                  },
-                }).addTo(permitParkabilityLayer);
-              });
+              // "Both sides" — single stacked line (blue base + orange stripe)
+              L.geoJSON(feature.geometry, {
+                interactive: false,
+                style: {
+                  color: PERMIT_COLORS.odd,
+                  weight: 5.5,
+                  opacity: 0.95,
+                },
+              }).addTo(permitParkabilityLayer);
+              L.geoJSON(feature.geometry, {
+                interactive: false,
+                style: {
+                  color: PERMIT_COLORS.even,
+                  weight: 2,
+                  opacity: 0.95,
+                },
+              }).addTo(permitParkabilityLayer);
             }
           });
           permitParkabilityLayer.addTo(map);
@@ -1033,14 +1040,16 @@ export default function DestinationMapView() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.restricted, borderRadius: '2px', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>Do not park now</span>
+                    <span style={{ color: '#374151' }}>Restricted now</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '18px', height: '3px', backgroundColor: PARK_COLORS.free, borderRadius: '2px', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Opposite side may be legal</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '18px', height: '7px', borderTop: `2px solid ${PERMIT_COLORS.odd}`, borderBottom: `2px solid ${PERMIT_COLORS.even}`, borderRadius: '1px', flexShrink: 0 }} />
+                    <div style={{ position: 'relative', width: '18px', height: '6px', backgroundColor: PERMIT_COLORS.odd, borderRadius: '1px', flexShrink: 0 }}>
+                      <div style={{ position: 'absolute', top: '2px', left: 0, right: 0, height: '2px', backgroundColor: PERMIT_COLORS.even, borderRadius: '1px' }} />
+                    </div>
                     <span style={{ color: '#374151' }}>Permit both sides</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1129,7 +1138,9 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Permit even side</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '18px', height: '7px', borderTop: `2px solid ${PERMIT_COLORS.odd}`, borderBottom: `2px solid ${PERMIT_COLORS.even}`, borderRadius: '1px', flexShrink: 0 }} />
+                    <div style={{ position: 'relative', width: '18px', height: '6px', backgroundColor: PERMIT_COLORS.odd, borderRadius: '1px', flexShrink: 0 }}>
+                      <div style={{ position: 'absolute', top: '2px', left: 0, right: 0, height: '2px', backgroundColor: PERMIT_COLORS.even, borderRadius: '1px' }} />
+                    </div>
                     <span style={{ color: '#374151' }}>Permit both sides</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

@@ -143,7 +143,7 @@ export async function checkAllParkingRestrictions(
       restrictionSchedule: null,
       hoursUntilRestriction: 999,
       severity: 'none',
-      message: 'Not in a permit parking zone',
+      message: 'Permit not currently needed',
     },
     dotPermit: {
       found: false,
