@@ -45,6 +45,7 @@ export default function CheckYourStreet() {
     hasSignificantSnow: boolean;
     significantSnowWhen: string | null;
   } | null>(null)
+  const [blockStats, setBlockStats] = useState<any>(null)
 
   // Check URL parameters
   useEffect(() => {
@@ -73,13 +74,15 @@ export default function CheckYourStreet() {
     setSearchResult(null)
     setPermitZoneResult(null)
     setSnowForecast(null)
+    setBlockStats(null)
 
     try {
-      // Fetch section data, permit zone data, and snow forecast in parallel
-      const [sectionResponse, permitResponse, snowResponse] = await Promise.all([
+      // Fetch section data, permit zone data, snow forecast, and block stats in parallel
+      const [sectionResponse, permitResponse, snowResponse, blockStatsResponse] = await Promise.all([
         fetch(`/api/find-section?address=${encodeURIComponent(address)}`),
         fetch(`/api/check-permit-zone?address=${encodeURIComponent(address)}`).catch(() => null),
         fetch(`/api/snow-forecast?lat=41.8781&lng=-87.6298`).catch(() => null),
+        fetch(`/api/block-stats?address=${encodeURIComponent(address)}`).catch(() => null),
       ])
 
       const data = await sectionResponse.json()
@@ -122,6 +125,18 @@ export default function CheckYourStreet() {
           setSnowForecast(snowData)
         } catch {
           // Snow forecast is non-critical
+        }
+      }
+
+      // Process block stats (non-blocking)
+      if (blockStatsResponse && blockStatsResponse.ok) {
+        try {
+          const statsData = await blockStatsResponse.json()
+          if (statsData.block && statsData.block.total_tickets > 0) {
+            setBlockStats(statsData.block)
+          }
+        } catch {
+          // Block stats are non-critical
         }
       }
     } catch (err: any) {
@@ -552,6 +567,185 @@ export default function CheckYourStreet() {
                     </strong>.
                     {' '}You may need a residential parking permit to park on this street. Check for posted signs.
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Block Ticket History (FOIA data) */}
+            {blockStats && (
+              <div style={{
+                backgroundColor: 'white',
+                padding: '24px',
+                borderRadius: '16px',
+                marginBottom: '16px',
+                border: `1px solid ${COLORS.border}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.danger} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '18px', fontWeight: '600', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif', marginBottom: '4px' }}>
+                      Block Ticket History
+                    </div>
+                    <div style={{ fontSize: '13px', color: COLORS.slate }}>
+                      Based on 26.8M city tickets from 2019-2024 FOIA data
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insight text */}
+                {blockStats.insight && (
+                  <div style={{
+                    padding: '12px 16px',
+                    backgroundColor: (blockStats.avg_tickets_per_year || 0) > 200 ? 'rgba(239, 68, 68, 0.06)' : 'rgba(37, 99, 235, 0.06)',
+                    borderRadius: '10px',
+                    marginBottom: '16px',
+                    fontSize: '15px',
+                    lineHeight: '1.6',
+                    color: COLORS.graphite,
+                    fontWeight: '500'
+                  }}>
+                    {blockStats.insight}
+                  </div>
+                )}
+
+                {/* Stats grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '16px 8px',
+                    backgroundColor: COLORS.concrete,
+                    borderRadius: '10px'
+                  }}>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                      {blockStats.total_tickets?.toLocaleString() || '0'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '4px' }}>Total Tickets</div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '16px 8px',
+                    backgroundColor: COLORS.concrete,
+                    borderRadius: '10px'
+                  }}>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.danger, fontFamily: '"Space Grotesk", sans-serif' }}>
+                      ${blockStats.total_fines ? Math.round(blockStats.total_fines).toLocaleString() : '0'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '4px' }}>Total Fines</div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '16px 8px',
+                    backgroundColor: COLORS.concrete,
+                    borderRadius: '10px'
+                  }}>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                      ~{blockStats.avg_tickets_per_year?.toLocaleString() || '0'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '4px' }}>Per Year</div>
+                  </div>
+                </div>
+
+                {/* Top violation categories */}
+                {blockStats.by_category && blockStats.by_category.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                      Top Violations
+                    </div>
+                    {blockStats.by_category.slice(0, 5).map((cat: any, i: number) => {
+                      const pct = Math.round((cat.tickets / blockStats.total_tickets) * 100)
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '14px', color: COLORS.graphite, fontWeight: '500' }}>{cat.label}</span>
+                              <span style={{ fontSize: '13px', color: COLORS.slate }}>{cat.tickets.toLocaleString()} ({pct}%)</span>
+                            </div>
+                            <div style={{ height: '6px', backgroundColor: COLORS.concrete, borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{
+                                height: '100%',
+                                width: `${pct}%`,
+                                backgroundColor: i === 0 ? COLORS.danger : i === 1 ? COLORS.warning : COLORS.regulatory,
+                                borderRadius: '3px',
+                                transition: 'width 0.5s ease'
+                              }} />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Peak enforcement hours */}
+                {blockStats.peak_hours && blockStats.peak_hours.length > 0 && (
+                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${COLORS.border}` }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                      Peak Enforcement Hours
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {blockStats.peak_hours.slice(0, 6).map((ph: any, i: number) => {
+                        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                        const hour = ph.hour
+                        const ampm = hour < 12 ? 'AM' : 'PM'
+                        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+                        return (
+                          <span key={i} style={{
+                            padding: '4px 10px',
+                            backgroundColor: COLORS.concrete,
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: COLORS.graphite,
+                            fontWeight: '500'
+                          }}>
+                            {dayNames[ph.day_of_week]} {displayHour}{ampm}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* CTA */}
+                <div style={{
+                  marginTop: '16px',
+                  paddingTop: '16px',
+                  borderTop: `1px solid ${COLORS.border}`,
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '8px' }}>
+                    Get alerts before tickets happen on this block
+                  </div>
+                  <button
+                    onClick={() => router.push(`/alerts/signup?address=${encodeURIComponent(address)}`)}
+                    style={{
+                      backgroundColor: COLORS.regulatory,
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '10px 20px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Get Free Alerts
+                  </button>
                 </div>
               </div>
             )}

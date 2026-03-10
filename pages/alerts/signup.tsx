@@ -38,6 +38,9 @@ export default function AlertsSignup() {
   const [loadingToken, setLoadingToken] = useState(false);
   const formStartedRef = useRef(false);
   const pageViewTrackedRef = useRef(false);
+  const [blockStats, setBlockStats] = useState<any>(null);
+  const [blockStatsLoading, setBlockStatsLoading] = useState(false);
+  const blockStatsFetchedRef = useRef('');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -80,12 +83,18 @@ export default function AlertsSignup() {
   useEffect(() => {
     const flow = queryString(router.query.flow as string | string[] | undefined);
     const email = queryString(router.query.email as string | string[] | undefined);
+    const urlAddress = queryString(router.query.address as string | string[] | undefined);
 
     if (flow === 'oauth' && email) {
       setFormData(prev => ({ ...prev, email: email }));
       setMessage('Welcome! Please complete your profile below to get started with free alerts.');
     }
-  }, [router.query.flow, router.query.email, router.isReady]);
+
+    // Pre-fill address from URL params (e.g., from check-your-street page)
+    if (urlAddress) {
+      setFormData(prev => ({ ...prev, address: urlAddress }));
+    }
+  }, [router.query.flow, router.query.email, router.query.address, router.isReady]);
 
   useEffect(() => {
     const token = queryString(router.query.token as string | string[] | undefined);
@@ -120,6 +129,40 @@ export default function AlertsSignup() {
         .finally(() => setLoadingToken(false));
     }
   }, [router.query.token, prefilledData, router.isReady]);
+
+  // Fetch block stats when address looks complete
+  useEffect(() => {
+    const addr = formData.address.trim();
+    // Need at least "123 X St" pattern (number + space + word)
+    if (addr.length < 6 || !/^\d+\s+\S+/.test(addr)) {
+      return;
+    }
+    // Don't re-fetch for same address
+    if (blockStatsFetchedRef.current === addr) return;
+
+    const timer = setTimeout(async () => {
+      blockStatsFetchedRef.current = addr;
+      setBlockStatsLoading(true);
+      try {
+        const zipParam = formData.zip.length === 5 ? `&zip=${formData.zip}` : '';
+        const res = await fetch(`/api/block-stats?address=${encodeURIComponent(addr)}${zipParam}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.block && data.block.total_tickets > 0) {
+            setBlockStats(data.block);
+          } else {
+            setBlockStats(null);
+          }
+        }
+      } catch {
+        // Non-critical
+      } finally {
+        setBlockStatsLoading(false);
+      }
+    }, 800); // 800ms debounce
+
+    return () => clearTimeout(timer);
+  }, [formData.address, formData.zip]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     // Track form started on first interaction
@@ -613,6 +656,49 @@ export default function AlertsSignup() {
                   }}
                 />
               </div>
+
+              {/* Block ticket stats callout */}
+              {blockStats && (
+                <div style={{
+                  padding: '16px 20px',
+                  backgroundColor: (blockStats.avg_tickets_per_year || 0) > 200 ? 'rgba(239, 68, 68, 0.06)' : 'rgba(37, 99, 235, 0.06)',
+                  border: `1px solid ${(blockStats.avg_tickets_per_year || 0) > 200 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(37, 99, 235, 0.2)'}`,
+                  borderRadius: '10px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      backgroundColor: (blockStats.avg_tickets_per_year || 0) > 200 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(37, 99, 235, 0.12)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={(blockStats.avg_tickets_per_year || 0) > 200 ? '#EF4444' : COLORS.regulatory} strokeWidth="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: COLORS.graphite, marginBottom: '4px' }}>
+                        Your Block: {blockStats.total_tickets?.toLocaleString()} tickets, ${blockStats.total_fines ? Math.round(blockStats.total_fines).toLocaleString() : '0'} in fines
+                      </div>
+                      <div style={{ fontSize: '13px', color: COLORS.slate, lineHeight: '1.5' }}>
+                        {blockStats.insight || `This block averages ~${(blockStats.avg_tickets_per_year || 0).toLocaleString()} tickets/year.`}
+                        {' '}Free alerts can help you avoid these.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {blockStatsLoading && (
+                <div style={{ fontSize: '13px', color: COLORS.slate, padding: '4px 0' }}>
+                  Looking up ticket history for your block...
+                </div>
+              )}
 
               {/* ZIP Code */}
               <div>
