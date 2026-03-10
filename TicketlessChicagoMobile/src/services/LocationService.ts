@@ -24,6 +24,11 @@ export interface ParkingRule {
   timeLimitMinutes?: number;
   estimatedRate?: string;
   isEnforcedNow?: boolean;
+  isRushHour?: boolean;
+  rushHourInfo?: string;
+  scheduleText?: string;
+  isSeasonal?: boolean;
+  rateZone?: number;
 }
 
 export interface Coordinates {
@@ -944,7 +949,12 @@ class LocationServiceClass {
         timeLimitMinutes: data.meteredParking.timeLimitMinutes || 120,
         estimatedRate: data.meteredParking.estimatedRate,
         isEnforcedNow: true,
-        schedule: `Mon–Sat 8am–10pm, ${data.meteredParking.estimatedRate || '$2.50/hr'}`,
+        isRushHour: data.meteredParking.isRushHour,
+        rushHourInfo: data.meteredParking.rushHourInfo,
+        scheduleText: data.meteredParking.scheduleText,
+        isSeasonal: data.meteredParking.isSeasonal,
+        rateZone: data.meteredParking.rateZone,
+        schedule: data.meteredParking.scheduleText || `Mon–Sat 8am–10pm, ${data.meteredParking.estimatedRate || '$2.50/hr'}`,
       });
     }
 

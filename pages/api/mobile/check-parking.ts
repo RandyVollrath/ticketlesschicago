@@ -100,6 +100,11 @@ interface MobileCheckParkingResponse {
     timeLimitMinutes?: number;
     isEnforcedNow?: boolean;
     estimatedRate?: string;
+    isRushHour?: boolean;
+    rushHourInfo?: string;
+    scheduleText?: string;
+    isSeasonal?: boolean;
+    rateZone?: number;
   };
   dotPermit: {
     hasActivePermit: boolean;
@@ -427,6 +432,11 @@ export default async function handler(
         timeLimitMinutes: meteredParkingResult.timeLimitMinutes,
         isEnforcedNow: meteredParkingResult.isEnforcedNow,
         estimatedRate: meteredParkingResult.estimatedRate || undefined,
+        isRushHour: meteredParkingResult.isRushHour || undefined,
+        rushHourInfo: meteredParkingResult.rushHourInfo || undefined,
+        scheduleText: meteredParkingResult.scheduleText || undefined,
+        isSeasonal: meteredParkingResult.isSeasonal || undefined,
+        rateZone: meteredParkingResult.rateZone || undefined,
       },
 
       dotPermit: {

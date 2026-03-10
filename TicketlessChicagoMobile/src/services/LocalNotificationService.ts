@@ -219,15 +219,17 @@ class LocalNotificationServiceClass {
         hoursBefore = 0; // Time is pre-computed by BackgroundTaskService
         notificationId = `${NOTIFICATION_PREFIX.METERED_PARKING}${Date.now()}`;
         channelId = 'parking-alerts';
-        // Detect subtype: expiry warning, legal limit reached, or enforcement activation
-        if (details?.includes('expires in 30 minutes')) {
+        // Detect subtype: 10-min warning, 30-min warning, expired, or enforcement activation
+        if (details?.includes('expires in 10 minutes')) {
+          title = '⏰ Meter Expiring in 10 Minutes!';
+        } else if (details?.includes('expires in 30 minutes')) {
           title = '⏰ Meter Expiring in 30 Minutes!';
-        } else if (details?.includes('maximum time limit')) {
-          title = '⏰ Meter Time Limit Reached';
+        } else if (details?.includes('has expired')) {
+          title = '⏰ Meter Expired — Move Now!';
         } else {
           title = '⏰ Meter Enforcement Starting!';
         }
-        body = `${address}\n${details || 'Your 2-hour meter is about to expire. Move your car or add time to avoid a $65 ticket.'}`;
+        body = `${address}\n${details || 'Your meter is about to expire. Move your car or add time to avoid a $65 ticket.'}`;
         break;
 
       case 'dot_permit':

@@ -1973,6 +1973,11 @@ class BackgroundTaskServiceClass {
         isEnforcedNow: meteredRule.isEnforcedNow || false,
         timeLimitMinutes: meteredRule.timeLimitMinutes || 120,
         estimatedRate: meteredRule.estimatedRate || null,
+        isRushHour: meteredRule.isRushHour || false,
+        rushHourInfo: meteredRule.rushHourInfo || null,
+        scheduleText: meteredRule.scheduleText || null,
+        isSeasonal: meteredRule.isSeasonal || false,
+        rateZone: meteredRule.rateZone || null,
       } : null,
     };
   }
@@ -2346,25 +2351,60 @@ class BackgroundTaskServiceClass {
       if (result.meteredParking.isEnforcedNow) {
         const timeLimitMin = result.meteredParking.timeLimitMinutes || 120;
         const limitHours = timeLimitMin / 60;
-        const rushHourNote = result.meteredParking.isRushHour ? ' (rush hour)' : '';
+        const isRushHour = result.meteredParking.isRushHour || false;
+        const rushHourNote = isRushHour ? ' RUSH HOUR —' : '';
 
-        // Notification 1: 30 minutes before limit — early warning to add time
-        const warningMinutesBefore = 30;
-        const warningDelayMs = (timeLimitMin - warningMinutesBefore) * 60 * 1000;
-        const meterExpiryWarningTime = new Date(Date.now() + warningDelayMs);
-
-        restrictions.push({
-          type: 'metered_parking',
-          restrictionStartTime: meterExpiryWarningTime,
-          address: result.address || '',
-          details: `Your ${limitHours}-hour meter expires in 30 minutes (${rate}${rushHourNote}). Move your car or add time — $65 ticket if expired.`,
-          latitude: coords.latitude,
-          longitude: coords.longitude,
+        // Calculate the exact expiration time for user-friendly display
+        const expiryTime = new Date(Date.now() + timeLimitMin * 60 * 1000);
+        const expiryTimeStr = expiryTime.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
         });
 
-        log.info(`Scheduled metered parking expiry reminder in ${timeLimitMin - warningMinutesBefore} minutes (${meterExpiryWarningTime.toLocaleTimeString()})`);
+        // Format limit display: "1-hour" or "2-hour"
+        const limitDisplay = limitHours === 1 ? '1-hour' : `${limitHours}-hour`;
 
-        // Notification 2: At the time limit — legal maximum reached
+        // Notification 1: 10-minute warning for short meters (1 hour or less)
+        // Short meters need an earlier heads-up since 30 min = half their time
+        if (timeLimitMin <= 60) {
+          const earlyWarningMin = 10;
+          const earlyWarningDelayMs = (timeLimitMin - earlyWarningMin) * 60 * 1000;
+          if (earlyWarningDelayMs > 0) {
+            const earlyWarningTime = new Date(Date.now() + earlyWarningDelayMs);
+
+            restrictions.push({
+              type: 'metered_parking',
+              restrictionStartTime: earlyWarningTime,
+              address: result.address || '',
+              details: `Your ${limitDisplay} meter expires in 10 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $65 ticket if expired.`,
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            });
+
+            log.info(`Scheduled metered parking 10-min early warning in ${timeLimitMin - earlyWarningMin} minutes (${earlyWarningTime.toLocaleTimeString()}) — short meter (${timeLimitMin} min limit)`);
+          }
+        }
+
+        // Notification 2: 30 minutes before limit — primary warning
+        const warningMinutesBefore = 30;
+        if (timeLimitMin > warningMinutesBefore) {
+          const warningDelayMs = (timeLimitMin - warningMinutesBefore) * 60 * 1000;
+          const meterExpiryWarningTime = new Date(Date.now() + warningDelayMs);
+
+          restrictions.push({
+            type: 'metered_parking',
+            restrictionStartTime: meterExpiryWarningTime,
+            address: result.address || '',
+            details: `Your ${limitDisplay} meter expires in 30 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $65 ticket if expired.`,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          });
+
+          log.info(`Scheduled metered parking expiry reminder in ${timeLimitMin - warningMinutesBefore} minutes (${meterExpiryWarningTime.toLocaleTimeString()})`);
+        }
+
+        // Notification 3: At the time limit — legal maximum reached
         // ParkChicago allows paying for more time, but the posted time limit
         // is the legal maximum. Staying past the limit — even if you pay —
         // can result in a ticket.
@@ -2375,7 +2415,7 @@ class BackgroundTaskServiceClass {
           type: 'metered_parking',
           restrictionStartTime: meterLimitReachedTime,
           address: result.address || '',
-          details: `You've reached the posted ${limitHours}-hour maximum time limit. While ParkChicago allows you to add time remotely, the city's posted limit is ${limitHours} hours — you can still be ticketed ($65) for exceeding it regardless of payment. Move your car to be safe.`,
+          details: `Your ${limitDisplay} meter has expired (${expiryTimeStr}). The posted limit is ${limitHours} hours — you can be ticketed ($65) for exceeding it regardless of payment. Move your car now.`,
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
@@ -2383,39 +2423,86 @@ class BackgroundTaskServiceClass {
         log.info(`Scheduled metered parking legal limit notification in ${timeLimitMin} minutes (${meterLimitReachedTime.toLocaleTimeString()})`);
       } else {
         // Not currently enforced — schedule notification for when meters activate.
-        // Use the schedule text from server to determine next enforcement time.
+        // Use the schedule text from server to determine next enforcement start time.
         // Some meters enforce on Sundays (FOIA data: 378 meters have Sunday hours).
         const now = new Date();
         const scheduleText = result.meteredParking.scheduleText || '';
         const hasSundayEnforcement = /Sun\s+\d/i.test(scheduleText) || /Mon-Sun/i.test(scheduleText);
 
-        const next8am = new Date(now);
-        next8am.setHours(8, 0, 0, 0);
+        // Parse actual enforcement start hour from schedule text instead of hardcoding 8am
+        // Examples: "Mon–Sat 8am–10pm" → 8, "Sun 10am–8pm" → 10, "Fri 6pm–11pm" → 18
+        let enforcementStartHour = 8; // Default
+        const isSunday = now.getDay() === 0;
+        const isSaturday = now.getDay() === 6;
 
-        // If already past 8am today, go to tomorrow
-        if (now.getHours() >= 8) {
-          next8am.setDate(next8am.getDate() + 1);
+        if (isSunday && hasSundayEnforcement) {
+          // Parse Sunday-specific start time
+          const sunMatch = scheduleText.match(/Sun\s+(\d{1,2})(am|pm)/i);
+          if (sunMatch) {
+            let h = parseInt(sunMatch[1], 10);
+            if (sunMatch[2].toLowerCase() === 'pm' && h !== 12) h += 12;
+            if (sunMatch[2].toLowerCase() === 'am' && h === 12) h = 0;
+            enforcementStartHour = h;
+          }
+        } else {
+          // Parse weekday start time
+          const weekdayMatch = scheduleText.match(/(?:Mon|Tue|Wed|Thu|Fri|Sat).*?(\d{1,2})(am|pm)/i);
+          if (weekdayMatch) {
+            let h = parseInt(weekdayMatch[1], 10);
+            if (weekdayMatch[2].toLowerCase() === 'pm' && h !== 12) h += 12;
+            if (weekdayMatch[2].toLowerCase() === 'am' && h === 12) h = 0;
+            enforcementStartHour = h;
+          }
+        }
+
+        const nextEnforcement = new Date(now);
+        nextEnforcement.setHours(enforcementStartHour, 0, 0, 0);
+
+        // If already past enforcement start today, go to tomorrow
+        if (now.getHours() >= enforcementStartHour) {
+          nextEnforcement.setDate(nextEnforcement.getDate() + 1);
         }
 
         // Skip Sunday only if this meter doesn't enforce on Sundays
-        if (!hasSundayEnforcement && next8am.getDay() === 0) {
-          next8am.setDate(next8am.getDate() + 1); // Monday
+        if (!hasSundayEnforcement && nextEnforcement.getDay() === 0) {
+          nextEnforcement.setDate(nextEnforcement.getDate() + 1); // Monday
         }
 
-        if (next8am.getTime() > Date.now()) {
+        // If landing on Sunday with enforcement, use Sunday-specific start hour
+        if (hasSundayEnforcement && nextEnforcement.getDay() === 0) {
+          const sunMatch = scheduleText.match(/Sun\s+(\d{1,2})(am|pm)/i);
+          if (sunMatch) {
+            let h = parseInt(sunMatch[1], 10);
+            if (sunMatch[2].toLowerCase() === 'pm' && h !== 12) h += 12;
+            if (sunMatch[2].toLowerCase() === 'am' && h === 12) h = 0;
+            nextEnforcement.setHours(h, 0, 0, 0);
+          }
+        }
+
+        if (nextEnforcement.getTime() > Date.now()) {
           const isSeasonal = result.meteredParking.isSeasonal;
           const seasonalNote = isSeasonal ? ' (seasonal — Memorial Day to Labor Day)' : '';
+          const timeLimitHrs = (result.meteredParking.timeLimitMinutes || 120) / 60;
+          const limitDisplay = timeLimitHrs === 1 ? '1-hour' : `${timeLimitHrs}-hour`;
+          const enfTimeStr = nextEnforcement.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          });
+          const dayName = nextEnforcement.toLocaleDateString('en-US', { weekday: 'long' });
+          const isToday = nextEnforcement.getDate() === now.getDate() && nextEnforcement.getMonth() === now.getMonth();
+          const dayPrefix = isToday ? 'today' : dayName;
 
           restrictions.push({
             type: 'metered_parking',
-            restrictionStartTime: next8am,
+            restrictionStartTime: nextEnforcement,
             address: result.address || '',
-            details: `Metered parking enforcement starts at 8am (${rate}, ${(result.meteredParking.timeLimitMinutes || 120) / 60}-hour max)${seasonalNote}. Feed the meter or move your car — $65 ticket.`,
+            details: `Metered parking enforcement starts ${dayPrefix} at ${enfTimeStr} (${rate}, ${limitDisplay} max)${seasonalNote}. Feed the meter or move your car — $65 ticket.`,
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
 
-          log.info(`Scheduled metered parking activation reminder for ${next8am.toLocaleString()} (sundayEnforced=${hasSundayEnforcement})`);
+          log.info(`Scheduled metered parking activation reminder for ${nextEnforcement.toLocaleString()} (sundayEnforced=${hasSundayEnforcement}, enforcementStartHour=${enforcementStartHour})`);
         }
       }
     }
@@ -2612,8 +2699,15 @@ class BackgroundTaskServiceClass {
     // Metered parking zone — only mention when enforced
     if (rawData?.meteredParking?.inMeteredZone && rawData.meteredParking.isEnforcedNow) {
       const rate = rawData.meteredParking.estimatedRate || '$2.50/hr';
-      const meterLimitHours = (rawData.meteredParking.timeLimitMinutes || 120) / 60;
-      parts.push(`⏰ Metered zone — ${rate}, ${meterLimitHours}-hour max. $65 expired meter ticket`);
+      const meterLimitMin = rawData.meteredParking.timeLimitMinutes || 120;
+      const meterLimitHours = meterLimitMin / 60;
+      const limitDisplay = meterLimitHours === 1 ? '1-hour' : `${meterLimitHours}-hour`;
+      const isRushHour = rawData.meteredParking.isRushHour || false;
+      const rushTag = isRushHour ? ' RUSH HOUR' : '';
+      // Calculate and show expiration time
+      const expiryTime = new Date(Date.now() + meterLimitMin * 60 * 1000);
+      const expiryStr = expiryTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). $65 expired meter ticket`);
     }
 
     // DOT permit (construction, filming, moving van, etc.)
