@@ -825,6 +825,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let kLastParkingAccKey = "bg_lastConfirmedParkingAcc"
   private let kLastParkingTimeKey = "bg_lastConfirmedParkingTime"
   private let kHasConfirmedParkingKey = "bg_hasConfirmedParking"
+  private let kConfirmedParkingTimesKey = "bg_confirmedParkingTimes_v1"  // Ring buffer of recent confirmed parking timestamps+coords for recovery dedup
   private let kFalsePositiveHotspotsKey = "bg_false_positive_hotspots_v1"
 
   // Pending parking event queue — survives stopMonitoring/startMonitoring cycles.
@@ -1133,6 +1134,66 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     defaults.removeObject(forKey: kLastParkingTimeKey)
     defaults.removeObject(forKey: kHasConfirmedParkingKey)
     self.log("Cleared persisted parking state from UserDefaults")
+  }
+
+  // MARK: - Confirmed Parking Times Ring Buffer (for recovery deduplication)
+  // Stores the last N confirmed parking timestamps+coords so that checkForMissedParking
+  // can deduplicate ALL intermediate trips, not just the most recent one.
+
+  /// Record a confirmed parking event in the ring buffer for recovery dedup.
+  /// Called from confirmParking() and handleRecoveryGpsFix().
+  private func recordConfirmedParkingTime(timestamp: Date, latitude: Double, longitude: Double) {
+    let defaults = UserDefaults.standard
+    var entries = defaults.array(forKey: kConfirmedParkingTimesKey) as? [[String: Any]] ?? []
+
+    let entry: [String: Any] = [
+      "timestamp": timestamp.timeIntervalSince1970,
+      "latitude": latitude,
+      "longitude": longitude,
+    ]
+    entries.append(entry)
+
+    // Keep max 20 entries, prune entries older than 24 hours
+    let cutoff = Date().timeIntervalSince1970 - 24 * 3600
+    entries = entries.filter { ($0["timestamp"] as? Double ?? 0) > cutoff }
+    if entries.count > 20 { entries = Array(entries.suffix(20)) }
+
+    defaults.set(entries, forKey: kConfirmedParkingTimesKey)
+  }
+
+  /// Check if a given parking time matches any recently confirmed parking event.
+  /// Returns true if the parkTime is within `timeTolerance` seconds of a confirmed event
+  /// AND (if coords are provided) within `distanceTolerance` meters.
+  private func isAlreadyConfirmedParking(parkTime: Date, coords: (lat: Double, lng: Double)?, timeTolerance: TimeInterval = 3600, distanceTolerance: Double = 500) -> Bool {
+    let defaults = UserDefaults.standard
+    let entries = defaults.array(forKey: kConfirmedParkingTimesKey) as? [[String: Any]] ?? []
+
+    for entry in entries {
+      guard let ts = entry["timestamp"] as? Double else { continue }
+      let entryDate = Date(timeIntervalSince1970: ts)
+      let timeDiff = abs(parkTime.timeIntervalSince(entryDate))
+
+      if timeDiff < timeTolerance {
+        // Time matches. If we have coords for both, also check distance.
+        if let c = coords,
+           let entryLat = entry["latitude"] as? Double,
+           let entryLng = entry["longitude"] as? Double {
+          let entryLoc = CLLocation(latitude: entryLat, longitude: entryLng)
+          let tripLoc = CLLocation(latitude: c.lat, longitude: c.lng)
+          let dist = tripLoc.distance(from: entryLoc)
+          if dist < distanceTolerance {
+            self.log("RECOVERY DEDUP: parkTime \(parkTime) matches confirmed parking at \(entryDate) (timeDiff=\(String(format: "%.0f", timeDiff))s, dist=\(String(format: "%.0f", dist))m)")
+            return true
+          }
+          // Time matches but location is far — different parking event
+        } else {
+          // No coords to compare — time match alone is sufficient
+          self.log("RECOVERY DEDUP: parkTime \(parkTime) matches confirmed parking at \(entryDate) (timeDiff=\(String(format: "%.0f", timeDiff))s, no coords to compare)")
+          return true
+        }
+      }
+    }
+    return false
   }
 
   // MARK: - Pending Parking Event Queue (survives stop/start monitoring)
@@ -4397,10 +4458,36 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       // For the LAST trip: use accurate GPS for the current parking location.
 
       // Emit intermediate trips — try to enrich with CLVisit coordinates
+      // IMPORTANT: Each intermediate trip is individually deduplicated against the
+      // confirmed parking ring buffer. Without this, recovery re-emits parking events
+      // that the normal pipeline already caught (e.g. Byron parking at 7:03 PM was
+      // re-emitted at 9:22 PM with drifted CLVisit coords → "3857 N Lincoln Ave").
       if trips.count > 1 {
-        self.log("RECOVERY: Emitting \(trips.count - 1) intermediate parking events (checking CLVisit history for coordinates)")
+        self.log("RECOVERY: Checking \(trips.count - 1) intermediate trips for deduplication + emission")
         for i in 0..<(trips.count - 1) {
           let trip = trips[i]
+
+          // Try to match this parking time with a CLVisit for coordinates FIRST
+          // (needed for dedup distance check AND for emission if not a duplicate)
+          let visitMatch = self.findVisitForTimestamp(trip.parkTime, toleranceSec: 600)
+
+          // ── Per-trip deduplication ──
+          // Check if this intermediate trip was already confirmed by the normal
+          // parking pipeline. Compare parkTime + CLVisit coords against the
+          // confirmed parking ring buffer.
+          let visitCoords: (lat: Double, lng: Double)? = visitMatch.map { (lat: $0.latitude, lng: $0.longitude) }
+          if self.isAlreadyConfirmedParking(parkTime: trip.parkTime, coords: visitCoords) {
+            self.log("RECOVERY: Trip \(i + 1) — SKIPPING (already confirmed by normal pipeline, parkTime=\(trip.parkTime))")
+            self.decision("recovery_intermediate_deduped", [
+              "tripIndex": i + 1,
+              "parkTime": trip.parkTime.timeIntervalSince1970 * 1000,
+              "hasVisitCoords": visitMatch != nil,
+              "visitLat": visitMatch?.latitude ?? 0,
+              "visitLng": visitMatch?.longitude ?? 0,
+            ])
+            continue  // Skip — already recorded
+          }
+
           let departureTimestamp = trip.driveStart.timeIntervalSince1970 * 1000
           let parkTimestamp = trip.parkTime.timeIntervalSince1970 * 1000
 
@@ -4410,9 +4497,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             "source": "recovery_historical",
           ])
           self.log("RECOVERY: Trip \(i + 1) — onDrivingStarted at \(trip.driveStart)")
-
-          // Try to match this parking time with a CLVisit for coordinates
-          let visitMatch = self.findVisitForTimestamp(trip.parkTime, toleranceSec: 600)
 
           var body: [String: Any] = [
             "timestamp": parkTimestamp,
@@ -4466,6 +4550,24 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
       // ── Handle the LAST trip with accurate GPS ──
       let lastTrip = trips.last!
+
+      // Dedup the last trip against the ring buffer too (belt + suspenders with
+      // the existing lastConfirmedParkingLocation check above).
+      if self.isAlreadyConfirmedParking(parkTime: lastTrip.parkTime, coords: nil) {
+        self.log("RECOVERY: Last trip — SKIPPING (already confirmed, parkTime=\(lastTrip.parkTime))")
+        self.decision("recovery_last_trip_deduped", [
+          "parkTime": lastTrip.parkTime.timeIntervalSince1970 * 1000,
+          "driveDuration": lastTrip.driveDuration,
+        ])
+        // Still restart CoreMotion
+        if self.coreMotionActive {
+          self.activityManager.stopActivityUpdates()
+          self.coreMotionActive = false
+        }
+        self.startMotionActivityMonitoring()
+        return
+      }
+
       self.log("RECOVERY: Processing last trip (current location) — drove \(String(format: "%.0f", lastTrip.driveDuration))s. Requesting accurate GPS.")
 
       // Emit onDrivingStarted for the last trip's departure
@@ -4544,6 +4646,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // the watchdog + checkForMissedParking to re-emit the same parking
     // event repeatedly while the user is still parked.
     persistParkingState()
+
+    // Record in confirmed parking ring buffer for recovery dedup
+    let recoveryTimestamp = recoveryParkTime ?? Date()
+    recordConfirmedParkingTime(timestamp: recoveryTimestamp, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
 
     sendEvent(withName: "onParkingDetected", body: body)
     persistPendingParkingEvent(body)  // Survive JS suspension
@@ -4744,6 +4850,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
       lastConfirmedParkingLocation = visitLocation
       hasConfirmedParkingThisSession = true
+
+      // Record in confirmed parking ring buffer for recovery dedup
+      recordConfirmedParkingTime(timestamp: visit.arrivalDate, latitude: visit.coordinate.latitude, longitude: visit.coordinate.longitude)
 
       sendEvent(withName: "onParkingDetected", body: body)
       persistPendingParkingEvent(body)  // Survive JS suspension
@@ -5600,6 +5709,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     lastConfirmedParkingConfidence = finalizedConfidence
     lastConfirmedParkingNearIntersectionRisk = finalizedNearIntersectionRisk
     persistParkingState()  // Survive app kills (Clybourn bug fix)
+
+    // Record in the confirmed parking ring buffer for recovery deduplication.
+    // This prevents checkForMissedParking from re-emitting this parking event.
+    if let loc = finalizedLocation {
+      let parkTimestamp: Date
+      if let ts = body["timestamp"] as? Double, ts > 0 {
+        parkTimestamp = Date(timeIntervalSince1970: ts / 1000)
+      } else {
+        parkTimestamp = Date()
+      }
+      recordConfirmedParkingTime(timestamp: parkTimestamp, latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude)
+    }
 
     var payload = body
     payload["detectionSource"] = source

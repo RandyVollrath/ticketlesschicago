@@ -246,9 +246,13 @@ iOS's `CLLocationManager.startMonitoringVisits()` tracks places where the user d
 
 `checkForMissedParking()` queries CoreMotion history (last 6 hours) on app startup/wake and re-emits parking events for drive→park transitions it finds. This runs on EVERY app restart, significantLocationChange wake, and app resume from suspension.
 
-**Critical rule: it MUST deduplicate against `lastConfirmedParkingLocation`.** Without this, the same parking event is re-emitted every time the app restarts, creating duplicate parking records in the user's history.
+**Critical rule: EVERY trip (intermediate AND last) MUST be deduplicated before emission.** Without this, recovery re-emits parking events the normal pipeline already caught, creating phantom records with drifted CLVisit coordinates (the "3857 N Lincoln Ave" bug — CLVisit GPS drifted 33m from Byron St, causing wrong address).
 
-**Deduplication logic:** Compare the last trip's `parkTime` with `lastConfirmedParkingLocation.timestamp` (within 1 hour) AND `currentLocation` with `lastConfirmedParkingLocation` (within 300m). If both match, skip recovery entirely.
+**Deduplication uses a confirmed parking ring buffer** (`bg_confirmedParkingTimes_v1` in UserDefaults): a persisted array of up to 20 recent confirmed parking timestamps+coords (pruned at 24h). Every `confirmParking()`, `handleRecoveryGpsFix()`, and CLVisit parking path calls `recordConfirmedParkingTime()`. Before emitting any intermediate trip, `isAlreadyConfirmedParking()` checks the ring buffer (1h time tolerance + 500m distance tolerance). The old single-value `lastConfirmedParkingLocation` check is kept as a belt-and-suspenders guard for the last trip only.
+
+**Why `lastConfirmedParkingLocation` alone was insufficient:** It only stores ONE location. When recovery finds 2+ trips (Byron→Wolcott), the last trip (Wolcott at 9:21 PM) doesn't match `lastConfirmedParkingLocation` (Byron at 7:03 PM, timeDiff=2h18m > 1h threshold), so recovery proceeds and re-emits the already-confirmed Byron parking with drifted CLVisit coords.
+
+**JS-side guard for zero-coordinate recovery events (fixed Mar 2026):** Native sends `lat=0, lng=0, accuracy=-1` when no CLVisit match exists for a recovery trip. Previously `event.latitude && event.longitude` in JS treated 0 as falsy → `parkingCoords = undefined` → `triggerParkingCheck(undefined)` → used phone's current GPS (could be at home, hours later). Fix: explicitly check `event.latitude !== 0` and reject recovery events with no valid coordinates entirely (return early, don't create parking record).
 
 **Timestamp bug (fixed Feb 2026):** `handleRecoveryGpsFix()` was using `Date()` (current time) for the parking event timestamp instead of the CoreMotion `parkTime`. This caused parking records to show "parked now" instead of "parked 2 hours ago." Fix: store `recoveryParkTime` from the CoreMotion trip and use it in the event body.
 
@@ -267,6 +271,7 @@ The original code used `Math.abs(item.timestamp - referenceTimestamp)` to find t
 2. **Sort by `referenceTimestamp - item.timestamp` (ascending)** — prefer the most recent parking record that's still before the departure.
 3. **Cap at 24h** — don't match departures to parking events from days ago.
 4. **`pending.localHistoryItemId` takes priority** — it was matched when departure first started and is more reliable than re-matching later.
+5. **Prefer non-recovery records over recovery records (fixed Mar 2026):** When the closest candidate by time is from recovery (`locationSource` starts with `recovery_`) and a non-recovery candidate exists within 30 min, prefer the non-recovery one. Recovery records can have drifted CLVisit coords → wrong addresses, while normal pipeline records have accurate GPS.
 
 ## iOS Camera Alerts — Background Reality (Critical)
 
