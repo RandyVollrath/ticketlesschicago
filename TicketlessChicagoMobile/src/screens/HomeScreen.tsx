@@ -136,13 +136,13 @@ const getHeroConfig = (
 // Protection Status - compact icon strip
 // ──────────────────────────────────────────────────────
 const PROTECTION_ITEMS = [
-  { icon: 'broom', label: 'Cleaning' },
-  { icon: 'snowflake', label: 'Winter' },
-  { icon: 'weather-snowy-heavy', label: 'Snow' },
-  { icon: 'parking', label: 'Permits' },
-  { icon: 'clipboard-text-clock', label: 'Block Events' },
-  { icon: 'traffic-light', label: 'Red Light' },
-  { icon: 'speedometer', label: 'Speed' },
+  { icon: 'broom', label: 'Cleaning', settingsSection: 'preferences' },
+  { icon: 'snowflake', label: 'Winter', settingsSection: 'preferences' },
+  { icon: 'weather-snowy-heavy', label: 'Snow', settingsSection: 'preferences' },
+  { icon: 'parking', label: 'Permits', settingsSection: 'permit_zone' },
+  { icon: 'clipboard-text-clock', label: 'Block Events', settingsSection: 'preferences' },
+  { icon: 'traffic-light', label: 'Red Light', settingsSection: 'preferences' },
+  { icon: 'speedometer', label: 'Speed', settingsSection: 'preferences' },
 ];
 
 // ──────────────────────────────────────────────────────
@@ -1558,7 +1558,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 accessibilityLabel="Pair your car's Bluetooth for auto-detection"
                 accessibilityRole="button"
               >
-                <MaterialCommunityIcons name="bluetooth-connect" size={16} color={colors.warning} />
+                <MaterialCommunityIcons name="bluetooth" size={16} color={colors.primary} />
                 <Text style={styles.quickStartItemText}>Pair your car's Bluetooth for auto-detection</Text>
                 <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
@@ -1774,14 +1774,21 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.protectionTitle}>Checking for</Text>
           <View style={styles.protectionStrip}>
             {PROTECTION_ITEMS.map((item, index) => (
-              <View key={index} style={styles.protectionChip} accessibilityLabel={`${item.label} checked`}>
+              <TouchableOpacity
+                key={index}
+                style={styles.protectionChip}
+                accessibilityLabel={`${item.label} checked. Tap to open settings.`}
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('Settings', { scrollTo: item.settingsSection })}
+                activeOpacity={0.7}
+              >
                 <MaterialCommunityIcons
                   name={item.icon}
                   size={16}
                   color={colors.success}
                 />
                 <Text style={styles.protectionChipText}>{item.label}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>

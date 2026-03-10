@@ -54,7 +54,7 @@ export type MainTabParamList = {
   Search: undefined;
   History: undefined;
   Alerts: undefined;
-  Settings: undefined;
+  Settings: { scrollTo?: string } | undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();

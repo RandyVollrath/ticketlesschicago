@@ -29,6 +29,8 @@ import { clearUserData } from '../utils/storage';
 import { StorageKeys } from '../constants';
 import CameraAlertService from '../services/CameraAlertService';
 import BackgroundLocationService from '../services/BackgroundLocationService';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { MainTabParamList } from '../../App';
 
 const log = Logger.createLogger('SettingsScreen');
 
@@ -172,6 +174,35 @@ const Divider = () => <View style={styles.divider} />;
 // Main Screen
 // ──────────────────────────────────────────────────────
 const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const route = useRoute<RouteProp<MainTabParamList, 'Settings'>>();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const sectionLayoutsRef = useRef<Record<string, number>>({});
+  const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
+
+  // Scroll to a specific section when navigated with scrollTo param
+  useEffect(() => {
+    const scrollTo = route.params?.scrollTo;
+    if (scrollTo && scrollViewRef.current) {
+      const y = sectionLayoutsRef.current[scrollTo];
+      if (y !== undefined) {
+        scrollViewRef.current.scrollTo({ y: y - 10, animated: true });
+        setHighlightedSection(scrollTo);
+        const timer = setTimeout(() => setHighlightedSection(null), 2000);
+        return () => clearTimeout(timer);
+      }
+      // Section not measured yet — retry after a short delay
+      const timer = setTimeout(() => {
+        const yRetry = sectionLayoutsRef.current[scrollTo];
+        if (yRetry !== undefined && scrollViewRef.current) {
+          scrollViewRef.current.scrollTo({ y: yRetry - 10, animated: true });
+          setHighlightedSection(scrollTo);
+          setTimeout(() => setHighlightedSection(null), 2000);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [route.params?.scrollTo]);
+
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [user, setUser] = useState<User | null>(AuthService.getUser());
@@ -664,7 +695,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.feedbackText}>{feedbackMessage}</Text>
         </RNAnimated.View>
       )}
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.content}>
         <Text style={styles.title}>Settings</Text>
 
         {/* Account */}
@@ -681,6 +712,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         )}
 
         {/* Preferences (merged notifications + security) */}
+        <View onLayout={e => { sectionLayoutsRef.current['preferences'] = e.nativeEvent.layout.y; }} style={highlightedSection === 'preferences' ? { borderRadius: 12, borderWidth: 2, borderColor: colors.primary } : undefined}>
         <Section title="Preferences">
           <SettingRow
             icon="bell-outline"
@@ -818,8 +850,10 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             onValueChange={toggleMeterExpiryAlerts}
           />
         </Section>
+        </View>
 
         {/* Phone Call Alerts */}
+        <View onLayout={e => { sectionLayoutsRef.current['call_alerts'] = e.nativeEvent.layout.y; }} style={highlightedSection === 'call_alerts' ? { borderRadius: 12, borderWidth: 2, borderColor: colors.primary } : undefined}>
         <Section title="Call Alerts">
           <SettingRow
             icon="phone-ring"
@@ -961,8 +995,10 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </>
           )}
         </Section>
+        </View>
 
         {/* Permit Zone */}
+        <View onLayout={e => { sectionLayoutsRef.current['permit_zone'] = e.nativeEvent.layout.y; }} style={highlightedSection === 'permit_zone' ? { borderRadius: 12, borderWidth: 2, borderColor: colors.primary } : undefined}>
         <Section title="Your Permit Zone">
           <View style={styles.permitZoneRow}>
             <MaterialCommunityIcons name="parking" size={20} color={colors.primary} style={styles.rowIcon} />
@@ -1023,8 +1059,10 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             )}
           </View>
         </Section>
+        </View>
 
         {/* Auto-Detection */}
+        <View onLayout={e => { sectionLayoutsRef.current['auto_detection'] = e.nativeEvent.layout.y; }} style={highlightedSection === 'auto_detection' ? { borderRadius: 12, borderWidth: 2, borderColor: colors.primary } : undefined}>
         <Section title="Auto-Detection">
           <LinkRow
             icon={savedCar ? 'car-connected' : 'bluetooth-connect'}
@@ -1034,6 +1072,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             onPress={() => navigation.navigate('BluetoothSettings')}
           />
         </Section>
+        </View>
 
         {/* About */}
         <Section title="About">
