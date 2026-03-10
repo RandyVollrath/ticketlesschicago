@@ -2377,7 +2377,7 @@ class BackgroundTaskServiceClass {
               type: 'metered_parking',
               restrictionStartTime: earlyWarningTime,
               address: result.address || '',
-              details: `Your ${limitDisplay} meter expires in 10 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $65 ticket if expired.`,
+              details: `Your ${limitDisplay} meter expires in 10 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car now — $65 ticket. Adding time past the posted max won't protect you.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -2396,7 +2396,7 @@ class BackgroundTaskServiceClass {
             type: 'metered_parking',
             restrictionStartTime: meterExpiryWarningTime,
             address: result.address || '',
-            details: `Your ${limitDisplay} meter expires in 30 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $65 ticket if expired.`,
+            details: `Your ${limitDisplay} meter expires in 30 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $65 ticket if expired. Note: adding time past the posted max won't protect you.`,
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
@@ -2707,7 +2707,7 @@ class BackgroundTaskServiceClass {
       // Calculate and show expiration time
       const expiryTime = new Date(Date.now() + meterLimitMin * 60 * 1000);
       const expiryStr = expiryTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). $65 expired meter ticket`);
+      parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). Paying past the posted limit won't prevent a $65 ticket — move before it expires.`);
     }
 
     // DOT permit (construction, filming, moving van, etc.)
