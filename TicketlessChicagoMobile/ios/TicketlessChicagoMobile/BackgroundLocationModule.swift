@@ -3777,28 +3777,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   /// Called eagerly when driving starts so the audio pipeline is ready before the first alert.
   /// Calling this lazily on the first alert adds ~200ms latency and risks iOS refusing
   /// the session change mid-background.
+  /// DISABLED for App Store compliance (guideline 2.5.4 — "audio" background mode removed).
+  /// Re-enable when background TTS camera alerts are approved.
   private func configureSpeechAudioSession() {
-    guard !speechAudioSessionConfigured else { return }
-    do {
-      try AVAudioSession.sharedInstance().setCategory(
-        .playback,
-        mode: .voicePrompt,
-        options: [.duckOthers]  // Lower music volume briefly instead of pausing it
-      )
-      speechAudioSessionConfigured = true
-      log("Speech audio session configured for background TTS (.playback, .duckOthers)")
-
-      // Listen for audio interruptions (phone calls, Siri, etc.)
-      // After an interruption ends, re-configure so the next TTS alert works.
-      NotificationCenter.default.addObserver(
-        self,
-        selector: #selector(handleAudioInterruption),
-        name: AVAudioSession.interruptionNotification,
-        object: nil
-      )
-    } catch {
-      log("Failed to configure speech audio session: \(error.localizedDescription)")
-    }
+    // TTS disabled — do not configure AVAudioSession for playback
+    return
   }
 
   @objc private func handleAudioInterruption(_ notification: Notification) {
@@ -4228,31 +4211,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   /// JS bridge: test background TTS for App Store review.
   /// Schedules a spoken alert after `delaySec` seconds so the reviewer can
   /// background the app and hear it speak.  Also fires a local notification.
+  /// DISABLED for App Store compliance (guideline 2.5.4 — "audio" background mode removed).
   @objc func testBackgroundTTS(_ delaySec: Double, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    let delay = max(delaySec, 1)
-    log("testBackgroundTTS: will speak in \(delay)s")
-
-    // Configure audio session eagerly (same as driving start)
-    configureSpeechAudioSession()
-
-    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-      guard let self = self else { return }
-
-      // Fire a local notification (visible even if app is backgrounded)
-      let content = UNMutableNotificationContent()
-      content.title = "Red-light camera ahead"
-      content.body = "W Fullerton Ave & N Milwaukee Ave — this is a test alert"
-      content.sound = nil  // TTS provides the audio
-      let request = UNNotificationRequest(identifier: "test-bg-tts", content: content, trigger: nil)
-      UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
-
-      // Speak using forceSpeak (bypasses foreground check — the reviewer may
-      // still be transitioning to background when the timer fires)
-      self.forceSpeakCameraAlert("Red-light camera ahead. W Fullerton Ave and N Milwaukee Ave.")
-      self.log("testBackgroundTTS: fired test alert (appState=\(UIApplication.shared.applicationState == .active ? "active" : UIApplication.shared.applicationState == .background ? "background" : "inactive"))")
-    }
-
-    resolve(true)
+    log("testBackgroundTTS: disabled for App Store compliance (2.5.4)")
+    resolve(false)
   }
 
   /// Speak a camera alert regardless of foreground/background state.
