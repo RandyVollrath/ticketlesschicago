@@ -1425,15 +1425,17 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       startMotionActivityMonitoring()
       gpsOnlyMode = false
       self.log("CoreMotion activity monitoring started")
-      // Start ultra-low-frequency GPS keepalive to prevent iOS from killing the app.
-      // CoreMotion handles driving detection; GPS just keeps the process alive.
+      // Start low-frequency GPS keepalive to prevent iOS from killing the app
+      // AND catch short drives that CoreMotion misses. 50m/100m uses WiFi+cell
+      // positioning (not GPS chip) so battery impact is minimal, but ensures we
+      // get location updates frequently enough for speed-based driving detection.
       if !continuousGpsActive {
-        locationManager.distanceFilter = 200
-        locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+        locationManager.distanceFilter = 50
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         locationManager.startUpdatingLocation()
         continuousGpsActive = true
         gpsInKeepaliveMode = true
-        self.log("Keepalive GPS started (distanceFilter=200m, accuracy=3km)")
+        self.log("Keepalive GPS started (distanceFilter=50m, accuracy=100m)")
       }
     } else {
       gpsOnlyMode = true
@@ -1541,12 +1543,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       gpsOnlyMode = false
       self.log("Background relaunch: CoreMotion activity monitoring started")
       if !continuousGpsActive {
-        locationManager.distanceFilter = 200
-        locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+        locationManager.distanceFilter = 50
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         locationManager.startUpdatingLocation()
         continuousGpsActive = true
         gpsInKeepaliveMode = true
-        self.log("Background relaunch: Keepalive GPS started (200m, 3km)")
+        self.log("Background relaunch: Keepalive GPS started (50m, 100m)")
       }
     } else {
       gpsOnlyMode = true
@@ -1992,12 +1994,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       // Keep continuousGpsActive = true so location callbacks keep flowing
       gpsInKeepaliveMode = true
     } else {
-      // Normal mode (CoreMotion available): drop to ultra-low-frequency GPS
-      // to keep the app process alive. CoreMotion handles driving detection;
-      // GPS just needs to prevent iOS from killing us.
-      locationManager.distanceFilter = 200  // Only update every 200m of movement
-      locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers  // Lowest power GPS
-      self.log("Continuous GPS → keepalive mode (distanceFilter=200m, accuracy=3km) — preventing iOS process kill")
+      // Normal mode: low-frequency GPS that keeps the process alive AND provides
+      // enough updates to detect short drives via speed when CoreMotion misses them.
+      // 50m/100m uses WiFi+cell (not GPS chip) — minimal battery, but catches
+      // trips CoreMotion's M-series coprocessor doesn't classify as automotive.
+      locationManager.distanceFilter = 50   // Update every 50m of movement
+      locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters  // WiFi+cell positioning
+      self.log("Continuous GPS → keepalive mode (distanceFilter=50m, accuracy=100m)")
       // Keep continuousGpsActive = true so the process stays alive
       gpsInKeepaliveMode = true
     }
