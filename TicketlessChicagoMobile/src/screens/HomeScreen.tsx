@@ -137,8 +137,8 @@ const getHeroConfig = (
 // ──────────────────────────────────────────────────────
 const PROTECTION_ITEMS = [
   { icon: 'broom', label: 'Cleaning', settingsSection: 'preferences' },
-  { icon: 'snowflake', label: 'Winter', settingsSection: 'preferences' },
-  { icon: 'weather-snowy-heavy', label: 'Snow', settingsSection: 'preferences' },
+  { icon: 'snowflake', label: 'Winter Ban', settingsSection: 'preferences' },
+  { icon: 'weather-snowy-heavy', label: 'Snow Ban', settingsSection: 'preferences' },
   { icon: 'parking', label: 'Permits', settingsSection: 'permit_zone' },
   { icon: 'clipboard-text-clock', label: 'Block Events', settingsSection: 'preferences' },
   { icon: 'traffic-light', label: 'Red Light', settingsSection: 'preferences' },
