@@ -33,6 +33,8 @@ const validateEmail = (email: string): boolean => {
 
 export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
@@ -146,6 +148,51 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
     } finally {
       if (isMountedRef.current) {
         setAppleLoading(false);
+      }
+      isProcessingRef.current = false;
+    }
+  };
+
+  const handleEmailPasswordSignIn = async () => {
+    if (isProcessingRef.current) return;
+
+    if (!email) {
+      setError('Please enter your email');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (!password) {
+      setError('Please enter your password');
+      return;
+    }
+
+    isProcessingRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await AuthService.signInWithEmail(email.trim(), password);
+
+      if (!isMountedRef.current) return;
+
+      if (result.success) {
+        onAuthSuccess?.();
+      } else {
+        setError(result.error || 'Sign in failed. Check your email and password.');
+      }
+    } catch (err) {
+      log.error('Email/password sign-in error', err);
+      if (isMountedRef.current) {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
       }
       isProcessingRef.current = false;
     }
@@ -268,40 +315,68 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               </TouchableOpacity>
             )}
 
-            {/* Magic link commented out — may bring back later
+            {/* Email + Password sign in */}
             <View style={styles.dividerContainer}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or sign in with email</Text>
+              <Text style={styles.dividerText}>or</Text>
               <View style={styles.dividerLine} />
             </View>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="your@email.com"
-                placeholderTextColor={colors.textTertiary}
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (error) setError(null);
-                }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-            <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.buttonDisabled]}
-              onPress={handleMagicLink}
-              disabled={loading || googleLoading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.primaryButtonText}>Send Magic Link</Text>
-              )}
-            </TouchableOpacity>
-            */}
+
+            {!showEmailLogin ? (
+              <TouchableOpacity
+                style={styles.emailToggleButton}
+                onPress={() => setShowEmailLogin(true)}
+              >
+                <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} />
+                <Text style={styles.emailToggleText}>Sign in with email</Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Email</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="your@email.com"
+                    placeholderTextColor={colors.textTertiary}
+                    value={email}
+                    onChangeText={(text) => {
+                      setEmail(text);
+                      if (error) setError(null);
+                    }}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your password"
+                    placeholderTextColor={colors.textTertiary}
+                    value={password}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      if (error) setError(null);
+                    }}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[styles.primaryButton, loading && styles.buttonDisabled]}
+                  onPress={handleEmailPasswordSignIn}
+                  disabled={loading || googleLoading || appleLoading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Sign In</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
           <Text style={styles.disclaimer}>
@@ -417,6 +492,18 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     color: colors.textPrimary,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
+  },
+  emailToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  emailToggleText: {
+    color: colors.textSecondary,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.medium,
   },
