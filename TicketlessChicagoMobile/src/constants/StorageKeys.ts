@@ -65,6 +65,7 @@ export const StorageKeys = {
 
   // One-time nudges
   PLATE_COMPLIANCE_NUDGE_DISMISSED: 'plateComplianceNudgeDismissed', // 'true' if user dismissed the front plate nudge
+  CROSS_POLL_PROMPT_DISMISSED: 'crossPollPromptDismissed', // 'true' if user dismissed the advance-alerts cross-pollination prompt
 } as const;
 
 // Type for storage keys

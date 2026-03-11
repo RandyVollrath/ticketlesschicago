@@ -2294,7 +2294,7 @@ class BackgroundTaskServiceClass {
               type: 'street_cleaning',
               restrictionStartTime: nightBefore9pm,
               address: result.address || '',
-              details: `Street cleaning ${dayName} ${monthDay}, ${schedule}. Move your car tonight to avoid a $60 ticket.`,
+              details: `Street cleaning ${dayName} ${monthDay}, ${schedule}. Move your car tonight to avoid a $65 ticket.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -2309,7 +2309,7 @@ class BackgroundTaskServiceClass {
               type: 'street_cleaning',
               restrictionStartTime: morningOf7am,
               address: result.address || '',
-              details: `Street cleaning starts at 9am today (${schedule}). MOVE YOUR CAR NOW — $60 ticket.`,
+              details: `Street cleaning starts at 9am today (${schedule}). MOVE YOUR CAR NOW — $65 ticket.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -2696,12 +2696,12 @@ class BackgroundTaskServiceClass {
           );
           const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
           const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          parts.push(`🧹 Street cleaning ${dayName} ${monthDay}, ${schedule} — $60 ticket`);
+          parts.push(`🧹 Street cleaning ${dayName} ${monthDay}, ${schedule} — $65 ticket`);
         } else {
-          parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $60 ticket`);
+          parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $65 ticket`);
         }
       } catch {
-        parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $60 ticket`);
+        parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $65 ticket`);
       }
     }
 

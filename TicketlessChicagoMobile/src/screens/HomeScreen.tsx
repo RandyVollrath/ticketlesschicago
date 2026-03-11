@@ -13,6 +13,8 @@ import {
   NativeModules,
   Share,
   ActivityIndicator,
+  Modal,
+  Switch,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +31,7 @@ import MotionActivityService from '../services/MotionActivityService';
 import BackgroundLocationService, { LocationUpdateEvent } from '../services/BackgroundLocationService';
 import GroundTruthService from '../services/GroundTruthService';
 import AppEvents from '../services/AppEvents';
+import CameraAlertService from '../services/CameraAlertService';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
 import NetworkStatus from '../utils/NetworkStatus';
@@ -133,16 +136,64 @@ const getHeroConfig = (
 };
 
 // ──────────────────────────────────────────────────────
-// Protection Status - compact icon strip
+// Protection Status - split into parking + driving
 // ──────────────────────────────────────────────────────
-const PROTECTION_ITEMS = [
-  { icon: 'broom', label: 'Cleaning', settingsSection: 'preferences' },
-  { icon: 'snowflake', label: 'Winter Ban', settingsSection: 'preferences' },
-  { icon: 'weather-snowy-heavy', label: 'Snow Ban', settingsSection: 'preferences' },
-  { icon: 'parking', label: 'Permits', settingsSection: 'permit_zone' },
-  { icon: 'clipboard-text-clock', label: 'Block Events', settingsSection: 'preferences' },
-  { icon: 'traffic-light', label: 'Red Light', settingsSection: 'preferences' },
-  { icon: 'speedometer', label: 'Speed', settingsSection: 'preferences' },
+interface ProtectionItem {
+  icon: string;
+  label: string;
+  sheetTitle: string;
+  sheetBody: string;
+  sheetAction?: { label: string; target: 'manage' | 'settings'; scrollTo?: string };
+}
+
+const PARKING_PROTECTIONS: ProtectionItem[] = [
+  {
+    icon: 'broom',
+    label: 'Street Cleaning',
+    sheetTitle: 'Street Cleaning',
+    sheetBody: 'We notify you at 9 PM the night before and 7 AM the morning of if your car is parked on a street scheduled for cleaning ($65 ticket).',
+    sheetAction: { label: 'Set Up Advance Alerts', target: 'manage' },
+  },
+  {
+    icon: 'snowflake',
+    label: 'Winter Overnight Ban',
+    sheetTitle: 'Winter Overnight Ban',
+    sheetBody: 'From Dec 1 to Apr 1, parking is prohibited on designated main streets between 3 AM and 7 AM, regardless of snow. We alert you if you park on one of these routes.',
+  },
+  {
+    icon: 'weather-snowy-heavy',
+    label: '2-Inch Snow Ban',
+    sheetTitle: '2-Inch Snow Emergency',
+    sheetBody: 'When 2+ inches of snow falls, the city activates a ban on 500 miles of arterial streets. We monitor the city\'s official declaration and alert you immediately.',
+  },
+  {
+    icon: 'parking',
+    label: 'Residential Permits',
+    sheetTitle: 'Residential Permit Zones',
+    sheetBody: 'We check if your parking spot requires a residential permit. Add your home zone number so we know which zones are safe for you.',
+    sheetAction: { label: 'Add My Permit Zone', target: 'settings', scrollTo: 'permit_zone' },
+  },
+  {
+    icon: 'sign-caution',
+    label: 'Temporary No Parking',
+    sheetTitle: 'Temporary Restrictions',
+    sheetBody: 'We check for temporary no-parking zones from block parties, construction, filming, and other events. Always double-check for orange paper signs on poles.',
+  },
+];
+
+const DRIVING_ALERTS: ProtectionItem[] = [
+  {
+    icon: 'camera-iris',
+    label: 'Red Light Cameras',
+    sheetTitle: 'Red Light Camera Alerts',
+    sheetBody: 'When enabled, the app gives you an audio and visual alert as you approach intersections with known red-light cameras while driving.',
+  },
+  {
+    icon: 'speedometer',
+    label: 'Speed Cameras',
+    sheetTitle: 'Speed Camera Alerts',
+    sheetBody: 'When enabled, the app alerts you as you approach speed camera zones, helping you monitor your speed and avoid tickets.',
+  },
 ];
 
 // ──────────────────────────────────────────────────────
@@ -192,6 +243,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [homePermitZone, setHomePermitZone] = useState<string | null>(null);
   const [showParkingMap, setShowParkingMap] = useState(false);
   const [showPlateNudge, setShowPlateNudge] = useState(false);
+  const [showCrossPollinationPrompt, setShowCrossPollinationPrompt] = useState(false);
+
+  // Bottom sheet state for protection info
+  const [activeSheet, setActiveSheet] = useState<ProtectionItem | null>(null);
+
+  // Camera alert toggle state
+  const [redLightEnabled, setRedLightEnabled] = useState(true);
+  const [speedCameraEnabled, setSpeedCameraEnabled] = useState(true);
 
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
@@ -212,6 +271,21 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Load camera alert settings
+  useEffect(() => {
+    CameraAlertService.getSettings().then((settings) => {
+      setRedLightEnabled(settings.redLightEnabled);
+      setSpeedCameraEnabled(settings.speedEnabled);
+    }).catch(() => {});
+
+    // Check if cross-pollination prompt was dismissed
+    AsyncStorage.getItem(StorageKeys.CROSS_POLL_PROMPT_DISMISSED).then((val) => {
+      if (val !== 'true') {
+        setShowCrossPollinationPrompt(true);
+      }
+    }).catch(() => {});
   }, []);
 
   // Subscribe to network status
@@ -1481,6 +1555,43 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           )}
         </TouchableOpacity>
 
+        {/* ──── Cross-pollination: advance alerts prompt ──── */}
+        {heroState === 'clear' && showCrossPollinationPrompt && (
+          <View style={styles.crossPollCard}>
+            <View style={styles.crossPollContent}>
+              <MaterialCommunityIcons name="calendar-clock" size={24} color="#5856D6" />
+              <View style={styles.crossPollTextWrap}>
+                <Text style={styles.crossPollTitle}>Get advance alerts for your block</Text>
+                <Text style={styles.crossPollBody}>
+                  Get reminders for street cleaning, 2-inch snow bans, and sticker renewals via email, text, or call.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  AsyncStorage.setItem(StorageKeys.CROSS_POLL_PROMPT_DISMISSED, 'true');
+                  setShowCrossPollinationPrompt(false);
+                }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityLabel="Dismiss advance alerts suggestion"
+              >
+                <MaterialCommunityIcons name="close" size={18} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={styles.crossPollCta}
+              onPress={() => {
+                AsyncStorage.setItem(StorageKeys.CROSS_POLL_PROMPT_DISMISSED, 'true');
+                setShowCrossPollinationPrompt(false);
+                navigation.navigate('Manage');
+              }}
+              accessibilityLabel="Set up advance alerts in the Manage tab"
+            >
+              <Text style={styles.crossPollCtaText}>Set Up in Manage</Text>
+              <MaterialCommunityIcons name="chevron-right" size={16} color="#5856D6" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ──── Embedded Restrictions Map ──── */}
         {showParkingMap && lastParkingCheck && (
           <View style={styles.parkingMapCard}>
@@ -1769,29 +1880,128 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textTertiary} />
         </TouchableOpacity>
 
-        {/* ──── Protection Coverage ──── */}
+        {/* ──── Parking Protection ──── */}
         <View style={styles.protectionCard}>
-          <Text style={styles.protectionTitle}>Checking for</Text>
-          <View style={styles.protectionStrip}>
-            {PROTECTION_ITEMS.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.protectionChip}
-                accessibilityLabel={`${item.label} checked. Tap to open settings.`}
-                accessibilityRole="button"
-                onPress={() => navigation.navigate('Settings', { scrollTo: item.settingsSection })}
-                activeOpacity={0.7}
-              >
+          <Text style={styles.protectionTitle}>Parking Protection</Text>
+          {PARKING_PROTECTIONS.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.protectionRow}
+              accessibilityLabel={`${item.label}. Active. Tap for details.`}
+              accessibilityRole="button"
+              onPress={() => setActiveSheet(item)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.protectionRowDot} />
+              <MaterialCommunityIcons
+                name={item.icon}
+                size={18}
+                color={colors.success}
+              />
+              <Text style={styles.protectionRowText}>{item.label}</Text>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={16}
+                color={colors.textTertiary}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ──── Driving Alerts ──── */}
+        <View style={[styles.protectionCard, styles.drivingAlertsCard]}>
+          <Text style={styles.protectionTitle}>Driving Alerts</Text>
+          {DRIVING_ALERTS.map((item) => {
+            const isRedLight = item.icon === 'camera-iris';
+            const isEnabled = isRedLight ? redLightEnabled : speedCameraEnabled;
+            return (
+              <View key={item.label} style={styles.protectionRow}>
                 <MaterialCommunityIcons
                   name={item.icon}
-                  size={16}
-                  color={colors.success}
+                  size={18}
+                  color={isEnabled ? colors.primary : colors.textTertiary}
                 />
-                <Text style={styles.protectionChipText}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                <TouchableOpacity
+                  style={{ flex: 1 }}
+                  onPress={() => setActiveSheet(item)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.protectionRowText, !isEnabled && { color: colors.textTertiary }]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+                <Switch
+                  value={isEnabled}
+                  onValueChange={(val) => {
+                    if (isRedLight) {
+                      setRedLightEnabled(val);
+                      CameraAlertService.setRedLightAlertsEnabled(val);
+                    } else {
+                      setSpeedCameraEnabled(val);
+                      CameraAlertService.setSpeedAlertsEnabled(val);
+                    }
+                  }}
+                  trackColor={{ false: colors.border, true: colors.primaryTint }}
+                  thumbColor={isEnabled ? colors.primary : colors.textTertiary}
+                />
+              </View>
+            );
+          })}
         </View>
+
+        {/* ──── Protection Info Bottom Sheet ──── */}
+        <Modal
+          visible={activeSheet !== null}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setActiveSheet(null)}
+        >
+          <TouchableOpacity
+            style={styles.sheetOverlay}
+            activeOpacity={1}
+            onPress={() => setActiveSheet(null)}
+          >
+            <View style={styles.sheetContainer} onStartShouldSetResponder={() => true}>
+              <View style={styles.sheetHandle} />
+              {activeSheet && (
+                <>
+                  <View style={styles.sheetHeader}>
+                    <MaterialCommunityIcons
+                      name={activeSheet.icon}
+                      size={28}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.sheetTitle}>{activeSheet.sheetTitle}</Text>
+                  </View>
+                  <Text style={styles.sheetBody}>{activeSheet.sheetBody}</Text>
+                  {activeSheet.sheetAction && (
+                    <TouchableOpacity
+                      style={styles.sheetActionButton}
+                      onPress={() => {
+                        const action = activeSheet.sheetAction!;
+                        setActiveSheet(null);
+                        if (action.target === 'manage') {
+                          navigation.navigate('Manage');
+                        } else {
+                          navigation.navigate('Settings', { scrollTo: action.scrollTo });
+                        }
+                      }}
+                    >
+                      <Text style={styles.sheetActionText}>{activeSheet.sheetAction.label}</Text>
+                      <MaterialCommunityIcons name="chevron-right" size={18} color={colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={styles.sheetDismiss}
+                    onPress={() => setActiveSheet(null)}
+                  >
+                    <Text style={styles.sheetDismissText}>Got it</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         {/* ──── Pause (subtle, at the bottom) ──── */}
         {isMonitoring && (
@@ -2477,28 +2687,93 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: typography.letterSpacing.wide,
+    marginBottom: spacing.sm,
+  },
+  protectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  protectionRowDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.success,
+  },
+  protectionRowText: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+  },
+  drivingAlertsCard: {
+    backgroundColor: '#111827',
+  },
+
+  // ──── Bottom Sheet ────
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: colors.cardBg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: spacing.md,
   },
-  protectionStrip: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: spacing.sm,
+  sheetTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
   },
-  protectionChip: {
+  sheetBody: {
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    lineHeight: typography.sizes.md * typography.lineHeights.relaxed,
+    marginBottom: spacing.lg,
+  },
+  sheetActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.successBg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
+    backgroundColor: colors.primaryTint,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
     gap: 6,
-    // Force exactly 3 per row: ~31% width + space-between distributes gaps evenly
-    flexBasis: '31%',
+    marginBottom: spacing.md,
   },
-  protectionChipText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
+  sheetActionText: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+  },
+  sheetDismiss: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  sheetDismissText: {
+    fontSize: typography.sizes.md,
+    color: colors.textTertiary,
     fontWeight: typography.weights.medium,
   },
 
@@ -2576,6 +2851,51 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+  },
+  // Cross-pollination prompt
+  crossPollCard: {
+    backgroundColor: '#F5F3FF',
+    borderRadius: borderRadius.lg,
+    marginHorizontal: spacing.base,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  crossPollContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  crossPollTextWrap: {
+    flex: 1,
+    marginLeft: spacing.sm,
+    marginRight: spacing.sm,
+  },
+  crossPollTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold as any,
+    color: '#4C1D95',
+    marginBottom: 2,
+  },
+  crossPollBody: {
+    fontSize: typography.sizes.xs,
+    color: '#6D28D9',
+    lineHeight: typography.sizes.xs * 1.4,
+  },
+  crossPollCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
+    backgroundColor: '#EDE9FE',
+    borderRadius: borderRadius.md,
+  },
+  crossPollCtaText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold as any,
+    color: '#5856D6',
+    marginRight: 2,
   },
 });
 

@@ -33,40 +33,40 @@ interface OnboardingSlide {
 const BASE_SLIDES: OnboardingSlide[] = [
   {
     id: '1',
-    icon: 'car-connected',
+    icon: 'shield-car',
     title: 'Welcome to Autopilot',
-    description: 'The city has a system. Now, so do you. We keep you one step ahead of Chicago parking rules.',
+    description: 'The city has a system. Now, so do you. We protect Chicago drivers from tickets, tows, and confusing signs.',
     backgroundColor: colors.primary,
   },
   {
     id: '2',
-    icon: 'map-marker-check',
-    title: 'Check Any Spot',
-    description: 'Tap once to see every restriction at your location. Street cleaning, permit zones, snow bans - all covered.',
-    backgroundColor: '#5856D6',
+    icon: 'map-marker-radius',
+    title: 'Park & Walk Away',
+    description: Platform.OS === 'ios'
+      ? 'We detect when you park and instantly check your spot for street cleaning, snow bans, permit zones, and more.'
+      : 'Pair your car\'s Bluetooth once. After that, we check every spot you park in — completely hands-free.',
+    backgroundColor: '#22c55e',
   },
   {
     id: '3',
-    icon: 'bell-ring-outline',
-    title: 'Alerts That Matter',
-    description: Platform.OS === 'ios'
-      ? 'We detect when you park and check the rules automatically. You just get a heads up.'
-      : 'Pair your car\'s Bluetooth once. After that, we check every time you park - no effort needed.',
-    backgroundColor: '#34C759',
+    icon: 'camera-iris',
+    title: 'Eyes on the Road',
+    description: 'While driving, get audio alerts before you pass red-light and speed cameras. Keep the app running in the background.',
+    backgroundColor: '#f59e0b',
   },
   {
     id: '4',
-    icon: 'broom',
-    title: 'Street Cleaning',
-    description: 'We\'ll warn you before the sweepers come through. Peace of Mind Parking, always.',
-    backgroundColor: '#FF9500',
+    icon: 'calendar-clock',
+    title: 'Never Miss a Date',
+    description: 'Get advance email, text, or phone call reminders for street cleaning on your block, 2-inch snow bans, and city sticker renewals.',
+    backgroundColor: '#5856D6',
   },
   {
     id: '5',
-    icon: 'snowflake',
-    title: 'Snow Routes',
-    description: 'Winter overnight bans and snow emergencies - we\'ve got those covered too.',
-    backgroundColor: '#5AC8FA',
+    icon: 'gavel',
+    title: 'We Fight Your Tickets',
+    description: 'Upgrade to Autopilot Premium and we\'ll find your tickets, gather evidence, and contest them automatically. 54% win rate.',
+    backgroundColor: colors.primary,
   },
 ];
 
@@ -77,7 +77,7 @@ const ANDROID_BT_SLIDE: OnboardingSlide = {
   title: 'One-Time Setup',
   description:
     'Just pair your car\'s Bluetooth and pick it in the app. ' +
-    'After that, we detect every time you park - completely hands-free.',
+    'After that, we detect every time you park — completely hands-free.',
   backgroundColor: '#007AFF',
 };
 

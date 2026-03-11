@@ -53,7 +53,7 @@ export type MainTabParamList = {
   Home: undefined;
   Search: undefined;
   History: undefined;
-  Alerts: undefined;
+  Manage: undefined;
   Settings: { scrollTo?: string } | undefined;
 };
 
@@ -89,9 +89,9 @@ function MainTabNavigator() {
         options={{ tabBarLabel: 'History' }}
       />
       <Tab.Screen
-        name="Alerts"
+        name="Manage"
         component={NativeAlertsScreen}
-        options={{ tabBarLabel: 'Alerts' }}
+        options={{ tabBarLabel: 'Manage' }}
       />
       <Tab.Screen
         name="Settings"

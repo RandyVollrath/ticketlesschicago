@@ -182,11 +182,11 @@ class LocalNotificationServiceClass {
           channelId = 'parking-alerts'; // High priority
         } else if (details?.includes('MOVE YOUR CAR NOW')) {
           title = '🧹 Street Cleaning Today — Move Now!';
-          body = `${address}\n${details || 'Street cleaning starts at 9am. Move your car NOW — $60 ticket.'}`;
+          body = `${address}\n${details || 'Street cleaning starts at 9am. Move your car NOW — $65 ticket.'}`;
           channelId = 'parking-alerts'; // Higher priority for urgent morning alert
         } else {
           title = '🧹 Street Cleaning Tomorrow';
-          body = `${address}\n${details || 'Move your car tonight to avoid a $60 ticket.'}`;
+          body = `${address}\n${details || 'Move your car tonight to avoid a $65 ticket.'}`;
         }
         break;
 
