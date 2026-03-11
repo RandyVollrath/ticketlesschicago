@@ -4723,7 +4723,25 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // 3. The visit has valid arrival time (not distantPast)
     // 4. The visit has reasonable accuracy (<200m)
     if isMonitoring {
-      self.log("CLVisit: monitoring active — stored for coordinate enrichment only (not emitting parking event)")
+      // When the user DEPARTS a visit location, temporarily boost GPS to catch
+      // short trips that CoreMotion might miss (e.g., 5-min drive from Costco to
+      // home). In keepalive mode (200m, 3km), GPS doesn't update fast enough for
+      // the speed-based driving fallback. Boosting GPS on CLVisit departure gives
+      // the speed pipeline a chance to detect the trip.
+      let isDeparture = visit.departureDate != Date.distantFuture
+      let departureAge = isDeparture ? Date().timeIntervalSince(visit.departureDate) : Double.greatestFiniteMagnitude
+      if isDeparture && !isDriving && departureAge < 600 && gpsInKeepaliveMode {
+        self.log("CLVisit DEPARTURE while monitoring — boosting GPS to detect possible short trip (departed \(String(format: "%.0f", departureAge))s ago)")
+        decision("clvisit_departure_gps_boost", [
+          "latitude": visit.coordinate.latitude,
+          "longitude": visit.coordinate.longitude,
+          "departureAge": departureAge,
+          "dwellDuration": visit.departureDate.timeIntervalSince(visit.arrivalDate),
+        ])
+        startBootstrapGpsWindow(reason: "clvisit_departure")
+      } else {
+        self.log("CLVisit: monitoring active — stored for coordinate enrichment only (not emitting parking event)")
+      }
       return
     }
 

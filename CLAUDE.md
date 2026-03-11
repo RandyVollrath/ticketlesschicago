@@ -230,7 +230,8 @@ iOS's `CLLocationManager.startMonitoringVisits()` tracks places where the user d
 
 **Rules:**
 1. **Never remove `startMonitoringVisits()`** — it's the only fallback with coordinates when the app is killed
-2. **CLVisit must NOT emit parking events when `isMonitoring == true`** — the normal pipeline handles it. CLVisit only stores visits for `findVisitForTimestamp()` coordinate enrichment while monitoring is active.
+2. **CLVisit must NOT emit parking events when `isMonitoring == true`** — the normal pipeline handles it. CLVisit only stores visits for `findVisitForTimestamp()` coordinate enrichment while monitoring is active. However, **CLVisit DEPARTURE events DO trigger a GPS boost** (see rule 9).
+9. **CLVisit departure triggers GPS boost when monitoring is active (added Mar 2026).** When CoreMotion misses a short drive (e.g., 5-min Costco→home trip), GPS stays in keepalive mode (200m, 3km) and the speed-based fallback can't detect driving either. CLVisit correctly detects the user left a dwelling location. On departure-confirmed visits (within 10 min, not already driving, GPS in keepalive), `startBootstrapGpsWindow("clvisit_departure")` boosts GPS to full accuracy for 75 seconds, giving the speed pipeline a chance to detect any ongoing driving. Conditions: `isDeparture && !isDriving && departureAge < 600 && gpsInKeepaliveMode`.
 3. **`findVisitForTimestamp()` uses 600s (10 min) tolerance** — CLVisit arrival times may not match CoreMotion timestamps exactly
 4. **Always check `lastConfirmedParkingLocation` before emitting a visit-based parking event** — prevents duplicates when the normal pipeline already caught the stop
 5. **Visit history is persisted to UserDefaults**, not just in-memory — must survive app kill + relaunch cycle
