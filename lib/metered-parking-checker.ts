@@ -497,7 +497,7 @@ export async function checkMeteredParking(
     } else if (enforcement.isEnforced) {
       message =
         `Metered parking zone. ${rate}, ${timeLimitHours}-hour max. ` +
-        `Feed the meter or risk a $65 ticket.`;
+        `Feed the meter or risk a $50 ticket.`;
       // Add rush hour warning
       if (enforcement.isRushHour && enforcement.rushHourInfo) {
         message += ` Rush hour restrictions active.`;

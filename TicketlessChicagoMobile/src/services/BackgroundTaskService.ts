@@ -2294,7 +2294,7 @@ class BackgroundTaskServiceClass {
               type: 'street_cleaning',
               restrictionStartTime: nightBefore9pm,
               address: result.address || '',
-              details: `Street cleaning ${dayName} ${monthDay}, ${schedule}. Move your car tonight to avoid a $65 ticket.`,
+              details: `Street cleaning ${dayName} ${monthDay}, ${schedule}. Move your car tonight to avoid a $60 ticket.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -2309,7 +2309,7 @@ class BackgroundTaskServiceClass {
               type: 'street_cleaning',
               restrictionStartTime: morningOf7am,
               address: result.address || '',
-              details: `Street cleaning starts at 9am today (${schedule}). MOVE YOUR CAR NOW — $65 ticket.`,
+              details: `Street cleaning starts at 9am today (${schedule}). MOVE YOUR CAR NOW — $60 ticket.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -2365,7 +2365,7 @@ class BackgroundTaskServiceClass {
           type: 'permit_zone',
           restrictionStartTime: notifyTime,
           address: result.address || '',
-          details: `${zoneName} — enforcement starts at ${enforcementTimeStr}. Check posted signs for your specific zone number and hours, then move your car or display a valid permit to avoid a $65 ticket.`,
+          details: `${zoneName} — enforcement starts at ${enforcementTimeStr}. Check posted signs for your specific zone number and hours, then move your car or display a valid permit to avoid a $75 ticket.`,
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
@@ -2408,7 +2408,7 @@ class BackgroundTaskServiceClass {
               type: 'metered_parking',
               restrictionStartTime: earlyWarningTime,
               address: result.address || '',
-              details: `Your ${limitDisplay} meter expires in 10 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car — the posted limit is how long you can park, not just pay. $65 ticket.`,
+              details: `Your ${limitDisplay} meter expires in 10 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car — the posted limit is how long you can park, not just pay. $50 ticket.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -2427,7 +2427,7 @@ class BackgroundTaskServiceClass {
             type: 'metered_parking',
             restrictionStartTime: meterExpiryWarningTime,
             address: result.address || '',
-            details: `Your ${limitDisplay} meter expires in 30 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $65 ticket if expired. The posted limit is how long you can park, not just pay.`,
+            details: `Your ${limitDisplay} meter expires in 30 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $50 ticket if expired. The posted limit is how long you can park, not just pay.`,
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
@@ -2438,7 +2438,7 @@ class BackgroundTaskServiceClass {
         // Notification 3: At the time limit — legal maximum reached
         // The posted time limit is a legal occupancy limit (9-64-190), not just
         // a payment limit. Staying past the limit — even with time on the meter —
-        // can result in a $65 ticket. ParkChicago blocks paying past the max;
+        // can result in a $50 ticket. ParkChicago blocks paying past the max;
         // coin meters accept coins but the legal limit still applies.
         const limitDelayMs = timeLimitMin * 60 * 1000;
         const meterLimitReachedTime = new Date(Date.now() + limitDelayMs);
@@ -2447,7 +2447,7 @@ class BackgroundTaskServiceClass {
           type: 'metered_parking',
           restrictionStartTime: meterLimitReachedTime,
           address: result.address || '',
-          details: `Your ${limitDisplay} meter has expired (${expiryTimeStr}). The ${limitHours}-hour posted limit is a legal max — move your car now to avoid a $65 ticket.`,
+          details: `Your ${limitDisplay} meter has expired (${expiryTimeStr}). The ${limitHours}-hour posted limit is a legal max — move your car now to avoid a $50 ticket.`,
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
@@ -2529,7 +2529,7 @@ class BackgroundTaskServiceClass {
             type: 'metered_parking',
             restrictionStartTime: nextEnforcement,
             address: result.address || '',
-            details: `Metered parking enforcement starts ${dayPrefix} at ${enfTimeStr} (${rate}, ${limitDisplay} max)${seasonalNote}. Feed the meter or move your car — $65 ticket.`,
+            details: `Metered parking enforcement starts ${dayPrefix} at ${enfTimeStr} (${rate}, ${limitDisplay} max)${seasonalNote}. Feed the meter or move your car — $50 ticket.`,
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
@@ -2696,12 +2696,12 @@ class BackgroundTaskServiceClass {
           );
           const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
           const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          parts.push(`🧹 Street cleaning ${dayName} ${monthDay}, ${schedule} — $65 ticket`);
+          parts.push(`🧹 Street cleaning ${dayName} ${monthDay}, ${schedule} — $60 ticket`);
         } else {
-          parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $65 ticket`);
+          parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $60 ticket`);
         }
       } catch {
-        parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $65 ticket`);
+        parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $60 ticket`);
       }
     }
 
@@ -2739,7 +2739,7 @@ class BackgroundTaskServiceClass {
       // Calculate and show expiration time
       const expiryTime = new Date(Date.now() + meterLimitMin * 60 * 1000);
       const expiryStr = expiryTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). The posted limit is how long you can park, not just pay — move before it expires or risk a $65 ticket.`);
+      parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). The posted limit is how long you can park, not just pay — move before it expires or risk a $50 ticket.`);
     }
 
     // DOT permit (construction, filming, moving van, etc.)

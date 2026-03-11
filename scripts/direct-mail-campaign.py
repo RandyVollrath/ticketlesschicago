@@ -180,7 +180,7 @@ VIOLATION_MESSAGES = {
     'expired_meter': {
         'hook': "Tired of feeding the meter?",
         'stat': "Chicago wrote $47M in meter tickets last year.",
-        'headline': "Meter expired by 2 minutes? That's a $65 ticket.",
+        'headline': "Meter expired by 2 minutes? That's a $50 ticket.",
         'body': "Most expired meter tickets are contestable. Our app tracks your parking session and alerts you before your meter runs out. If you do get ticketed, we automatically generate a contest letter and file it for you.",
     },
     'street_cleaning': {
