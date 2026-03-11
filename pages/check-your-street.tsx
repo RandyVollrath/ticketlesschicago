@@ -729,7 +729,9 @@ export default function CheckYourStreet() {
                   textAlign: 'center'
                 }}>
                   <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '8px' }}>
-                    Get alerts before tickets happen on this block
+                    {blockStats.alertable_tickets > 0
+                      ? `Free alerts cover street cleaning & snow removal — ${blockStats.alertable_tickets.toLocaleString()} tickets (${blockStats.alertable_pct}%) on this block`
+                      : 'Get free street cleaning & snow removal alerts for your block'}
                   </div>
                   <button
                     onClick={() => router.push(`/alerts/signup?address=${encodeURIComponent(address)}`)}

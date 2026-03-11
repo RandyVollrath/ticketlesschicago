@@ -95,6 +95,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         blockData.avg_fines_per_year = Math.round(blockData.total_fines / blockData.by_year.length);
       }
 
+      // Categories that free alerts actually help prevent
+      const ALERTABLE_CATEGORIES = new Set([
+        'street_cleaning', 'snow_removal',
+      ]);
+
+      // Compute alertable ticket stats
+      if (blockData && blockData.by_category) {
+        const alertableTickets = blockData.by_category
+          .filter((cat: any) => ALERTABLE_CATEGORIES.has(cat.category))
+          .reduce((sum: number, cat: any) => sum + cat.tickets, 0);
+        blockData.alertable_tickets = alertableTickets;
+        blockData.alertable_pct = blockData.total_tickets > 0
+          ? Math.round((alertableTickets / blockData.total_tickets) * 100)
+          : 0;
+      }
+
       // Compute risk insight text
       if (blockData && blockData.total_tickets > 0) {
         const topCat = blockData.by_category?.[0];
