@@ -1,6 +1,6 @@
 # Product Decisions — Source of Truth
 
-**Last updated: 2026-02-18**
+**Last updated: 2026-03-11**
 
 This document records finalized product decisions. Claude Code MUST NOT change these behaviors without explicit owner approval. If a code change would contradict any decision below, stop and ask first.
 
@@ -64,6 +64,21 @@ This document records finalized product decisions. Claude Code MUST NOT change t
 | Foreground mechanism | JS `CameraAlertService` handles TTS, native fires local notifications | — |
 | Double-speak prevention | Native checks `applicationState` — skips TTS if foreground | — |
 | Audio background mode | Required (`UIBackgroundModes: audio`) for background TTS | — |
+
+## Chicago Parking Fine Amounts — Canonical Reference
+
+These are the official City of Chicago fine amounts. **NEVER change these without verifying against chicago.gov.** Do NOT assume a value found elsewhere in the codebase is correct — it may itself be wrong.
+
+| Violation | Fine | Municipal Code | Notes |
+|-----------|------|----------------|-------|
+| Street cleaning | **$60** | 9-64-040(b) | NOT $65. This was wrong everywhere and propagated. |
+| Expired meter (non-CBD) | **$50** | 9-64-190(a) | Outside the Central Business District |
+| Expired meter (CBD) | **$70** | 9-64-190(b) | Loop / Central Business District |
+| Residential permit zone | **$75** | 9-64-090(a) | |
+| Winter overnight parking ban | **$60** | 9-64-020 | 3am-7am Dec 1 - Apr 1 on posted streets |
+| Snow route violation | **$150+** | 9-64-020 | Plus towing costs |
+
+**Rule:** When displaying fine amounts to users, use ONLY the values in this table. If you see a different amount in existing code, the code is wrong — fix it to match this table. Do NOT "standardize" fines to a single number across violation types — they are intentionally different.
 
 ## Web App
 
