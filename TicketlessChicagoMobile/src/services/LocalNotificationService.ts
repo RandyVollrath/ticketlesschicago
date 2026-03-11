@@ -182,11 +182,11 @@ class LocalNotificationServiceClass {
           channelId = 'parking-alerts'; // High priority
         } else if (details?.includes('MOVE YOUR CAR NOW')) {
           title = '🧹 Street Cleaning Today — Move Now!';
-          body = `${address}\n${details || 'Street cleaning starts at 9am. Move your car NOW — $65 ticket.'}`;
+          body = `${address}\n${details || 'Street cleaning starts at 9am. Move your car NOW — $60 ticket.'}`;
           channelId = 'parking-alerts'; // Higher priority for urgent morning alert
         } else {
           title = '🧹 Street Cleaning Tomorrow';
-          body = `${address}\n${details || 'Move your car tonight to avoid a $65 ticket.'}`;
+          body = `${address}\n${details || 'Move your car tonight to avoid a $60 ticket.'}`;
         }
         break;
 
@@ -212,7 +212,7 @@ class LocalNotificationServiceClass {
         notificationId = `${NOTIFICATION_PREFIX.PERMIT_ZONE}${Date.now()}`;
         channelId = 'parking-alerts';
         title = '🅿️ Permit Zone Alert';
-        body = `${address}\n${details || 'You may be in a permit zone. Check posted signs for your specific zone number and hours, then move your car or display a valid permit to avoid a $65 ticket.'}`;
+        body = `${address}\n${details || 'You may be in a permit zone. Check posted signs for your specific zone number and hours, then move your car or display a valid permit to avoid a $75 ticket.'}`;
         break;
 
       case 'metered_parking':
@@ -229,7 +229,7 @@ class LocalNotificationServiceClass {
         } else {
           title = '⏰ Meter Enforcement Starting!';
         }
-        body = `${address}\n${details || 'Your meter is about to expire. Move your car or add time to avoid a $65 ticket.'}`;
+        body = `${address}\n${details || 'Your meter is about to expire. Move your car or add time to avoid a $50 ticket.'}`;
         break;
 
       case 'dot_permit':

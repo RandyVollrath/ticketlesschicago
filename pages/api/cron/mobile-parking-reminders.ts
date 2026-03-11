@@ -394,7 +394,7 @@ export default async function handler(
         if (chicagoHour >= 19 && chicagoHour <= 21 && vehicle.street_cleaning_date === tomorrowStr && !vehicle.street_cleaning_notified_at) {
           const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Street Cleaning Tomorrow!',
-            body: `Street cleaning scheduled tomorrow at ${vehicle.address}. Consider moving your car tonight to avoid a $65 ticket.`,
+            body: `Street cleaning scheduled tomorrow at ${vehicle.address}. Consider moving your car tonight to avoid a $60 ticket.`,
             data: {
               type: 'street_cleaning_reminder',
               lat: vehicle.latitude?.toString(),
@@ -420,7 +420,7 @@ export default async function handler(
         if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.street_cleaning_date === today && !vehicle.street_cleaning_notified_at) {
           const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Street Cleaning Today - Move Now!',
-            body: `Street cleaning starts at 9am at ${vehicle.address}. Move your car NOW to avoid a $65 ticket.`,
+            body: `Street cleaning starts at 9am at ${vehicle.address}. Move your car NOW to avoid a $60 ticket.`,
             data: {
               type: 'street_cleaning_reminder',
               lat: vehicle.latitude?.toString(),

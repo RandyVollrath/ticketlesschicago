@@ -151,7 +151,7 @@ const PARKING_PROTECTIONS: ProtectionItem[] = [
     icon: 'broom',
     label: 'Street Cleaning',
     sheetTitle: 'Street Cleaning',
-    sheetBody: 'We notify you at 9 PM the night before and 7 AM the morning of if your car is parked on a street scheduled for cleaning ($65 ticket).',
+    sheetBody: 'We notify you at 9 PM the night before and 7 AM the morning of if your car is parked on a street scheduled for cleaning ($60 ticket).',
     sheetAction: { label: 'Set Up Advance Alerts', target: 'manage' },
   },
   {
