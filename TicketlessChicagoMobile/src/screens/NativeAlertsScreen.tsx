@@ -1078,119 +1078,117 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </SettingsCard>
 
-        {/* Mailing Address */}
-        <SettingsCard
-          title="Mailing Address"
-          icon="mailbox-outline"
-          badge={!isPaidUser ? 'AUTOPILOT ONLY' : undefined}
-          badgeColor={!isPaidUser ? '#FEF3C7' : undefined}
-          badgeTextColor={!isPaidUser ? '#92400E' : undefined}
-          greyed={!isPaidUser}
-        >
-          {isPaidUser && (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.checkboxRow,
-                  sameAsHomeAddress && { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' },
-                ]}
-                onPress={() => {
-                  const newValue = !sameAsHomeAddress;
-                  setSameAsHomeAddress(newValue);
-                  if (newValue && homeAddress) {
-                    setMailingAddress1(homeAddress);
-                    setMailingCity(homeCity);
-                    setMailingState(homeState);
-                    setMailingZip(homeZip);
-                  }
-                }}
-              >
-                <MaterialCommunityIcons
-                  name={sameAsHomeAddress ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                  size={22}
-                  color={sameAsHomeAddress ? '#3B82F6' : colors.textTertiary}
-                />
-                <Text style={styles.checkboxLabel}>Same as home address</Text>
-              </TouchableOpacity>
-
-              <FormField label="Street Address">
-                <TextInput
-                  style={[styles.input, sameAsHomeAddress && styles.disabledInput]}
-                  value={mailingAddress1}
-                  onChangeText={(text) => {
-                    setMailingAddress1(text);
-                    if (sameAsHomeAddress) setSameAsHomeAddress(false);
+        {/* Mailing Address — hidden on iOS for free users (App Store Guideline 3.1.1) */}
+        {(isPaidUser || Platform.OS !== 'ios') && (
+          <SettingsCard
+            title="Mailing Address"
+            icon="mailbox-outline"
+            badge={!isPaidUser ? 'AUTOPILOT ONLY' : undefined}
+            badgeColor={!isPaidUser ? '#FEF3C7' : undefined}
+            badgeTextColor={!isPaidUser ? '#92400E' : undefined}
+            greyed={!isPaidUser}
+          >
+            {isPaidUser && (
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.checkboxRow,
+                    sameAsHomeAddress && { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' },
+                  ]}
+                  onPress={() => {
+                    const newValue = !sameAsHomeAddress;
+                    setSameAsHomeAddress(newValue);
+                    if (newValue && homeAddress) {
+                      setMailingAddress1(homeAddress);
+                      setMailingCity(homeCity);
+                      setMailingState(homeState);
+                      setMailingZip(homeZip);
+                    }
                   }}
-                  placeholder="123 Main Street"
-                  placeholderTextColor={colors.textTertiary}
-                  editable={!sameAsHomeAddress}
-                />
-              </FormField>
-              <FormField label="Apt / Unit">
-                <TextInput
-                  style={styles.input}
-                  value={mailingAddress2}
-                  onChangeText={setMailingAddress2}
-                  placeholder="Apt 4B"
-                  placeholderTextColor={colors.textTertiary}
-                />
-              </FormField>
-              <View style={styles.fieldRow}>
-                <View style={{ flex: 2, marginRight: 8 }}>
-                  <FormField label="City">
-                    <TextInput
-                      style={[styles.input, sameAsHomeAddress && styles.disabledInput]}
-                      value={mailingCity}
-                      onChangeText={(text) => {
-                        setMailingCity(text);
-                        if (sameAsHomeAddress) setSameAsHomeAddress(false);
-                      }}
-                      placeholder="Chicago"
-                      placeholderTextColor={colors.textTertiary}
-                      editable={!sameAsHomeAddress}
-                    />
-                  </FormField>
+                >
+                  <MaterialCommunityIcons
+                    name={sameAsHomeAddress ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                    size={22}
+                    color={sameAsHomeAddress ? '#3B82F6' : colors.textTertiary}
+                  />
+                  <Text style={styles.checkboxLabel}>Same as home address</Text>
+                </TouchableOpacity>
+
+                <FormField label="Street Address">
+                  <TextInput
+                    style={[styles.input, sameAsHomeAddress && styles.disabledInput]}
+                    value={mailingAddress1}
+                    onChangeText={(text) => {
+                      setMailingAddress1(text);
+                      if (sameAsHomeAddress) setSameAsHomeAddress(false);
+                    }}
+                    placeholder="123 Main Street"
+                    placeholderTextColor={colors.textTertiary}
+                    editable={!sameAsHomeAddress}
+                  />
+                </FormField>
+                <FormField label="Apt / Unit">
+                  <TextInput
+                    style={styles.input}
+                    value={mailingAddress2}
+                    onChangeText={setMailingAddress2}
+                    placeholder="Apt 4B"
+                    placeholderTextColor={colors.textTertiary}
+                  />
+                </FormField>
+                <View style={styles.fieldRow}>
+                  <View style={{ flex: 2, marginRight: 8 }}>
+                    <FormField label="City">
+                      <TextInput
+                        style={[styles.input, sameAsHomeAddress && styles.disabledInput]}
+                        value={mailingCity}
+                        onChangeText={(text) => {
+                          setMailingCity(text);
+                          if (sameAsHomeAddress) setSameAsHomeAddress(false);
+                        }}
+                        placeholder="Chicago"
+                        placeholderTextColor={colors.textTertiary}
+                        editable={!sameAsHomeAddress}
+                      />
+                    </FormField>
+                  </View>
+                  <View style={{ flex: 1, marginHorizontal: 4 }}>
+                    <FormField label="State">
+                      <TouchableOpacity
+                        style={[styles.input, sameAsHomeAddress && styles.disabledInput]}
+                        onPress={() => !sameAsHomeAddress && showStatePicker('mailing')}
+                        disabled={sameAsHomeAddress}
+                      >
+                        <Text style={{ color: sameAsHomeAddress ? colors.textTertiary : colors.textPrimary, fontSize: 14 }}>
+                          {mailingState}
+                        </Text>
+                      </TouchableOpacity>
+                    </FormField>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <FormField label="ZIP">
+                      <TextInput
+                        style={[styles.input, sameAsHomeAddress && styles.disabledInput]}
+                        value={mailingZip}
+                        onChangeText={(text) => {
+                          setMailingZip(text);
+                          if (sameAsHomeAddress) setSameAsHomeAddress(false);
+                        }}
+                        placeholder="60601"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="number-pad"
+                        editable={!sameAsHomeAddress}
+                      />
+                    </FormField>
+                  </View>
                 </View>
-                <View style={{ flex: 1, marginHorizontal: 4 }}>
-                  <FormField label="State">
-                    <TouchableOpacity
-                      style={[styles.input, sameAsHomeAddress && styles.disabledInput]}
-                      onPress={() => !sameAsHomeAddress && showStatePicker('mailing')}
-                      disabled={sameAsHomeAddress}
-                    >
-                      <Text style={{ color: sameAsHomeAddress ? colors.textTertiary : colors.textPrimary, fontSize: 14 }}>
-                        {mailingState}
-                      </Text>
-                    </TouchableOpacity>
-                  </FormField>
-                </View>
-                <View style={{ flex: 1, marginLeft: 8 }}>
-                  <FormField label="ZIP">
-                    <TextInput
-                      style={[styles.input, sameAsHomeAddress && styles.disabledInput]}
-                      value={mailingZip}
-                      onChangeText={(text) => {
-                        setMailingZip(text);
-                        if (sameAsHomeAddress) setSameAsHomeAddress(false);
-                      }}
-                      placeholder="60601"
-                      placeholderTextColor={colors.textTertiary}
-                      keyboardType="number-pad"
-                      editable={!sameAsHomeAddress}
-                    />
-                  </FormField>
-                </View>
-              </View>
-            </>
-          )}
-          {!isPaidUser && (
-            <View style={{ paddingVertical: 8 }}>
-              <Text style={styles.mutedText}>
-                {Platform.OS === 'ios'
-                  ? 'Available on Autopilot plan. Visit autopilotamerica.com to learn more.'
-                  : 'Upgrade to Autopilot to set your mailing address for contest letters.'}
-              </Text>
-              {Platform.OS !== 'ios' && (
+              </>
+            )}
+            {!isPaidUser && (
+              <View style={{ paddingVertical: 8 }}>
+                <Text style={styles.mutedText}>
+                  Upgrade to Autopilot to set your mailing address for contest letters.
+                </Text>
                 <TouchableOpacity
                   style={[styles.primaryButton, styles.upgradeButton, { marginTop: 12 }]}
                   onPress={handleUpgrade}
@@ -1200,10 +1198,10 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     {checkoutLoading ? 'Loading...' : 'Upgrade — $49/year'}
                   </Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </SettingsCard>
+              </View>
+            )}
+          </SettingsCard>
+        )}
 
         {/* Notification Preferences */}
         <SettingsCard title="Notification Preferences" icon="bell-outline">
@@ -1307,97 +1305,95 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </FormField>
         </SettingsCard>
 
-        {/* Autopilot Settings */}
-        <SettingsCard
-          title="Autopilot Settings"
-          icon="robot-outline"
-          badge={isPaidUser ? 'AUTOPILOT MEMBER' : 'AUTOPILOT ONLY'}
-          badgeColor={isPaidUser ? '#D1FAE5' : '#FEF3C7'}
-          badgeTextColor={isPaidUser ? '#059669' : '#92400E'}
-          greyed={!isPaidUser}
-        >
-          {isPaidUser ? (
-            <>
-              <ToggleRow
-                title="Require approval before mailing"
-                subtitle="We'll email you the letter for review before sending"
-                value={requireApproval}
-                onValueChange={(checked) => {
-                  setRequireApproval(checked);
-                  setAutoMailEnabled(!checked);
-                }}
-              />
-              <ToggleRow
-                title="Full auto-pilot (no approval)"
-                subtitle="We detect, build, and mail letters automatically"
-                value={autoMailEnabled}
-                onValueChange={(checked) => {
-                  setAutoMailEnabled(checked);
-                  setRequireApproval(!checked);
-                }}
-              />
+        {/* Autopilot Settings — hidden on iOS for free users (App Store Guideline 3.1.1) */}
+        {(isPaidUser || Platform.OS !== 'ios') && (
+          <SettingsCard
+            title="Autopilot Settings"
+            icon="robot-outline"
+            badge={isPaidUser ? 'AUTOPILOT MEMBER' : 'AUTOPILOT ONLY'}
+            badgeColor={isPaidUser ? '#D1FAE5' : '#FEF3C7'}
+            badgeTextColor={isPaidUser ? '#059669' : '#92400E'}
+            greyed={!isPaidUser}
+          >
+            {isPaidUser ? (
+              <>
+                <ToggleRow
+                  title="Require approval before mailing"
+                  subtitle="We'll email you the letter for review before sending"
+                  value={requireApproval}
+                  onValueChange={(checked) => {
+                    setRequireApproval(checked);
+                    setAutoMailEnabled(!checked);
+                  }}
+                />
+                <ToggleRow
+                  title="Full auto-pilot (no approval)"
+                  subtitle="We detect, build, and mail letters automatically"
+                  value={autoMailEnabled}
+                  onValueChange={(checked) => {
+                    setAutoMailEnabled(checked);
+                    setRequireApproval(!checked);
+                  }}
+                />
 
-              {autoMailEnabled && (
-                <View style={styles.warningBox}>
-                  <Text style={styles.warningText}>
-                    Letters will be mailed to the City of Chicago on your behalf without you seeing them first.
-                  </Text>
-                </View>
-              )}
-
-              <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Ticket types to auto-contest</Text>
-              {TICKET_TYPES.map(type => {
-                const isChecked = allowedTicketTypes.includes(type.id);
-                return (
-                  <TouchableOpacity
-                    key={type.id}
-                    style={[styles.ticketTypeRow, isChecked && styles.ticketTypeRowActive]}
-                    onPress={() => toggleTicketType(type.id)}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialCommunityIcons
-                      name={isChecked ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                      size={20}
-                      color={isChecked ? colors.primary : colors.textTertiary}
-                    />
-                    <Text style={styles.ticketTypeLabel}>{type.label}</Text>
-                    <Text style={[
-                      styles.winRate,
-                      { color: type.winRate >= 60 ? '#10B981' : type.winRate <= 20 ? '#EF4444' : colors.textTertiary },
-                    ]}>
-                      {type.winRate}%
+                {autoMailEnabled && (
+                  <View style={styles.warningBox}>
+                    <Text style={styles.warningText}>
+                      Letters will be mailed to the City of Chicago on your behalf without you seeing them first.
                     </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                  </View>
+                )}
 
-              <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
-                <Text style={styles.fieldLabel}>Email Notifications</Text>
-                <CheckboxRow
-                  label="Notify when ticket is found"
-                  checked={emailOnTicketFound}
-                  onToggle={() => setEmailOnTicketFound(!emailOnTicketFound)}
-                />
-                <CheckboxRow
-                  label="Notify when letter is mailed"
-                  checked={emailOnLetterMailed}
-                  onToggle={() => setEmailOnLetterMailed(!emailOnLetterMailed)}
-                />
-                <CheckboxRow
-                  label="Notify when approval is needed"
-                  checked={emailOnApprovalNeeded}
-                  onToggle={() => setEmailOnApprovalNeeded(!emailOnApprovalNeeded)}
-                />
-              </View>
-            </>
-          ) : (
-            <View style={{ paddingVertical: 8 }}>
-              <Text style={styles.mutedText}>
-                {Platform.OS === 'ios'
-                  ? 'Available on Autopilot plan. Visit autopilotamerica.com to learn more.'
-                  : 'Upgrade to Autopilot for automatic ticket detection and contesting with 54% average dismissal rate.'}
-              </Text>
-              {Platform.OS !== 'ios' && (
+                <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Ticket types to auto-contest</Text>
+                {TICKET_TYPES.map(type => {
+                  const isChecked = allowedTicketTypes.includes(type.id);
+                  return (
+                    <TouchableOpacity
+                      key={type.id}
+                      style={[styles.ticketTypeRow, isChecked && styles.ticketTypeRowActive]}
+                      onPress={() => toggleTicketType(type.id)}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons
+                        name={isChecked ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                        size={20}
+                        color={isChecked ? colors.primary : colors.textTertiary}
+                      />
+                      <Text style={styles.ticketTypeLabel}>{type.label}</Text>
+                      <Text style={[
+                        styles.winRate,
+                        { color: type.winRate >= 60 ? '#10B981' : type.winRate <= 20 ? '#EF4444' : colors.textTertiary },
+                      ]}>
+                        {type.winRate}%
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+                  <Text style={styles.fieldLabel}>Email Notifications</Text>
+                  <CheckboxRow
+                    label="Notify when ticket is found"
+                    checked={emailOnTicketFound}
+                    onToggle={() => setEmailOnTicketFound(!emailOnTicketFound)}
+                  />
+                  <CheckboxRow
+                    label="Notify when letter is mailed"
+                    checked={emailOnLetterMailed}
+                    onToggle={() => setEmailOnLetterMailed(!emailOnLetterMailed)}
+                  />
+                  <CheckboxRow
+                    label="Notify when approval is needed"
+                    checked={emailOnApprovalNeeded}
+                    onToggle={() => setEmailOnApprovalNeeded(!emailOnApprovalNeeded)}
+                  />
+                </View>
+              </>
+            ) : (
+              <View style={{ paddingVertical: 8 }}>
+                <Text style={styles.mutedText}>
+                  Upgrade to Autopilot for automatic ticket detection and contesting with 54% average dismissal rate.
+                </Text>
                 <TouchableOpacity
                   style={[styles.primaryButton, styles.upgradeButton, { marginTop: 12 }]}
                   onPress={handleUpgrade}
@@ -1407,10 +1403,10 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     {checkoutLoading ? 'Loading...' : 'Upgrade — $49/year'}
                   </Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </SettingsCard>
+              </View>
+            )}
+          </SettingsCard>
+        )}
 
         {/* Bottom padding */}
         <View style={{ height: 40 }} />

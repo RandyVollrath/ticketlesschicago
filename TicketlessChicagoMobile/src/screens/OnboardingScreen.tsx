@@ -64,8 +64,8 @@ const BASE_SLIDES: OnboardingSlide[] = [
   {
     id: '5',
     icon: 'gavel',
-    title: 'We Fight Your Tickets',
-    description: 'Upgrade to Autopilot Premium and we\'ll find your tickets, gather evidence, and contest them automatically. 54% win rate.',
+    title: 'Fight Your Tickets',
+    description: 'Got a parking ticket? We help you gather evidence and build a contest letter so you can challenge it. Most Chicago tickets are contestable.',
     backgroundColor: colors.primary,
   },
 ];
