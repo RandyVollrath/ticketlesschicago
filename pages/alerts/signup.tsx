@@ -688,7 +688,9 @@ export default function AlertsSignup() {
                       </div>
                       <div style={{ fontSize: '13px', color: COLORS.slate, lineHeight: '1.5' }}>
                         {blockStats.insight || `This block averages ~${(blockStats.avg_tickets_per_year || 0).toLocaleString()} tickets/year.`}
-                        {' '}Free alerts can help you avoid these.
+                        {blockStats.alertable_tickets > 0
+                          ? ` Free alerts cover street cleaning & snow removal — ${blockStats.alertable_tickets.toLocaleString()} tickets (${blockStats.alertable_pct}%) on this block.`
+                          : ' Sign up to get street cleaning & snow removal alerts for your block.'}
                       </div>
                     </div>
                   </div>
