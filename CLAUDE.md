@@ -396,6 +396,33 @@ After any parking-related code change, test ALL entry points:
 - [ ] **Manual parking check**: Tap "Check My Parking" → drive away → departure recorded
 - [ ] **App restart while parked**: Kill app → reopen → drive away → departure recorded
 
+## Parking History — Every Check MUST Save to History
+
+Every code path that checks parking restrictions MUST also save to `ParkingHistoryService.addToHistory()`. The History tab is how users see their parking records. If a check runs but doesn't save to history, parking looks broken to the user even though the hero card shows results.
+
+### The Bug (Fixed Mar 2026)
+The HomeScreen "Check My Parking" button and `BackgroundTaskService.manualParkingCheck()` both ran parking checks successfully but **never saved to parking history**. The manual button called `LocationService.checkParkingLocation()` directly and only saved to the hero card (`saveParkingCheckResult`). `manualParkingCheck()` called `triggerParkingCheck()` with `persistParkingEvent=false`. Users who relied on the manual button had permanently empty History tabs.
+
+### The Invariant
+**Every parking check that shows results to the user MUST also call `ParkingHistoryService.addToHistory()`.** There are currently three save points:
+
+1. **Auto-detected parking** (BT disconnect / iOS CoreMotion): `BackgroundTaskService.triggerParkingCheck()` with `persistParkingEvent=true` — saves at line ~1633
+2. **Manual "Check My Parking" button**: `HomeScreen.tsx` `performParkingCheck()` — saves directly after `checkParkingLocation()` returns
+3. **`BackgroundTaskService.manualParkingCheck()`**: calls `triggerParkingCheck()` with `persistParkingEvent=true`
+
+### Rules
+1. **Never pass `persistParkingEvent=false` for any user-facing parking check.** The only valid use of `false` is internal periodic re-checks that shouldn't create new history entries.
+2. **If you add a new way to check parking, add `ParkingHistoryService.addToHistory()`.** This includes: new UI buttons, widget actions, notification actions, voice commands, shortcuts — anything that produces a parking result the user sees.
+3. **Manual checks use `detectionSource: 'manual_check'`** in the detection metadata so they can be distinguished from auto-detected events in history and analytics.
+4. **Manual check GPS caveat**: The manual button uses the user's current phone GPS, not the car's location. If the user walked away from the car before checking, the address may be slightly off. Auto-detection captures GPS at the moment of BT disconnect (while still near the car) and is more accurate.
+
+### How to Test Parking History
+After any parking-related code change:
+- [ ] **Auto-detected parking**: BT disconnect → check notification → open History tab → entry exists
+- [ ] **Manual "Check My Parking"**: Tap button → see result → open History tab → entry exists
+- [ ] **History persists across app restart**: Kill app → reopen → History tab still has entries
+- [ ] **No duplicates**: One parking event = one history entry (not two from both manual and auto paths)
+
 ## React State Initialization — NEVER Default to Empty
 
 Async-loaded state (auth, user profile, feature flags, etc.) causes **intermittent bugs** when components initialize with empty defaults like `null`, `false`, or `[]` and rely on a subscription/callback to fill in the real value later. Whether the real value arrives before or after the first render is a race condition — it works sometimes and breaks sometimes, making these bugs extremely hard to reproduce.
