@@ -721,90 +721,146 @@ export default function CheckYourStreet() {
                   </div>
                 )}
 
-                {/* Personal savings estimate */}
-                {blockStats.avg_fines_per_year > 0 && (
+                {/* Autopilot Protection CTA — Hormozi-style value stack */}
+                {blockStats.avg_fines_per_year > 0 && (() => {
+                  const avgFines = Math.round(blockStats.avg_fines_per_year);
+                  const potentialSavings = Math.round(avgFines * 0.685);
+                  const roi = Math.round(potentialSavings / 49);
+                  const totalFines = blockStats.total_fines || 0;
+                  const showROI = avgFines >= 100; // Only show detailed ROI math when numbers are strong
+
+                  return (
                   <div style={{
                     marginTop: '16px',
                     paddingTop: '16px',
                     borderTop: `1px solid ${COLORS.border}`,
                   }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                      What This Costs You
-                    </div>
                     <div style={{
                       background: 'linear-gradient(135deg, #0F172A 0%, #1a2744 100%)',
                       borderRadius: '12px',
                       padding: '24px',
                       marginBottom: '12px',
                     }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '28px', fontWeight: '800', color: '#FCA5A5', fontFamily: '"Space Grotesk", sans-serif' }}>
-                            ${Math.round(blockStats.avg_fines_per_year).toLocaleString()}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>avg fines/year on this block</div>
+                      {/* Header — always the same */}
+                      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>
+                          Stop paying tickets on this block
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '28px', fontWeight: '800', color: COLORS.signal, fontFamily: '"Space Grotesk", sans-serif' }}>
-                            ${Math.round(blockStats.avg_fines_per_year * 0.54).toLocaleString()}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#6EE7B7', marginTop: '2px' }}>potential savings (54% dismissed)</div>
+                        <div style={{ fontSize: '15px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                          68.5% of parking tickets get dismissed when contested — but 93% of drivers never try.
                         </div>
                       </div>
-                      <div style={{
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        border: '1px solid rgba(16, 185, 129, 0.2)',
-                        borderRadius: '8px',
-                        padding: '10px 14px',
-                        fontSize: '13px',
-                        color: '#6EE7B7',
-                        lineHeight: 1.5,
-                        textAlign: 'center',
-                        marginBottom: '16px',
-                      }}>
-                        54% of contested Chicago tickets get dismissed — from 1.18M cases in our FOIA data. Yet 93% of drivers never contest.
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => router.push('/get-started')}
-                          style={{
-                            backgroundColor: COLORS.signal,
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '12px 24px',
-                            fontSize: '14px',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            display: 'flex',
+
+                      {showROI ? (
+                        <>
+                          {/* Strong ROI block — show the math */}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr auto 1fr',
+                            gap: '12px',
                             alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          Auto-Contest Tickets — $49/yr
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => router.push('/ticket-history')}
-                          style={{
-                            backgroundColor: 'transparent',
-                            color: 'white',
-                            border: '1px solid rgba(255,255,255,0.3)',
+                            marginBottom: '16px',
+                            padding: '16px',
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            borderRadius: '10px',
+                          }}>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '28px', fontWeight: '800', color: '#FCA5A5', fontFamily: '"Space Grotesk", sans-serif' }}>
+                                ${avgFines.toLocaleString()}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>avg fines/yr here</div>
+                            </div>
+                            <div style={{ fontSize: '20px', color: 'rgba(255,255,255,0.3)' }}>→</div>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '28px', fontWeight: '800', color: COLORS.signal, fontFamily: '"Space Grotesk", sans-serif' }}>
+                                ${potentialSavings.toLocaleString()}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6EE7B7', marginTop: '2px' }}>potential savings</div>
+                            </div>
+                          </div>
+
+                          {/* ROI callout */}
+                          <div style={{
+                            textAlign: 'center',
+                            marginBottom: '16px',
+                            padding: '10px',
+                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                            border: '1px solid rgba(16, 185, 129, 0.25)',
                             borderRadius: '8px',
-                            padding: '12px 20px',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Free FOIA Lookup
-                        </button>
+                          }}>
+                            <span style={{ fontSize: '14px', fontWeight: '700', color: '#6EE7B7' }}>
+                              {roi}x return
+                            </span>
+                            <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginLeft: '6px' }}>
+                              on a $49/yr plan
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* Lower-ticket block — insurance framing, no detailed ROI */}
+                          <div style={{
+                            textAlign: 'center',
+                            marginBottom: '16px',
+                            padding: '14px',
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            borderRadius: '10px',
+                          }}>
+                            <div style={{ fontSize: '15px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
+                              One dismissed ticket pays for an entire year. The average Chicago parking ticket is $65 — Autopilot costs $49/yr.
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Value stack */}
+                      <div style={{ marginBottom: '16px' }}>
+                        {[
+                          'We monitor your plate & auto-contest every ticket',
+                          'Professional contest letters mailed for you',
+                          'FOIA-backed evidence from 1.18M hearing outcomes',
+                          'You keep 100% of dismissed fines',
+                        ].map((item, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5">
+                              <path d="M20 6L9 17l-5-5"/>
+                            </svg>
+                            <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)' }}>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* CTA */}
+                      <button
+                        onClick={() => router.push('/get-started')}
+                        style={{
+                          width: '100%',
+                          backgroundColor: COLORS.signal,
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '14px 24px',
+                          fontSize: '15px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        Start Auto-Contesting — $49/yr
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                      </button>
+                      <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
+                        Cancel anytime. One dismissed ticket pays for itself.
                       </div>
                     </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* Free alerts CTA */}
                 <div style={{

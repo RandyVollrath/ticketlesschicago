@@ -196,8 +196,8 @@ export default function MyTickets() {
   }
   const sortedYears = Object.entries(yearGroups).sort(([a], [b]) => a.localeCompare(b));
 
-  // Potential savings (54% of total fines)
-  const potentialSavings = Math.round(totalFines * 0.54);
+  // Potential savings (68.5% of parking tickets get dismissed when contested)
+  const potentialSavings = Math.round(totalFines * 0.685);
   const autopilotCost = sortedYears.length > 0 ? sortedYears.length * 49 : 49;
 
   const animatedFines = useAnimatedNumber(totalFines);
@@ -714,7 +714,7 @@ export default function MyTickets() {
                   {fmtMoney(potentialSavings)}
                 </div>
                 <p style={{ fontSize: '15px', color: '#94A3B8', margin: '0 0 8px 0', lineHeight: 1.6 }}>
-                  Based on the 54% contest dismissal rate from our FOIA data.
+                  Based on the 68.5% parking ticket dismissal rate from our FOIA data.
                 </p>
                 <p style={{ fontSize: '14px', color: '#64748B', margin: '0 0 24px 0' }}>
                   Autopilot would have cost {fmtMoney(autopilotCost)} ({sortedYears.length || 1} year{(sortedYears.length || 1) !== 1 ? 's' : ''} @ $49/yr) and potentially saved you <strong style={{ color: COLORS.signal }}>{fmtMoney(potentialSavings)}</strong>.
@@ -814,7 +814,7 @@ export default function MyTickets() {
               </div>
             )}
 
-            {/* 54% callout */}
+            {/* 68.5% callout */}
             <div style={{
               background: `linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)`,
               borderRadius: '16px',
@@ -824,13 +824,13 @@ export default function MyTickets() {
               textAlign: 'center',
             }}>
               <div style={{ fontSize: '40px', fontWeight: 800, color: '#166534', fontFamily: '"Space Grotesk", sans-serif', margin: '0 0 8px 0' }}>
-                54%
+                68.5%
               </div>
               <p style={{ fontSize: '16px', fontWeight: 600, color: '#166534', margin: '0 0 8px 0' }}>
-                of contested Chicago tickets get dismissed
+                of contested parking tickets get dismissed
               </p>
               <p style={{ fontSize: '14px', color: '#15803D', lineHeight: 1.6, margin: '0 0 16px 0', maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>
-                Based on 1.18 million contested tickets from City of Chicago FOIA data.
+                From 1.18 million contested tickets in City of Chicago FOIA data (parking violations only).
                 Yet 93% of Chicagoans never contest. Autopilot does it automatically for $49/year.
               </p>
               <Link href="/get-started" style={{
