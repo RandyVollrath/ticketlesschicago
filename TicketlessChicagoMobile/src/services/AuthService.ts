@@ -298,7 +298,14 @@ class AuthServiceClass {
 
       if (error) {
         log.error('Supabase Apple auth error', error);
-        return { success: false, error: error.message };
+        // Provide a user-friendly error message instead of raw Supabase errors
+        // Common errors: "provider is not enabled", "invalid client_id", nonce mismatch
+        const friendlyMessage = error.message?.includes('provider')
+          ? 'Sign in with Apple is temporarily unavailable. Please try email sign in.'
+          : error.message?.includes('client')
+          ? 'Sign in with Apple is temporarily unavailable. Please try email sign in.'
+          : error.message || 'Apple sign-in failed. Please try again.';
+        return { success: false, error: friendlyMessage };
       }
 
       // Eagerly update auth state before returning — don't wait for onAuthStateChange
