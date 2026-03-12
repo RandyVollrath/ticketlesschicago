@@ -1086,14 +1086,13 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           )}
           <LinkRow icon="shield-lock-outline" title="Privacy Policy" onPress={() => Linking.openURL('https://autopilotamerica.com/privacy')} />
           <Divider />
-          {/* Terms link hidden on iOS — terms page mentions $49/year subscription pricing,
-              which Apple flags as referencing external paid content (Guideline 3.1.1) */}
-          {Platform.OS !== 'ios' && (
-            <>
-              <LinkRow icon="file-document-outline" title="Terms of Service" onPress={() => Linking.openURL('https://autopilotamerica.com/terms')} />
-              <Divider />
-            </>
-          )}
+          {/* iOS gets a pricing-free terms page to comply with App Store Guideline 3.1.1 */}
+          <LinkRow icon="file-document-outline" title="Terms of Service" onPress={() =>
+            Linking.openURL(Platform.OS === 'ios'
+              ? 'https://autopilotamerica.com/terms-app'
+              : 'https://autopilotamerica.com/terms')
+          } />
+          <Divider />
           <LinkRow icon="email-outline" title="Contact Support" onPress={() => Linking.openURL('mailto:support@autopilotamerica.com?subject=Autopilot Mobile App Support')} />
         </Section>
 
