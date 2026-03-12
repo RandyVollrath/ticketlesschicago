@@ -86,7 +86,7 @@ export default function Footer({ hideDonation = false }: FooterProps) {
               <a href="/protection" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Autopilot Protection</a>
               <a href="/guarantee" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Service Guarantee</a>
               <a href="/check-ticket" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Ticket Analyzer</a>
-              <a href="/ticket-cost" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>ZIP Ticket Cost</a>
+              <a href="/check-your-street" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Check Your Block</a>
               <a href="/ticket-history" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>FOIA Lookup</a>
             </div>
           </div>

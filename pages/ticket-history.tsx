@@ -678,9 +678,9 @@ export default function TicketHistory() {
             Want instant results?
           </h3>
           <p style={{ fontSize: '14px', color: '#1E40AF', lineHeight: 1.6, margin: '0 0 16px 0', opacity: 0.8 }}>
-            See how much your neighborhood pays in tickets right now — no waiting required.
+            See how much your block pays in tickets right now — no waiting required. Block-level data from 26.8M FOIA tickets.
           </p>
-          <Link href="/ticket-cost" style={{
+          <Link href="/check-your-street" style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
@@ -692,7 +692,7 @@ export default function TicketHistory() {
             fontWeight: 700,
             fontSize: '15px',
           }}>
-            ZIP Code Ticket Cost Estimator
+            Check Your Block
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>

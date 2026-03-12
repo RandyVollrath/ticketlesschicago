@@ -721,11 +721,96 @@ export default function CheckYourStreet() {
                   </div>
                 )}
 
-                {/* CTA */}
+                {/* Personal savings estimate */}
+                {blockStats.avg_fines_per_year > 0 && (
+                  <div style={{
+                    marginTop: '16px',
+                    paddingTop: '16px',
+                    borderTop: `1px solid ${COLORS.border}`,
+                  }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                      What This Costs You
+                    </div>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #0F172A 0%, #1a2744 100%)',
+                      borderRadius: '12px',
+                      padding: '24px',
+                      marginBottom: '12px',
+                    }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '28px', fontWeight: '800', color: '#FCA5A5', fontFamily: '"Space Grotesk", sans-serif' }}>
+                            ${Math.round(blockStats.avg_fines_per_year).toLocaleString()}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>avg fines/year on this block</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '28px', fontWeight: '800', color: COLORS.signal, fontFamily: '"Space Grotesk", sans-serif' }}>
+                            ${Math.round(blockStats.avg_fines_per_year * 0.54).toLocaleString()}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6EE7B7', marginTop: '2px' }}>potential savings (54% dismissed)</div>
+                        </div>
+                      </div>
+                      <div style={{
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        fontSize: '13px',
+                        color: '#6EE7B7',
+                        lineHeight: 1.5,
+                        textAlign: 'center',
+                        marginBottom: '16px',
+                      }}>
+                        54% of contested Chicago tickets get dismissed — from 1.18M cases in our FOIA data. Yet 93% of drivers never contest.
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => router.push('/get-started')}
+                          style={{
+                            backgroundColor: COLORS.signal,
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '12px 24px',
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          Auto-Contest Tickets — $49/yr
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => router.push('/ticket-history')}
+                          style={{
+                            backgroundColor: 'transparent',
+                            color: 'white',
+                            border: '1px solid rgba(255,255,255,0.3)',
+                            borderRadius: '8px',
+                            padding: '12px 20px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Free FOIA Lookup
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Free alerts CTA */}
                 <div style={{
-                  marginTop: '16px',
-                  paddingTop: '16px',
-                  borderTop: `1px solid ${COLORS.border}`,
+                  marginTop: blockStats.avg_fines_per_year > 0 ? '0' : '16px',
+                  paddingTop: blockStats.avg_fines_per_year > 0 ? '0' : '16px',
+                  borderTop: blockStats.avg_fines_per_year > 0 ? 'none' : `1px solid ${COLORS.border}`,
                   textAlign: 'center'
                 }}>
                   <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '8px' }}>

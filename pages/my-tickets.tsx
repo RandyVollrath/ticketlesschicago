@@ -272,7 +272,7 @@ export default function MyTickets() {
           </span>
         </div>
         <div className="nav-desktop" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-          <a href="/ticket-cost" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>ZIP Lookup</a>
+          <a href="/check-your-street" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Check Your Block</a>
           <a href="/ticket-history" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>FOIA Request</a>
           <a href="/alerts/signup" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Free Alerts</a>
           <button onClick={() => router.push('/get-started')} style={{
@@ -738,7 +738,7 @@ export default function MyTickets() {
                       <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
                   </Link>
-                  <Link href="/ticket-cost" style={{
+                  <Link href="/check-your-street" style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '8px',
@@ -751,7 +751,7 @@ export default function MyTickets() {
                     fontWeight: 600,
                     fontSize: '16px',
                   }}>
-                    See Your ZIP Stats
+                    Check Your Block
                   </Link>
                 </div>
               </div>
