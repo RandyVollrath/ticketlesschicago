@@ -665,6 +665,40 @@ export default function TicketHistory() {
           </div>
         </div>
 
+        {/* ZIP Cost Tool CTA */}
+        <div style={{
+          backgroundColor: '#EFF6FF',
+          border: `1px solid #93C5FD`,
+          borderRadius: '16px',
+          padding: '32px',
+          textAlign: 'center',
+          marginBottom: '32px',
+        }}>
+          <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#1E40AF', margin: '0 0 8px 0', fontFamily: '"Space Grotesk", sans-serif' }}>
+            Want instant results?
+          </h3>
+          <p style={{ fontSize: '14px', color: '#1E40AF', lineHeight: 1.6, margin: '0 0 16px 0', opacity: 0.8 }}>
+            See how much your neighborhood pays in tickets right now — no waiting required.
+          </p>
+          <Link href="/ticket-cost" style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 24px',
+            backgroundColor: COLORS.regulatory,
+            color: 'white',
+            borderRadius: '10px',
+            textDecoration: 'none',
+            fontWeight: 700,
+            fontSize: '15px',
+          }}>
+            ZIP Code Ticket Cost Estimator
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </Link>
+        </div>
+
         {/* City-wide Stats */}
         <div style={{ marginBottom: '48px' }}>
           <CityTicketStats />
