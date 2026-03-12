@@ -102,10 +102,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Compute alertable ticket stats
       if (blockData && blockData.by_category) {
-        const alertableTickets = blockData.by_category
-          .filter((cat: any) => ALERTABLE_CATEGORIES.has(cat.category))
+        const alertableCats = blockData.by_category
+          .filter((cat: any) => ALERTABLE_CATEGORIES.has(cat.category));
+        const alertableTickets = alertableCats
           .reduce((sum: number, cat: any) => sum + cat.tickets, 0);
+        const alertableFines = alertableCats
+          .reduce((sum: number, cat: any) => sum + cat.fines, 0);
         blockData.alertable_tickets = alertableTickets;
+        blockData.alertable_fines = Math.round(alertableFines);
         blockData.alertable_pct = blockData.total_tickets > 0
           ? Math.round((alertableTickets / blockData.total_tickets) * 100)
           : 0;

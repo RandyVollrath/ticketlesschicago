@@ -815,7 +815,7 @@ export default function CheckYourStreet() {
                 }}>
                   <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '8px' }}>
                     {blockStats.alertable_tickets > 0
-                      ? `Free alerts cover street cleaning & snow removal — ${blockStats.alertable_tickets.toLocaleString()} tickets (${blockStats.alertable_pct}%) on this block`
+                      ? `Free alerts could have saved this block from ${blockStats.alertable_tickets.toLocaleString()} tickets and $${(blockStats.alertable_fines || 0).toLocaleString()} in fines since 2019`
                       : 'Get free street cleaning & snow removal alerts for your block'}
                   </div>
                   <button
