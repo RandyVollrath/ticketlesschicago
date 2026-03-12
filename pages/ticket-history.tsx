@@ -335,7 +335,7 @@ export default function TicketHistory() {
                   Stop getting tickets in the first place
                 </h3>
                 <p style={{ fontSize: '14px', color: '#15803D', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                  Our Autopilot system detects new tickets and automatically contests them for you. 75% of contested tickets get dismissed.
+                  Our Autopilot system detects new tickets and automatically contests them for you. 54% of contested tickets get dismissed.
                 </p>
                 <Link href="/get-started" style={{
                   display: 'inline-block',
@@ -698,7 +698,7 @@ export default function TicketHistory() {
           }}>
             Chicago drivers pay an average of $300+ per year in parking tickets.
             Our Autopilot system catches new tickets and automatically contests them.
-            75% of contested tickets get dismissed.
+            54% of contested tickets get dismissed.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/get-started" style={{
