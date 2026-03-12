@@ -79,15 +79,47 @@ Account deletion implemented with double-confirmation dialog. Calls backend `DEL
 
 ---
 
-## Current Compliance Status (March 11, 2026)
+## Rejection #3 — March 12, 2026 (v1.0.17, build 19)
+
+### Issue 1: Guideline 2.1(a) - Sign in with Apple Error
+
+> An error message appeared when signing in with Apple.
+> Tested on: iPad Air 11-inch (M3) and iPhone 17 Pro Max, iOS/iPadOS 26.3
+
+**Root Cause**: Most likely the Supabase Apple provider's "Authorized Client IDs" field does not include the iOS bundle ID `fyi.ticketless.app`. For native `signInWithIdToken`, Supabase validates the Apple ID token's `aud` claim against Authorized Client IDs. The web OAuth uses the Services ID, but native iOS uses the bundle ID — both must be configured.
+
+**Resolution**:
+1. **REQUIRED (Dashboard)**: In Supabase Dashboard > Authentication > Providers > Apple, add `fyi.ticketless.app` to the "Authorized Client IDs" field. The main "Client ID" should be the Apple Services ID (for web OAuth).
+2. **Code**: Improved error message in `AuthService.signInWithApple()` to show user-friendly message instead of raw Supabase error.
+
+### Issue 2: Guideline 3.1.1 - In-App Purchase (STILL)
+
+> The app still accesses digital content purchased outside the app, such as paid plans, but that content isn't available to purchase using In-App Purchase.
+
+**Root Cause**: The previous fix hid pricing/upgrade CTAs in the native UI, but:
+1. **ProfileScreen "Website" link** opened `autopilotamerica.com` in Safari, which prominently shows "$49/year" pricing and "Become a Founding Member" purchase CTAs.
+2. **ProfileScreen "Terms of Service" link** opened a page that mentions "$49/year" subscription pricing.
+3. **Paid dashboard** (`renderPaidDashboard`) showed subscription info for paid users who purchased via Stripe — "accessing digital content purchased outside the app."
+4. **Mailing Address and Autopilot Settings sections** were visible to paid users on iOS — these are paid features purchased externally.
+
+**Resolution**:
+1. Removed "Website" link from ProfileScreen on iOS (links to pricing page).
+2. Removed "Terms of Service" link from ProfileScreen on iOS (terms mention $49/year).
+3. Forced free dashboard for ALL iOS users (even paid) — `renderPaidDashboard` blocked on iOS.
+4. Changed Mailing Address and Autopilot Settings sections from `(isPaidUser || Platform.OS !== 'ios')` to `Platform.OS !== 'ios'` — completely hidden on iOS for ALL users.
+5. Added `Platform.OS === 'ios'` early return in `handleUpgrade()` as safety guard.
+
+---
+
+## Current Compliance Status (March 12, 2026)
 
 | Guideline | Status | Notes |
 |-----------|--------|-------|
-| 3.1.1 (IAP) | PASS | All paid plan UI hidden on iOS via Platform guards |
-| 2.5.4 (Background Modes) | PASS | `audio` mode removed, all TTS disabled, AVAudioSession config disabled |
-| 4.8 (Sign in with Apple) | PASS | Implemented and functional |
+| 3.1.1 (IAP) | FIX APPLIED | All paid UI, external pricing links, and paid dashboard hidden on iOS |
+| 2.1(a) (Apple Sign In) | NEEDS DASHBOARD FIX | Add bundle ID to Supabase Apple provider Authorized Client IDs |
+| 2.5.4 (Background Modes) | PASS | `audio` mode removed, all TTS disabled |
+| 4.8 (Sign in with Apple) | PASS (code) | Implementation correct; needs Supabase config fix |
 | 5.1.1 (Account Deletion) | PASS | Double-confirm + backend deletion |
-| 2.1 (Completeness) | PASS | Demo account + plate provided for reviewer |
 | 2.3.1 (Hidden Features) | PASS | Debug overlay gated behind explicit tap |
 
 ---
@@ -106,9 +138,10 @@ Account deletion implemented with double-confirmation dialog. Calls backend `DEL
 ## Key Files for Compliance
 
 - `src/screens/LoginScreen.tsx` — Sign in with Apple, email+password login
-- `src/screens/NativeAlertsScreen.tsx` — Paid features hidden on iOS
+- `src/screens/NativeAlertsScreen.tsx` — ALL paid features hidden on iOS (not just for free users)
 - `src/screens/OnboardingScreen.tsx` — No premium references
-- `src/screens/ProfileScreen.tsx` — Account deletion, camera audio hidden on iOS
+- `src/screens/ProfileScreen.tsx` — Account deletion, Website/Terms links hidden on iOS
+- `src/services/AuthService.ts` — Apple sign-in with improved error handling
 - `ios/TicketlessChicagoMobile/Info.plist` — Background modes (no `audio`)
 - `ios/TicketlessChicagoMobile/BackgroundLocationModule.swift` — TTS disabled
 - `ios/TicketlessChicagoMobile/TicketlessChicagoMobile.entitlements` — Apple sign-in

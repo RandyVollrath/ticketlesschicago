@@ -515,6 +515,8 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleUpgrade = async () => {
+    // Block external payment on iOS entirely (App Store Guideline 3.1.1)
+    if (Platform.OS === 'ios') return;
     if (!userId) return;
     setCheckoutLoading(true);
     try {
@@ -720,7 +722,9 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // ─── Dashboard Tab ──────────────────────────────────────
 
   function renderDashboard() {
-    if (!isPaidUser) {
+    // On iOS, always show free dashboard — paid dashboard shows subscription info
+    // purchased via Stripe, which violates App Store Guideline 3.1.1
+    if (!isPaidUser || Platform.OS === 'ios') {
       return renderFreeDashboard();
     }
     return renderPaidDashboard();
@@ -1078,8 +1082,10 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </SettingsCard>
 
-        {/* Mailing Address — hidden on iOS for free users (App Store Guideline 3.1.1) */}
-        {(isPaidUser || Platform.OS !== 'ios') && (
+        {/* Mailing Address — hidden entirely on iOS (App Store Guideline 3.1.1).
+            Showing paid-only features to paid users who purchased via Stripe
+            also violates the rule — content must be purchasable via IAP. */}
+        {Platform.OS !== 'ios' && (
           <SettingsCard
             title="Mailing Address"
             icon="mailbox-outline"
@@ -1305,8 +1311,9 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </FormField>
         </SettingsCard>
 
-        {/* Autopilot Settings — hidden on iOS for free users (App Store Guideline 3.1.1) */}
-        {(isPaidUser || Platform.OS !== 'ios') && (
+        {/* Autopilot Settings — hidden entirely on iOS (App Store Guideline 3.1.1).
+            Both paid and free users on iOS must not see these sections. */}
+        {Platform.OS !== 'ios' && (
           <SettingsCard
             title="Autopilot Settings"
             icon="robot-outline"
