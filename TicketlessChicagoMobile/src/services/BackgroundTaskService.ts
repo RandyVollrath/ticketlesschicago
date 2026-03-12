@@ -3460,11 +3460,11 @@ class BackgroundTaskServiceClass {
    * departure tracking works when the user drives away.
    */
   async manualParkingCheck(): Promise<void> {
-    await this.triggerParkingCheck(undefined, true, undefined, true, {
-      detectionSource: 'manual_check',
-      locationSource: 'user_gps',
-      recordedAt: Date.now(),
-    });
+    // persistParkingEvent=false: Manual checks must NOT save to parking history.
+    // Manual checks use the user's current phone GPS, which may be blocks away
+    // from the car. Only auto-detected parking (BT disconnect / CoreMotion)
+    // saves to history — accurate location is critical for ticket contest evidence.
+    await this.triggerParkingCheck(undefined, true, undefined, false);
     // After a successful manual check, transition the state machine to PARKED
     // so departure tracking works when the user drives away. Without this,
     // the state machine stays in IDLE and departure is never recorded.
