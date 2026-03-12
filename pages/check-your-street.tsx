@@ -813,10 +813,13 @@ export default function CheckYourStreet() {
                   borderTop: blockStats.avg_fines_per_year > 0 ? 'none' : `1px solid ${COLORS.border}`,
                   textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '8px' }}>
+                  <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '4px' }}>
                     {blockStats.alertable_tickets > 0
-                      ? `Free alerts could have saved this block from ${blockStats.alertable_tickets.toLocaleString()} tickets and $${(blockStats.alertable_fines || 0).toLocaleString()} in fines since 2019`
-                      : 'Get free street cleaning & snow removal alerts for your block'}
+                      ? `Free alerts could have saved this block from ${blockStats.alertable_tickets.toLocaleString()} tickets and $${(blockStats.alertable_fines || 0).toLocaleString()} in fines since 2019*`
+                      : 'Get free alerts for your block'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: COLORS.slate, marginBottom: '10px', lineHeight: '1.4' }}>
+                    Covers street cleaning, snow bans, city sticker renewal, plate renewal, emissions tests &amp; block events.
                   </div>
                   <button
                     onClick={() => router.push(`/alerts/signup?address=${encodeURIComponent(address)}`)}
@@ -833,6 +836,11 @@ export default function CheckYourStreet() {
                   >
                     Get Free Alerts
                   </button>
+                  {blockStats.alertable_tickets > 0 && (
+                    <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '8px', fontStyle: 'italic', lineHeight: '1.4' }}>
+                      *City of Chicago Dept. of Finance FOIA data — 26.8M tickets, 2019–2024. Savings reflect street cleaning &amp; snow removal tickets on this block.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
