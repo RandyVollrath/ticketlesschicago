@@ -271,14 +271,12 @@ class AuthServiceClass {
         requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
       });
 
-      // Ensure the request was successful
-      const credentialState = await appleAuth.getCredentialStateForUser(
-        appleAuthRequestResponse.user,
-      );
-
-      if (credentialState !== appleAuth.State.AUTHORIZED) {
-        return { success: false, error: 'Apple authorization failed' };
-      }
+      // NOTE: We intentionally skip appleAuth.getCredentialStateForUser() here.
+      // On iOS 18+ simulators (which Apple reviewers use), getCredentialStateForUser
+      // always returns REVOKED even after a successful performRequest — an Apple
+      // simulator bug documented in invertase/react-native-apple-authentication#356.
+      // The credential state check is redundant anyway: performRequest already
+      // confirmed authorization, and Supabase validates the identity token server-side.
 
       if (!appleAuthRequestResponse.identityToken) {
         log.error('No identityToken in Apple auth response');
