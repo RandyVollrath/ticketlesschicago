@@ -689,9 +689,17 @@ export default function AlertsSignup() {
                       <div style={{ fontSize: '13px', color: COLORS.slate, lineHeight: '1.5' }}>
                         {blockStats.insight || `This block averages ~${(blockStats.avg_tickets_per_year || 0).toLocaleString()} tickets/year.`}
                         {blockStats.alertable_tickets > 0
-                          ? ` Free alerts could have saved this block from ${blockStats.alertable_tickets.toLocaleString()} tickets and $${(blockStats.alertable_fines || 0).toLocaleString()} in fines since 2019.`
-                          : ' Sign up to get street cleaning & snow removal alerts for your block.'}
+                          ? ` Free alerts could have saved this block from ${blockStats.alertable_tickets.toLocaleString()} tickets and $${(blockStats.alertable_fines || 0).toLocaleString()} in fines since 2019.*`
+                          : ''}
                       </div>
+                      <div style={{ fontSize: '12px', color: COLORS.slate, lineHeight: '1.5', marginTop: '8px' }}>
+                        Free alerts cover: street cleaning, snow bans, city sticker renewal, license plate renewal, emissions tests, and block events.
+                      </div>
+                      {blockStats.alertable_tickets > 0 && (
+                        <div style={{ fontSize: '11px', color: '#9CA3AF', lineHeight: '1.4', marginTop: '6px', fontStyle: 'italic' }}>
+                          *Based on City of Chicago Dept. of Finance FOIA data — 26.8M tickets, 2019–2024. Alertable savings reflect street cleaning and snow removal tickets on this block.
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
