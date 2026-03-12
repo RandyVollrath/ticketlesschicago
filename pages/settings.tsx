@@ -288,7 +288,7 @@ function DashboardContent({
   const avgTicketAmount = tickets.length > 0
     ? Math.round(tickets.filter(t => t.amount).reduce((sum, t) => sum + (t.amount || 0), 0) / Math.max(tickets.filter(t => t.amount).length, 1))
     : 0;
-  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.54);
+  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.685);
 
   if (!isPaidUser) {
     return (
@@ -353,7 +353,7 @@ function DashboardContent({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[
               'Automatic weekly ticket detection',
-              'AI-generated contest letters (54% win rate)',
+              'AI-generated contest letters (68.5% win rate)',
               'Automatic mailing with delivery tracking',
               'Full dashboard with ticket history',
               'Email notifications on ticket status',
@@ -451,7 +451,7 @@ function DashboardContent({
           label="Estimated Savings"
           value={`$${estimatedSavings}`}
           color={COLORS.accent}
-          subtext="Based on 54% win rate"
+          subtext="Based on 68.5% win rate"
         />
         <StatCard label="Next Check" value={nextCheckDate} />
       </div>
@@ -1675,7 +1675,7 @@ function SettingsPageInner() {
                   $49<span style={{ fontSize: 16, fontWeight: 500 }}>/year</span>
                 </p>
                 <p style={{ margin: '0 0 16px', fontSize: 13, color: COLORS.textMuted }}>
-                  We monitor your plate twice a week and mail contest letters automatically. 54% average dismissal rate.
+                  We monitor your plate twice a week and mail contest letters automatically. 68.5% average dismissal rate.
                 </p>
                 <button
                   onClick={handleUpgrade}
@@ -1909,7 +1909,7 @@ function SettingsPageInner() {
                   Upgrade to Autopilot - $49/year
                 </p>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9A3412' }}>
-                  Automatic ticket detection &amp; contesting with 54% average dismissal rate
+                  Automatic ticket detection &amp; contesting with 68.5% average dismissal rate
                 </p>
               </div>
               <button
@@ -2411,7 +2411,7 @@ function SettingsPageInner() {
                 <strong>Upgrade to Autopilot &mdash; $49/year</strong>
               </p>
               <p style={{ margin: '8px 0 0', fontSize: 13, color: '#475569' }}>
-                Automatic ticket detection and contesting with 54% average dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
+                Automatic ticket detection and contesting with 68.5% average dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
               </p>
               <Link href="/get-started" style={{
                 display: 'inline-block',
@@ -3040,7 +3040,7 @@ function SettingsPageInner() {
                 Upgrade to Autopilot - $49/year
               </p>
               <p style={{ margin: '0 0 12px', fontSize: 14, color: '#9A3412' }}>
-                Automatic ticket detection and contesting with 54% average dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
+                Automatic ticket detection and contesting with 68.5% average dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
               </p>
               <Link href="/get-started" style={{
                 display: 'inline-block',

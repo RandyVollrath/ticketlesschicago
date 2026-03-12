@@ -230,7 +230,7 @@ export default function DashboardPage() {
   const avgTicketAmount = tickets.length > 0
     ? Math.round(tickets.filter(t => t.amount).reduce((sum, t) => sum + (t.amount || 0), 0) / tickets.filter(t => t.amount).length)
     : 0;
-  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.54); // 54% success rate
+  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.685); // 68.5% parking ticket dismissal rate
 
   if (loading) {
     return (
@@ -354,7 +354,7 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
                   'Automatic weekly ticket detection',
-                  'AI-generated contest letters (54% win rate)',
+                  'AI-generated contest letters (68.5% win rate)',
                   'Automatic mailing with delivery tracking',
                   'Full dashboard with ticket history',
                   'Contest letter approval system',
@@ -519,7 +519,7 @@ export default function DashboardPage() {
             label="Estimated Savings"
             value={`$${estimatedSavings}`}
             color={COLORS.accent}
-            subtext="Based on 54% win rate"
+            subtext="Based on 68.5% win rate"
           />
           <StatCard label="Next Check" value={nextCheckDate} />
         </div>

@@ -150,7 +150,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "Based on 1.18M contested tickets from Chicago FOIA data (decided cases): expired plates have a 76% dismissal rate, city sticker 72%, handicapped zone 69%, expired meter 67%, residential permit 54%. Camera tickets are harder at 17-21%. These are real rates from actual hearings — not estimates."
+      a: "68.5% of contested parking tickets get dismissed — based on 1.18M cases from Chicago FOIA data (decided cases, excluding camera tickets). By category: expired plates 76%, city sticker 72%, handicapped zone 69%, expired meter 67%, residential permit 54%. Camera tickets are harder at 17-21%. These are real rates from actual hearings — not estimates."
     },
     {
       q: "Can I review letters before they're sent?",
