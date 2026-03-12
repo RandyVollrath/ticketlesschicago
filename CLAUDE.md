@@ -396,32 +396,38 @@ After any parking-related code change, test ALL entry points:
 - [ ] **Manual parking check**: Tap "Check My Parking" → drive away → departure recorded
 - [ ] **App restart while parked**: Kill app → reopen → drive away → departure recorded
 
-## Parking History — Every Check MUST Save to History
+## Parking History — Manual Checks Must NOT Save to History
 
-Every code path that checks parking restrictions MUST also save to `ParkingHistoryService.addToHistory()`. The History tab is how users see their parking records. If a check runs but doesn't save to history, parking looks broken to the user even though the hero card shows results.
+Only auto-detected parking (BT disconnect on Android, CoreMotion on iOS) should save to parking history. Manual "Check My Parking" checks must NOT save to history because they use the user's current phone GPS, which may be blocks away from the car — inaccurate locations invalidate ticket contest evidence.
 
-### The Bug (Fixed Mar 2026)
-The HomeScreen "Check My Parking" button and `BackgroundTaskService.manualParkingCheck()` both ran parking checks successfully but **never saved to parking history**. The manual button called `LocationService.checkParkingLocation()` directly and only saved to the hero card (`saveParkingCheckResult`). `manualParkingCheck()` called `triggerParkingCheck()` with `persistParkingEvent=false`. Users who relied on the manual button had permanently empty History tabs.
+### Two Separate Paths (Don't Confuse Them)
 
-### The Invariant
-**Every parking check that shows results to the user MUST also call `ParkingHistoryService.addToHistory()`.** There are currently three save points:
+| Path | Saves to History? | Saves to Hero Card? | GPS Source |
+|------|-------------------|---------------------|------------|
+| **Auto-detect** (BT disconnect / CoreMotion) | YES — `persistParkingEvent=true` | YES | Car location (at moment of disconnect) |
+| **Manual "Check My Parking"** (HomeScreen button) | NO — `persistParkingEvent=false` | YES | Phone location (wherever user is standing) |
 
-1. **Auto-detected parking** (BT disconnect / iOS CoreMotion): `BackgroundTaskService.triggerParkingCheck()` with `persistParkingEvent=true` — saves at line ~1633
-2. **Manual "Check My Parking" button**: `HomeScreen.tsx` `performParkingCheck()` — saves directly after `checkParkingLocation()` returns
-3. **`BackgroundTaskService.manualParkingCheck()`**: calls `triggerParkingCheck()` with `persistParkingEvent=true`
+### Why Manual Checks Don't Save
+Manual checks use `LocationService.checkParkingLocation()` which gets a fresh GPS fix from the phone. If the user walked 3 blocks from their car before tapping the button, the history would record the wrong address. Auto-detect captures GPS at the moment of BT disconnect (while still near the car) and is far more accurate. History records are used as evidence in ticket contests — they must be location-accurate.
+
+### Interference Between Paths
+These two paths are designed to NOT interfere with each other:
+1. **Throttle**: Only applies when `isRealParkingEvent=false`. Both manual and auto-detect pass `true`, so neither throttles the other.
+2. **Hero card**: Both write to `LAST_PARKING_LOCATION` (the hero card display). A manual check can overwrite the hero card, but that's cosmetic — history is unaffected.
+3. **Parked coords / rescan / snow monitoring**: Only saved when `persistParkingEvent=true` (auto-detect). Manual checks don't overwrite these.
+4. **State machine**: Manual check calls `ParkingDetectionStateMachine.manualParkingConfirmed()` (IDLE→PARKED) so departure tracking still works. Auto-detect goes through DRIVING→PARKING_PENDING→PARKED. These are separate transitions that don't conflict.
 
 ### Rules
-1. **Never pass `persistParkingEvent=false` for any user-facing parking check.** The only valid use of `false` is internal periodic re-checks that shouldn't create new history entries.
-2. **If you add a new way to check parking, add `ParkingHistoryService.addToHistory()`.** This includes: new UI buttons, widget actions, notification actions, voice commands, shortcuts — anything that produces a parking result the user sees.
-3. **Manual checks use `detectionSource: 'manual_check'`** in the detection metadata so they can be distinguished from auto-detected events in history and analytics.
-4. **Manual check GPS caveat**: The manual button uses the user's current phone GPS, not the car's location. If the user walked away from the car before checking, the address may be slightly off. Auto-detection captures GPS at the moment of BT disconnect (while still near the car) and is more accurate.
+1. **Manual checks: `persistParkingEvent=false`.** This skips history save, server save, and parked coords save.
+2. **Auto-detect checks: `persistParkingEvent=true`.** This is the ONLY path that writes to history.
+3. **Never add `ParkingHistoryService.addToHistory()` to the manual check path.** If auto-detect isn't working, fix auto-detect — don't paper over it with manual saves.
+4. **Both paths must still update the state machine.** Manual check uses `manualParkingConfirmed()`, auto-detect uses the normal BT disconnect flow. Without state machine updates, departure tracking breaks.
 
-### How to Test Parking History
-After any parking-related code change:
-- [ ] **Auto-detected parking**: BT disconnect → check notification → open History tab → entry exists
-- [ ] **Manual "Check My Parking"**: Tap button → see result → open History tab → entry exists
-- [ ] **History persists across app restart**: Kill app → reopen → History tab still has entries
-- [ ] **No duplicates**: One parking event = one history entry (not two from both manual and auto paths)
+### How to Test
+- [ ] **Auto-detect parking**: BT disconnect → open History tab → entry exists with accurate car location
+- [ ] **Manual "Check My Parking"**: Tap button → hero card shows result → History tab does NOT have a new entry
+- [ ] **Manual then auto-detect**: Tap button → BT disconnect fires → History has ONE entry (from auto-detect only)
+- [ ] **Departure after manual check**: Tap "Check My Parking" → drive away → departure recorded (state machine was set to PARKED)
 
 ## React State Initialization — NEVER Default to Empty
 
