@@ -3759,8 +3759,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       let content = UNMutableNotificationContent()
       content.title = title
       content.body = body
-      // No notification sound — native TTS speaks the alert in both foreground and background.
-      // The visual banner is delivered without sound to avoid overlapping the voice alert.
+      content.sound = UNNotificationSound.default  // Standard push sound — App Store safe, no audio background mode needed
 
       // Fire immediately (short delay to avoid iOS dropping same-tick notifications)
       let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
