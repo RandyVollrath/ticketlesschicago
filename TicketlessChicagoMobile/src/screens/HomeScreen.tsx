@@ -36,6 +36,7 @@ import Logger from '../utils/Logger';
 import Config from '../config/config';
 import NetworkStatus from '../utils/NetworkStatus';
 import { StorageKeys } from '../constants';
+import { ParkingHistoryService } from './HistoryScreen';
 
 // Native module for querying BT connection state directly from foreground service
 const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
@@ -779,6 +780,21 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       setCheckingAddress(result.address);
       await LocationService.saveParkingCheckResult(result);
+
+      // Save to parking history so it shows up in the History tab.
+      // Previously, manual checks never saved to history — users who relied
+      // on the "Check My Parking" button had empty history.
+      try {
+        await ParkingHistoryService.addToHistory(coords, result.rules, result.address, undefined, {
+          detectionSource: 'manual_check',
+          locationSource: 'user_gps',
+          accuracy: coords.accuracy,
+          recordedAt: Date.now(),
+        });
+        log.info('Manual check saved to parking history ✓');
+      } catch (historyError) {
+        log.error('Failed to save manual check to history (non-fatal):', historyError);
+      }
 
       // Tell the state machine the user confirmed parking here.
       // This enables departure tracking when they drive away.
