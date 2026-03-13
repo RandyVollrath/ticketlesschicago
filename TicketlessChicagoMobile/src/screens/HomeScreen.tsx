@@ -1921,7 +1921,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             const isRedLight = item.icon === 'camera-iris';
             const isEnabled = isRedLight ? redLightEnabled : speedCameraEnabled;
             return (
-              <View key={item.label} style={styles.protectionRow}>
+              <View key={item.label} style={[styles.protectionRow, styles.drivingAlertsRow]}>
                 <MaterialCommunityIcons
                   name={item.icon}
                   size={18}
@@ -1932,7 +1932,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   onPress={() => setActiveSheet(item)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.protectionRowText, !isEnabled && { color: colors.textTertiary }]}>
+                  <Text style={[styles.protectionRowText, { color: isEnabled ? colors.white : colors.textTertiary }]}>
                     {item.label}
                   </Text>
                 </TouchableOpacity>
@@ -1947,7 +1947,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       CameraAlertService.setSpeedAlertsEnabled(val);
                     }
                   }}
-                  trackColor={{ false: colors.border, true: colors.primaryTint }}
+                  trackColor={{ false: 'rgba(255,255,255,0.15)', true: colors.primaryTint }}
                   thumbColor={isEnabled ? colors.primary : colors.textTertiary}
                 />
               </View>
@@ -2717,6 +2717,9 @@ const styles = StyleSheet.create({
   },
   drivingAlertsCard: {
     backgroundColor: '#111827',
+  },
+  drivingAlertsRow: {
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
 
   // ──── Bottom Sheet ────
