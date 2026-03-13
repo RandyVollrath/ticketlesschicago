@@ -65,7 +65,7 @@ const BASE_SLIDES: OnboardingSlide[] = [
     id: '5',
     icon: 'gavel',
     title: 'Fight Your Tickets',
-    description: 'When you get a ticket, we automatically file a FOIA request on your behalf, pull weather records, verify cleaning schedules, analyze sign visibility from multiple angles, use your parking data as evidence, and write a contest letter backed by over a million real hearing outcomes — then mail it to the city for you.',
+    description: 'When you get a ticket, we build the strongest possible case to get it dismissed — filing a FOIA request on your behalf, pulling weather records, verifying cleaning schedules, analyzing sign visibility from multiple angles, and using your parking data as evidence. Then we write a contest letter backed by over a million real hearing outcomes and mail it to the city for you.',
     backgroundColor: colors.primary,
   },
 ];
