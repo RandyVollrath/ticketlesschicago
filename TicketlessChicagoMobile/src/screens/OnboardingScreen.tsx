@@ -58,14 +58,14 @@ const BASE_SLIDES: OnboardingSlide[] = [
     id: '4',
     icon: 'calendar-clock',
     title: 'Never Miss a Date',
-    description: 'Get reminders before street cleaning hits your block. When 2+ inches of snow falls, we alert you if your car is parked on a snow ban route so you can move before it gets towed.',
+    description: 'Get advance email, text, or phone call reminders for street cleaning on your block, 2-inch snow bans, city sticker renewals, and emissions testing deadlines.',
     backgroundColor: '#5856D6',
   },
   {
     id: '5',
     icon: 'gavel',
     title: 'Fight Your Tickets',
-    description: 'We automatically file a FOIA request, pull weather records, check if cleaning was scheduled, analyze street signs from multiple angles, and write a contest letter backed by real court data — then mail it to the city for you.',
+    description: 'Got a ticket? We pull weather records, verify cleaning schedules, analyze sign visibility from multiple angles, file a FOIA request on your behalf, and write a contest letter backed by over a million real hearing outcomes — then mail it to the city for you.',
     backgroundColor: colors.primary,
   },
 ];
