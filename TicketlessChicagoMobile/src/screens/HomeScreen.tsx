@@ -14,7 +14,6 @@ import {
   Share,
   ActivityIndicator,
   Modal,
-  Switch,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -178,21 +177,6 @@ const PARKING_PROTECTIONS: ProtectionItem[] = [
     label: 'Temporary No Parking',
     sheetTitle: 'Temporary Restrictions',
     sheetBody: 'We check for temporary no-parking zones from block parties, construction, filming, and other events. Always double-check for orange paper signs on poles.',
-  },
-];
-
-const DRIVING_ALERTS: ProtectionItem[] = [
-  {
-    icon: 'camera-iris',
-    label: 'Red Light Cameras',
-    sheetTitle: 'Red Light Camera Alerts',
-    sheetBody: 'When enabled, the app gives you an audio and visual alert as you approach intersections with known red-light cameras while driving.',
-  },
-  {
-    icon: 'speedometer',
-    label: 'Speed Cameras',
-    sheetTitle: 'Speed Camera Alerts',
-    sheetBody: 'When enabled, the app alerts you as you approach speed camera zones, helping you monitor your speed and avoid tickets.',
   },
 ];
 
@@ -1914,46 +1898,29 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           ))}
         </View>
 
-        {/* ──── Driving Alerts ──── */}
-        <View style={[styles.protectionCard, styles.drivingAlertsCard]}>
-          <Text style={styles.protectionTitle}>Driving Alerts</Text>
-          {DRIVING_ALERTS.map((item) => {
-            const isRedLight = item.icon === 'camera-iris';
-            const isEnabled = isRedLight ? redLightEnabled : speedCameraEnabled;
-            return (
-              <View key={item.label} style={[styles.protectionRow, styles.drivingAlertsRow]}>
-                <MaterialCommunityIcons
-                  name={item.icon}
-                  size={18}
-                  color={isEnabled ? colors.primary : colors.textTertiary}
-                />
-                <TouchableOpacity
-                  style={{ flex: 1 }}
-                  onPress={() => setActiveSheet(item)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.protectionRowText, { color: isEnabled ? colors.white : colors.textTertiary }]}>
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-                <Switch
-                  value={isEnabled}
-                  onValueChange={(val) => {
-                    if (isRedLight) {
-                      setRedLightEnabled(val);
-                      CameraAlertService.setRedLightAlertsEnabled(val);
-                    } else {
-                      setSpeedCameraEnabled(val);
-                      CameraAlertService.setSpeedAlertsEnabled(val);
-                    }
-                  }}
-                  trackColor={{ false: 'rgba(255,255,255,0.15)', true: colors.primaryTint }}
-                  thumbColor={isEnabled ? colors.primary : colors.textTertiary}
-                />
-              </View>
-            );
-          })}
-        </View>
+        {/* ──── Driving Alerts (read-only status → Settings) ──── */}
+        <TouchableOpacity
+          style={[styles.protectionCard, styles.drivingAlertsCard]}
+          onPress={() => navigation.navigate('Settings', { scrollTo: 'camera_alerts' })}
+          activeOpacity={0.7}
+          accessibilityLabel="Camera alerts status. Tap to manage in Settings."
+          accessibilityRole="button"
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <MaterialCommunityIcons
+              name="camera-iris"
+              size={18}
+              color={redLightEnabled || speedCameraEnabled ? colors.primary : colors.textTertiary}
+            />
+            <Text style={{ flex: 1, fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colors.white }}>
+              Camera Alerts
+            </Text>
+            <Text style={{ fontSize: typography.sizes.xs, color: redLightEnabled || speedCameraEnabled ? colors.success : colors.textTertiary }}>
+              {redLightEnabled && speedCameraEnabled ? 'All On' : redLightEnabled ? 'Red Light Only' : speedCameraEnabled ? 'Speed Only' : 'Off'}
+            </Text>
+            <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
+          </View>
+        </TouchableOpacity>
 
         {/* ──── Protection Info Bottom Sheet ──── */}
         <Modal
@@ -2717,9 +2684,6 @@ const styles = StyleSheet.create({
   },
   drivingAlertsCard: {
     backgroundColor: '#111827',
-  },
-  drivingAlertsRow: {
-    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
 
   // ──── Bottom Sheet ────
