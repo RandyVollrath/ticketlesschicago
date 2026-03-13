@@ -299,8 +299,21 @@ function parseEnforcementSchedule(rateDescription: string): EnforcementInfo {
 
   for (const seg of segments) {
     scheduleTexts.push(seg.text);
-    if (isDayInRange(day, seg.dayRange) && hour >= seg.startHour && hour < seg.endHour) {
-      isEnforced = true;
+    if (isDayInRange(day, seg.dayRange)) {
+      // Handle overnight/wrap-around schedules (e.g., "8 AM-12 AM" = 8 to 0,
+      // or "7 AM-2 AM" = 7 to 2). When endHour <= startHour, the schedule
+      // wraps past midnight: enforce if hour >= start OR hour < end.
+      if (seg.endHour <= seg.startHour) {
+        // Overnight: e.g., 8→0 means 8am to midnight, 7→2 means 7am to 2am
+        if (hour >= seg.startHour || hour < seg.endHour) {
+          isEnforced = true;
+        }
+      } else {
+        // Normal: e.g., 8→22 means 8am to 10pm
+        if (hour >= seg.startHour && hour < seg.endHour) {
+          isEnforced = true;
+        }
+      }
     }
   }
 
