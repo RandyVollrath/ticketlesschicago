@@ -58,14 +58,14 @@ const BASE_SLIDES: OnboardingSlide[] = [
     id: '4',
     icon: 'calendar-clock',
     title: 'Never Miss a Date',
-    description: 'Get advance email, text, or phone call reminders for street cleaning on your block, 2-inch snow bans, and city sticker renewals.',
+    description: 'Get reminders before street cleaning hits your block. When 2+ inches of snow falls, we alert you if your car is parked on a snow ban route so you can move before it gets towed.',
     backgroundColor: '#5856D6',
   },
   {
     id: '5',
     icon: 'gavel',
     title: 'Fight Your Tickets',
-    description: 'Got a parking ticket? We help you gather evidence and build a contest letter so you can challenge it. Most Chicago tickets are contestable.',
+    description: 'We automatically file a FOIA request, pull weather records, check if cleaning was scheduled, analyze street signs from multiple angles, and write a contest letter backed by real court data — then mail it to the city for you.',
     backgroundColor: colors.primary,
   },
 ];
