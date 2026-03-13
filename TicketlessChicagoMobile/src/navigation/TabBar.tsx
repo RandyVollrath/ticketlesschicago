@@ -9,7 +9,7 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Home: { active: 'shield-check', inactive: 'shield-check-outline' },
   Search: { active: 'map-search', inactive: 'map-search-outline' },
   History: { active: 'history', inactive: 'clock-outline' },
-  Manage: { active: 'bell', inactive: 'bell-outline' },
+  Manage: { active: 'clipboard-check', inactive: 'clipboard-check-outline' },
   Settings: { active: 'cog', inactive: 'cog-outline' },
 };
 
@@ -17,7 +17,7 @@ const TAB_LABELS: Record<string, string> = {
   Home: 'Home',
   Search: 'Search',
   History: 'History',
-  Manage: 'Alerts',
+  Manage: 'Manage',
   Settings: 'Settings',
 };
 
