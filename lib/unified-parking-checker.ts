@@ -405,10 +405,8 @@ export async function checkAllParkingRestrictions(
           result.permitZone.isCurrentlyRestricted = zoneStatus.is_currently_restricted;
           result.permitZone.hoursUntilRestriction = zoneStatus.hours_until_restriction;
 
-          // Suffix for user-reported vs AI-extracted data
-          const sourceNote = scheduleSource === 'block'
-            ? ' (this block)'
-            : (scheduleConfidence === 'confirmed' ? '' : ' — verify posted signs');
+          // Suffix for block-level overrides (user-reported corrections)
+          const sourceNote = scheduleSource === 'block' ? ' (this block)' : '';
 
           if (zoneStatus.is_currently_restricted) {
             result.permitZone.severity = 'critical';

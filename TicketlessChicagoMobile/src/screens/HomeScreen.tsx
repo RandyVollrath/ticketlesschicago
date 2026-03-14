@@ -962,7 +962,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const submitZoneReport = useCallback(async () => {
     if (!lastParkingCheck || !reportSchedule.trim()) {
-      Alert.alert('Missing Info', 'Please enter the correct schedule from the sign.');
+      Alert.alert('Missing Info', 'Please enter the hours shown on the sign.');
       return;
     }
 
@@ -998,10 +998,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       if (data.success) {
         Alert.alert(
-          'Thanks!',
+          'Hours Updated',
           data.applied
-            ? 'Your correction has been applied. Future parking checks here will use the updated hours.'
-            : 'Report saved. A team member will review it.',
+            ? 'Thanks for the correction — this block will use the updated hours going forward.'
+            : 'Saved. A team member will review shortly.',
         );
       } else {
         Alert.alert('Error', data.error || 'Failed to submit report. Please try again.');
@@ -1085,7 +1085,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       ''
     ).trim();
     if (!parkedZoneRaw) {
-      return homePermitZone ? 'Not in a designated permit zone.' : null;
+      return null;
     }
 
     const normalize = (value: string) => value.toLowerCase().replace(/^zone\s*/i, '').trim();
@@ -1568,11 +1568,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <TouchableOpacity
                   style={styles.heroZoneReportButton}
                   onPress={openZoneReportModal}
-                  accessibilityLabel="Report wrong permit zone hours"
+                  accessibilityLabel="Update permit zone hours"
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="clock-alert-outline" size={13} color="rgba(255,255,255,0.7)" />
-                  <Text style={styles.heroZoneReportText}>Wrong hours? Let us know</Text>
+                  <MaterialCommunityIcons name="pencil-outline" size={12} color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.heroZoneReportText}>Update hours</Text>
                 </TouchableOpacity>
               )}
 
@@ -2123,17 +2123,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <View style={styles.zoneReportContainer} onStartShouldSetResponder={() => true}>
               <View style={styles.sheetHandle} />
               <View style={styles.sheetHeader}>
-                <MaterialCommunityIcons name="clock-alert-outline" size={28} color={colors.primary} />
-                <Text style={styles.sheetTitle}>Report Wrong Hours</Text>
+                <MaterialCommunityIcons name="clipboard-edit-outline" size={28} color={colors.primary} />
+                <Text style={styles.sheetTitle}>Update Permit Hours</Text>
               </View>
               <Text style={styles.zoneReportHint}>
-                What does the sign on your block say? Your correction will be applied immediately.
+                Help us keep this block accurate. If the posted sign shows different hours, enter them below and we'll update instantly.
               </Text>
 
               {/* Current schedule */}
               {lastParkingCheck?.rawApiData?.permitZone?.restrictionSchedule && (
                 <View style={styles.zoneReportCurrentRow}>
-                  <Text style={styles.zoneReportCurrentLabel}>Currently showing:</Text>
+                  <Text style={styles.zoneReportCurrentLabel}>Our hours:</Text>
                   <Text style={styles.zoneReportCurrentValue}>
                     {lastParkingCheck.rawApiData.permitZone.restrictionSchedule}
                   </Text>
@@ -2141,7 +2141,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               )}
 
               {/* Schedule input */}
-              <Text style={styles.zoneReportFieldLabel}>Correct schedule (from the sign)</Text>
+              <Text style={styles.zoneReportFieldLabel}>Hours on the sign</Text>
               <TextInput
                 style={styles.zoneReportInput}
                 placeholder="e.g. Mon-Fri 6am-6pm"
@@ -2153,7 +2153,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               />
 
               {/* Optional: exact sign text */}
-              <Text style={styles.zoneReportFieldLabel}>Exact sign text (optional)</Text>
+              <Text style={styles.zoneReportFieldLabel}>Full sign text (optional)</Text>
               <TextInput
                 style={styles.zoneReportInput}
                 placeholder="e.g. NO PARKING 6AM-6PM MON-FRI ZONE 62"
@@ -2201,8 +2201,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="send" size={18} color={colors.white} />
-                    <Text style={styles.zoneReportSubmitText}>Submit Correction</Text>
+                    <MaterialCommunityIcons name="check-circle-outline" size={18} color={colors.white} />
+                    <Text style={styles.zoneReportSubmitText}>Update Hours</Text>
                   </>
                 )}
               </TouchableOpacity>
