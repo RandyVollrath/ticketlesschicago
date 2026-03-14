@@ -15,7 +15,7 @@
  */
 
 import { supabaseAdmin } from './supabase';
-import { parseChicagoAddress } from './address-parser';
+import { parseChicagoAddress, ParsedAddress } from './address-parser';
 
 export interface MeteredParkingStatus {
   /** Whether the user's street+block has metered parking */
@@ -387,38 +387,53 @@ function parseRushHours(
  * Check if a location is in a metered parking zone.
  *
  * Algorithm:
- *  1. Reverse-geocode GPS → street address  (Nominatim, free)
+ *  1. Use pre-resolved address (from shared Nominatim geocode), or fall back
+ *     to internal Nominatim call if not provided
  *  2. Parse address → (number, direction, street_name)
  *  3. Query DB: street_name + direction + block_start ≤ number ≤ block_end
  *  4. Return actual time limit, rate, and enforcement status
  *
  * This replaces the old radius-based approach that could bleed across streets.
+ *
+ * @param preResolvedAddress  Optional pre-parsed address from the shared reverse
+ *   geocoder. When provided, skips the internal Nominatim call — ensuring the
+ *   metered parking check uses the SAME address as all other restriction checks.
  */
 export async function checkMeteredParking(
   latitude: number,
   longitude: number,
+  preResolvedAddress?: ParsedAddress | null,
 ): Promise<MeteredParkingStatus> {
   if (!supabaseAdmin) return makeNoMeterResult();
 
   try {
-    // Step 1: Reverse-geocode GPS → street address
-    const geocoded = await reverseGeocodeNominatim(latitude, longitude);
-    if (!geocoded) {
-      console.log('[metered-parking] No address from reverse geocoding');
-      return makeNoMeterResult();
-    }
+    let parsed: ParsedAddress | null;
 
-    // Step 2: Parse into components
-    const parsed = parseChicagoAddress(geocoded.fullAddress);
-    if (!parsed || !parsed.name) {
-      console.log('[metered-parking] Could not parse address:', geocoded.fullAddress);
-      return makeNoMeterResult();
-    }
+    if (preResolvedAddress) {
+      // Use the shared address from the unified geocoder — no separate geocode call
+      parsed = preResolvedAddress;
+      console.log(
+        `[metered-parking] Using shared address: num=${parsed.number} dir=${parsed.direction} street=${parsed.name}`,
+      );
+    } else {
+      // Fallback: internal Nominatim call (for standalone usage outside check-parking API)
+      const geocoded = await reverseGeocodeNominatim(latitude, longitude);
+      if (!geocoded) {
+        console.log('[metered-parking] No address from reverse geocoding');
+        return makeNoMeterResult();
+      }
 
-    console.log(
-      `[metered-parking] Street match: "${geocoded.fullAddress}" → ` +
-        `num=${parsed.number} dir=${parsed.direction} street=${parsed.name}`,
-    );
+      parsed = parseChicagoAddress(geocoded.fullAddress);
+      if (!parsed || !parsed.name) {
+        console.log('[metered-parking] Could not parse address:', geocoded.fullAddress);
+        return makeNoMeterResult();
+      }
+
+      console.log(
+        `[metered-parking] Street match: "${geocoded.fullAddress}" → ` +
+          `num=${parsed.number} dir=${parsed.direction} street=${parsed.name}`,
+      );
+    }
 
     // Step 3: Query DB by street name + direction + block range
     let query = supabaseAdmin

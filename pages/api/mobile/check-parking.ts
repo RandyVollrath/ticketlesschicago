@@ -272,12 +272,19 @@ export default async function handler(
       }
     }
 
-    // Step 2: Check all parking restrictions using (possibly snapped) coordinates
-    // Run metered parking check in parallel with restriction checks
-    const [result, meteredParkingResult] = await Promise.all([
-      checkAllParkingRestrictions(checkLat, checkLng),
-      checkMeteredParking(checkLat, checkLng),
-    ]);
+    // Step 2: Check all parking restrictions using (possibly snapped) coordinates.
+    // The unified checker does ONE reverse geocode (Nominatim-first + grid estimation).
+    // We then pass the parsed address to the metered parking checker so it uses the
+    // SAME street identification — eliminating the dual-geocoder bug where Google and
+    // Nominatim disagreed on which street the user was on.
+    const result = await checkAllParkingRestrictions(checkLat, checkLng);
+
+    // Step 2b: Metered parking check uses the shared parsed address from step 2
+    const meteredParkingResult = await checkMeteredParking(
+      checkLat,
+      checkLng,
+      result.location.parsedAddress,  // Pass shared address — no second geocode call
+    );
 
     // Step 3: Compute enforcement risk score from FOIA ticket data.
     // Uses the parsed address (street number + direction + name) to look up
@@ -459,6 +466,14 @@ export default async function handler(
       locationSnap: snapResult ? {
         ...snapResult,
         originalCoordinates: { latitude, longitude },
+      } : undefined,
+
+      // Parsed address used for all restriction checks (for debugging)
+      parsedAddress: result.location.parsedAddress ? {
+        number: result.location.parsedAddress.number,
+        direction: result.location.parsedAddress.direction,
+        name: result.location.parsedAddress.name,
+        type: result.location.parsedAddress.type,
       } : undefined,
 
       timestamp: result.timestamp,

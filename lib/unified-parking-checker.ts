@@ -8,7 +8,7 @@
  */
 
 import { supabaseAdmin } from './supabase';
-import { reverseGeocode, GeocodeResult } from './reverse-geocoder';
+import { reverseGeocode } from './reverse-geocoder';
 import { parseChicagoAddress, ParsedAddress } from './address-parser';
 import { validatePermitZone } from './permit-zone-time-validator';
 import { getChicagoTime } from './chicago-timezone-utils';
