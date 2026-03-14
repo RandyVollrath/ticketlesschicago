@@ -1787,7 +1787,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 accessibilityLabel="Pair your car's Bluetooth for auto-detection"
                 accessibilityRole="button"
               >
-                <MaterialCommunityIcons name="bluetooth" size={16} color={colors.primary} />
+                <MaterialCommunityIcons name="bluetooth" size={18} color={colors.primary} />
                 <Text style={styles.quickStartItemText}>Pair your car's Bluetooth for auto-detection</Text>
                 <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
               </TouchableOpacity>

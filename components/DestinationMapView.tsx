@@ -760,30 +760,33 @@ export default function DestinationMapView() {
               (g as any)._permitDash = style.dashArray;
               g.addTo(permitLayer);
             } else {
-              // "Both sides" — render as a single solid line (blue+orange stacked)
-              const g = L.geoJSON(feature.geometry, {
+              // "Both sides" — render as two offset dashed lines on their respective sides
+              const oddGeom = offsetPermitGeometry(feature.geometry, null, 'both_a');
+              const evenGeom = offsetPermitGeometry(feature.geometry, null, 'both_b');
+              const gOdd = L.geoJSON(oddGeom, {
                 interactive: false,
                 style: {
                   color: PERMIT_COLORS.odd,
-                  weight: 6,
+                  weight: 5,
                   opacity: 0.85,
+                  dashArray: '8,4',
                 },
               });
-              (g as any)._permitColor = PERMIT_COLORS.odd;
-              (g as any)._permitDash = '';
-              g.addTo(permitLayer);
-              // Thinner orange line on top to show both colors
-              const g2 = L.geoJSON(feature.geometry, {
+              (gOdd as any)._permitColor = PERMIT_COLORS.odd;
+              (gOdd as any)._permitDash = '8,4';
+              gOdd.addTo(permitLayer);
+              const gEven = L.geoJSON(evenGeom, {
                 interactive: false,
                 style: {
                   color: PERMIT_COLORS.even,
-                  weight: 2,
+                  weight: 5,
                   opacity: 0.85,
+                  dashArray: '8,4',
                 },
               });
-              (g2 as any)._permitColor = PERMIT_COLORS.even;
-              (g2 as any)._permitDash = '';
-              g2.addTo(permitLayer);
+              (gEven as any)._permitColor = PERMIT_COLORS.even;
+              (gEven as any)._permitDash = '8,4';
+              gEven.addTo(permitLayer);
             }
           });
           permitLayer.addTo(map);
@@ -818,20 +821,22 @@ export default function DestinationMapView() {
                 },
               }).addTo(permitParkabilityLayer);
             } else {
-              // "Both sides" — single stacked line (blue base + orange stripe)
-              L.geoJSON(feature.geometry, {
+              // "Both sides" — offset red lines on their respective sides
+              const oddGeom = offsetPermitGeometry(feature.geometry, null, 'both_a');
+              const evenGeom = offsetPermitGeometry(feature.geometry, null, 'both_b');
+              L.geoJSON(oddGeom, {
                 interactive: false,
                 style: {
-                  color: PERMIT_COLORS.odd,
-                  weight: 5.5,
+                  color: PARK_COLORS.restricted,
+                  weight: 4.5,
                   opacity: 0.95,
                 },
               }).addTo(permitParkabilityLayer);
-              L.geoJSON(feature.geometry, {
+              L.geoJSON(evenGeom, {
                 interactive: false,
                 style: {
-                  color: PERMIT_COLORS.even,
-                  weight: 2,
+                  color: PARK_COLORS.restricted,
+                  weight: 4.5,
                   opacity: 0.95,
                 },
               }).addTo(permitParkabilityLayer);
@@ -1047,12 +1052,6 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Opposite side may be legal</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ position: 'relative', width: '18px', height: '6px', backgroundColor: PERMIT_COLORS.odd, borderRadius: '1px', flexShrink: 0 }}>
-                      <div style={{ position: 'absolute', top: '2px', left: 0, right: 0, height: '2px', backgroundColor: PERMIT_COLORS.even, borderRadius: '1px' }} />
-                    </div>
-                    <span style={{ color: '#374151' }}>Permit both sides</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '12px', height: '12px', backgroundColor: PARK_COLORS.caution, borderRadius: '2px', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Restriction soon</span>
                   </div>
@@ -1073,7 +1072,7 @@ export default function DestinationMapView() {
                     </div>
                   ) : (
                     <div style={{ color: '#9ca3af', marginTop: '4px' }}>
-                      2" Snow Ban: not active — red lines appear when 2"+ snowfall hits
+                      2" Snow Ban: not active. Routes shown in purple on the restriction view. When the city declares a snow emergency (2"+ snowfall), those routes turn red here.
                     </div>
                   )}
                   {isWinterBanActiveNow() ? (
@@ -1123,7 +1122,7 @@ export default function DestinationMapView() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.snowRoute, borderRadius: '2px', flexShrink: 0 }} />
-                    <span style={{ color: '#374151' }}>2" Snow ban {snowBanActive ? '(ACTIVE)' : ''}</span>
+                    <span style={{ color: '#374151' }}>{snowBanActive ? '2" Snow ban (ACTIVE)' : '2" Snow ban routes'}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '18px', height: '3px', backgroundColor: LAYER_COLORS.winterBan, borderRadius: '2px', flexShrink: 0 }} />
@@ -1138,12 +1137,6 @@ export default function DestinationMapView() {
                     <span style={{ color: '#374151' }}>Permit even side</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ position: 'relative', width: '18px', height: '6px', backgroundColor: PERMIT_COLORS.odd, borderRadius: '1px', flexShrink: 0 }}>
-                      <div style={{ position: 'absolute', top: '2px', left: 0, right: 0, height: '2px', backgroundColor: PERMIT_COLORS.even, borderRadius: '1px' }} />
-                    </div>
-                    <span style={{ color: '#374151' }}>Permit both sides</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.meter, borderRadius: '50%', flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Meter dots by rate</span>
                   </div>
@@ -1151,6 +1144,11 @@ export default function DestinationMapView() {
                 <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
                   Teal shades: lighter = lower rate, darker = higher rate.
                 </div>
+                {!snowBanActive && (
+                  <div style={{ marginTop: '4px', fontSize: '11px', color: '#9ca3af', fontStyle: 'italic' }}>
+                    Purple snow routes show streets that become restricted when the city declares a 2"+ snow emergency.
+                  </div>
+                )}
               </>
             )}
           </div>
