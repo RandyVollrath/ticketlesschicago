@@ -1121,12 +1121,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     heroConfig.bgColor = colors.warning;
   }
 
-  // Override hero color for high-risk "all clear" — amber instead of green
-  const riskUrgency = lastParkingCheck?.rawApiData?.enforcementRisk?.urgency;
-  if (heroState === 'clear' && riskUrgency === 'high') {
-    heroConfig.bgColor = colors.warning; // amber — safe now but high enforcement area
-    heroConfig.title = 'Clear — High Risk Area';
-  }
 
   // Speed helper for debug (m/s to mph)
   const speedMph = (ms: number) => (ms * 2.237).toFixed(0);
@@ -1580,13 +1574,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 </TouchableOpacity>
               )}
 
-              {/* Enforcement risk intelligence */}
+              {/* Enforcement data — only show when block has significant ticket history (20+) */}
               {lastParkingCheck.rawApiData?.enforcementRisk && (() => {
                 const risk = lastParkingCheck.rawApiData.enforcementRisk;
-                const riskIcon = risk.urgency === 'high' ? 'shield-alert'
-                  : risk.urgency === 'medium' ? 'shield-half-full' : 'shield-check';
-                const riskLabel = risk.urgency === 'high' ? 'HIGH RISK'
-                  : risk.urgency === 'medium' ? 'MEDIUM RISK' : 'LOW RISK';
+                if (!risk.total_block_tickets || risk.total_block_tickets < 20) return null;
 
                 // Format revenue: $182,000 -> "$182K", $1,200,000 -> "$1.2M"
                 const formatRevenue = (amount: number): string => {
@@ -1595,38 +1586,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   return `$${amount}`;
                 };
 
-                const hasSignificantRevenue = risk.estimated_block_revenue && risk.estimated_block_revenue >= 5000;
+                const hasSignificantRevenue = risk.estimated_block_revenue && risk.estimated_block_revenue >= 10000;
                 const revenueStr = hasSignificantRevenue ? formatRevenue(risk.estimated_block_revenue!) : null;
-                const yearRange = risk.data_year_range || '';
+                const rankStr = risk.city_rank && risk.city_rank <= 100 ? ` · #${risk.city_rank} citywide` : '';
 
                 return (
                   <View style={styles.heroRiskSection}>
-                    {/* Revenue callout — only show when block has significant ticket history */}
-                    {hasSignificantRevenue && (
-                      <View style={styles.heroRevenueRow}>
-                        <MaterialCommunityIcons name="alert-circle" size={14} color="#FFD700" />
-                        <Text style={styles.heroRevenueText}>
-                          {revenueStr} in tickets issued on this block
-                          {yearRange ? ` (${yearRange})` : ''}
-                        </Text>
-                      </View>
-                    )}
-                    <View style={styles.heroRiskHeader}>
-                      <MaterialCommunityIcons name={riskIcon} size={14} color="rgba(255,255,255,0.9)" />
-                      <Text style={styles.heroRiskLabel}>
-                        {riskLabel} ({risk.risk_score}/100)
+                    <View style={styles.heroRevenueRow}>
+                      <MaterialCommunityIcons name="alert-circle" size={14} color="#FFD700" />
+                      <Text style={styles.heroRevenueText}>
+                        {revenueStr
+                          ? `${revenueStr} in tickets issued on this block${rankStr}`
+                          : `${risk.total_block_tickets.toLocaleString()} tickets issued on this block${rankStr}`}
                       </Text>
                     </View>
-                    {risk.insight && (
-                      <Text style={styles.heroRiskInsight}>{risk.insight}</Text>
-                    )}
-                    {risk.has_block_data && risk.total_block_tickets && (
-                      <Text style={styles.heroRiskDetail}>
-                        {risk.total_block_tickets.toLocaleString()} tickets on record
-                        {risk.city_rank ? ` · #${risk.city_rank} citywide` : ''}
-                        {risk.top_violation ? ` · Top: ${risk.top_violation}` : ''}
-                      </Text>
-                    )}
                   </View>
                 );
               })()}
