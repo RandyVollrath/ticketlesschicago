@@ -2763,21 +2763,18 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Build enforcement risk context string from FOIA ticket analysis.
-   * Returns a concise, human-readable risk summary for notification bodies.
-   *
-   * 3 urgency tiers:
-   * - HIGH: "You're in the peak enforcement window" — urgent, actionable
-   * - MEDIUM: "Enforcement likely today" — awareness
-   * - LOW: informational only — light context
+   * Build enforcement context string from FOIA ticket data.
+   * Only mentions anything when the block has a high ticket count (20+).
+   * No risk ratings or scores — just the raw data when it's notable.
    */
   private buildEnforcementRiskContext(rawData: any): string | null {
     const risk = rawData?.enforcementRisk;
     if (!risk) return null;
 
-    const { urgency, risk_score, has_block_data, insight, in_peak_window,
-            peak_window, total_block_tickets, city_rank, top_violation,
-            current_hour_pct, estimated_block_revenue } = risk;
+    const { total_block_tickets, city_rank, estimated_block_revenue } = risk;
+
+    // Only show enforcement context for blocks with significant ticket history
+    if (!total_block_tickets || total_block_tickets < 20) return null;
 
     // Format revenue: $148,000 -> "$148K"
     const formatRevenue = (amount: number): string => {
@@ -2785,79 +2782,14 @@ class BackgroundTaskServiceClass {
       if (amount >= 1_000) return `$${Math.round(amount / 1_000)}K`;
       return `$${amount}`;
     };
-    const revenueStr = estimated_block_revenue && estimated_block_revenue >= 10000
-      ? formatRevenue(estimated_block_revenue)
-      : null;
 
-    switch (urgency) {
-      case 'high': {
-        // Peak enforcement window — most actionable alert
-        const parts: string[] = [];
-        parts.push(`Risk: HIGH (${risk_score}/100)`);
-
-        if (in_peak_window && peak_window) {
-          const endFormatted = peak_window.end_hour > 12
-            ? `${peak_window.end_hour - 12}pm`
-            : peak_window.end_hour === 12 ? '12pm' : `${peak_window.end_hour}am`;
-          parts.push(`Peak enforcement window — ends at ${endFormatted}`);
-        }
-
-        // Prefer revenue over raw ticket count — more visceral
-        if (revenueStr) {
-          const rankStr = city_rank ? ` (#${city_rank} most ticketed block)` : '';
-          parts.push(`${revenueStr} in tickets issued on this block${rankStr}`);
-        } else if (has_block_data && total_block_tickets) {
-          const rankStr = city_rank ? ` (#${city_rank} most ticketed block)` : '';
-          parts.push(`${total_block_tickets.toLocaleString()} tickets issued here${rankStr}`);
-        }
-
-        if (current_hour_pct && current_hour_pct > 5) {
-          parts.push(`${current_hour_pct.toFixed(0)}% of this block's tickets happen at this hour`);
-        }
-
-        if (top_violation) {
-          parts.push(`Most common: ${top_violation}`);
-        }
-
-        return parts.join('\n');
-      }
-
-      case 'medium': {
-        // Enforcement likely today — moderate awareness
-        const parts: string[] = [];
-        parts.push(`Risk: MEDIUM (${risk_score}/100)`);
-
-        if (revenueStr) {
-          parts.push(`${revenueStr} in tickets issued on this block`);
-        } else if (insight) {
-          // Use the server-generated insight which is already well-written
-          parts.push(insight);
-        } else if (has_block_data && total_block_tickets) {
-          parts.push(`${total_block_tickets.toLocaleString()} tickets on record for this block`);
-          if (top_violation) {
-            parts.push(`Most common: ${top_violation}`);
-          }
-        }
-
-        return parts.join('\n');
-      }
-
-      case 'low': {
-        // Informational — light context, don't overwhelm
-        if (!has_block_data) {
-          return 'Risk: LOW';
-        }
-
-        if (total_block_tickets && total_block_tickets > 50) {
-          return `Risk: LOW (${risk_score}/100) — ${total_block_tickets.toLocaleString()} tickets on record, but not during this time`;
-        }
-
-        return `Risk: LOW (${risk_score}/100)`;
-      }
-
-      default:
-        return null;
+    if (estimated_block_revenue && estimated_block_revenue >= 10000) {
+      const rankStr = city_rank && city_rank <= 100 ? ` (#${city_rank} most ticketed block)` : '';
+      return `${formatRevenue(estimated_block_revenue)} in tickets issued on this block${rankStr}`;
     }
+
+    const rankStr = city_rank && city_rank <= 100 ? ` · #${city_rank} citywide` : '';
+    return `${total_block_tickets.toLocaleString()} tickets issued on this block${rankStr}`;
   }
 
   /**
