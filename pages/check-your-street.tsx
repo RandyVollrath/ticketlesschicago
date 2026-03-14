@@ -46,6 +46,8 @@ export default function CheckYourStreet() {
     significantSnowWhen: string | null;
   } | null>(null)
   const [blockStats, setBlockStats] = useState<any>(null)
+  const [statsExpanded, setStatsExpanded] = useState(false)
+  const [tripExpanded, setTripExpanded] = useState(false)
 
   // Check URL parameters
   useEffect(() => {
@@ -400,800 +402,348 @@ export default function CheckYourStreet() {
       </section>
 
       {/* Results Section */}
-      <section style={{ padding: '60px 32px', maxWidth: '1200px', margin: '0 auto' }}>
+      <section style={{ padding: '40px 32px', maxWidth: '1200px', margin: '0 auto' }}>
         {searchResult && (
-          <div style={{ marginBottom: '48px' }}>
-            {/* High-Risk Ward Warning */}
+          <div style={{ marginBottom: '32px' }}>
+
+            {/* === MAIN RESULT: Next Cleaning Date === */}
+            <div style={{
+              backgroundColor: 'white',
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: '16px',
+              padding: '32px 24px',
+              marginBottom: '16px',
+              textAlign: 'center'
+            }}>
+              {searchResult.noStreetCleaning ? (
+                <>
+                  <div style={{ fontSize: '13px', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: '600', marginBottom: '8px' }}>Street Cleaning</div>
+                  <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>Not applicable here</div>
+                  <div style={{ fontSize: '13px', color: COLORS.slate, marginTop: '8px' }}>Other restrictions may still apply — see alerts below.</div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '13px', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: '600', marginBottom: '8px' }}>Next Street Cleaning</div>
+                  <div style={{ fontSize: '36px', fontWeight: '700', color: COLORS.graphite, letterSpacing: '-1px', lineHeight: '1.1', fontFamily: '"Space Grotesk", sans-serif', marginBottom: '12px' }}>
+                    {formatDate(searchResult.nextCleaningDate)}
+                  </div>
+                  {searchResult.nextCleaningDate && (
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '6px 16px',
+                      backgroundColor: getCleaningStatus(searchResult.nextCleaningDate).color,
+                      color: 'white',
+                      borderRadius: '100px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                    }}>
+                      {getCleaningStatus(searchResult.nextCleaningDate).text}
+                    </span>
+                  )}
+                </>
+              )}
+              {searchResult.ward && (
+                <div style={{ fontSize: '13px', color: COLORS.slate, marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${COLORS.border}` }}>
+                  Ward {searchResult.ward}, Section {searchResult.section}
+                </div>
+              )}
+            </div>
+
+            {/* === COMPACT ALERT PILLS === */}
             {(() => {
               const wardData = getHighRiskWardData(searchResult.ward);
-              if (!wardData) return null;
-              const isHighest = wardData.riskLevel === 'highest';
+              const hasAlerts = wardData || searchResult.onWinterBan || searchResult.onSnowRoute ||
+                (permitZoneResult?.hasPermitZone && permitZoneResult.zones.length > 0) ||
+                (snowForecast?.hasSignificantSnow);
+              if (!hasAlerts) return null;
 
               return (
                 <div style={{
-                  backgroundColor: isHighest ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-                  border: `2px solid ${isHighest ? COLORS.danger : COLORS.warning}`,
-                  padding: '20px 24px',
-                  borderRadius: '12px',
-                  marginBottom: '20px',
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '16px'
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  marginBottom: '16px',
                 }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    backgroundColor: isHighest ? COLORS.danger : COLORS.warning,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                      <line x1="12" y1="9" x2="12" y2="13"/>
-                      <line x1="12" y1="17" x2="12.01" y2="17"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px', color: isHighest ? COLORS.danger : COLORS.warning }}>
-                      {isHighest ? 'Highest' : 'Higher'} Risk Ward — Ranked #{wardData.rank}
+                  {/* Ward risk pill */}
+                  {wardData && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                      backgroundColor: wardData.riskLevel === 'highest' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+                      color: wardData.riskLevel === 'highest' ? COLORS.danger : COLORS.warning,
+                      border: `1px solid ${wardData.riskLevel === 'highest' ? COLORS.danger : COLORS.warning}30`,
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                      High-ticket ward (#{wardData.rank})
                     </div>
-                    <div style={{ fontSize: '14px', lineHeight: '1.6', color: COLORS.slate }}>
-                      Ward {wardData.ward} had <strong style={{ color: COLORS.graphite }}>{wardData.totalTickets.toLocaleString()} street cleaning tickets</strong> from 2020-2025.
-                      About <strong style={{ color: COLORS.graphite }}>{Math.round(wardData.ticketsPer100Residents)} out of 100 residents</strong> got a street cleaning ticket.
+                  )}
+
+                  {/* Winter ban pill */}
+                  {searchResult.onWinterBan && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                      backgroundColor: 'rgba(6,182,212,0.08)', color: '#0891B2',
+                      border: '1px solid rgba(6,182,212,0.25)',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                      Winter ban (3-7 AM, Dec-Apr)
                     </div>
-                  </div>
+                  )}
+
+                  {/* Snow route pill */}
+                  {searchResult.onSnowRoute && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                      backgroundColor: 'rgba(217,70,239,0.08)', color: '#A21CAF',
+                      border: '1px solid rgba(217,70,239,0.25)',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+                      2" snow ban route
+                    </div>
+                  )}
+
+                  {/* Permit zone pill */}
+                  {permitZoneResult?.hasPermitZone && permitZoneResult.zones.length > 0 && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                      backgroundColor: 'rgba(139,92,246,0.08)', color: '#7C3AED',
+                      border: '1px solid rgba(139,92,246,0.25)',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 8h4a2 2 0 0 1 0 4H9V8z"/></svg>
+                      Permit zone {permitZoneResult.zones.map((z: any) => z.zone || z.zone_number).join(', ')}
+                    </div>
+                  )}
+
+                  {/* Snow forecast pill */}
+                  {snowForecast?.hasSignificantSnow && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                      backgroundColor: 'rgba(37,99,235,0.08)', color: COLORS.regulatory,
+                      border: '1px solid rgba(37,99,235,0.25)',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/></svg>
+                      Snow 2"+ forecast{snowForecast.significantSnowWhen ? `: ${snowForecast.significantSnowWhen}` : ''}
+                    </div>
+                  )}
                 </div>
               );
             })()}
 
-            {/* Winter Ban Warning */}
-            {searchResult.onWinterBan && searchResult.winterBanStreet && (
-              <div style={{
-                backgroundColor: 'white',
-                padding: '24px',
-                borderRadius: '16px',
-                marginBottom: '16px',
-                border: `1px solid ${COLORS.border}`,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '16px'
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '12px',
-                  backgroundColor: `${COLORS.regulatory}10`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                    Winter Overnight Parking Ban
-                  </div>
-                  <div style={{ fontSize: '15px', lineHeight: '1.6', color: COLORS.slate }}>
-                    <strong style={{ color: COLORS.graphite }}>{searchResult.winterBanStreet}</strong> has a winter overnight parking ban.
-                    <strong style={{ color: COLORS.graphite }}> No parking 3:00 AM - 7:00 AM</strong> every night from December 1 - April 1.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Snow Route Warning */}
-            {searchResult.onSnowRoute && searchResult.snowRouteStreet && (
-              <div style={{
-                backgroundColor: 'white',
-                padding: '24px',
-                borderRadius: '16px',
-                marginBottom: '16px',
-                border: `1px solid ${COLORS.border}`,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '16px'
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '12px',
-                  backgroundColor: `${COLORS.regulatory}10`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                    <path d="M2 17l10 5 10-5"/>
-                    <path d="M2 12l10 5 10-5"/>
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                    2-Inch Snow Ban Route
-                  </div>
-                  <div style={{ fontSize: '15px', lineHeight: '1.6', color: COLORS.slate }}>
-                    <strong style={{ color: COLORS.graphite }}>{searchResult.snowRouteStreet}</strong> is subject to Chicago's 2-inch snow parking ban.
-                    Parking prohibited year-round when 2+ inches of snow falls until streets are cleared.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Permit Zone Warning */}
-            {permitZoneResult?.hasPermitZone && permitZoneResult.zones.length > 0 && (
-              <div style={{
-                backgroundColor: 'white',
-                padding: '24px',
-                borderRadius: '16px',
-                marginBottom: '16px',
-                border: `1px solid ${COLORS.border}`,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '16px'
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                    <path d="M9 8h4a2 2 0 0 1 0 4H9V8z"/>
-                    <path d="M9 12h3"/>
-                    <line x1="9" y1="16" x2="9" y2="12"/>
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                    Residential Permit Parking Zone{permitZoneResult.zones.length > 1 ? 's' : ''}
-                  </div>
-                  <div style={{ fontSize: '15px', lineHeight: '1.6', color: COLORS.slate }}>
-                    This address is in permit parking zone{permitZoneResult.zones.length > 1 ? 's' : ''}{' '}
-                    <strong style={{ color: '#8B5CF6' }}>
-                      {permitZoneResult.zones.map((z: any) => z.zone || z.zone_number).join(', ')}
-                    </strong>.
-                    {' '}You may need a residential parking permit to park on this street. Check for posted signs.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Block Ticket History (FOIA data) */}
-            {blockStats && (
-              <div style={{
-                backgroundColor: 'white',
-                padding: '24px',
-                borderRadius: '16px',
-                marginBottom: '16px',
-                border: `1px solid ${COLORS.border}`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '12px',
-                    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={COLORS.danger} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                      <line x1="16" y1="13" x2="8" y2="13"/>
-                      <line x1="16" y1="17" x2="8" y2="17"/>
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '18px', fontWeight: '600', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif', marginBottom: '4px' }}>
-                      Block Ticket History
-                    </div>
-                    <div style={{ fontSize: '13px', color: COLORS.slate }}>
-                      Based on 26.8M city tickets from 2019-2024 FOIA data
-                    </div>
-                  </div>
-                </div>
-
-                {/* Insight text */}
-                {blockStats.insight && (
-                  <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: (blockStats.avg_tickets_per_year || 0) > 200 ? 'rgba(239, 68, 68, 0.06)' : 'rgba(37, 99, 235, 0.06)',
-                    borderRadius: '10px',
-                    marginBottom: '16px',
-                    fontSize: '15px',
-                    lineHeight: '1.6',
-                    color: COLORS.graphite,
-                    fontWeight: '500'
-                  }}>
-                    {blockStats.insight}
-                  </div>
-                )}
-
-                {/* Stats grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '16px 8px',
-                    backgroundColor: COLORS.concrete,
-                    borderRadius: '10px'
-                  }}>
-                    <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                      {blockStats.total_tickets?.toLocaleString() || '0'}
-                    </div>
-                    <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '4px' }}>Total Tickets</div>
-                  </div>
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '16px 8px',
-                    backgroundColor: COLORS.concrete,
-                    borderRadius: '10px'
-                  }}>
-                    <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.danger, fontFamily: '"Space Grotesk", sans-serif' }}>
-                      ${blockStats.total_fines ? Math.round(blockStats.total_fines).toLocaleString() : '0'}
-                    </div>
-                    <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '4px' }}>Total Fines</div>
-                  </div>
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '16px 8px',
-                    backgroundColor: COLORS.concrete,
-                    borderRadius: '10px'
-                  }}>
-                    <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                      ~{blockStats.avg_tickets_per_year?.toLocaleString() || '0'}
-                    </div>
-                    <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '4px' }}>Per Year</div>
-                  </div>
-                </div>
-
-                {/* Top violation categories */}
-                {blockStats.by_category && blockStats.by_category.length > 0 && (
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                      Top Violations
-                    </div>
-                    {blockStats.by_category.slice(0, 5).map((cat: any, i: number) => {
-                      const pct = Math.round((cat.tickets / blockStats.total_tickets) * 100)
-                      return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '14px', color: COLORS.graphite, fontWeight: '500' }}>{cat.label}</span>
-                              <span style={{ fontSize: '13px', color: COLORS.slate }}>{cat.tickets.toLocaleString()} ({pct}%)</span>
-                            </div>
-                            <div style={{ height: '6px', backgroundColor: COLORS.concrete, borderRadius: '3px', overflow: 'hidden' }}>
-                              <div style={{
-                                height: '100%',
-                                width: `${pct}%`,
-                                backgroundColor: i === 0 ? COLORS.danger : i === 1 ? COLORS.warning : COLORS.regulatory,
-                                borderRadius: '3px',
-                                transition: 'width 0.5s ease'
-                              }} />
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {/* Peak enforcement hours */}
-                {blockStats.peak_hours && blockStats.peak_hours.length > 0 && (
-                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${COLORS.border}` }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                      Peak Enforcement Hours
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {blockStats.peak_hours.slice(0, 6).map((ph: any, i: number) => {
-                        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                        const hour = ph.hour
-                        const ampm = hour < 12 ? 'AM' : 'PM'
-                        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
-                        return (
-                          <span key={i} style={{
-                            padding: '4px 10px',
-                            backgroundColor: COLORS.concrete,
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            color: COLORS.graphite,
-                            fontWeight: '500'
-                          }}>
-                            {dayNames[ph.day_of_week]} {displayHour}{ampm}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Autopilot Protection CTA — Hormozi-style value stack */}
-                {blockStats.avg_fines_per_year > 0 && (() => {
-                  const avgFines = Math.round(blockStats.avg_fines_per_year);
-                  const potentialSavings = Math.round(avgFines * 0.685);
-                  const roi = Math.round(potentialSavings / 49);
-                  const totalFines = blockStats.total_fines || 0;
-                  const showROI = avgFines >= 100; // Only show detailed ROI math when numbers are strong
-
-                  return (
-                  <div style={{
-                    marginTop: '16px',
-                    paddingTop: '16px',
-                    borderTop: `1px solid ${COLORS.border}`,
-                  }}>
-                    <div style={{
-                      background: 'linear-gradient(135deg, #0F172A 0%, #1a2744 100%)',
-                      borderRadius: '12px',
-                      padding: '24px',
-                      marginBottom: '12px',
-                    }}>
-                      {/* Header — always the same */}
-                      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>
-                          Stop paying tickets on this block
-                        </div>
-                        <div style={{ fontSize: '15px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
-                          68.5% of parking tickets get dismissed when contested — but 93% of drivers never try.
-                        </div>
-                      </div>
-
-                      {showROI ? (
-                        <>
-                          {/* Strong ROI block — show the math */}
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr auto 1fr',
-                            gap: '12px',
-                            alignItems: 'center',
-                            marginBottom: '16px',
-                            padding: '16px',
-                            backgroundColor: 'rgba(255,255,255,0.05)',
-                            borderRadius: '10px',
-                          }}>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: '28px', fontWeight: '800', color: '#FCA5A5', fontFamily: '"Space Grotesk", sans-serif' }}>
-                                ${avgFines.toLocaleString()}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>avg fines/yr here</div>
-                            </div>
-                            <div style={{ fontSize: '20px', color: 'rgba(255,255,255,0.3)' }}>→</div>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: '28px', fontWeight: '800', color: COLORS.signal, fontFamily: '"Space Grotesk", sans-serif' }}>
-                                ${potentialSavings.toLocaleString()}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#6EE7B7', marginTop: '2px' }}>potential savings</div>
-                            </div>
-                          </div>
-
-                          {/* ROI callout */}
-                          <div style={{
-                            textAlign: 'center',
-                            marginBottom: '16px',
-                            padding: '10px',
-                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                            border: '1px solid rgba(16, 185, 129, 0.25)',
-                            borderRadius: '8px',
-                          }}>
-                            <span style={{ fontSize: '14px', fontWeight: '700', color: '#6EE7B7' }}>
-                              {roi}x return
-                            </span>
-                            <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginLeft: '6px' }}>
-                              on a $49/yr plan
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* Lower-ticket block — insurance framing, no detailed ROI */}
-                          <div style={{
-                            textAlign: 'center',
-                            marginBottom: '16px',
-                            padding: '14px',
-                            backgroundColor: 'rgba(255,255,255,0.05)',
-                            borderRadius: '10px',
-                          }}>
-                            <div style={{ fontSize: '15px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
-                              One dismissed ticket pays for an entire year. The average Chicago parking ticket is $65 — Autopilot costs $49/yr.
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Value stack */}
-                      <div style={{ marginBottom: '16px' }}>
-                        {[
-                          'We monitor your plate & auto-contest every ticket',
-                          'Professional contest letters mailed for you',
-                          'FOIA-backed evidence from 1.18M hearing outcomes',
-                          'You keep 100% of dismissed fines',
-                        ].map((item, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5">
-                              <path d="M20 6L9 17l-5-5"/>
-                            </svg>
-                            <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)' }}>{item}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* CTA */}
-                      <button
-                        onClick={() => router.push('/get-started')}
-                        style={{
-                          width: '100%',
-                          backgroundColor: COLORS.signal,
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          padding: '14px 24px',
-                          fontSize: '15px',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                        }}
-                      >
-                        Start Auto-Contesting — $49/yr
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
-                      </button>
-                      <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
-                        Cancel anytime. One dismissed ticket pays for itself.
-                      </div>
-                    </div>
-                  </div>
-                  );
-                })()}
-
-                {/* Free alerts CTA */}
-                <div style={{
-                  marginTop: blockStats.avg_fines_per_year > 0 ? '0' : '16px',
-                  paddingTop: blockStats.avg_fines_per_year > 0 ? '0' : '16px',
-                  borderTop: blockStats.avg_fines_per_year > 0 ? 'none' : `1px solid ${COLORS.border}`,
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '4px' }}>
-                    {blockStats.alertable_tickets > 0
-                      ? `Free alerts could have saved this block from ${blockStats.alertable_tickets.toLocaleString()} tickets and $${(blockStats.alertable_fines || 0).toLocaleString()} in fines since 2019*`
-                      : 'Get free alerts for your block'}
-                  </div>
-                  <div style={{ fontSize: '12px', color: COLORS.slate, marginBottom: '10px', lineHeight: '1.4' }}>
-                    Covers street cleaning, snow bans, city sticker renewal, plate renewal, emissions tests &amp; block events.
-                  </div>
-                  <button
-                    onClick={() => router.push(`/alerts/signup?address=${encodeURIComponent(address)}`)}
-                    style={{
-                      backgroundColor: COLORS.regulatory,
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      padding: '10px 20px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Get Free Alerts
-                  </button>
-                  {blockStats.alertable_tickets > 0 && (
-                    <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '8px', fontStyle: 'italic', lineHeight: '1.4' }}>
-                      *City of Chicago Dept. of Finance FOIA data — 26.8M tickets, 2019–2024. Savings reflect street cleaning &amp; snow removal tickets on this block.
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Snow Forecast — simple 2"+ yes/no */}
-            {snowForecast && (
-              <div style={{
-                backgroundColor: snowForecast.hasSignificantSnow ? 'rgba(37, 99, 235, 0.06)' : 'white',
-                padding: '24px',
-                borderRadius: '16px',
-                marginBottom: '16px',
-                border: `1px solid ${snowForecast.hasSignificantSnow ? COLORS.regulatory : COLORS.border}`,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '16px'
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '12px',
-                  backgroundColor: snowForecast.hasSignificantSnow ? 'rgba(37, 99, 235, 0.1)' : 'rgba(100, 116, 139, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={snowForecast.hasSignificantSnow ? COLORS.regulatory : COLORS.slate} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/>
-                    <line x1="8" y1="16" x2="8.01" y2="16"/>
-                    <line x1="8" y1="20" x2="8.01" y2="20"/>
-                    <line x1="12" y1="18" x2="12.01" y2="18"/>
-                    <line x1="12" y1="22" x2="12.01" y2="22"/>
-                    <line x1="16" y1="16" x2="16.01" y2="16"/>
-                    <line x1="16" y1="20" x2="16.01" y2="20"/>
-                  </svg>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                    7-Day Snow Forecast
-                  </div>
-                  <div style={{ fontSize: '15px', lineHeight: '1.6', color: COLORS.slate }}>
-                    {snowForecast.hasSignificantSnow
-                      ? <>
-                          <strong style={{ color: COLORS.danger }}>2+ inches of snow forecast{snowForecast.significantSnowWhen ? `: ${snowForecast.significantSnowWhen}` : ''}.</strong>{' '}
-                          The 2-inch snow parking ban could be activated.
-                        </>
-                      : 'No 2+ inches of snow in the 7-day forecast.'}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div style={{
-              backgroundColor: 'white',
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: '12px',
-              padding: '14px 16px',
-              marginBottom: '16px',
-              fontSize: '14px',
-              color: COLORS.slate
-            }}>
-              Shared map mode is on. Snow routes, winter bans, permit zones, and meters are shown together.
-              Use <strong style={{ color: COLORS.graphite }}>Where to park</strong> on the map for safest nearby zones.
-            </div>
-
-            {/* Main Result Card */}
-            <div style={{
-              backgroundColor: 'white',
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: '20px',
-              padding: '48px 32px',
-              marginBottom: '24px',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '12px',
-                color: COLORS.slate,
-                marginBottom: '12px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                fontWeight: '600'
-              }}>
-                {searchResult.noStreetCleaning ? 'Street Cleaning' : 'Next Street Cleaning'}
-              </div>
-              <div style={{
-                fontSize: searchResult.noStreetCleaning ? '28px' : '42px',
-                fontWeight: '700',
-                color: COLORS.graphite,
-                marginBottom: '16px',
-                letterSpacing: '-1px',
-                lineHeight: '1.1',
-                fontFamily: '"Space Grotesk", sans-serif'
-              }}>
-                {searchResult.noStreetCleaning
-                  ? 'Not applicable at this address'
-                  : formatDate(searchResult.nextCleaningDate)}
-              </div>
-              {searchResult.noStreetCleaning && (
-                <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '8px' }}>
-                  This area may not have scheduled street cleaning (e.g. parking garages, private property, or certain downtown blocks).
-                  Other restrictions like permit zones, snow bans, and winter bans may still apply.
-                </div>
+            {/* === ACTION ROW === */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+              <button
+                onClick={() => router.push(`/alerts/signup?address=${encodeURIComponent(address)}`)}
+                style={{
+                  backgroundColor: COLORS.regulatory, color: 'white', border: 'none', borderRadius: '10px',
+                  padding: '10px 18px', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px'
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Get Free Alerts
+              </button>
+              {searchResult.nextCleaningDate && (
+                <button
+                  onClick={() => handleDownloadCalendar(searchResult.ward, searchResult.section)}
+                  style={{
+                    backgroundColor: 'white', color: COLORS.graphite, border: `1px solid ${COLORS.border}`, borderRadius: '10px',
+                    padding: '10px 18px', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  Calendar
+                </button>
               )}
               {searchResult.nextCleaningDate && (
-                <div style={{
-                  display: 'inline-block',
-                  padding: '10px 20px',
-                  backgroundColor: getCleaningStatus(searchResult.nextCleaningDate).color,
-                  color: 'white',
-                  borderRadius: '100px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  marginBottom: '24px'
-                }}>
-                  {getCleaningStatus(searchResult.nextCleaningDate).text}
-                </div>
+                <button
+                  onClick={() => setTripExpanded(!tripExpanded)}
+                  style={{
+                    backgroundColor: 'white', color: COLORS.graphite, border: `1px solid ${COLORS.border}`, borderRadius: '10px',
+                    padding: '10px 18px', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                  Trip Checker
+                </button>
               )}
+            </div>
+
+            {/* === TRIP CHECKER (expandable) === */}
+            {tripExpanded && searchResult.nextCleaningDate && (
               <div style={{
-                fontSize: '15px',
-                color: COLORS.slate,
-                marginTop: '24px',
-                paddingTop: '24px',
-                borderTop: `1px solid ${COLORS.border}`
+                backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px',
+                padding: '20px', marginBottom: '16px',
               }}>
-                Ward {searchResult.ward}, Section {searchResult.section}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div style={{
-              backgroundColor: 'white',
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: '16px',
-              padding: '24px',
-              marginBottom: '20px'
-            }}>
-              {searchResult.nextCleaningDate && (
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => handleDownloadCalendar(searchResult.ward, searchResult.section)}
-                    style={{
-                      backgroundColor: COLORS.regulatory,
-                      color: 'white',
-                      padding: '12px 20px',
-                      border: 'none',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                      <line x1="16" y1="2" x2="16" y2="6"/>
-                      <line x1="8" y1="2" x2="8" y2="6"/>
-                      <line x1="3" y1="10" x2="21" y2="10"/>
-                    </svg>
-                    Download Calendar
-                  </button>
-                  <button
-                    onClick={() => router.push('/alerts/signup')}
-                    style={{
-                      backgroundColor: 'white',
-                      color: COLORS.graphite,
-                      padding: '12px 20px',
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                    </svg>
-                    Get Free Alerts
-                  </button>
-
-                </div>
-              )}
-            </div>
-
-            {/* Trip Date Range Checker */}
-            <div style={{
-              backgroundColor: `${COLORS.regulatory}08`,
-              border: `2px solid ${COLORS.regulatory}20`,
-              borderRadius: '16px',
-              padding: '28px'
-            }}>
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '18px', fontWeight: '600', color: COLORS.graphite, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px', fontFamily: '"Space Grotesk", sans-serif' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2">
-                    <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
-                  </svg>
-                  Going on a trip?
-                </div>
-                <div style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.6' }}>
-                  Check if there's street cleaning during your dates
-                </div>
-              </div>
-
-              <div className="date-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: '12px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: COLORS.graphite, marginBottom: '6px' }}>
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={tripStartDate}
-                    onChange={(e) => { setTripStartDate(e.target.value); setDateRangeResult(null); }}
-                    min={new Date().toISOString().split('T')[0]}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: COLORS.graphite, marginBottom: '6px' }}>
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={tripEndDate}
-                    onChange={(e) => { setTripEndDate(e.target.value); setDateRangeResult(null); }}
-                    min={tripStartDate || new Date().toISOString().split('T')[0]}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button
-                    onClick={handleCheckDateRange}
-                    disabled={!tripStartDate || !tripEndDate}
-                    style={{
-                      width: '100%',
-                      padding: '10px 16px',
-                      backgroundColor: (tripStartDate && tripEndDate) ? COLORS.regulatory : COLORS.slate,
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: (tripStartDate && tripEndDate) ? 'pointer' : 'not-allowed'
-                    }}
-                  >
+                <div style={{ fontSize: '15px', fontWeight: '600', color: COLORS.graphite, marginBottom: '12px' }}>Check cleaning during your trip</div>
+                <div className="date-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: '10px', marginBottom: dateRangeResult ? '12px' : '0' }}>
+                  <input type="date" value={tripStartDate} onChange={(e) => { setTripStartDate(e.target.value); setDateRangeResult(null); }} min={new Date().toISOString().split('T')[0]}
+                    style={{ padding: '8px 10px', border: `1px solid ${COLORS.border}`, borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+                  <input type="date" value={tripEndDate} onChange={(e) => { setTripEndDate(e.target.value); setDateRangeResult(null); }} min={tripStartDate || new Date().toISOString().split('T')[0]}
+                    style={{ padding: '8px 10px', border: `1px solid ${COLORS.border}`, borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+                  <button onClick={handleCheckDateRange} disabled={!tripStartDate || !tripEndDate}
+                    style={{ padding: '8px', backgroundColor: (tripStartDate && tripEndDate) ? COLORS.regulatory : COLORS.slate, color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: (tripStartDate && tripEndDate) ? 'pointer' : 'not-allowed' }}>
                     Check
                   </button>
                 </div>
-              </div>
-
-              {dateRangeResult && (
-                <div style={{
-                  backgroundColor: dateRangeResult.hasCleaningDuringTrip ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                  border: `1px solid ${dateRangeResult.hasCleaningDuringTrip ? COLORS.danger : COLORS.signal}30`,
-                  borderRadius: '10px',
-                  padding: '16px'
-                }}>
-                  {dateRangeResult.hasCleaningDuringTrip ? (
-                    <>
-                      <div style={{ fontSize: '15px', fontWeight: '600', color: COLORS.danger, marginBottom: '8px' }}>
-                        Street cleaning scheduled during your trip
-                      </div>
-                      <div style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '12px' }}>
-                        You'll need to move your car on:
-                      </div>
-                      <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: COLORS.graphite }}>
+                {dateRangeResult && (
+                  <div style={{
+                    padding: '12px 14px', borderRadius: '8px',
+                    backgroundColor: dateRangeResult.hasCleaningDuringTrip ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.06)',
+                    border: `1px solid ${dateRangeResult.hasCleaningDuringTrip ? COLORS.danger : COLORS.signal}25`,
+                  }}>
+                    {dateRangeResult.hasCleaningDuringTrip ? (
+                      <>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: COLORS.danger, marginBottom: '6px' }}>Cleaning during your trip:</div>
                         {dateRangeResult.cleaningDates.map((date) => (
-                          <li key={date}><strong>{formatDate(date)}</strong></li>
+                          <div key={date} style={{ fontSize: '14px', color: COLORS.graphite, fontWeight: '500' }}>{formatDate(date)}</div>
                         ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: COLORS.signal }}>
-                      No street cleaning during your trip dates
+                      </>
+                    ) : (
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: COLORS.signal }}>No cleaning during your trip</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* === BLOCK STATS (compact, expandable) === */}
+            {blockStats && (
+              <div style={{
+                backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px',
+                marginBottom: '16px', overflow: 'hidden',
+              }}>
+                {/* Stats header — always visible */}
+                <div
+                  onClick={() => setStatsExpanded(!statsExpanded)}
+                  style={{
+                    padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                      <div>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                          {blockStats.total_tickets?.toLocaleString() || '0'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: COLORS.slate }}>tickets</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: COLORS.danger, fontFamily: '"Space Grotesk", sans-serif' }}>
+                          ${blockStats.total_fines ? Math.round(blockStats.total_fines).toLocaleString() : '0'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: COLORS.slate }}>in fines</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                          ~{blockStats.avg_tickets_per_year?.toLocaleString() || '0'}/yr
+                        </div>
+                        <div style={{ fontSize: '11px', color: COLORS.slate }}>on this block</div>
+                      </div>
                     </div>
-                  )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', color: COLORS.slate }}>FOIA 2019-24</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="2" style={{ transform: statsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Expanded details */}
+                {statsExpanded && (
+                  <div style={{ padding: '0 20px 20px', borderTop: `1px solid ${COLORS.border}` }}>
+                    {/* Insight */}
+                    {blockStats.insight && (
+                      <div style={{
+                        padding: '10px 14px', marginTop: '16px',
+                        backgroundColor: (blockStats.avg_tickets_per_year || 0) > 200 ? 'rgba(239,68,68,0.05)' : 'rgba(37,99,235,0.05)',
+                        borderRadius: '8px', fontSize: '14px', lineHeight: '1.5', color: COLORS.graphite, fontWeight: '500',
+                      }}>
+                        {blockStats.insight}
+                      </div>
+                    )}
+
+                    {/* Top violations */}
+                    {blockStats.by_category?.length > 0 && (
+                      <div style={{ marginTop: '14px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Top Violations</div>
+                        {blockStats.by_category.slice(0, 4).map((cat: any, i: number) => {
+                          const pct = Math.round((cat.tickets / blockStats.total_tickets) * 100);
+                          return (
+                            <div key={i} style={{ marginBottom: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '3px' }}>
+                                <span style={{ color: COLORS.graphite, fontWeight: '500' }}>{cat.label}</span>
+                                <span style={{ color: COLORS.slate }}>{pct}%</span>
+                              </div>
+                              <div style={{ height: '4px', backgroundColor: COLORS.concrete, borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: i === 0 ? COLORS.danger : i === 1 ? COLORS.warning : COLORS.regulatory, borderRadius: '2px' }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Peak hours */}
+                    {blockStats.peak_hours?.length > 0 && (
+                      <div style={{ marginTop: '14px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Peak Enforcement</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {blockStats.peak_hours.slice(0, 4).map((ph: any, i: number) => {
+                            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                            const h = ph.hour; const ampm = h < 12 ? 'AM' : 'PM'; const dh = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                            return (<span key={i} style={{ padding: '3px 8px', backgroundColor: COLORS.concrete, borderRadius: '4px', fontSize: '12px', color: COLORS.graphite, fontWeight: '500' }}>{dayNames[ph.day_of_week]} {dh}{ampm}</span>);
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Free alerts note */}
+                    {blockStats.alertable_tickets > 0 && (
+                      <div style={{ marginTop: '14px', fontSize: '13px', color: COLORS.slate }}>
+                        Free alerts could have prevented {blockStats.alertable_tickets.toLocaleString()} of these tickets.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* === PROTECTION CTA (compact) === */}
+            {blockStats?.avg_fines_per_year > 0 && (() => {
+              const avgFines = Math.round(blockStats.avg_fines_per_year);
+              const potentialSavings = Math.round(avgFines * 0.685);
+              return (
+                <div style={{
+                  background: 'linear-gradient(135deg, #0F172A 0%, #1a2744 100%)',
+                  borderRadius: '12px', padding: '20px', marginBottom: '16px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  flexWrap: 'wrap', gap: '12px',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', fontWeight: '500', marginBottom: '4px' }}>
+                      {avgFines >= 100
+                        ? <><span style={{ color: '#FCA5A5', fontWeight: '700' }}>${avgFines.toLocaleString()}/yr</span> in fines here — save up to <span style={{ color: '#6EE7B7', fontWeight: '700' }}>${potentialSavings.toLocaleString()}</span></>
+                        : <>68.5% of tickets get dismissed when contested. One win pays for a year.</>
+                      }
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>We auto-contest every ticket on your plate. $49/yr.</div>
+                  </div>
+                  <button onClick={() => router.push('/get-started')} style={{
+                    backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '8px',
+                    padding: '10px 20px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}>
+                    Start Auto-Contesting
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1204,49 +754,15 @@ export default function CheckYourStreet() {
           borderRadius: '16px',
           overflow: 'hidden'
         }}>
-          <div style={{ padding: '24px 32px', borderBottom: `1px solid ${COLORS.border}` }}>
-            <h2 style={{
-              fontSize: '20px',
-              margin: '0 0 4px 0',
-              color: COLORS.graphite,
-              fontWeight: '600',
-              fontFamily: '"Space Grotesk", sans-serif'
-            }}>
-              Chicago Street Cleaning Map
-            </h2>
-            <p style={{ fontSize: '14px', color: COLORS.slate, margin: 0 }}>
-              Click zones to see cleaning schedules
-            </p>
-
-            {searchResult && (
-              <div style={{
-                marginTop: '16px',
-                padding: '12px 16px',
-                backgroundColor: `${COLORS.regulatory}08`,
-                border: `1px solid ${COLORS.regulatory}20`,
-                borderRadius: '8px'
-              }}>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: COLORS.regulatory, marginBottom: '4px' }}>
-                  Zones with "Park Here Instead" shown below
-                </div>
-                <div style={{ fontSize: '13px', color: COLORS.slate, lineHeight: '1.5' }}>
-                  {dateRangeResult && tripStartDate && tripEndDate ? (
-                    <>
-                      Highlighted zones have <strong style={{ color: COLORS.graphite }}>NO street cleaning</strong> from{' '}
-                      <strong style={{ color: COLORS.graphite }}>{new Date(tripStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong> to{' '}
-                      <strong style={{ color: COLORS.graphite }}>{new Date(tripEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>.
-                    </>
-                  ) : searchResult.nextCleaningDate ? (
-                    <>
-                      Highlighted zones have <strong style={{ color: COLORS.graphite }}>NO street cleaning</strong> on{' '}
-                      <strong style={{ color: COLORS.graphite }}>{new Date(searchResult.nextCleaningDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong>.
-                    </>
-                  ) : (
-                    <>Highlighted zones show alternative parking options.</>
-                  )}
-                </div>
-              </div>
-            )}
+          <div style={{ padding: '16px 24px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h2 style={{ fontSize: '18px', margin: 0, color: COLORS.graphite, fontWeight: '600', fontFamily: '"Space Grotesk", sans-serif' }}>
+                Parking Map
+              </h2>
+              <p style={{ fontSize: '13px', color: COLORS.slate, margin: '2px 0 0' }}>
+                Cleaning zones, permit areas, snow bans, meters
+              </p>
+            </div>
           </div>
 
           <iframe
@@ -1259,43 +775,21 @@ export default function CheckYourStreet() {
               display: 'block'
             }}
           />
-
         </div>
 
-        {/* CTA Section */}
+        {/* Bottom CTA */}
         <div style={{
-          marginTop: '48px',
-          padding: '32px',
-          backgroundColor: COLORS.deepHarbor,
-          borderRadius: '16px',
-          textAlign: 'center'
+          marginTop: '32px', padding: '24px', backgroundColor: COLORS.deepHarbor,
+          borderRadius: '12px', textAlign: 'center',
         }}>
-          <h3 style={{
-            fontSize: '24px',
-            fontWeight: '600',
-            color: 'white',
-            marginBottom: '12px',
-            margin: '0 0 12px 0',
-            fontFamily: '"Space Grotesk", sans-serif'
-          }}>
+          <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', margin: '0 0 8px', fontFamily: '"Space Grotesk", sans-serif' }}>
             Never worry about street cleaning again
           </h3>
-          <p style={{ fontSize: '15px', color: COLORS.slate, marginBottom: '24px', margin: '0 0 24px 0' }}>
-            Get free alerts before every street cleaning day — by text, email, or phone call.
-          </p>
-          <button
-            onClick={() => router.push('/alerts/signup')}
-            style={{
-              backgroundColor: COLORS.regulatory,
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              padding: '14px 28px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
+          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>Free alerts by text, email, or phone call.</p>
+          <button onClick={() => router.push('/alerts/signup')} style={{
+            backgroundColor: COLORS.regulatory, color: 'white', border: 'none', borderRadius: '10px',
+            padding: '12px 24px', fontSize: '15px', fontWeight: '600', cursor: 'pointer',
+          }}>
             Get Free Alerts
           </button>
         </div>
