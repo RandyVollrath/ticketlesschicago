@@ -965,6 +965,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       Alert.alert('Missing Info', 'Please enter the hours shown on the sign.');
       return;
     }
+    if (!reportPhotoBase64) {
+      Alert.alert('Photo Required', 'Please take a photo of the permit zone sign. This verifies the location and hours.');
+      return;
+    }
 
     setReportSubmitting(true);
     try {
@@ -2172,7 +2176,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   color={reportPhotoUri ? colors.success : colors.primary}
                 />
                 <Text style={[styles.zoneReportPhotoText, reportPhotoUri && { color: colors.success }]}>
-                  {reportPhotoUri ? 'Photo attached' : 'Add photo of sign (optional)'}
+                  {reportPhotoUri ? 'Photo attached' : 'Take photo of sign (required)'}
                 </Text>
               </TouchableOpacity>
               {reportPhotoUri && (
