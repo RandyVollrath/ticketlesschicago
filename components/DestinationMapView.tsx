@@ -240,7 +240,7 @@ function offsetByVariant(
   oddEven: string | null | undefined,
   variant: 'restricted' | 'opposite' | 'both_a' | 'both_b',
 ): number[][] {
-  const offsetMeters = 10;
+  const offsetMeters = 5;
   const oe = (oddEven || '').toUpperCase();
 
   return coords.map(([lng, lat], i) => {
@@ -746,8 +746,11 @@ export default function DestinationMapView() {
           permitRes.features.forEach((feature: any) => {
             const oe = feature?.properties?.oddEven;
             if (oe === 'O' || oe === 'E') {
+              // Offset single-side lines to their correct side of the street
               const style = permitLineStyle(oe);
-              const g = L.geoJSON(feature.geometry, {
+              const variant = oe === 'E' ? 'both_b' : 'both_a';
+              const offsetGeom = offsetPermitGeometry(feature.geometry, oe, variant);
+              const g = L.geoJSON(offsetGeom, {
                 interactive: false,
                 style: {
                   color: style.color,
