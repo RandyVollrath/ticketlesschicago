@@ -195,6 +195,7 @@ export async function checkAllParkingRestrictions(
       permitZones,
       industrialZones,
       zoneHoursData,
+      blockOverrides,
       dotPermitData,
     ] = await Promise.all([
       // Street cleaning spatial query
@@ -251,11 +252,23 @@ export async function checkAllParkingRestrictions(
         : Promise.resolve([]),
 
       // Permit zone hours lookup (all zones - small table)
+      // Use both 'confirmed' and 'ai_extracted' confidence levels.
+      // 1,727 zones have AI-extracted hours from Street View signs via Gemini.
       supabaseAdmin
         .from('permit_zone_hours')
-        .select('zone, zone_type, restriction_schedule')
-        .eq('confidence', 'confirmed')
+        .select('zone, zone_type, restriction_schedule, confidence')
+        .in('confidence', ['confirmed', 'ai_extracted'])
         .then(r => r.data || []).catch(() => []),
+
+      // Block-level overrides (user-reported or AI-detected per-block exceptions)
+      result.location.parsedAddress
+        ? supabaseAdmin
+            .from('permit_zone_block_overrides')
+            .select('zone, zone_type, restriction_schedule, block_number, street_direction, street_name, confidence')
+            .eq('street_name', result.location.parsedAddress.name)
+            .eq('block_number', Math.floor(result.location.parsedAddress.number / 100) * 100)
+            .then(r => r.data || []).catch(() => [])
+        : Promise.resolve([]),
 
       // DOT permits spatial query — 30m radius = same block face only.
       // 100m was too wide and caught permits on adjacent blocks.
@@ -343,10 +356,22 @@ export async function checkAllParkingRestrictions(
     }
 
     // --- Permit Zone (Residential) ---
-    // Build a quick lookup map from permit_zone_hours table
-    const zoneHoursMap = new Map<string, string>();
+    // Build lookup maps: zone-level hours + block-level overrides
+    const zoneHoursMap = new Map<string, { schedule: string; confidence: string }>();
     for (const zh of zoneHoursData) {
-      zoneHoursMap.set(`${zh.zone_type}:${zh.zone}`, zh.restriction_schedule);
+      zoneHoursMap.set(`${zh.zone_type}:${zh.zone}`, {
+        schedule: zh.restriction_schedule,
+        confidence: zh.confidence || 'ai_extracted',
+      });
+    }
+
+    // Block-level overrides take priority over zone-level defaults
+    const blockOverrideMap = new Map<string, { schedule: string; confidence: string }>();
+    for (const bo of blockOverrides) {
+      blockOverrideMap.set(`${bo.zone_type || 'residential'}:${bo.zone}`, {
+        schedule: bo.restriction_schedule,
+        confidence: bo.confidence || 'user_reported',
+      });
     }
 
     if (permitZones.length > 0 && result.location.parsedAddress) {
@@ -362,35 +387,41 @@ export async function checkAllParkingRestrictions(
 
       if (matchingZones.length > 0) {
         const zone = matchingZones[0];
-        // Only use verified schedules from permit_zone_hours table.
-        // The Chicago Data Portal has NO hours data for permit zones.
-        // Without FOIA-verified hours, we cannot tell users when enforcement applies.
-        const knownSchedule = zoneHoursMap.get(`residential:${zone.zone}`);
+        // Priority: 1. Block-level override, 2. Zone-level hours, 3. Unknown
+        const blockOverride = blockOverrideMap.get(`residential:${zone.zone}`);
+        const zoneHours = zoneHoursMap.get(`residential:${zone.zone}`);
+        const effectiveSchedule = blockOverride?.schedule || zoneHours?.schedule || null;
+        const scheduleSource = blockOverride ? 'block' : (zoneHours ? 'zone' : null);
+        const scheduleConfidence = blockOverride?.confidence || zoneHours?.confidence || null;
 
         result.permitZone.found = true;
         result.permitZone.zoneName = `Zone ${zone.zone}`;
         result.permitZone.zoneType = 'residential';
-        result.permitZone.restrictionSchedule = null;
+        result.permitZone.restrictionSchedule = effectiveSchedule;
 
-        if (knownSchedule) {
-          // We have verified hours for this zone — use time-based validation
-          const zoneStatus = validatePermitZone(zone.zone, knownSchedule);
+        if (effectiveSchedule) {
+          // We have hours — use time-based validation
+          const zoneStatus = validatePermitZone(zone.zone, effectiveSchedule);
           result.permitZone.isCurrentlyRestricted = zoneStatus.is_currently_restricted;
           result.permitZone.hoursUntilRestriction = zoneStatus.hours_until_restriction;
 
+          // Suffix for user-reported vs AI-extracted data
+          const sourceNote = scheduleSource === 'block'
+            ? ' (this block)'
+            : (scheduleConfidence === 'confirmed' ? '' : ' — verify posted signs');
+
           if (zoneStatus.is_currently_restricted) {
             result.permitZone.severity = 'critical';
-            result.permitZone.message = `PERMIT REQUIRED NOW - Zone ${zone.zone} (${knownSchedule}). Check posted signs.`;
+            result.permitZone.message = `PERMIT REQUIRED NOW - Zone ${zone.zone} (${effectiveSchedule})${sourceNote}. $75 fine.`;
           } else if (zoneStatus.hours_until_restriction <= 3) {
             result.permitZone.severity = 'warning';
-            result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts soon (${knownSchedule}). Check posted signs.`;
+            result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts soon (${effectiveSchedule})${sourceNote}.`;
           } else {
             result.permitZone.severity = 'info';
-            result.permitZone.message = `Zone ${zone.zone} - Permit required ${knownSchedule}. Check posted signs.`;
+            result.permitZone.message = `Zone ${zone.zone} - Permit required ${effectiveSchedule}${sourceNote}.`;
           }
         } else {
-          // No verified hours — we know the zone but NOT the enforcement times.
-          // Never assume times. Just tell the user they're in a permit zone.
+          // No hours data at all — tell user to check posted signs
           result.permitZone.isCurrentlyRestricted = false;
           result.permitZone.hoursUntilRestriction = 999;
           result.permitZone.severity = 'warning';
@@ -404,7 +435,8 @@ export async function checkAllParkingRestrictions(
       const iZone = industrialZones[0];
       // Check zone hours lookup first, then fall back to DB fields.
       // Industrial zones often have hours stored in the DB (unlike residential).
-      const knownIndustrialSchedule = zoneHoursMap.get(`industrial:${iZone.zone}`);
+      const industrialBlockOverride = blockOverrideMap.get(`industrial:${iZone.zone}`);
+      const knownIndustrialSchedule = industrialBlockOverride?.schedule || zoneHoursMap.get(`industrial:${iZone.zone}`)?.schedule;
       // DB stores "8:00 AM - 3:00 PM", validator expects "8am-3pm"
       const formatHours = (h: string) => h
         .replace(/(\d+):00\s*/g, '$1')

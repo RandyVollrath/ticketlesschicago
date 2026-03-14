@@ -4,6 +4,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   View,
   Alert,
   RefreshControl,
@@ -14,7 +15,10 @@ import {
   Share,
   ActivityIndicator,
   Modal,
+  Image,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,6 +33,7 @@ import ParkingDetectionStateMachine, { ParkingState, ParkingDetectionSnapshot } 
 import MotionActivityService from '../services/MotionActivityService';
 import BackgroundLocationService, { LocationUpdateEvent } from '../services/BackgroundLocationService';
 import GroundTruthService from '../services/GroundTruthService';
+import AuthService from '../services/AuthService';
 import AppEvents from '../services/AppEvents';
 import CameraAlertService from '../services/CameraAlertService';
 import Logger from '../utils/Logger';
@@ -235,6 +240,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // Camera alert toggle state
   const [redLightEnabled, setRedLightEnabled] = useState(true);
   const [speedCameraEnabled, setSpeedCameraEnabled] = useState(true);
+
+  // Zone hours report modal state
+  const [showZoneReportModal, setShowZoneReportModal] = useState(false);
+  const [reportSchedule, setReportSchedule] = useState('');
+  const [reportSignText, setReportSignText] = useState('');
+  const [reportPhotoUri, setReportPhotoUri] = useState<string | null>(null);
+  const [reportPhotoBase64, setReportPhotoBase64] = useState<string | null>(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
@@ -897,6 +910,110 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [lastParkingCheck]);
 
+  // ──────────────────────────────────────────────────────
+  // Zone hours report — let users correct wrong hours
+  // ──────────────────────────────────────────────────────
+  const openZoneReportModal = useCallback(() => {
+    setReportSchedule('');
+    setReportSignText('');
+    setReportPhotoUri(null);
+    setReportPhotoBase64(null);
+    setReportSubmitting(false);
+    setShowZoneReportModal(true);
+  }, []);
+
+  const pickReportPhoto = useCallback(() => {
+    Alert.alert('Add Photo', 'Take a photo of the permit zone sign or choose from your library.', [
+      {
+        text: 'Take Photo',
+        onPress: () => {
+          launchCamera(
+            { mediaType: 'photo', maxWidth: 1200, maxHeight: 1200, quality: 0.7, includeBase64: true },
+            (response) => {
+              if (response.didCancel || response.errorCode) return;
+              const asset = response.assets?.[0];
+              if (asset) {
+                setReportPhotoUri(asset.uri || null);
+                setReportPhotoBase64(asset.base64 || null);
+              }
+            },
+          );
+        },
+      },
+      {
+        text: 'Choose from Library',
+        onPress: () => {
+          launchImageLibrary(
+            { mediaType: 'photo', maxWidth: 1200, maxHeight: 1200, quality: 0.7, includeBase64: true },
+            (response) => {
+              if (response.didCancel || response.errorCode) return;
+              const asset = response.assets?.[0];
+              if (asset) {
+                setReportPhotoUri(asset.uri || null);
+                setReportPhotoBase64(asset.base64 || null);
+              }
+            },
+          );
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, []);
+
+  const submitZoneReport = useCallback(async () => {
+    if (!lastParkingCheck || !reportSchedule.trim()) {
+      Alert.alert('Missing Info', 'Please enter the correct schedule from the sign.');
+      return;
+    }
+
+    setReportSubmitting(true);
+    try {
+      const permitData = lastParkingCheck.rawApiData?.permitZone;
+      const zone = permitData?.zoneName?.replace(/^Zone\s*/i, '') || '';
+      const zoneType = permitData?.zoneType || 'residential';
+      const currentSchedule = permitData?.restrictionSchedule || null;
+
+      const token = AuthService.getToken();
+      const resp = await fetch(`${Config.API_BASE_URL}/api/mobile/report-zone-hours`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          zone,
+          zoneType,
+          schedule: reportSchedule.trim(),
+          currentSchedule,
+          latitude: lastParkingCheck.coords.latitude,
+          longitude: lastParkingCheck.coords.longitude,
+          address: lastParkingCheck.address,
+          rawSignText: reportSignText.trim() || undefined,
+          photoBase64: reportPhotoBase64 || undefined,
+        }),
+      });
+
+      const data = await resp.json();
+      setShowZoneReportModal(false);
+
+      if (data.success) {
+        Alert.alert(
+          'Thanks!',
+          data.applied
+            ? 'Your correction has been applied. Future parking checks here will use the updated hours.'
+            : 'Report saved. A team member will review it.',
+        );
+      } else {
+        Alert.alert('Error', data.error || 'Failed to submit report. Please try again.');
+      }
+    } catch (err: any) {
+      log.error('Zone report submit failed', err);
+      Alert.alert('Error', 'Could not submit report. Check your connection and try again.');
+    } finally {
+      setReportSubmitting(false);
+    }
+  }, [lastParkingCheck, reportSchedule, reportSignText, reportPhotoBase64]);
+
   const getDirections = useCallback((coords: Coordinates) => {
     const url = Platform.select({
       ios: `http://maps.apple.com/?daddr=${coords.latitude},${coords.longitude}&dirflg=w`,
@@ -1447,6 +1564,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <Text style={styles.heroPermitSummaryText}>{permitZoneSummary}</Text>
                 </View>
               )}
+              {lastParkingCheck?.rawApiData?.permitZone?.inPermitZone && (
+                <TouchableOpacity
+                  style={styles.heroZoneReportButton}
+                  onPress={openZoneReportModal}
+                  accessibilityLabel="Report wrong permit zone hours"
+                  accessibilityRole="button"
+                >
+                  <MaterialCommunityIcons name="clock-alert-outline" size={13} color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.heroZoneReportText}>Wrong hours? Let us know</Text>
+                </TouchableOpacity>
+              )}
 
               {/* Enforcement risk intelligence */}
               {lastParkingCheck.rawApiData?.enforcementRisk && (() => {
@@ -1974,6 +2102,119 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               )}
             </View>
           </TouchableOpacity>
+        </Modal>
+
+        {/* ──── Zone Hours Report Modal ──── */}
+        <Modal
+          visible={showZoneReportModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowZoneReportModal(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.sheetOverlay}
+          >
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={1}
+              onPress={() => setShowZoneReportModal(false)}
+            />
+            <View style={styles.zoneReportContainer} onStartShouldSetResponder={() => true}>
+              <View style={styles.sheetHandle} />
+              <View style={styles.sheetHeader}>
+                <MaterialCommunityIcons name="clock-alert-outline" size={28} color={colors.primary} />
+                <Text style={styles.sheetTitle}>Report Wrong Hours</Text>
+              </View>
+              <Text style={styles.zoneReportHint}>
+                What does the sign on your block say? Your correction will be applied immediately.
+              </Text>
+
+              {/* Current schedule */}
+              {lastParkingCheck?.rawApiData?.permitZone?.restrictionSchedule && (
+                <View style={styles.zoneReportCurrentRow}>
+                  <Text style={styles.zoneReportCurrentLabel}>Currently showing:</Text>
+                  <Text style={styles.zoneReportCurrentValue}>
+                    {lastParkingCheck.rawApiData.permitZone.restrictionSchedule}
+                  </Text>
+                </View>
+              )}
+
+              {/* Schedule input */}
+              <Text style={styles.zoneReportFieldLabel}>Correct schedule (from the sign)</Text>
+              <TextInput
+                style={styles.zoneReportInput}
+                placeholder="e.g. Mon-Fri 6am-6pm"
+                placeholderTextColor={colors.textTertiary}
+                value={reportSchedule}
+                onChangeText={setReportSchedule}
+                autoCapitalize="none"
+                returnKeyType="next"
+              />
+
+              {/* Optional: exact sign text */}
+              <Text style={styles.zoneReportFieldLabel}>Exact sign text (optional)</Text>
+              <TextInput
+                style={styles.zoneReportInput}
+                placeholder="e.g. NO PARKING 6AM-6PM MON-FRI ZONE 62"
+                placeholderTextColor={colors.textTertiary}
+                value={reportSignText}
+                onChangeText={setReportSignText}
+                autoCapitalize="characters"
+                returnKeyType="done"
+              />
+
+              {/* Photo */}
+              <TouchableOpacity style={styles.zoneReportPhotoButton} onPress={pickReportPhoto}>
+                <MaterialCommunityIcons
+                  name={reportPhotoUri ? 'check-circle' : 'camera-plus-outline'}
+                  size={20}
+                  color={reportPhotoUri ? colors.success : colors.primary}
+                />
+                <Text style={[styles.zoneReportPhotoText, reportPhotoUri && { color: colors.success }]}>
+                  {reportPhotoUri ? 'Photo attached' : 'Add photo of sign (optional)'}
+                </Text>
+              </TouchableOpacity>
+              {reportPhotoUri && (
+                <View style={styles.zoneReportPhotoPreview}>
+                  <Image
+                    source={{ uri: reportPhotoUri }}
+                    style={styles.zoneReportPhotoImage}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.zoneReportPhotoRemove}
+                    onPress={() => { setReportPhotoUri(null); setReportPhotoBase64(null); }}
+                  >
+                    <MaterialCommunityIcons name="close-circle" size={22} color={colors.error} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Submit */}
+              <TouchableOpacity
+                style={[styles.zoneReportSubmitButton, reportSubmitting && { opacity: 0.6 }]}
+                onPress={submitZoneReport}
+                disabled={reportSubmitting}
+              >
+                {reportSubmitting ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="send" size={18} color={colors.white} />
+                    <Text style={styles.zoneReportSubmitText}>Submit Correction</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetDismiss}
+                onPress={() => setShowZoneReportModal(false)}
+              >
+                <Text style={styles.sheetDismissText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* ──── Pause (subtle, at the bottom) ──── */}
@@ -2748,6 +2989,128 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     color: colors.textTertiary,
     fontWeight: typography.weights.medium,
+  },
+
+  // ──── Zone Hours Report ────
+  heroZoneReportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginTop: 2,
+    marginLeft: 18,
+    alignSelf: 'flex-start',
+  },
+  heroZoneReportText: {
+    fontSize: typography.sizes.xs,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: typography.weights.medium,
+    textDecorationLine: 'underline',
+  },
+  zoneReportContainer: {
+    backgroundColor: colors.cardBg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+    maxHeight: '85%',
+  },
+  zoneReportHint: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
+  zoneReportCurrentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,149,0,0.1)',
+    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  zoneReportCurrentLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+  },
+  zoneReportCurrentValue: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.warning,
+    flex: 1,
+  },
+  zoneReportFieldLabel: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    marginBottom: 4,
+    marginTop: spacing.xs,
+  },
+  zoneReportInput: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
+    paddingHorizontal: spacing.md,
+    fontSize: typography.sizes.md,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  zoneReportPhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+  },
+  zoneReportPhotoText: {
+    fontSize: typography.sizes.sm,
+    color: colors.primary,
+    fontWeight: typography.weights.medium,
+  },
+  zoneReportPhotoPreview: {
+    position: 'relative',
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  zoneReportPhotoImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: borderRadius.md,
+  },
+  zoneReportPhotoRemove: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+  },
+  zoneReportSubmitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    gap: 8,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  zoneReportSubmitText: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.white,
   },
 
   // ──── Pause link (subtle, bottom of page) ────
