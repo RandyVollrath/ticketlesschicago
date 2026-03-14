@@ -53,6 +53,13 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const NOMINATIM_DELAY_MS = 1100;
 const GEMINI_DELAY_MS = 100; // Paid tier — 2000 RPM limit
 
+// Cost tracking for exhaustive mode ($50 budget cap)
+// Per-address costs: SV=$0.014, Geocoding=$0.005, Gemini~=$0.00025 → ~$0.01925/addr
+const COST_PER_ADDRESS = 0.01925; // Street View + Geocoding + Gemini
+const BUDGET_CAP = parseFloat(process.env.BUDGET_CAP || '50'); // default $50
+let totalEstimatedCost = 0;
+let totalAddressesTried = 0;
+
 // ─── Types ────────────────────────────────────────────────────
 
 interface ZoneSample {
@@ -110,6 +117,7 @@ const TEST_BATCH = args.includes('--test-batch') ? parseInt(args[args.indexOf('-
 const REVERSE_ORDER = args.includes('--reverse');
 const START_ZONE = args.includes('--start-zone') ? args[args.indexOf('--start-zone') + 1] : null;
 const RETRY_MODE = args.includes('--retry'); // v12: try 10 NEW addresses per zone that v11 didn't use
+const EXHAUSTIVE_MODE = args.includes('--exhaustive'); // v13: try EVERY address in each zone until sign found
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -554,7 +562,62 @@ async function processZone(
   const addressesToTry: string[] = [];
   const seenAddresses = new Set<string>();
 
-  if (RETRY_MODE) {
+  if (EXHAUSTIVE_MODE) {
+    // ── v13 EXHAUSTIVE: try EVERY address in all segments until sign found ──
+    // Generate what v11 + v12 already tried so we skip them
+    const alreadyTried = new Set<string>();
+
+    // v11 tried: odd mid/low/high across shuffled segments (5 per zone)
+    for (const seg of segments) {
+      alreadyTried.add(buildAddressFromSegment(seg, 'mid'));
+      alreadyTried.add(buildAddressFromSegment(seg, 'low'));
+      alreadyTried.add(buildAddressFromSegment(seg, 'high'));
+    }
+    alreadyTried.add(sample.sampleAddress);
+
+    // v12 tried: even fractional positions across reverse-alpha sorted segments (10 per zone)
+    const retryFractions = [0.25, 0.33, 0.67, 0.75, 0.10, 0.90, 0.40, 0.60, 0.15, 0.85];
+    const sorted = [...segments].sort((a, b) => {
+      const nameA = getStreetName(a);
+      const nameB = getStreetName(b);
+      return nameB.localeCompare(nameA);
+    });
+    for (const seg of sorted) {
+      for (const frac of retryFractions) {
+        alreadyTried.add(buildAddressFromSegmentFractional(seg, frac));
+      }
+    }
+
+    // Now generate ALL even addresses from every segment, stepping by 2
+    // Sort segments by street name for deterministic ordering
+    const sortedSegs = [...segments].sort((a, b) => {
+      const nameA = getStreetName(a);
+      const nameB = getStreetName(b);
+      return nameA.localeCompare(nameB);
+    });
+
+    for (const seg of sortedSegs) {
+      const low = seg.address_range_low;
+      const high = seg.address_range_high;
+      if (high <= low) continue;
+
+      const dir = seg.street_direction || '';
+      const name = seg.street_name || '';
+      const type = seg.street_type || '';
+
+      // Generate addresses stepping by 2 (even numbers)
+      // Start from low+2 to avoid exact boundary, go up to high-2
+      const startNum = low + 2 - (low % 2); // Round up to next even
+      for (let num = startNum; num <= high - 2; num += 2) {
+        const addr = `${num} ${dir} ${name} ${type}`.replace(/\s+/g, ' ').trim();
+        if (seenAddresses.has(addr) || alreadyTried.has(addr)) continue;
+        seenAddresses.add(addr);
+        addressesToTry.push(addr);
+      }
+    }
+
+    log(`  Zone ${sample.zone}: EXHAUSTIVE — ${addressesToTry.length} new addresses to try (${alreadyTried.size} already tried)`);
+  } else if (RETRY_MODE) {
     // ── v12 RETRY: 10 NEW addresses that v11 didn't try ──
     // v11 used: positions ['mid','mid','low','high','mid'] with ODD numbers, random segment order
     // v12 uses: fractional positions [0.25, 0.33, 0.67, 0.75, 0.10, 0.90, 0.40, 0.60, 0.15, 0.85] with EVEN numbers
@@ -643,6 +706,13 @@ async function processZone(
   }
 
   for (const addr of addressesToTry) {
+    // Budget check for exhaustive mode
+    if (EXHAUSTIVE_MODE && totalEstimatedCost >= BUDGET_CAP) {
+      log(`  Zone ${sample.zone}: BUDGET CAP reached ($${totalEstimatedCost.toFixed(2)} >= $${BUDGET_CAP}). Stopping.`);
+      result.error = `Budget cap reached at $${totalEstimatedCost.toFixed(2)}`;
+      break;
+    }
+
     // Step 1: Geocode
     log(`  Zone ${sample.zone}: Geocoding "${addr}"...`);
     const geo = await geocodeAddress(addr);
@@ -670,6 +740,11 @@ async function processZone(
 
     // Step 3: Gemini vision analysis
     totalApiCalls++;
+    totalAddressesTried++;
+    totalEstimatedCost += COST_PER_ADDRESS;
+    if (EXHAUSTIVE_MODE && totalAddressesTried % 50 === 0) {
+      log(`  [COST] $${totalEstimatedCost.toFixed(2)} / $${BUDGET_CAP} (${totalAddressesTried} addresses tried)`);
+    }
     const analysis = await analyzeImagesWithGemini(images, sample.zone);
     await sleep(GEMINI_DELAY_MS);
 
@@ -839,8 +914,9 @@ async function main(): Promise<void> {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-  log(`=== Permit Zone Hours Collection Pipeline (${RETRY_MODE ? 'v12 RETRY' : 'v11'} — Gemini Flash Vision) ===`);
-  log(`Mode: ${DRY_RUN ? 'DRY RUN' : 'LIVE'} | Skip existing: ${SKIP_EXISTING || RETRY_MODE} | Retry: ${RETRY_MODE}`);
+  log(`=== Permit Zone Hours Collection Pipeline (${EXHAUSTIVE_MODE ? 'v13 EXHAUSTIVE' : RETRY_MODE ? 'v12 RETRY' : 'v11'} — Gemini Flash Vision) ===`);
+  log(`Mode: ${DRY_RUN ? 'DRY RUN' : 'LIVE'} | Skip existing: ${SKIP_EXISTING || RETRY_MODE || EXHAUSTIVE_MODE} | Retry: ${RETRY_MODE} | Exhaustive: ${EXHAUSTIVE_MODE}`);
+  if (EXHAUSTIVE_MODE) log(`v13 EXHAUSTIVE: Trying ALL remaining addresses per zone until sign found (budget cap: $${BUDGET_CAP})`);
   if (RETRY_MODE) log('v12 RETRY: Trying 10 NEW addresses per zone (even numbers, fractional positions)');
 
   if (REPORT_ONLY) {
@@ -859,16 +935,27 @@ async function main(): Promise<void> {
     log(`Filtering to single zone: ${SINGLE_ZONE}`);
   }
 
-  if (SKIP_EXISTING || RETRY_MODE) {
-    const { data: existing } = await supabase
-      .from('permit_zone_hours')
-      .select('zone, zone_type');
+  if (SKIP_EXISTING || RETRY_MODE || EXHAUSTIVE_MODE) {
+    // Paginate to get ALL existing zones (Supabase default limit is 1000)
+    let allExisting: { zone: string; zone_type: string }[] = [];
+    let from = 0;
+    while (true) {
+      const { data: batch, error } = await supabase
+        .from('permit_zone_hours')
+        .select('zone, zone_type')
+        .range(from, from + 999);
+      if (error) { logError(`Error fetching existing zones: ${error.message}`); break; }
+      if (!batch || batch.length === 0) break;
+      allExisting = allExisting.concat(batch);
+      from += batch.length;
+      if (batch.length < 1000) break;
+    }
 
-    if (existing) {
-      const existingKeys = new Set(existing.map(e => `${e.zone_type}:${e.zone}`));
+    if (allExisting.length > 0) {
+      const existingKeys = new Set(allExisting.map(e => `${e.zone_type}:${e.zone}`));
       const before = samples.length;
       samples = samples.filter(s => !existingKeys.has(`${s.zone_type}:${s.zone}`));
-      log(`Skipping ${before - samples.length} zones already in DB, ${samples.length} remaining`);
+      log(`Skipping ${before - samples.length} zones already in DB (${allExisting.length} total in permit_zone_hours), ${samples.length} remaining`);
     }
   }
 
@@ -903,6 +990,13 @@ async function main(): Promise<void> {
   totalApiCalls = 0;
 
   for (let i = 0; i < samples.length; i++) {
+    // Global budget check — stop processing new zones if budget exhausted
+    if (EXHAUSTIVE_MODE && totalEstimatedCost >= BUDGET_CAP) {
+      log(`\n=== BUDGET CAP REACHED: $${totalEstimatedCost.toFixed(2)} >= $${BUDGET_CAP} ===`);
+      log(`Processed ${i} zones before hitting cap. ${samples.length - i} zones not attempted.`);
+      break;
+    }
+
     const sample = samples[i];
     log(`[${i + 1}/${samples.length}] Zone ${sample.zone} — ${sample.sampleAddress}`);
 
@@ -952,7 +1046,8 @@ async function main(): Promise<void> {
   log(`  Errors/no sign:      ${errorCount}`);
   log(`  Success rate:        ${results.length > 0 ? ((successCount / results.length) * 100).toFixed(1) : 0}%`);
   log(`  Gemini API calls:    ${totalApiCalls}`);
-  log(`  Cost:                $0.00 (Gemini Flash free tier)`);
+  log(`  Addresses tried:     ${totalAddressesTried}`);
+  log(`  Estimated cost:      $${totalEstimatedCost.toFixed(2)} (SV+Geo+Gemini @ $${COST_PER_ADDRESS}/addr)`);
   if (results.length > 0) {
     const callsPerZone = totalApiCalls / results.length;
     log(`  Avg calls/zone:      ${callsPerZone.toFixed(1)}`);
