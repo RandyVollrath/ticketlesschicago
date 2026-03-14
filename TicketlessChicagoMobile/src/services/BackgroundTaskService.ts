@@ -2845,7 +2845,7 @@ class BackgroundTaskServiceClass {
       case 'low': {
         // Informational — light context, don't overwhelm
         if (!has_block_data) {
-          return 'Risk: LOW — Limited enforcement data for this block';
+          return 'Risk: LOW';
         }
 
         if (total_block_tickets && total_block_tickets > 50) {
