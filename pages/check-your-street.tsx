@@ -46,6 +46,7 @@ export default function CheckYourStreet() {
     significantSnowWhen: string | null;
   } | null>(null)
   const [blockStats, setBlockStats] = useState<any>(null)
+  const [nearbyMeters, setNearbyMeters] = useState<any[] | null>(null)
   const [statsExpanded, setStatsExpanded] = useState(false)
   const [tripExpanded, setTripExpanded] = useState(false)
 
@@ -77,6 +78,7 @@ export default function CheckYourStreet() {
     setPermitZoneResult(null)
     setSnowForecast(null)
     setBlockStats(null)
+    setNearbyMeters(null)
 
     try {
       // Fetch section data, permit zone data, snow forecast, and block stats in parallel
@@ -140,6 +142,19 @@ export default function CheckYourStreet() {
         } catch {
           // Block stats are non-critical
         }
+      }
+
+      // Fetch nearby meters (secondary, after we have coordinates)
+      const coords = data?.coordinates;
+      if (coords?.lat && coords?.lng) {
+        fetch(`/api/metered-parking?lat=${coords.lat}&lng=${coords.lng}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(meterData => {
+            if (meterData?.meters?.length > 0) {
+              setNearbyMeters(meterData.meters);
+            }
+          })
+          .catch(() => {}); // non-critical
       }
     } catch (err: any) {
       setError('Failed to search address. Please try again.')
@@ -454,7 +469,8 @@ export default function CheckYourStreet() {
               const wardData = getHighRiskWardData(searchResult.ward);
               const hasAlerts = wardData || searchResult.onWinterBan || searchResult.onSnowRoute ||
                 (permitZoneResult?.hasPermitZone && permitZoneResult.zones.length > 0) ||
-                (snowForecast?.hasSignificantSnow);
+                (snowForecast?.hasSignificantSnow) ||
+                (nearbyMeters && nearbyMeters.length > 0);
               if (!hasAlerts) return null;
 
               return (
@@ -527,6 +543,19 @@ export default function CheckYourStreet() {
                     }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"/></svg>
                       Snow 2"+ forecast{snowForecast.significantSnowWhen ? `: ${snowForecast.significantSnowWhen}` : ''}
+                    </div>
+                  )}
+
+                  {/* Metered parking pill */}
+                  {nearbyMeters && nearbyMeters.length > 0 && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                      backgroundColor: 'rgba(20,184,166,0.08)', color: '#0D9488',
+                      border: '1px solid rgba(20,184,166,0.25)',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                      {nearbyMeters.length} meter{nearbyMeters.length !== 1 ? 's' : ''} nearby
                     </div>
                   )}
                 </div>
