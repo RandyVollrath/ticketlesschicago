@@ -928,11 +928,17 @@ class CameraAlertServiceClass {
     heading: number = -1,
     horizontalAccuracyMeters: number | null = null
   ): void {
-    if (!this.isActive || !this.isEnabled) {
+    // Speed-triggered scanning: if GPS shows driving speed (≥2.5 m/s ≈ 5.5 mph),
+    // scan for cameras even before the formal drive session starts (isActive=false).
+    // This eliminates the cold start gap where CoreMotion/BT takes 5-30s to confirm
+    // driving. Per-camera speed filters still prevent false alerts when stationary.
+    const speedTrigger = this.isEnabled && !this.isActive && speed >= 2.5;
+
+    if (!this.isEnabled || (!this.isActive && !speedTrigger)) {
       // Log periodically (every 30 calls) to avoid spam but make disabled state visible
       this.disabledSkipCount = (this.disabledSkipCount || 0) + 1;
       if (this.disabledSkipCount % 30 === 1) {
-        log.warn(`CAMERA_DISABLED: isActive=${this.isActive} isEnabled=${this.isEnabled} — GPS update #${this.disabledSkipCount} skipped`);
+        log.warn(`CAMERA_DISABLED: isActive=${this.isActive} isEnabled=${this.isEnabled} speed=${speed.toFixed(1)} — GPS update #${this.disabledSkipCount} skipped`);
       }
       return;
     }

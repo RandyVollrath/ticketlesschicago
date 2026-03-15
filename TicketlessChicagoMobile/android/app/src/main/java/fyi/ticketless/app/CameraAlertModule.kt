@@ -635,6 +635,28 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     init {
         createNotificationChannel()
         audioManager = reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        restorePersistedSettings()
+    }
+
+    private fun restorePersistedSettings() {
+        val prefs = reactApplicationContext.getSharedPreferences("camera_alert_settings", Context.MODE_PRIVATE)
+        // Default to TRUE if keys don't exist (fresh install). Camera alerts are
+        // a core safety feature — default ON, let user disable via configure().
+        isEnabled = prefs.getBoolean("enabled", true)
+        speedAlertsEnabled = prefs.getBoolean("speedEnabled", true)
+        redLightAlertsEnabled = prefs.getBoolean("redLightEnabled", true)
+        alertVolume = prefs.getFloat("volume", 1.0f)
+        Log.i(TAG, "Restored camera settings: enabled=$isEnabled speed=$speedAlertsEnabled redlight=$redLightAlertsEnabled volume=$alertVolume")
+    }
+
+    private fun persistSettings() {
+        reactApplicationContext.getSharedPreferences("camera_alert_settings", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("enabled", isEnabled)
+            .putBoolean("speedEnabled", speedAlertsEnabled)
+            .putBoolean("redLightEnabled", redLightAlertsEnabled)
+            .putFloat("volume", alertVolume)
+            .apply()
     }
 
     override fun getName(): String = "CameraAlertModule"
@@ -659,6 +681,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         this.speedAlertsEnabled = speedEnabled
         this.redLightAlertsEnabled = redLightEnabled
         this.alertVolume = volume.toFloat().coerceIn(0f, 1f)
+        persistSettings()
 
         if (enabled && tts == null) {
             initTts()

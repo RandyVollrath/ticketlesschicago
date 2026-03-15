@@ -3304,7 +3304,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // notifications only (no TTS for App Store 2.5.4 compliance).
     let appState = UIApplication.shared.applicationState
     let cameraPrewarmed = cameraPrewarmUntil.map { Date() <= $0 } ?? false
-    let cameraArmed = isDriving || coreMotionSaysAutomotive || speedSaysMoving || hasRecentVehicleSignal(120) || cameraPrewarmed
+    // Speed-triggered scanning: if GPS shows driving speed (≥2.5 m/s ≈ 5.5 mph),
+    // scan for cameras immediately — don't wait for CoreMotion/BT to confirm driving.
+    // This eliminates the cold start gap. Per-camera speed filters prevent false alerts.
+    let speedTriggeredScan = cameraAlertsEnabled && location.speed >= 2.5
+    let cameraArmed = isDriving || coreMotionSaysAutomotive || speedSaysMoving || hasRecentVehicleSignal(120) || cameraPrewarmed || speedTriggeredScan
     if cameraArmed {
       if cameraAlertsEnabled {
         tripSummaryCameraScanCount += 1
