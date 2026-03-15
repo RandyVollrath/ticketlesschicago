@@ -608,6 +608,8 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     private var speedAlertsEnabled = true
     private var redLightAlertsEnabled = true
     private var alertVolume = 1.0f
+    private var locationUpdateCount = 0L
+    private var lastScanSummaryLogAt = 0L
 
     // Debounce tracking: camera index -> last alert timestamp
     // ConcurrentHashMap for thread safety — RN may call onLocationUpdate
@@ -677,12 +679,16 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         promise: Promise
     ) {
         if (!isEnabled) {
+            if (locationUpdateCount++ % 30 == 0L) {
+                Log.w(TAG, "CAMERA_DISABLED: isEnabled=false — all camera checks skipped (update #$locationUpdateCount)")
+            }
             promise.resolve(0)
             return
         }
 
         // Reject wildly inaccurate GPS fixes
         if (accuracy > 0 && accuracy > GPS_ACCURACY_REJECT_METERS) {
+            Log.d(TAG, "CAMERA_FILTER gps_accuracy_rejected: accuracy=${accuracy.toInt()}m > ${GPS_ACCURACY_REJECT_METERS}m threshold")
             promise.resolve(0)
             return
         }
@@ -740,6 +746,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
 
     private fun checkCameraProximity(lat: Double, lng: Double, speed: Double, heading: Double): Int {
         val now = System.currentTimeMillis()
+        locationUpdateCount++
 
         // Clear cooldowns for cameras we've moved far from
         val iterator = alertedCameras.entries.iterator()
@@ -769,35 +776,78 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         var bestIndex = -1
         var bestDistance = Double.MAX_VALUE
 
+        // Filter counters for diagnostic logging
+        var typeFilteredCount = 0
+        var speedFilteredCount = 0
+        var bboxCandidateCount = 0
+        var distanceFilteredCount = 0
+        var headingFilteredCount = 0
+        var bearingFilteredCount = 0
+        var dedupeFilteredCount = 0
+        var nearestRejectedIdx = -1
+        var nearestRejectedDist = Double.MAX_VALUE
+        var nearestRejectedReason = ""
+
         for (i in cameras.indices) {
             val cam = cameras[i]
 
             // Type filter
-            if (!isCameraTypeEnabled(cam.type, currentHour)) continue
+            if (!isCameraTypeEnabled(cam.type, currentHour)) {
+                typeFilteredCount++
+                continue
+            }
 
             // Speed filter
             if (speed >= 0) {
                 val minSpeed = if (cam.type == "speed") MIN_SPEED_SPEED_CAM_MPS else MIN_SPEED_REDLIGHT_MPS
-                if (speed < minSpeed) continue
+                if (speed < minSpeed) {
+                    speedFilteredCount++
+                    continue
+                }
             }
 
             // Bounding box
             if (cam.lat < latMin || cam.lat > latMax) continue
             if (cam.lng < lngMin || cam.lng > lngMax) continue
+            bboxCandidateCount++
 
             // Exact distance
             val distance = haversineDistance(lat, lng, cam.lat, cam.lng)
-            if (distance > alertRadius) continue
+            if (distance > alertRadius) {
+                distanceFilteredCount++
+                if (distance < nearestRejectedDist) {
+                    nearestRejectedIdx = i; nearestRejectedDist = distance; nearestRejectedReason = "outside_radius"
+                }
+                continue
+            }
 
             // Heading match
-            if (!isHeadingMatch(heading, cam.approaches)) continue
+            if (!isHeadingMatch(heading, cam.approaches)) {
+                headingFilteredCount++
+                if (distance < nearestRejectedDist) {
+                    nearestRejectedIdx = i; nearestRejectedDist = distance; nearestRejectedReason = "heading_mismatch"
+                }
+                continue
+            }
 
             // Bearing check: camera must be ahead (within ±30° cone)
-            if (!isCameraAhead(lat, lng, cam.lat, cam.lng, heading)) continue
+            if (!isCameraAhead(lat, lng, cam.lat, cam.lng, heading)) {
+                bearingFilteredCount++
+                if (distance < nearestRejectedDist) {
+                    nearestRejectedIdx = i; nearestRejectedDist = distance; nearestRejectedReason = "camera_not_ahead"
+                }
+                continue
+            }
 
             // Per-camera debounce
             val lastAlertTime = alertedCameras[i] ?: 0L
-            if (now - lastAlertTime < PER_CAMERA_DEBOUNCE_MS) continue
+            if (now - lastAlertTime < PER_CAMERA_DEBOUNCE_MS) {
+                dedupeFilteredCount++
+                if (distance < nearestRejectedDist) {
+                    nearestRejectedIdx = i; nearestRejectedDist = distance; nearestRejectedReason = "per_camera_dedupe"
+                }
+                continue
+            }
 
             // Pick closest
             if (distance < bestDistance) {
@@ -824,6 +874,24 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
             emitAlertEvent(cam, bestDistance, speed)
 
             return 1
+        }
+
+        // Log scan summary periodically (every 15s) when no alert fired
+        if (now - lastScanSummaryLogAt >= 15000) {
+            lastScanSummaryLogAt = now
+            val speedMph = if (speed >= 0) (speed * 2.237).toInt() else -1
+            val summary = "CAMERA_SCAN #$locationUpdateCount: NO_ALERT " +
+                "pos=${String.format("%.5f", lat)},${String.format("%.5f", lng)} " +
+                "spd=${speedMph}mph hdg=${heading.toInt()}° radius=${alertRadius.toInt()}m " +
+                "total=${cameras.size} type_off=$typeFilteredCount spd_low=$speedFilteredCount " +
+                "bbox=$bboxCandidateCount dist=$distanceFilteredCount hdg=$headingFilteredCount " +
+                "brg=$bearingFilteredCount dedup=$dedupeFilteredCount"
+            if (nearestRejectedIdx >= 0) {
+                val rCam = cameras[nearestRejectedIdx]
+                Log.i(TAG, "$summary nearest_reject=${rCam.address}(${nearestRejectedDist.toInt()}m,$nearestRejectedReason)")
+            } else {
+                Log.i(TAG, summary)
+            }
         }
 
         return 0

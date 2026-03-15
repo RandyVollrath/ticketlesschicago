@@ -410,6 +410,8 @@ class CameraAlertServiceClass {
 
   /** Diagnostic: count GPS updates for periodic logging */
   private gpsUpdateCount = 0;
+  /** Diagnostic: count skipped updates when disabled */
+  private disabledSkipCount = 0;
   /** Diagnostic: track filter stage rejections */
   private lastDiagnostic: {
     totalChecked: number;
@@ -880,7 +882,14 @@ class CameraAlertServiceClass {
     heading: number = -1,
     horizontalAccuracyMeters: number | null = null
   ): void {
-    if (!this.isActive || !this.isEnabled) return;
+    if (!this.isActive || !this.isEnabled) {
+      // Log periodically (every 30 calls) to avoid spam but make disabled state visible
+      this.disabledSkipCount = (this.disabledSkipCount || 0) + 1;
+      if (this.disabledSkipCount % 30 === 1) {
+        log.warn(`CAMERA_DISABLED: isActive=${this.isActive} isEnabled=${this.isEnabled} — GPS update #${this.disabledSkipCount} skipped`);
+      }
+      return;
+    }
 
     // Forward to Android native module for native proximity detection + TTS.
     // The native module handles its own debounce, heading filter, and TTS

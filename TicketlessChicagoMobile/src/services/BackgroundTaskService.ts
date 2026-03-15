@@ -192,7 +192,10 @@ class BackgroundTaskServiceClass {
         // Sync camera settings to native module on BOTH platforms so background alerts work
         // even if JS is suspended. On iOS: local notifications only (no TTS for App Store 2.5.4).
         // On Android: native TTS + notifications.
+        log.info(`CAMERA INIT: enabled=${diag.isEnabled} speed=${diag.speedAlertsEnabled} redlight=${diag.redLightAlertsEnabled} cameras=${diag.totalCameras} platform=${Platform.OS}`);
+        log.info(`CAMERA INIT raw AsyncStorage: global=${rawGlobal[1] ?? 'NULL'} speed=${rawSpeed[1] ?? 'NULL'} redlight=${rawRedLight[1] ?? 'NULL'}`);
         await CameraAlertService.syncNativeSettingsPublic();
+        log.info('CAMERA INIT: native settings sync completed');
         // SELF-TEST: Fire a highly visible notification if camera alerts are OFF.
         // This makes it impossible to miss a misconfiguration.
         if (!diag.isEnabled) {
@@ -1229,7 +1232,11 @@ class BackgroundTaskServiceClass {
    * On Android: uses the GPS caching interval to feed camera checks.
    */
   private startCameraAlerts(): void {
-    if (!CameraAlertService.isAlertEnabled()) return;
+    if (!CameraAlertService.isAlertEnabled()) {
+      log.warn('startCameraAlerts: SKIPPED — CameraAlertService.isAlertEnabled() returned false');
+      return;
+    }
+    log.info('startCameraAlerts: STARTING camera alert pipeline');
     void CameraAlertService.prewarmAudio('startCameraAlerts');
 
     // Idempotent: if already active (e.g. from onPossibleDriving), don't
