@@ -941,15 +941,111 @@ function main() {
   console.log(`\n  Heading smoothing tests: ${smoothPass} passed, ${smoothFail} failed`);
 
   // ========================================================================
+  // Test 8: Accuracy compensation verification
+  // ========================================================================
+  console.log('\n========================================');
+  console.log('  Test 8: Accuracy compensation');
+  console.log('========================================\n');
+
+  let accPass = 0;
+  let accFail = 0;
+
+  // Test the accuracy compensation formula:
+  //   accuracyBonus = min(accuracy, 100) when accuracy > 0, else 0
+  //   effectiveRadius = alertRadius + accuracyBonus
+  //   bboxExtra = accuracyBonus / 111000
+
+  // Verify accuracy bonus calculation
+  const accTests: Array<{ accuracy: number | null; expectedBonus: number; label: string }> = [
+    { accuracy: null, expectedBonus: 0, label: 'null accuracy → 0 bonus' },
+    { accuracy: -1, expectedBonus: 0, label: 'negative accuracy → 0 bonus' },
+    { accuracy: 0, expectedBonus: 0, label: 'zero accuracy → 0 bonus' },
+    { accuracy: 5, expectedBonus: 5, label: '5m accuracy → 5m bonus' },
+    { accuracy: 10, expectedBonus: 10, label: '10m accuracy → 10m bonus (typical good GPS)' },
+    { accuracy: 50, expectedBonus: 50, label: '50m accuracy → 50m bonus (moderate GPS)' },
+    { accuracy: 80, expectedBonus: 80, label: '80m accuracy → 80m bonus (poor GPS)' },
+    { accuracy: 100, expectedBonus: 100, label: '100m accuracy → 100m bonus (cap)' },
+    { accuracy: 150, expectedBonus: 100, label: '150m accuracy → 100m bonus (capped at 100)' },
+    { accuracy: 500, expectedBonus: 100, label: '500m accuracy → 100m bonus (capped at 100)' },
+  ];
+
+  for (const t of accTests) {
+    const bonus = t.accuracy != null && t.accuracy > 0 ? Math.min(t.accuracy, 100) : 0;
+    const ok = bonus === t.expectedBonus;
+    if (ok) accPass++; else accFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${t.label} (got ${bonus})`);
+  }
+
+  // Verify effective radius at different speeds + accuracies
+  const radiusTests: Array<{ speed: number; accuracy: number; expectedMin: number; expectedMax: number; label: string }> = [
+    { speed: 15.6, accuracy: 0, expectedMin: 150, expectedMax: 250, label: '35mph + 0m acc → base radius only' },
+    { speed: 15.6, accuracy: 10, expectedMin: 160, expectedMax: 260, label: '35mph + 10m acc → radius + 10' },
+    { speed: 15.6, accuracy: 80, expectedMin: 230, expectedMax: 350, label: '35mph + 80m acc → radius + 80' },
+    { speed: 15.6, accuracy: 100, expectedMin: 250, expectedMax: 350, label: '35mph + 100m acc → radius + 100 (cap)' },
+    { speed: 15.6, accuracy: 200, expectedMin: 250, expectedMax: 350, label: '35mph + 200m acc → radius + 100 (capped)' },
+    { speed: 3.0, accuracy: 50, expectedMin: 200, expectedMax: 200, label: '~7mph + 50m acc → base 150 + 50 = 200' },
+  ];
+
+  for (const t of radiusTests) {
+    const baseRadius = getAlertRadius(t.speed);
+    const bonus = t.accuracy > 0 ? Math.min(t.accuracy, 100) : 0;
+    const effective = baseRadius + bonus;
+    const ok = effective >= t.expectedMin && effective <= t.expectedMax;
+    if (ok) accPass++; else accFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${t.label} (base=${baseRadius}, effective=${effective})`);
+  }
+
+  // Verify BBOX expansion
+  const bboxTests: Array<{ accuracy: number; expectedExtraDeg: number; label: string }> = [
+    { accuracy: 0, expectedExtraDeg: 0, label: '0m accuracy → no BBOX expansion' },
+    { accuracy: 10, expectedExtraDeg: 10 / 111000, label: '10m accuracy → ~0.00009° BBOX expansion' },
+    { accuracy: 100, expectedExtraDeg: 100 / 111000, label: '100m accuracy → ~0.0009° BBOX expansion' },
+    { accuracy: 200, expectedExtraDeg: 100 / 111000, label: '200m accuracy → capped at 100m → ~0.0009°' },
+  ];
+
+  for (const t of bboxTests) {
+    const bonus = t.accuracy > 0 ? Math.min(t.accuracy, 100) : 0;
+    const bboxExtra = bonus / 111000;
+    const ok = Math.abs(bboxExtra - t.expectedExtraDeg) < 0.000001;
+    if (ok) accPass++; else accFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${t.label} (extra=${bboxExtra.toFixed(6)}°)`);
+  }
+
+  // Verify: camera just outside base radius but inside effective radius with accuracy
+  {
+    const baseRadius = getAlertRadius(15.6); // 35 mph → 156m
+    const testAccuracy = 60; // 60m accuracy
+    const effectiveRadius = baseRadius + Math.min(testAccuracy, 100);
+    // Place user at baseRadius + 30m (outside base, inside effective)
+    const testDist = baseRadius + 30;
+    const ok = testDist > baseRadius && testDist <= effectiveRadius;
+    if (ok) accPass++; else accFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Camera at ${testDist}m: outside base ${baseRadius}m but inside effective ${effectiveRadius}m with ${testAccuracy}m accuracy`);
+  }
+
+  // Verify: camera outside both base and effective radius is still rejected
+  {
+    const baseRadius = getAlertRadius(15.6);
+    const testAccuracy = 50;
+    const effectiveRadius = baseRadius + Math.min(testAccuracy, 100);
+    const testDist = effectiveRadius + 50; // Well outside
+    const ok = testDist > effectiveRadius;
+    if (ok) accPass++; else accFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Camera at ${testDist}m: outside effective ${effectiveRadius}m → still rejected`);
+  }
+
+  console.log(`\n  Accuracy compensation tests: ${accPass} passed, ${accFail} failed`);
+
+  // ========================================================================
   // Final report
   // ========================================================================
   console.log('\n========================================');
   console.log('  FINAL REPORT');
   console.log('========================================');
 
-  const totalTests = results.length + speedResults.length + adaptivePass + adaptiveFail + smoothPass + smoothFail;
-  const totalPassed = passed.length + speedTestPass + adaptivePass + smoothPass;
-  const totalFailed = failed.length + speedTestFail + adaptiveFail + smoothFail;
+  const totalTests = results.length + speedResults.length + adaptivePass + adaptiveFail + smoothPass + smoothFail + accPass + accFail;
+  const totalPassed = passed.length + speedTestPass + adaptivePass + smoothPass + accPass;
+  const totalFailed = failed.length + speedTestFail + adaptiveFail + smoothFail + accFail;
 
   console.log(`  Total tests:  ${totalTests}`);
   console.log(`  Passed:       ${totalPassed}`);

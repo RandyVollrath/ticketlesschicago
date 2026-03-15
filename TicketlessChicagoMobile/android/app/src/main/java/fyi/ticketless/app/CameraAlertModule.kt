@@ -698,7 +698,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         }
 
         try {
-            val alertsFired = checkCameraProximity(latitude, longitude, speed, heading)
+            val alertsFired = checkCameraProximity(latitude, longitude, speed, heading, accuracy)
             promise.resolve(alertsFired)
         } catch (e: Exception) {
             Log.e(TAG, "Error in onLocationUpdate", e)
@@ -749,7 +749,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     // Core proximity detection
     // =========================================================================
 
-    private fun checkCameraProximity(lat: Double, lng: Double, speed: Double, rawHeading: Double): Int {
+    private fun checkCameraProximity(lat: Double, lng: Double, speed: Double, rawHeading: Double, accuracy: Double = -1.0): Int {
         val now = System.currentTimeMillis()
         locationUpdateCount++
 
@@ -773,15 +773,22 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         // Compute speed-adaptive radius
         val alertRadius = getAlertRadius(speed)
 
+        // Accuracy compensation: when GPS is imprecise, the user could be closer
+        // to a camera than reported. Expand search radius by GPS accuracy (capped
+        // at 100m) so we don't miss cameras at the edge of the alert zone.
+        val accuracyBonus = if (accuracy > 0) minOf(accuracy, 100.0) else 0.0
+        val effectiveRadius = alertRadius + accuracyBonus
+
         // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy
         val headingTol = getHeadingTolerance(speed)
         val bearingTol = getBearingTolerance(speed)
 
-        // Bounding box pre-filter
-        val latMin = lat - BBOX_DEGREES
-        val latMax = lat + BBOX_DEGREES
-        val lngMin = lng - BBOX_DEGREES
-        val lngMax = lng + BBOX_DEGREES
+        // Bounding box pre-filter (expanded by accuracy compensation)
+        val bboxExtra = accuracyBonus / 111000.0
+        val latMin = lat - BBOX_DEGREES - bboxExtra
+        val latMax = lat + BBOX_DEGREES + bboxExtra
+        val lngMin = lng - BBOX_DEGREES - bboxExtra
+        val lngMax = lng + BBOX_DEGREES + bboxExtra
 
         // Compute enforcement hour in Chicago timezone (not device timezone)
         val chicagoTZ = java.util.TimeZone.getTimeZone("America/Chicago")
@@ -828,7 +835,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
 
             // Exact distance
             val distance = haversineDistance(lat, lng, cam.lat, cam.lng)
-            if (distance > alertRadius) {
+            if (distance > effectiveRadius) {
                 distanceFilteredCount++
                 if (distance < nearestRejectedDist) {
                     nearestRejectedIdx = i; nearestRejectedDist = distance; nearestRejectedReason = "outside_radius"

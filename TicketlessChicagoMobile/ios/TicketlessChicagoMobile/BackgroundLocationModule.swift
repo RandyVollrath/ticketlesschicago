@@ -3287,6 +3287,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       recentLowSpeedLocations.removeAll()
     }
 
+    // Camera-aware GPS boost: if GPS speed shows movement but CoreMotion hasn't
+    // confirmed driving yet, boost GPS from keepalive to full accuracy so camera
+    // alerts have precise position data. This closes the 5-30s transition gap at
+    // the start of a drive where keepalive mode (50m filter, 100m accuracy) would
+    // miss cameras or provide inaccurate positions.
+    if cameraAlertsEnabled && gpsInKeepaliveMode && !isDriving && !coreMotionSaysAutomotive
+       && location.speed >= 2.5 {
+      startBootstrapGpsWindow(reason: "camera_speed_detected")
+    }
+
     // Native camera alerts: fire in BOTH foreground and background.
     // Previously only fired when backgrounded, but JS camera alerts were also
     // failing to fire (settings sync issues), leaving zero camera alerts in any mode.
@@ -3902,18 +3912,25 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     let alertRadius = cameraAlertRadiusMeters(speedMps: speed)
 
-    // Bounding box filter
-    let latMin = lat - camBBoxDegrees
-    let latMax = lat + camBBoxDegrees
-    let lngMin = lng - camBBoxDegrees
-    let lngMax = lng + camBBoxDegrees
+    // Accuracy compensation: when GPS is imprecise, the user could be closer
+    // to a camera than reported. Expand search radius by GPS accuracy (capped
+    // at 100m) so we don't miss cameras at the edge of the alert zone.
+    let accuracyBonus = (acc > 0) ? min(acc, 100.0) : 0.0
+    let effectiveRadius = alertRadius + accuracyBonus
+
+    // Bounding box filter (expanded by accuracy compensation)
+    let bboxExtra = accuracyBonus / 111000.0
+    let latMin = lat - camBBoxDegrees - bboxExtra
+    let latMax = lat + camBBoxDegrees + bboxExtra
+    let lngMin = lng - camBBoxDegrees - bboxExtra
+    let lngMax = lng + camBBoxDegrees + bboxExtra
 
     var bestIdx: Int? = nil
     var bestDist: Double = Double.greatestFiniteMagnitude
     var nearestRejectedIdx: Int? = nil
     var nearestRejectedDist: Double = Double.greatestFiniteMagnitude
     var nearestRejectedReason: String? = nil
-    let rejectDebugRadius = max(alertRadius * 1.4, 220)
+    let rejectDebugRadius = max(effectiveRadius * 1.4, 220)
     // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy
     let headingTol = camGetHeadingTolerance(speedMps: speed)
     let bearingTol = camGetBearingTolerance(speedMps: speed)
@@ -3957,7 +3974,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       if speed >= 0 && speed < minSpeed {
         rejectReason = "speed_below_min"
         speedFilteredCount += 1
-      } else if dist > alertRadius {
+      } else if dist > effectiveRadius {
         rejectReason = "outside_radius"
         distanceFilteredCount += 1
       } else if perCameraDeduped {
