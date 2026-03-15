@@ -732,10 +732,10 @@ export default function CheckYourStreet() {
                       </div>
                     )}
 
-                    {/* Free alerts note */}
+                    {/* Alerts note */}
                     {blockStats.alertable_tickets > 0 && (
                       <div style={{ marginTop: '14px', fontSize: '13px', color: COLORS.slate }}>
-                        Free alerts could have prevented {blockStats.alertable_tickets.toLocaleString()} of these tickets.
+                        Autopilot alerts could have prevented {blockStats.alertable_tickets.toLocaleString()} of these tickets.
                       </div>
                     )}
                   </div>
@@ -813,7 +813,7 @@ export default function CheckYourStreet() {
           <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', margin: '0 0 8px', fontFamily: '"Space Grotesk", sans-serif' }}>
             Never worry about street cleaning again
           </h3>
-          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>Free alerts by text, email, or phone call.</p>
+          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>Alerts by text, email, or phone call — plus automatic ticket contesting.</p>
           <button onClick={() => router.push('/start')} style={{
             backgroundColor: COLORS.regulatory, color: 'white', border: 'none', borderRadius: '10px',
             padding: '12px 24px', fontSize: '15px', fontWeight: '600', cursor: 'pointer',

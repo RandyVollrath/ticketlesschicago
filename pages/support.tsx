@@ -11,7 +11,7 @@ export default function Support() {
       questions: [
         {
           q: 'What is Autopilot America?',
-          a: 'Autopilot America is a Chicago Driver Protection Plan with unlimited automated contesting for eligible tickets, plus free alerts and reminders.'
+          a: 'Autopilot America is a Chicago Driver Protection Plan — alerts before ticket events like street cleaning and snow bans, automatic parking detection, and unlimited ticket contesting for eligible Chicago tickets.'
         },
         {
           q: 'Is this insurance?',

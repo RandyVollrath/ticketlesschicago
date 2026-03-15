@@ -1489,11 +1489,6 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
   },
-  upgradeButton: {
-    backgroundColor: '#F97316',
-    marginTop: 12,
-  },
-
   // Cards
   card: {
     backgroundColor: '#fff',

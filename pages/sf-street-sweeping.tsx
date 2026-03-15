@@ -365,7 +365,7 @@ export default function SFStreetSweeping() {
                 Want Automatic Reminders?
               </h3>
               <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#333', lineHeight: '1.6' }}>
-                Sign up for free SMS and email reminders before every street cleaning day. Peace of Mind Parking!
+                Get SMS and email reminders before every street cleaning day — plus automatic ticket contesting.
               </p>
               <a
                 href="/start"
