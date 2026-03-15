@@ -966,7 +966,7 @@ class CameraAlertServiceClass {
       // Find cameras within alert radius that match our travel direction.
       // Speed filtering is per-camera-type: red light cameras alert at any
       // driving speed (≥1 m/s), speed cameras only at ≥10 mph (4.5 m/s).
-      const nearbyCameras = this.findNearbyCameras(latitude, longitude, smoothedHeading, alertRadius, speed);
+      const nearbyCameras = this.findNearbyCameras(latitude, longitude, smoothedHeading, alertRadius, speed, horizontalAccuracyMeters);
       this.tripAlertCandidatesSeen += nearbyCameras.length;
       const now = Date.now();
 
@@ -1341,9 +1341,16 @@ class CameraAlertServiceClass {
     lng: number,
     heading: number = -1,
     alertRadius: number = BASE_ALERT_RADIUS_METERS,
-    speed: number = -1
+    speed: number = -1,
+    accuracy: number | null = null
   ): CameraCandidate[] {
     const results: CameraCandidate[] = [];
+
+    // Accuracy compensation: when GPS is imprecise, the user could be closer
+    // to a camera than reported. Expand search radius by GPS accuracy (capped
+    // at 100m) so we don't miss cameras at the edge of the alert zone.
+    const accuracyBonus = accuracy != null && accuracy > 0 ? Math.min(accuracy, 100) : 0;
+    const effectiveRadius = alertRadius + accuracyBonus;
 
     // Diagnostic counters
     let typeFiltered = 0;
@@ -1357,16 +1364,18 @@ class CameraAlertServiceClass {
     let nearestRejected:
       | { reason: string; index: number; distance: number; camera: CameraLocation }
       | null = null;
-    const rejectDebugRadius = Math.max(alertRadius * 1.4, 220);
+    const rejectDebugRadius = Math.max(effectiveRadius * 1.4, 220);
 
     // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy
     const headingTol = getHeadingTolerance(speed);
     const bearingTol = getBearingTolerance(speed);
 
-    const latMin = lat - BBOX_DEGREES;
-    const latMax = lat + BBOX_DEGREES;
-    const lngMin = lng - BBOX_DEGREES;
-    const lngMax = lng + BBOX_DEGREES;
+    // Expand bounding box by accuracy bonus (convert meters → degrees)
+    const bboxExtra = accuracyBonus / 111000;
+    const latMin = lat - BBOX_DEGREES - bboxExtra;
+    const latMax = lat + BBOX_DEGREES + bboxExtra;
+    const lngMin = lng - BBOX_DEGREES - bboxExtra;
+    const lngMax = lng + BBOX_DEGREES + bboxExtra;
 
     let firstRedlightTypeReject = false;
     for (let i = 0; i < CHICAGO_CAMERAS.length; i++) {
@@ -1405,7 +1414,7 @@ class CameraAlertServiceClass {
         nearestSpeedDistance = distance;
       }
 
-      if (distance <= alertRadius) {
+      if (distance <= effectiveRadius) {
         // Direction filter: only alert if user is traveling in a direction
         // this camera monitors. Fail-open if heading unavailable.
         if (!isHeadingMatch(heading, cam.approaches, headingTol)) {
