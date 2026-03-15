@@ -3594,7 +3594,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
 
     // Require at least somewhat-credible GPS in background before alerting
-    if acc <= 0 || acc > 120 { return }
+    if acc <= 0 || acc > 120 {
+      decision("camera_gps_accuracy_rejected", [
+        "accuracy": acc,
+        "threshold": 120,
+        "reason": acc <= 0 ? "invalid_accuracy" : "too_inaccurate",
+      ])
+      return
+    }
 
     // Dedupe overall announcements
     if let last = lastCameraAlertAt, Date().timeIntervalSince(last) < camAnnounceMinIntervalSec {
@@ -3625,17 +3632,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     var nearestRejectedReason: String? = nil
     let rejectDebugRadius = max(alertRadius * 1.4, 220)
     var bboxCandidateCount = 0
+    var typeFilteredCount = 0
+    var speedFilteredCount = 0
+    var distanceFilteredCount = 0
+    var headingFilteredCount = 0
+    var bearingFilteredCount = 0
+    var dedupeFilteredCount = 0
 
     for i in 0..<Self.chicagoCameras.count {
       let cam = Self.chicagoCameras[i]
 
       // Type + schedule filters
       if cam.type == "speed" {
-        guard cameraSpeedEnabled else { continue }
+        guard cameraSpeedEnabled else { typeFilteredCount += 1; continue }
         let hour = Calendar.current.component(.hour, from: Date())
-        if hour < speedCamEnforceStartHour || hour >= speedCamEnforceEndHour { continue }
+        if hour < speedCamEnforceStartHour || hour >= speedCamEnforceEndHour { typeFilteredCount += 1; continue }
       } else {
-        guard cameraRedlightEnabled else { continue }
+        guard cameraRedlightEnabled else { typeFilteredCount += 1; continue }
       }
 
       // Fast bbox
@@ -3652,14 +3665,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       var rejectReason: String? = nil
       if speed >= 0 && speed < minSpeed {
         rejectReason = "speed_below_min"
+        speedFilteredCount += 1
       } else if dist > alertRadius {
         rejectReason = "outside_radius"
+        distanceFilteredCount += 1
       } else if perCameraDeduped {
         rejectReason = "per_camera_dedupe"
+        dedupeFilteredCount += 1
       } else if !headingOk {
         rejectReason = "heading_mismatch"
+        headingFilteredCount += 1
       } else if !aheadOk {
         rejectReason = "camera_not_ahead"
+        bearingFilteredCount += 1
       }
 
       if let reason = rejectReason {
@@ -3706,6 +3724,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             "heading": heading,
             "accuracy": acc,
             "bboxCandidates": bboxCandidateCount,
+            "filterCounts": [
+              "type": typeFilteredCount,
+              "speed": speedFilteredCount,
+              "distance": distanceFilteredCount,
+              "heading": headingFilteredCount,
+              "bearing": bearingFilteredCount,
+              "dedupe": dedupeFilteredCount,
+            ],
           ])
         }
       }
