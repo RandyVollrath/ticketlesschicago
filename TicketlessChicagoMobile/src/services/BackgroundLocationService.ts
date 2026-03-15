@@ -19,6 +19,7 @@
 
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import Logger from '../utils/Logger';
+import GroundTruthService from './GroundTruthService';
 
 const log = Logger.createLogger('BackgroundLocationService');
 
@@ -87,6 +88,7 @@ class BackgroundLocationServiceClass {
   private onDrivingStarted: ((timestamp?: number) => void) | null = null;
   private onPossibleDriving: (() => void) | null = null;
   private possibleDrivingSubscription: any = null;
+  private groundTruthSubscription: any = null;
   private isStarted = false;
 
   constructor() {
@@ -240,6 +242,29 @@ class BackgroundLocationServiceClass {
             }
           }
         );
+
+        // Ground truth from iOS notification action buttons (Correct / Not Parked)
+        this.groundTruthSubscription = this.eventEmitter.addListener(
+          'onParkingGroundTruth',
+          (event: { type: string; latitude?: number; longitude?: number; parkTimestamp?: number; source?: string }) => {
+            log.info('Parking ground truth from notification action', {
+              type: event.type,
+              lat: event.latitude?.toFixed?.(6),
+              lng: event.longitude?.toFixed?.(6),
+              source: event.source,
+            });
+            GroundTruthService.recordEvent({
+              type: event.type as any,
+              timestamp: event.parkTimestamp || Date.now(),
+              latitude: event.latitude,
+              longitude: event.longitude,
+              metadata: {
+                source: 'notification_action',
+                detectionSource: event.source,
+              },
+            });
+          }
+        );
       }
 
       // Start native monitoring
@@ -336,6 +361,10 @@ class BackgroundLocationServiceClass {
     if (this.possibleDrivingSubscription) {
       this.possibleDrivingSubscription.remove();
       this.possibleDrivingSubscription = null;
+    }
+    if (this.groundTruthSubscription) {
+      this.groundTruthSubscription.remove();
+      this.groundTruthSubscription = null;
     }
 
     this.isStarted = false;

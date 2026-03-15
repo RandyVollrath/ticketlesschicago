@@ -86,6 +86,37 @@ const MAX_BEARING_OFF_HEADING_DEGREES = 30;
 const MIN_SPEED_SPEED_CAM_MPS = 3.2;
 const MIN_SPEED_REDLIGHT_MPS = 1.0;
 const EARTH_RADIUS_METERS = 6371000;
+const HEADING_BUFFER_SIZE = 5;
+
+// Speed-adaptive tolerance functions — match CameraAlertService.ts
+function getHeadingTolerance(speed: number): number {
+  if (speed < 0) return HEADING_TOLERANCE_DEGREES;
+  if (speed < 5.0) return 75;
+  if (speed < 8.0) return 60;
+  return HEADING_TOLERANCE_DEGREES;
+}
+
+function getBearingTolerance(speed: number): number {
+  if (speed < 0) return MAX_BEARING_OFF_HEADING_DEGREES;
+  if (speed < 5.0) return 50;
+  if (speed < 8.0) return 40;
+  return MAX_BEARING_OFF_HEADING_DEGREES;
+}
+
+// Heading smoothing — circular mean of buffered headings
+function smoothHeading(buffer: number[], rawHeading: number): number {
+  if (rawHeading < 0) return rawHeading;
+  buffer.push(rawHeading);
+  while (buffer.length > HEADING_BUFFER_SIZE) buffer.shift();
+  if (buffer.length < 2) return rawHeading;
+  let sinSum = 0, cosSum = 0;
+  for (const h of buffer) {
+    sinSum += Math.sin(toRad(h));
+    cosSum += Math.cos(toRad(h));
+  }
+  const mean = ((Math.atan2(sinSum / buffer.length, cosSum / buffer.length) * 180 / Math.PI) + 360) % 360;
+  return mean;
+}
 
 const APPROACH_TO_HEADING: Record<string, number> = {
   NB: 0,
@@ -125,7 +156,7 @@ function bearingTo(lat1: number, lng1: number, lat2: number, lng2: number): numb
   return ((bearingRad * 180) / Math.PI + 360) % 360;
 }
 
-function isHeadingMatch(heading: number, approaches: string[]): boolean {
+function isHeadingMatch(heading: number, approaches: string[], tolerance: number = HEADING_TOLERANCE_DEGREES): boolean {
   if (heading < 0) return true;
   if (approaches.length === 0) return true;
   for (const approach of approaches) {
@@ -133,17 +164,17 @@ function isHeadingMatch(heading: number, approaches: string[]): boolean {
     if (targetHeading === undefined) return true;
     let diff = Math.abs(heading - targetHeading);
     if (diff > 180) diff = 360 - diff;
-    if (diff <= HEADING_TOLERANCE_DEGREES) return true;
+    if (diff <= tolerance) return true;
   }
   return false;
 }
 
-function isCameraAhead(userLat: number, userLng: number, camLat: number, camLng: number, heading: number): boolean {
+function isCameraAhead(userLat: number, userLng: number, camLat: number, camLng: number, heading: number, bearingTolerance: number = MAX_BEARING_OFF_HEADING_DEGREES): boolean {
   if (heading < 0) return true;
   const bearing = bearingTo(userLat, userLng, camLat, camLng);
   let diff = Math.abs(heading - bearing);
   if (diff > 180) diff = 360 - diff;
-  return diff <= MAX_BEARING_OFF_HEADING_DEGREES;
+  return diff <= bearingTolerance;
 }
 
 function getAlertRadius(speed: number): number {

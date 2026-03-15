@@ -184,6 +184,38 @@ const BBOX_DEGREES = 0.0025;
 const SPEED_CAMERA_ENFORCE_START_HOUR = 6;  // 6:00 AM
 const SPEED_CAMERA_ENFORCE_END_HOUR = 23;   // 11:00 PM
 
+/**
+ * Heading smoothing buffer size. Circular mean of the last N headings
+ * reduces GPS heading noise at low speeds. At 1 GPS update/second and
+ * 5 samples, this smooths over ~5 seconds — enough to filter jitter
+ * without lagging behind actual turns.
+ */
+const HEADING_BUFFER_SIZE = 5;
+
+/**
+ * Speed-adaptive heading tolerance.
+ * GPS heading is noisy at low speeds — phones derive heading from position
+ * delta between consecutive fixes, so at walking/creeping speed the delta
+ * is tiny and heading jumps ±30-60°. We widen tolerance at low speeds to
+ * avoid rejecting valid cameras due to heading noise.
+ *
+ * At normal driving speeds (≥8 m/s ≈ 18 mph), heading is accurate and
+ * we use the standard tight tolerances.
+ */
+function getHeadingTolerance(speed: number): number {
+  if (speed < 0) return HEADING_TOLERANCE_DEGREES; // Unknown speed — use default
+  if (speed < 5.0) return 75;  // <11 mph — very noisy heading, widen significantly
+  if (speed < 8.0) return 60;  // <18 mph — moderately noisy
+  return HEADING_TOLERANCE_DEGREES; // ≥18 mph — standard 45°
+}
+
+function getBearingTolerance(speed: number): number {
+  if (speed < 0) return MAX_BEARING_OFF_HEADING_DEGREES; // Unknown speed — use default
+  if (speed < 5.0) return 50;  // <11 mph — widen forward cone
+  if (speed < 8.0) return 40;  // <18 mph — slightly wider
+  return MAX_BEARING_OFF_HEADING_DEGREES; // ≥18 mph — standard 30°
+}
+
 /** AsyncStorage key for camera alerts enabled setting */
 const STORAGE_KEY_ENABLED = 'cameraAlertsEnabled';
 const STORAGE_KEY_SPEED_ENABLED = 'cameraAlertsSpeedEnabled';
@@ -240,7 +272,7 @@ const MAX_BEARING_OFF_HEADING_DEGREES = 30;
  * If heading is unavailable (-1) or camera has no approaches, returns true
  * (fail-open — better to alert than miss).
  */
-function isHeadingMatch(heading: number, approaches: string[]): boolean {
+function isHeadingMatch(heading: number, approaches: string[], tolerance: number = HEADING_TOLERANCE_DEGREES): boolean {
   // No heading data — fail open, alert anyway
   if (heading < 0) return true;
 
@@ -258,7 +290,7 @@ function isHeadingMatch(heading: number, approaches: string[]): boolean {
     let diff = Math.abs(heading - targetHeading);
     if (diff > 180) diff = 360 - diff;
 
-    if (diff <= HEADING_TOLERANCE_DEGREES) {
+    if (diff <= tolerance) {
       return true;
     }
   }
@@ -407,6 +439,9 @@ class CameraAlertServiceClass {
   private recentOpportunityDigestAt = 0;
   private tripNearestRedlightDistance = Infinity;
   private tripNearestSpeedDistance = Infinity;
+
+  /** Heading smoothing: circular buffer of recent headings for noise reduction */
+  private headingBuffer: number[] = [];
 
   /** Diagnostic: count GPS updates for periodic logging */
   private gpsUpdateCount = 0;
@@ -680,8 +715,17 @@ class CameraAlertServiceClass {
   private isCameraTypeEnabled(cameraType: CameraLocation['type']): boolean {
     if (cameraType === 'speed') {
       if (!this.speedAlertsEnabled) return false;
-      // Speed cameras only enforce during certain hours — skip alerts outside window
-      const hour = new Date().getHours();
+      // Speed cameras only enforce during certain hours — skip alerts outside window.
+      // Use Chicago timezone explicitly so enforcement hours are correct even if the
+      // user's device is set to a different timezone (e.g., traveling from another state).
+      let hour: number;
+      try {
+        const chicagoTime = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false, hour: '2-digit' });
+        hour = parseInt(chicagoTime, 10);
+      } catch {
+        // Fallback to device timezone if Intl is unavailable (shouldn't happen on modern RN)
+        hour = new Date().getHours();
+      }
       if (hour < SPEED_CAMERA_ENFORCE_START_HOUR || hour >= SPEED_CAMERA_ENFORCE_END_HOUR) {
         return false;
       }
@@ -798,6 +842,7 @@ class CameraAlertServiceClass {
     this.alertedCameras.clear();
     this.passTrackingByCamera.clear();
     this.recentTrace = [];
+    this.headingBuffer = []; // Reset heading smoothing for new drive session
     this.lastAnnounceTime = 0;
     this.gpsUpdateCount = 0;
     this.lastDiagnostic = null;
@@ -822,6 +867,7 @@ class CameraAlertServiceClass {
     this.alertedCameras.clear();
     this.passTrackingByCamera.clear();
     this.recentTrace = [];
+    this.headingBuffer = []; // Reset heading smoothing
     stopSpeech();
     if (wasActive && this.tripStartedAt > 0) {
       const summary: CameraTripSummary = {
@@ -911,13 +957,16 @@ class CameraAlertServiceClass {
       this.clearDistantCooldowns(latitude, longitude);
       this.updatePassTracking(latitude, longitude, speed, heading);
 
+      // Smooth GPS heading to reduce noise at low speeds
+      const smoothedHeading = this.smoothHeading(heading);
+
       // Compute speed-adaptive alert radius: faster = earlier warning
       const alertRadius = this.getAlertRadius(speed);
 
       // Find cameras within alert radius that match our travel direction.
       // Speed filtering is per-camera-type: red light cameras alert at any
       // driving speed (≥1 m/s), speed cameras only at ≥10 mph (4.5 m/s).
-      const nearbyCameras = this.findNearbyCameras(latitude, longitude, heading, alertRadius, speed);
+      const nearbyCameras = this.findNearbyCameras(latitude, longitude, smoothedHeading, alertRadius, speed);
       this.tripAlertCandidatesSeen += nearbyCameras.length;
       const now = Date.now();
 
@@ -1240,6 +1289,33 @@ class CameraAlertServiceClass {
    * Clamped between BASE and MAX to avoid false alerts at high speeds
    * and ensure a minimum useful range at low speeds.
    */
+  /**
+   * Smooth GPS heading using circular mean of recent headings.
+   * GPS heading is derived from position delta between consecutive fixes.
+   * At low speeds the delta is small → heading noise is large (±30-60°).
+   * Averaging the last 5 headings via unit vectors reduces this noise
+   * without introducing lag at normal driving speeds.
+   */
+  private smoothHeading(rawHeading: number): number {
+    if (rawHeading < 0) return rawHeading; // -1 = unavailable, don't buffer
+
+    this.headingBuffer.push(rawHeading);
+    if (this.headingBuffer.length > HEADING_BUFFER_SIZE) {
+      this.headingBuffer.shift();
+    }
+    if (this.headingBuffer.length < 2) return rawHeading;
+
+    // Circular mean: convert to unit vectors, average, convert back
+    let sinSum = 0;
+    let cosSum = 0;
+    for (const h of this.headingBuffer) {
+      sinSum += Math.sin(toRad(h));
+      cosSum += Math.cos(toRad(h));
+    }
+    const mean = ((Math.atan2(sinSum / this.headingBuffer.length, cosSum / this.headingBuffer.length) * 180 / Math.PI) + 360) % 360;
+    return mean;
+  }
+
   private getAlertRadius(speed: number): number {
     if (speed < 0) return BASE_ALERT_RADIUS_METERS; // Speed unknown
     const dynamicRadius = speed * TARGET_WARNING_SECONDS;
@@ -1282,6 +1358,10 @@ class CameraAlertServiceClass {
       | { reason: string; index: number; distance: number; camera: CameraLocation }
       | null = null;
     const rejectDebugRadius = Math.max(alertRadius * 1.4, 220);
+
+    // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy
+    const headingTol = getHeadingTolerance(speed);
+    const bearingTol = getBearingTolerance(speed);
 
     const latMin = lat - BBOX_DEGREES;
     const latMax = lat + BBOX_DEGREES;
@@ -1328,7 +1408,7 @@ class CameraAlertServiceClass {
       if (distance <= alertRadius) {
         // Direction filter: only alert if user is traveling in a direction
         // this camera monitors. Fail-open if heading unavailable.
-        if (!isHeadingMatch(heading, cam.approaches)) {
+        if (!isHeadingMatch(heading, cam.approaches, headingTol)) {
           headingFiltered++;
           if (distance <= rejectDebugRadius && (!nearestRejected || distance < nearestRejected.distance)) {
             nearestRejected = { reason: 'heading_mismatch', index: i, distance, camera: cam };
@@ -1337,14 +1417,14 @@ class CameraAlertServiceClass {
           if (cam.type === 'redlight' && !this.hasNotifiedRedlightRejection) {
             this.hasNotifiedRedlightRejection = true;
             this.sendDiag('RL HEADING REJECT',
-              `${cam.address} approaches=${cam.approaches} userHdg=${Math.round(heading)}° dist=${Math.round(distance)}m`);
+              `${cam.address} approaches=${cam.approaches} userHdg=${Math.round(heading)}° tol=±${headingTol}° dist=${Math.round(distance)}m`);
           }
           continue;
         }
 
-        // Bearing filter: only alert if camera is ahead of us (within ±30° cone).
+        // Bearing filter: only alert if camera is ahead of us (within ±bearingTol cone).
         // This prevents false alerts from cameras on parallel streets one block over.
-        if (!this.isCameraAhead(lat, lng, cam.latitude, cam.longitude, heading)) {
+        if (!this.isCameraAhead(lat, lng, cam.latitude, cam.longitude, heading, bearingTol)) {
           bearingFiltered++;
           if (distance <= rejectDebugRadius && (!nearestRejected || distance < nearestRejected.distance)) {
             nearestRejected = { reason: 'camera_not_ahead', index: i, distance, camera: cam };
@@ -1354,7 +1434,7 @@ class CameraAlertServiceClass {
             const bearing = this.bearingTo(lat, lng, cam.latitude, cam.longitude);
             const diff = Math.abs(heading - bearing) > 180 ? 360 - Math.abs(heading - bearing) : Math.abs(heading - bearing);
             this.sendDiag('RL BEARING REJECT',
-              `${cam.address} camBearing=${Math.round(bearing)}° userHdg=${Math.round(heading)}° diff=${Math.round(diff)}° (max ±30°) dist=${Math.round(distance)}m`);
+              `${cam.address} camBearing=${Math.round(bearing)}° userHdg=${Math.round(heading)}° diff=${Math.round(diff)}° (max ±${bearingTol}°) dist=${Math.round(distance)}m`);
           }
           continue;
         }
@@ -1615,7 +1695,8 @@ class CameraAlertServiceClass {
     userLng: number,
     camLat: number,
     camLng: number,
-    heading: number
+    heading: number,
+    bearingTolerance: number = MAX_BEARING_OFF_HEADING_DEGREES
   ): boolean {
     // No heading — fail open
     if (heading < 0) return true;
@@ -1626,7 +1707,7 @@ class CameraAlertServiceClass {
     let diff = Math.abs(heading - bearingToCamera);
     if (diff > 180) diff = 360 - diff;
 
-    return diff <= MAX_BEARING_OFF_HEADING_DEGREES;
+    return diff <= bearingTolerance;
   }
 
   /**

@@ -136,7 +136,7 @@ class BackgroundTaskServiceClass {
   private lastCameraHeartbeatGpsCount: number = 0;
   private logUploadInFlight: boolean = false;
   private lastLogUploadTime: number = 0;
-  private readonly logUploadMinIntervalMs: number = 10 * 60 * 1000; // 10 minutes between uploads
+  private readonly logUploadMinIntervalMs: number = 2 * 60 * 1000; // 2 minutes between uploads
 
   /**
    * Initialize the background task service
@@ -4353,32 +4353,37 @@ class BackgroundTaskServiceClass {
 
     this.logUploadInFlight = true;
     try {
-      // Read watermark: how many lines we've already uploaded
-      const watermarkStr = await AsyncStorage.getItem(StorageKeys.LAST_LOG_UPLOAD_LINE_COUNT);
-      const watermark = watermarkStr ? parseInt(watermarkStr, 10) : 0;
+      // Read timestamp watermark: only upload entries newer than this
+      // (Old line-count watermark was broken — getDecisionLogs returns a sliding
+      // window of the last N lines, so line count is meaningless after rotation.)
+      const watermarkTsStr = await AsyncStorage.getItem(StorageKeys.LAST_LOG_UPLOAD_LINE_COUNT);
+      const watermarkTs = watermarkTsStr ? parseFloat(watermarkTsStr) : 0;
 
       // Read recent decision logs from native (up to 500 lines)
       const rawLogs = await BackgroundLocationService.getDecisionLogs(500);
       if (!rawLogs || rawLogs.trim().length === 0) return;
 
       const lines = rawLogs.trim().split('\n');
-      const totalLines = lines.length;
 
-      // Only upload lines beyond the watermark
-      const newLines = watermark < totalLines ? lines.slice(watermark) : [];
-      if (newLines.length === 0) {
-        log.debug(`[LogUpload] No new lines (watermark=${watermark}, total=${totalLines})`);
-        return;
-      }
+      // Parse NDJSON lines into entries, filtering by timestamp watermark
+      const entries: Array<{ event: string; ts: number; data: Record<string, unknown>; hash: string }> = [];
+      let maxTs = watermarkTs;
 
-      // Parse NDJSON lines into entries
-      const entries: Array<{ event: string; ts: string; data: Record<string, unknown>; hash: string }> = [];
-      for (const line of newLines) {
+      for (const line of lines) {
         try {
           const parsed = JSON.parse(line);
           if (!parsed.event || !parsed.ts) continue;
 
-          // Create a simple hash from timestamp + event type for dedup
+          const entryTs = typeof parsed.ts === 'number' ? parsed.ts : parseFloat(parsed.ts);
+          if (isNaN(entryTs)) continue;
+
+          // Skip entries we've already uploaded (timestamp-based dedup)
+          if (entryTs <= watermarkTs) continue;
+
+          // Track highest timestamp for next watermark
+          if (entryTs > maxTs) maxTs = entryTs;
+
+          // Create a simple hash from timestamp + event type for server-side dedup
           const hashInput = `${parsed.ts}_${parsed.event}_${parsed.lat || ''}_${parsed.lng || ''}`;
           let hash = 0;
           for (let i = 0; i < hashInput.length; i++) {
@@ -4390,7 +4395,7 @@ class BackgroundTaskServiceClass {
 
           entries.push({
             event: parsed.event,
-            ts: parsed.ts,
+            ts: entryTs,
             data: parsed,
             hash: hashStr,
           });
@@ -4400,9 +4405,7 @@ class BackgroundTaskServiceClass {
       }
 
       if (entries.length === 0) {
-        log.debug('[LogUpload] No parseable entries in new lines');
-        // Still advance watermark to skip bad lines
-        await AsyncStorage.setItem(StorageKeys.LAST_LOG_UPLOAD_LINE_COUNT, String(totalLines));
+        log.debug(`[LogUpload] No new entries (watermarkTs=${watermarkTs}, lines=${lines.length})`);
         return;
       }
 
@@ -4430,12 +4433,11 @@ class BackgroundTaskServiceClass {
       }
 
       if (uploaded > 0) {
-        // Advance watermark
-        const newWatermark = watermark + newLines.length;
-        await AsyncStorage.setItem(StorageKeys.LAST_LOG_UPLOAD_LINE_COUNT, String(newWatermark));
+        // Advance watermark to highest uploaded timestamp
+        await AsyncStorage.setItem(StorageKeys.LAST_LOG_UPLOAD_LINE_COUNT, String(maxTs));
         await AsyncStorage.setItem(StorageKeys.LAST_LOG_UPLOAD_TIME, new Date().toISOString());
         this.lastLogUploadTime = now;
-        log.info(`[LogUpload] Uploaded ${uploaded} entries (trigger: ${trigger}, watermark: ${watermark} → ${newWatermark})`);
+        log.info(`[LogUpload] Uploaded ${uploaded} entries (trigger: ${trigger}, watermarkTs: ${watermarkTs} → ${maxTs})`);
       }
     } catch (error) {
       log.warn('[LogUpload] Error uploading diagnostic logs', error);

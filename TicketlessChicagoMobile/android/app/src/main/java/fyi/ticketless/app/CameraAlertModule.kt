@@ -63,6 +63,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         private const val GPS_ACCURACY_REJECT_METERS = 120.0
         private const val SPEED_CAMERA_ENFORCE_START_HOUR = 6
         private const val SPEED_CAMERA_ENFORCE_END_HOUR = 23
+        private const val HEADING_BUFFER_SIZE = 5  // Circular mean of last N headings for noise reduction
 
         // Approach direction to compass heading mapping
         private val APPROACH_TO_HEADING = mapOf(
@@ -617,6 +618,9 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     private val alertedCameras = ConcurrentHashMap<Int, Long>()
     @Volatile private var lastGlobalAlertTime = 0L
 
+    // Heading smoothing buffer for GPS noise reduction at low speeds
+    private val headingBuffer = mutableListOf<Double>()
+
     // TTS
     private var tts: TextToSpeech? = null
     @Volatile private var ttsReady = false
@@ -720,6 +724,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     fun clearState(promise: Promise) {
         alertedCameras.clear()
         lastGlobalAlertTime = 0
+        headingBuffer.clear()  // Reset heading smoothing for new drive session
         Log.d(TAG, "Camera alert state cleared")
         promise.resolve(true)
     }
@@ -744,9 +749,12 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     // Core proximity detection
     // =========================================================================
 
-    private fun checkCameraProximity(lat: Double, lng: Double, speed: Double, heading: Double): Int {
+    private fun checkCameraProximity(lat: Double, lng: Double, speed: Double, rawHeading: Double): Int {
         val now = System.currentTimeMillis()
         locationUpdateCount++
+
+        // Smooth GPS heading to reduce noise at low speeds
+        val heading = smoothHeading(rawHeading)
 
         // Clear cooldowns for cameras we've moved far from
         val iterator = alertedCameras.entries.iterator()
@@ -765,13 +773,20 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         // Compute speed-adaptive radius
         val alertRadius = getAlertRadius(speed)
 
+        // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy
+        val headingTol = getHeadingTolerance(speed)
+        val bearingTol = getBearingTolerance(speed)
+
         // Bounding box pre-filter
         val latMin = lat - BBOX_DEGREES
         val latMax = lat + BBOX_DEGREES
         val lngMin = lng - BBOX_DEGREES
         val lngMax = lng + BBOX_DEGREES
 
-        val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        // Compute enforcement hour in Chicago timezone (not device timezone)
+        val chicagoTZ = java.util.TimeZone.getTimeZone("America/Chicago")
+        val chicagoCal = java.util.Calendar.getInstance(chicagoTZ)
+        val currentHour = chicagoCal.get(java.util.Calendar.HOUR_OF_DAY)
 
         var bestIndex = -1
         var bestDistance = Double.MAX_VALUE
@@ -821,8 +836,8 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
                 continue
             }
 
-            // Heading match
-            if (!isHeadingMatch(heading, cam.approaches)) {
+            // Heading match (speed-adaptive tolerance)
+            if (!isHeadingMatch(heading, cam.approaches, headingTol)) {
                 headingFilteredCount++
                 if (distance < nearestRejectedDist) {
                     nearestRejectedIdx = i; nearestRejectedDist = distance; nearestRejectedReason = "heading_mismatch"
@@ -830,8 +845,8 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
                 continue
             }
 
-            // Bearing check: camera must be ahead (within ±30° cone)
-            if (!isCameraAhead(lat, lng, cam.lat, cam.lng, heading)) {
+            // Bearing check: camera must be ahead (speed-adaptive forward cone)
+            if (!isCameraAhead(lat, lng, cam.lat, cam.lng, heading, bearingTol)) {
                 bearingFilteredCount++
                 if (distance < nearestRejectedDist) {
                     nearestRejectedIdx = i; nearestRejectedDist = distance; nearestRejectedReason = "camera_not_ahead"
@@ -913,10 +928,48 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     }
 
     // =========================================================================
+    // Heading smoothing + speed-adaptive tolerances
+    // =========================================================================
+
+    /** Smooth GPS heading using circular mean of recent headings.
+     *  Reduces GPS heading noise at low speeds where position delta is small. */
+    private fun smoothHeading(rawHeading: Double): Double {
+        if (rawHeading < 0) return rawHeading  // -1 = unavailable
+        headingBuffer.add(rawHeading)
+        while (headingBuffer.size > HEADING_BUFFER_SIZE) headingBuffer.removeAt(0)
+        if (headingBuffer.size < 2) return rawHeading
+        var sinSum = 0.0
+        var cosSum = 0.0
+        for (h in headingBuffer) {
+            sinSum += kotlin.math.sin(Math.toRadians(h))
+            cosSum += kotlin.math.cos(Math.toRadians(h))
+        }
+        val n = headingBuffer.size.toDouble()
+        val mean = Math.toDegrees(kotlin.math.atan2(sinSum / n, cosSum / n))
+        return ((mean % 360) + 360) % 360
+    }
+
+    /** Speed-adaptive heading tolerance: widen at low speeds where GPS heading is noisy */
+    private fun getHeadingTolerance(speedMps: Double): Double {
+        if (speedMps < 0) return HEADING_TOLERANCE_DEGREES
+        if (speedMps < 5.0) return 75.0   // <11 mph — very noisy heading
+        if (speedMps < 8.0) return 60.0   // <18 mph — moderately noisy
+        return HEADING_TOLERANCE_DEGREES   // ≥18 mph — standard 45°
+    }
+
+    /** Speed-adaptive bearing tolerance: widen forward cone at low speeds */
+    private fun getBearingTolerance(speedMps: Double): Double {
+        if (speedMps < 0) return MAX_BEARING_OFF_HEADING_DEGREES
+        if (speedMps < 5.0) return 50.0   // <11 mph — widen forward cone
+        if (speedMps < 8.0) return 40.0   // <18 mph — slightly wider
+        return MAX_BEARING_OFF_HEADING_DEGREES // ≥18 mph — standard 30°
+    }
+
+    // =========================================================================
     // Direction matching
     // =========================================================================
 
-    private fun isHeadingMatch(heading: Double, approaches: List<String>): Boolean {
+    private fun isHeadingMatch(heading: Double, approaches: List<String>, tolerance: Double = HEADING_TOLERANCE_DEGREES): Boolean {
         if (heading < 0) return true // No heading — fail open
         if (approaches.isEmpty()) return true
 
@@ -924,18 +977,18 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
             val targetHeading = APPROACH_TO_HEADING[approach] ?: return true // Unknown code — fail open
             var diff = abs(heading - targetHeading)
             if (diff > 180) diff = 360 - diff
-            if (diff <= HEADING_TOLERANCE_DEGREES) return true
+            if (diff <= tolerance) return true
         }
         return false
     }
 
-    private fun isCameraAhead(userLat: Double, userLng: Double, camLat: Double, camLng: Double, heading: Double): Boolean {
+    private fun isCameraAhead(userLat: Double, userLng: Double, camLat: Double, camLng: Double, heading: Double, bearingTolerance: Double = MAX_BEARING_OFF_HEADING_DEGREES): Boolean {
         if (heading < 0) return true // No heading — fail open
 
         val bearing = bearingTo(userLat, userLng, camLat, camLng)
         var diff = abs(heading - bearing)
         if (diff > 180) diff = 360 - diff
-        return diff <= MAX_BEARING_OFF_HEADING_DEGREES
+        return diff <= bearingTolerance
     }
 
     // =========================================================================
