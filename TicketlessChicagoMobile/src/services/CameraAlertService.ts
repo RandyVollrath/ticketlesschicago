@@ -480,6 +480,23 @@ class CameraAlertServiceClass {
     this.redLightAlertsEnabled = redLightValue == null ? (defaultEnabled || this.isEnabled) : redLightValue === 'true';
     this.isEnabled = this.speedAlertsEnabled || this.redLightAlertsEnabled;
 
+    // ONE-TIME MIGRATION (Mar 2026): Fix existing installs where a previous bug
+    // defaulted camera alerts to disabled. Those users never chose to disable —
+    // the old code just set it to false on Android and on iOS installs that
+    // didn't hit the isNewInstall path. Re-enable them once.
+    const migrationKey = 'cameraAlerts_v1_defaultOnMigration';
+    const migrated = await AsyncStorage.getItem(migrationKey);
+    if (!migrated) {
+      if (!this.isEnabled && !isNewInstall) {
+        log.info(`Migration: re-enabling camera alerts (were disabled by old default, not user choice)`);
+        this.isEnabled = true;
+        this.speedAlertsEnabled = true;
+        this.redLightAlertsEnabled = true;
+      }
+      await AsyncStorage.setItem(migrationKey, 'done');
+      await this.persistSettings();
+    }
+
     // Persist the defaults so subsequent loads don't re-trigger defaulting logic
     if (isNewInstall && defaultEnabled) {
       log.info(`New install: defaulting camera alerts to enabled (platform=${Platform.OS})`);
