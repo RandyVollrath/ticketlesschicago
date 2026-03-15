@@ -897,6 +897,10 @@ function SettingsPageInner() {
   const [emailOnApprovalNeeded, setEmailOnApprovalNeeded] = useState(true);
   const [foiaWaitPreference, setFoiaWaitPreference] = useState<'wait_for_foia' | 'send_immediately'>('wait_for_foia');
 
+  // Receipt forwarding
+  const [receiptCount, setReceiptCount] = useState<number | null>(null); // null = not loaded yet
+  const [receiptBannerDismissed, setReceiptBannerDismissed] = useState(false);
+
   // Guided Setup Wizard
   const [guidedSetupStep, setGuidedSetupStep] = useState(0);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
@@ -1229,6 +1233,18 @@ function SettingsPageInner() {
       } catch (foiaErr) {
         // Non-critical — don't fail page load if table doesn't exist yet
         console.error('FOIA history fetch error (non-critical):', foiaErr);
+      }
+
+      // Check if user has any forwarded sticker receipts on file
+      try {
+        const { count } = await supabase
+          .from('registration_evidence_receipts' as any)
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', session.user.id);
+        setReceiptCount(count ?? 0);
+      } catch {
+        // Non-critical — table may not exist in dev
+        setReceiptCount(0);
       }
 
       setLoading(false);
@@ -2786,16 +2802,60 @@ function SettingsPageInner() {
           </div>
         </Card>
 
+        {/* Soft nudge banner — only shown when user has zero receipts on file */}
+        {receiptCount === 0 && !receiptBannerDismissed && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+            padding: '14px 16px',
+            borderRadius: 12,
+            border: `1px solid ${COLORS.accent}33`,
+            backgroundColor: '#ECFDF5',
+            marginBottom: 16,
+          }}>
+            <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>&#9432;</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#065F46', lineHeight: 1.4 }}>
+                Already bought your city sticker? Your receipt can win your contest.
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#047857', lineHeight: 1.5 }}>
+                Set up a one-time email filter below so your sticker receipts forward to us automatically. If you ever get a sticker ticket, we already have the proof you paid — 70% win rate.
+              </p>
+            </div>
+            <button
+              onClick={() => setReceiptBannerDismissed(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: 18,
+                color: '#6EE7B7',
+                cursor: 'pointer',
+                padding: '0 2px',
+                lineHeight: 1,
+                flexShrink: 0,
+                fontFamily: 'inherit',
+              }}
+              aria-label="Dismiss"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
         <Card title="Receipt Forwarding" badge={
-          <span style={{ fontSize: 11, color: COLORS.textMuted }}>Recommended</span>
+          receiptCount !== null && receiptCount > 0
+            ? <span style={{ fontSize: 11, fontWeight: 600, color: COLORS.accent }}>{receiptCount} receipt{receiptCount !== 1 ? 's' : ''} on file</span>
+            : <span style={{ fontSize: 11, color: COLORS.textMuted }}>Recommended</span>
         }>
           <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
-            Auto-forward your city sticker and plate sticker purchase emails so we have your receipt on file if you ever get ticketed. Your receipt is the #1 evidence for winning sticker contests (70% win rate).
+            Set up a one-time email filter so your city sticker and plate sticker purchase receipts forward to us automatically. If you ever get a sticker ticket, your receipt is proof you already paid — 70% win rate.
           </p>
           {userId && (
             <RegistrationForwardingSetup
               forwardingEmail={`${userId}@receipts.autopilotamerica.com`}
               compact
+              userEmail={email}
             />
           )}
           <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
