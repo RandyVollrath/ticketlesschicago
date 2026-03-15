@@ -741,15 +741,215 @@ function main() {
   console.log(`  ${!behindResult ? 'PASS' : 'FAIL'}  Camera 100m directly behind: ${behindResult ? 'AHEAD' : 'NOT AHEAD'} (expected: NOT AHEAD)`);
 
   // ========================================================================
+  // Test 6: Speed-adaptive tolerance verification
+  // ========================================================================
+  console.log('\n----------------------------------------');
+  console.log('  Test 6: Speed-adaptive tolerances');
+  console.log('  (wider tolerances at low GPS speeds)');
+  console.log('----------------------------------------\n');
+
+  let adaptivePass = 0;
+  let adaptiveFail = 0;
+
+  // Verify getHeadingTolerance returns correct values
+  const htCases = [
+    { speed: -1, expected: 45, label: 'negative speed → default 45°' },
+    { speed: 0,  expected: 75, label: '0 m/s → wide 75°' },
+    { speed: 3.0, expected: 75, label: '3 m/s (<5) → wide 75°' },
+    { speed: 4.9, expected: 75, label: '4.9 m/s (<5) → wide 75°' },
+    { speed: 5.0, expected: 60, label: '5.0 m/s (≥5, <8) → medium 60°' },
+    { speed: 7.9, expected: 60, label: '7.9 m/s (<8) → medium 60°' },
+    { speed: 8.0, expected: 45, label: '8.0 m/s (≥8) → standard 45°' },
+    { speed: 15.6, expected: 45, label: '15.6 m/s (35 mph) → standard 45°' },
+  ];
+
+  for (const tc of htCases) {
+    const got = getHeadingTolerance(tc.speed);
+    const ok = got === tc.expected;
+    if (ok) adaptivePass++; else adaptiveFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  headingTol(${tc.speed.toFixed(1)}) = ${got}° ${!ok ? `(expected ${tc.expected}°)` : ''} ${tc.label}`);
+  }
+
+  const btCases = [
+    { speed: -1, expected: 30, label: 'negative speed → default 30°' },
+    { speed: 0,  expected: 50, label: '0 m/s → wide 50°' },
+    { speed: 3.0, expected: 50, label: '3 m/s (<5) → wide 50°' },
+    { speed: 4.9, expected: 50, label: '4.9 m/s (<5) → wide 50°' },
+    { speed: 5.0, expected: 40, label: '5.0 m/s (≥5, <8) → medium 40°' },
+    { speed: 7.9, expected: 40, label: '7.9 m/s (<8) → medium 40°' },
+    { speed: 8.0, expected: 30, label: '8.0 m/s (≥8) → standard 30°' },
+    { speed: 15.6, expected: 30, label: '15.6 m/s (35 mph) → standard 30°' },
+  ];
+
+  for (const tc of btCases) {
+    const got = getBearingTolerance(tc.speed);
+    const ok = got === tc.expected;
+    if (ok) adaptivePass++; else adaptiveFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  bearingTol(${tc.speed.toFixed(1)}) = ${got}° ${!ok ? `(expected ${tc.expected}°)` : ''} ${tc.label}`);
+  }
+
+  // Verify that wider tolerances accept headings rejected by standard tolerances
+  // A heading 50° off from NB (0°) should fail at 45° but pass at 75°
+  const headingDiff50 = isHeadingMatch(50, ['NB'], 45);  // should fail
+  const headingDiff50Wide = isHeadingMatch(50, ['NB'], 75);  // should pass
+  {
+    const ok = !headingDiff50 && headingDiff50Wide;
+    if (ok) adaptivePass++; else adaptiveFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  50° off NB: standard(45°)=${headingDiff50 ? 'match' : 'reject'}, wide(75°)=${headingDiff50Wide ? 'match' : 'accept'}`);
+  }
+
+  // A bearing 35° off heading should fail at 30° but pass at 50°
+  const bearingOff35 = computeStartPoint(baseLat, baseLng, (testHeading + 180 + 35) % 360, 100);
+  const bearingOff35Narrow = isCameraAhead(baseLat, baseLng, bearingOff35.lat, bearingOff35.lng, testHeading, 30);
+  const bearingOff35Wide = isCameraAhead(baseLat, baseLng, bearingOff35.lat, bearingOff35.lng, testHeading, 50);
+  {
+    const ok = !bearingOff35Narrow && bearingOff35Wide;
+    if (ok) adaptivePass++; else adaptiveFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  35° off-axis bearing: standard(30°)=${bearingOff35Narrow ? 'ahead' : 'reject'}, wide(50°)=${bearingOff35Wide ? 'ahead' : 'accept'}`);
+  }
+
+  // Full approach sim at low speed (3 m/s) — should still fire using wider tolerances
+  if (testCamIdx >= 0) {
+    const testCam = cameras[testCamIdx];
+    const lowSpeedResult = simulateApproach(cameras, testCamIdx, testCam.approaches[0], 3.5, 400, 15);
+    const ok = lowSpeedResult.alertFired;
+    if (ok) adaptivePass++; else adaptiveFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Low-speed approach (3.5 m/s): ${ok ? 'alert fires' : 'NO ALERT'}`);
+  }
+
+  console.log(`\n  Speed-adaptive tolerance tests: ${adaptivePass} passed, ${adaptiveFail} failed`);
+
+  // ========================================================================
+  // Test 7: Heading smoothing verification
+  // ========================================================================
+  console.log('\n----------------------------------------');
+  console.log('  Test 7: Heading smoothing (circular mean)');
+  console.log('----------------------------------------\n');
+
+  let smoothPass = 0;
+  let smoothFail = 0;
+
+  // Test 1: Negative heading passes through unchanged
+  {
+    const buf: number[] = [];
+    const result = smoothHeading(buf, -1);
+    const ok = result === -1;
+    if (ok) smoothPass++; else smoothFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Negative heading (-1) → ${result} (expected -1, pass-through)`);
+  }
+
+  // Test 2: Single reading returns raw (buffer < 2)
+  {
+    const buf: number[] = [];
+    const result = smoothHeading(buf, 90);
+    const ok = result === 90 && buf.length === 1;
+    if (ok) smoothPass++; else smoothFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Single reading (90°) → ${result.toFixed(1)}° (expected 90°, buffer=${buf.length})`);
+  }
+
+  // Test 3: Two identical readings = same value
+  {
+    const buf: number[] = [45];
+    const result = smoothHeading(buf, 45);
+    const ok = Math.abs(result - 45) < 0.1;
+    if (ok) smoothPass++; else smoothFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Two identical (45°, 45°) → ${result.toFixed(1)}° (expected ~45°)`);
+  }
+
+  // Test 4: Wrap-around averaging (350° + 10°) should give ~0°, NOT 180°
+  {
+    const buf: number[] = [350];
+    const result = smoothHeading(buf, 10);
+    // Result should be near 0° (or 360°), NOT near 180°
+    let diffFrom0 = Math.abs(result);
+    if (diffFrom0 > 180) diffFrom0 = 360 - diffFrom0;
+    const ok = diffFrom0 < 5; // within 5° of 0°/360°
+    if (ok) smoothPass++; else smoothFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Wrap-around (350°, 10°) → ${result.toFixed(1)}° (expected ~0°/360°, diff=${diffFrom0.toFixed(1)}°)`);
+  }
+
+  // Test 5: Another wrap-around (5°, 355°) → ~0°
+  {
+    const buf: number[] = [5];
+    const result = smoothHeading(buf, 355);
+    let diffFrom0 = Math.abs(result);
+    if (diffFrom0 > 180) diffFrom0 = 360 - diffFrom0;
+    const ok = diffFrom0 < 5;
+    if (ok) smoothPass++; else smoothFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Wrap-around (5°, 355°) → ${result.toFixed(1)}° (expected ~0°/360°, diff=${diffFrom0.toFixed(1)}°)`);
+  }
+
+  // Test 6: Buffer fills to 5 then drops oldest
+  {
+    const buf: number[] = [];
+    smoothHeading(buf, 90);   // buf: [90]
+    smoothHeading(buf, 92);   // buf: [90, 92]
+    smoothHeading(buf, 88);   // buf: [90, 92, 88]
+    smoothHeading(buf, 91);   // buf: [90, 92, 88, 91]
+    smoothHeading(buf, 89);   // buf: [90, 92, 88, 91, 89]
+    const ok5 = buf.length === 5;
+    smoothHeading(buf, 93);   // buf: [92, 88, 91, 89, 93] — oldest dropped
+    const ok6 = buf.length === 5 && buf[0] === 92; // 90 was dropped
+    const ok = ok5 && ok6;
+    if (ok) smoothPass++; else smoothFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Buffer cap: after 6 readings, size=${buf.length} (expected 5), oldest dropped=${buf[0] === 92 ? 'yes' : 'no'}`);
+  }
+
+  // Test 7: Smoothing reduces noise (90° ± jitter → near 90°)
+  {
+    const buf: number[] = [];
+    smoothHeading(buf, 85);
+    smoothHeading(buf, 95);
+    smoothHeading(buf, 88);
+    smoothHeading(buf, 92);
+    const result = smoothHeading(buf, 90);
+    const diffFrom90 = Math.abs(result - 90);
+    const ok = diffFrom90 < 3; // smoothed should be within 3° of 90°
+    if (ok) smoothPass++; else smoothFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Noisy NB (85,95,88,92,90) → ${result.toFixed(1)}° (expected ~90°, diff=${diffFrom90.toFixed(1)}°)`);
+  }
+
+  // Test 8: Smoothing near 180° (no wrap-around issue here)
+  {
+    const buf: number[] = [];
+    smoothHeading(buf, 175);
+    smoothHeading(buf, 185);
+    smoothHeading(buf, 178);
+    smoothHeading(buf, 182);
+    const result = smoothHeading(buf, 180);
+    const diffFrom180 = Math.abs(result - 180);
+    const ok = diffFrom180 < 3;
+    if (ok) smoothPass++; else smoothFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Noisy SB (175,185,178,182,180) → ${result.toFixed(1)}° (expected ~180°, diff=${diffFrom180.toFixed(1)}°)`);
+  }
+
+  // Test 9: Extreme wrap-around with 5 readings near 0°/360°
+  {
+    const buf: number[] = [];
+    smoothHeading(buf, 358);
+    smoothHeading(buf, 2);
+    smoothHeading(buf, 359);
+    smoothHeading(buf, 1);
+    const result = smoothHeading(buf, 0);
+    let diffFrom0 = result;
+    if (diffFrom0 > 180) diffFrom0 = 360 - diffFrom0;
+    const ok = diffFrom0 < 3;
+    if (ok) smoothPass++; else smoothFail++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  Noisy NB near 0° (358,2,359,1,0) → ${result.toFixed(1)}° (expected ~0°, diff=${diffFrom0.toFixed(1)}°)`);
+  }
+
+  console.log(`\n  Heading smoothing tests: ${smoothPass} passed, ${smoothFail} failed`);
+
+  // ========================================================================
   // Final report
   // ========================================================================
   console.log('\n========================================');
   console.log('  FINAL REPORT');
   console.log('========================================');
 
-  const totalTests = results.length + speedResults.length;
-  const totalPassed = passed.length + speedTestPass;
-  const totalFailed = failed.length + speedTestFail;
+  const totalTests = results.length + speedResults.length + adaptivePass + adaptiveFail + smoothPass + smoothFail;
+  const totalPassed = passed.length + speedTestPass + adaptivePass + smoothPass;
+  const totalFailed = failed.length + speedTestFail + adaptiveFail + smoothFail;
 
   console.log(`  Total tests:  ${totalTests}`);
   console.log(`  Passed:       ${totalPassed}`);
