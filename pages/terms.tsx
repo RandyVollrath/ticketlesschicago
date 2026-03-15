@@ -106,14 +106,14 @@ export default function TermsOfService() {
               2. Description of Services
             </h2>
             <p style={{ marginBottom: '12px' }}>
-              Autopilot America provides two services:
+              Autopilot America provides Autopilot Protection, an annual membership that includes:
             </p>
             <ul style={{ paddingLeft: '24px', marginBottom: '12px' }}>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Free Alerts:</strong> Street cleaning notifications and reminders via email and SMS
+                <strong>Alerts and Reminders:</strong> Street cleaning notifications, renewal reminders, and parking ban alerts via email and SMS
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Founding Member Plan:</strong> Annual membership with unlimited automated contesting for eligible Chicago tickets
+                <strong>Automatic Ticket Contesting:</strong> Twice-weekly monitoring of the City of Chicago database for tickets on your plate, with unlimited automated contesting for eligible tickets
               </li>
             </ul>
           </section>
@@ -236,16 +236,8 @@ export default function TermsOfService() {
               Maximum Liability
             </h3>
             <p style={{ marginBottom: '12px', color: '#7f1d1d' }}>
-              Autopilot America's total liability to you is limited to:
+              Autopilot America's total liability to you is limited to the amount paid in membership fees during the prior 12 months.
             </p>
-            <ul style={{ paddingLeft: '24px', color: '#7f1d1d' }}>
-              <li style={{ marginBottom: '8px' }}>
-                For Free Alerts users: $0 (service provided free of charge)
-              </li>
-              <li style={{ marginBottom: '8px' }}>
-                For Founding Members: the amount paid in membership fees during the prior 12 months
-              </li>
-            </ul>
           </section>
 
           <section style={{ marginBottom: '32px' }}>
