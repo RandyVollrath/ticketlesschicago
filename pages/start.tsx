@@ -782,7 +782,7 @@ export default function StartFunnel() {
               <StepLabel>What&apos;s your address?</StepLabel>
               <StepSubtext>
                 Used as the return address on contest letters so the City can send you the result.
-                Also enables free street cleaning and winter parking alerts for your area.
+                Also enables street cleaning and winter parking alerts for your area.
               </StepSubtext>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

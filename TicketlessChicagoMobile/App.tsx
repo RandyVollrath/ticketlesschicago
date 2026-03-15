@@ -15,6 +15,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import CheckDestinationScreen from './src/screens/CheckDestinationScreen';
+import AccountInactiveScreen from './src/screens/AccountInactiveScreen';
 
 // Services
 import AuthService, { AuthState } from './src/services/AuthService';
@@ -44,6 +45,7 @@ setupGlobalErrorHandler();
 export type RootStackParamList = {
   Onboarding: undefined;
   Login: undefined;
+  AccountInactive: undefined;
   MainTabs: undefined;
   BluetoothSettings: undefined;
   CheckDestination: undefined;
@@ -108,6 +110,7 @@ function App(): React.JSX.Element {
   const [hasOnboarded, setHasOnboarded] = useState(false);
   const [hasSeenLogin, setHasSeenLogin] = useState(false);
   const [authState, setAuthState] = useState<AuthState | null>(null);
+  const [isPaidUser, setIsPaidUser] = useState<boolean | null>(null); // null = not checked yet
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   useEffect(() => {
@@ -125,6 +128,33 @@ function App(): React.JSX.Element {
 
   // Note: Deep linking and push notification navigation refs are set in
   // NavigationContainer's onReady callback to ensure navigation is ready
+
+  /**
+   * Check if the authenticated user has an active paid account.
+   * Returns true if has_contesting is true on their profile.
+   */
+  const checkPaidStatus = async (): Promise<boolean> => {
+    try {
+      const supabase = AuthService.getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return false;
+
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('has_contesting')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      const paid = profileData?.has_contesting === true;
+      setIsPaidUser(paid);
+      return paid;
+    } catch (error) {
+      log.error('Error checking paid status', error);
+      // On error, allow access (don't lock out due to network issues)
+      setIsPaidUser(true);
+      return true;
+    }
+  };
 
   /**
    * Pre-populate the user's home permit zone from their profile address.
@@ -201,6 +231,9 @@ function App(): React.JSX.Element {
               });
             }
 
+            // Check paid status on startup for returning users
+            await checkPaidStatus();
+
             const pushEnabled = await PushNotificationService.isEnabled();
             if (pushEnabled) {
               await PushNotificationService.registerTokenWithBackend();
@@ -244,12 +277,25 @@ function App(): React.JSX.Element {
       await AnalyticsService.logLogin('magic_link');
     }
 
-    // Navigate to main app FIRST so the user sees immediate feedback
-    if (navigationRef.current) {
-      navigationRef.current.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs' }],
-      });
+    // Check if user has an active paid account
+    const paid = await checkPaidStatus();
+
+    if (paid) {
+      // Navigate to main app
+      if (navigationRef.current) {
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      }
+    } else {
+      // Navigate to account inactive screen
+      if (navigationRef.current) {
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: 'AccountInactive' }],
+        });
+      }
     }
 
     // Request push notification permissions AFTER navigation (non-blocking)
@@ -257,6 +303,27 @@ function App(): React.JSX.Element {
       await PushNotificationService.requestPermissionAndRegister();
     } catch (error) {
       log.error('Push notification registration failed (non-fatal)', error);
+    }
+  };
+
+  const handleAccountRetryCheck = async () => {
+    const paid = await checkPaidStatus();
+    if (paid && navigationRef.current) {
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
+    }
+  };
+
+  const handleAccountSignOut = () => {
+    setIsPaidUser(null);
+    setHasSeenLogin(false);
+    if (navigationRef.current) {
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
     }
   };
 
@@ -273,6 +340,8 @@ function App(): React.JSX.Element {
   const getInitialRoute = (): keyof RootStackParamList => {
     if (!hasOnboarded) return 'Onboarding';
     if (!authState?.isAuthenticated) return 'Login';
+    // If paid status has been checked and user is not paid, show inactive screen
+    if (isPaidUser === false) return 'AccountInactive';
     return 'MainTabs';
   };
 
@@ -315,6 +384,15 @@ function App(): React.JSX.Element {
               <LoginScreen
                 {...props}
                 onAuthSuccess={handleLoginComplete}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AccountInactive">
+            {(props) => (
+              <AccountInactiveScreen
+                {...props}
+                onSignOut={handleAccountSignOut}
+                onRetryCheck={handleAccountRetryCheck}
               />
             )}
           </Stack.Screen>
