@@ -164,6 +164,58 @@ The recovery system was designed to catch parking events when the app was killed
 | **Mar 14 2026** | **Recovery: 120s dwell minimum for intermediate trips** | `checkForMissedParking()` | **No filter → 120s dwell required** | **3919 Lincoln Ave duplicates from red light stops** |
 | **Mar 14 2026** | **Recovery: record emitted trips in ring buffer** | `checkForMissedParking()` | **Not recorded → recorded** | **Same trips re-emitted on every app wake** |
 | **Mar 14 2026** | **Recovery: same-location dedup (<100m)** | `checkForMissedParking()` | **None → 100m dedup** | **Two trips → same CLVisit → two entries** |
+| **Mar 15 2026** | **Single Point of Emission gateway** | `emitParkingEventIfNew()` | **4 ad-hoc emission sites → 1 gateway** | **Architectural hardening — all dedup/validation centralized** |
+
+---
+
+## Architecture: Single Point of Emission (Mar 15 2026)
+
+### The Problem
+
+Before this change, parking events were emitted from **4 independent code paths**, each with its own ad-hoc validation:
+
+| Path | Function | What it did |
+|------|----------|-------------|
+| Real-time pipeline | `finalizeParkingConfirmation()` | `recordConfirmedParkingTime` + `sendEvent` + `persistPendingParkingEvent` |
+| Recovery intermediate trips | `checkForMissedParking()` loop | `sendEvent` + `persistPendingParkingEvent` + `recordConfirmedParkingTime` |
+| Recovery last trip (GPS fix) | `handleRecoveryGpsFix()` | `recordConfirmedParkingTime` + `sendEvent` + `persistPendingParkingEvent` |
+| CLVisit (app-killed fallback) | `didVisit()` | `recordConfirmedParkingTime` + `sendEvent` + `persistPendingParkingEvent` |
+
+Each path independently handled ring buffer recording, hotspot checks, and lockout checks — or didn't. Bugs kept appearing at the seams: one path would add a guard, another wouldn't. The recovery path didn't record to the ring buffer at all until Fix D, causing re-emission on every app wake.
+
+### The Fix: `emitParkingEventIfNew()`
+
+A single gateway function that ALL 4 emission paths now call. It runs 5 gates in order:
+
+1. **Zero-coordinate rejection** — blocks recovery events with no CLVisit match (lat=0, lng=0)
+2. **Ring buffer dedup** — `isAlreadyConfirmedParking()` (1h time + 500m distance tolerance)
+3. **Recent-emission dedup** — same location (<200m) within 5 minutes
+4. **Hotspot check** — user-reported false positive locations
+5. **False positive lockout** — 30min cooldown after unwind
+
+If all gates pass:
+- Records to ring buffer (`recordConfirmedParkingTime`)
+- Updates `lastEmittedParkingAt` / `lastEmittedParkingCoord` for gate 3
+- Emits `onParkingDetected` event to JS
+- Persists to pending queue (survives JS suspension)
+- Logs `emit_gate_*` decision for every gate hit
+
+### What Each Caller Does Now
+
+| Path | Before gateway | After gateway |
+|------|---------------|--------------|
+| `finalizeParkingConfirmation()` | Builds body, records ring buffer, emits, persists | Builds body → `emitParkingEventIfNew()` |
+| Recovery intermediate | Builds body, emits, persists, records ring buffer | Builds body → `emitParkingEventIfNew()`, notification conditional on `emitted` |
+| `handleRecoveryGpsFix()` | Records ring buffer, emits, persists | `emitParkingEventIfNew()` |
+| `didVisit()` | Checks hotspot, checks lockout, records ring buffer, emits, persists | `emitParkingEventIfNew()`, state + notification conditional on `emitted` |
+
+### Why This Is Better
+
+1. **No more missed guards**: Every parking event goes through the same 5 gates regardless of source.
+2. **Ring buffer always recorded**: Can't emit without recording. The "re-emit on every wake" class of bugs is eliminated.
+3. **Recent-emission dedup**: Gate 3 catches the case where two emission paths fire for the same stop within seconds of each other (e.g., recovery finds a trip right as CLVisit also emits it).
+4. **Single audit point**: Every emission or rejection is logged with source and gate name. `parking_decisions.ndjson` shows exactly which gate blocked which event.
+5. **Only ONE `sendEvent("onParkingDetected")` call in the entire codebase**: Nothing can bypass the gateway.
 
 ---
 
@@ -218,6 +270,7 @@ After any parking detection change, verify these scenarios on a physical device:
 
 | Component | File | Key Lines (approx) |
 |-----------|------|-----------|
+| **Emission gateway (ALL events)** | **`BackgroundLocationModule.swift`** | **emitParkingEventIfNew()** |
 | CoreMotion parking trigger | `BackgroundLocationModule.swift` | handlePotentialParking() |
 | GPS+CoreMotion agree path | `BackgroundLocationModule.swift` | speedZeroTimer callback |
 | GPS hard timeout (90s) | `BackgroundLocationModule.swift` | gpsZeroSpeedHardTimeoutSec |
