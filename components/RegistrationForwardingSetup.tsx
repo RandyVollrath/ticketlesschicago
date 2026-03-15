@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircleIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 
 interface RegistrationForwardingSetupProps {
   forwardingEmail: string;
   /** Compact mode for embedding in /start funnel or /settings card */
   compact?: boolean;
+  /** User's email — used to auto-detect their email provider */
+  userEmail?: string;
 }
 
 const CITY_STICKER_SENDER = 'chicagovehiclestickers@sebis.com';
@@ -12,313 +14,426 @@ const PLATE_STICKER_SENDER = 'ecommerce@ilsos.gov';
 
 type EmailProvider = 'gmail' | 'outlook' | 'yahoo' | 'apple' | null;
 
-export default function RegistrationForwardingSetup({ forwardingEmail, compact }: RegistrationForwardingSetupProps) {
+function detectProvider(email: string | undefined): EmailProvider {
+  if (!email) return null;
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return null;
+  if (domain === 'gmail.com' || domain === 'googlemail.com') return 'gmail';
+  if (domain === 'outlook.com' || domain === 'hotmail.com' || domain === 'live.com' || domain === 'msn.com') return 'outlook';
+  if (domain === 'yahoo.com' || domain === 'ymail.com' || domain === 'rocketmail.com') return 'yahoo';
+  if (domain === 'icloud.com' || domain === 'me.com' || domain === 'mac.com') return 'apple';
+  return null;
+}
+
+/** Gmail filter creation URL — opens with "From" pre-filled with both sticker senders */
+function gmailFilterUrl(): string {
+  const from = `${CITY_STICKER_SENDER} OR ${PLATE_STICKER_SENDER}`;
+  return `https://mail.google.com/mail/u/0/#create-filter/from=${encodeURIComponent(from)}`;
+}
+
+export default function RegistrationForwardingSetup({ forwardingEmail, compact, userEmail }: RegistrationForwardingSetupProps) {
   const [copied, setCopied] = useState(false);
-  const [provider, setProvider] = useState<EmailProvider>(null);
+  const detected = detectProvider(userEmail);
+  const [provider, setProvider] = useState<EmailProvider>(detected);
+
+  // Update provider when userEmail becomes available (e.g. after auth loads)
+  useEffect(() => {
+    const d = detectProvider(userEmail);
+    if (d) setProvider(d);
+  }, [userEmail]);
 
   const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(forwardingEmail);
+    try {
+      await navigator.clipboard.writeText(forwardingEmail);
+    } catch {
+      // Fallback for non-HTTPS / older browsers
+      const ta = document.createElement('textarea');
+      ta.value = forwardingEmail;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const containerClass = compact
-    ? ''
-    : 'bg-white shadow sm:rounded-lg';
-
-  const innerClass = compact
-    ? ''
-    : 'px-4 py-5 sm:p-6';
-
   return (
-    <div className={containerClass}>
-      <div className={innerClass}>
-        {!compact && (
-          <>
-            <h3 className="text-lg font-medium leading-6 text-gray-900">Set Up Receipt Forwarding</h3>
-            <div className="mt-2 max-w-xl text-sm text-gray-500">
-              <p>
-                Auto-forward your city sticker and plate sticker purchase emails so we have your receipt on file if you ever get ticketed.
-              </p>
-            </div>
-          </>
-        )}
-
-        {/* Forwarding address + copy */}
-        <div className={compact ? 'rounded-md bg-blue-50 p-3' : 'mt-5 rounded-md bg-blue-50 p-4'}>
-          <div className="flex items-start gap-3">
-            <CheckCircleIcon className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-blue-800">Your forwarding address</p>
-              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                <code className="rounded bg-blue-100 px-2 py-1 font-mono text-xs break-all text-blue-900">
-                  {forwardingEmail}
-                </code>
-                <button
-                  onClick={copyToClipboard}
-                  className="inline-flex items-center rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 flex-shrink-0"
-                >
-                  {copied ? (
-                    <>
-                      <CheckCircleIcon className="h-3.5 w-3.5 mr-1" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <ClipboardDocumentIcon className="h-3.5 w-3.5 mr-1" />
-                      Copy
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
+    <div>
+      {/* ── Forwarding address + copy ── */}
+      <div style={{
+        borderRadius: 10,
+        backgroundColor: '#EFF6FF',
+        padding: compact ? '12px 14px' : '14px 16px',
+        marginBottom: compact ? 14 : 18,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#1E40AF' }}>Your forwarding address:</span>
         </div>
-
-        {/* Provider picker */}
-        <div className={compact ? 'mt-4' : 'mt-6'}>
-          <p className="text-sm font-semibold text-gray-900 mb-3">
-            Choose your email provider for step-by-step instructions:
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {([
-              { id: 'gmail' as const, label: 'Gmail', color: 'red' },
-              { id: 'outlook' as const, label: 'Outlook', color: 'blue' },
-              { id: 'yahoo' as const, label: 'Yahoo', color: 'purple' },
-              { id: 'apple' as const, label: 'Apple Mail', color: 'gray' },
-            ] as const).map(p => (
-              <button
-                key={p.id}
-                onClick={() => setProvider(provider === p.id ? null : p.id)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                  provider === p.id
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Provider-specific instructions */}
-        {provider === 'gmail' && (
-          <GmailInstructions forwardingEmail={forwardingEmail} />
-        )}
-        {provider === 'outlook' && (
-          <OutlookInstructions forwardingEmail={forwardingEmail} />
-        )}
-        {provider === 'yahoo' && (
-          <YahooInstructions forwardingEmail={forwardingEmail} />
-        )}
-        {provider === 'apple' && (
-          <AppleMailInstructions forwardingEmail={forwardingEmail} />
-        )}
-
-        {/* Fallback option */}
-        <div className={`${compact ? 'mt-4' : 'mt-6'} rounded-lg border border-amber-200 bg-amber-50 p-3`}>
-          <p className="text-sm font-medium text-amber-900">
-            Don&apos;t want to set up a filter right now?
-          </p>
-          <p className="mt-1 text-xs text-amber-800">
-            No problem. If you ever get a sticker or plates ticket, we&apos;ll email you and ask you to forward the receipt then. The filter just saves you a step later.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+          <code style={{
+            fontFamily: '"SF Mono", "Fira Code", "Fira Mono", Menlo, monospace',
+            fontSize: 12,
+            color: '#1E3A8A',
+            backgroundColor: '#DBEAFE',
+            padding: '5px 8px',
+            borderRadius: 6,
+            wordBreak: 'break-all',
+            flex: '1 1 auto',
+            minWidth: 0,
+          }}>
+            {forwardingEmail}
+          </code>
+          <button
+            onClick={copyToClipboard}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '6px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              color: '#FFFFFF',
+              backgroundColor: copied ? '#10B981' : '#2563EB',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              transition: 'background-color 0.2s',
+            }}
+          >
+            {copied ? (
+              <>
+                <CheckCircleIcon style={{ width: 14, height: 14 }} />
+                Copied
+              </>
+            ) : (
+              <>
+                <ClipboardDocumentIcon style={{ width: 14, height: 14 }} />
+                Copy
+              </>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* ── Provider picker ── */}
+      <div style={{ marginBottom: compact ? 10 : 14 }}>
+        <p style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#0F172A',
+          margin: '0 0 8px',
+        }}>
+          {detected ? 'Setup instructions:' : 'What email do you use?'}
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {([
+            { id: 'gmail' as const, label: 'Gmail' },
+            { id: 'outlook' as const, label: 'Outlook' },
+            { id: 'yahoo' as const, label: 'Yahoo' },
+            { id: 'apple' as const, label: 'Apple Mail' },
+          ] as const).map(p => (
+            <button
+              key={p.id}
+              onClick={() => setProvider(provider === p.id ? null : p.id)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 500,
+                fontFamily: 'inherit',
+                border: provider === p.id ? '1.5px solid #2563EB' : '1.5px solid #CBD5E1',
+                backgroundColor: provider === p.id ? '#2563EB' : '#FFFFFF',
+                color: provider === p.id ? '#FFFFFF' : '#334155',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Provider-specific instructions ── */}
+      {provider === 'gmail' && (
+        <GmailInstructions forwardingEmail={forwardingEmail} copied={copied} onCopy={copyToClipboard} />
+      )}
+      {provider === 'outlook' && (
+        <OutlookInstructions forwardingEmail={forwardingEmail} />
+      )}
+      {provider === 'yahoo' && (
+        <YahooInstructions forwardingEmail={forwardingEmail} />
+      )}
+      {provider === 'apple' && (
+        <AppleMailInstructions forwardingEmail={forwardingEmail} />
+      )}
     </div>
   );
 }
 
-/* ── Gmail instructions ── */
-function GmailInstructions({ forwardingEmail }: { forwardingEmail: string }) {
-  return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 space-y-4">
-      <h4 className="text-sm font-bold text-gray-900">Gmail — City Sticker Receipt Filter</h4>
+/* ────────────────────────────────────────────────────────────────
+   Gmail — 3-click flow using direct filter creation URL
+   ──────────────────────────────────────────────────────────────── */
+function GmailInstructions({ forwardingEmail, copied, onCopy }: {
+  forwardingEmail: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  const filterUrl = gmailFilterUrl();
 
-      <div className="space-y-3">
+  return (
+    <div style={{
+      borderRadius: 10,
+      border: '1px solid #E2E8F0',
+      backgroundColor: '#FFFFFF',
+      padding: 16,
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 14,
+      }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Gmail setup</span>
+        <span style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: '#10B981',
+          backgroundColor: '#ECFDF5',
+          padding: '2px 8px',
+          borderRadius: 10,
+        }}>
+          3 clicks
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Step n={1}>
-          <p>Open Gmail and click the <strong>search bar</strong> at the top</p>
+          <p style={{ margin: 0 }}>
+            <strong>Copy</strong> your forwarding address above, then{' '}
+            <a
+              href={filterUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#2563EB', fontWeight: 600, textDecoration: 'underline' }}
+            >
+              open Gmail filter setup
+            </a>
+          </p>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748B' }}>
+            This opens Gmail with the city sticker and plate sticker senders already filled in.
+          </p>
         </Step>
         <Step n={2}>
-          <p>
-            Type <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">from:{CITY_STICKER_SENDER}</code> and press Enter
+          <p style={{ margin: 0 }}>
+            Click <strong>&quot;Create filter&quot;</strong>, then check <strong>&quot;Forward it to&quot;</strong> and paste your address.
           </p>
-          <p className="text-xs text-gray-500 mt-1">
-            This finds all your city sticker purchase emails
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748B' }}>
+            If the address isn&apos;t in the dropdown, click &quot;Add forwarding address&quot; — Gmail will send a verification email that we confirm automatically.
           </p>
         </Step>
         <Step n={3}>
-          <p>
-            Click the <strong>filter icon</strong> (small sliders/triangle) in the search bar, then click <strong>&quot;Create filter&quot;</strong> at the bottom
+          <p style={{ margin: 0 }}>
+            Click <strong>&quot;Create filter&quot;</strong> — done. Receipts forward automatically from now on.
           </p>
-        </Step>
-        <Step n={4}>
-          <p>
-            Check <strong>&quot;Forward it to:&quot;</strong> and paste your forwarding address:
-          </p>
-          <code className="block mt-1 bg-blue-50 px-2 py-1 rounded text-xs font-mono text-blue-900 break-all">
-            {forwardingEmail}
-          </code>
-          <p className="text-xs text-gray-500 mt-1">
-            If the address isn&apos;t in the dropdown yet, click &quot;Add forwarding address&quot; and Gmail will send a verification email — we confirm it automatically.
-          </p>
-        </Step>
-        <Step n={5}>
-          <p>Click <strong>&quot;Create filter&quot;</strong> — done!</p>
         </Step>
       </div>
 
-      <div className="border-t border-gray-100 pt-3">
-        <p className="text-xs text-gray-600">
-          <strong>Optional:</strong> Repeat for plate sticker emails from{' '}
-          <code className="bg-gray-100 px-1 py-0.5 rounded">{PLATE_STICKER_SENDER}</code>
-        </p>
+      <div style={{
+        marginTop: 14,
+        paddingTop: 12,
+        borderTop: '1px solid #F1F5F9',
+        fontSize: 12,
+        color: '#64748B',
+      }}>
+        Both senders are included in one filter: <code style={{ backgroundColor: '#F1F5F9', padding: '1px 4px', borderRadius: 3, fontSize: 11 }}>{CITY_STICKER_SENDER}</code> and <code style={{ backgroundColor: '#F1F5F9', padding: '1px 4px', borderRadius: 3, fontSize: 11 }}>{PLATE_STICKER_SENDER}</code>
       </div>
     </div>
   );
 }
 
-/* ── Outlook instructions ── */
+/* ────────────────────────────────────────────────────────────────
+   Outlook
+   ──────────────────────────────────────────────────────────────── */
 function OutlookInstructions({ forwardingEmail }: { forwardingEmail: string }) {
   return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 space-y-4">
-      <h4 className="text-sm font-bold text-gray-900">Outlook — City Sticker Receipt Rule</h4>
-
-      <div className="space-y-3">
+    <div style={{
+      borderRadius: 10,
+      border: '1px solid #E2E8F0',
+      backgroundColor: '#FFFFFF',
+      padding: 16,
+    }}>
+      <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: '0 0 14px' }}>Outlook setup</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Step n={1}>
-          <p>Open Outlook and go to <strong>Settings</strong> (gear icon) &rarr; <strong>Mail</strong> &rarr; <strong>Rules</strong></p>
+          <p style={{ margin: 0 }}>
+            Open{' '}
+            <a href="https://outlook.live.com/mail/0/options/mail/rules" target="_blank" rel="noopener noreferrer" style={{ color: '#2563EB', fontWeight: 600, textDecoration: 'underline' }}>
+              Outlook Mail Rules
+            </a>
+            {' '}and click <strong>&quot;Add new rule&quot;</strong>
+          </p>
         </Step>
         <Step n={2}>
-          <p>Click <strong>&quot;Add new rule&quot;</strong></p>
+          <p style={{ margin: 0 }}>
+            Name it <strong>&quot;Sticker Receipts&quot;</strong>. Under condition, select <strong>&quot;From&quot;</strong> and enter:
+          </p>
+          <code style={codeBlockStyle}>{CITY_STICKER_SENDER}</code>
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: '#64748B' }}>
+            Add a second &quot;From&quot; condition for: <code style={inlineCodeStyle}>{PLATE_STICKER_SENDER}</code>
+          </p>
         </Step>
         <Step n={3}>
-          <p>
-            Name it <strong>&quot;City Sticker Receipts&quot;</strong>
+          <p style={{ margin: 0 }}>
+            Under action, select <strong>&quot;Forward to&quot;</strong> and paste your forwarding address:
           </p>
+          <code style={codeBlockStyle}>{forwardingEmail}</code>
         </Step>
         <Step n={4}>
-          <p>
-            Under condition, select <strong>&quot;From&quot;</strong> and enter:
-          </p>
-          <code className="block mt-1 bg-gray-100 px-2 py-1 rounded text-xs">{CITY_STICKER_SENDER}</code>
+          <p style={{ margin: 0 }}>Click <strong>&quot;Save&quot;</strong> — done.</p>
         </Step>
-        <Step n={5}>
-          <p>
-            Under action, select <strong>&quot;Forward to&quot;</strong> and paste:
-          </p>
-          <code className="block mt-1 bg-blue-50 px-2 py-1 rounded text-xs font-mono text-blue-900 break-all">
-            {forwardingEmail}
-          </code>
-        </Step>
-        <Step n={6}>
-          <p>Click <strong>&quot;Save&quot;</strong> — done!</p>
-        </Step>
-      </div>
-
-      <div className="border-t border-gray-100 pt-3">
-        <p className="text-xs text-gray-600">
-          <strong>Optional:</strong> Create another rule for plate sticker emails from{' '}
-          <code className="bg-gray-100 px-1 py-0.5 rounded">{PLATE_STICKER_SENDER}</code>
-        </p>
       </div>
     </div>
   );
 }
 
-/* ── Yahoo instructions ── */
+/* ────────────────────────────────────────────────────────────────
+   Yahoo
+   ──────────────────────────────────────────────────────────────── */
 function YahooInstructions({ forwardingEmail }: { forwardingEmail: string }) {
   return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 space-y-4">
-      <h4 className="text-sm font-bold text-gray-900">Yahoo Mail — City Sticker Receipt Filter</h4>
-
-      <div className="space-y-3">
+    <div style={{
+      borderRadius: 10,
+      border: '1px solid #E2E8F0',
+      backgroundColor: '#FFFFFF',
+      padding: 16,
+    }}>
+      <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: '0 0 14px' }}>Yahoo Mail setup</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Step n={1}>
-          <p>Open Yahoo Mail and click <strong>Settings</strong> (gear icon) &rarr; <strong>More Settings</strong></p>
+          <p style={{ margin: 0 }}>
+            Open Yahoo Mail &rarr; <strong>Settings</strong> (gear icon) &rarr; <strong>More Settings</strong> &rarr; <strong>Filters</strong>
+          </p>
         </Step>
         <Step n={2}>
-          <p>Click <strong>&quot;Filters&quot;</strong> in the left menu, then <strong>&quot;Add new filters&quot;</strong></p>
+          <p style={{ margin: 0 }}>
+            Click <strong>&quot;Add new filters&quot;</strong>, name it <strong>&quot;Sticker Receipts&quot;</strong>
+          </p>
         </Step>
         <Step n={3}>
-          <p>
-            Name it <strong>&quot;City Sticker Receipts&quot;</strong>
+          <p style={{ margin: 0 }}>
+            Set <strong>&quot;From&quot;</strong> contains: <code style={inlineCodeStyle}>{CITY_STICKER_SENDER}</code>
           </p>
         </Step>
         <Step n={4}>
-          <p>
-            Set <strong>&quot;From&quot;</strong> contains:
+          <p style={{ margin: 0 }}>
+            Yahoo doesn&apos;t support per-filter forwarding. Set up full forwarding instead:
           </p>
-          <code className="block mt-1 bg-gray-100 px-2 py-1 rounded text-xs">{CITY_STICKER_SENDER}</code>
-        </Step>
-        <Step n={5}>
-          <p>
-            Under &quot;Then move the email to&quot;, Yahoo doesn&apos;t support auto-forward via filters. Instead, set up <strong>full forwarding</strong>:
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Go to Settings &rarr; More Settings &rarr; Mailboxes &rarr; Your Yahoo account &rarr; Forwarding, and add your forwarding address. Then use the filter to label sticker emails for organization.
-          </p>
-          <p className="text-xs text-amber-700 mt-1 font-medium">
-            Or simply forward the receipt email manually when we ask for it (we&apos;ll remind you if you get ticketed).
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748B' }}>
+            Settings &rarr; More Settings &rarr; Mailboxes &rarr; Your account &rarr; Forwarding &rarr; add your forwarding address. Use the filter above to label sticker emails for organization.
           </p>
         </Step>
+      </div>
+      <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, backgroundColor: '#FEF3C7', fontSize: 12, color: '#92400E' }}>
+        Or simply forward the receipt when we ask for it — we&apos;ll remind you if you get ticketed.
       </div>
     </div>
   );
 }
 
-/* ── Apple Mail instructions ── */
+/* ────────────────────────────────────────────────────────────────
+   Apple Mail
+   ──────────────────────────────────────────────────────────────── */
 function AppleMailInstructions({ forwardingEmail }: { forwardingEmail: string }) {
   return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 space-y-4">
-      <h4 className="text-sm font-bold text-gray-900">Apple Mail (iCloud) — City Sticker Receipt Rule</h4>
-
-      <div className="space-y-3">
+    <div style={{
+      borderRadius: 10,
+      border: '1px solid #E2E8F0',
+      backgroundColor: '#FFFFFF',
+      padding: 16,
+    }}>
+      <p style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', margin: '0 0 14px' }}>Apple Mail setup</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Step n={1}>
-          <p>
-            <strong>On Mac:</strong> Open Mail &rarr; <strong>Settings</strong> &rarr; <strong>Rules</strong> tab &rarr; <strong>&quot;Add Rule&quot;</strong>
+          <p style={{ margin: 0 }}>
+            <strong>On iCloud.com</strong> (recommended — always on): Mail &rarr; Settings (gear) &rarr; Rules &rarr; &quot;Add a Rule&quot;
           </p>
-          <p className="text-xs text-gray-500 mt-1">
-            <strong>On iCloud.com:</strong> Go to Mail &rarr; Settings (gear) &rarr; Rules &rarr; &quot;Add a Rule&quot;
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748B' }}>
+            On Mac: Mail &rarr; Settings &rarr; Rules tab &rarr; &quot;Add Rule&quot; (only runs when Mail is open)
           </p>
         </Step>
         <Step n={2}>
-          <p>
-            Set condition: <strong>&quot;From&quot;</strong> contains
+          <p style={{ margin: 0 }}>
+            Set condition: <strong>&quot;From&quot;</strong> contains <code style={inlineCodeStyle}>{CITY_STICKER_SENDER}</code>
           </p>
-          <code className="block mt-1 bg-gray-100 px-2 py-1 rounded text-xs">{CITY_STICKER_SENDER}</code>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748B' }}>
+            Add a second rule for <code style={inlineCodeStyle}>{PLATE_STICKER_SENDER}</code>
+          </p>
         </Step>
         <Step n={3}>
-          <p>
-            Set action: <strong>&quot;Forward to&quot;</strong>
+          <p style={{ margin: 0 }}>
+            Set action: <strong>&quot;Forward to&quot;</strong> and paste:
           </p>
-          <code className="block mt-1 bg-blue-50 px-2 py-1 rounded text-xs font-mono text-blue-900 break-all">
-            {forwardingEmail}
-          </code>
+          <code style={codeBlockStyle}>{forwardingEmail}</code>
         </Step>
         <Step n={4}>
-          <p>Click <strong>&quot;OK&quot;</strong> / <strong>&quot;Done&quot;</strong> — done!</p>
+          <p style={{ margin: 0 }}>Click <strong>&quot;OK&quot;</strong> / <strong>&quot;Done&quot;</strong> — done.</p>
         </Step>
-      </div>
-
-      <div className="border-t border-gray-100 pt-3">
-        <p className="text-xs text-gray-600">
-          <strong>Note:</strong> Apple Mail rules on Mac only run when Mail is open. For always-on forwarding, set the rule on iCloud.com instead.
-        </p>
       </div>
     </div>
   );
 }
 
-/* ── Shared Step component ── */
+/* ── Shared ── */
+
 function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
-    <div className="flex gap-3">
-      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center mt-0.5">
+    <div style={{ display: 'flex', gap: 10 }}>
+      <span style={{
+        flexShrink: 0,
+        width: 22,
+        height: 22,
+        borderRadius: '50%',
+        backgroundColor: '#EFF6FF',
+        color: '#2563EB',
+        fontSize: 12,
+        fontWeight: 700,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 1,
+      }}>
         {n}
       </span>
-      <div className="text-sm text-gray-700 flex-1">
+      <div style={{ flex: 1, fontSize: 13, color: '#334155', lineHeight: 1.5 }}>
         {children}
       </div>
     </div>
   );
 }
+
+const codeBlockStyle: React.CSSProperties = {
+  display: 'block',
+  marginTop: 6,
+  fontFamily: '"SF Mono", "Fira Code", Menlo, monospace',
+  fontSize: 12,
+  color: '#1E3A8A',
+  backgroundColor: '#EFF6FF',
+  padding: '6px 10px',
+  borderRadius: 6,
+  wordBreak: 'break-all',
+};
+
+const inlineCodeStyle: React.CSSProperties = {
+  fontFamily: '"SF Mono", "Fira Code", Menlo, monospace',
+  fontSize: 11,
+  backgroundColor: '#F1F5F9',
+  padding: '1px 5px',
+  borderRadius: 3,
+};

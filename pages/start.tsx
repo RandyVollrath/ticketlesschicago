@@ -924,15 +924,16 @@ export default function StartFunnel() {
           {/* ── Step: Receipt Forwarding (optional) ── */}
           {step === 'receipt-forwarding' && (
             <StepContainer>
-              <StepLabel>Auto-forward your sticker receipts</StepLabel>
+              <StepLabel>One-time setup: auto-forward your sticker receipts</StepLabel>
               <StepSubtext>
-                If you ever get a sticker or plates ticket, your purchase receipt is the #1 evidence for winning your contest (70% win rate). Set up auto-forwarding now so we always have it on file.
+                Already bought your city sticker or plate sticker? Your purchase receipt is proof you paid — the #1 evidence for winning sticker contests (70% win rate). Set up a quick email filter and we&apos;ll always have it on file, automatically.
               </StepSubtext>
 
               {user?.id && (
                 <RegistrationForwardingSetup
                   forwardingEmail={`${user.id}@receipts.autopilotamerica.com`}
                   compact
+                  userEmail={user.email}
                 />
               )}
 
@@ -956,7 +957,7 @@ export default function StartFunnel() {
                   fontFamily: 'inherit',
                 }}
               >
-                Skip — I&apos;ll forward receipts when needed
+                Skip — I&apos;ll do this later in Settings
               </button>
             </StepContainer>
           )}
