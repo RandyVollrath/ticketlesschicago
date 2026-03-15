@@ -13,6 +13,9 @@ This document tracks known parking detection accuracy issues, root cause analyse
 | 3 | Recovery emits parking with wrong timestamp | Mitigated | Feb 2026 |
 | 4 | CLVisit coordinate drift on recovery re-emit | Fixed | Feb 2026 |
 | 5 | `lastConfirmedParkingLocation` dedup insufficient for multi-trip recovery | Fixed | Feb 2026 |
+| 6 | Recovery treats red lights as parking (no dwell filter) | **Fixed Mar 14 2026** | Mar 2026 |
+| 7 | Recovery re-emits same trips on every app wake (not recorded in ring buffer) | **Fixed Mar 14 2026** | Mar 2026 |
+| 8 | Recovery emits duplicate entries for same CLVisit location | **Fixed Mar 14 2026** | Mar 2026 |
 
 ---
 
@@ -95,6 +98,44 @@ The "intersection risk" system is a **red-light false positive guard** that work
 
 ---
 
+## Incident: 2026-03-14 (Part 2) — 3919 Lincoln Ave Duplicate Recovery Entries
+
+### What Happened
+
+After deploying Fix A/B and updating the phone, the user saw **two entries** for "3919 Lincoln Ave" at 6:56 PM in parking history. These were NOT from the real-time pipeline — they were from the recovery system.
+
+### Root Cause
+
+CoreMotion splits a single drive into multiple "trips" whenever it briefly exits automotive mode (red light, brief stop, traffic pause). The drive to the destination had 3 "trips":
+
+| Trip | Drive Duration | Dwell Before Next Drive | What Really Happened |
+|------|---------------|------------------------|---------------------|
+| 1 | 143s | **7 seconds** | Red light or brief traffic stop |
+| 2 | 61s | **94 seconds** | Another traffic stop (~1.5 min) |
+| 3 | 95s | N/A (actual parking) | Real parking — confirmed by normal pipeline |
+
+Trip 3 was deduped correctly (11s time match in ring buffer). But Trips 1 and 2:
+- Were never confirmed by the normal pipeline (it doesn't fire for 7-second stops)
+- Were NOT in the dedup ring buffer
+- Both matched the SAME CLVisit at (41.952922, -87.677784) = 3919 Lincoln Ave
+- Recovery emitted both as separate parking events
+
+**Compounding problem**: Recovery ran 3 more times (22:40, 23:34) because `hasCheckedForMissedParking` resets on every app resume. Each time, it re-emitted the same two trips because they were never recorded in the ring buffer after emission.
+
+### Fixes (Fix C/D/E)
+
+**Fix C: 120-second dwell minimum** — Intermediate trips must have 120+ seconds of dwell time (gap between parking and next drive start) to be emitted. Trip 1 had 7 seconds, Trip 2 had 94 seconds — both would be filtered. Real intermediate parking (stopping at a store for 5 minutes on the way home) still gets through.
+
+**Fix D: Record emitted trips in ring buffer** — After emitting an intermediate trip, immediately call `recordConfirmedParkingTime()` so subsequent recovery runs find it in the ring buffer and skip it. Previously, only the normal pipeline and last-trip recovery recorded to the ring buffer.
+
+**Fix E: Same-location dedup** — If two intermediate trips resolve to the same CLVisit (within 100m), only the first is emitted. Prevents the exact scenario where two red lights near each other both map to one iOS dwell location.
+
+### Why These Were Missed Before
+
+The recovery system was designed to catch parking events when the app was killed. The assumption was: if CoreMotion shows a drive→park transition, it was real parking. That assumption is wrong — CoreMotion can report "not automotive" at any red light, creating fake trip boundaries. The normal pipeline has extensive guards against this (GPS speed, walking evidence, confidence scoring). Recovery had none.
+
+---
+
 ## Historical False Positive Locations
 
 | Location | Intersection Type | Issue | First Seen | Status |
@@ -120,6 +161,9 @@ The "intersection risk" system is a **red-light false positive guard** that work
 | Mar 2026 | Added CLVisit departure GPS boost | `startBootstrapGpsWindow("clvisit_departure")` | N/A | Catch short drives missed by CoreMotion |
 | **Mar 14 2026** | **CoreMotion path requires GPS speed or walking** | `handlePotentialParking()` | **Direct confirm → defer to GPS** | **Grace & Lincoln red-light false positive** |
 | **Mar 14 2026** | **Unwind restarts isDriving + removes confidence gate** | `maybeUnwindRecentParkingConfirmation()` | **Clear only → full driving restart** | **Byron St cascade failure** |
+| **Mar 14 2026** | **Recovery: 120s dwell minimum for intermediate trips** | `checkForMissedParking()` | **No filter → 120s dwell required** | **3919 Lincoln Ave duplicates from red light stops** |
+| **Mar 14 2026** | **Recovery: record emitted trips in ring buffer** | `checkForMissedParking()` | **Not recorded → recorded** | **Same trips re-emitted on every app wake** |
+| **Mar 14 2026** | **Recovery: same-location dedup (<100m)** | `checkForMissedParking()` | **None → 100m dedup** | **Two trips → same CLVisit → two entries** |
 
 ---
 
