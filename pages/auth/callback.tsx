@@ -417,13 +417,13 @@ export default function AuthCallback() {
                 return;
               } else {
                 console.error('❌ Failed to create free account:', result.error);
-                router.push('/alerts/signup?error=signup_failed');
+                router.push('/start?error=signup_failed');
                 return;
               }
             } catch (error) {
               console.error('❌ Error processing free signup:', error);
               sessionStorage.removeItem('pendingFreeSignup'); // Clean up on error
-              router.push('/alerts/signup?error=signup_failed');
+              router.push('/start?error=signup_failed');
               return;
             }
           } else if (isFreeSignupFlow) {
@@ -431,7 +431,7 @@ export default function AuthCallback() {
             console.error('❌ Free signup flow detected but no form data found');
             sessionStorage.removeItem('pendingFreeSignup');
             localStorage.removeItem('pendingFreeSignup');
-            router.push('/alerts/signup?error=data_lost');
+            router.push('/start?error=data_lost');
             return;
           }
 

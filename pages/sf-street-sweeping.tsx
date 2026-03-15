@@ -231,7 +231,7 @@ export default function SFStreetSweeping() {
                   </a>
 
                   <a
-                    href="/alerts/signup"
+                    href="/start"
                     style={{
                       display: 'inline-block',
                       padding: '10px 20px',
@@ -245,7 +245,7 @@ export default function SFStreetSweeping() {
                       cursor: 'pointer'
                     }}
                   >
-                    Get Automatic Reminders
+                    Get Started
                   </a>
                 </div>
               </div>
@@ -368,7 +368,7 @@ export default function SFStreetSweeping() {
                 Sign up for free SMS and email reminders before every street cleaning day. Peace of Mind Parking!
               </p>
               <a
-                href="/alerts/signup"
+                href="/start"
                 style={{
                   display: 'inline-block',
                   padding: '12px 24px',
@@ -380,7 +380,7 @@ export default function SFStreetSweeping() {
                   fontWeight: '600'
                 }}
               >
-                Get Free Alerts
+                Get Started
               </a>
             </div>
           </div>
@@ -422,7 +422,7 @@ export default function SFStreetSweeping() {
             Sign up for Autopilot America to get automatic text and email reminders before every street sweeping day.
           </p>
           <a
-            href="/alerts/signup"
+            href="/start"
             style={{
               display: 'inline-block',
               padding: '12px 24px',
@@ -436,7 +436,7 @@ export default function SFStreetSweeping() {
               cursor: 'pointer'
             }}
           >
-            Sign Up Now
+            Get Started
           </a>
         </div>
       </div>

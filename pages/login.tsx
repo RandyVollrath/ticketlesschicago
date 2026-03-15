@@ -209,7 +209,7 @@ export default function Login() {
 
         <div className="nav-desktop" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
           <a href="/check-your-street" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Check Your Street</a>
-          <a href="/alerts/signup" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Free Alerts</a>
+          <a href="/start" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Get Started</a>
           <a href="/protection" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Protection</a>
         </div>
 
@@ -322,7 +322,7 @@ export default function Login() {
               New to Autopilot America?
             </p>
             <button
-              onClick={() => router.push('/alerts/signup')}
+              onClick={() => router.push('/start')}
               style={{
                 backgroundColor: COLORS.regulatory,
                 color: 'white',
@@ -334,7 +334,7 @@ export default function Login() {
                 cursor: 'pointer'
               }}
             >
-              Get Free Alerts
+              Get Started
             </button>
           </div>
         </div>

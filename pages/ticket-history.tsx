@@ -141,8 +141,7 @@ export default function TicketHistory() {
 
         <div className="nav-desktop" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
           <a href="/check-your-street" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Check Your Street</a>
-          <a href="/alerts/signup" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Free Alerts</a>
-          <a href="/check-ticket" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Check Ticket</a>
+          <a href="/start" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Get Started</a>
           <button onClick={() => router.push('/login')} style={{
             backgroundColor: COLORS.regulatory,
             color: 'white',
@@ -752,7 +751,7 @@ export default function TicketHistory() {
                 <path d="M5 12h14M12 5l7 7-7 7"/>
               </svg>
             </Link>
-            <Link href="/alerts/signup" style={{
+            <Link href="/start" style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
@@ -765,7 +764,7 @@ export default function TicketHistory() {
               fontWeight: 600,
               fontSize: '16px',
             }}>
-              Free Alerts First
+              Get Started
             </Link>
           </div>
         </div>

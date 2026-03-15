@@ -163,7 +163,7 @@ export default function Custom404() {
               justifyContent: 'center',
               flexWrap: 'wrap'
             }}>
-              <a href="/alerts/signup" style={{ color: COLORS.regulatory, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Free Alerts</a>
+              <a href="/start" style={{ color: COLORS.regulatory, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Get Started</a>
               <a href="/protection" style={{ color: COLORS.regulatory, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Protection</a>
               <a href="/check-your-street" style={{ color: COLORS.regulatory, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Street Cleaning</a>
               <a href="/settings" style={{ color: COLORS.regulatory, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>My Account</a>
