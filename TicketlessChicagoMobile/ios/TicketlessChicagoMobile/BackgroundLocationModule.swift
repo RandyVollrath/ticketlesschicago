@@ -4436,22 +4436,49 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       // confirmed parking ring buffer. Without this, recovery re-emits parking events
       // that the normal pipeline already caught (e.g. Byron parking at 7:03 PM was
       // re-emitted at 9:22 PM with drifted CLVisit coords → "3857 N Lincoln Ave").
+      //
+      // Mar 14 2026 fix: THREE additional guards prevent false intermediate emissions:
+      // 1. DWELL TIME: Require 120s+ dwell before next drive starts. A 7-second stop
+      //    at a red light is NOT parking. CoreMotion splits drives at ANY brief non-automotive
+      //    moment, creating fake "trips" from traffic stops.
+      // 2. RING BUFFER RECORD: After emitting, record in ring buffer so subsequent
+      //    recovery runs (app resume, significantLocationChange) don't re-emit.
+      // 3. SAME-LOCATION DEDUP: If two intermediate trips resolve to the same CLVisit
+      //    (within 100m), only emit the first one.
       if trips.count > 1 {
         self.log("RECOVERY: Checking \(trips.count - 1) intermediate trips for deduplication + emission")
+        var emittedVisitLocations: [(lat: Double, lng: Double)] = []  // Track emitted locations for same-location dedup
+
         for i in 0..<(trips.count - 1) {
           let trip = trips[i]
+          let nextTrip = trips[i + 1]
+
+          // ── Guard 1: Dwell time filter ──
+          // Dwell = time between this trip's park and the next trip's drive start.
+          // Red lights, traffic pauses, and pickup/dropoff stops are typically < 2 min.
+          // Real parking is almost always > 2 min.
+          let dwellSec = nextTrip.driveStart.timeIntervalSince(trip.parkTime)
+          if dwellSec < 120 {
+            self.log("RECOVERY: Trip \(i + 1) — SKIPPING (dwell only \(String(format: "%.0f", dwellSec))s < 120s minimum, likely red light or brief stop)")
+            self.decision("recovery_intermediate_short_dwell", [
+              "tripIndex": i + 1,
+              "parkTime": trip.parkTime.timeIntervalSince1970 * 1000,
+              "dwellSec": dwellSec,
+              "driveDurationSec": trip.driveDuration,
+            ])
+            continue
+          }
 
           // Try to match this parking time with a CLVisit for coordinates FIRST
           // (needed for dedup distance check AND for emission if not a duplicate)
           let visitMatch = self.findVisitForTimestamp(trip.parkTime, toleranceSec: 600)
 
-          // ── Per-trip deduplication ──
+          // ── Guard 2: Per-trip deduplication (ring buffer) ──
           // Check if this intermediate trip was already confirmed by the normal
-          // parking pipeline. Compare parkTime + CLVisit coords against the
-          // confirmed parking ring buffer.
+          // parking pipeline OR by a previous recovery run.
           let visitCoords: (lat: Double, lng: Double)? = visitMatch.map { (lat: $0.latitude, lng: $0.longitude) }
           if self.isAlreadyConfirmedParking(parkTime: trip.parkTime, coords: visitCoords) {
-            self.log("RECOVERY: Trip \(i + 1) — SKIPPING (already confirmed by normal pipeline, parkTime=\(trip.parkTime))")
+            self.log("RECOVERY: Trip \(i + 1) — SKIPPING (already confirmed, parkTime=\(trip.parkTime))")
             self.decision("recovery_intermediate_deduped", [
               "tripIndex": i + 1,
               "parkTime": trip.parkTime.timeIntervalSince1970 * 1000,
@@ -4460,6 +4487,32 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
               "visitLng": visitMatch?.longitude ?? 0,
             ])
             continue  // Skip — already recorded
+          }
+
+          // ── Guard 3: Same-location dedup ──
+          // Multiple intermediate trips can resolve to the same CLVisit (e.g. two
+          // red lights 1 block apart both match the same iOS dwell location).
+          // Only emit the first one.
+          if let visit = visitMatch {
+            let visitLoc = CLLocation(latitude: visit.latitude, longitude: visit.longitude)
+            var isDuplicate = false
+            for emitted in emittedVisitLocations {
+              let emittedLoc = CLLocation(latitude: emitted.lat, longitude: emitted.lng)
+              if visitLoc.distance(from: emittedLoc) < 100 {
+                isDuplicate = true
+                break
+              }
+            }
+            if isDuplicate {
+              self.log("RECOVERY: Trip \(i + 1) — SKIPPING (same CLVisit location as already-emitted trip, <100m)")
+              self.decision("recovery_intermediate_same_location", [
+                "tripIndex": i + 1,
+                "parkTime": trip.parkTime.timeIntervalSince1970 * 1000,
+                "visitLat": visit.latitude,
+                "visitLng": visit.longitude,
+              ])
+              continue
+            }
           }
 
           let departureTimestamp = trip.driveStart.timeIntervalSince1970 * 1000
@@ -4498,18 +4551,37 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             body["accuracy"] = visit.accuracy
             body["locationSource"] = "recovery_clvisit"
             body["isFromVisit"] = true
-            self.log("RECOVERY: Trip \(i + 1) — CLVisit match! (\(visit.latitude), \(visit.longitude)) ±\(String(format: "%.0f", visit.accuracy))m — parking rules CAN be checked")
+            self.log("RECOVERY: Trip \(i + 1) — CLVisit match! (\(visit.latitude), \(visit.longitude)) ±\(String(format: "%.0f", visit.accuracy))m — parking rules CAN be checked (dwellSec=\(String(format: "%.0f", dwellSec)))")
+
+            // Track for same-location dedup
+            emittedVisitLocations.append((lat: visit.latitude, lng: visit.longitude))
           } else {
             // No CLVisit match — emit with no coordinates
             body["latitude"] = 0
             body["longitude"] = 0
             body["accuracy"] = -1  // Signals "no GPS" to JS
             body["locationSource"] = "recovery_historical"
-            self.log("RECOVERY: Trip \(i + 1) — no CLVisit match — emitting without coordinates")
+            self.log("RECOVERY: Trip \(i + 1) — no CLVisit match — emitting without coordinates (dwellSec=\(String(format: "%.0f", dwellSec)))")
           }
 
           self.sendEvent(withName: "onParkingDetected", body: body)
           self.persistPendingParkingEvent(body)
+
+          // ── Record in ring buffer so subsequent recovery runs don't re-emit ──
+          if let visit = visitMatch {
+            self.recordConfirmedParkingTime(
+              timestamp: trip.parkTime,
+              latitude: visit.latitude,
+              longitude: visit.longitude
+            )
+          } else {
+            // No coords — record with 0,0 so time-based dedup catches it
+            self.recordConfirmedParkingTime(
+              timestamp: trip.parkTime,
+              latitude: 0,
+              longitude: 0
+            )
+          }
 
           // If we have coordinates, also send a local notification
           if visitMatch != nil {
