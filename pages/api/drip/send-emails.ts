@@ -311,7 +311,7 @@ async function sendProofEmail(email: string, firstName?: string) {
           </p>
 
           <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            Your free alerts handle the basics. But here's what's coming next:
+            Your alerts are keeping you covered. Here's what else Autopilot America does for you:
           </p>
 
           <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">

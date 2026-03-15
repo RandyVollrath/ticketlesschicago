@@ -170,7 +170,7 @@ export default function LandingPage() {
     }}>
       <Head>
         <title>Autopilot America - Chicago Driver Protection System</title>
-        <meta name="description" content="Free alerts for renewals and street cleaning. $49/year for automatic ticket contesting. Based on 1.2M Chicago ticket outcomes." />
+        <meta name="description" content="Chicago's complete ticket protection — alerts for street cleaning, snow bans, and renewals, automatic parking detection, and unlimited ticket contesting. $49/year. Based on 1.2M Chicago ticket outcomes." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -353,7 +353,7 @@ export default function LandingPage() {
         </p>
       </header>
 
-      {/* Free vs Paid Features */}
+      {/* Features */}
       <section id="features" style={{
         padding: '80px 5%',
         maxWidth: '1200px',
@@ -530,7 +530,7 @@ export default function LandingPage() {
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
           {[
-            { text: "I set up the free alerts and they saved me from a $200 expired city sticker ticket. Upgraded to Autopilot immediately.", author: "Maria S." },
+            { text: "Got an alert about my expired city sticker before I got a ticket. Saved me $200 right away.", author: "Maria S." },
             { text: "Got a $100 parking ticket contested automatically. Didn't even know I had it until I got the dismissal notice. Worth every penny.", author: "James T." },
             { text: "The street cleaning alerts alone are worth it. No more $75 tickets on Tuesday mornings.", author: "David K." },
           ].map((testimonial, i) => (
@@ -651,7 +651,7 @@ export default function LandingPage() {
                 AUTOPILOT<span style={{color: COLORS.accent}}>.</span>
               </div>
               <p style={{ maxWidth: '280px', lineHeight: 1.6 }}>
-                Free alerts and automatic ticket contesting for Chicago drivers.
+                Complete ticket protection for Chicago drivers.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '48px' }}>

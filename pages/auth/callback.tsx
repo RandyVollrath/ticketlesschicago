@@ -253,17 +253,17 @@ export default function AuthCallback() {
             .maybeSingle();
 
           if (!userProfile) {
-            // New user signed in with OAuth - create a free account automatically
-            console.log('🆕 New OAuth user detected - creating free account...');
+            // New user signed in with OAuth - create account profile
+            console.log('🆕 New OAuth user detected - creating profile...');
             setDebugInfo(`🆕 Welcome! Setting up your account...`);
 
-            // Create a basic profile for the new user (free tier)
+            // Create a basic profile for the new user
             const { error: insertError } = await supabase
               .from('user_profiles')
               .insert({
                 user_id: user.id,
                 email: user.email,
-                has_contesting: false, // Free user - no automatic contesting
+                has_contesting: false, // Not yet activated - needs to complete purchase
                 created_at: new Date().toISOString(),
               });
 
@@ -271,11 +271,11 @@ export default function AuthCallback() {
               console.error('Error creating user profile:', insertError);
               // Don't block - they can still use the app
             } else {
-              console.log('✅ Free user profile created successfully');
+              console.log('✅ User profile created successfully');
             }
 
             await new Promise(r => setTimeout(r, 500));
-            // Redirect to settings so they can complete their profile and see upgrade option
+            // Redirect to settings so they can complete their profile
             router.push('/settings?welcome=true');
             return;
           }
@@ -313,16 +313,16 @@ export default function AuthCallback() {
             sessionStorage.removeItem('expectedGoogleEmail');
           }
 
-          // Check if this is a free signup flow (even if data was lost)
+          // Check if this is a legacy signup flow (even if data was lost)
           const isFreeSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'free-signup';
 
           // Check for pending signup data - try database first (most reliable), then sessionStorage/localStorage
-          let pendingFreeSignup = null;
+          let pendingSignup = null;
           let formData = null;
 
           // ONLY check database if this is explicitly a free signup flow
           if (isFreeSignupFlow) {
-            console.log('Free signup flow detected - checking database for pending signup data...');
+            console.log('Legacy signup flow detected - checking database for pending signup data...');
             try {
               const dbResponse = await fetch(`/api/pending-signup/get?email=${encodeURIComponent(user.email || '')}`);
               if (dbResponse.ok) {
@@ -343,7 +343,7 @@ export default function AuthCallback() {
                     citySticker: result.data.city_sticker,
                     token: result.data.token
                   };
-                  pendingFreeSignup = 'from-database';
+                  pendingSignup = 'from-database';
                 }
               }
             } catch (error) {
@@ -352,23 +352,23 @@ export default function AuthCallback() {
           }
 
           // Fallback to sessionStorage/localStorage if database didn't have it
-          if (!pendingFreeSignup) {
+          if (!pendingSignup) {
             console.log('No data in database, checking sessionStorage...');
-            pendingFreeSignup = sessionStorage.getItem('pendingFreeSignup');
+            pendingSignup = sessionStorage.getItem('pendingSignup');
           }
 
-          if (!pendingFreeSignup) {
+          if (!pendingSignup) {
             console.log('No data in sessionStorage, checking localStorage...');
-            pendingFreeSignup = localStorage.getItem('pendingFreeSignup');
+            pendingSignup = localStorage.getItem('pendingSignup');
           }
 
-          if (pendingFreeSignup && pendingFreeSignup !== 'from-database') {
-            formData = JSON.parse(pendingFreeSignup);
+          if (pendingSignup && pendingSignup !== 'from-database') {
+            formData = JSON.parse(pendingSignup);
           }
 
           if (formData) {
-            console.log('Found pending free signup data, creating account...')
-            console.log('Signup data source:', pendingFreeSignup === 'from-database' ? 'database' : 'storage')
+            console.log('Found pending signup data, creating account...')
+            console.log('Signup data source:', pendingSignup === 'from-database' ? 'database' : 'storage')
             try {
               // IMPORTANT: Use the authenticated user's email, not the form email
               // This ensures Google OAuth users get their Google email saved
@@ -395,8 +395,8 @@ export default function AuthCallback() {
                 console.log('✅ Free account created successfully');
 
                 // Clean up pending signup from all sources
-                sessionStorage.removeItem('pendingFreeSignup');
-                localStorage.removeItem('pendingFreeSignup');
+                sessionStorage.removeItem('pendingSignup');
+                localStorage.removeItem('pendingSignup');
 
                 // Delete from database
                 try {
@@ -422,15 +422,15 @@ export default function AuthCallback() {
               }
             } catch (error) {
               console.error('❌ Error processing free signup:', error);
-              sessionStorage.removeItem('pendingFreeSignup'); // Clean up on error
+              sessionStorage.removeItem('pendingSignup'); // Clean up on error
               router.push('/start?error=signup_failed');
               return;
             }
           } else if (isFreeSignupFlow) {
             // Free signup flow but no data found - sessionStorage was cleared
             console.error('❌ Free signup flow detected but no form data found');
-            sessionStorage.removeItem('pendingFreeSignup');
-            localStorage.removeItem('pendingFreeSignup');
+            sessionStorage.removeItem('pendingSignup');
+            localStorage.removeItem('pendingSignup');
             router.push('/start?error=data_lost');
             return;
           }

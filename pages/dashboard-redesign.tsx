@@ -239,7 +239,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Free user view
+  // Inactive account view
   if (!isPaidUser) {
     return (
       <div style={{ fontFamily: FONTS.body, minHeight: '100vh', backgroundColor: COLORS.bgSection }}>
@@ -320,7 +320,7 @@ export default function DashboardPage() {
               margin: '0 0 16px',
               color: COLORS.primary,
             }}>
-              Upgrade to Autopilot
+              Activate Your Account
             </h1>
 
             <p style={{
@@ -332,60 +332,10 @@ export default function DashboardPage() {
               marginRight: 'auto',
               lineHeight: 1.6,
             }}>
-              You're using the <strong>Free</strong> tier. Upgrade to Autopilot for automatic ticket detection and contesting.
+              Complete setup to start protecting your vehicle from Chicago parking tickets.
             </p>
 
-            <div style={{
-              backgroundColor: COLORS.bgSection,
-              borderRadius: 12,
-              padding: 32,
-              marginBottom: 32,
-              textAlign: 'left',
-            }}>
-              <h3 style={{
-                fontFamily: FONTS.heading,
-                fontSize: 18,
-                margin: '0 0 20px',
-                color: COLORS.primary,
-              }}>
-                What you'll get:
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {[
-                  'Automatic weekly ticket detection',
-                  'AI-generated contest letters (68.5% win rate)',
-                  'Automatic mailing with delivery tracking',
-                  'Full dashboard with ticket history',
-                  'Contest letter approval system',
-                  'Email notifications on ticket status',
-                  'Unlimited letters per year',
-                ].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    <span style={{ fontSize: 15, color: COLORS.textDark, flex: 1 }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 32 }}>
-              <div style={{
-                fontSize: 48,
-                fontWeight: 800,
-                fontFamily: FONTS.heading,
-                color: COLORS.primary,
-                marginBottom: 8,
-              }}>
-                $24<span style={{ fontSize: 20, color: COLORS.textMuted }}>/year</span>
-              </div>
-              <p style={{ fontSize: 14, color: COLORS.textMuted, margin: 0 }}>
-                Less than $2/month. Cancel anytime.
-              </p>
-            </div>
-
-            <Link href="/get-started" style={{
+            <Link href="/start" style={{
               display: 'inline-block',
               padding: '16px 40px',
               borderRadius: 8,
@@ -396,19 +346,15 @@ export default function DashboardPage() {
               textDecoration: 'none',
               boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)',
             }}>
-              Upgrade to Autopilot
+              Get Started
             </Link>
-
-            <p style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 16 }}>
-              Your free alerts will continue to work
-            </p>
           </div>
         </main>
       </div>
     );
   }
 
-  // Paid user dashboard
+  // Dashboard
   return (
     <div style={{ fontFamily: FONTS.body, minHeight: '100vh', backgroundColor: COLORS.bgSection }}>
       <Head>

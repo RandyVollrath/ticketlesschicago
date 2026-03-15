@@ -320,7 +320,7 @@ function DashboardContent({
           margin: '0 0 16px',
           color: COLORS.primary,
         }}>
-          Upgrade to Autopilot
+          Activate Your Account
         </h2>
 
         <p style={{
@@ -332,58 +332,10 @@ function DashboardContent({
           marginRight: 'auto',
           lineHeight: 1.6,
         }}>
-          You're using the <strong>Free</strong> tier. Upgrade to Autopilot for automatic ticket detection and contesting.
+          Your account needs to be activated to use Autopilot America. Complete your purchase to get started.
         </p>
 
-        <div style={{
-          backgroundColor: COLORS.bgSection,
-          borderRadius: 12,
-          padding: 24,
-          marginBottom: 32,
-          textAlign: 'left',
-        }}>
-          <h3 style={{
-            fontFamily: FONTS.heading,
-            fontSize: 16,
-            margin: '0 0 16px',
-            color: COLORS.primary,
-          }}>
-            What you'll get:
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[
-              'Automatic weekly ticket detection',
-              'AI-generated contest letters (68.5% win rate)',
-              'Automatic mailing with delivery tracking',
-              'Full dashboard with ticket history',
-              'Email notifications on ticket status',
-            ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                <span style={{ fontSize: 14, color: COLORS.textDark, flex: 1 }}>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 24 }}>
-          <div style={{
-            fontSize: 42,
-            fontWeight: 800,
-            fontFamily: FONTS.heading,
-            color: COLORS.primary,
-            marginBottom: 4,
-          }}>
-            $49<span style={{ fontSize: 18, color: COLORS.textMuted }}>/year</span>
-          </div>
-          <p style={{ fontSize: 13, color: COLORS.textMuted, margin: 0 }}>
-            Founding Member rate. Keep membership active to keep your price.
-          </p>
-        </div>
-
-        <Link href="/get-started" style={{
+        <Link href="/start" style={{
           display: 'inline-block',
           padding: '14px 36px',
           borderRadius: 8,
@@ -394,10 +346,10 @@ function DashboardContent({
           textDecoration: 'none',
           boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)',
         }}>
-          Upgrade to Autopilot
+          Get Started
         </Link>
 
-        {/* FOIA Ticket History CTA for free users */}
+        {/* FOIA Ticket History CTA */}
         <div style={{
           marginTop: 32,
           padding: '24px',
@@ -420,7 +372,7 @@ function DashboardContent({
             margin: '0 0 16px',
             lineHeight: 1.6,
           }}>
-            We'll file a FOIA request with the City of Chicago to get your complete ticket history — free.
+            We'll file a FOIA request with the City of Chicago to get your complete ticket history — included with your membership.
           </p>
           <Link href="/ticket-history" style={{
             display: 'inline-block',
@@ -439,7 +391,7 @@ function DashboardContent({
     );
   }
 
-  // Paid user dashboard
+  // Dashboard
   return (
     <>
       {/* Stats Row */}
@@ -1622,7 +1574,7 @@ function SettingsPageInner() {
         zIndex: 1,
       }}>
         {/* Welcome Banner for New Users */}
-        {showWelcome && !isPaidUser && (
+        {showWelcome && (
           <div style={{
             backgroundColor: COLORS.white,
             borderRadius: 12,
@@ -1632,71 +1584,27 @@ function SettingsPageInner() {
             boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)',
             position: 'relative',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'stretch', flexWrap: 'wrap', gap: 24 }}>
-              <div style={{ flex: '1 1 320px', maxWidth: 480 }}>
-                <h2 style={{
-                  fontFamily: FONTS.heading,
-                  fontSize: 22,
-                  fontWeight: 700,
-                  color: COLORS.primary,
-                  margin: '0 0 8px',
-                }}>
-                  Welcome to Autopilot America!
-                </h2>
-                <p style={{ margin: '0 0 12px', fontSize: 15, color: COLORS.textDark }}>
-                  Your free account is ready. You'll receive <strong>free notifications</strong> for:
-                </p>
-                <ul style={{ margin: '0 0 16px', paddingLeft: 20, color: COLORS.textDark, fontSize: 14, lineHeight: 1.8 }}>
-                  <li>New parking tickets on your plate</li>
-                  <li>Street cleaning reminders</li>
-                  <li>City sticker &amp; plate renewal dates</li>
-                  <li>Snow ban alerts</li>
-                </ul>
-                <p style={{ margin: 0, fontSize: 14, color: COLORS.textMuted }}>
-                  Complete your profile below to start receiving alerts.
-                </p>
-              </div>
-              <div style={{
-                flex: '0 0 auto',
-                backgroundColor: COLORS.bgSection,
-                borderRadius: 10,
-                padding: 20,
-                textAlign: 'center',
-                minWidth: 240,
-                maxWidth: 280,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-              }}>
-                <p style={{ margin: '0 0 4px', fontSize: 13, color: COLORS.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>
-                  Want automatic contesting?
-                </p>
-                <p style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 700, color: COLORS.primary }}>
-                  $49<span style={{ fontSize: 16, fontWeight: 500 }}>/year</span>
-                </p>
-                <p style={{ margin: '0 0 16px', fontSize: 13, color: COLORS.textMuted }}>
-                  We monitor your plate twice a week and mail contest letters automatically. 68.5% average dismissal rate.
-                </p>
-                <button
-                  onClick={handleUpgrade}
-                  disabled={checkoutLoading}
-                  style={{
-                    width: '100%',
-                    backgroundColor: COLORS.accent,
-                    color: COLORS.white,
-                    padding: '12px 24px',
-                    borderRadius: 8,
-                    border: 'none',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: checkoutLoading ? 'not-allowed' : 'pointer',
-                    opacity: checkoutLoading ? 0.7 : 1,
-                  }}
-                >
-                  {checkoutLoading ? 'Loading...' : 'Upgrade to Autopilot'}
-                </button>
-              </div>
-            </div>
+            <h2 style={{
+              fontFamily: FONTS.heading,
+              fontSize: 22,
+              fontWeight: 700,
+              color: COLORS.primary,
+              margin: '0 0 8px',
+            }}>
+              Welcome to Autopilot America!
+            </h2>
+            <p style={{ margin: '0 0 12px', fontSize: 15, color: COLORS.textDark }}>
+              Your account is ready. Here's what's included:
+            </p>
+            <ul style={{ margin: '0 0 16px', paddingLeft: 20, color: COLORS.textDark, fontSize: 14, lineHeight: 1.8 }}>
+              <li>Automatic ticket detection and contesting</li>
+              <li>Street cleaning and snow ban alerts</li>
+              <li>City sticker &amp; plate renewal reminders</li>
+              <li>Red-light &amp; speed camera alerts</li>
+            </ul>
+            <p style={{ margin: 0, fontSize: 14, color: COLORS.textMuted }}>
+              Complete your profile below to get started.
+            </p>
             <button
               onClick={() => setShowWelcome(false)}
               style={{
@@ -1857,9 +1765,9 @@ function SettingsPageInner() {
           </div>
         )}
 
-        {/* Warning Banner for Paid Users Without Plates, Last Name, or Mailing Address */}
+        {/* Warning Banner for Users Without Plates, Last Name, or Mailing Address */}
         {/* Hide when checkout success modal is showing - give user a chance to fill out profile */}
-        {isPaidUser && (!hasActivePlates || !lastName.trim() || !mailingAddress1.trim()) && !showCheckoutSuccess && (
+        {(!hasActivePlates || !lastName.trim() || !mailingAddress1.trim()) && !showCheckoutSuccess && (
           <div style={{
             backgroundColor: '#FEF2F2',
             borderRadius: 12,
@@ -1885,51 +1793,6 @@ function SettingsPageInner() {
             <p style={{ margin: '8px 0 0', fontSize: 13, color: '#7F1D1D' }}>
               Please fill in the missing information below to ensure your Autopilot service works correctly.
             </p>
-          </div>
-        )}
-
-        {/* Upgrade CTA for Free Users (persistent, not welcome flow) */}
-        {!showWelcome && !isPaidUser && activeTab === 'settings' && (
-          <div style={{
-            backgroundColor: '#FFF7ED',
-            borderRadius: 12,
-            border: `1px solid ${COLORS.highlight}`,
-            padding: '16px 24px',
-            marginBottom: 20,
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 16,
-            }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#9A3412' }}>
-                  Upgrade to Autopilot - $49/year
-                </p>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9A3412' }}>
-                  Automatic ticket detection &amp; contesting with 68.5% average dismissal rate
-                </p>
-              </div>
-              <button
-                onClick={handleUpgrade}
-                disabled={checkoutLoading}
-                style={{
-                  backgroundColor: COLORS.highlight,
-                  color: COLORS.white,
-                  padding: '10px 20px',
-                  borderRadius: 8,
-                  border: 'none',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: checkoutLoading ? 'not-allowed' : 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {checkoutLoading ? 'Loading...' : 'Upgrade Now'}
-              </button>
-            </div>
           </div>
         )}
 
@@ -2014,11 +1877,11 @@ function SettingsPageInner() {
                 display: 'block',
                 fontSize: 12,
                 fontWeight: 600,
-                color: isPaidUser && !lastName.trim() ? COLORS.danger : COLORS.textMuted,
+                color: !lastName.trim() ? COLORS.danger : COLORS.textMuted,
                 marginBottom: 6,
                 textTransform: 'uppercase',
               }}>
-                Last Name {isPaidUser && <span style={{ color: COLORS.danger, fontSize: 10 }}>*REQUIRED</span>}
+                Last Name <span style={{ color: COLORS.danger, fontSize: 10 }}>*REQUIRED</span>
               </label>
               <input
                 type="text"
@@ -2029,14 +1892,14 @@ function SettingsPageInner() {
                   width: '100%',
                   padding: '10px 14px',
                   borderRadius: 8,
-                  border: `1px solid ${isPaidUser && !lastName.trim() ? COLORS.danger : COLORS.border}`,
+                  border: `1px solid ${!lastName.trim() ? COLORS.danger : COLORS.border}`,
                   fontSize: 15,
                   color: COLORS.primary,
                   backgroundColor: COLORS.bgLight,
                   boxSizing: 'border-box',
                 }}
               />
-              {isPaidUser && !lastName.trim() && (
+              {!lastName.trim() && (
                 <p style={{ margin: '6px 0 0', fontSize: 12, color: COLORS.danger }}>
                   Required for ticket searches
                 </p>
@@ -2082,16 +1945,16 @@ function SettingsPageInner() {
                 display: 'block',
                 fontSize: 12,
                 fontWeight: 600,
-                color: isPaidUser && !plateNumber.trim() ? COLORS.danger : COLORS.textMuted,
+                color: !plateNumber.trim() ? COLORS.danger : COLORS.textMuted,
                 marginBottom: 8,
                 textTransform: 'uppercase',
               }}>
-                License Plate {isPaidUser && <span style={{ color: COLORS.danger, fontSize: 10 }}>*REQUIRED</span>}
+                License Plate <span style={{ color: COLORS.danger, fontSize: 10 }}>*REQUIRED</span>
               </label>
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                border: `2px solid ${isPaidUser && !plateNumber.trim() ? COLORS.danger : COLORS.primary}`,
+                border: `2px solid ${!plateNumber.trim() ? COLORS.danger : COLORS.primary}`,
                 borderRadius: 8,
                 padding: 4,
                 backgroundColor: '#fff',
@@ -2134,7 +1997,7 @@ function SettingsPageInner() {
                   }}
                 />
               </div>
-              {isPaidUser && !plateNumber.trim() && (
+              {!plateNumber.trim() && (
                 <p style={{ margin: '8px 0 0', fontSize: 12, color: COLORS.danger }}>
                   Required for ticket monitoring
                 </p>
@@ -2375,59 +2238,17 @@ function SettingsPageInner() {
         <Card
           title="Mailing Address"
           badge={
-            !isPaidUser ? (
-              <span style={{
-                fontSize: 11,
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: 4,
-                backgroundColor: COLORS.warningLight,
-                color: '#92400E',
-              }}>
-                AUTOPILOT ONLY
-              </span>
-            ) : (
-              <span style={{
-                fontSize: 11,
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: 4,
-                backgroundColor: !mailingAddress1.trim() ? '#FEE2E2' : COLORS.successLight,
-                color: !mailingAddress1.trim() ? '#991B1B' : COLORS.accent,
-              }}>
-                {!mailingAddress1.trim() ? 'REQUIRED' : 'COMPLETE'}
-              </span>
-            )
-          }
-          greyed={!isPaidUser}
-          upgradeContent={!isPaidUser ? (
-            <div style={{
-              backgroundColor: '#EFF6FF',
-              border: '1px solid #BFDBFE',
-              borderRadius: 8,
-              padding: 16,
+            <span style={{
+              fontSize: 11,
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 4,
+              backgroundColor: !mailingAddress1.trim() ? '#FEE2E2' : COLORS.successLight,
+              color: !mailingAddress1.trim() ? '#991B1B' : COLORS.accent,
             }}>
-              <p style={{ margin: 0, fontSize: 14, color: '#1E3A5F' }}>
-                <strong>Upgrade to Autopilot &mdash; $49/year</strong>
-              </p>
-              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#475569' }}>
-                Automatic ticket detection and contesting with 68.5% average dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
-              </p>
-              <Link href="/get-started" style={{
-                display: 'inline-block',
-                marginTop: 12,
-                padding: '10px 20px',
-                backgroundColor: '#2563EB',
-                color: '#fff',
-                borderRadius: 6,
-                fontSize: 14,
-                fontWeight: 600,
-                textDecoration: 'none',
-              }}>
-                Upgrade &mdash; $49/year
-              </Link>
-            </div>
-          ) : undefined}
+              {!mailingAddress1.trim() ? 'REQUIRED' : 'COMPLETE'}
+            </span>
+          }
         >
           {/* Same as home address checkbox */}
           <div style={{
@@ -2439,11 +2260,9 @@ function SettingsPageInner() {
             backgroundColor: sameAsHomeAddress ? '#EFF6FF' : COLORS.bgLight,
             borderRadius: 8,
             border: `1px solid ${sameAsHomeAddress ? '#3B82F6' : COLORS.border}`,
-            cursor: isPaidUser ? 'pointer' : 'not-allowed',
-            opacity: isPaidUser ? 1 : 0.6,
+            cursor: 'pointer',
           }}
           onClick={() => {
-            if (!isPaidUser) return;
             const newValue = !sameAsHomeAddress;
             setSameAsHomeAddress(newValue);
             if (newValue && homeAddress) {
@@ -2458,8 +2277,7 @@ function SettingsPageInner() {
               type="checkbox"
               checked={sameAsHomeAddress}
               onChange={() => {}}
-              disabled={!isPaidUser}
-              style={{ width: 18, height: 18, cursor: isPaidUser ? 'pointer' : 'not-allowed' }}
+              style={{ width: 18, height: 18, cursor: 'pointer' }}
             />
             <span style={{ fontSize: 14, fontWeight: 500, color: COLORS.primary }}>
               Same as home address
@@ -2485,7 +2303,7 @@ function SettingsPageInner() {
                 if (sameAsHomeAddress) setSameAsHomeAddress(false);
               }}
               placeholder="123 Main Street"
-              disabled={!isPaidUser || sameAsHomeAddress}
+              disabled={sameAsHomeAddress}
               style={{
                 width: '100%',
                 padding: '10px 14px',
@@ -2518,7 +2336,7 @@ function SettingsPageInner() {
                 if (sameAsHomeAddress) setSameAsHomeAddress(false);
               }}
               placeholder="Apt 4B"
-              disabled={!isPaidUser}
+              disabled={false}
               style={{
                 width: '100%',
                 padding: '10px 14px',
@@ -2552,7 +2370,7 @@ function SettingsPageInner() {
                   if (sameAsHomeAddress) setSameAsHomeAddress(false);
                 }}
                 placeholder="Chicago"
-                disabled={!isPaidUser || sameAsHomeAddress}
+                disabled={sameAsHomeAddress}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -2582,7 +2400,7 @@ function SettingsPageInner() {
                   setMailingState(e.target.value);
                   if (sameAsHomeAddress) setSameAsHomeAddress(false);
                 }}
-                disabled={!isPaidUser || sameAsHomeAddress}
+                disabled={sameAsHomeAddress}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -2618,7 +2436,7 @@ function SettingsPageInner() {
                   if (sameAsHomeAddress) setSameAsHomeAddress(false);
                 }}
                 placeholder="60601"
-                disabled={!isPaidUser || sameAsHomeAddress}
+                disabled={sameAsHomeAddress}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -3002,8 +2820,7 @@ function SettingsPageInner() {
         </Card>
 
         {/* Autopilot Settings */}
-        <Card title="Autopilot Settings" badge={
-          isPaidUser ? (
+        <Card title="Contesting Settings" badge={
             <span style={{
               fontSize: 11,
               fontWeight: 600,
@@ -3014,49 +2831,9 @@ function SettingsPageInner() {
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
             }}>
-              AUTOPILOT MEMBER
+              ACTIVE
             </span>
-          ) : (
-            <span style={{
-              fontSize: 11,
-              fontWeight: 600,
-              padding: '2px 8px',
-              borderRadius: 4,
-              backgroundColor: COLORS.warningLight,
-              color: '#92400E',
-            }}>
-              AUTOPILOT ONLY
-            </span>
-          )
-        } greyed={!isPaidUser}
-          upgradeContent={!isPaidUser ? (
-            <div style={{
-              backgroundColor: '#FFF7ED',
-              border: `1px solid ${COLORS.highlight}`,
-              borderRadius: 8,
-              padding: 16,
-            }}>
-              <p style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: '#9A3412' }}>
-                Upgrade to Autopilot - $49/year
-              </p>
-              <p style={{ margin: '0 0 12px', fontSize: 14, color: '#9A3412' }}>
-                Automatic ticket detection and contesting with 68.5% average dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
-              </p>
-              <Link href="/get-started" style={{
-                display: 'inline-block',
-                padding: '10px 20px',
-                backgroundColor: COLORS.highlight,
-                color: '#fff',
-                borderRadius: 6,
-                fontSize: 14,
-                fontWeight: 600,
-                textDecoration: 'none',
-              }}>
-                Upgrade Now - $49/year
-              </Link>
-            </div>
-          ) : undefined}
-        >
+        }>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -3079,12 +2856,12 @@ function SettingsPageInner() {
               )}
             </div>
             <Toggle
-              checked={isPaidUser && requireApproval}
+              checked={requireApproval}
               onChange={(checked) => {
                 setRequireApproval(checked);
                 setAutoMailEnabled(!checked);
               }}
-              disabled={!isPaidUser}
+              disabled={false}
             />
           </div>
 
@@ -3119,12 +2896,12 @@ function SettingsPageInner() {
               )}
             </div>
             <Toggle
-              checked={isPaidUser && autoMailEnabled}
+              checked={autoMailEnabled}
               onChange={(checked) => {
                 setAutoMailEnabled(checked);
                 setRequireApproval(!checked);
               }}
-              disabled={!isPaidUser}
+              disabled={false}
             />
           </div>
 
@@ -3175,11 +2952,11 @@ function SettingsPageInner() {
             </div>
             <div style={{ marginLeft: 16, flexShrink: 0 }}>
               <Toggle
-                checked={isPaidUser && foiaWaitPreference === 'wait_for_foia'}
+                checked={foiaWaitPreference === 'wait_for_foia'}
                 onChange={(checked) => {
                   setFoiaWaitPreference(checked ? 'wait_for_foia' : 'send_immediately');
                 }}
-                disabled={!isPaidUser}
+                disabled={false}
               />
             </div>
           </div>
@@ -3200,14 +2977,14 @@ function SettingsPageInner() {
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
               {TICKET_TYPES.map(type => {
-                const isChecked = isPaidUser && allowedTicketTypes.includes(type.id);
+                const isChecked = allowedTicketTypes.includes(type.id);
                 return (
                 <label key={type.id} style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
                   fontSize: 14,
-                  cursor: isPaidUser ? 'pointer' : 'not-allowed',
+                  cursor: 'pointer',
                   color: COLORS.textDark,
                   padding: '10px 12px',
                   borderRadius: 6,
@@ -3218,7 +2995,7 @@ function SettingsPageInner() {
                     type="checkbox"
                     checked={isChecked}
                     onChange={() => toggleTicketType(type.id)}
-                    disabled={!isPaidUser}
+                    disabled={false}
                     style={{ width: 16, height: 16, accentColor: COLORS.primary }}
                   />
                   <span style={{ flex: 1 }}>
@@ -3256,14 +3033,14 @@ function SettingsPageInner() {
                 alignItems: 'center',
                 gap: 10,
                 fontSize: 14,
-                cursor: isPaidUser ? 'pointer' : 'not-allowed',
+                cursor: 'pointer',
                 color: COLORS.textDark,
               }}>
                 <input
                   type="checkbox"
-                  checked={isPaidUser && emailOnTicketFound}
+                  checked={emailOnTicketFound}
                   onChange={(e) => setEmailOnTicketFound(e.target.checked)}
-                  disabled={!isPaidUser}
+                  disabled={false}
                   style={{ width: 16, height: 16, accentColor: COLORS.primary }}
                 />
                 Notify when ticket is found
@@ -3273,14 +3050,14 @@ function SettingsPageInner() {
                 alignItems: 'center',
                 gap: 10,
                 fontSize: 14,
-                cursor: isPaidUser ? 'pointer' : 'not-allowed',
+                cursor: 'pointer',
                 color: COLORS.textDark,
               }}>
                 <input
                   type="checkbox"
-                  checked={isPaidUser && emailOnLetterMailed}
+                  checked={emailOnLetterMailed}
                   onChange={(e) => setEmailOnLetterMailed(e.target.checked)}
-                  disabled={!isPaidUser}
+                  disabled={false}
                   style={{ width: 16, height: 16, accentColor: COLORS.primary }}
                 />
                 Notify when letter is mailed
@@ -3290,14 +3067,14 @@ function SettingsPageInner() {
                 alignItems: 'center',
                 gap: 10,
                 fontSize: 14,
-                cursor: isPaidUser ? 'pointer' : 'not-allowed',
+                cursor: 'pointer',
                 color: COLORS.textDark,
               }}>
                 <input
                   type="checkbox"
-                  checked={isPaidUser && emailOnApprovalNeeded}
+                  checked={emailOnApprovalNeeded}
                   onChange={(e) => setEmailOnApprovalNeeded(e.target.checked)}
-                  disabled={!isPaidUser}
+                  disabled={false}
                   style={{ width: 16, height: 16, accentColor: COLORS.primary }}
                 />
                 Notify when approval is needed

@@ -173,7 +173,7 @@ export default function LandingPage() {
     }}>
       <Head>
         <title>Chicago Driver Protection Plan | Autopilot America</title>
-        <meta name="description" content="Unlimited automated contesting for eligible Chicago tickets, plus free alerts and reminders. $49/year Founding Member Rate locks in forever while active." />
+        <meta name="description" content="Chicago's complete ticket protection system — alerts before street cleaning, snow bans, and renewal deadlines, automatic parking detection, and unlimited ticket contesting. $49/year." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -440,7 +440,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Free Tools Banner */}
+      {/* Tools Banner */}
       <section style={{
         padding: '0 5%',
         maxWidth: '1200px',

@@ -4,19 +4,14 @@ import { Resend } from 'resend';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
- * Cron Job: Send simple renewal reminders to FREE users
+ * Cron Job: Send renewal reminders to inactive users
  *
  * Sends reminders at days specified in user's notification_preferences.reminder_days
  * Default: [60, 45, 37, 30] days before their earliest upcoming renewal date
  *
  * Only sends to users who have:
- * - has_contesting = false (free users)
+ * - has_contesting = false (account not yet activated)
  * - At least one renewal date set (city_sticker_expiry, license_plate_expiry, or emissions_date)
- *
- * Different from paid user notifications:
- * - Simple "heads up" reminder about upcoming expiration
- * - No profile confirmation needed
- * - Includes soft upsell to Protection
  *
  * Schedule: Daily at 10 AM CT
  */
@@ -38,12 +33,12 @@ export default async function handler(
       throw new Error('Database not available');
     }
 
-    console.log('📋 Checking for free users needing renewal reminders...');
+    console.log('📋 Checking for users needing renewal reminders...');
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get all free users with at least one renewal date set
+    // Get all inactive users with at least one renewal date set
     const { data: users, error: usersError } = await supabaseAdmin
       .from('user_profiles')
       .select(`
@@ -63,7 +58,7 @@ export default async function handler(
       throw usersError;
     }
 
-    console.log(`Found ${users?.length || 0} free users`);
+    console.log(`Found ${users?.length || 0} users needing reminders`);
 
     const notificationsSent: Record<number, number> = {};
     const errors: any[] = [];
@@ -124,7 +119,7 @@ export default async function handler(
 
           console.log(`User ${user.user_id}: ${daysUntilRenewal} days until ${renewal.type}, sending ${matchingReminderDay}-day reminder`);
 
-          const emailSent = await sendFreeUserRenewalEmail(
+          const emailSent = await sendRenewalReminderEmail(
             user,
             renewal,
             daysUntilRenewal,
@@ -148,7 +143,7 @@ export default async function handler(
 
     return res.status(200).json({
       success: true,
-      message: `Sent ${totalNotified} free user renewal reminders`,
+      message: `Sent ${totalNotified} renewal reminders`,
       breakdown: notificationsSent,
       totalChecked: users?.length || 0,
       errors: errors.length > 0 ? errors : undefined,
@@ -161,7 +156,7 @@ export default async function handler(
   }
 }
 
-async function sendFreeUserRenewalEmail(
+async function sendRenewalReminderEmail(
   user: any,
   renewal: { type: string; date: Date; label: string },
   daysUntilRenewal: number,
@@ -253,19 +248,6 @@ Just a friendly reminder: Your ${renewal.label.toLowerCase()} expires on ${renew
 ${ticketWarning}
 
 ${actionSteps}
-
----
-
-💡 Tired of remembering renewal dates?
-
-Autopilot America Protection ($8/month) handles everything for you:
-✓ Automatic city sticker renewals
-✓ License plate renewal reminders
-✓ Emissions test tracking
-✓ $200/year ticket guarantee
-✓ Parking permit management
-
-→ Learn more: https://autopilotamerica.com/protection
 
 ---
 

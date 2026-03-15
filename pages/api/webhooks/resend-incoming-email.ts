@@ -654,11 +654,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ${isYes ? `
             <div style="background: #dcfce7; border: 2px solid #16a34a; padding: 16px; border-radius: 8px; margin: 16px 0;">
               <p style="margin: 0; color: #166534; font-weight: 600; font-size: 18px;">
-                ✅ USER SAID YES! Send them the activation link:
+                ✅ USER SAID YES! Send them the signup link:
               </p>
               <p style="margin: 12px 0 0 0;">
-                <a href="https://ticketlessamerica.com/alerts/signup" style="color: #0052cc; font-weight: 600;">
-                  https://ticketlessamerica.com/alerts/signup
+                <a href="https://autopilotamerica.com/start" style="color: #0052cc; font-weight: 600;">
+                  https://autopilotamerica.com/start
                 </a>
               </p>
             </div>
