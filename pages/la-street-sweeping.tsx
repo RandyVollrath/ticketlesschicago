@@ -173,7 +173,7 @@ export default function LAStreetSweeping() {
                 Sign up for free SMS and email reminders before every street cleaning day. Peace of Mind Parking!
               </p>
               <a
-                href="/alerts/signup"
+                href="/start"
                 style={{
                   display: 'inline-block',
                   padding: '12px 24px',
@@ -185,7 +185,7 @@ export default function LAStreetSweeping() {
                   fontWeight: '600'
                 }}
               >
-                Get Free Alerts
+                Get Started
               </a>
             </div>
           </div>

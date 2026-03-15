@@ -231,7 +231,7 @@ export default function TicketHeatmap() {
               Get Protection (Includes Alerts) - $120/year
             </button>
             <button
-              onClick={() => router.push('/alerts/signup')}
+              onClick={() => router.push('/start')}
               style={{
                 backgroundColor: 'white',
                 color: '#2563eb',
@@ -243,7 +243,7 @@ export default function TicketHeatmap() {
                 cursor: 'pointer'
               }}
             >
-              Just Free Alerts
+              Get Started
             </button>
           </div>
 

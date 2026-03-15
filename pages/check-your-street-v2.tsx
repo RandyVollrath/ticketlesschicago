@@ -346,9 +346,8 @@ export default function CheckYourStreet() {
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center space-x-8">
-              <a href="/alerts/signup" className="text-sm font-medium text-slate hover:text-deepHarbor transition-colors">Free Alerts</a>
+              <a href="/start" className="text-sm font-medium text-slate hover:text-deepHarbor transition-colors">Get Started</a>
               <a href="/protection" className="text-sm font-medium text-slate hover:text-deepHarbor transition-colors">Protection</a>
-              <a href="/check-ticket" className="text-sm font-medium text-slate hover:text-deepHarbor transition-colors">Ticket Analyzer</a>
               <button onClick={() => router.push('/login')} className="text-sm font-medium text-regulatory hover:text-regulatoryDark transition-colors">Sign In</button>
             </div>
 
@@ -481,7 +480,7 @@ export default function CheckYourStreet() {
                   </>
                 )}
                 <button
-                  onClick={() => router.push('/alerts/signup?address=' + encodeURIComponent(address))}
+                  onClick={() => router.push('/start')}
                   className="flex items-center text-sm font-semibold text-regulatory hover:text-regulatoryDark transition-colors"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

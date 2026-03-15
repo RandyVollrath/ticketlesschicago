@@ -423,8 +423,8 @@ export default function Protection() {
         </div>
 
         <div className="nav-desktop" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-          <a href="/alerts/signup" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
-            Free Alerts
+          <a href="/start" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+            Get Started
           </a>
           <a href="/#features" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
             Platform

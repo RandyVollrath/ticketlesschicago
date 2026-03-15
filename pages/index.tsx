@@ -252,7 +252,7 @@ export default function LandingPage() {
           ) : (
             <>
               <Link href="/auth/signin" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Login</Link>
-              <Button primary href="/quick-start" fullWidth style={{ marginTop: '8px' }}>Quick Start (Free)</Button>
+              <Button primary href="/start" fullWidth style={{ marginTop: '8px' }}>Get Started</Button>
             </>
           )}
         </div>
@@ -334,10 +334,7 @@ export default function LandingPage() {
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button primary href="/start">
-            Become a Founding Member - $49/year <ArrowRight />
-          </Button>
-          <Button variant="outline" href="/quick-start">
-            Quick Start (Free)
+            Get Started - $49/year <ArrowRight />
           </Button>
         </div>
 
@@ -644,73 +641,16 @@ export default function LandingPage() {
           marginBottom: '16px',
           color: COLORS.primary
         }}>
-          Choose Your Plan
+          One Plan. Full Protection.
         </h2>
         <p style={{ textAlign: 'center', color: COLORS.textMuted, marginBottom: '48px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
-          Start free with alerts or go full autopilot for automatic contesting
+          Everything you need to fight Chicago parking tickets on autopilot
         </p>
 
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '24px',
-          maxWidth: '800px',
+          maxWidth: '480px',
           margin: '0 auto',
         }}>
-          {/* Free Tier */}
-          <div style={{
-            backgroundColor: '#fff',
-            padding: '40px 32px',
-            borderRadius: '20px',
-            border: `1px solid ${COLORS.border}`,
-            textAlign: 'center',
-          }}>
-            <div style={{
-              color: COLORS.textMuted,
-              fontWeight: 700,
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
-              marginBottom: '10px',
-              fontSize: '14px',
-            }}>
-              Free Alerts
-            </div>
-            <h3 style={{
-              fontFamily: FONTS.heading,
-              fontSize: '48px',
-              margin: '0 0 10px 0',
-              color: COLORS.primary
-            }}>
-              $0<span style={{fontSize: '18px', color: '#94A3B8'}}>/forever</span>
-            </h3>
-            <p style={{ color: COLORS.textMuted, marginBottom: '32px' }}>Stay informed, contest manually</p>
-
-            <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {[
-                'New ticket alerts',
-                'Street cleaning reminders',
-                'Snow ban alerts',
-                'Red light camera alerts',
-                'Speed camera alerts',
-                'Renewal reminders',
-                'Dashboard access',
-              ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: COLORS.textDark }}>
-                  <CheckIcon /> <span style={{ fontSize: '15px' }}>{item}</span>
-                </div>
-              ))}
-            </div>
-
-            <Button
-              fullWidth
-              href="/quick-start"
-              style={{ backgroundColor: COLORS.bgSection, color: COLORS.primary, border: `1px solid ${COLORS.border}` }}
-            >
-              Quick Start (Free)
-            </Button>
-          </div>
-
-          {/* Autopilot Tier */}
           <div style={{
             backgroundColor: COLORS.primary,
             color: COLORS.textLight,
@@ -720,7 +660,7 @@ export default function LandingPage() {
             boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
             position: 'relative',
           }}>
-            {/* Recommended Badge */}
+            {/* Founding Member Badge */}
             <div style={{
               position: 'absolute',
               top: '-12px',
@@ -734,42 +674,33 @@ export default function LandingPage() {
               fontWeight: 700,
               letterSpacing: '0.5px',
             }}>
-              RECOMMENDED
+              FOUNDING MEMBER RATE
             </div>
 
-            <div style={{
-              color: COLORS.accent,
-              fontWeight: 700,
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
-              marginBottom: '10px',
-              fontSize: '14px',
-              marginTop: '8px',
-            }}>
-              Autopilot
-            </div>
             <h3 style={{
               fontFamily: FONTS.heading,
               fontSize: '48px',
-              margin: '0 0 10px 0',
+              margin: '8px 0 10px 0',
               color: '#fff'
             }}>
               $49<span style={{fontSize: '18px', color: '#94A3B8'}}>/year</span>
             </h3>
-            <p style={{ color: '#CBD5E1', marginBottom: '32px' }}>Year-round protection with fully managed contesting.</p>
+            <p style={{ color: '#CBD5E1', marginBottom: '32px' }}>Year-round protection. Price locked for life while active.</p>
             <p style={{ color: '#94A3B8', marginTop: '-20px', marginBottom: '28px', fontSize: '13px' }}>
               Less than the cost of a single street cleaning ticket.
             </p>
 
             <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {[
-                'Everything in Free, plus:',
-                'Year-round plate protection',
-                'Code-specific letters built for Chicago',
-                'We draft, print, mail, and track every contest',
+                'Twice-weekly ticket monitoring',
+                'Code-specific contest letters, printed & mailed',
                 'First Dismissal Guarantee',
+                'Street cleaning & snow ban alerts',
+                'Red-light & speed camera alerts (mobile app)',
+                'Renewal reminders (sticker, plates, emissions)',
+                'Full dashboard & ticket tracking',
               ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff', fontWeight: i === 0 ? 600 : 400 }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff' }}>
                   <CheckIcon /> <span style={{ fontSize: '15px' }}>{item}</span>
                 </div>
               ))}
@@ -780,11 +711,11 @@ export default function LandingPage() {
               href="/start"
               style={{ backgroundColor: '#fff', color: COLORS.primary }}
             >
-              Become a Founding Member
+              Get Started
             </Button>
 
             <p style={{ fontSize: '13px', color: '#64748B', marginTop: '16px' }}>
-              Full membership-fee refund request if no eligible non-camera dismissal.
+              Full membership-fee refund if no eligible non-camera dismissal in your first year.
             </p>
           </div>
         </div>
@@ -866,10 +797,7 @@ export default function LandingPage() {
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button primary href="/start">
-              Become a Founding Member - $49/year <ArrowRight />
-            </Button>
-            <Button variant="outline" href="/quick-start">
-              Quick Start (Free)
+              Get Started - $49/year <ArrowRight />
             </Button>
           </div>
         </div>

@@ -301,9 +301,8 @@ export default function CheckYourStreet() {
         </div>
 
         <div className="nav-desktop" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-          <a href="/alerts/signup" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Free Alerts</a>
+          <a href="/start" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Get Started</a>
           <a href="/protection" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Protection</a>
-          <a href="/check-ticket" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Ticket Analyzer</a>
           <button onClick={() => router.push('/login')} style={{
             backgroundColor: COLORS.regulatory,
             color: 'white',
@@ -565,7 +564,7 @@ export default function CheckYourStreet() {
             {/* === ACTION ROW === */}
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
               <button
-                onClick={() => router.push(`/alerts/signup?address=${encodeURIComponent(address)}`)}
+                onClick={() => router.push(`/start`)}
                 style={{
                   backgroundColor: COLORS.regulatory, color: 'white', border: 'none', borderRadius: '10px',
                   padding: '10px 18px', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
@@ -573,7 +572,7 @@ export default function CheckYourStreet() {
                 }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                Get Free Alerts
+                Get Started
               </button>
               {searchResult.nextCleaningDate && (
                 <button
@@ -815,11 +814,11 @@ export default function CheckYourStreet() {
             Never worry about street cleaning again
           </h3>
           <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>Free alerts by text, email, or phone call.</p>
-          <button onClick={() => router.push('/alerts/signup')} style={{
+          <button onClick={() => router.push('/start')} style={{
             backgroundColor: COLORS.regulatory, color: 'white', border: 'none', borderRadius: '10px',
             padding: '12px 24px', fontSize: '15px', fontWeight: '600', cursor: 'pointer',
           }}>
-            Get Free Alerts
+            Get Started
           </button>
         </div>
       </section>
