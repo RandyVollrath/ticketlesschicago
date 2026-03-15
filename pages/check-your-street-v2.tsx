@@ -243,10 +243,12 @@ export default function CheckYourStreet() {
   return (
     <div className="min-h-screen bg-concrete font-sans selection:bg-regulatory selection:text-white">
       <Head>
-        <title>Peace of Mind Parking | Chicago Street Cleaning Schedule</title>
+        <title>Check Your Street - Autopilot America</title>
         <meta name="description" content="Find out when your street will be cleaned next — instantly. Enter your address for Peace of Mind Parking." />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        <script src="https://cdn.tailwindcss.com"></script>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossOrigin="" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
         <style>{`
           .bg-concrete { background-color: ${COLORS.concrete}; }
           .text-deepHarbor { color: ${COLORS.deepHarbor}; }
@@ -339,7 +341,7 @@ export default function CheckYourStreet() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="font-bold text-xl text-deepHarbor tracking-tight">Sweep<span className="text-regulatory">Alert</span></span>
+              <span className="font-bold text-xl text-deepHarbor tracking-tight">Autopilot America</span>
             </div>
 
             {/* Desktop Nav */}
@@ -455,8 +457,9 @@ export default function CheckYourStreet() {
                   </div>
                 ) : (
                   <div>
-                    <h2 className="text-4xl font-extrabold text-deepHarbor mb-2">Schedule Unavailable</h2>
-                    <p className="text-slate">Could not determine the next cleaning date for this location.</p>
+                    <p className="text-sm font-bold uppercase tracking-widest text-slate mb-4">Next Street Cleaning</p>
+                    <h2 className="text-4xl font-extrabold text-deepHarbor mb-2">No upcoming cleaning scheduled</h2>
+                    <p className="text-slate">The schedule for this ward/section hasn't been posted yet.</p>
                   </div>
                 )}
               </div>
@@ -506,12 +509,12 @@ export default function CheckYourStreet() {
                   {permitZoneResult?.hasPermitZone ? (
                     <>
                       <div className="text-4xl font-black text-deepHarbor mb-1">Zone {primaryPermitZone}</div>
-                      <p className="text-sm text-slate font-medium">Permit required to park here.</p>
+                      <p className="text-sm text-slate font-medium">Residential permit parking zone.</p>
                     </>
                   ) : (
                     <>
-                      <div className="text-2xl font-bold text-signal mb-1">No Permit Needed</div>
-                      <p className="text-sm text-slate font-medium">Free parking on this block.</p>
+                      <div className="text-2xl font-bold text-signal mb-1">No Permit Zone</div>
+                      <p className="text-sm text-slate font-medium">Not in a residential permit zone.</p>
                     </>
                   )}
                 </div>
@@ -556,16 +559,22 @@ export default function CheckYourStreet() {
                   <div className="flex-grow flex flex-col justify-center">
                     {snowForecast?.hasSignificantSnow ? (
                       <>
-                        <div className="text-2xl font-bold text-danger mb-1">Move Car Soon</div>
-                        <p className="text-sm text-slate font-medium">Snow expected {snowForecast.significantSnowWhen}. 2" rule applies.</p>
+                        <div className="text-2xl font-bold text-danger mb-1">Snow 2"+ Forecast</div>
+                        <p className="text-sm text-slate font-medium">
+                          {snowForecast.significantSnowWhen ? `Expected ${snowForecast.significantSnowWhen}.` : 'Significant snow expected.'}
+                          {searchResult.onSnowRoute ? ' This is a 2" snow route.' : ''}
+                        </p>
                       </>
                     ) : (
                       <>
                         <div className="text-xl font-bold text-deepHarbor mb-1">
-                          {searchResult.onWinterBan && searchResult.onSnowRoute ? 'Winter Ban + 2" Snow Route' :
-                           searchResult.onWinterBan ? 'Overnight Winter Ban (Dec-Apr)' : '2" Snow Route'}
+                          {searchResult.onWinterBan && searchResult.onSnowRoute ? 'Winter Ban + Snow Route' :
+                           searchResult.onWinterBan ? 'Winter Overnight Ban' : '2" Snow Route'}
                         </div>
-                        <p className="text-sm text-slate font-medium">No snow forecast currently.</p>
+                        <p className="text-sm text-slate font-medium">
+                          {searchResult.onWinterBan ? 'No parking 3-7 AM, Dec 1 - Apr 1.' : ''}
+                          {searchResult.onSnowRoute ? ' No parking when 2"+ snow falls.' : ''}
+                        </p>
                       </>
                     )}
                   </div>
@@ -795,6 +804,7 @@ export default function CheckYourStreet() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   )
 }
