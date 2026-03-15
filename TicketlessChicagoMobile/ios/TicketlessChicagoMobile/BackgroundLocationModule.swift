@@ -7,7 +7,7 @@ import UserNotifications
 import React
 
 @objc(BackgroundLocationModule)
-class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSpeechSynthesizerDelegate {
+class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSpeechSynthesizerDelegate, UNUserNotificationCenterDelegate {
 
   /// Shared reference for AppDelegate to call startMonitoringFromBackground().
   /// Weak to avoid retain cycles — React Native owns the module's lifecycle.
@@ -939,11 +939,51 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let camAnnounceMinIntervalSec: TimeInterval = 5
   private let camAlertDedupeSec: TimeInterval = 3 * 60
   private let camBBoxDegrees: Double = 0.0025
-  private let camHeadingToleranceDeg: Double = 60  // Relaxed from 45° — diagonal streets + intersection geometry
-  private let camMaxBearingOffHeadingDeg: Double = 50  // Relaxed from 30° — curved approaches need wider cone
+  private let camHeadingToleranceDeg: Double = 45  // Standard tolerance at normal driving speeds
+  private let camMaxBearingOffHeadingDeg: Double = 30  // Standard forward cone at normal driving speeds
   private let camRejectLogCooldownSec: TimeInterval = 10
   private let speedCamEnforceStartHour = 6
   private let speedCamEnforceEndHour = 23
+  private let camHeadingBufferSize = 5  // Circular mean of last N headings for noise reduction
+
+  /// Heading smoothing buffer for GPS noise reduction at low speeds
+  private var camHeadingBuffer: [Double] = []
+
+  /// Speed-adaptive heading tolerance: widen at low speeds where GPS heading is noisy
+  private func camGetHeadingTolerance(speedMps: Double) -> Double {
+    if speedMps < 0 { return camHeadingToleranceDeg }
+    if speedMps < 5.0 { return 75 }  // <11 mph — very noisy heading
+    if speedMps < 8.0 { return 60 }  // <18 mph — moderately noisy
+    return camHeadingToleranceDeg     // ≥18 mph — standard 45°
+  }
+
+  /// Speed-adaptive bearing tolerance: widen forward cone at low speeds
+  private func camGetBearingTolerance(speedMps: Double) -> Double {
+    if speedMps < 0 { return camMaxBearingOffHeadingDeg }
+    if speedMps < 5.0 { return 50 }  // <11 mph — widen forward cone
+    if speedMps < 8.0 { return 40 }  // <18 mph — slightly wider
+    return camMaxBearingOffHeadingDeg // ≥18 mph — standard 30°
+  }
+
+  /// Smooth GPS heading using circular mean of recent headings.
+  /// Reduces GPS heading noise at low speeds where position delta is small.
+  private func camSmoothHeading(_ rawHeading: Double) -> Double {
+    if rawHeading < 0 { return rawHeading } // -1 = unavailable
+    camHeadingBuffer.append(rawHeading)
+    if camHeadingBuffer.count > camHeadingBufferSize {
+      camHeadingBuffer.removeFirst()
+    }
+    if camHeadingBuffer.count < 2 { return rawHeading }
+    var sinSum = 0.0
+    var cosSum = 0.0
+    for h in camHeadingBuffer {
+      sinSum += sin(h * Double.pi / 180.0)
+      cosSum += cos(h * Double.pi / 180.0)
+    }
+    let n = Double(camHeadingBuffer.count)
+    let mean = atan2(sinSum / n, cosSum / n) * 180.0 / Double.pi
+    return fmod(mean + 360.0, 360.0)
+  }
 
 
   override init() {
@@ -966,6 +1006,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // to create false parking at wrong addresses with cell-tower GPS.
     restorePersistedParkingState()
     loadFalsePositiveHotspots()
+    registerParkingNotificationCategory()
 
     // Listen for app resuming from iOS suspension. When iOS suspends the app,
     // CoreMotion callbacks freeze — we can miss entire drive+park cycles.
@@ -979,6 +1020,85 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     log("BackgroundLocationModule initialized")
     decision("module_initialized")
+  }
+
+  // MARK: - Notification Category + Action Buttons
+
+  /// Register "parking_detected" notification category with Correct/Wrong actions.
+  /// This lets the user give instant ground-truth feedback from the lock screen.
+  private func registerParkingNotificationCategory() {
+    let correctAction = UNNotificationAction(
+      identifier: "PARKING_CORRECT",
+      title: "Correct",
+      options: []  // No destructive, no authenticationRequired, no foreground
+    )
+    let wrongAction = UNNotificationAction(
+      identifier: "PARKING_WRONG",
+      title: "Not Parked",
+      options: [.destructive]  // Red text, no foreground launch needed
+    )
+
+    let parkingCategory = UNNotificationCategory(
+      identifier: "parking_detected",
+      actions: [correctAction, wrongAction],
+      intentIdentifiers: [],
+      options: []
+    )
+
+    UNUserNotificationCenter.current().setNotificationCategories([parkingCategory])
+    UNUserNotificationCenter.current().delegate = self
+    log("Registered parking_detected notification category with Correct/Wrong actions")
+  }
+
+  /// Handle notification action taps — emit ground truth events to JS.
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    let actionId = response.actionIdentifier
+    let userInfo = response.notification.request.content.userInfo
+
+    let lat = userInfo["latitude"] as? Double ?? 0
+    let lng = userInfo["longitude"] as? Double ?? 0
+    let parkTs = userInfo["parkTimestamp"] as? Double ?? 0
+    let source = userInfo["source"] as? String ?? "unknown"
+
+    if actionId == "PARKING_CORRECT" {
+      log("Notification action: user confirmed parking (lat=\(lat), lng=\(lng), source=\(source))")
+      sendEvent(withName: "onParkingGroundTruth", body: [
+        "type": "parking_confirmed",
+        "latitude": lat,
+        "longitude": lng,
+        "parkTimestamp": parkTs,
+        "source": source,
+      ])
+    } else if actionId == "PARKING_WRONG" {
+      log("Notification action: user reported NOT parked (lat=\(lat), lng=\(lng), source=\(source))")
+      // Also add to false positive hotspot natively
+      if lat != 0 && lng != 0 {
+        addFalsePositiveHotspot(latitude: lat, longitude: lng)
+      }
+      sendEvent(withName: "onParkingGroundTruth", body: [
+        "type": "parking_false_positive",
+        "latitude": lat,
+        "longitude": lng,
+        "parkTimestamp": parkTs,
+        "source": source,
+      ])
+    }
+
+    completionHandler()
+  }
+
+  /// Show notifications in foreground (when app is active)
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    // Show banner + sound even when app is in foreground
+    completionHandler([.banner, .sound])
   }
 
   private func restorePersistedCameraSettings() {
@@ -1325,7 +1445,47 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     self.log("EMIT GATE [\(source)]: EMITTED parking event (lat=\(String(format: "%.6f", latitude)), lng=\(String(format: "%.6f", longitude)), acc=\(String(format: "%.0f", accuracy)))")
 
+    // Send local notification with Correct/Wrong action buttons for ground truth
+    if hasCoords {
+      sendParkingDetectedNotification(latitude: latitude, longitude: longitude, parkTimestamp: parkTimestamp, source: source)
+    }
+
     return true
+  }
+
+  /// Send a local notification with "Correct" / "Not Parked" action buttons.
+  /// Attached to the "parking_detected" category so iOS shows the actions on long-press.
+  private func sendParkingDetectedNotification(latitude: Double, longitude: Double, parkTimestamp: Date, source: String) {
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      let allowed = settings.authorizationStatus == .authorized ||
+                    settings.authorizationStatus == .provisional ||
+                    settings.authorizationStatus == .ephemeral
+      guard allowed else { return }
+
+      let content = UNMutableNotificationContent()
+      content.title = "Parking detected"
+      content.body = "Checking parking rules for this location..."
+      content.sound = UNNotificationSound.default
+      content.categoryIdentifier = "parking_detected"
+      content.userInfo = [
+        "latitude": latitude,
+        "longitude": longitude,
+        "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
+        "source": source,
+      ]
+
+      let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+      let req = UNNotificationRequest(
+        identifier: "parking-\(Int(parkTimestamp.timeIntervalSince1970))",
+        content: content,
+        trigger: trigger
+      )
+      UNUserNotificationCenter.current().add(req) { err in
+        if let err = err {
+          self.log("Parking notification failed: \(err.localizedDescription)")
+        }
+      }
+    }
   }
 
   // MARK: - Pending Parking Event Queue (survives stop/start monitoring)
@@ -1471,7 +1631,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   }
 
   override func supportedEvents() -> [String]! {
-    return ["onParkingDetected", "onDrivingStarted", "onLocationUpdate", "onPossibleDriving"]
+    return ["onParkingDetected", "onDrivingStarted", "onLocationUpdate", "onPossibleDriving", "onParkingGroundTruth"]
   }
 
   // MARK: - Public API
@@ -3692,7 +3852,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private func maybeSendNativeCameraAlert(_ location: CLLocation, isBackgrounded: Bool = true) {
     guard cameraAlertsEnabled else { return }
     let speed = location.speed
-    let heading = location.course  // -1 if invalid
+    let rawHeading = location.course  // -1 if invalid
+    let heading = camSmoothHeading(rawHeading)  // Circular mean of recent headings
     let lat = location.coordinate.latitude
     let lng = location.coordinate.longitude
     let acc = location.horizontalAccuracy
@@ -3753,6 +3914,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     var nearestRejectedDist: Double = Double.greatestFiniteMagnitude
     var nearestRejectedReason: String? = nil
     let rejectDebugRadius = max(alertRadius * 1.4, 220)
+    // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy
+    let headingTol = camGetHeadingTolerance(speedMps: speed)
+    let bearingTol = camGetBearingTolerance(speedMps: speed)
     var bboxCandidateCount = 0
     var typeFilteredCount = 0
     var speedFilteredCount = 0
@@ -3761,14 +3925,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     var bearingFilteredCount = 0
     var dedupeFilteredCount = 0
 
+    // Compute enforcement hour in Chicago timezone (not device timezone)
+    let chicagoTZ = TimeZone(identifier: "America/Chicago") ?? TimeZone.current
+    var chicagoCal = Calendar.current
+    chicagoCal.timeZone = chicagoTZ
+    let chicagoHour = chicagoCal.component(.hour, from: Date())
+
     for i in 0..<Self.chicagoCameras.count {
       let cam = Self.chicagoCameras[i]
 
       // Type + schedule filters
       if cam.type == "speed" {
         guard cameraSpeedEnabled else { typeFilteredCount += 1; continue }
-        let hour = Calendar.current.component(.hour, from: Date())
-        if hour < speedCamEnforceStartHour || hour >= speedCamEnforceEndHour { typeFilteredCount += 1; continue }
+        if chicagoHour < speedCamEnforceStartHour || chicagoHour >= speedCamEnforceEndHour { typeFilteredCount += 1; continue }
       } else {
         guard cameraRedlightEnabled else { typeFilteredCount += 1; continue }
       }
@@ -3781,8 +3950,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       let dist = haversineMeters(lat1: lat, lon1: lng, lat2: cam.lat, lon2: cam.lng)
       let minSpeed = (cam.type == "speed") ? camMinSpeedSpeedCamMps : camMinSpeedRedlightMps
       let perCameraDeduped = alertedCameraAtByIndex[i].map { Date().timeIntervalSince($0) < camAlertDedupeSec } ?? false
-      let headingOk = isHeadingMatch(headingDeg: heading, approaches: cam.approaches)
-      let aheadOk = isCameraAhead(userLat: lat, userLng: lng, camLat: cam.lat, camLng: cam.lng, headingDeg: heading)
+      let headingOk = isHeadingMatch(headingDeg: heading, approaches: cam.approaches, tolerance: headingTol)
+      let aheadOk = isCameraAhead(userLat: lat, userLng: lng, camLat: cam.lat, camLng: cam.lng, headingDeg: heading, bearingTolerance: bearingTol)
 
       var rejectReason: String? = nil
       if speed >= 0 && speed < minSpeed {
@@ -4444,17 +4613,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     return fmod((brng + 360.0), 360.0)
   }
 
-  private func isCameraAhead(userLat: Double, userLng: Double, camLat: Double, camLng: Double, headingDeg: Double) -> Bool {
+  private func isCameraAhead(userLat: Double, userLng: Double, camLat: Double, camLng: Double, headingDeg: Double, bearingTolerance: Double? = nil) -> Bool {
     if headingDeg < 0 { return true }  // fail-open
     let bearing = bearingTo(lat1: userLat, lon1: userLng, lat2: camLat, lon2: camLng)
     var diff = abs(headingDeg - bearing)
     if diff > 180 { diff = 360 - diff }
-    return diff <= camMaxBearingOffHeadingDeg
+    return diff <= (bearingTolerance ?? camMaxBearingOffHeadingDeg)
   }
 
-  private func isHeadingMatch(headingDeg: Double, approaches: [String]) -> Bool {
+  private func isHeadingMatch(headingDeg: Double, approaches: [String], tolerance: Double? = nil) -> Bool {
     if headingDeg < 0 { return true }      // fail-open
     if approaches.isEmpty { return true }  // fail-open
+
+    let tol = tolerance ?? camHeadingToleranceDeg
 
     let mapping: [String: Double] = [
       "NB": 0,
@@ -4471,7 +4642,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       guard let target = mapping[a] else { return true } // unknown approach => fail-open
       var diff = abs(headingDeg - target)
       if diff > 180 { diff = 360 - diff }
-      if diff <= camHeadingToleranceDeg { return true }
+      if diff <= tol { return true }
     }
     return false
   }
@@ -5050,19 +5221,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         )
         lastConfirmedParkingLocation = visitLocation
         hasConfirmedParkingThisSession = true
-
-        // Also send a local notification since the user may not have the app open
-        sendParkingVisitNotification(
-          latitude: visit.coordinate.latitude,
-          longitude: visit.coordinate.longitude,
-          arrivalDate: visit.arrivalDate
-        )
+        // Notification sent by gateway's sendParkingDetectedNotification (with action buttons)
       }
     }
   }
 
-  /// Send a local notification when a CLVisit-based parking event is detected.
-  /// This is the "delayed notification" for stops the normal pipeline missed.
+  /// Legacy: Send a local notification when a CLVisit-based parking event is detected.
+  /// Now mostly superseded by sendParkingDetectedNotification in the gateway,
+  /// but kept for recovery intermediate trips that call it directly.
   private func sendParkingVisitNotification(latitude: Double, longitude: Double, arrivalDate: Date) {
     UNUserNotificationCenter.current().getNotificationSettings { settings in
       let allowed = settings.authorizationStatus == .authorized ||

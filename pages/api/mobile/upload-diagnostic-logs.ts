@@ -16,7 +16,7 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
 // Each log entry from the device's parking_decisions.ndjson
 const LogEntrySchema = z.object({
   event: z.string(),                    // event type (e.g. parking_confirmed, trip_summary)
-  ts: z.string(),                       // ISO timestamp from the event
+  ts: z.union([z.string(), z.number()]),// timestamp — NDJSON uses epoch ms (number), not ISO string
   data: z.record(z.unknown()),          // full event payload
   hash: z.string().min(8).max(64),      // client-side dedup hash
 });
@@ -95,7 +95,9 @@ export default async function handler(
       entity_id: entry.hash,           // dedup key
       action_details: {
         ...entry.data,
-        _event_ts: entry.ts,
+        _event_ts: typeof entry.ts === 'number'
+          ? new Date(entry.ts).toISOString()
+          : entry.ts,
         _platform: platform,
         _app_version: app_version || null,
       },
