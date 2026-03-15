@@ -538,327 +538,318 @@ export default function DestinationMapView() {
         }
       });
 
-      // Load all restriction data in parallel
-      try {
-        const [cleaningRes, snowRes, winterRes, meterRes, permitRes] = await Promise.all([
-          fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/get-snow-routes').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/get-winter-ban-routes').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/metered-parking').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/permit-zone-lines').then(r => r.ok ? r.json() : null).catch(() => null),
-        ]);
+      // Show the map immediately with tiles + pin (no loading overlay)
+      mapRef.current = map;
+      setLoading(false);
 
-        // Track snow ban status for legend
-        const isBanActive = snowRes?.snowBanActive ?? false;
+      // Force a resize so tiles render properly in iframe/WebView
+      setTimeout(() => map.invalidateSize(), 50);
+
+      // Load data layers progressively — each renders as it arrives
+      // Fire all fetches in parallel, but render each independently
+      const loadCleaning = fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null).catch(() => null);
+      const loadSnow = fetch('/api/get-snow-routes').then(r => r.ok ? r.json() : null).catch(() => null);
+      const loadWinter = fetch('/api/get-winter-ban-routes').then(r => r.ok ? r.json() : null).catch(() => null);
+      const loadMeters = fetch('/api/metered-parking').then(r => r.ok ? r.json() : null).catch(() => null);
+      const loadPermits = fetch('/api/permit-zone-lines').then(r => r.ok ? r.json() : null).catch(() => null);
+
+      // --- Street cleaning zones (renders first — usually fastest) ---
+      loadCleaning.then(cleaningRes => {
+        if (cancelled || !cleaningRes?.data) return;
+        const zones = cleaningRes.data
+          .filter((z: any) => z.geom_simplified)
+          .map((z: any) => ({
+            type: 'Feature' as const,
+            geometry: z.geom_simplified,
+            properties: {
+              ward: z.ward,
+              section: z.section,
+              nextISO: z.nextCleaningDateISO,
+            },
+          }));
+
+        const cleaningLayer = L.geoJSON(zones, {
+          style: (feature: any) => {
+            const color = cleaningColor(feature?.properties?.nextISO);
+            return {
+              fillColor: color,
+              fillOpacity: 0.25,
+              color: color,
+              weight: 1.5,
+              opacity: 0.7,
+            };
+          },
+          onEachFeature: (feature: any, layer: any) => {
+            const p = feature.properties;
+            const label = cleaningLabel(p.nextISO);
+            layer.bindPopup(`
+              <div style="font-family:system-ui;font-size:13px">
+                <div style="font-weight:700;color:#1A1C1E">Ward ${p.ward}, Section ${p.section}</div>
+                <div style="color:#6C727A;margin-top:2px">${label}</div>
+              </div>
+            `, { maxWidth: 250 });
+          },
+        }).addTo(map);
+        layersRef.current.cleaningLayer = cleaningLayer;
+        applyViewMode(parkabilityMode);
+      });
+
+      // --- Snow ban routes ---
+      loadSnow.then(snowRes => {
+        if (cancelled || !snowRes?.routes?.length) return;
+        const isBanActive = snowRes.snowBanActive ?? false;
         setSnowBanActive(isBanActive);
 
-        if (cancelled) return;
+        const snowLayer = L.geoJSON(snowRes.routes, {
+          style: () => ({
+            color: LAYER_COLORS.snowRoute,
+            weight: 3.5,
+            opacity: 0.85,
+            dashArray: '8,4',
+          }),
+          onEachFeature: (feature: any, layer: any) => {
+            (layer as any)._snowBanActive = isBanActive;
+            const p = feature.properties;
+            const banLabel = isBanActive
+              ? '<span style="color:#ef4444;font-weight:600">BAN ACTIVE</span>'
+              : '<span style="color:#22c55e;font-weight:600">No ban currently</span>';
+            layer.bindPopup(`
+              <div style="font-family:system-ui;font-size:13px">
+                <div style="font-weight:700;color:${LAYER_COLORS.snowRoute}">2" Snow Ban Route</div>
+                <div style="color:#6C727A;margin-top:2px">${p.on_street || ''}</div>
+                ${p.from_street && p.to_street ? `<div style="color:#94A3B8;font-size:12px;margin-top:2px">${p.from_street} to ${p.to_street}</div>` : ''}
+                <div style="margin-top:4px;font-size:12px">${banLabel} — Activated when 2"+ snow falls</div>
+              </div>
+            `, { maxWidth: 270 });
+          },
+        }).addTo(map);
+        layersRef.current.snowLayer = snowLayer;
+        applyViewMode(parkabilityMode);
+      });
 
-        // --- Street cleaning zones ---
-        if (cleaningRes?.data) {
-          const zones = cleaningRes.data
-            .filter((z: any) => z.geom_simplified)
-            .map((z: any) => ({
-              type: 'Feature' as const,
-              geometry: z.geom_simplified,
-              properties: {
-                ward: z.ward,
-                section: z.section,
-                nextISO: z.nextCleaningDateISO,
-              },
-            }));
+      // --- Winter ban routes ---
+      loadWinter.then(winterRes => {
+        if (cancelled || !winterRes?.routes?.length) return;
+        const winterLayer = L.geoJSON(winterRes.routes, {
+          style: () => ({
+            color: LAYER_COLORS.winterBan,
+            weight: 3.5,
+            opacity: 0.85,
+            dashArray: '12,6',
+          }),
+          onEachFeature: (feature: any, layer: any) => {
+            const p = feature.properties;
+            layer.bindPopup(`
+              <div style="font-family:system-ui;font-size:13px">
+                <div style="font-weight:700;color:${LAYER_COLORS.winterBan}">Winter Overnight Ban</div>
+                <div style="color:#6C727A;margin-top:2px">${p.street_name || ''}</div>
+                <div style="color:#94A3B8;font-size:12px;margin-top:2px">3 AM - 7 AM, Dec 1 - Apr 1</div>
+              </div>
+            `, { maxWidth: 250 });
+          },
+        }).addTo(map);
+        layersRef.current.winterLayer = winterLayer;
+        applyViewMode(parkabilityMode);
+      });
 
-          const cleaningLayer = L.geoJSON(zones, {
-            style: (feature: any) => {
-              const color = cleaningColor(feature?.properties?.nextISO);
-              return {
-                fillColor: color,
-                fillOpacity: 0.25,
-                color: color,
-                weight: 1.5,
-                opacity: 0.7,
-              };
-            },
-            onEachFeature: (feature: any, layer: any) => {
-              const p = feature.properties;
-              const label = cleaningLabel(p.nextISO);
-              layer.bindPopup(`
-                <div style="font-family:system-ui;font-size:13px">
-                  <div style="font-weight:700;color:#1A1C1E">Ward ${p.ward}, Section ${p.section}</div>
-                  <div style="color:#6C727A;margin-top:2px">${label}</div>
-                </div>
-              `, { maxWidth: 250 });
-            },
-          }).addTo(map);
-          layersRef.current.cleaningLayer = cleaningLayer;
-        }
+      // --- Parking meters (visible at zoom 14+) ---
+      loadMeters.then(meterRes => {
+        if (cancelled || !meterRes?.meters?.length) return;
+        layersRef.current.meters = meterRes.meters;
+        const meterLayerGroup = L.layerGroup();
 
-        // --- Snow ban routes ---
-        if (snowRes?.routes?.length) {
-          const snowLayer = L.geoJSON(snowRes.routes, {
-            style: () => ({
-              color: LAYER_COLORS.snowRoute,
-              weight: 3.5,
-              opacity: 0.85,
-              dashArray: '8,4',
-            }),
-            onEachFeature: (feature: any, layer: any) => {
-              // Stash ban status on each feature for restyling
-              (layer as any)._snowBanActive = isBanActive;
-              const p = feature.properties;
-              const banLabel = isBanActive
-                ? '<span style="color:#ef4444;font-weight:600">BAN ACTIVE</span>'
-                : '<span style="color:#22c55e;font-weight:600">No ban currently</span>';
-              layer.bindPopup(`
-                <div style="font-family:system-ui;font-size:13px">
-                  <div style="font-weight:700;color:${LAYER_COLORS.snowRoute}">2" Snow Ban Route</div>
-                  <div style="color:#6C727A;margin-top:2px">${p.on_street || ''}</div>
-                  ${p.from_street && p.to_street ? `<div style="color:#94A3B8;font-size:12px;margin-top:2px">${p.from_street} to ${p.to_street}</div>` : ''}
-                  <div style="margin-top:4px;font-size:12px">${banLabel} — Activated when 2"+ snow falls</div>
-                </div>
-              `, { maxWidth: 270 });
-            },
-          }).addTo(map);
-          layersRef.current.snowLayer = snowLayer;
-        }
+        meterRes.meters.forEach((m: any) => {
+          const rate = typeof m.rate === 'number' ? m.rate : parseFloat(m.rate);
+          const color = meterColor(rate);
+          const enforced = isMeterEnforcedNow(m.rate_description);
+          const schedule = getMeterScheduleText(m.rate_description);
+          const cm = L.circleMarker([m.latitude, m.longitude], {
+            radius: 5,
+            color,
+            fillColor: color,
+            fillOpacity: 0.7,
+            weight: 1,
+            opacity: 0.9,
+          });
 
-        // --- Winter ban routes ---
-        if (winterRes?.routes?.length) {
-          const winterLayer = L.geoJSON(winterRes.routes, {
-            style: () => ({
-              color: LAYER_COLORS.winterBan,
-              weight: 3.5,
-              opacity: 0.85,
-              dashArray: '12,6',
-            }),
-            onEachFeature: (feature: any, layer: any) => {
-              const p = feature.properties;
-              layer.bindPopup(`
-                <div style="font-family:system-ui;font-size:13px">
-                  <div style="font-weight:700;color:${LAYER_COLORS.winterBan}">Winter Overnight Ban</div>
-                  <div style="color:#6C727A;margin-top:2px">${p.street_name || ''}</div>
-                  <div style="color:#94A3B8;font-size:12px;margin-top:2px">3 AM - 7 AM, Dec 1 - Apr 1</div>
-                </div>
-              `, { maxWidth: 250 });
-            },
-          }).addTo(map);
-          layersRef.current.winterLayer = winterLayer;
-        }
+          (cm as any)._meterData = m;
 
-        // --- Parking meters (visible at zoom 14+) ---
-        if (meterRes?.meters?.length) {
-          layersRef.current.meters = meterRes.meters;
-          const meterLayerGroup = L.layerGroup();
+          cm.bindPopup(`
+            <div style="font-family:system-ui;font-size:13px;min-width:160px">
+              <div style="font-weight:700;color:#1A1C1E;margin-bottom:2px">Parking Meter</div>
+              <div style="color:#6C727A">${m.address}</div>
+              <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+                <span style="padding:2px 8px;background:${color}18;color:${color};border-radius:4px;font-weight:600;font-size:13px">$${(rate || 0).toFixed(2)}/hr</span>
+                ${m.time_limit_hours ? `<span style="padding:2px 8px;background:#f1f5f9;color:#475569;border-radius:4px;font-size:12px">${m.time_limit_hours}hr limit</span>` : ''}
+                ${m.is_clz ? `<span style="padding:2px 8px;background:#fef2f2;color:#dc2626;border-radius:4px;font-size:12px;font-weight:600">CLZ</span>` : ''}
+              </div>
+              <div style="color:#94A3B8;font-size:11px;margin-top:4px">
+                ${enforced
+                  ? `<span style="color:#ef4444;font-weight:600">Enforced now</span> · ${schedule}`
+                  : `<span style="color:#22c55e;font-weight:600">Free right now</span> · Enforced ${schedule}`
+                }
+              </div>
+              <div style="color:#94A3B8;font-size:11px;margin-top:2px">${m.spaces || '?'} spaces</div>
+            </div>
+          `, { maxWidth: 260 });
 
-          meterRes.meters.forEach((m: any) => {
-            const rate = typeof m.rate === 'number' ? m.rate : parseFloat(m.rate);
-            const color = meterColor(rate);
-            const enforced = isMeterEnforcedNow(m.rate_description);
-            const schedule = getMeterScheduleText(m.rate_description);
-            const cm = L.circleMarker([m.latitude, m.longitude], {
-              radius: 5,
-              color,
-              fillColor: color,
-              fillOpacity: 0.7,
-              weight: 1,
-              opacity: 0.9,
-            });
+          cm.addTo(meterLayerGroup);
+        });
 
-            // Stash meter data on the layer for restyling
-            (cm as any)._meterData = m;
+        const updateMeterVisibility = () => {
+          const z = map.getZoom();
+          if (z >= 14) { if (!map.hasLayer(meterLayerGroup)) map.addLayer(meterLayerGroup); }
+          else { if (map.hasLayer(meterLayerGroup)) map.removeLayer(meterLayerGroup); }
+        };
+        map.on('zoomend', updateMeterVisibility);
+        updateMeterVisibility();
+        layersRef.current.meterLayer = meterLayerGroup;
+        applyViewMode(parkabilityMode);
+      });
 
-            cm.bindPopup(`
+      // --- Permit zone lines (heaviest — renders last) ---
+      loadPermits.then(permitRes => {
+        if (cancelled || !permitRes?.features?.length) return;
+        const permitGeoJSON = {
+          type: 'FeatureCollection' as const,
+          features: permitRes.features,
+        };
+
+        // Invisible wide layer for easy tapping (20px hit target)
+        const hitLayer = L.geoJSON(permitGeoJSON, {
+          style: () => ({
+            color: 'transparent',
+            weight: 20,
+            opacity: 0,
+          }),
+          interactive: true,
+          onEachFeature: (feature: any, layer: any) => {
+            const p = feature.properties;
+            const sideLabel = p.oddEven === 'O' ? 'ODD side only' : p.oddEven === 'E' ? 'EVEN side only' : 'Both sides';
+            const sideBg = p.oddEven === 'O' ? '#dbeafe' : p.oddEven === 'E' ? '#ffedd5' : '#e2e8f0';
+            const sideColor = p.oddEven === 'O' ? '#1e40af' : p.oddEven === 'E' ? '#c2410c' : '#334155';
+            const oppositeHint = p.oddEven === 'O'
+              ? 'Opposite side may be legal: even-numbered addresses (check signs).'
+              : p.oddEven === 'E'
+                ? 'Opposite side may be legal: odd-numbered addresses (check signs).'
+                : 'Both sides are in this permit segment (check signs).';
+            layer.bindPopup(`
               <div style="font-family:system-ui;font-size:13px;min-width:160px">
-                <div style="font-weight:700;color:#1A1C1E;margin-bottom:2px">Parking Meter</div>
-                <div style="color:#6C727A">${m.address}</div>
-                <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-                  <span style="padding:2px 8px;background:${color}18;color:${color};border-radius:4px;font-weight:600;font-size:13px">$${(rate || 0).toFixed(2)}/hr</span>
-                  ${m.time_limit_hours ? `<span style="padding:2px 8px;background:#f1f5f9;color:#475569;border-radius:4px;font-size:12px">${m.time_limit_hours}hr limit</span>` : ''}
-                  ${m.is_clz ? `<span style="padding:2px 8px;background:#fef2f2;color:#dc2626;border-radius:4px;font-size:12px;font-weight:600">CLZ</span>` : ''}
-                </div>
-                <div style="color:#94A3B8;font-size:11px;margin-top:4px">
-                  ${enforced
-                    ? `<span style="color:#ef4444;font-weight:600">Enforced now</span> · ${schedule}`
-                    : `<span style="color:#22c55e;font-weight:600">Free right now</span> · Enforced ${schedule}`
-                  }
-                </div>
-                <div style="color:#94A3B8;font-size:11px;margin-top:2px">${m.spaces || '?'} spaces</div>
+                <div style="font-weight:700;color:${p.oddEven === 'O' ? PERMIT_COLORS.odd : p.oddEven === 'E' ? PERMIT_COLORS.even : PERMIT_COLORS.both};font-size:14px">Zone ${p.zone}</div>
+                <div style="color:#374151;margin-top:3px;font-weight:500">${p.street || ''}</div>
+                <div style="color:#6B7280;font-size:12px;margin-top:2px">${p.addrRange || ''}</div>
+                <div style="margin-top:6px;display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${sideBg};color:${sideColor}">${sideLabel}</div>
+                <div style="color:#9CA3AF;font-size:11px;margin-top:6px">${oppositeHint}</div>
               </div>
             `, { maxWidth: 260 });
+          },
+        }).addTo(map);
 
-            cm.addTo(meterLayerGroup);
-          });
+        // Visible styled layer (not interactive — clicks pass through to hit layer)
+        const permitLayer = L.layerGroup();
+        permitRes.features.forEach((feature: any) => {
+          const oe = feature?.properties?.oddEven;
+          if (oe === 'O' || oe === 'E') {
+            const style = permitLineStyle(oe);
+            const variant = oe === 'E' ? 'both_b' : 'both_a';
+            const offsetGeom = offsetPermitGeometry(feature.geometry, oe, variant);
+            const g = L.geoJSON(offsetGeom, {
+              interactive: false,
+              style: {
+                color: style.color,
+                weight: 5,
+                opacity: 0.85,
+                dashArray: style.dashArray,
+              },
+            });
+            (g as any)._permitColor = style.color;
+            (g as any)._permitDash = style.dashArray;
+            g.addTo(permitLayer);
+          } else {
+            const oddGeom = offsetPermitGeometry(feature.geometry, null, 'both_a');
+            const evenGeom = offsetPermitGeometry(feature.geometry, null, 'both_b');
+            const gOdd = L.geoJSON(oddGeom, {
+              interactive: false,
+              style: {
+                color: PERMIT_COLORS.odd,
+                weight: 5,
+                opacity: 0.85,
+                dashArray: '8,4',
+              },
+            });
+            (gOdd as any)._permitColor = PERMIT_COLORS.odd;
+            (gOdd as any)._permitDash = '8,4';
+            gOdd.addTo(permitLayer);
+            const gEven = L.geoJSON(evenGeom, {
+              interactive: false,
+              style: {
+                color: PERMIT_COLORS.even,
+                weight: 5,
+                opacity: 0.85,
+                dashArray: '8,4',
+              },
+            });
+            (gEven as any)._permitColor = PERMIT_COLORS.even;
+            (gEven as any)._permitDash = '8,4';
+            gEven.addTo(permitLayer);
+          }
+        });
+        permitLayer.addTo(map);
+        layersRef.current.permitLayer = permitLayer;
 
-          // Show meters only when zoomed in enough
-          const updateMeterVisibility = () => {
-            const z = map.getZoom();
-            if (z >= 14) { if (!map.hasLayer(meterLayerGroup)) map.addLayer(meterLayerGroup); }
-            else { if (map.hasLayer(meterLayerGroup)) map.removeLayer(meterLayerGroup); }
-          };
-          map.on('zoomend', updateMeterVisibility);
-          updateMeterVisibility();
-          layersRef.current.meterLayer = meterLayerGroup;
-        }
+        // Parkability permit overlays
+        const permitParkabilityLayer = L.layerGroup();
+        permitRes.features.forEach((feature: any) => {
+          const oe = feature?.properties?.oddEven;
+          if (oe === 'O' || oe === 'E') {
+            const restrictedGeom = offsetPermitGeometry(feature.geometry, oe, 'restricted');
+            const oppositeGeom = offsetPermitGeometry(feature.geometry, oe, 'opposite');
 
-        // --- Permit zone lines (purple) ---
-        // Two layers: invisible wide hit-target + visible styled line.
-        // Odd/even side gets dashed style; "both sides" gets solid.
-        if (permitRes?.features?.length) {
-          const permitGeoJSON = {
-            type: 'FeatureCollection' as const,
-            features: permitRes.features,
-          };
+            L.geoJSON(restrictedGeom, {
+              interactive: false,
+              style: {
+                color: PARK_COLORS.restricted,
+                weight: 4.5,
+                opacity: 0.95,
+              },
+            }).addTo(permitParkabilityLayer);
 
-          // Invisible wide layer for easy tapping (20px hit target)
-          const hitLayer = L.geoJSON(permitGeoJSON, {
-            style: () => ({
-              color: 'transparent',
-              weight: 20,
-              opacity: 0,
-            }),
-            interactive: true,
-            onEachFeature: (feature: any, layer: any) => {
-              const p = feature.properties;
-              const sideLabel = p.oddEven === 'O' ? 'ODD side only' : p.oddEven === 'E' ? 'EVEN side only' : 'Both sides';
-              const sideBg = p.oddEven === 'O' ? '#dbeafe' : p.oddEven === 'E' ? '#ffedd5' : '#e2e8f0';
-              const sideColor = p.oddEven === 'O' ? '#1e40af' : p.oddEven === 'E' ? '#c2410c' : '#334155';
-              const oppositeHint = p.oddEven === 'O'
-                ? 'Opposite side may be legal: even-numbered addresses (check signs).'
-                : p.oddEven === 'E'
-                  ? 'Opposite side may be legal: odd-numbered addresses (check signs).'
-                  : 'Both sides are in this permit segment (check signs).';
-              layer.bindPopup(`
-                <div style="font-family:system-ui;font-size:13px;min-width:160px">
-                  <div style="font-weight:700;color:${p.oddEven === 'O' ? PERMIT_COLORS.odd : p.oddEven === 'E' ? PERMIT_COLORS.even : PERMIT_COLORS.both};font-size:14px">Zone ${p.zone}</div>
-                  <div style="color:#374151;margin-top:3px;font-weight:500">${p.street || ''}</div>
-                  <div style="color:#6B7280;font-size:12px;margin-top:2px">${p.addrRange || ''}</div>
-                  <div style="margin-top:6px;display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${sideBg};color:${sideColor}">${sideLabel}</div>
-                  <div style="color:#9CA3AF;font-size:11px;margin-top:6px">${oppositeHint}</div>
-                </div>
-              `, { maxWidth: 260 });
-            },
-          }).addTo(map);
+            L.geoJSON(oppositeGeom, {
+              interactive: false,
+              style: {
+                color: PARK_COLORS.free,
+                weight: 4.5,
+                opacity: 0.95,
+                dashArray: '',
+              },
+            }).addTo(permitParkabilityLayer);
+          } else {
+            const oddGeom = offsetPermitGeometry(feature.geometry, null, 'both_a');
+            const evenGeom = offsetPermitGeometry(feature.geometry, null, 'both_b');
+            L.geoJSON(oddGeom, {
+              interactive: false,
+              style: {
+                color: PARK_COLORS.restricted,
+                weight: 4.5,
+                opacity: 0.95,
+              },
+            }).addTo(permitParkabilityLayer);
+            L.geoJSON(evenGeom, {
+              interactive: false,
+              style: {
+                color: PARK_COLORS.restricted,
+                weight: 4.5,
+                opacity: 0.95,
+              },
+            }).addTo(permitParkabilityLayer);
+          }
+        });
+        permitParkabilityLayer.addTo(map);
+        layersRef.current.permitParkabilityLayer = permitParkabilityLayer;
 
-          // Visible styled layer (not interactive — clicks pass through to hit layer)
-          // "Both sides" segments render as two parallel lines:
-          // odd-color + even-color.
-          const permitLayer = L.layerGroup();
-          permitRes.features.forEach((feature: any) => {
-            const oe = feature?.properties?.oddEven;
-            if (oe === 'O' || oe === 'E') {
-              // Offset single-side lines to their correct side of the street
-              const style = permitLineStyle(oe);
-              const variant = oe === 'E' ? 'both_b' : 'both_a';
-              const offsetGeom = offsetPermitGeometry(feature.geometry, oe, variant);
-              const g = L.geoJSON(offsetGeom, {
-                interactive: false,
-                style: {
-                  color: style.color,
-                  weight: 5,
-                  opacity: 0.85,
-                  dashArray: style.dashArray,
-                },
-              });
-              (g as any)._permitColor = style.color;
-              (g as any)._permitDash = style.dashArray;
-              g.addTo(permitLayer);
-            } else {
-              // "Both sides" — render as two offset dashed lines on their respective sides
-              const oddGeom = offsetPermitGeometry(feature.geometry, null, 'both_a');
-              const evenGeom = offsetPermitGeometry(feature.geometry, null, 'both_b');
-              const gOdd = L.geoJSON(oddGeom, {
-                interactive: false,
-                style: {
-                  color: PERMIT_COLORS.odd,
-                  weight: 5,
-                  opacity: 0.85,
-                  dashArray: '8,4',
-                },
-              });
-              (gOdd as any)._permitColor = PERMIT_COLORS.odd;
-              (gOdd as any)._permitDash = '8,4';
-              gOdd.addTo(permitLayer);
-              const gEven = L.geoJSON(evenGeom, {
-                interactive: false,
-                style: {
-                  color: PERMIT_COLORS.even,
-                  weight: 5,
-                  opacity: 0.85,
-                  dashArray: '8,4',
-                },
-              });
-              (gEven as any)._permitColor = PERMIT_COLORS.even;
-              (gEven as any)._permitDash = '8,4';
-              gEven.addTo(permitLayer);
-            }
-          });
-          permitLayer.addTo(map);
-          layersRef.current.permitLayer = permitLayer;
-
-          // Parkability permit overlays:
-          // - Odd/even: red restricted side + green likely-opposite side
-          // - Both sides: double red lines
-          const permitParkabilityLayer = L.layerGroup();
-          permitRes.features.forEach((feature: any) => {
-            const oe = feature?.properties?.oddEven;
-            if (oe === 'O' || oe === 'E') {
-              const restrictedGeom = offsetPermitGeometry(feature.geometry, oe, 'restricted');
-              const oppositeGeom = offsetPermitGeometry(feature.geometry, oe, 'opposite');
-
-              L.geoJSON(restrictedGeom, {
-                interactive: false,
-                style: {
-                  color: PARK_COLORS.restricted,
-                  weight: 4.5,
-                  opacity: 0.95,
-                },
-              }).addTo(permitParkabilityLayer);
-
-              L.geoJSON(oppositeGeom, {
-                interactive: false,
-                style: {
-                  color: PARK_COLORS.free,
-                  weight: 4.5,
-                  opacity: 0.95,
-                  dashArray: '',
-                },
-              }).addTo(permitParkabilityLayer);
-            } else {
-              // "Both sides" — offset red lines on their respective sides
-              const oddGeom = offsetPermitGeometry(feature.geometry, null, 'both_a');
-              const evenGeom = offsetPermitGeometry(feature.geometry, null, 'both_b');
-              L.geoJSON(oddGeom, {
-                interactive: false,
-                style: {
-                  color: PARK_COLORS.restricted,
-                  weight: 4.5,
-                  opacity: 0.95,
-                },
-              }).addTo(permitParkabilityLayer);
-              L.geoJSON(evenGeom, {
-                interactive: false,
-                style: {
-                  color: PARK_COLORS.restricted,
-                  weight: 4.5,
-                  opacity: 0.95,
-                },
-              }).addTo(permitParkabilityLayer);
-            }
-          });
-          permitParkabilityLayer.addTo(map);
-          layersRef.current.permitParkabilityLayer = permitParkabilityLayer;
-
-          console.log(`[map] Rendered ${permitRes.features.length} permit zone lines (${permitRes.total} total zones, ${permitRes.resolved} resolved)`);
-        }
-
-
-      } catch (err) {
-        console.error('Error loading restriction data:', err);
-      }
-
-      mapRef.current = map;
-      applyViewMode(parkabilityMode);
-      setLoading(false);
+        console.log(`[map] Rendered ${permitRes.features.length} permit zone lines (${permitRes.total} total zones, ${permitRes.resolved} resolved)`);
+        applyViewMode(parkabilityMode);
+      });
 
       // Force a resize after mount (WebView sometimes needs this)
       setTimeout(() => map.invalidateSize(), 100);

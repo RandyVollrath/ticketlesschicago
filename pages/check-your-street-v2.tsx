@@ -347,7 +347,6 @@ export default function CheckYourStreet() {
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center space-x-8">
               <a href="/start" className="text-sm font-medium text-slate hover:text-deepHarbor transition-colors">Get Started</a>
-              <a href="/protection" className="text-sm font-medium text-slate hover:text-deepHarbor transition-colors">Protection</a>
               <button onClick={() => router.push('/login')} className="text-sm font-medium text-regulatory hover:text-regulatoryDark transition-colors">Sign In</button>
             </div>
 

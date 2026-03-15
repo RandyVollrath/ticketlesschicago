@@ -302,7 +302,6 @@ export default function CheckYourStreet() {
 
         <div className="nav-desktop" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
           <a href="/start" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Get Started</a>
-          <a href="/protection" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Protection</a>
           <button onClick={() => router.push('/login')} style={{
             backgroundColor: COLORS.regulatory,
             color: 'white',
@@ -796,6 +795,7 @@ export default function CheckYourStreet() {
           <iframe
             title="Destination Parking Map"
             src={destinationMapUrl}
+            loading="lazy"
             style={{
               width: '100%',
               height: '600px',
