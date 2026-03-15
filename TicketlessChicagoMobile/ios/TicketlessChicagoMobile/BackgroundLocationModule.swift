@@ -4995,12 +4995,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       lastStationaryTime = Date()
     }
 
-    // 8 second debounce: long enough to survive red light CoreMotion flicker
-    // (CoreMotion can briefly report stationary at long red lights when the
-    // car is vibration-free), short enough to catch real parking quickly.
-    // Previously 3s which was causing false positives at major intersections
-    // like Ashland & Fullerton where red lights last 30-90s and CoreMotion
-    // briefly flickers to stationary from engine-idle vibration loss.
+    // CoreMotion-path parking confirmation: requires BOTH CoreMotion non-automotive
+    // AND GPS speed ≈ 0 for a sustained period. Previously, this path only waited
+    // 8s for CoreMotion debounce with no GPS check — causing false positives at red
+    // lights (e.g. Grace & Lincoln, Mar 2026) where CoreMotion stays non-automotive
+    // for 30-90s while the car idles at a long red light.
+    //
+    // Now: 8s debounce (unchanged), then hand off to the speedZeroTimer which
+    // already checks GPS speed + CoreMotion stability + walking evidence via the
+    // gps_coremotion_agree path. Walking evidence bypasses the GPS wait (walking
+    // = user exited the car, definitely parked). Without walking, the
+    // gps_coremotion_agree path requires 10s of GPS speed ≈ 0 + 6s CoreMotion
+    // stability + either 45s of zero speed OR car disconnect evidence.
+    //
+    // The parking location is captured at the moment CoreMotion exits automotive
+    // (locationAtStopStart) — NOT where the user is when confirmation fires.
+    // So even if confirmation takes 20-45s (user walking away), the location
+    // is where the car stopped.
     parkingConfirmationTimer?.invalidate()
     parkingConfirmationTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
       guard let self = self else { return }
@@ -5012,7 +5023,34 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         self.locationAtStopStart = nil
         return
       }
-      self.confirmParking()
+
+      // Walking evidence = user exited car. Confirm immediately (no GPS wait needed).
+      let walkingEvidenceSec = self.coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
+      if userIsWalking || walkingEvidenceSec >= self.minWalkingEvidenceSec {
+        self.log("handlePotentialParking: walking detected (\(String(format: "%.0f", walkingEvidenceSec))s) — confirming immediately via coremotion_walking")
+        self.confirmParking(source: "coremotion_walking")
+        return
+      }
+
+      // No walking evidence. DO NOT confirm from CoreMotion alone — a red light
+      // can hold CoreMotion in non-automotive for 60-90s. Instead, rely on the
+      // speedZeroTimer (already running in parallel) which uses the stricter
+      // gps_coremotion_agree path: GPS speed ≈ 0 for 10s + CoreMotion stable
+      // for 6s + either walking/45s-zero-speed/car-disconnect evidence.
+      // The speedZeroTimer fires every 3s and will confirm parking once those
+      // conditions are met. If the user drives off (red light ends), speedSaysMoving
+      // cancels the timer.
+      let zeroDuration = self.speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? 0
+      self.log("handlePotentialParking: no walking evidence — deferring to GPS speed path (zeroDuration=\(String(format: "%.0f", zeroDuration))s, speedSaysMoving=\(self.speedSaysMoving))")
+      self.decision("coremotion_deferred_to_gps", [
+        "walkingEvidenceSec": walkingEvidenceSec,
+        "zeroDurationSec": zeroDuration,
+        "speedSaysMoving": self.speedSaysMoving,
+        "coreMotionState": self.coreMotionStateLabel,
+      ])
+      // Note: locationAtStopStart is preserved — when the speedZeroTimer eventually
+      // calls confirmParking(), it will use this location (where the car stopped),
+      // not the user's current location.
     }
   }
 
@@ -5511,11 +5549,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let movedMeters = location.distance(from: confirmedLoc)
     guard movedMeters >= postConfirmUnwindMinDistanceMeters else { return }
 
-    let likelyFalsePositive =
-      lastConfirmedParkingNearIntersectionRisk ||
-      lastConfirmedParkingConfidence < postConfirmUnwindMaxConfidence ||
-      lastParkingDecisionHoldReason.contains("no_walking")
-    guard likelyFalsePositive else { return }
+    // Mar 2026: Removed the "likelyFalsePositive" confidence gate. If the user
+    // is driving 85m+ at 3+ m/s within 120s of parking confirmation, it was
+    // ALWAYS a false positive — regardless of confidence score, intersection
+    // risk flag, or walking evidence. The previous gate required one of:
+    //   - nearIntersectionRisk (missed at Grace & Lincoln, no camera there)
+    //   - confidence < 65 (GPS path can produce high confidence at long lights)
+    //   - "no_walking" hold reason
+    // This caused the Grace & Lincoln incident to NOT unwind because none of
+    // those conditions were true, leaving isDriving = false and blocking the
+    // real Byron St parking detection entirely.
 
     addFalsePositiveHotspot(lat: confirmedLoc.coordinate.latitude, lng: confirmedLoc.coordinate.longitude, source: "post_confirm_unwind")
     let extended = Date().addingTimeInterval(falsePositiveParkingLockoutSec)
@@ -5533,14 +5576,36 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     lastConfirmedParkingConfidence = -1
     lastConfirmedParkingNearIntersectionRisk = false
 
+    // CRITICAL (Mar 2026 fix): Restart the driving pipeline immediately.
+    // Previously, unwind cleared parking state but did NOT set isDriving = true.
+    // This caused a cascade failure: false parking at a red light (e.g. Grace & Lincoln)
+    // → unwind fires when user resumes driving → isDriving stays false → user parks
+    // at real destination → normal parking detection blocked (drivingStartTime is nil)
+    // → real parking only caught hours later by checkForMissedParking recovery.
+    //
+    // The user is clearly driving (speed >= 3.0 m/s, moved >= 85m). Set isDriving = true
+    // so the next parking is detected normally with accurate GPS coordinates.
+    isDriving = true
+    drivingStartTime = Date()
+    lastDrivingLocation = nil
+    locationAtStopStart = nil
+    recentLowSpeedLocations.removeAll()
+    speedZeroStartTime = nil
+    stopWindowMaxSpeedMps = 0
+    speedSaysMoving = true  // We know speed >= 3.0 m/s from the guard above
+    speedMovingConsecutiveCount = speedMovingConsecutiveRequired  // Already confirmed moving
+    startContinuousGps()
+    startAccelerometerRecording()
+
     decision("parking_post_confirm_unwound", [
       "ageSec": ageSec,
       "movedMeters": movedMeters,
       "speed": speed,
       "confidence": lastParkingDecisionConfidence,
       "holdReason": lastParkingDecisionHoldReason,
+      "isDrivingRestarted": true,
     ])
-    self.log("Post-confirm unwind: movement \(String(format: "%.0f", movedMeters))m at \(String(format: "%.1f", speed)) m/s within \(String(format: "%.0f", ageSec))s of parking confirm")
+    self.log("Post-confirm unwind: movement \(String(format: "%.0f", movedMeters))m at \(String(format: "%.1f", speed)) m/s within \(String(format: "%.0f", ageSec))s of parking confirm — isDriving RESTARTED")
   }
 
   private func queueParkingCandidateForRetry(body: [String: Any], source: String, reason: String) {
