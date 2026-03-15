@@ -151,7 +151,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState('');
-  const [isPaidUser, setIsPaidUser] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [platesMonitored, setPlatesMonitored] = useState(0);
@@ -172,26 +171,14 @@ export default function DashboardPage() {
     setUserId(session.user.id);
     setEmail(session.user.email || '');
 
-    // Load user profile to check if paid user (has_contesting)
-    const { data: profileData } = await supabase
-      .from('user_profiles')
-      .select('has_contesting, stripe_customer_id')
+    // Load subscription status for renewal date display
+    const { data: subData } = await supabase
+      .from('autopilot_subscriptions')
+      .select('status, current_period_end')
       .eq('user_id', session.user.id)
       .maybeSingle();
-
-    if (profileData) {
-      setIsPaidUser(profileData.has_contesting === true);
-      // Also check subscription status for renewal date display
-      if (profileData.has_contesting) {
-        const { data: subData } = await supabase
-          .from('autopilot_subscriptions')
-          .select('status, current_period_end')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-        if (subData) {
-          setSubscription(subData);
-        }
-      }
+    if (subData) {
+      setSubscription(subData);
     }
 
     // Load plates
@@ -240,176 +227,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Free user view
-  if (!isPaidUser) {
-    return (
-      <div style={{ fontFamily: FONTS.body, minHeight: '100vh', backgroundColor: COLORS.bgSection }}>
-        <Head>
-          <title>Dashboard - Autopilot America</title>
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-          <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        </Head>
-
-        {/* Top Nav */}
-        <nav style={{
-          backgroundColor: COLORS.primary,
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-        }}>
-          <div style={{
-            maxWidth: 900,
-            margin: '0 auto',
-            padding: '16px 24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-            <Link href="/" style={{ textDecoration: 'none' }}>
-              <span style={{
-                fontFamily: FONTS.heading,
-                fontSize: 20,
-                fontWeight: 800,
-                color: COLORS.textLight
-              }}>
-                AUTOPILOT<span style={{ color: COLORS.accent }}>.</span>
-              </span>
-            </Link>
-
-            <Link href="/settings" style={{
-              color: COLORS.textLight,
-              textDecoration: 'none',
-              fontSize: 14,
-              fontWeight: 500,
-            }}>
-              Settings
-            </Link>
-          </div>
-        </nav>
-
-        <main style={{
-          maxWidth: 900,
-          margin: '0 auto',
-          padding: '60px 20px',
-        }}>
-          <div style={{
-            backgroundColor: COLORS.white,
-            borderRadius: 16,
-            padding: 48,
-            textAlign: 'center',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          }}>
-            <div style={{
-              width: 80,
-              height: 80,
-              borderRadius: '50%',
-              backgroundColor: `${COLORS.highlight}20`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 24px',
-              fontSize: 40,
-            }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={COLORS.highlight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            </div>
-
-            <h1 style={{
-              fontFamily: FONTS.heading,
-              fontSize: 32,
-              fontWeight: 700,
-              margin: '0 0 16px',
-              color: COLORS.primary,
-            }}>
-              Upgrade to Autopilot
-            </h1>
-
-            <p style={{
-              fontSize: 18,
-              color: COLORS.textMuted,
-              margin: '0 0 32px',
-              maxWidth: 500,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              lineHeight: 1.6,
-            }}>
-              You're using the <strong>Free</strong> tier. Upgrade to Autopilot for automatic ticket detection and contesting.
-            </p>
-
-            <div style={{
-              backgroundColor: COLORS.bgSection,
-              borderRadius: 12,
-              padding: 32,
-              marginBottom: 32,
-              textAlign: 'left',
-            }}>
-              <h3 style={{
-                fontFamily: FONTS.heading,
-                fontSize: 18,
-                margin: '0 0 20px',
-                color: COLORS.primary,
-              }}>
-                What you'll get:
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {[
-                  'Automatic weekly ticket detection',
-                  'AI-generated contest letters (68.5% win rate)',
-                  'Automatic mailing with delivery tracking',
-                  'Full dashboard with ticket history',
-                  'Contest letter approval system',
-                  'Email notifications on ticket status',
-                  'Unlimited letters per year',
-                ].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    <span style={{ fontSize: 15, color: COLORS.textDark, flex: 1 }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 32 }}>
-              <div style={{
-                fontSize: 48,
-                fontWeight: 800,
-                fontFamily: FONTS.heading,
-                color: COLORS.primary,
-                marginBottom: 8,
-              }}>
-                $49<span style={{ fontSize: 20, color: COLORS.textMuted }}>/year</span>
-              </div>
-              <p style={{ fontSize: 14, color: COLORS.textMuted, margin: 0 }}>
-                Founding Member rate with unlimited automated contesting for eligible tickets.
-              </p>
-            </div>
-
-            <Link href="/get-started" style={{
-              display: 'inline-block',
-              padding: '16px 40px',
-              borderRadius: 8,
-              backgroundColor: COLORS.highlight,
-              color: '#fff',
-              fontSize: 16,
-              fontWeight: 700,
-              textDecoration: 'none',
-              boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)',
-            }}>
-              Upgrade to Autopilot
-            </Link>
-
-            <p style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 16 }}>
-              Your free alerts will continue to work
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // Paid user dashboard
   return (
     <div style={{ fontFamily: FONTS.body, minHeight: '100vh', backgroundColor: COLORS.bgSection }}>
       <Head>
