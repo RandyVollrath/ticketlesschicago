@@ -12,9 +12,10 @@
  *      bad actor's submissions can be bulk-reverted by user_id.
  *
  * Outcomes:
- *   - GPS + AI match  → status 'applied', override upserted immediately.
- *   - GPS ok, AI mismatch or unavailable → status 'pending_review'.
+ *   - GPS verified    → status 'applied', override upserted immediately.
+ *                       If AI extracts different hours, uses the AI hours.
  *   - GPS mismatch    → status 'rejected_gps'.
+ *   - No GPS metadata → status 'pending_review' (admin must approve).
  *   - Rate limited    → 429.
  *   - No photo        → 400.
  */
