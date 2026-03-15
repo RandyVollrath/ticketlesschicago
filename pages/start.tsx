@@ -692,8 +692,9 @@ export default function StartFunnel() {
                   style={{ width: 20, height: 20, marginTop: 1, accentColor: COLORS.primary, cursor: 'pointer', flexShrink: 0 }}
                 />
                 <span style={{ fontSize: 13, color: COLORS.textSecondary, lineHeight: 1.5 }}>
-                  I authorize Autopilot America to monitor my license plate <strong>{plate}</strong> for parking tickets
-                  and contest any tickets found on my behalf by mailing contest letters to the City of {city}.
+                  I authorize Autopilot America to act as my agent to: (1) monitor my license plate <strong>{plate}</strong> for parking and traffic citations; (2) contest any tickets found on my behalf by mailing contest letters to the City of {city}; and (3) submit Freedom of Information Act requests to the City of Chicago Department of Finance for enforcement records related to my citations, including officer notes, photographs, device data, and other public records. I confirm I am the registered owner or lessee of this vehicle. I agree to the{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.primary, textDecoration: 'underline' }}>Terms of Service</a> and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.primary, textDecoration: 'underline' }}>Privacy Policy</a>.
                 </span>
               </label>
 

@@ -211,6 +211,12 @@ export default function PrivacyPolicy() {
             </p>
             <ul style={{ paddingLeft: '24px', marginBottom: '16px', color: '#1e3a8a' }}>
               <li style={{ marginBottom: '8px' }}>
+                <strong>City of Chicago Department of Finance — Ticket Contests:</strong> Your name, mailing address, license plate number, and vehicle information are included in contest letters mailed to the Department of Finance on your behalf
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>City of Chicago Department of Finance — FOIA Requests:</strong> We submit Freedom of Information Act requests (5 ILCS 140) on your behalf for enforcement records related to your citations. These requests identify you as the vehicle owner and Autopilot America as your authorized agent. FOIA requests include your name, mailing address, email, license plate number, and citation details. Responsive records (officer notes, photographs, device data) are received by Autopilot America and shared with you via your account
+              </li>
+              <li style={{ marginBottom: '8px' }}>
                 <strong>City of Chicago:</strong> For city sticker renewals and residential parking permit applications
                 (name, address, vehicle info, ID documents, proof of residency)
               </li>

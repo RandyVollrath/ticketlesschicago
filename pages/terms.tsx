@@ -128,17 +128,26 @@ export default function TermsOfService() {
             </p>
             <ul style={{ paddingLeft: '24px', marginBottom: '12px', color: '#78350f' }}>
               <li style={{ marginBottom: '8px' }}>
-                Send reminders before your vehicle city sticker renewal deadlines
+                <strong>Ticket monitoring:</strong> Check the City of Chicago payment portal and other public databases for parking and traffic citations issued to your vehicle
               </li>
               <li style={{ marginBottom: '8px' }}>
-                Send reminders before your license plate sticker renewal deadlines
+                <strong>Contest letters:</strong> Draft, print, and mail administrative contest letters to the City of Chicago Department of Finance on your behalf for eligible citations
               </li>
               <li style={{ marginBottom: '8px' }}>
-                Track and remind you about residential parking permit requirements
+                <strong>FOIA requests:</strong> Submit Freedom of Information Act requests (5 ILCS 140) to the City of Chicago Department of Finance on your behalf for enforcement records related to your citations, including but not limited to: issuing officer field notes, photographs, handheld device data with GPS coordinates, meter calibration records, sign posting records, street cleaning schedules, and camera system records
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>Evidence collection:</strong> Receive, store, and present evidence you provide (registration receipts, utility bills, photographs) in support of your ticket contests
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>Renewal reminders:</strong> Send reminders before your vehicle city sticker and license plate sticker renewal deadlines, and track residential parking permit requirements
               </li>
             </ul>
+            <p style={{ marginBottom: '12px', color: '#78350f' }}>
+              <strong>Scope of authorization:</strong> You represent and warrant that you are the registered owner or authorized lessee of the vehicle(s) you register with Autopilot America. This authorization permits us to identify ourselves as your authorized agent when communicating with the City of Chicago, the Illinois Department of Finance, and related municipal agencies on your behalf. FOIA responses and enforcement records will be received at our designated email address and shared with you via your account dashboard and email notifications.
+            </p>
             <p style={{ color: '#78350f' }}>
-              <strong>Important:</strong> You are responsible for completing your own renewals with the City of Chicago or State of Illinois when you receive our reminders. We provide reminder services only.
+              <strong>Important:</strong> You are responsible for completing your own renewals with the City of Chicago or State of Illinois when you receive our reminders. We provide reminder services only for renewals. Contest letters and FOIA requests are submitted automatically as part of the Ticket Protection service.
             </p>
           </section>
 
