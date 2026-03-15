@@ -466,10 +466,11 @@ class CameraAlertServiceClass {
     const redLightValue = storedRedLight[1];
     const volumeValue = storedVolume[1];
 
-    // On iOS, default to enabled for new installs (notification-only, no TTS/audio).
-    // On Android, default to disabled (requires user opt-in for TTS audio alerts).
+    // Default to ENABLED for new installs on ALL platforms.
+    // Camera alerts are a core safety feature — they must be ON by default.
+    // Users can disable them in Settings if they don't want them.
     const isNewInstall = globalValue == null && speedValue == null && redLightValue == null;
-    const defaultEnabled = isNewInstall && Platform.OS === 'ios';
+    const defaultEnabled = isNewInstall; // Both iOS AND Android
 
     this.isEnabled = globalValue == null ? defaultEnabled : globalValue === 'true';
     // Backward compatibility:
@@ -481,7 +482,7 @@ class CameraAlertServiceClass {
 
     // Persist the defaults so subsequent loads don't re-trigger defaulting logic
     if (isNewInstall && defaultEnabled) {
-      log.info('New iOS install: defaulting camera alerts to enabled (notification-only)');
+      log.info(`New install: defaulting camera alerts to enabled (platform=${Platform.OS})`);
       await this.persistSettings();
     }
 
@@ -621,7 +622,12 @@ class CameraAlertServiceClass {
    * Sync camera alert settings to the platform's native module.
    * iOS: BackgroundLocationModule.swift handles camera alerts natively
    * Android: CameraAlertModule.kt handles camera alerts natively
+   * Public wrapper for BackgroundTaskService startup sync.
    */
+  async syncNativeSettingsPublic(): Promise<void> {
+    return this.syncNativeSettings();
+  }
+
   private async syncNativeSettings(): Promise<void> {
     try {
       if (Platform.OS === 'ios') {

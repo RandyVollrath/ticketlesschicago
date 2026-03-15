@@ -602,8 +602,9 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
             // CAMERA_ENTRIES_END
     )
 
-    // State
-    private var isEnabled = false
+    // State — default to TRUE so alerts work immediately on fresh installs.
+    // JS will override via configure() if the user explicitly disabled them.
+    private var isEnabled = true
     private var speedAlertsEnabled = true
     private var redLightAlertsEnabled = true
     private var alertVolume = 1.0f
