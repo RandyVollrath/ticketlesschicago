@@ -48,6 +48,13 @@ export default function AutopilotAdmin() {
   const [pendingEvidenceTickets, setPendingEvidenceTickets] = useState<any[]>([]);
   const [selectedLetter, setSelectedLetter] = useState<any>(null);
 
+  // Permit zone corrections
+  const [corrections, setCorrections] = useState<any[]>([]);
+  const [correctionStats, setCorrectionStats] = useState({ total: 0, applied: 0, pending: 0, rejected: 0, uniqueUsers: 0 });
+  const [correctionsLoading, setCorrectionsLoading] = useState(false);
+  const [correctionsFilter, setCorrectionsFilter] = useState('');
+  const [correctionsLoaded, setCorrectionsLoaded] = useState(false);
+
   // Portal check state
   const [portalCheckData, setPortalCheckData] = useState<any>(null);
   const [portalCheckLoading, setPortalCheckLoading] = useState(false);
@@ -404,7 +411,7 @@ export default function AutopilotAdmin() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-          {['portal', 'export', 'upload', 'va-stats', 'letters', 'settings'].map(tab => (
+          {['portal', 'export', 'upload', 'va-stats', 'letters', 'corrections', 'settings'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -1310,6 +1317,260 @@ export default function AutopilotAdmin() {
             </div>
           </div>
         )}
+        {/* Corrections Tab */}
+        {activeTab === 'corrections' && (
+          <div>
+            {/* Load data on first render of this tab */}
+            {!correctionsLoaded && !correctionsLoading && (() => {
+              // Self-invoking side effect to trigger fetch
+              setTimeout(async () => {
+                setCorrectionsLoading(true);
+                try {
+                  const url = correctionsFilter
+                    ? `/api/admin/permit-zone-corrections?limit=100&status=${correctionsFilter}`
+                    : '/api/admin/permit-zone-corrections?limit=100';
+                  const resp = await fetch(url);
+                  if (resp.ok) {
+                    const data = await resp.json();
+                    setCorrections(data.reports || []);
+                    setCorrectionStats(data.stats || { total: 0, applied: 0, pending: 0, rejected: 0, uniqueUsers: 0 });
+                  }
+                } catch (err) {
+                  console.error('Failed to load corrections:', err);
+                } finally {
+                  setCorrectionsLoading(false);
+                  setCorrectionsLoaded(true);
+                }
+              }, 0);
+              return null;
+            })()}
+
+            {/* Stats */}
+            <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Total Reports', value: correctionStats.total, color: COLORS.deepHarbor },
+                { label: 'Auto-Applied', value: correctionStats.applied, color: COLORS.signal },
+                { label: 'Pending Review', value: correctionStats.pending, color: COLORS.warning },
+                { label: 'Rejected', value: correctionStats.rejected, color: COLORS.danger },
+                { label: 'Unique Users', value: correctionStats.uniqueUsers, color: COLORS.regulatory },
+              ].map(s => (
+                <div key={s.label} style={{ padding: 16, backgroundColor: COLORS.white, borderRadius: 8, border: `1px solid ${COLORS.border}`, minWidth: 120, textAlign: 'center' }}>
+                  <p style={{ fontSize: 24, fontWeight: 700, color: s.color, margin: 0 }}>{s.value}</p>
+                  <p style={{ fontSize: 12, color: COLORS.slate, margin: '4px 0 0 0' }}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Filter buttons */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {[
+                { label: 'All', value: '' },
+                { label: 'Pending', value: 'pending_review' },
+                { label: 'Applied', value: 'applied' },
+                { label: 'Rejected', value: 'rejected_gps' },
+                { label: 'Reverted', value: 'reverted' },
+              ].map(f => (
+                <button
+                  key={f.value}
+                  onClick={async () => {
+                    setCorrectionsFilter(f.value);
+                    setCorrectionsLoading(true);
+                    try {
+                      const url = f.value
+                        ? `/api/admin/permit-zone-corrections?limit=100&status=${f.value}`
+                        : '/api/admin/permit-zone-corrections?limit=100';
+                      const resp = await fetch(url);
+                      if (resp.ok) {
+                        const data = await resp.json();
+                        setCorrections(data.reports || []);
+                        setCorrectionStats(data.stats || correctionStats);
+                      }
+                    } catch {}
+                    setCorrectionsLoading(false);
+                  }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 6,
+                    border: `1px solid ${correctionsFilter === f.value ? COLORS.regulatory : COLORS.border}`,
+                    backgroundColor: correctionsFilter === f.value ? COLORS.regulatory : COLORS.white,
+                    color: correctionsFilter === f.value ? COLORS.white : COLORS.graphite,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+              <button
+                onClick={async () => {
+                  setCorrectionsLoading(true);
+                  try {
+                    const url = correctionsFilter
+                      ? `/api/admin/permit-zone-corrections?limit=100&status=${correctionsFilter}`
+                      : '/api/admin/permit-zone-corrections?limit=100';
+                    const resp = await fetch(url);
+                    if (resp.ok) {
+                      const data = await resp.json();
+                      setCorrections(data.reports || []);
+                      setCorrectionStats(data.stats || correctionStats);
+                    }
+                  } catch {}
+                  setCorrectionsLoading(false);
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                  border: `1px solid ${COLORS.border}`,
+                  backgroundColor: COLORS.white,
+                  color: COLORS.graphite,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  marginLeft: 'auto',
+                }}
+              >
+                ↻ Refresh
+              </button>
+            </div>
+
+            {/* Reports table */}
+            <div style={{ backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
+              {correctionsLoading ? (
+                <p style={{ padding: 32, textAlign: 'center', color: COLORS.slate }}>Loading corrections...</p>
+              ) : corrections.length === 0 ? (
+                <p style={{ padding: 32, textAlign: 'center', color: COLORS.slate }}>No corrections submitted yet.</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: COLORS.concrete }}>
+                      {['Date', 'Zone', 'Block', 'Reported Hours', 'AI Hours', 'GPS', 'Status', 'Photo', 'Actions'].map(h => (
+                        <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: COLORS.slate, borderBottom: `1px solid ${COLORS.border}` }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {corrections.map((r: any) => {
+                      const dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+                      const blockStr = r.block_number ? `${r.block_number} ${r.street_direction || ''} ${r.street_name || ''}`.trim() : r.address || '—';
+                      const statusColors: Record<string, string> = {
+                        applied: COLORS.signal,
+                        pending_review: COLORS.warning,
+                        rejected_gps: COLORS.danger,
+                        rejected: COLORS.danger,
+                        reverted: COLORS.slate,
+                      };
+                      const gpsStr = r.gps_distance_meters != null
+                        ? `${r.gps_distance_meters}m`
+                        : (r.verification_notes?.includes('No GPS') ? 'No EXIF' : '—');
+
+                      return (
+                        <tr key={r.id} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+                          <td style={{ padding: '10px 12px', fontSize: 13, color: COLORS.graphite }}>{dateStr}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 13, color: COLORS.graphite, fontWeight: 600 }}>{r.zone}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 13, color: COLORS.graphite }}>{blockStr}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 13, color: COLORS.graphite }}>{r.reported_schedule || '—'}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 13, color: r.ai_extracted_schedule ? COLORS.regulatory : COLORS.slate }}>
+                            {r.ai_extracted_schedule || '—'}
+                          </td>
+                          <td style={{ padding: '10px 12px', fontSize: 13 }}>
+                            <span style={{
+                              color: r.gps_distance_meters != null && r.gps_distance_meters <= 200 ? COLORS.signal : COLORS.danger,
+                              fontWeight: 500,
+                            }}>
+                              {gpsStr}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{
+                              padding: '3px 8px',
+                              borderRadius: 12,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              backgroundColor: `${statusColors[r.status] || COLORS.slate}18`,
+                              color: statusColors[r.status] || COLORS.slate,
+                            }}>
+                              {r.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            {r.photo_url ? (
+                              <a href={r.photo_url} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.regulatory, fontSize: 13 }}>View</a>
+                            ) : '—'}
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              {r.status === 'pending_review' && (
+                                <>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Approve "${r.reported_schedule}" for zone ${r.zone} at ${blockStr}?`)) return;
+                                      await fetch('/api/admin/permit-zone-corrections', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ action: 'approve', reportId: r.id }),
+                                      });
+                                      // Refresh
+                                      setCorrectionsLoaded(false);
+                                    }}
+                                    style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${COLORS.signal}`, backgroundColor: 'transparent', color: COLORS.signal, fontSize: 11, cursor: 'pointer' }}
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm('Reject this correction?')) return;
+                                      await fetch('/api/admin/permit-zone-corrections', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ action: 'reject', reportId: r.id }),
+                                      });
+                                      setCorrectionsLoaded(false);
+                                    }}
+                                    style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${COLORS.danger}`, backgroundColor: 'transparent', color: COLORS.danger, fontSize: 11, cursor: 'pointer' }}
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              {r.status === 'applied' && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`Revert this correction and remove the override for zone ${r.zone} at ${blockStr}?`)) return;
+                                    await fetch('/api/admin/permit-zone-corrections', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ action: 'revert', reportId: r.id }),
+                                    });
+                                    setCorrectionsLoaded(false);
+                                  }}
+                                  style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${COLORS.warning}`, backgroundColor: 'transparent', color: COLORS.warning, fontSize: 11, cursor: 'pointer' }}
+                                >
+                                  Revert
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Verification notes (expand on click of a row would be nicer, but for now show below) */}
+            {corrections.length > 0 && corrections.some((r: any) => r.verification_notes) && (
+              <div style={{ marginTop: 16, padding: 16, backgroundColor: COLORS.concrete, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: COLORS.graphite, margin: '0 0 8px 0' }}>Recent Verification Details</p>
+                {corrections.slice(0, 5).filter((r: any) => r.verification_notes).map((r: any) => (
+                  <p key={r.id} style={{ fontSize: 12, color: COLORS.slate, margin: '4px 0', fontFamily: 'monospace' }}>
+                    <span style={{ fontWeight: 600 }}>{r.zone}</span> {r.block_number ? `${r.block_number} ${r.street_direction || ''} ${r.street_name || ''}`.trim() : ''}: {r.verification_notes}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       </main>
     </div>
   );
