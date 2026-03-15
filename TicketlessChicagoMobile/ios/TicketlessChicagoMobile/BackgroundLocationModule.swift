@@ -1206,6 +1206,128 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     return false
   }
 
+  // MARK: - Single Point of Emission for Parking Events
+  //
+  // ALL parking event emissions MUST go through this gateway.
+  // It centralizes: ring buffer dedup, hotspot check, zero-coord rejection,
+  // ring buffer recording, event emission, and pending queue persistence.
+  //
+  // Callers: finalizeParkingConfirmation, recovery intermediate, recovery last trip, CLVisit.
+  // Returns true if the event was emitted, false if deduped/blocked.
+
+  /// Timestamp + location of the last event emitted through the gateway,
+  /// used to suppress rapid-fire duplicate emissions (<200m within 5 min).
+  private var lastEmittedParkingAt: Date? = nil
+  private var lastEmittedParkingCoord: CLLocation? = nil
+
+  @discardableResult
+  private func emitParkingEventIfNew(
+    body: [String: Any],
+    source: String,
+    parkTimestamp: Date,
+    latitude: Double,
+    longitude: Double,
+    accuracy: Double
+  ) -> Bool {
+    let hasCoords = (latitude != 0 || longitude != 0) && accuracy >= 0
+
+    // ── Gate 1: Zero-coordinate rejection ──
+    // Recovery events with no CLVisit match send lat=0, lng=0, accuracy=-1.
+    // Previously only caught in JS — now blocked at native level.
+    if !hasCoords && source.starts(with: "recovery_") {
+      self.log("EMIT GATE [\(source)]: blocked — no valid coordinates (lat=\(latitude), lng=\(longitude), acc=\(accuracy))")
+      self.decision("emit_gate_no_coords", [
+        "source": source,
+        "latitude": latitude,
+        "longitude": longitude,
+        "accuracy": accuracy,
+        "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
+      ])
+      return false
+    }
+
+    // ── Gate 2: Ring buffer dedup ──
+    // Check if this parking time+location was already emitted (by any pipeline).
+    let coords: (lat: Double, lng: Double)? = hasCoords ? (lat: latitude, lng: longitude) : nil
+    if isAlreadyConfirmedParking(parkTime: parkTimestamp, coords: coords) {
+      self.log("EMIT GATE [\(source)]: blocked — already in ring buffer")
+      self.decision("emit_gate_ring_buffer_dedup", [
+        "source": source,
+        "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
+        "latitude": latitude,
+        "longitude": longitude,
+      ])
+      return false
+    }
+
+    // ── Gate 3: Recent-emission dedup ──
+    // If we emitted a parking event within the last 5 minutes at a location
+    // within 200m, this is a duplicate from another pipeline racing.
+    if hasCoords, let lastAt = lastEmittedParkingAt, let lastCoord = lastEmittedParkingCoord {
+      let timeSinceLastEmit = Date().timeIntervalSince(lastAt)
+      let distFromLastEmit = CLLocation(latitude: latitude, longitude: longitude).distance(from: lastCoord)
+      if timeSinceLastEmit < 300 && distFromLastEmit < 200 {
+        self.log("EMIT GATE [\(source)]: blocked — recent emission \(String(format: "%.0f", timeSinceLastEmit))s ago, \(String(format: "%.0f", distFromLastEmit))m away")
+        self.decision("emit_gate_recent_emission_dedup", [
+          "source": source,
+          "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
+          "timeSinceLastEmitSec": timeSinceLastEmit,
+          "distFromLastEmitMeters": distFromLastEmit,
+        ])
+        return false
+      }
+    }
+
+    // ── Gate 4: Hotspot check ──
+    // User-reported "Not parked" locations. Checked for all pipelines uniformly.
+    if hasCoords {
+      let loc = CLLocation(latitude: latitude, longitude: longitude)
+      if let h = hotspotInfo(near: loc), h.count >= hotspotBlockMinReports {
+        self.log("EMIT GATE [\(source)]: blocked — false positive hotspot (reports=\(h.count), dist=\(String(format: "%.0f", h.distance))m)")
+        self.decision("emit_gate_hotspot_blocked", [
+          "source": source,
+          "latitude": latitude,
+          "longitude": longitude,
+          "hotspotReports": h.count,
+          "hotspotDistanceMeters": h.distance,
+        ])
+        return false
+      }
+    }
+
+    // ── Gate 5: False positive lockout ──
+    if let lockout = falsePositiveParkingLockoutUntil, Date() < lockout {
+      self.log("EMIT GATE [\(source)]: blocked — false positive lockout (until \(lockout))")
+      self.decision("emit_gate_lockout", [
+        "source": source,
+        "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
+      ])
+      return false
+    }
+
+    // ── All gates passed — record, emit, persist ──
+
+    // Record in ring buffer FIRST (before emit) to prevent race conditions
+    // where another pipeline queries the buffer between emit and record.
+    recordConfirmedParkingTime(timestamp: parkTimestamp, latitude: latitude, longitude: longitude)
+
+    // Track for recent-emission dedup
+    lastEmittedParkingAt = Date()
+    if hasCoords {
+      lastEmittedParkingCoord = CLLocation(latitude: latitude, longitude: longitude)
+    }
+
+    // Emit to JS
+    sendEvent(withName: "onParkingDetected", body: body)
+
+    // Persist to pending queue (survives JS suspension)
+    persistPendingParkingEvent(body)
+
+    self.log("EMIT GATE [\(source)]: EMITTED parking event (lat=\(String(format: "%.6f", latitude)), lng=\(String(format: "%.6f", longitude)), acc=\(String(format: "%.0f", accuracy)))")
+
+    return true
+  }
+
   // MARK: - Pending Parking Event Queue (survives stop/start monitoring)
 
   /// Persist the full parking event payload so JS can pick it up even if
@@ -4590,27 +4712,21 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             self.log("RECOVERY: Trip \(i + 1) — no CLVisit match — emitting without coordinates (dwellSec=\(String(format: "%.0f", dwellSec)))")
           }
 
-          self.sendEvent(withName: "onParkingDetected", body: body)
-          self.persistPendingParkingEvent(body)
+          // Emit through single gateway — handles ring buffer, dedup, persist.
+          let emitLat = body["latitude"] as? Double ?? 0
+          let emitLng = body["longitude"] as? Double ?? 0
+          let emitAcc = body["accuracy"] as? Double ?? -1
+          let emitted = self.emitParkingEventIfNew(
+            body: body,
+            source: body["locationSource"] as? String ?? "recovery_intermediate",
+            parkTimestamp: trip.parkTime,
+            latitude: emitLat,
+            longitude: emitLng,
+            accuracy: emitAcc
+          )
 
-          // ── Record in ring buffer so subsequent recovery runs don't re-emit ──
-          if let visit = visitMatch {
-            self.recordConfirmedParkingTime(
-              timestamp: trip.parkTime,
-              latitude: visit.latitude,
-              longitude: visit.longitude
-            )
-          } else {
-            // No coords — record with 0,0 so time-based dedup catches it
-            self.recordConfirmedParkingTime(
-              timestamp: trip.parkTime,
-              latitude: 0,
-              longitude: 0
-            )
-          }
-
-          // If we have coordinates, also send a local notification
-          if visitMatch != nil {
+          // If we have coordinates and the event was emitted, also send a local notification
+          if emitted, visitMatch != nil {
             self.sendParkingVisitNotification(
               latitude: visitMatch!.latitude,
               longitude: visitMatch!.longitude,
@@ -4719,12 +4835,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // event repeatedly while the user is still parked.
     persistParkingState()
 
-    // Record in confirmed parking ring buffer for recovery dedup
+    // Emit through single gateway — handles ring buffer, dedup, persist.
     let recoveryTimestamp = recoveryParkTime ?? Date()
-    recordConfirmedParkingTime(timestamp: recoveryTimestamp, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
-
-    sendEvent(withName: "onParkingDetected", body: body)
-    persistPendingParkingEvent(body)  // Survive JS suspension
+    emitParkingEventIfNew(
+      body: body,
+      source: "recovery_accurate_gps",
+      parkTimestamp: recoveryTimestamp,
+      latitude: location.coordinate.latitude,
+      longitude: location.coordinate.longitude,
+      accuracy: location.horizontalAccuracy
+    )
   }
 
   func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -4896,35 +5016,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         }
       }
 
-      // Check false positive hotspots — user previously marked "Not parked" near here.
-      let visitLoc = CLLocation(latitude: visit.coordinate.latitude, longitude: visit.coordinate.longitude)
-      if let h = hotspotInfo(near: visitLoc), h.count >= hotspotBlockMinReports {
-        self.log("CLVisit: blocked by false positive hotspot (reports=\(h.count), dist=\(String(format: "%.0f", h.distance))m)")
-        decision("clvisit_blocked_hotspot", [
-          "latitude": visit.coordinate.latitude,
-          "longitude": visit.coordinate.longitude,
-          "hotspotReports": h.count,
-          "hotspotDistanceMeters": h.distance,
-        ])
-        return
-      }
-
-      // Check lockout window — user recently reported a false positive (any location)
-      if let lockout = falsePositiveParkingLockoutUntil, Date() < lockout {
-        self.log("CLVisit: blocked by false positive lockout (until \(lockout))")
-        return
-      }
-
       // This visit is at a location we didn't detect parking for.
-      // Emit a parking event so JS can check rules and notify the user.
-      let visitLocation = CLLocation(
-        coordinate: visit.coordinate,
-        altitude: 0,
-        horizontalAccuracy: visit.horizontalAccuracy,
-        verticalAccuracy: -1,
-        timestamp: visit.arrivalDate
-      )
-
+      // Emit through the single gateway — handles hotspot, lockout, ring buffer, dedup, persist.
       self.log("CLVisit: emitting parking event for undetected visit at (\(visit.coordinate.latitude), \(visit.coordinate.longitude)), dwell=\(String(format: "%.0f", dwellDuration))s, age=\(String(format: "%.0f", visitAge / 60))min")
 
       let body: [String: Any] = [
@@ -4938,21 +5031,33 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         "dwellDurationSec": dwellDuration,
       ]
 
-      lastConfirmedParkingLocation = visitLocation
-      hasConfirmedParkingThisSession = true
-
-      // Record in confirmed parking ring buffer for recovery dedup
-      recordConfirmedParkingTime(timestamp: visit.arrivalDate, latitude: visit.coordinate.latitude, longitude: visit.coordinate.longitude)
-
-      sendEvent(withName: "onParkingDetected", body: body)
-      persistPendingParkingEvent(body)  // Survive JS suspension
-
-      // Also send a local notification since the user may not have the app open
-      sendParkingVisitNotification(
+      let emitted = emitParkingEventIfNew(
+        body: body,
+        source: "clvisit_realtime",
+        parkTimestamp: visit.arrivalDate,
         latitude: visit.coordinate.latitude,
         longitude: visit.coordinate.longitude,
-        arrivalDate: visit.arrivalDate
+        accuracy: visit.horizontalAccuracy
       )
+
+      if emitted {
+        let visitLocation = CLLocation(
+          coordinate: visit.coordinate,
+          altitude: 0,
+          horizontalAccuracy: visit.horizontalAccuracy,
+          verticalAccuracy: -1,
+          timestamp: visit.arrivalDate
+        )
+        lastConfirmedParkingLocation = visitLocation
+        hasConfirmedParkingThisSession = true
+
+        // Also send a local notification since the user may not have the app open
+        sendParkingVisitNotification(
+          latitude: visit.coordinate.latitude,
+          longitude: visit.coordinate.longitude,
+          arrivalDate: visit.arrivalDate
+        )
+      }
     }
   }
 
@@ -5865,26 +5970,26 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     lastConfirmedParkingNearIntersectionRisk = finalizedNearIntersectionRisk
     persistParkingState()  // Survive app kills (Clybourn bug fix)
 
-    // Record in the confirmed parking ring buffer for recovery deduplication.
-    // This prevents checkForMissedParking from re-emitting this parking event.
-    if let loc = finalizedLocation {
-      let parkTimestamp: Date
-      if let ts = body["timestamp"] as? Double, ts > 0 {
-        parkTimestamp = Date(timeIntervalSince1970: ts / 1000)
-      } else {
-        parkTimestamp = Date()
-      }
-      recordConfirmedParkingTime(timestamp: parkTimestamp, latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude)
-    }
-
+    // Emit through the single gateway — handles ring buffer, dedup, persist.
     var payload = body
     payload["detectionSource"] = source
-    sendEvent(withName: "onParkingDetected", body: payload)
-
-    // Also persist the event to the pending queue so JS can pick it up
-    // if sendEvent was lost (JS suspended by iOS in background).
-    // JS calls acknowledgeParkingEvent() after processing to clear this.
-    persistPendingParkingEvent(payload)
+    let lat = finalizedLocation?.coordinate.latitude ?? 0
+    let lng = finalizedLocation?.coordinate.longitude ?? 0
+    let acc = body["accuracy"] as? Double ?? -1
+    let parkTs: Date = {
+      if let ts = body["timestamp"] as? Double, ts > 0 {
+        return Date(timeIntervalSince1970: ts / 1000)
+      }
+      return Date()
+    }()
+    emitParkingEventIfNew(
+      body: payload,
+      source: source,
+      parkTimestamp: parkTs,
+      latitude: lat,
+      longitude: lng,
+      accuracy: acc
+    )
 
     // Reset driving state
     isDriving = false
