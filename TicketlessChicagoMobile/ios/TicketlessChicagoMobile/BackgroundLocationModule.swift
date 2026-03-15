@@ -1077,7 +1077,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       log("Notification action: user reported NOT parked (lat=\(lat), lng=\(lng), source=\(source))")
       // Also add to false positive hotspot natively
       if lat != 0 && lng != 0 {
-        addFalsePositiveHotspot(latitude: lat, longitude: lng)
+        addFalsePositiveHotspot(lat: lat, lng: lng, source: source)
       }
       sendEvent(withName: "onParkingGroundTruth", body: [
         "type": "parking_false_positive",
