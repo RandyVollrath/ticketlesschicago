@@ -27,8 +27,8 @@ export default function GetStarted() {
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
 
-  // Plan selection
-  const [selectedPlan, setSelectedPlan] = useState<'free' | 'autopilot'>('autopilot');
+  // Plan selection - only autopilot now (free tier eliminated)
+  const [selectedPlan, setSelectedPlan] = useState<'autopilot'>('autopilot');
 
   // Vehicle info
   const [licensePlate, setLicensePlate] = useState('');
@@ -127,7 +127,7 @@ export default function GetStarted() {
       return;
     }
 
-    if (selectedPlan === 'autopilot' && !consentChecked) {
+    if (!consentChecked) {
       setAuthError('Please accept the authorization to continue.');
       return;
     }
@@ -136,28 +136,7 @@ export default function GetStarted() {
     setAuthError('');
 
     try {
-      if (selectedPlan === 'free') {
-        // For free plan, create profile + plate, then redirect to settings
-        const response = await fetch('/api/autopilot/create-free-profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            licensePlate: cleanPlate,
-            plateState,
-          }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to create profile');
-        }
-
-        router.push('/settings?welcome=true');
-        return;
-      }
-
-      // For autopilot plan, go to Stripe checkout
+      // Go to Stripe checkout for Autopilot plan
       const response = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -217,53 +196,48 @@ export default function GetStarted() {
 
       <main style={{ padding: '48px 24px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
-          {/* Tier Comparison Header */}
+          {/* Plan Header */}
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <h1 style={{ fontSize: 28, fontWeight: 700, color: COLORS.deepHarbor, margin: '0 0 8px' }}>
-              Choose Your Plan
+              Autopilot Protection
             </h1>
             <p style={{ fontSize: 16, color: COLORS.slate, margin: 0 }}>
-              Start free or go full autopilot - upgrade anytime
+              Complete protection - alerts and automatic contesting
             </p>
           </div>
 
-          {/* Plan Cards Container */}
+          {/* Single Plan Card */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 24,
-            marginBottom: 32,
+            maxWidth: 500,
+            margin: '0 auto 32px',
           }}>
-            {/* Free Plan Card */}
-            <div
-              onClick={() => setSelectedPlan('free')}
-              style={{
-                backgroundColor: COLORS.white,
-                borderRadius: 12,
-                border: selectedPlan === 'free' ? `2px solid ${COLORS.signal}` : `1px solid ${COLORS.border}`,
-                overflow: 'hidden',
-                cursor: 'pointer',
-                transition: 'border-color 0.2s, box-shadow 0.2s',
-                boxShadow: selectedPlan === 'free' ? '0 4px 12px rgba(16, 185, 129, 0.15)' : 'none',
-              }}
-            >
+            <div style={{
+              backgroundColor: COLORS.white,
+              borderRadius: 12,
+              border: `2px solid ${COLORS.regulatory}`,
+              overflow: 'hidden',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.15)',
+            }}>
               <div style={{
-                backgroundColor: selectedPlan === 'free' ? COLORS.signal : COLORS.slate,
+                backgroundColor: COLORS.regulatory,
                 color: COLORS.white,
                 padding: '12px 24px',
                 fontSize: 14,
                 fontWeight: 600,
-                transition: 'background-color 0.2s',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
               }}>
-                FREE ALERTS
+                <span>AUTOPILOT PROTECTION</span>
+                <span style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 12, fontSize: 12 }}>FOUNDING MEMBER</span>
               </div>
               <div style={{ padding: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$0</span>
-                  <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/forever</span>
+                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$49</span>
+                  <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
                 </div>
-                <p style={{ fontSize: 13, color: COLORS.slate, fontWeight: 500, margin: '0 0 16px 0' }}>
-                  Stay informed about your tickets and deadlines
+                <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 16px 0' }}>
+                  Founding Member Rate locks while your membership stays active
                 </p>
                 <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -276,71 +250,13 @@ export default function GetStarted() {
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    Street cleaning reminders
+                    Street cleaning &amp; snow ban reminders
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    Snow ban alerts
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
-                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
-                    </svg>
-                    Renewal reminders
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: COLORS.slate }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.slate}>
-                      <path fillRule="evenodd" d="M4.28 3.22a.75.75 0 00-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 101.06 1.06L8 9.06l3.72 3.72a.75.75 0 101.06-1.06L9.06 8l3.72-3.72a.75.75 0 00-1.06-1.06L8 6.94 4.28 3.22z" clipRule="evenodd" />
-                    </svg>
-                    <span style={{ textDecoration: 'line-through' }}>Automatic contesting</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Autopilot Plan Card */}
-            <div
-              onClick={() => setSelectedPlan('autopilot')}
-              style={{
-                backgroundColor: COLORS.white,
-                borderRadius: 12,
-                border: selectedPlan === 'autopilot' ? `2px solid ${COLORS.regulatory}` : `1px solid ${COLORS.border}`,
-                overflow: 'hidden',
-                cursor: 'pointer',
-                transition: 'border-color 0.2s, box-shadow 0.2s',
-                boxShadow: selectedPlan === 'autopilot' ? '0 4px 12px rgba(37, 99, 235, 0.15)' : 'none',
-              }}
-            >
-              <div style={{
-                backgroundColor: selectedPlan === 'autopilot' ? COLORS.regulatory : COLORS.slate,
-                color: COLORS.white,
-                padding: '12px 24px',
-                fontSize: 14,
-                fontWeight: 600,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                transition: 'background-color 0.2s',
-              }}>
-                <span>AUTOPILOT</span>
-                <span style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 12, fontSize: 12 }}>RECOMMENDED</span>
-              </div>
-              <div style={{ padding: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$49</span>
-                  <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
-                </div>
-                <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 16px 0' }}>
-                  Founding Member Rate locks while your membership stays active
-                </p>
-                <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
-                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
-                    </svg>
-                    <strong>Everything in Free, plus:</strong>
+                    Renewal deadline alerts
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
@@ -505,7 +421,7 @@ export default function GetStarted() {
             ) : (
               <>
                 <h2 style={{ fontSize: 20, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 8px 0' }}>
-                  {selectedPlan === 'free' ? 'Continue with Free Alerts' : 'Complete your Autopilot subscription'}
+                  Complete your Autopilot Protection subscription
                 </h2>
                 <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 24px 0' }}>
                   Signed in as <strong>{user.email}</strong>
@@ -560,61 +476,38 @@ export default function GetStarted() {
                   </p>
                 </div>
 
-                {/* Consent Checkbox - only for Autopilot */}
-                {selectedPlan === 'autopilot' && (
-                  <div style={{
-                    backgroundColor: COLORS.concrete,
-                    padding: 16,
-                    borderRadius: 8,
-                    marginBottom: 24,
-                  }}>
-                    <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
-                      <strong>Founding Member Rate</strong><br />
-                      Founding Members pay $49/year. Your rate is locked as long as you keep an active membership. If your membership is canceled or lapses beyond a 7-day renewal grace period, you may lose your Founding rate and re-subscribe at the then-current price.
-                    </div>
-                    <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
-                      <strong>First Dismissal Guarantee</strong><br />
-                      If we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full refund of your membership fee. Camera tickets (red light / speed cameras) are excluded from the guarantee. Eligibility requires timely cooperation, including providing requested documentation promptly when asked.
-                    </div>
-                    <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={consentChecked}
-                        onChange={(e) => setConsentChecked(e.target.checked)}
-                        style={{ width: 20, height: 20, marginTop: 2 }}
-                      />
-                      <div>
-                        <span style={{ fontSize: 14, color: COLORS.graphite, fontWeight: 500 }}>
-                          I authorize Autopilot America to submit ticket contest letters on my behalf, including generating and mailing a letter using the information I provide.
-                        </span>
-                        <p style={{ fontSize: 13, color: COLORS.slate, margin: '8px 0 0 0' }}>
-                          You can disable auto-mail and require manual approval at any time in Settings.
-                        </p>
-                      </div>
-                    </label>
+                {/* Consent Checkbox */}
+                <div style={{
+                  backgroundColor: COLORS.concrete,
+                  padding: 16,
+                  borderRadius: 8,
+                  marginBottom: 24,
+                }}>
+                  <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
+                    <strong>Founding Member Rate</strong><br />
+                    Founding Members pay $49/year. Your rate is locked as long as you keep an active membership. If your membership is canceled or lapses beyond a 7-day renewal grace period, you may lose your Founding rate and re-subscribe at the then-current price.
                   </div>
-                )}
-
-                {/* Free plan summary */}
-                {selectedPlan === 'free' && (
-                  <div style={{
-                    backgroundColor: '#F0FDF4',
-                    padding: 16,
-                    borderRadius: 8,
-                    marginBottom: 24,
-                    border: `1px solid #BBF7D0`,
-                  }}>
-                    <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 600, color: '#166534' }}>
-                      Your Free Plan includes:
-                    </p>
-                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14, color: '#166534', lineHeight: 1.6 }}>
-                      <li>New ticket alerts via email</li>
-                      <li>Street cleaning reminders</li>
-                      <li>Snow ban alerts</li>
-                      <li>Renewal reminders</li>
-                    </ul>
+                  <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
+                    <strong>First Dismissal Guarantee</strong><br />
+                    If we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full refund of your membership fee. Camera tickets (red light / speed cameras) are excluded from the guarantee. Eligibility requires timely cooperation, including providing requested documentation promptly when asked.
                   </div>
-                )}
+                  <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={consentChecked}
+                      onChange={(e) => setConsentChecked(e.target.checked)}
+                      style={{ width: 20, height: 20, marginTop: 2 }}
+                    />
+                    <div>
+                      <span style={{ fontSize: 14, color: COLORS.graphite, fontWeight: 500 }}>
+                        I authorize Autopilot America to submit ticket contest letters on my behalf, including generating and mailing a letter using the information I provide.
+                      </span>
+                      <p style={{ fontSize: 13, color: COLORS.slate, margin: '8px 0 0 0' }}>
+                        You can disable auto-mail and require manual approval at any time in Settings.
+                      </p>
+                    </div>
+                  </label>
+                </div>
 
                 {authError && (
                   <div style={{
@@ -632,33 +525,25 @@ export default function GetStarted() {
 
                 <button
                   onClick={handleCheckout}
-                  disabled={checkoutLoading || !licensePlate.trim() || (selectedPlan === 'autopilot' && !consentChecked)}
+                  disabled={checkoutLoading || !licensePlate.trim() || !consentChecked}
                   style={{
                     width: '100%',
-                    backgroundColor: selectedPlan === 'free'
-                      ? (licensePlate.trim() ? COLORS.signal : COLORS.slate)
-                      : (consentChecked && licensePlate.trim() ? COLORS.regulatory : COLORS.slate),
+                    backgroundColor: (consentChecked && licensePlate.trim() ? COLORS.regulatory : COLORS.slate),
                     color: COLORS.white,
                     padding: '16px 24px',
                     borderRadius: 8,
                     border: 'none',
                     fontSize: 17,
                     fontWeight: 600,
-                    cursor: (checkoutLoading || !licensePlate.trim() || (selectedPlan === 'autopilot' && !consentChecked)) ? 'not-allowed' : 'pointer',
-                    opacity: (checkoutLoading || !licensePlate.trim() || (selectedPlan === 'autopilot' && !consentChecked)) ? 0.7 : 1,
+                    cursor: (checkoutLoading || !licensePlate.trim() || !consentChecked) ? 'not-allowed' : 'pointer',
+                    opacity: (checkoutLoading || !licensePlate.trim() || !consentChecked) ? 0.7 : 1,
                   }}
                 >
-                  {checkoutLoading
-                    ? 'Loading...'
-                    : selectedPlan === 'free'
-                      ? 'Start Free - Complete Profile'
-                      : 'Continue to Payment - $49/year'}
+                  {checkoutLoading ? 'Loading...' : 'Continue to Payment - $49/year'}
                 </button>
 
                 <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 16, textAlign: 'center' }}>
-                  {selectedPlan === 'autopilot'
-                    ? "You'll be redirected to Stripe for secure payment."
-                    : "You can upgrade to Autopilot anytime in Settings."}
+                  You'll be redirected to Stripe for secure payment.
                 </p>
               </>
             )}

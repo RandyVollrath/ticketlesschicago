@@ -138,8 +138,8 @@ export default function LandingPage() {
 
   const faqs = [
     {
-      q: "What's included in the free tier?",
-      a: "Free notifications for upcoming renewals (city sticker, license plate, emissions), street cleaning alerts, and snow ban alerts. Set up once and never miss a deadline."
+      q: "What's included?",
+      a: "Autopilot Protection includes all alerts (street cleaning, snow bans, renewal deadlines) plus automatic ticket monitoring and contesting. For $49/year, we monitor Chicago's database twice a week and automatically mail contest letters when tickets are found."
     },
     {
       q: "How does Autopilot work?",
@@ -303,7 +303,7 @@ export default function LandingPage() {
           fontWeight: 600,
           border: '1px solid rgba(255,255,255,0.2)'
         }}>
-          <span style={{color: COLORS.accent}}>●</span> Free Alerts + Paid Autopilot
+          <span style={{color: COLORS.accent}}>●</span> Autopilot Protection $49/year
         </div>
 
         <h1 style={{
@@ -334,22 +334,22 @@ export default function LandingPage() {
           margin: '0 auto 40px',
           lineHeight: 1.6
         }}>
-          <strong style={{ color: COLORS.accent }}>Free:</strong> Alerts for city sticker, plates, emissions, street cleaning, snow bans.
+          <strong style={{ color: COLORS.accent }}>Complete protection:</strong> Alerts for city sticker, plates, street cleaning, and snow bans.
           <br/>
-          <strong style={{ color: COLORS.accent }}>$49/year:</strong> We monitor, detect, and mail contest letters automatically.
+          <strong style={{ color: COLORS.accent }}>Automatic contesting:</strong> We monitor, detect, and mail contest letters for you.
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Button primary href="/get-started">
-            Get Free Alerts <ArrowRight />
+          <Button primary href="/start">
+            Get Started <ArrowRight />
           </Button>
-          <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff' }}>
+          <Button href="/start" style={{ backgroundColor: COLORS.highlight, color: '#fff' }}>
             Become a Founding Member - $49/yr
           </Button>
         </div>
 
         <p style={{ marginTop: '24px', fontSize: '14px', color: '#64748B' }}>
-          No credit card required for free alerts
+          Founding Member rate - locks while your membership stays active
         </p>
       </header>
 
@@ -367,69 +367,17 @@ export default function LandingPage() {
           marginBottom: '16px',
           color: COLORS.primary
         }}>
-          Choose Your Level of Protection
+          Complete Protection
         </h2>
         <p style={{ textAlign: 'center', color: COLORS.textMuted, marginBottom: '48px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
-          Start with free alerts. Upgrade to Autopilot when you're ready for full protection.
+          Autopilot Protection includes alerts and automatic contesting - everything you need to fight unfair Chicago parking tickets.
         </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
-          {/* Free Tier */}
+          {/* Single Tier */}
           <div style={{
             flex: '1 1 350px',
-            maxWidth: '420px',
-            backgroundColor: '#fff',
-            padding: '40px',
-            borderRadius: '16px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            border: `2px solid ${COLORS.border}`,
-          }}>
-            <div style={{
-              display: 'inline-block',
-              padding: '4px 12px',
-              backgroundColor: COLORS.bgSection,
-              borderRadius: '20px',
-              fontSize: '12px',
-              fontWeight: 700,
-              color: COLORS.textMuted,
-              marginBottom: '16px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              Free Forever
-            </div>
-            <h3 style={{ fontFamily: FONTS.heading, fontSize: '28px', marginBottom: '12px', color: COLORS.primary }}>
-              Free Alerts
-            </h3>
-            <p style={{ color: COLORS.textMuted, marginBottom: '24px', lineHeight: 1.6 }}>
-              Never miss a deadline or get caught off guard by street cleaning.
-            </p>
-
-            <div style={{ marginBottom: '32px' }}>
-              {[
-                'City sticker renewal reminders',
-                'License plate renewal alerts',
-                'Emissions test reminders',
-                'Street cleaning notifications',
-                'Snow ban alerts',
-                'Customizable notification timing',
-              ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
-                  <div style={{ color: COLORS.accent, flexShrink: 0, marginTop: '2px' }}><CheckIcon /></div>
-                  <span style={{ fontSize: '15px', color: COLORS.textDark }}>{item}</span>
-                </div>
-              ))}
-            </div>
-
-            <Button fullWidth href="/get-started" style={{ backgroundColor: COLORS.primary, color: '#fff' }}>
-              Get Free Alerts
-            </Button>
-          </div>
-
-          {/* Paid Tier */}
-          <div style={{
-            flex: '1 1 350px',
-            maxWidth: '420px',
+            maxWidth: '500px',
             backgroundColor: COLORS.primary,
             color: COLORS.textLight,
             padding: '40px',
@@ -451,7 +399,7 @@ export default function LandingPage() {
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}>
-              Most Popular
+              Founding Member
             </div>
             <div style={{
               display: 'inline-block',
@@ -468,15 +416,17 @@ export default function LandingPage() {
               $49/year
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '28px', marginBottom: '12px', color: '#fff' }}>
-              Autopilot
+              Autopilot Protection
             </h3>
             <p style={{ color: '#CBD5E1', marginBottom: '24px', lineHeight: 1.6 }}>
-              Everything in Free, plus automatic ticket detection and contesting.
+              Complete protection with alerts and automatic ticket contesting.
             </p>
 
             <div style={{ marginBottom: '32px' }}>
               {[
-                'All free tier features',
+                'City sticker & plate renewal reminders',
+                'Street cleaning notifications',
+                'Snow ban alerts',
                 'Automatic ticket detection (twice-weekly)',
                 'AI-generated contest letters',
                 'Automatic mailing with delivery tracking',
@@ -492,7 +442,7 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <Button fullWidth href="/get-started" style={{ backgroundColor: COLORS.accent, color: COLORS.primary }}>
+            <Button fullWidth href="/start" style={{ backgroundColor: COLORS.accent, color: COLORS.primary }}>
               Become a Founding Member - $49/yr
             </Button>
             <p style={{ fontSize: '12px', color: '#64748B', marginTop: '12px', textAlign: 'center' }}>
@@ -665,16 +615,16 @@ export default function LandingPage() {
             fontWeight: 700,
             marginBottom: '16px'
           }}>
-            Start with free alerts today
+            Start protecting yourself today
           </h2>
           <p style={{ color: '#94A3B8', marginBottom: '32px', fontSize: '18px' }}>
-            No credit card required. Upgrade to Autopilot anytime.
+            Founding Member rate - $49/year for complete protection.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button primary href="/get-started">
-              Get Free Alerts <ArrowRight />
+            <Button primary href="/start">
+              Get Started <ArrowRight />
             </Button>
-            <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff', border: 'none' }}>
+            <Button href="/start" style={{ backgroundColor: COLORS.highlight, color: '#fff', border: 'none' }}>
               Become a Founding Member - $49/yr
             </Button>
           </div>
