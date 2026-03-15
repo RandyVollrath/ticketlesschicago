@@ -794,10 +794,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let gpsTraceMaxAgeSec: TimeInterval = 60  // Keep 60 seconds of history
   private let gpsTraceMaxPoints = 120  // Cap at 120 points (~2/sec at full GPS rate)
 
-  // Camera alerts (native iOS fallback for when JS is suspended in background)
-  private var cameraAlertsEnabled = false
-  private var cameraSpeedEnabled = false
-  private var cameraRedlightEnabled = false
+  // Camera alerts (native iOS — handles ALL camera proximity detection + notifications).
+  // Default to TRUE so alerts work immediately, even before JS syncs settings.
+  // JS will override via setCameraAlertSettings() if the user explicitly disabled them.
+  private var cameraAlertsEnabled = true
+  private var cameraSpeedEnabled = true
+  private var cameraRedlightEnabled = true
   private var cameraAlertVolume: Float = 1.0
   private var alertedCameraAtByIndex: [Int: Date] = [:]
   private var lastCameraAlertAt: Date? = nil
@@ -981,14 +983,22 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
   private func restorePersistedCameraSettings() {
     let d = UserDefaults.standard
+    // Default to TRUE when keys don't exist (fresh install).
+    // Camera alerts are a core safety feature — default ON, let user disable.
     if d.object(forKey: kCameraAlertsEnabledKey) != nil {
       cameraAlertsEnabled = d.bool(forKey: kCameraAlertsEnabledKey)
+    } else {
+      cameraAlertsEnabled = true  // Fresh install default
     }
     if d.object(forKey: kCameraSpeedEnabledKey) != nil {
       cameraSpeedEnabled = d.bool(forKey: kCameraSpeedEnabledKey)
+    } else {
+      cameraSpeedEnabled = true  // Fresh install default
     }
     if d.object(forKey: kCameraRedlightEnabledKey) != nil {
       cameraRedlightEnabled = d.bool(forKey: kCameraRedlightEnabledKey)
+    } else {
+      cameraRedlightEnabled = true  // Fresh install default
     }
     if d.object(forKey: kCameraAlertVolumeKey) != nil {
       cameraAlertVolume = d.float(forKey: kCameraAlertVolumeKey)
