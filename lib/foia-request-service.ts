@@ -144,25 +144,29 @@ Re: Freedom of Information Act Request
 
 Dear FOIA Officer:
 
-Pursuant to the Illinois Freedom of Information Act (5 ILCS 140), I am requesting copies of the following records related to the above-referenced parking citation:
+Pursuant to the Illinois Freedom of Information Act (5 ILCS 140), I am writing on behalf of ${params.requesterName}, the registered owner of the vehicle cited above (plate: ${params.plate}). ${params.requesterName} has authorized Autopilot America to act as their agent for the purpose of submitting this FOIA request and receiving responsive records. A copy of this authorization is on file and available upon request.
+
+On behalf of ${params.requesterName}, I am requesting copies of the following records related to the above-referenced citation:
 
 ${recordsList}
 
-I am the registered owner of the cited vehicle and am requesting these records in connection with my administrative contest of this citation.
+These records are requested in connection with the administrative contest of this citation by the vehicle owner.
 
-Please provide these records in electronic format via email to ${params.requesterEmail}. If any records are unavailable, I request a written explanation of why they cannot be produced, as required by 5 ILCS 140/3(g).
+Please provide responsive records in electronic format via email to foia@autopilotamerica.com. If any records are unavailable, I request a written explanation of why they cannot be produced, as required by 5 ILCS 140/3(g).
 
 Under the Act, you are required to respond to this request within five (5) business days. If you need additional time, please provide written notice as required by 5 ILCS 140/3(e).
 
-I am willing to pay reasonable copying fees up to $25.00. If fees will exceed this amount, please notify me before processing.
+I am willing to pay reasonable copying fees up to $25.00 on behalf of the requester. If fees will exceed this amount, please notify me before processing.
 
 Thank you for your prompt attention to this matter.
 
 Sincerely,
 
-${params.requesterName}
+Autopilot America
+Authorized Agent for ${params.requesterName}
 ${params.requesterAddress}
-${params.requesterEmail}`;
+Contact: ${params.requesterEmail}
+Agent Contact: foia@autopilotamerica.com`;
 
   return { subject, body };
 }
@@ -220,27 +224,31 @@ export function generateFoiaRequestHtml(params: {
 
   <p>Dear FOIA Officer:</p>
 
-  <p>Pursuant to the Illinois Freedom of Information Act (5 ILCS 140), I am requesting copies of the following records related to the above-referenced parking citation:</p>
+  <p>Pursuant to the Illinois Freedom of Information Act (5 ILCS 140), I am writing on behalf of <strong>${params.requesterName}</strong>, the registered owner of the vehicle cited above (plate: ${params.plate}). ${params.requesterName} has authorized Autopilot America to act as their agent for the purpose of submitting this FOIA request and receiving responsive records. A copy of this authorization is on file and available upon request.</p>
+
+  <p>On behalf of ${params.requesterName}, I am requesting copies of the following records related to the above-referenced citation:</p>
 
   <ol style="font-size: 10pt;">
     ${recordsList}
   </ol>
 
-  <p>I am the registered owner of the cited vehicle and am requesting these records in connection with my administrative contest of this citation.</p>
+  <p>These records are requested in connection with the administrative contest of this citation by the vehicle owner.</p>
 
-  <p>Please provide these records in electronic format via email to <strong>${params.requesterEmail}</strong>. If any records are unavailable, I request a written explanation of why they cannot be produced, as required by 5 ILCS 140/3(g).</p>
+  <p>Please provide responsive records in electronic format via email to <strong>foia@autopilotamerica.com</strong>. If any records are unavailable, I request a written explanation of why they cannot be produced, as required by 5 ILCS 140/3(g).</p>
 
   <p>Under the Act, you are required to respond to this request within five (5) business days. If you need additional time, please provide written notice as required by 5 ILCS 140/3(e).</p>
 
-  <p>I am willing to pay reasonable copying fees up to $25.00. If fees will exceed this amount, please notify me before processing.</p>
+  <p>I am willing to pay reasonable copying fees up to $25.00 on behalf of the requester. If fees will exceed this amount, please notify me before processing.</p>
 
   <p>Thank you for your prompt attention to this matter.</p>
 
   <p>
     Sincerely,<br><br><br>
-    ${params.requesterName}<br>
+    Autopilot America<br>
+    Authorized Agent for ${params.requesterName}<br>
     ${params.requesterAddress}<br>
-    ${params.requesterEmail}
+    Contact: ${params.requesterEmail}<br>
+    Agent Contact: foia@autopilotamerica.com
   </p>
 </body>
 </html>`;
@@ -280,7 +288,7 @@ export async function sendFoiaRequestEmail(params: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `${params.requesterName} via Autopilot <foia@autopilotamerica.com>`,
+        from: `Autopilot America - Agent for ${params.requesterName} <foia@autopilotamerica.com>`,
         to: [CHICAGO_FINANCE_FOIA_EMAIL],
         subject,
         text: body,
