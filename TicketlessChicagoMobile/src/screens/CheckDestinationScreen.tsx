@@ -50,6 +50,7 @@ interface RestrictionResult {
     message: string;
     zoneName?: string;
     severity: string;
+    restrictionSchedule?: string;
   };
 }
 
@@ -248,11 +249,16 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         if (pz.hasPermitZone && pz.zones?.length > 0) {
           const zone = pz.zones[0];
           geo.permitZone = String(zone.zone);
+          const schedule = zone.restrictionSchedule;
+          const scheduleText = schedule
+            ? `Enforced ${schedule}`
+            : 'Permit required (hours vary by block)';
           result.permitZone = {
             inPermitZone: true,
-            message: `Permit Zone ${zone.zone} — permit required`,
+            message: `Permit Zone ${zone.zone} — ${scheduleText}`,
             zoneName: String(zone.zone),
             severity: 'warning',
+            restrictionSchedule: schedule,
           };
         } else {
           result.permitZone = {
@@ -695,12 +701,38 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
               restrictions.winterOvernightBan?.message || '',
               restrictions.winterOvernightBan?.severity || 'none',
             )}
-            {renderRestrictionCard(
-              'Permit Zone',
-              'card-account-details',
-              restrictions.permitZone?.message || '',
-              restrictions.permitZone?.severity || 'none',
-            )}
+            {(() => {
+              const pz = restrictions.permitZone;
+              const severity = pz?.severity || 'none';
+              const config = SEVERITY_CONFIG[severity] || SEVERITY_CONFIG.none;
+              return (
+                <View
+                  key="Permit Zone"
+                  style={[styles.restrictionCard, { backgroundColor: config.bg, borderLeftColor: config.border }]}
+                >
+                  <View style={styles.restrictionHeader}>
+                    <Icon name="card-account-details" size={18} color={config.iconColor} />
+                    <Text style={[styles.restrictionTitle, { color: config.iconColor }]}>Permit Zone</Text>
+                    <Icon name={config.icon} size={16} color={config.iconColor} style={{ marginLeft: 'auto' }} />
+                  </View>
+                  <Text style={styles.restrictionMessage}>{pz?.message || ''}</Text>
+                  {pz?.inPermitZone && (
+                    <TouchableOpacity
+                      onPress={() => navigation.navigate('ReportZoneHours', {
+                        zone: pz.zoneName,
+                        currentSchedule: pz.restrictionSchedule || '',
+                        address: geocoded?.address || address,
+                        latitude: geocoded?.lat,
+                        longitude: geocoded?.lng,
+                      })}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.correctionLink}>Hours wrong on your block?</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })()}
 
             {/* Snow Forecast — simple 2"+ yes/no */}
             {snowForecast && (
@@ -1047,6 +1079,13 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginLeft: 24,
     marginTop: 2,
+  },
+  correctionLink: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginLeft: 24,
+    marginTop: 6,
+    textDecorationLine: 'underline' as const,
   },
 
   // Snow Forecast
