@@ -295,15 +295,14 @@ class AuthServiceClass {
       });
 
       if (error) {
-        log.error('Supabase Apple auth error', error);
+        log.error('Supabase Apple auth error', { message: error.message, status: error.status, name: error.name });
         // Provide a user-friendly error message instead of raw Supabase errors
         // Common errors: "provider is not enabled", "invalid client_id", nonce mismatch
-        const friendlyMessage = error.message?.includes('provider')
-          ? 'Sign in with Apple is temporarily unavailable. Please try email sign in.'
-          : error.message?.includes('client')
-          ? 'Sign in with Apple is temporarily unavailable. Please try email sign in.'
-          : error.message || 'Apple sign-in failed. Please try again.';
-        return { success: false, error: friendlyMessage };
+        if (error.message?.includes('provider') || error.message?.includes('client')) {
+          return { success: false, error: 'Sign in with Apple is temporarily unavailable. Please try signing in with email below.' };
+        }
+        // Show the actual error message for debugging — helps identify configuration issues
+        return { success: false, error: `Apple sign-in failed: ${error.message || 'Unknown error'}. Please try signing in with email instead.` };
       }
 
       // Eagerly update auth state before returning — don't wait for onAuthStateChange
@@ -316,14 +315,31 @@ class AuthServiceClass {
       log.info('Supabase Apple authentication successful');
       return { success: true };
     } catch (error: any) {
-      log.error('Apple sign-in error', error);
+      log.error('Apple sign-in error', {
+        code: error.code,
+        message: error.message,
+        domain: error.domain,
+        nativeErrorCode: error.nativeErrorCode,
+        userInfo: error.userInfo,
+      });
 
-      // Handle user cancellation
-      if (error.code === appleAuth.Error.CANCELED) {
+      // Handle user cancellation (error code 1001)
+      if (error.code === appleAuth.Error.CANCELED || error.code === '1001' || error.code === 1001) {
         return { success: false, error: 'Sign in was cancelled' };
       }
 
-      return { success: false, error: error.message || 'Apple sign-in failed' };
+      // Error 1000 (ASAuthorizationErrorUnknown) — often means the device
+      // is not signed into iCloud/Apple ID, or there's a provisioning issue
+      if (error.code === '1000' || error.code === 1000) {
+        return {
+          success: false,
+          error: 'Apple Sign In could not complete. Please make sure you are signed into your Apple ID in Settings, then try again. You can also sign in with email below.',
+        };
+      }
+
+      // For any other error, show the actual error details so we can debug
+      const errorDetail = error.code ? ` (code: ${error.code})` : '';
+      return { success: false, error: `Apple sign-in failed${errorDetail}. Please try signing in with email instead.` };
     }
   }
 
