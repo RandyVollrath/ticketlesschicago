@@ -7,7 +7,7 @@ import Footer from '../components/Footer';
 import MobileNav from '../components/MobileNav';
 
 // The exact legal text the user agrees to — stored verbatim in the database for audit purposes
-const FOIA_AUTHORIZATION_TEXT = `I authorize Autopilot America LLC to submit Freedom of Information Act (FOIA) requests to the City of Chicago Department of Finance and any other relevant city department on my behalf, and to receive all responsive records, including any personally identifiable information contained therein, regarding all parking, red-light camera, speed camera, and traffic citations ever issued to my vehicle. I confirm that I am the registered owner or lessee of this vehicle. This authorization remains in effect until I revoke it in writing.`;
+const FOIA_AUTHORIZATION_TEXT = `I authorize Scarlet Carson, Inc (d/b/a Autopilot America) to submit Freedom of Information Act (FOIA) requests to the City of Chicago Department of Finance and any other relevant city department on my behalf, and to receive all responsive records, including any personally identifiable information contained therein, regarding all parking, red-light camera, speed camera, and traffic citations ever issued to my vehicle. I confirm that I am the registered owner or lessee of this vehicle. This authorization remains in effect until I revoke it in writing.`;
 
 const COLORS = {
   deepHarbor: '#0F172A',
