@@ -33,6 +33,10 @@ export interface ParkingDetectedEvent {
   latitude?: number;
   longitude?: number;
   accuracy?: number;
+  /** GPS heading in degrees (0-360). Falls back to last valid driving heading
+   *  when the stopped location has no course (speed ≈ 0 → CLLocation.course = -1).
+   *  Used for street disambiguation at intersections (e.g. Wolcott vs Lawrence). */
+  heading?: number;
   drivingDurationSec?: number;
   detectionSource?: string;
   locationSource?: 'stop_start' | 'last_driving' | 'last_high_speed' | 'current_fallback' | 'current_refined' | 'stale_retry_candidate' | 'short_drive_recovery' | 'recovery_accurate_gps';
