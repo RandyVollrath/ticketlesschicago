@@ -516,28 +516,28 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     })());
 
     // 2. City Sticker Receipt (for no_city_sticker violations)
+    // City sticker receipts are stored in registration_evidence_receipts with source_type='city_sticker'.
     // Include any receipt whose sticker is NOT expired. Stickers purchased AFTER the
     // ticket are still valid evidence — hearing officers dismiss ~50% of the time when
     // the user shows they eventually bought the sticker.
-    // Only skip receipts where the sticker has definitively expired (purchase_date + duration < today).
     if (violationType === 'no_city_sticker' || contest.violation_code === '9-64-125' || contest.violation_code === '9-100-010') {
       evidencePromises.push((async () => {
         try {
           const { data } = await supabase
-            .from('city_sticker_receipts')
+            .from('registration_evidence_receipts')
             .select('*')
             .eq('user_id', user.id)
-            .order('purchase_date', { ascending: false })
+            .eq('source_type', 'city_sticker')
+            .order('parsed_purchase_date', { ascending: false })
             .limit(5);
           if (data && data.length > 0) {
             const now = new Date();
             const validReceipt = data.find((r: any) => {
-              // Use parsed_expiration_date if available, otherwise estimate from purchase_date
               if (r.parsed_expiration_date) {
                 return new Date(r.parsed_expiration_date) >= now;
               }
-              if (!r.purchase_date) return false;
-              const pDate = new Date(r.purchase_date);
+              if (!r.parsed_purchase_date) return false;
+              const pDate = new Date(r.parsed_purchase_date);
               const durationMonths = r.sticker_duration_months || 12;
               const expDate = new Date(pDate);
               expDate.setMonth(expDate.getMonth() + durationMonths + 1, 0);
@@ -554,8 +554,8 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     }
 
     // 3. Registration Evidence Receipt (for expired_plates violations)
-    // Same approach: include if the sticker hasn't expired yet, regardless of
-    // whether it was purchased before or after the ticket.
+    // License plate receipts are stored in registration_evidence_receipts with source_type='license_plate'.
+    // Same approach: include if the sticker hasn't expired yet.
     if (violationType === 'expired_plates' || contest.violation_code === '9-76-160' || contest.violation_code === '9-80-190') {
       evidencePromises.push((async () => {
         try {
@@ -563,6 +563,7 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
             .from('registration_evidence_receipts')
             .select('*')
             .eq('user_id', user.id)
+            .eq('source_type', 'license_plate')
             .order('parsed_purchase_date', { ascending: false })
             .limit(5);
           if (data && data.length > 0) {
@@ -571,9 +572,8 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
               if (r.parsed_expiration_date) {
                 return new Date(r.parsed_expiration_date) >= now;
               }
-              const pDateStr = r.purchase_date || r.parsed_purchase_date;
-              if (!pDateStr) return false;
-              const pDate = new Date(pDateStr);
+              if (!r.parsed_purchase_date) return false;
+              const pDate = new Date(r.parsed_purchase_date);
               const durationMonths = r.sticker_duration_months || 12;
               const expDate = new Date(pDate);
               expDate.setMonth(expDate.getMonth() + durationMonths + 1, 0);
@@ -946,7 +946,7 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
           case 'city_sticker_receipt':
             if (cityStickerReceipt) {
               status = 'found';
-              reason = `City sticker receipt found: purchased ${cityStickerReceipt.purchase_date}`;
+              reason = `City sticker receipt found: purchased ${cityStickerReceipt.parsed_purchase_date}`;
             } else {
               status = 'user_can_provide';
               reason = 'No city sticker receipt on file.';
@@ -956,7 +956,7 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
           case 'registration_renewal':
             if (registrationReceipt) {
               status = 'found';
-              reason = `Registration receipt found: ${registrationReceipt.receipt_type}`;
+              reason = `Registration receipt found: ${registrationReceipt.source_type}`;
             } else {
               status = 'user_can_provide';
               reason = 'No registration receipt on file.';
@@ -1138,10 +1138,12 @@ ${parkingEvidenceText}
 ${cityStickerReceipt ? `
 === CITY STICKER RECEIPT EVIDENCE ===
 The user has a city vehicle sticker purchase receipt on file:
-- Purchase Date: ${cityStickerReceipt.purchase_date || 'On file'}
-- Sticker Number: ${cityStickerReceipt.sticker_number || 'On file'}
-- Vehicle: ${cityStickerReceipt.vehicle_description || contest.license_plate || 'On file'}
-- Amount Paid: ${cityStickerReceipt.amount_paid ? `$${cityStickerReceipt.amount_paid}` : 'On file'}
+- Purchase Date: ${cityStickerReceipt.parsed_purchase_date || 'On file'}
+- Amount Paid: ${cityStickerReceipt.parsed_amount_cents ? `$${(cityStickerReceipt.parsed_amount_cents / 100).toFixed(2)}` : 'On file'}
+- Order ID: ${cityStickerReceipt.parsed_order_id || 'On file'}
+- Sticker Duration: ${cityStickerReceipt.sticker_duration_months ? `${cityStickerReceipt.sticker_duration_months} months` : '12 months (standard)'}
+- Expires: ${cityStickerReceipt.parsed_expiration_date || 'Estimated ~12 months from purchase'}
+- Receipt Source: Email forwarded by user from ${cityStickerReceipt.sender_email || 'city sticker vendor'} (digital evidence)
 
 INSTRUCTIONS: This receipt proves the user purchased a city sticker. Compare the purchase date to the citation date:
 - If purchased BEFORE the citation: State the user was already in compliance at the time of the citation. This is the strongest argument.
@@ -1150,10 +1152,12 @@ INSTRUCTIONS: This receipt proves the user purchased a city sticker. Compare the
 ${registrationReceipt ? `
 === VEHICLE REGISTRATION EVIDENCE ===
 The user has vehicle registration/renewal documentation on file:
-- Receipt Type: ${registrationReceipt.receipt_type || 'Registration renewal'}
-- Purchase Date: ${registrationReceipt.purchase_date || 'On file'}
-- Plate Number: ${registrationReceipt.plate_number || contest.license_plate || 'On file'}
-- Expiration Date: ${registrationReceipt.expiration_date || 'See receipt'}
+- Renewal Date: ${registrationReceipt.parsed_purchase_date || 'On file'}
+- Amount Paid: ${registrationReceipt.parsed_amount_cents ? `$${(registrationReceipt.parsed_amount_cents / 100).toFixed(2)}` : 'On file'}
+- Order ID: ${registrationReceipt.parsed_order_id || 'On file'}
+- Expires: ${registrationReceipt.parsed_expiration_date || 'Estimated ~12 months from renewal'}
+- Vehicle Plate: ${contest.license_plate || 'On file'}
+- Receipt Source: Email forwarded by user from ${registrationReceipt.sender_email || 'IL Secretary of State'} (digital evidence)
 
 INSTRUCTIONS: This receipt proves the user renewed their vehicle registration. Compare the renewal date to the citation date:
 - If renewed BEFORE the citation: State the vehicle registration was valid at the time of citation. Under Illinois law, there is a grace period for displaying updated registration stickers.
@@ -1376,10 +1380,10 @@ ${learningsText}${officerIntelText}`
           availableEvidenceSummary.push(`Street View: ${streetViewPackage.analyses.length} angles analyzed. ${streetViewPackage.hasSignageIssue ? 'SIGNAGE ISSUE FOUND.' : 'No signage issues found.'} Summary: ${streetViewPackage.analysisSummary}`);
         }
         if (cityStickerReceipt) {
-          availableEvidenceSummary.push(`City Sticker Receipt: purchased ${cityStickerReceipt.purchase_date}`);
+          availableEvidenceSummary.push(`City Sticker Receipt: purchased ${cityStickerReceipt.parsed_purchase_date}`);
         }
         if (registrationReceipt) {
-          availableEvidenceSummary.push(`Registration Receipt: ${registrationReceipt.receipt_type}, purchased ${registrationReceipt.purchase_date}`);
+          availableEvidenceSummary.push(`Registration Receipt: ${registrationReceipt.source_type}, purchased ${registrationReceipt.parsed_purchase_date}`);
         }
         if (courtData.hasData) {
           availableEvidenceSummary.push(`FOIA Court Data: ${courtData.totalDismissed}/${courtData.totalContested} dismissed (${Math.round(courtData.winRate)}% win rate)`);
@@ -1621,13 +1625,13 @@ Generate an improved version of the letter that addresses all critical issues an
       receipts: {
         citySticker: cityStickerReceipt ? {
           found: true,
-          purchaseDate: cityStickerReceipt.purchase_date,
-          expirationDate: cityStickerReceipt.expiration_date,
+          purchaseDate: cityStickerReceipt.parsed_purchase_date,
+          expirationDate: cityStickerReceipt.parsed_expiration_date,
         } : { found: false },
         registration: registrationReceipt ? {
           found: true,
-          purchaseDate: registrationReceipt.purchase_date,
-          expirationDate: registrationReceipt.expiration_date,
+          purchaseDate: registrationReceipt.parsed_purchase_date,
+          expirationDate: registrationReceipt.parsed_expiration_date,
         } : { found: false },
       },
       // Camera GPS evidence

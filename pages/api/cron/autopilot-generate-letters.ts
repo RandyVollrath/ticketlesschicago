@@ -472,10 +472,11 @@ async function gatherAllEvidence(
     promises.push((async () => {
       try {
         const { data } = await supabaseAdmin
-          .from('city_sticker_receipts')
+          .from('registration_evidence_receipts')
           .select('*')
           .eq('user_id', ticket.user_id)
-          .order('purchase_date', { ascending: false })
+          .eq('source_type', 'city_sticker')
+          .order('parsed_purchase_date', { ascending: false })
           .limit(5);
         if (data && data.length > 0) {
           const now = new Date();
@@ -483,8 +484,8 @@ async function gatherAllEvidence(
             if (r.parsed_expiration_date) {
               return new Date(r.parsed_expiration_date) >= now;
             }
-            if (!r.purchase_date) return false;
-            const pDate = new Date(r.purchase_date);
+            if (!r.parsed_purchase_date) return false;
+            const pDate = new Date(r.parsed_purchase_date);
             const durationMonths = r.sticker_duration_months || 12;
             const expDate = new Date(pDate);
             expDate.setMonth(expDate.getMonth() + durationMonths + 1, 0);
@@ -492,7 +493,7 @@ async function gatherAllEvidence(
           });
           if (validReceipt) {
             bundle.cityStickerReceipt = validReceipt;
-            console.log(`    City sticker receipt found: purchased ${validReceipt.purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'}`);
+            console.log(`    City sticker receipt found: purchased ${validReceipt.parsed_purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'}`);
           } else {
             console.log(`    City sticker receipt found but EXPIRED — skipping (found ${data.length} receipts, all past expiration)`);
           }
@@ -511,6 +512,7 @@ async function gatherAllEvidence(
           .from('registration_evidence_receipts')
           .select('*')
           .eq('user_id', ticket.user_id)
+          .eq('source_type', 'license_plate')
           .order('parsed_purchase_date', { ascending: false })
           .limit(5);
         if (data && data.length > 0) {
@@ -519,9 +521,8 @@ async function gatherAllEvidence(
             if (r.parsed_expiration_date) {
               return new Date(r.parsed_expiration_date) >= now;
             }
-            const pDateStr = r.purchase_date || r.parsed_purchase_date;
-            if (!pDateStr) return false;
-            const pDate = new Date(pDateStr);
+            if (!r.parsed_purchase_date) return false;
+            const pDate = new Date(r.parsed_purchase_date);
             const durationMonths = r.sticker_duration_months || 12;
             const expDate = new Date(pDate);
             expDate.setMonth(expDate.getMonth() + durationMonths + 1, 0);
@@ -529,7 +530,7 @@ async function gatherAllEvidence(
           });
           if (validReceipt) {
             bundle.registrationReceipt = validReceipt;
-            console.log(`    Registration receipt found: ${validReceipt.receipt_type}, purchased ${validReceipt.purchase_date || validReceipt.parsed_purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'}`);
+            console.log(`    Registration receipt found: purchased ${validReceipt.parsed_purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'}`);
           } else {
             console.log(`    Registration receipt found but EXPIRED — skipping (found ${data.length} receipts, all past expiration)`);
           }
@@ -1055,11 +1056,12 @@ Since other evidence is limited, you may briefly mention weather conditions if t
     const r = evidence.cityStickerReceipt;
     sections.push(`=== CITY STICKER RECEIPT EVIDENCE ===
 The user has a city vehicle sticker purchase receipt on file:
-- Purchase Date: ${r.purchase_date || 'On file'}
-- Sticker Number: ${r.sticker_number || 'On file'}
-- Vehicle: ${r.vehicle_description || ticket.plate}
-- Amount Paid: ${r.amount_paid ? `$${r.amount_paid}` : 'On file'}
-- Receipt Source: Email forwarded by user (digital evidence)
+- Purchase Date: ${r.parsed_purchase_date || 'On file'}
+- Amount Paid: ${r.parsed_amount_cents ? `$${(r.parsed_amount_cents / 100).toFixed(2)}` : 'On file'}
+- Order ID: ${r.parsed_order_id || 'On file'}
+- Sticker Duration: ${r.sticker_duration_months ? `${r.sticker_duration_months} months` : '12 months (standard)'}
+- Expires: ${r.parsed_expiration_date || 'Estimated ~12 months from purchase'}
+- Receipt Source: Email forwarded by user from ${r.sender_email || 'city sticker vendor'} (digital evidence)
 
 INSTRUCTIONS: This receipt proves the user purchased a city sticker. Compare the purchase date to the citation date:
 - If purchased BEFORE the citation: State the user was already in compliance at the time of the citation. This is the strongest argument.
@@ -1072,11 +1074,12 @@ INSTRUCTIONS: This receipt proves the user purchased a city sticker. Compare the
     const r = evidence.registrationReceipt;
     sections.push(`=== VEHICLE REGISTRATION EVIDENCE ===
 The user has vehicle registration/renewal documentation on file:
-- Receipt Type: ${r.receipt_type || 'Registration renewal'}
-- Purchase Date: ${r.purchase_date || 'On file'}
-- Plate Number: ${r.plate_number || ticket.plate}
-- Expiration Date: ${r.expiration_date || 'See receipt'}
-- Receipt Source: Email forwarded by user (digital evidence)
+- Renewal Date: ${r.parsed_purchase_date || 'On file'}
+- Amount Paid: ${r.parsed_amount_cents ? `$${(r.parsed_amount_cents / 100).toFixed(2)}` : 'On file'}
+- Order ID: ${r.parsed_order_id || 'On file'}
+- Expires: ${r.parsed_expiration_date || 'Estimated ~12 months from renewal'}
+- Vehicle Plate: ${ticket.plate || 'On file'}
+- Receipt Source: Email forwarded by user from ${r.sender_email || 'IL Secretary of State'} (digital evidence)
 
 INSTRUCTIONS: This receipt proves the user renewed their vehicle registration. Compare the renewal date to the citation date:
 - If renewed BEFORE the citation: State the vehicle registration was valid at the time of citation. Under Illinois law, there is a grace period for displaying updated registration stickers.
@@ -1495,11 +1498,11 @@ function generateFallbackLetter(
   }
 
   if (evidence.cityStickerReceipt) {
-    body += `\n\nI have enclosed documentation showing that my city vehicle sticker was purchased on ${evidence.cityStickerReceipt.purchase_date || 'the date shown'} and was valid at the time of this citation.`;
+    body += `\n\nI have enclosed documentation showing that my city vehicle sticker was purchased on ${evidence.cityStickerReceipt.parsed_purchase_date || 'the date shown'} and was valid at the time of this citation.`;
   }
 
   if (evidence.registrationReceipt) {
-    body += `\n\nI have enclosed documentation showing that my vehicle registration was renewed on ${evidence.registrationReceipt.purchase_date || 'the date shown'} and was valid at the time of this citation.`;
+    body += `\n\nI have enclosed documentation showing that my vehicle registration was renewed on ${evidence.registrationReceipt.parsed_purchase_date || 'the date shown'} and was valid at the time of this citation.`;
   }
 
   if (evidence.weatherData?.defenseRelevant && evidence.weatherRelevanceType === 'primary') {
