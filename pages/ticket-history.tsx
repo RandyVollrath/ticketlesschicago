@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import CityTicketStats from '../components/CityTicketStats';
 import Footer from '../components/Footer';
 import MobileNav from '../components/MobileNav';
+
+// The exact legal text the user agrees to — stored verbatim in the database for audit purposes
+const FOIA_AUTHORIZATION_TEXT = `I authorize Autopilot America LLC to submit Freedom of Information Act (FOIA) requests to the City of Chicago Department of Finance and any other relevant city department on my behalf, and to receive all responsive records, including any personally identifiable information contained therein, regarding all parking, red-light camera, speed camera, and traffic citations ever issued to my vehicle. I confirm that I am the registered owner or lessee of this vehicle. This authorization remains in effect until I revoke it in writing.`;
 
 const COLORS = {
   deepHarbor: '#0F172A',
@@ -32,14 +35,20 @@ export default function TicketHistory() {
   const [email, setEmail] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [licenseState, setLicenseState] = useState('IL');
-  const [foiaConsent, setFoiaConsent] = useState(false);
+  const [signatureName, setSignatureName] = useState('');
+  const [electronicConsent, setElectronicConsent] = useState(false);
   const [error, setError] = useState('');
   const [alreadyExists, setAlreadyExists] = useState(false);
+  const [requestId, setRequestId] = useState('');
+  const signatureRef = useRef<HTMLDivElement>(null);
+
+  // Signature is valid when the typed name reasonably matches the name field
+  const signatureValid = signatureName.trim().length >= 2 && electronicConsent;
 
   const canSubmit = name.trim().length > 0
     && email.includes('@')
     && licensePlate.trim().length >= 2
-    && foiaConsent
+    && signatureValid
     && step === 'form';
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,6 +67,9 @@ export default function TicketHistory() {
           licensePlate: licensePlate.trim().toUpperCase(),
           licenseState,
           foiaConsent: true,
+          signatureName: signatureName.trim(),
+          signatureAgreedText: FOIA_AUTHORIZATION_TEXT,
+          consentElectronicProcess: true,
           source: 'public_lookup',
         }),
       });
@@ -74,6 +86,10 @@ export default function TicketHistory() {
         setAlreadyExists(true);
       }
 
+      if (data.requestId) {
+        setRequestId(data.requestId);
+      }
+
       setStep('success');
     } catch (err) {
       setError('Network error. Please check your connection and try again.');
@@ -86,7 +102,7 @@ export default function TicketHistory() {
       <Head>
         <title>How Many Tickets Have You Gotten? Free FOIA Lookup | Autopilot America</title>
         <meta name="description" content="Find out exactly how many parking tickets have been written for your license plate. We submit a FOIA request to the City of Chicago on your behalf — completely free." />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet" />
         <style>{`
           @media (max-width: 768px) {
             .hero-title { font-size: 32px !important; }
@@ -321,6 +337,31 @@ export default function TicketHistory() {
                 </div>
               </div>
 
+              {/* Download signed authorization */}
+              {requestId && !alreadyExists && (
+                <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                  <a
+                    href={`/api/foia/authorization-pdf?id=${requestId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '13px',
+                      color: COLORS.slate,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    View your signed authorization
+                  </a>
+                </div>
+              )}
+
               {/* Upsell */}
               <div style={{
                 backgroundColor: '#F0FDF4',
@@ -350,7 +391,7 @@ export default function TicketHistory() {
                 </Link>
               </div>
 
-              <button onClick={() => { setStep('form'); setFoiaConsent(false); setAlreadyExists(false); }} style={{
+              <button onClick={() => { setStep('form'); setSignatureName(''); setElectronicConsent(false); setAlreadyExists(false); }} style={{
                 background: 'none',
                 border: 'none',
                 color: COLORS.regulatory,
@@ -497,42 +538,131 @@ export default function TicketHistory() {
                 </div>
               </div>
 
-              {/* Consent Checkbox */}
-              <div style={{
-                backgroundColor: '#F8FAFC',
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: '10px',
-                padding: '16px 20px',
+              {/* E-Signature Authorization */}
+              <div ref={signatureRef} style={{
+                backgroundColor: '#FEFEFE',
+                border: `2px solid ${signatureValid ? COLORS.signal : COLORS.border}`,
+                borderRadius: '12px',
+                padding: '24px',
                 marginBottom: '24px',
+                transition: 'border-color 0.3s',
               }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COLORS.graphite} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                    FOIA Authorization
+                  </span>
+                </div>
+
+                {/* Authorization text */}
+                <div style={{
+                  fontSize: '13px',
+                  color: COLORS.slate,
+                  lineHeight: 1.7,
+                  marginBottom: '20px',
+                  padding: '16px',
+                  backgroundColor: '#F8FAFC',
+                  borderRadius: '8px',
+                  border: `1px solid ${COLORS.border}`,
+                }}>
+                  {FOIA_AUTHORIZATION_TEXT}
+                </div>
+
+                {/* Signature field */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: COLORS.graphite }}>
+                    Type your full name to sign
+                  </label>
+                  <input
+                    type="text"
+                    value={signatureName}
+                    onChange={(e) => setSignatureName(e.target.value)}
+                    placeholder="Your full legal name"
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '10px',
+                      fontSize: '24px',
+                      fontFamily: '"Dancing Script", cursive',
+                      fontStyle: 'italic',
+                      color: '#1a1a2e',
+                      boxSizing: 'border-box',
+                      outline: 'none',
+                      backgroundColor: signatureName.trim() ? '#FFFFF0' : 'white',
+                      transition: 'background-color 0.2s',
+                    }}
+                  />
+                  {signatureName.trim().length > 0 && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '12px 16px',
+                      backgroundColor: '#FFFFF0',
+                      borderRadius: '8px',
+                      borderBottom: '2px solid #1a1a2e',
+                      textAlign: 'center',
+                    }}>
+                      <span style={{
+                        fontSize: '28px',
+                        fontFamily: '"Dancing Script", cursive',
+                        fontStyle: 'italic',
+                        color: '#1a1a2e',
+                      }}>
+                        {signatureName}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Electronic consent checkbox */}
                 <label style={{
                   display: 'flex',
                   alignItems: 'flex-start',
-                  gap: '12px',
+                  gap: '10px',
                   cursor: 'pointer',
-                  fontSize: '14px',
+                  fontSize: '13px',
                   color: COLORS.graphite,
                   lineHeight: 1.5,
                 }}>
                   <input
                     type="checkbox"
-                    checked={foiaConsent}
-                    onChange={(e) => setFoiaConsent(e.target.checked)}
+                    checked={electronicConsent}
+                    onChange={(e) => setElectronicConsent(e.target.checked)}
                     style={{
-                      width: '20px',
-                      height: '20px',
+                      width: '18px',
+                      height: '18px',
                       marginTop: '2px',
                       flexShrink: 0,
                       accentColor: COLORS.regulatory,
                     }}
                   />
                   <span>
-                    I authorize Autopilot America to submit a Freedom of Information Act (FOIA) request
-                    to the City of Chicago Department of Finance on my behalf to obtain a complete
-                    record of all parking and traffic citations issued to this license plate.
-                    I confirm that I am the registered owner of this vehicle.
+                    I agree to sign this authorization electronically. I understand this electronic
+                    signature has the same legal effect as a handwritten signature under federal and
+                    Illinois law.
                   </span>
                 </label>
+
+                {signatureValid && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '8px 12px',
+                    backgroundColor: '#F0FDF4',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    color: '#166534',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Authorization signed
+                  </div>
+                )}
               </div>
 
               {/* Submit Button */}

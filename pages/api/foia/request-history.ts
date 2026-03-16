@@ -26,6 +26,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     licensePlate,
     licenseState = 'IL',
     foiaConsent,
+    signatureName,
+    signatureAgreedText,
+    consentElectronicProcess,
     source = 'public_lookup',
   } = req.body;
 
@@ -84,12 +87,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Error looking up user:', err);
   }
 
-  // Get IP for consent tracking
+  // Get IP and user agent for consent audit trail
   const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
     || req.socket.remoteAddress
     || 'unknown';
+  const userAgent = (req.headers['user-agent'] as string) || 'unknown';
 
-  // Create the FOIA history request
+  // Create the FOIA history request with e-signature audit trail
   const { data: request, error: insertError } = await supabaseAdmin
     .from('foia_history_requests')
     .insert({
@@ -101,6 +105,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       consent_given: true,
       consent_given_at: new Date().toISOString(),
       consent_ip: ip,
+      // E-signature fields (ESIGN Act / Illinois UETA compliance)
+      signature_name: signatureName?.trim() || null,
+      signature_agreed_text: signatureAgreedText || null,
+      signature_user_agent: userAgent,
+      consent_electronic_process: consentElectronicProcess === true,
       status: 'queued',
       source: source === 'signup_auto' ? 'signup_auto' : source === 'dashboard' ? 'dashboard' : 'public_lookup',
     })
