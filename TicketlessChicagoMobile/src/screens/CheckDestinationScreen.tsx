@@ -23,6 +23,7 @@ import ApiClient from '../utils/ApiClient';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
 import LocationService from '../services/LocationService';
+import AnalyticsService from '../services/AnalyticsService';
 
 const log = Logger.createLogger('CheckDestination');
 
@@ -277,9 +278,11 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
       setGeocoded(geo);
       setRestrictions(result);
       setShowMap(true);
+      void AnalyticsService.logAddressCheck(trimmed, result !== null);
     } catch (err: any) {
       log.error('Check destination error', err);
       setErrorMsg('Something went wrong. Please check your connection and try again.');
+      void AnalyticsService.logEvent('address_check_error');
     } finally {
       setIsChecking(false);
     }

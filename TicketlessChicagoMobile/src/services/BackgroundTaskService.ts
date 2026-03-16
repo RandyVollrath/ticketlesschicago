@@ -28,6 +28,7 @@ import RedLightReceiptService from './RedLightReceiptService';
 import GroundTruthService from './GroundTruthService';
 import { fetchCameraLocations } from '../data/chicago-cameras';
 import AppEvents from './AppEvents';
+import AnalyticsService from './AnalyticsService';
 import ApiClient from '../utils/ApiClient';
 import Config from '../config/config';
 import { distanceMeters as haversineDistance } from '../utils/geo';
@@ -408,6 +409,7 @@ class BackgroundTaskServiceClass {
       }
 
       await this.saveState();
+      void AnalyticsService.logMonitoringChanged(true);
       log.info('Monitoring started');
       return true;
     } catch (error) {
@@ -421,6 +423,7 @@ class BackgroundTaskServiceClass {
    */
   async stopMonitoring(): Promise<void> {
     this.state.isMonitoring = false;
+    void AnalyticsService.logMonitoringChanged(false);
 
     // Stop foreground monitoring
     this.stopForegroundMonitoring();
@@ -1024,6 +1027,7 @@ class BackgroundTaskServiceClass {
   private async handleCarReconnection(nativeDrivingTimestamp?: number): Promise<void> {
     void this.captureIosHealthSnapshot('handleCarReconnection', { force: true, includeLogTail: true });
     log.info('Car reconnection detected via Bluetooth');
+    void AnalyticsService.logDrivingStarted(Platform.OS === 'ios' ? 'ios_coremotion' : 'android_bluetooth');
     void BackgroundLocationService.appendToDecisionLog('js_car_reconnection', {
       nativeDrivingTimestamp: nativeDrivingTimestamp ? new Date(nativeDrivingTimestamp).toISOString() : null,
       delayMs: nativeDrivingTimestamp ? Date.now() - nativeDrivingTimestamp : null,
@@ -1642,6 +1646,10 @@ class BackgroundTaskServiceClass {
           await ParkingHistoryService.addToHistory(coords, result.rules, result.address, nativeTimestamp, detectionMeta);
           AppEvents.emit('parking-history-updated');
           log.info('Auto-detection result saved to parking history ✓');
+          void AnalyticsService.logParkingDetected(
+            Platform.OS === 'ios' ? 'ios_coremotion' : 'android_bluetooth',
+            { rules_count: result.rules.length, address: result.address }
+          );
 
           // Deferred address backfill: if reverse geocoding failed and we stored
           // raw coordinates as the address, schedule a background retry to resolve
@@ -3790,6 +3798,12 @@ class BackgroundTaskServiceClass {
       // Clear pending confirmation on success
       this.state.pendingDepartureConfirmation = null;
       await this.saveState();
+      void AnalyticsService.logDepartureDetected({
+        distance_meters: Math.round(distanceMeters),
+        is_conclusive: isConclusive,
+        confirmation_delay_s: confirmationDelay,
+        mode: isLocalOnly ? 'local' : 'server',
+      });
 
       // Clearance record — always silent. This is proof the car left the spot,
       // saved to history for ticket contesting. No user notification needed.
