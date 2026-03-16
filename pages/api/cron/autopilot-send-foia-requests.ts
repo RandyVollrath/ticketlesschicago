@@ -24,6 +24,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   sendFoiaRequestEmail,
   generateFoiaRequestEmail,
+  generateEvidenceReferenceId,
 } from '../../../lib/foia-request-service';
 
 const supabaseAdmin = createClient(
@@ -195,6 +196,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const violationLocation = ticket.location || 'Location per citation';
       const violationDescription = ticket.violation_description || ticket.violation_type || 'Parking violation';
 
+      // Generate a unique reference ID for response matching
+      const referenceId = generateEvidenceReferenceId();
+
       // Send the FOIA email
       const result = await sendFoiaRequestEmail({
         ticketNumber: ticket.ticket_number,
@@ -206,21 +210,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         requesterEmail: userEmail,
         requesterAddress,
         plate: ticket.plate || 'On file',
+        referenceId,
       });
 
       if (result.success) {
-        console.log(`    ✅ FOIA request sent (Resend ID: ${result.emailId})`);
+        console.log(`    ✅ FOIA request sent (Resend ID: ${result.emailId}, Ref: ${referenceId})`);
 
-        // Update status to sent
+        // Update status to sent — store reference_id and resend_message_id for response matching
+        const updatePayload: any = {
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          response_payload: { resend_email_id: result.emailId },
+          notes: `Sent to DOFfoia@cityofchicago.org on behalf of ${requesterName}. Ref: ${referenceId}`,
+        };
+        // These columns may not exist yet if migration hasn't been applied
+        try {
+          updatePayload.reference_id = referenceId;
+          updatePayload.resend_message_id = result.emailId;
+        } catch {}
+
         await supabaseAdmin
           .from('ticket_foia_requests' as any)
-          .update({
-            status: 'sent',
-            sent_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            response_payload: { resend_email_id: result.emailId },
-            notes: `Sent to DOFfoia@cityofchicago.org on behalf of ${requesterName}`,
-          })
+          .update(updatePayload)
           .eq('id', request.id);
 
         // Audit log

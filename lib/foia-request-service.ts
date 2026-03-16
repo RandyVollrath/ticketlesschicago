@@ -14,6 +14,17 @@
  * But we want enforcement records (officer notes, photos, device data) — that requires FOIA.
  */
 
+import { nanoid } from 'nanoid';
+
+/**
+ * Generate a unique reference ID for an evidence FOIA request.
+ * Prefix APE = Autopilot Evidence. Included in the email subject for
+ * reliable response matching when the city replies.
+ */
+export function generateEvidenceReferenceId(): string {
+  return `APE-${nanoid(12)}`;
+}
+
 // Records we request based on violation type
 const BASE_RECORDS = [
   'The issuing officer\'s field notes, observations, and contemporaneous written records for this citation',
@@ -120,6 +131,7 @@ export function generateFoiaRequestEmail(params: {
   requesterEmail: string;
   requesterAddress: string; // full mailing address
   plate: string;
+  referenceId?: string; // Unique tracking ID for response matching
 }): { subject: string; body: string } {
   const records = getRecordsToRequest(params.violationType);
 
@@ -127,7 +139,8 @@ export function generateFoiaRequestEmail(params: {
     .map((r, i) => `   ${i + 1}. ${r}`)
     .join('\n');
 
-  const subject = `FOIA Request - Parking Citation #${params.ticketNumber} - Enforcement Records`;
+  const refSuffix = params.referenceId ? ` [Ref: ${params.referenceId}]` : '';
+  const subject = `FOIA Request - Parking Citation #${params.ticketNumber} - Enforcement Records${refSuffix}`;
 
   const body = `Department of Finance
 FOIA Officer
@@ -273,6 +286,7 @@ export async function sendFoiaRequestEmail(params: {
   requesterEmail: string;
   requesterAddress: string;
   plate: string;
+  referenceId?: string;
 }): Promise<{ success: boolean; emailId?: string; error?: string }> {
   if (!process.env.RESEND_API_KEY) {
     return { success: false, error: 'RESEND_API_KEY not configured' };
@@ -294,7 +308,7 @@ export async function sendFoiaRequestEmail(params: {
         text: body,
         reply_to: params.requesterEmail,
         headers: {
-          'X-Entity-Ref-ID': `foia-${params.ticketNumber}`, // Prevent threading/dedup
+          'X-Entity-Ref-ID': params.referenceId || `foia-${params.ticketNumber}`, // Unique ID for response matching
         },
       }),
     });

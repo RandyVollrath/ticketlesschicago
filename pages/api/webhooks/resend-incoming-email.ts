@@ -6,6 +6,7 @@ import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 import {
   isFoiaResponseEmail,
   processFoiaResponse,
+  processHistoryFoiaResponse,
   classifyComplianceDocument,
   processComplianceDocument,
 } from '../../../lib/contest-outcome-tracker';
@@ -73,7 +74,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ── Check if this is a FOIA response from the City of Chicago ──
     if (isFoiaResponseEmail(fromEmail, subject, text)) {
-      console.log('📋 Detected FOIA response email from city');
+      console.log('FOIA response email detected from city');
+
+      // Extract email headers for In-Reply-To matching (Layer 2)
+      const emailHeaders = {
+        inReplyTo: data.headers?.['in-reply-to'] || data.in_reply_to || undefined,
+        references: data.headers?.['references'] || undefined,
+        messageId: data.headers?.['message-id'] || data.message_id || undefined,
+      };
+
       try {
         const foiaResult = await processFoiaResponse(
           supabaseAdmin,
@@ -84,12 +93,72 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             filename: a.filename || 'unknown',
             content_type: a.content_type || 'application/octet-stream',
           })),
+          emailHeaders,
         );
-        console.log(`  FOIA result: ${foiaResult.action} (matched: ${foiaResult.matched})`);
-        if (foiaResult.matched && foiaResult.ticketNumber) {
-          // ── Trigger letter re-generation if letter hasn't been mailed ──
+        console.log(`  FOIA result: ${foiaResult.action} (matched: ${foiaResult.matched}, type: ${foiaResult.foiaType})`);
+
+        // ── Handle history FOIA matches ──
+        if (foiaResult.matched && foiaResult.foiaType === 'history' && foiaResult.requestId) {
+          console.log(`  Processing history FOIA response for request ${foiaResult.requestId}`);
           try {
-            // Get the ticket_id from the FOIA request
+            const historyResult = await processHistoryFoiaResponse(
+              supabaseAdmin,
+              foiaResult.requestId,
+              fromEmail,
+              subject,
+              text,
+              attachments.map((a: any) => ({
+                filename: a.filename || 'unknown',
+                content_type: a.content_type || 'application/octet-stream',
+              })),
+            );
+            console.log(`  History FOIA: ${historyResult.action} (${historyResult.parsedTicketCount} tickets parsed)`);
+
+            // Notify admin of history FOIA response
+            if (process.env.RESEND_API_KEY) {
+              await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: 'Autopilot America <alerts@autopilotamerica.com>',
+                  to: ['randyvollrath@gmail.com'],
+                  subject: `FOIA History Response — ${historyResult.parsedTicketCount} tickets found`,
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <div style="background: #0369A1; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0; font-size: 20px;">FOIA History Response Received</h1>
+                      </div>
+                      <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                        <p><strong>Request ID:</strong> ${foiaResult.requestId}</p>
+                        <p><strong>From:</strong> ${fromEmail}</p>
+                        <p><strong>Tickets Parsed:</strong> ${historyResult.parsedTicketCount}</p>
+                        <p><strong>Action:</strong> ${historyResult.action}</p>
+                        <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <p><strong>Body Preview:</strong></p>
+                        <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px;">${text.substring(0, 500)}</div>
+                      </div>
+                    </div>
+                  `,
+                }),
+              });
+            }
+          } catch (histErr: any) {
+            console.error('  History FOIA processing failed:', histErr.message);
+          }
+
+          return res.status(200).json({
+            message: 'History FOIA response processed',
+            ...foiaResult,
+          });
+        }
+
+        // ── Handle evidence FOIA matches ──
+        if (foiaResult.matched && foiaResult.foiaType === 'evidence' && foiaResult.ticketNumber) {
+          // Trigger letter re-generation if letter hasn't been mailed
+          try {
             const { data: foiaReqData } = await supabaseAdmin
               .from('ticket_foia_requests')
               .select('ticket_id')
@@ -106,7 +175,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .maybeSingle();
 
               if (letter && !letter.mailed_at) {
-                // Letter exists but hasn't been mailed — clear content to force re-generation
                 await supabaseAdmin
                   .from('contest_letters')
                   .update({
@@ -118,7 +186,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
                 console.log(`  Letter ${letter.id} marked for re-generation (FOIA response received)`);
 
-                // Audit log
                 await supabaseAdmin.from('ticket_audit_log').insert({
                   ticket_id: foiaReqData.ticket_id,
                   action: 'letter_regeneration_triggered',
@@ -145,7 +212,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
               }
 
-              // ── Notify the user that FOIA response arrived ──
+              // Notify the user that FOIA response arrived
               const { data: ticketData } = await supabaseAdmin
                 .from('detected_tickets')
                 .select('user_id, ticket_number')
@@ -178,12 +245,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                       html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                           <div style="background: ${isDenial ? '#7C3AED' : '#2563EB'}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                            <h1 style="margin: 0; font-size: 20px;">${isDenial ? '📋 FOIA: No Records Found' : '📋 FOIA Response Received'}</h1>
+                            <h1 style="margin: 0; font-size: 20px;">${isDenial ? 'FOIA: No Records Found' : 'FOIA Response Received'}</h1>
                           </div>
                           <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
                             <p>${userMessage}</p>
                             ${isDenial ? '<p style="background: #f3e8ff; padding: 12px; border-radius: 8px; border-left: 4px solid #7C3AED;"><strong>What this means:</strong> Under the Illinois FOIA Act (5 ILCS 140), the city had 5 business days to produce the enforcement records. Their failure to do so — or denial that records exist — means they cannot prove the violation occurred as described. This is one of the strongest supplementary arguments for dismissal.</p>' : ''}
-                            <p style="color: #6b7280; font-size: 13px; margin-top: 16px;">No action needed from you — we'll handle everything automatically.</p>
+                            <p style="color: #6b7280; font-size: 13px; margin-top: 16px;">No action needed from you — we handle everything automatically.</p>
                           </div>
                         </div>
                       `,
@@ -197,7 +264,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('  Letter re-generation/notification failed:', regenErr.message);
           }
 
-          // ── Notify admin ──
+          // Notify admin
           try {
             if (process.env.RESEND_API_KEY) {
               const isDenial = foiaResult.action === 'foia_denial_recorded';
@@ -210,18 +277,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 body: JSON.stringify({
                   from: 'Autopilot America <alerts@autopilotamerica.com>',
                   to: ['randyvollrath@gmail.com'],
-                  subject: `📋 FOIA ${isDenial ? 'Denial' : 'Response'} — Ticket ${foiaResult.ticketNumber}`,
+                  subject: `FOIA ${isDenial ? 'Denial' : 'Response'} — Ticket ${foiaResult.ticketNumber}`,
                   html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                       <div style="background: ${isDenial ? '#7C3AED' : '#2563EB'}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                        <h1 style="margin: 0; font-size: 20px;">${isDenial ? '📋 FOIA Denial Received' : '📋 FOIA Response Received'}</h1>
+                        <h1 style="margin: 0; font-size: 20px;">${isDenial ? 'FOIA Denial Received' : 'FOIA Response Received'}</h1>
                       </div>
                       <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
                         <p><strong>Ticket:</strong> ${foiaResult.ticketNumber}</p>
                         <p><strong>From:</strong> ${fromEmail}</p>
                         <p><strong>Subject:</strong> ${subject}</p>
+                        <p><strong>Match Method:</strong> ${foiaResult.action}</p>
                         <p><strong>Attachments:</strong> ${attachments.length}</p>
-                        <p><strong>Action:</strong> ${foiaResult.action}</p>
                         <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
                         <p><strong>Body Preview:</strong></p>
                         <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px;">${text.substring(0, 500)}</div>
@@ -237,7 +304,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           return res.status(200).json({
-            message: 'FOIA response processed',
+            message: 'Evidence FOIA response processed',
+            ...foiaResult,
+          });
+        }
+
+        // ── Unmatched FOIA — already queued by processFoiaResponse ──
+        if (!foiaResult.matched) {
+          // Notify admin of unmatched FOIA
+          try {
+            if (process.env.RESEND_API_KEY) {
+              await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: 'Autopilot America <alerts@autopilotamerica.com>',
+                  to: ['randyvollrath@gmail.com'],
+                  subject: `FOIA Response — UNMATCHED (needs review)`,
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <div style="background: #DC2626; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0; font-size: 20px;">Unmatched FOIA Response</h1>
+                        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Could not match to any pending FOIA request — queued for manual review</p>
+                      </div>
+                      <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                        <p><strong>From:</strong> ${fromEmail}</p>
+                        <p><strong>Subject:</strong> ${subject}</p>
+                        <p><strong>Detected Type:</strong> ${foiaResult.foiaType}</p>
+                        <p><strong>Attachments:</strong> ${attachments.length}</p>
+                        <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <p><strong>Body Preview:</strong></p>
+                        <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px;">${text.substring(0, 500)}</div>
+                      </div>
+                    </div>
+                  `,
+                }),
+              });
+            }
+          } catch (adminErr: any) {
+            console.error('  Admin unmatched notification failed:', adminErr.message);
+          }
+
+          return res.status(200).json({
+            message: 'FOIA response queued for admin review',
             ...foiaResult,
           });
         }
