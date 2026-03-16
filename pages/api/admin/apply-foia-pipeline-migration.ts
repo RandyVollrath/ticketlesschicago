@@ -123,10 +123,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // ─── Execute migration via Supabase Management API ───
-  // The service role key can't run DDL. We need the Management API with a personal access token,
-  // OR we execute each statement individually via a helper.
-  // Approach: Split SQL into statements and execute them via individual API calls.
+  // ─── Execute migration via supabaseAdmin.rpc() ───
+  // Try exec_sql first (if it exists), then fall back to individual supabase operations
 
   // Split SQL into individual statements
   const statements = MIGRATION_SQL
@@ -136,42 +134,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const execResults: { sql: string; status: string; error?: string }[] = [];
 
-  for (const stmt of statements) {
-    try {
-      // Use the Supabase service role's RPC to execute raw SQL via a pg function
-      // We'll create the function first, then use it
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json',
-          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        },
-        body: JSON.stringify({ sql_string: stmt }),
-      });
+  // Try using supabaseAdmin.rpc('exec_sql')
+  const { error: testError } = await supabaseAdmin.rpc('exec_sql' as any, { sql_string: 'SELECT 1' });
+  const hasExecSql = !testError || !testError.message?.includes('Could not find');
 
-      if (response.ok) {
-        execResults.push({ sql: stmt.substring(0, 80) + '...', status: 'OK' });
+  if (hasExecSql) {
+    for (const stmt of statements) {
+      const { error } = await supabaseAdmin.rpc('exec_sql' as any, { sql_string: stmt });
+      if (error) {
+        execResults.push({ sql: stmt.substring(0, 80) + '...', status: 'ERROR', error: error.message });
       } else {
-        const errText = await response.text();
-        if (errText.includes('Could not find the function')) {
-          // exec_sql function doesn't exist - need to create it first
-          execResults.push({ sql: 'exec_sql function', status: 'NOT FOUND - creating...' });
-
-          // Create the exec_sql function using a bootstrapping approach
-          // We'll use the Supabase SQL endpoint from the dashboard API
-          return res.status(200).json({
-            message: 'exec_sql function not found. Paste this SQL into Supabase Dashboard first, then retry with &apply=1:',
-            dashboard_url: 'https://supabase.com/dashboard/project/dzhqolbhuqdcpngdayuq/sql/new',
-            bootstrap_sql: `CREATE OR REPLACE FUNCTION exec_sql(query text) RETURNS void AS $$ BEGIN EXECUTE query; END; $$ LANGUAGE plpgsql SECURITY DEFINER;`,
-            migration_sql: MIGRATION_SQL,
-            results,
-          });
-        }
-        execResults.push({ sql: stmt.substring(0, 80) + '...', status: 'ERROR', error: errText.substring(0, 200) });
+        execResults.push({ sql: stmt.substring(0, 80) + '...', status: 'OK' });
       }
-    } catch (err: any) {
-      execResults.push({ sql: stmt.substring(0, 80) + '...', status: 'EXCEPTION', error: err.message });
+    }
+  } else {
+    // No exec_sql function — try to execute DDL by using the Supabase JS client's internal query method
+    // Actually use supabaseAdmin's from() to simulate — or better, just use fetch to Supabase's pg endpoint
+
+    // Try the pg REST endpoint that Supabase exposes for raw queries
+    for (const stmt of statements) {
+      try {
+        const pgResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/pg/query`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json',
+            'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          },
+          body: JSON.stringify({ query: stmt }),
+        });
+
+        if (pgResponse.ok) {
+          execResults.push({ sql: stmt.substring(0, 80) + '...', status: 'OK' });
+        } else {
+          const errText = await pgResponse.text();
+          execResults.push({ sql: stmt.substring(0, 80) + '...', status: `ERROR (${pgResponse.status})`, error: errText.substring(0, 200) });
+        }
+      } catch (err: any) {
+        execResults.push({ sql: stmt.substring(0, 80) + '...', status: 'EXCEPTION', error: err.message });
+      }
     }
   }
 
@@ -184,8 +185,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const tblExists = await tableExists('foia_unmatched_responses');
   postResults.push({ step: 'foia_unmatched_responses table', status: tblExists ? 'OK' : 'STILL MISSING' });
 
+  const allApplied = postResults.every(r => r.status === 'OK');
+
+  if (!allApplied) {
+    return res.status(200).json({
+      message: 'Could not auto-apply migration. Please paste the SQL below into the Supabase Dashboard SQL Editor:',
+      dashboard_url: 'https://supabase.com/dashboard/project/dzhqolbhuqdcpngdayuq/sql/new',
+      sql: MIGRATION_SQL,
+      execResults,
+      postCheck: postResults,
+    });
+  }
+
   return res.status(200).json({
-    message: 'Migration execution attempted',
+    message: 'Migration applied successfully!',
     execResults,
     postCheck: postResults,
   });
