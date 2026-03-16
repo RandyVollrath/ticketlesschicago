@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 <html>
 <head>
   <meta charset="utf-8">
-  <title>FOIA Authorization - ${request.name}</title>
+  <title>FOIA Authorization - ${escapeHtml(request.name)}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@400;700&display=swap');
 

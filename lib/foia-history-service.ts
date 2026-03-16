@@ -15,12 +15,16 @@ export const CHICAGO_FOIA_EMAIL = 'DOFfoia@cityofchicago.org';
 
 /**
  * Generate a FOIA request for complete ticket history on a license plate.
+ * The email is sent by Autopilot America on behalf of the vehicle owner,
+ * with a signed authorization attached as HTML.
  */
 export function generateTicketHistoryFoiaEmail(params: {
   name: string;
   email: string;
   licensePlate: string;
   licenseState: string;
+  signatureName?: string;
+  signedAt?: string;
 }): { subject: string; body: string } {
   const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -40,10 +44,13 @@ Date: ${today}
 Re: Freedom of Information Act Request
     Complete Parking and Traffic Citation History
     License Plate: ${params.licenseState} ${params.licensePlate}
+    Requestor: ${params.name} (${params.email})
 
 Dear FOIA Officer:
 
-Pursuant to the Illinois Freedom of Information Act (5 ILCS 140), I am requesting copies of the following records:
+Autopilot America LLC is submitting this request on behalf of ${params.name}, the registered owner of the vehicle bearing license plate ${params.licenseState} ${params.licensePlate}. A signed authorization from ${params.name} is attached to this email.
+
+Pursuant to the Illinois Freedom of Information Act (5 ILCS 140), we are requesting copies of the following records:
 
    1. A complete list of all parking tickets, traffic citations, and administrative violations issued to vehicles bearing license plate ${params.licenseState} ${params.licensePlate}, including but not limited to:
       - Ticket/citation number
@@ -57,34 +64,38 @@ Pursuant to the Illinois Freedom of Information Act (5 ILCS 140), I am requestin
 
    2. Any administrative hearing records associated with the above citations, including hearing dates, hearing officer names, and dispositions.
 
-   3. Any FOIA requests previously submitted regarding this plate number.
+${params.signatureName ? `The vehicle owner electronically signed the attached authorization on ${params.signedAt || today}.` : ''}
 
-I am the registered owner of the vehicle bearing this plate and am requesting these records for my personal use.
+Please provide these records in electronic format via email to ${params.email} (the vehicle owner) and to foia@autopilotamerica.com.
 
-Please provide these records in electronic format via email to ${params.email}. If any records are unavailable, I request a written explanation of why they cannot be produced, as required by 5 ILCS 140/3(g).
+If any records are unavailable, we request a written explanation of why they cannot be produced, as required by 5 ILCS 140/3(g).
 
 Under the Act, you are required to respond to this request within five (5) business days. If you need additional time, please provide written notice as required by 5 ILCS 140/3(e).
 
-I am willing to pay reasonable copying fees up to $25.00. If fees will exceed this amount, please notify me before processing.
+We are willing to pay reasonable copying fees up to $25.00. If fees will exceed this amount, please notify us before processing.
 
 Thank you for your prompt attention to this matter.
 
 Sincerely,
 
-${params.name}
-${params.email}`;
+Autopilot America LLC
+On behalf of ${params.name}
+foia@autopilotamerica.com`;
 
   return { subject, body };
 }
 
 /**
- * Send the FOIA history request email via Resend.
+ * Send the FOIA history request email via Resend, with signed authorization attached.
  */
 export async function sendTicketHistoryFoiaEmail(params: {
   name: string;
   email: string;
   licensePlate: string;
   licenseState: string;
+  signatureName?: string;
+  signedAt?: string;
+  authorizationHtml?: string;
 }): Promise<{ success: boolean; emailId?: string; error?: string }> {
   if (!process.env.RESEND_API_KEY) {
     return { success: false, error: 'RESEND_API_KEY not configured' };
@@ -92,23 +103,39 @@ export async function sendTicketHistoryFoiaEmail(params: {
 
   const { subject, body } = generateTicketHistoryFoiaEmail(params);
 
+  // Build attachments array — include signed authorization if available
+  const attachments: Array<{ filename: string; content: string }> = [];
+  if (params.authorizationHtml) {
+    // Resend expects base64-encoded content for attachments
+    const base64 = Buffer.from(params.authorizationHtml, 'utf-8').toString('base64');
+    attachments.push({
+      filename: `FOIA-Authorization-${params.licenseState}-${params.licensePlate}.html`,
+      content: base64,
+    });
+  }
+
   try {
+    const emailPayload: any = {
+      from: `Autopilot America FOIA <foia@autopilotamerica.com>`,
+      to: [CHICAGO_FOIA_EMAIL],
+      subject,
+      text: body,
+      reply_to: params.email,
+      headers: {
+        'X-Entity-Ref-ID': `foia-history-${params.licenseState}-${params.licensePlate}-${Date.now()}`,
+      },
+    };
+    if (attachments.length > 0) {
+      emailPayload.attachments = attachments;
+    }
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: `${params.name} via Autopilot <foia@autopilotamerica.com>`,
-        to: [CHICAGO_FOIA_EMAIL],
-        subject,
-        text: body,
-        reply_to: params.email,
-        headers: {
-          'X-Entity-Ref-ID': `foia-history-${params.licenseState}-${params.licensePlate}-${Date.now()}`,
-        },
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     if (!response.ok) {
@@ -121,6 +148,16 @@ export async function sendTicketHistoryFoiaEmail(params: {
   } catch (err: any) {
     return { success: false, error: `Send exception: ${err.message}` };
   }
+}
+
+// Simple HTML escape for email templates — prevents XSS from user-supplied values
+function esc(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }
 
 /**
@@ -141,12 +178,12 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
         <p style="margin: 8px 0 0; opacity: 0.8; font-size: 15px;">We're pulling your complete ticket history from the City of Chicago</p>
       </div>
       <div style="padding: 32px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-        <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${params.name},</p>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${esc(params.name)},</p>
 
         <p style="color: #374151; font-size: 15px; line-height: 1.6;">
           We just submitted an official <strong>Freedom of Information Act (FOIA) request</strong> to the
           Chicago Department of Finance requesting the complete ticket history for plate
-          <strong>${params.licenseState} ${params.licensePlate}</strong>.
+          <strong>${esc(params.licenseState)} ${esc(params.licensePlate)}</strong>.
         </p>
 
         <div style="background: #F0F9FF; border: 1px solid #BAE6FD; padding: 20px; border-radius: 8px; margin: 24px 0;">
@@ -226,10 +263,10 @@ export async function sendFoiaHistoryResultsEmail(params: {
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); color: white; padding: 32px; border-radius: 12px 12px 0 0;">
         <h1 style="margin: 0; font-size: 24px; font-weight: 700;">Your Ticket History Is Ready</h1>
-        <p style="margin: 8px 0 0; opacity: 0.8; font-size: 15px;">FOIA results for plate ${params.licenseState} ${params.licensePlate}</p>
+        <p style="margin: 8px 0 0; opacity: 0.8; font-size: 15px;">FOIA results for plate ${esc(params.licenseState)} ${esc(params.licensePlate)}</p>
       </div>
       <div style="padding: 32px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-        <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${params.name},</p>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${esc(params.name)},</p>
 
         <p style="color: #374151; font-size: 15px; line-height: 1.6;">
           The City of Chicago responded to your FOIA request. Here's what we found:
