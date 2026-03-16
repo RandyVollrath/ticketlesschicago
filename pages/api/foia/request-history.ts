@@ -4,7 +4,7 @@
  * Public endpoint: accepts a FOIA ticket history request from anyone.
  * Creates a foia_history_requests row and optionally links to a user account.
  *
- * Body: { name, email, licensePlate, licenseState?, foiaConsent, source? }
+ * Body: { name, email, licensePlate, licenseState?, foiaConsent, signatureName, signatureAgreedText, consentElectronicProcess, source? }
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -45,6 +45,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!foiaConsent) {
     return res.status(400).json({ error: 'You must consent to the FOIA request submission' });
   }
+  // E-signature validation: signatureName is required for legal authorization
+  if (!signatureName || typeof signatureName !== 'string' || signatureName.trim().length < 2) {
+    return res.status(400).json({ error: 'Electronic signature (typed full name) is required' });
+  }
+  if (!consentElectronicProcess) {
+    return res.status(400).json({ error: 'You must agree to sign electronically' });
+  }
 
   const cleanPlate = licensePlate.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
   const cleanEmail = email.toLowerCase().trim();
@@ -75,12 +82,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Try to find an existing user account by email
+  // Use user_profiles table (indexed on email) instead of auth.admin.listUsers()
+  // which only returns the first page of 50 users
   let userId: string | null = null;
   try {
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers();
-    const user = users?.users.find(u => u.email === cleanEmail);
-    if (user) {
-      userId = user.id;
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('user_id')
+      .eq('email', cleanEmail)
+      .limit(1)
+      .maybeSingle();
+    if (profile?.user_id) {
+      userId = profile.user_id;
     }
   } catch (err) {
     // Non-critical — proceed without user linking

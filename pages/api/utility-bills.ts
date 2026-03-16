@@ -59,7 +59,7 @@ function detectEvidenceSource(senderEmail: string): EvidenceSourceType | null {
   return null;
 }
 
-function parseReceiptMetadata(subject: string, text?: string | null) {
+function parseReceiptMetadata(subject: string, text?: string | null, sourceType?: EvidenceSourceType | null) {
   const haystack = `${subject || ''}\n${text || ''}`;
   const orderMatch = haystack.match(/\b(?:order|confirmation|transaction)\s*(?:#|number|no\.?)?\s*[:\-]?\s*([A-Z0-9\-]{5,})\b/i);
   const amountMatch = haystack.match(/\$\s*([0-9]+(?:\.[0-9]{2})?)/);
@@ -73,10 +73,44 @@ function parseReceiptMetadata(subject: string, text?: string | null) {
     }
   }
 
+  // Extract sticker duration from email content.
+  // Chicago city stickers come in 4-month, 12-month (1-year), and 24-month (2-year) terms.
+  // IL plate stickers are always 12 months (annual).
+  let stickerDurationMonths: number | null = null;
+  if (sourceType === 'license_plate') {
+    // IL plate stickers are always annual
+    stickerDurationMonths = 12;
+  } else if (sourceType === 'city_sticker') {
+    const lowerHaystack = haystack.toLowerCase();
+    // Check for explicit duration mentions in the receipt email
+    if (/\b(?:2[\s-]?year|24[\s-]?month|two[\s-]?year)\b/.test(lowerHaystack)) {
+      stickerDurationMonths = 24;
+    } else if (/\b(?:4[\s-]?month|four[\s-]?month|reduced[\s-]?term)\b/.test(lowerHaystack)) {
+      stickerDurationMonths = 4;
+    } else {
+      // Default: 12 months (most common). The raw email_text and email_html
+      // are stored so we can re-parse if the regex needs refinement later.
+      stickerDurationMonths = 12;
+    }
+  }
+
+  // Compute expiration date from purchase date + duration.
+  // City stickers expire on the last day of the expiration month.
+  let parsedExpirationDate: string | null = null;
+  if (parsedPurchaseDate && stickerDurationMonths) {
+    const d = new Date(parsedPurchaseDate);
+    // Move forward by duration months, then get last day of that month.
+    // e.g. purchased 2025-07-15 + 12 months → last day of July 2026 → 2026-07-31
+    d.setMonth(d.getMonth() + stickerDurationMonths + 1, 0);
+    parsedExpirationDate = d.toISOString().slice(0, 10);
+  }
+
   return {
     parsedOrderId: orderMatch?.[1] ?? null,
     parsedAmountCents: amountMatch?.[1] ? Math.round(parseFloat(amountMatch[1]) * 100) : null,
     parsedPurchaseDate,
+    stickerDurationMonths,
+    parsedExpirationDate,
   };
 }
 
@@ -364,7 +398,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (isRegistrationEvidenceReceipt) {
-      const parsed = parseReceiptMetadata(email.subject || '', email.text || null);
+      const parsed = parseReceiptMetadata(email.subject || '', email.text || null, evidenceSource);
       let screenshotPath: string | null = null;
       try {
         const ts = today.getTime();
@@ -410,6 +444,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           parsed_order_id: parsed.parsedOrderId,
           parsed_amount_cents: parsed.parsedAmountCents,
           parsed_purchase_date: parsed.parsedPurchaseDate,
+          sticker_duration_months: parsed.stickerDurationMonths,
+          parsed_expiration_date: parsed.parsedExpirationDate,
         });
 
       if (insertError) {

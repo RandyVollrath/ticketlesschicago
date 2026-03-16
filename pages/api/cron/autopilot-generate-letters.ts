@@ -464,10 +464,10 @@ async function gatherAllEvidence(
   }
 
   // 3. City Sticker Receipt (for no_city_sticker violations)
-  // Chicago city stickers are valid for ~1 year. Only use a receipt if the
-  // purchase date is BEFORE the ticket AND within 13 months of the ticket
-  // (sticker could still have been valid). If the receipt is older than that,
-  // it's from a previous sticker cycle and would hurt the case.
+  // Include any receipt whose sticker is NOT expired. Stickers purchased AFTER the
+  // ticket are still valid evidence — hearing officers dismiss ~50% of the time when
+  // the user shows they eventually bought the sticker.
+  // Only skip receipts where the sticker has definitively expired (purchase_date + duration < today).
   if (ticket.violation_type === 'no_city_sticker') {
     promises.push((async () => {
       try {
@@ -477,32 +477,33 @@ async function gatherAllEvidence(
           .eq('user_id', ticket.user_id)
           .order('purchase_date', { ascending: false })
           .limit(5);
-        if (data && data.length > 0 && ticket.violation_date) {
-          const tDate = new Date(ticket.violation_date);
+        if (data && data.length > 0) {
+          const now = new Date();
           const validReceipt = data.find((r: any) => {
+            if (r.parsed_expiration_date) {
+              return new Date(r.parsed_expiration_date) >= now;
+            }
             if (!r.purchase_date) return false;
             const pDate = new Date(r.purchase_date);
-            const monthsDiff = (tDate.getFullYear() - pDate.getFullYear()) * 12 + (tDate.getMonth() - pDate.getMonth());
-            return pDate <= tDate && monthsDiff <= 13;
+            const durationMonths = r.sticker_duration_months || 12;
+            const expDate = new Date(pDate);
+            expDate.setMonth(expDate.getMonth() + durationMonths + 1, 0);
+            return expDate >= now;
           });
           if (validReceipt) {
             bundle.cityStickerReceipt = validReceipt;
-            console.log(`    City sticker receipt found: purchased ${validReceipt.purchase_date}`);
+            console.log(`    City sticker receipt found: purchased ${validReceipt.purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'}`);
           } else {
-            console.log('    City sticker receipt found but too old for this ticket — skipping to avoid hurting the case');
+            console.log(`    City sticker receipt found but EXPIRED — skipping (found ${data.length} receipts, all past expiration)`);
           }
-        } else if (data && data.length > 0 && !ticket.violation_date) {
-          // No ticket date available — use most recent but let AI assess
-          bundle.cityStickerReceipt = data[0];
-          console.log(`    City sticker receipt found (no ticket date to validate): purchased ${data[0].purchase_date}`);
         }
       } catch (e) { console.error('    City sticker receipt lookup failed:', e); }
     })());
   }
 
   // 4. Registration Evidence Receipt (for expired_plates violations)
-  // IL plate stickers renew annually. Same logic: only use if purchased
-  // before the ticket and within 13 months.
+  // Same approach: include if the sticker hasn't expired yet, regardless of
+  // whether it was purchased before or after the ticket.
   if (ticket.violation_type === 'expired_plates') {
     promises.push((async () => {
       try {
@@ -510,26 +511,28 @@ async function gatherAllEvidence(
           .from('registration_evidence_receipts')
           .select('*')
           .eq('user_id', ticket.user_id)
-          .order('purchase_date', { ascending: false })
+          .order('parsed_purchase_date', { ascending: false })
           .limit(5);
-        if (data && data.length > 0 && ticket.violation_date) {
-          const tDate = new Date(ticket.violation_date);
+        if (data && data.length > 0) {
+          const now = new Date();
           const validReceipt = data.find((r: any) => {
+            if (r.parsed_expiration_date) {
+              return new Date(r.parsed_expiration_date) >= now;
+            }
             const pDateStr = r.purchase_date || r.parsed_purchase_date;
             if (!pDateStr) return false;
             const pDate = new Date(pDateStr);
-            const monthsDiff = (tDate.getFullYear() - pDate.getFullYear()) * 12 + (tDate.getMonth() - pDate.getMonth());
-            return pDate <= tDate && monthsDiff <= 13;
+            const durationMonths = r.sticker_duration_months || 12;
+            const expDate = new Date(pDate);
+            expDate.setMonth(expDate.getMonth() + durationMonths + 1, 0);
+            return expDate >= now;
           });
           if (validReceipt) {
             bundle.registrationReceipt = validReceipt;
-            console.log(`    Registration receipt found: ${validReceipt.receipt_type}, purchased ${validReceipt.purchase_date || validReceipt.parsed_purchase_date}`);
+            console.log(`    Registration receipt found: ${validReceipt.receipt_type}, purchased ${validReceipt.purchase_date || validReceipt.parsed_purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'}`);
           } else {
-            console.log('    Registration receipt found but too old for this ticket — skipping to avoid hurting the case');
+            console.log(`    Registration receipt found but EXPIRED — skipping (found ${data.length} receipts, all past expiration)`);
           }
-        } else if (data && data.length > 0 && !ticket.violation_date) {
-          bundle.registrationReceipt = data[0];
-          console.log(`    Registration receipt found (no ticket date to validate): ${data[0].receipt_type}, purchased ${data[0].purchase_date}`);
         }
       } catch (e) { console.error('    Registration receipt lookup failed:', e); }
     })());
@@ -1058,7 +1061,10 @@ The user has a city vehicle sticker purchase receipt on file:
 - Amount Paid: ${r.amount_paid ? `$${r.amount_paid}` : 'On file'}
 - Receipt Source: Email forwarded by user (digital evidence)
 
-INSTRUCTIONS: This receipt shows the user purchased a city sticker. IMPORTANT: Verify that the purchase date is BEFORE the citation date and that the sticker would still have been valid (city stickers are valid for approximately one year from purchase). If the purchase date confirms the sticker was valid at the time of citation, state clearly that the user was in compliance. Reference the specific purchase date as proof. If the dates don't align well, note the purchase but don't overstate it. This receipt is attached as evidence.`);
+INSTRUCTIONS: This receipt proves the user purchased a city sticker. Compare the purchase date to the citation date:
+- If purchased BEFORE the citation: State the user was already in compliance at the time of the citation. This is the strongest argument.
+- If purchased AFTER the citation: State the user has since come into compliance and respectfully requests the citation be dismissed in light of their good-faith compliance. Hearing officers dismiss these cases approximately half the time.
+- In either case, reference the specific purchase date. This receipt is attached as evidence.`);
   }
 
   // ── Section 7: Registration Evidence Receipt ──
@@ -1072,7 +1078,10 @@ The user has vehicle registration/renewal documentation on file:
 - Expiration Date: ${r.expiration_date || 'See receipt'}
 - Receipt Source: Email forwarded by user (digital evidence)
 
-INSTRUCTIONS: This receipt shows the user renewed their registration. IMPORTANT: Verify that the purchase/renewal date is BEFORE the citation date and that the registration would still have been valid (IL plate stickers are valid for approximately one year). If the renewal date confirms the registration was valid at the time of citation, state that the vehicle registration was current. Under Illinois law, there is a grace period for displaying updated registration. If the dates don't align well, note the renewal but don't overstate it. The renewal receipt is attached as evidence.`);
+INSTRUCTIONS: This receipt proves the user renewed their vehicle registration. Compare the renewal date to the citation date:
+- If renewed BEFORE the citation: State the vehicle registration was valid at the time of citation. Under Illinois law, there is a grace period for displaying updated registration stickers.
+- If renewed AFTER the citation: State the user has since come into compliance and respectfully requests dismissal in light of their good-faith renewal.
+- In either case, reference the specific renewal date. The renewal receipt is attached as evidence.`);
   }
 
   // ── Section 8: Red Light Camera Evidence ──
