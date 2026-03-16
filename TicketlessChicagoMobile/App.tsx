@@ -15,6 +15,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import CheckDestinationScreen from './src/screens/CheckDestinationScreen';
+import ReportZoneHoursScreen from './src/screens/ReportZoneHoursScreen';
 import AccountInactiveScreen from './src/screens/AccountInactiveScreen';
 
 // Services
@@ -49,6 +50,13 @@ export type RootStackParamList = {
   MainTabs: undefined;
   BluetoothSettings: undefined;
   CheckDestination: undefined;
+  ReportZoneHours: {
+    zone?: string;
+    currentSchedule?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  } | undefined;
 };
 
 export type MainTabParamList = {
@@ -400,6 +408,14 @@ function App(): React.JSX.Element {
           <Stack.Screen
             name="CheckDestination"
             component={CheckDestinationScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
+            name="ReportZoneHours"
+            component={ReportZoneHoursScreen}
             options={{
               headerShown: false,
               gestureEnabled: true,
