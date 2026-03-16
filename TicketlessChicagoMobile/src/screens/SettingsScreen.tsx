@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
+import AnalyticsService from '../services/AnalyticsService';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import Logger from '../utils/Logger';
 
@@ -125,6 +126,8 @@ const SettingsScreen: React.FC = () => {
         log.warn('Failed to start BT monitoring after device selection:', btError);
       }
 
+      void AnalyticsService.logEvent('car_paired', { device_name: device.name });
+
       if (isMountedRef.current) {
         setSavedCar(device);
         setPairedDevices([]);
@@ -163,6 +166,7 @@ const SettingsScreen: React.FC = () => {
 
             try {
               await BluetoothService.removeSavedCarDevice();
+              void AnalyticsService.logEvent('car_removed');
               if (isMountedRef.current) {
                 setSavedCar(null);
               }

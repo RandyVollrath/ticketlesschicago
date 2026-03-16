@@ -1,6 +1,7 @@
 import { Platform, PermissionsAndroid, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logger from '../utils/Logger';
+import AnalyticsService from './AnalyticsService';
 import { StorageKeys } from '../constants';
 
 // Native module for persistent Android BT monitoring foreground service
@@ -333,10 +334,12 @@ class BluetoothServiceClass {
         this.ensureSavedDeviceLoaded().catch((e) => log.warn('Failed to load saved BT device after placeholder set', e));
       }
       this.notifyConnected();
+      void AnalyticsService.logCarConnection(true);
       log.debug('Car connection state set to CONNECTED (external)');
     } else {
       this.connectedDeviceId = null;
       this.notifyDisconnected();
+      void AnalyticsService.logCarConnection(false);
       log.debug('Car connection state set to DISCONNECTED (external)');
     }
   }

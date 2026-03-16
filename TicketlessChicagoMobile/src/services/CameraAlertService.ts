@@ -31,6 +31,7 @@ import CameraPassHistoryService from './CameraPassHistoryService';
 import RedLightReceiptService, { RedLightTracePoint } from './RedLightReceiptService';
 import BackgroundLocationService from './BackgroundLocationService';
 import GroundTruthService from './GroundTruthService';
+import AnalyticsService from './AnalyticsService';
 import { distanceMeters, toRad } from '../utils/geo';
 import Logger from '../utils/Logger';
 
@@ -1081,12 +1082,26 @@ class CameraAlertServiceClass {
               confidenceTier,
             },
           });
+          void AnalyticsService.logCameraAlert(camera.type, {
+            distance_meters: Math.round(distance),
+            confidence_score: confidenceScore,
+            confidence_tier: confidenceTier,
+            address: camera.address,
+            native_handled: nativeHandlesAlerts,
+          });
         } else {
           this.tripHighConfidenceAlerts += 1;
           this.tripAlertsFired += 1;
           if (!nativeHandlesAlerts) {
             void this.announceCamera(camera, distance, speed, confidenceScore, confidenceTier);
           }
+          void AnalyticsService.logCameraAlert(camera.type, {
+            distance_meters: Math.round(distance),
+            confidence_score: confidenceScore,
+            confidence_tier: 'high',
+            address: camera.address,
+            native_handled: nativeHandlesAlerts,
+          });
         }
 
         this.alertedCameras.set(index, { index, alertedAt: now });

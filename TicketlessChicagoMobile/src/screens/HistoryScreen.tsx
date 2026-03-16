@@ -23,6 +23,7 @@ import AuthService from '../services/AuthService';
 import CameraPassHistoryService, { CameraPassHistoryItem } from '../services/CameraPassHistoryService';
 import RedLightReceiptService, { RedLightReceipt } from '../services/RedLightReceiptService';
 import AppEvents from '../services/AppEvents';
+import AnalyticsService from '../services/AnalyticsService';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
 import { StorageKeys } from '../constants';
@@ -795,9 +796,11 @@ const HistoryScreen: React.FC = () => {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadHistory();
+      // Track how many history items the user sees
+      void AnalyticsService.logViewParkingHistory(history.length);
     });
     return unsubscribe;
-  }, [navigation, loadHistory]);
+  }, [navigation, loadHistory, history.length]);
 
   useEffect(() => {
     const offParking = AppEvents.on('parking-history-updated', loadHistory);
