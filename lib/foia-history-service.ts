@@ -116,7 +116,7 @@ export async function sendTicketHistoryFoiaEmail(params: {
 
   try {
     const emailPayload: any = {
-      from: `Scarlet Carson Inc FOIA <foia@autopilotamerica.com>`,
+      from: `Scarlet Carson, Inc FOIA <foia@autopilotamerica.com>`,
       to: [CHICAGO_FOIA_EMAIL],
       subject,
       text: body,
@@ -233,7 +233,7 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Autopilot America by Scarlet Carson <alerts@autopilotamerica.com>',
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: [params.email],
         subject: `Your ticket history request is in - we'll have results in 5 business days`,
         html,
@@ -321,7 +321,7 @@ export async function sendFoiaHistoryResultsEmail(params: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Autopilot America by Scarlet Carson <alerts@autopilotamerica.com>',
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: [params.email],
         subject: `Your ticket history: ${params.ticketCount} ticket${params.ticketCount !== 1 ? 's' : ''} found for plate ${params.licenseState} ${params.licensePlate}`,
         html,
