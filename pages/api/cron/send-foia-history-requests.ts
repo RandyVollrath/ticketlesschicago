@@ -16,6 +16,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   sendTicketHistoryFoiaEmail,
   sendFoiaHistoryConfirmationEmail,
+  generateHistoryReferenceId,
 } from '../../../lib/foia-history-service';
 import { generateFoiaAuthorizationPdf } from '../../../lib/foia-authorization-pdf';
 
@@ -88,6 +89,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
+      // Generate a unique reference ID for response matching
+      const referenceId = generateHistoryReferenceId();
+
       // Send the FOIA email to the city with signed authorization attached
       const result = await sendTicketHistoryFoiaEmail({
         name: request.name,
@@ -98,22 +102,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         signedAt: request.consent_given_at
           ? new Date(request.consent_given_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
           : undefined,
-        authorizationPdf,
+        authorizationPdf: authorizationPdf || undefined,
+        referenceId,
       });
 
       if (result.success) {
-        console.log(`    Sent (Resend ID: ${result.emailId})`);
+        console.log(`    Sent (Resend ID: ${result.emailId}, Ref: ${referenceId})`);
 
-        // Update status
+        // Update status — store reference_id and resend_message_id for response matching
+        const updatePayload: any = {
+          status: 'sent',
+          foia_sent_at: new Date().toISOString(),
+          foia_email_id: result.emailId || null,
+          updated_at: new Date().toISOString(),
+          notes: `Sent to DOFfoia@cityofchicago.org on behalf of ${request.name}. Ref: ${referenceId}`,
+        };
+        // These columns may not exist yet if migration hasn't been applied
+        try {
+          updatePayload.reference_id = referenceId;
+          updatePayload.resend_message_id = result.emailId;
+        } catch {}
+
         await supabaseAdmin
           .from('foia_history_requests')
-          .update({
-            status: 'sent',
-            foia_sent_at: new Date().toISOString(),
-            foia_email_id: result.emailId || null,
-            updated_at: new Date().toISOString(),
-            notes: `Sent to DOFfoia@cityofchicago.org on behalf of ${request.name}`,
-          })
+          .update(updatePayload)
           .eq('id', request.id);
 
         // Send confirmation email to the user

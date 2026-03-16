@@ -11,12 +11,23 @@
  * Legal basis: Illinois FOIA (5 ILCS 140)
  */
 
+import { nanoid } from 'nanoid';
+
 export const CHICAGO_FOIA_EMAIL = 'DOFfoia@cityofchicago.org';
 
 /**
+ * Generate a unique reference ID for a history FOIA request.
+ * Prefix APH = Autopilot History. Included in the email subject for
+ * reliable response matching when the city replies.
+ */
+export function generateHistoryReferenceId(): string {
+  return `APH-${nanoid(12)}`;
+}
+
+/**
  * Generate a FOIA request for complete ticket history on a license plate.
- * The email is sent by Scarlet Carson, Inc (d/b/a Autopilot America) on behalf
- * of the vehicle owner, with a signed authorization attached as a PDF.
+ * The email is sent by Autopilot America on behalf of the vehicle owner,
+ * with a signed authorization attached as HTML.
  */
 export function generateTicketHistoryFoiaEmail(params: {
   name: string;
@@ -25,6 +36,7 @@ export function generateTicketHistoryFoiaEmail(params: {
   licenseState: string;
   signatureName?: string;
   signedAt?: string;
+  referenceId?: string;
 }): { subject: string; body: string } {
   const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -32,7 +44,8 @@ export function generateTicketHistoryFoiaEmail(params: {
     day: 'numeric',
   });
 
-  const subject = `FOIA Request - Complete Ticket History - Plate ${params.licenseState} ${params.licensePlate}`;
+  const refSuffix = params.referenceId ? ` [Ref: ${params.referenceId}]` : '';
+  const subject = `FOIA Request - Complete Ticket History - Plate ${params.licenseState} ${params.licensePlate}${refSuffix}`;
 
   const body = `Department of Finance
 FOIA Officer
@@ -96,7 +109,9 @@ export async function sendTicketHistoryFoiaEmail(params: {
   licenseState: string;
   signatureName?: string;
   signedAt?: string;
+  authorizationHtml?: string;
   authorizationPdf?: Buffer;
+  referenceId?: string;
 }): Promise<{ success: boolean; emailId?: string; error?: string }> {
   if (!process.env.RESEND_API_KEY) {
     return { success: false, error: 'RESEND_API_KEY not configured' };
@@ -104,25 +119,30 @@ export async function sendTicketHistoryFoiaEmail(params: {
 
   const { subject, body } = generateTicketHistoryFoiaEmail(params);
 
-  // Build attachments array — include signed authorization PDF if available
-  const attachments: Array<{ filename: string; content: string; content_type?: string }> = [];
+  // Build attachments array — include signed authorization if available (PDF preferred, HTML fallback)
+  const attachments: Array<{ filename: string; content: string }> = [];
   if (params.authorizationPdf) {
     attachments.push({
       filename: `FOIA-Authorization-${params.licenseState}-${params.licensePlate}.pdf`,
       content: params.authorizationPdf.toString('base64'),
-      content_type: 'application/pdf',
+    });
+  } else if (params.authorizationHtml) {
+    const base64 = Buffer.from(params.authorizationHtml, 'utf-8').toString('base64');
+    attachments.push({
+      filename: `FOIA-Authorization-${params.licenseState}-${params.licensePlate}.html`,
+      content: base64,
     });
   }
 
   try {
     const emailPayload: any = {
-      from: `Scarlet Carson, Inc FOIA <foia@autopilotamerica.com>`,
+      from: `Autopilot America FOIA <foia@autopilotamerica.com>`,
       to: [CHICAGO_FOIA_EMAIL],
       subject,
       text: body,
       reply_to: params.email,
       headers: {
-        'X-Entity-Ref-ID': `foia-history-${params.licenseState}-${params.licensePlate}-${Date.now()}`,
+        'X-Entity-Ref-ID': params.referenceId || `foia-history-${params.licenseState}-${params.licensePlate}-${Date.now()}`,
       },
     };
     if (attachments.length > 0) {

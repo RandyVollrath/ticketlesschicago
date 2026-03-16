@@ -414,7 +414,6 @@ export async function getOfficerIntelligence(
 
 /**
  * Check if an incoming email is a FOIA response from the City of Chicago.
- * Returns the matched ticket_foia_request if found.
  */
 export function isFoiaResponseEmail(
   fromEmail: string,
@@ -425,7 +424,7 @@ export function isFoiaResponseEmail(
   const subj = subject.toLowerCase();
   const text = body.toLowerCase();
 
-  // Check sender — DOF FOIA office
+  // Check sender — DOF FOIA office or any cityofchicago.org
   const foiaSenders = [
     'doffoia@cityofchicago.org',
     'foia@cityofchicago.org',
@@ -435,16 +434,67 @@ export function isFoiaResponseEmail(
   ];
   const isFromCity = foiaSenders.some(s => from.includes(s)) || from.includes('cityofchicago.org');
 
-  // Check subject keywords
+  // Check subject/body keywords
   const foiaKeywords = ['foia', 'freedom of information', 'records request', 'public records', 'responsive documents', 'enforcement records'];
   const hasKeyword = foiaKeywords.some(k => subj.includes(k) || text.includes(k));
 
-  return isFromCity && hasKeyword;
+  // Also match if our reference ID is in the subject (city quoting our ref)
+  const hasReferenceId = /\bAP[EH]-[A-Za-z0-9_-]{6,}\b/.test(subject);
+
+  return isFromCity && (hasKeyword || hasReferenceId);
 }
 
 /**
- * Process a FOIA response email — match it to a pending request,
- * update status, and extract any useful information.
+ * Determine if a FOIA response is for an evidence request or a history request.
+ * Evidence: APE- prefix, ticket number pattern, enforcement records keywords
+ * History:  APH- prefix, plate number pattern, ticket history keywords
+ */
+export function classifyFoiaResponseType(
+  subject: string,
+  body: string,
+): 'evidence' | 'history' | 'unknown' {
+  const combined = `${subject} ${body}`.toLowerCase();
+  const subjectOnly = subject;
+
+  // Check for reference ID prefixes (strongest signal)
+  if (/\bAPE-[A-Za-z0-9_-]+\b/.test(subjectOnly)) return 'evidence';
+  if (/\bAPH-[A-Za-z0-9_-]+\b/.test(subjectOnly)) return 'history';
+
+  // Check for evidence-specific keywords
+  const evidenceKeywords = ['enforcement records', 'officer', 'citation #', 'field notes', 'handheld device', 'photographs taken'];
+  if (evidenceKeywords.some(k => combined.includes(k))) return 'evidence';
+
+  // Check for history-specific keywords
+  const historyKeywords = ['ticket history', 'complete history', 'all tickets', 'all citations', 'citation history', 'receivable history'];
+  if (historyKeywords.some(k => combined.includes(k))) return 'history';
+
+  return 'unknown';
+}
+
+/**
+ * Extract reference IDs from email subject or body.
+ * Returns APE-xxx or APH-xxx if found.
+ */
+export function extractReferenceId(subject: string, body: string): string | null {
+  // Check subject first (most reliable — we put it there)
+  const subjectMatch = subject.match(/\b(AP[EH]-[A-Za-z0-9_-]{6,})\b/);
+  if (subjectMatch) return subjectMatch[1];
+
+  // Check body (city might quote our reference)
+  const bodyMatch = body.match(/\b(AP[EH]-[A-Za-z0-9_-]{6,})\b/);
+  if (bodyMatch) return bodyMatch[1];
+
+  return null;
+}
+
+/**
+ * Process a FOIA response email with 3-layer matching:
+ *
+ * Layer 1: Reference ID (APE-xxx / APH-xxx) — most reliable
+ * Layer 2: In-Reply-To / References header → resend_message_id
+ * Layer 3: Ticket number regex + single-pending fallback
+ *
+ * If no match after all 3 layers → insert into foia_unmatched_responses for admin review.
  */
 export async function processFoiaResponse(
   supabase: SupabaseClient,
@@ -452,74 +502,209 @@ export async function processFoiaResponse(
   subject: string,
   body: string,
   attachments: { filename: string; content_type: string; url?: string }[],
+  emailHeaders?: { inReplyTo?: string; references?: string; messageId?: string },
 ): Promise<{
   matched: boolean;
   requestId: string | null;
   ticketNumber: string | null;
+  foiaType: 'evidence' | 'history' | 'unknown';
   action: string;
 }> {
-  // Try to extract ticket number from the email
-  const ticketNumberMatch = body.match(/(?:ticket|citation|receivable)[\s#:]*(\d{10,})/i)
-    || subject.match(/(?:ticket|citation|receivable)[\s#:]*(\d{10,})/i);
+  const foiaType = classifyFoiaResponseType(subject, body);
+  const referenceId = extractReferenceId(subject, body);
 
-  // Find pending FOIA requests
-  const { data: pendingRequests } = await supabase
-    .from('ticket_foia_requests')
-    .select('*, detected_tickets!inner(ticket_number, user_id)')
-    .eq('status', 'sent')
-    .order('sent_at', { ascending: true });
+  console.log(`  FOIA type: ${foiaType}, Reference ID: ${referenceId || 'none'}`);
 
-  if (!pendingRequests || pendingRequests.length === 0) {
-    return { matched: false, requestId: null, ticketNumber: null, action: 'no_pending_requests' };
+  // ── Layer 1: Match by reference ID ──
+  if (referenceId) {
+    if (referenceId.startsWith('APE-')) {
+      const { data: match } = await supabase
+        .from('ticket_foia_requests')
+        .select('*, detected_tickets!inner(ticket_number, user_id)')
+        .eq('reference_id', referenceId)
+        .single();
+
+      if (match) {
+        console.log(`  Layer 1 match (evidence ref): ${referenceId}`);
+        return processEvidenceFoiaMatch(supabase, match, fromEmail, subject, body, attachments, 'reference_id');
+      }
+    } else if (referenceId.startsWith('APH-')) {
+      const { data: match } = await supabase
+        .from('foia_history_requests')
+        .select('*')
+        .eq('reference_id', referenceId)
+        .single();
+
+      if (match) {
+        console.log(`  Layer 1 match (history ref): ${referenceId}`);
+        return {
+          matched: true,
+          requestId: match.id,
+          ticketNumber: null,
+          foiaType: 'history',
+          action: 'history_foia_matched_by_reference',
+        };
+      }
+    }
   }
 
-  // Try to match by ticket number if we extracted one
-  let matchedRequest = null;
-  if (ticketNumberMatch) {
-    const extractedNumber = ticketNumberMatch[1];
-    matchedRequest = pendingRequests.find((r: any) =>
-      r.detected_tickets?.ticket_number === extractedNumber ||
-      r.request_payload?.ticket_number === extractedNumber
-    );
+  // ── Layer 2: Match by In-Reply-To header → resend_message_id ──
+  const inReplyTo = emailHeaders?.inReplyTo;
+  const references = emailHeaders?.references;
+  const messageIds = [inReplyTo, ...(references?.split(/\s+/) || [])].filter(Boolean) as string[];
+
+  if (messageIds.length > 0) {
+    // Clean message IDs (strip angle brackets)
+    const cleanIds = messageIds.map(id => id.replace(/^<|>$/g, '').trim()).filter(Boolean);
+
+    for (const msgId of cleanIds) {
+      // Try evidence FOIA
+      const { data: evidenceMatch } = await supabase
+        .from('ticket_foia_requests')
+        .select('*, detected_tickets!inner(ticket_number, user_id)')
+        .eq('resend_message_id', msgId)
+        .single();
+
+      if (evidenceMatch) {
+        console.log(`  Layer 2 match (evidence In-Reply-To): ${msgId}`);
+        return processEvidenceFoiaMatch(supabase, evidenceMatch, fromEmail, subject, body, attachments, 'in_reply_to');
+      }
+
+      // Try history FOIA
+      const { data: historyMatch } = await supabase
+        .from('foia_history_requests')
+        .select('*')
+        .eq('resend_message_id', msgId)
+        .single();
+
+      if (historyMatch) {
+        console.log(`  Layer 2 match (history In-Reply-To): ${msgId}`);
+        return {
+          matched: true,
+          requestId: historyMatch.id,
+          ticketNumber: null,
+          foiaType: 'history',
+          action: 'history_foia_matched_by_header',
+        };
+      }
+    }
   }
 
-  // If no ticket number match, check if only one FOIA is pending (unambiguous)
-  if (!matchedRequest && pendingRequests.length === 1) {
-    matchedRequest = pendingRequests[0];
+  // ── Layer 3: Ticket number regex + single-pending fallback ──
+  // Only for evidence FOIAs (history FOIAs don't reference specific ticket numbers)
+  if (foiaType !== 'history') {
+    const ticketNumberMatch = body.match(/(?:ticket|citation|receivable)[\s#:]*(\d{10,})/i)
+      || subject.match(/(?:ticket|citation|receivable)[\s#:]*(\d{10,})/i)
+      || subject.match(/#(\d{10,})/);
+
+    const { data: pendingRequests } = await supabase
+      .from('ticket_foia_requests')
+      .select('*, detected_tickets!inner(ticket_number, user_id)')
+      .eq('status', 'sent')
+      .order('sent_at', { ascending: true });
+
+    if (pendingRequests && pendingRequests.length > 0) {
+      let matchedRequest = null;
+
+      // Try ticket number match
+      if (ticketNumberMatch) {
+        const extractedNumber = ticketNumberMatch[1];
+        matchedRequest = pendingRequests.find((r: any) =>
+          r.detected_tickets?.ticket_number === extractedNumber ||
+          r.request_payload?.ticket_number === extractedNumber
+        );
+      }
+
+      // Single-pending fallback (unambiguous)
+      if (!matchedRequest && pendingRequests.length === 1) {
+        matchedRequest = pendingRequests[0];
+        console.log(`  Layer 3 fallback: only one pending evidence FOIA`);
+      }
+
+      if (matchedRequest) {
+        console.log(`  Layer 3 match (ticket number / single-pending)`);
+        return processEvidenceFoiaMatch(supabase, matchedRequest, fromEmail, subject, body, attachments, 'ticket_number_or_single');
+      }
+    }
   }
 
-  if (!matchedRequest) {
-    return {
-      matched: false,
-      requestId: null,
-      ticketNumber: ticketNumberMatch?.[1] || null,
-      action: 'no_match_found',
-    };
+  // ── No match — insert into unmatched queue for admin review ──
+  console.log(`  No FOIA match found — queuing for admin review`);
+  try {
+    await supabase
+      .from('foia_unmatched_responses' as any)
+      .insert({
+        from_email: fromEmail,
+        to_email: 'foia@autopilotamerica.com',
+        subject,
+        body_preview: body.substring(0, 500),
+        full_body: body,
+        attachment_count: attachments.length,
+        attachment_metadata: attachments.map(a => ({ filename: a.filename, type: a.content_type })),
+        email_headers: emailHeaders || null,
+        extracted_ticket_number: body.match(/\d{10,}/)?.[0] || null,
+        extracted_plate: body.match(/\b[A-Z]{2}\s+[A-Z0-9]{2,8}\b/)?.[0] || null,
+        extracted_reference_id: referenceId,
+        match_attempts: {
+          layer1_reference_id: referenceId || 'none',
+          layer2_headers: messageIds.length > 0 ? messageIds : 'none',
+          layer3_ticket_regex: body.match(/\d{10,}/)?.[0] || 'none',
+        },
+        status: 'pending',
+      });
+  } catch (err: any) {
+    console.error(`  Failed to insert unmatched response: ${err.message}`);
   }
 
-  // Determine if this is a fulfillment or a denial
+  return {
+    matched: false,
+    requestId: null,
+    ticketNumber: body.match(/\d{10,}/)?.[0] || null,
+    foiaType,
+    action: 'queued_for_admin_review',
+  };
+}
+
+/**
+ * Process a matched evidence FOIA response — classify the response,
+ * update the request status, and create audit log entries.
+ */
+async function processEvidenceFoiaMatch(
+  supabase: SupabaseClient,
+  matchedRequest: any,
+  fromEmail: string,
+  subject: string,
+  body: string,
+  attachments: { filename: string; content_type: string; url?: string }[],
+  matchMethod: string,
+): Promise<{
+  matched: boolean;
+  requestId: string;
+  ticketNumber: string | null;
+  foiaType: 'evidence';
+  action: string;
+}> {
+  // Determine if this is a fulfillment or denial
   const lowerBody = body.toLowerCase();
   const isDenial = lowerBody.includes('no responsive records') ||
     lowerBody.includes('no records found') ||
-    lowerBody.includes('unable to locate');
+    lowerBody.includes('unable to locate') ||
+    lowerBody.includes('no records responsive');
   const isFulfillment = attachments.length > 0 ||
     lowerBody.includes('attached') ||
     lowerBody.includes('enclosed') ||
     lowerBody.includes('responsive documents');
 
-  // Distinguish FOIA outcomes: denial strengthens prima facie argument,
-  // fulfillment with records means we can analyze what city produced,
-  // partial response (some records but not all) is also useful.
   const status = isDenial
     ? 'fulfilled_denial'
     : isFulfillment
     ? 'fulfilled_with_records'
-    : 'fulfilled_denial'; // Generic response without records = effectively a denial
+    : 'fulfilled_denial'; // No records = effectively a denial
   const notes = isDenial
-    ? 'City responded: no responsive records found. This strengthens the "Prima Facie Case Not Established" argument.'
+    ? 'City responded: no responsive records found. Strengthens "Prima Facie Case Not Established" argument.'
     : isFulfillment
     ? `City produced ${attachments.length} document(s). Review for defense-relevant information.`
-    : 'City responded to FOIA request but produced no records. Strengthens prima facie argument.';
+    : 'City responded but produced no records. Strengthens prima facie argument.';
 
   // Update the FOIA request
   await supabase
@@ -536,6 +721,7 @@ export async function processFoiaResponse(
         attachments: attachments.map(a => ({ filename: a.filename, type: a.content_type })),
         is_denial: isDenial,
         received_at: new Date().toISOString(),
+        match_method: matchMethod,
       },
       notes,
     })
@@ -551,15 +737,112 @@ export async function processFoiaResponse(
       subject,
       attachment_count: attachments.length,
       is_denial: isDenial,
+      match_method: matchMethod,
     },
     performed_by: null,
   });
 
+  const ticketNumber = matchedRequest.detected_tickets?.ticket_number || null;
   return {
     matched: true,
     requestId: matchedRequest.id,
-    ticketNumber: (matchedRequest as any).detected_tickets?.ticket_number || null,
+    ticketNumber,
+    foiaType: 'evidence',
     action: isDenial ? 'foia_denial_recorded' : 'foia_response_recorded',
+  };
+}
+
+/**
+ * Process a matched history FOIA response — parse with Gemini Flash,
+ * store parsed tickets, update request status, and notify the user.
+ */
+export async function processHistoryFoiaResponse(
+  supabase: SupabaseClient,
+  requestId: string,
+  fromEmail: string,
+  subject: string,
+  body: string,
+  attachments: { filename: string; content_type: string }[],
+): Promise<{
+  action: string;
+  parsedTicketCount: number;
+}> {
+  // Fetch the history request
+  const { data: historyRequest, error } = await supabase
+    .from('foia_history_requests')
+    .select('*')
+    .eq('id', requestId)
+    .single();
+
+  if (error || !historyRequest) {
+    console.error(`  History request ${requestId} not found`);
+    return { action: 'request_not_found', parsedTicketCount: 0 };
+  }
+
+  // Parse the response with Gemini Flash
+  let parsedResult = null;
+  try {
+    const { parseHistoryFoiaResponse } = await import('./foia-response-parser');
+    parsedResult = await parseHistoryFoiaResponse({
+      subject,
+      body,
+      licensePlate: historyRequest.license_plate,
+      licenseState: historyRequest.license_state,
+    });
+  } catch (parseErr: any) {
+    console.error(`  Gemini parsing failed: ${parseErr.message}`);
+  }
+
+  // Update the history request
+  const updatePayload: any = {
+    status: 'fulfilled',
+    fulfilled_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    response_payload: {
+      from: fromEmail,
+      subject,
+      body_preview: body.substring(0, 500),
+      attachment_count: attachments.length,
+      received_at: new Date().toISOString(),
+    },
+  };
+
+  if (parsedResult) {
+    updatePayload.parsed_tickets = parsedResult.tickets;
+    updatePayload.ai_parse_model = parsedResult.model;
+    updatePayload.ai_parse_raw = parsedResult.raw_response;
+    updatePayload.ai_parsed_at = new Date().toISOString();
+    updatePayload.notes = parsedResult.summary;
+  } else {
+    updatePayload.notes = 'FOIA response received — AI parsing failed, manual review needed';
+  }
+
+  await supabase
+    .from('foia_history_requests')
+    .update(updatePayload)
+    .eq('id', requestId);
+
+  // Send results email to user
+  const ticketCount = parsedResult?.tickets?.length || 0;
+  const totalFines = parsedResult?.total_fines || 0;
+  try {
+    const { sendFoiaHistoryResultsEmail } = await import('./foia-history-service');
+    await sendFoiaHistoryResultsEmail({
+      email: historyRequest.email,
+      name: historyRequest.name,
+      licensePlate: historyRequest.license_plate,
+      licenseState: historyRequest.license_state,
+      ticketCount,
+      totalFines,
+      resultsUrl: `https://autopilotamerica.com/settings`,
+    });
+  } catch (emailErr: any) {
+    console.error(`  Failed to send results email: ${emailErr.message}`);
+  }
+
+  return {
+    action: `history_foia_processed_${ticketCount}_tickets`,
+    parsedTicketCount: ticketCount,
   };
 }
 
