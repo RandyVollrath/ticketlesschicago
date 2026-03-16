@@ -4083,7 +4083,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "accuracy": acc,
       "bboxCandidates": bboxCandidateCount,
       "isBackgrounded": isBackgrounded,
-      "notificationOnly": true,  // TTS disabled for App Store 2.5.4
+      "notificationOnly": isBackgrounded,  // TTS speaks in foreground; background = notification only (no audio bg mode)
     ])
     log("NATIVE CAMERA ALERT: \(title) @ \(cam.address) (dist=\(Int(bestDist))m, radius=\(Int(alertRadius))m)")
   }
@@ -4120,15 +4120,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
   }
 
-  /// Configure the audio session for background TTS playback.
+  /// Configure the audio session for TTS playback.
   /// Called eagerly when driving starts so the audio pipeline is ready before the first alert.
   /// Calling this lazily on the first alert adds ~200ms latency and risks iOS refusing
   /// the session change mid-background.
-  /// DISABLED for App Store compliance (guideline 2.5.4 — "audio" background mode removed).
-  /// Re-enable when background TTS camera alerts are approved.
+  /// Note: background TTS requires UIBackgroundModes "audio" which is removed for App Store
+  /// compliance (2.5.4). Foreground TTS works without it — audio session is configured as
+  /// .playback with .duckOthers so the user's music lowers briefly during the 1-second alert.
   private func configureSpeechAudioSession() {
-    // TTS disabled — do not configure AVAudioSession for playback
-    return
+    guard !speechAudioSessionConfigured else { return }
+    do {
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(.playback, options: [.duckOthers])
+      speechAudioSessionConfigured = true
+      log("Speech audio session configured (.playback, .duckOthers)")
+    } catch {
+      log("Failed to configure speech audio session: \(error.localizedDescription)")
+    }
   }
 
   @objc private func handleAudioInterruption(_ notification: Notification) {
@@ -4150,22 +4158,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
   /// Speak a camera alert using native AVSpeechSynthesizer.
   /// This runs entirely in native Swift — it does NOT depend on JS (which iOS suspends
-  /// in background). Combined with UIBackgroundModes "audio" and .playback audio session,
-  /// this allows spoken alerts even when the app is backgrounded.
+  /// in background).
   ///
-  /// Speaks in both foreground and background. Native TTS is the sole audio
-  /// path for camera alerts — JS CameraAlertService TTS is disabled to avoid double-speak.
+  /// FOREGROUND: speaks via AVSpeechSynthesizer. Does NOT need UIBackgroundModes "audio".
+  /// BACKGROUND: skips TTS (no audio background mode for App Store 2.5.4 compliance).
+  ///   Local notifications still fire and provide the alert.
   ///
-  /// TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4 — "audio" background
-  /// mode removed). Local notifications still fire. Re-enable when camera alerts feature
-  /// is approved.
+  /// Native is the sole TTS path for camera alerts — JS CameraAlertService TTS is disabled
+  /// to avoid double-speak.
   private func speakCameraAlert(_ message: String) {
-    log("Native TTS: disabled for App Store compliance (2.5.4) — skipping speech for '\(message)'")
-    return
-    // Speak natively in BOTH foreground and background.
-    // Previously only spoke when backgrounded, relying on JS CameraAlertService for
-    // foreground TTS. But JS camera alerts had persistent settings sync issues causing
-    // zero alerts. Native is now the sole TTS path for camera alerts on iOS.
+    // Check app state — only speak when in foreground. Background TTS requires the
+    // "audio" UIBackgroundMode which was removed for App Store compliance (2.5.4).
+    // In background, the local notification (fired separately) is the user's alert.
+    let appState = UIApplication.shared.applicationState
+    guard appState == .active else {
+      log("Native TTS: app backgrounded — skipping speech, notification will alert (appState=\(appState == .background ? "background" : "inactive"))")
+      return
+    }
 
     // Configure audio session if not already done (safety net — should have been
     // done at driving start, but handle the case where driving detection was via
@@ -4176,9 +4185,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       return
     }
 
-    // Request a background task to prevent iOS from suspending us mid-speech.
-    // AVSpeechSynthesizer takes 1-3 seconds; without this, iOS can suspend the
-    // process between the speak() call and the didFinish delegate callback.
+    // Request a background task to prevent iOS from suspending us mid-speech
+    // if the user switches apps during the 1-3 second utterance.
     if backgroundSpeechTaskId != .invalid {
       UIApplication.shared.endBackgroundTask(backgroundSpeechTaskId)
     }
@@ -4192,7 +4200,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       self?.log("Native TTS: background task expired — speech stopped")
     }
 
-    // AVSpeechSynthesizer must be used from the main thread for reliable background playback
+    // AVSpeechSynthesizer must be used from the main thread
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
 
@@ -4219,8 +4227,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
 
       self.speechSynthesizer.speak(utterance)
-      let currentAppState = UIApplication.shared.applicationState
-      self.log("Native TTS: speaking '\(message)' (appState=\(currentAppState == .background ? "background" : currentAppState == .active ? "active" : "inactive"))")
+      self.log("Native TTS: speaking '\(message)' (foreground)")
     }
   }
 

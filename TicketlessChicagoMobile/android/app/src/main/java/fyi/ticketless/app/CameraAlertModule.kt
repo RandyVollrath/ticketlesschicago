@@ -636,6 +636,10 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         createNotificationChannel()
         audioManager = reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         restorePersistedSettings()
+        // Pre-warm TTS engine eagerly so it's ready for the first camera alert.
+        // TTS initialization takes 200-500ms. Without this, the first alert is delayed
+        // or silent if TTS init hasn't completed by the time doSpeak() is called.
+        initTts()
     }
 
     private fun restorePersistedSettings() {
@@ -1100,9 +1104,12 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
 
     private fun doSpeak(message: String) {
         if (!ttsReady || tts == null) {
-            Log.w(TAG, "TTS not ready, queuing speech: $message")
+            Log.w(TAG, "TTS not ready, queuing speech + playing fallback tone: $message")
             pendingSpeech = message
             initTts()
+            // Play a system alarm tone as fallback so the user hears SOMETHING
+            // even if TTS never initializes (e.g., no TTS engine installed).
+            playFallbackTone()
             return
         }
 
@@ -1117,8 +1124,30 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
             tts?.speak(message, TextToSpeech.QUEUE_FLUSH, params, "camera_alert_${System.currentTimeMillis()}")
             Log.d(TAG, "TTS speaking: $message")
         } catch (e: Exception) {
-            Log.e(TAG, "TTS speak failed: ${e.message}")
+            Log.e(TAG, "TTS speak failed, playing fallback tone: ${e.message}")
             releaseAudioFocus()
+            playFallbackTone()
+        }
+    }
+
+    /**
+     * Play a short alert tone as fallback when TTS is unavailable.
+     * Uses ToneGenerator which is always available (no engine dependency).
+     * The notification also fires separately, but a tone gives immediate audio feedback.
+     */
+    private fun playFallbackTone() {
+        try {
+            val toneGen = android.media.ToneGenerator(
+                android.media.AudioManager.STREAM_NOTIFICATION,
+                (alertVolume * 100).toInt().coerceIn(0, 100)
+            )
+            // Play a distinctive double-beep: alarm tone for 300ms
+            toneGen.startTone(android.media.ToneGenerator.TONE_PROP_BEEP2, 300)
+            // Release after a delay to avoid cutting off the tone
+            mainHandler.postDelayed({ toneGen.release() }, 500)
+            Log.i(TAG, "Fallback tone played (TTS unavailable)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Fallback tone failed: ${e.message}")
         }
     }
 
