@@ -15,8 +15,8 @@ export const CHICAGO_FOIA_EMAIL = 'DOFfoia@cityofchicago.org';
 
 /**
  * Generate a FOIA request for complete ticket history on a license plate.
- * The email is sent by Autopilot America on behalf of the vehicle owner,
- * with a signed authorization attached as HTML.
+ * The email is sent by Scarlet Carson, Inc (d/b/a Autopilot America) on behalf
+ * of the vehicle owner, with a signed authorization attached as a PDF.
  */
 export function generateTicketHistoryFoiaEmail(params: {
   name: string;
@@ -48,7 +48,7 @@ Re: Freedom of Information Act Request
 
 Dear FOIA Officer:
 
-Autopilot America LLC is submitting this request on behalf of ${params.name}, the registered owner of the vehicle bearing license plate ${params.licenseState} ${params.licensePlate}. A signed authorization from ${params.name} is attached to this email.
+Scarlet Carson, Inc (d/b/a Autopilot America) is submitting this request on behalf of ${params.name}, the registered owner of the vehicle bearing license plate ${params.licenseState} ${params.licensePlate}. A signed authorization from ${params.name} is attached to this email.
 
 Pursuant to the Illinois Freedom of Information Act (5 ILCS 140), we are requesting copies of the following records:
 
@@ -78,7 +78,8 @@ Thank you for your prompt attention to this matter.
 
 Sincerely,
 
-Autopilot America LLC
+Scarlet Carson, Inc
+d/b/a Autopilot America
 On behalf of ${params.name}
 foia@autopilotamerica.com`;
 
@@ -95,7 +96,7 @@ export async function sendTicketHistoryFoiaEmail(params: {
   licenseState: string;
   signatureName?: string;
   signedAt?: string;
-  authorizationHtml?: string;
+  authorizationPdf?: Buffer;
 }): Promise<{ success: boolean; emailId?: string; error?: string }> {
   if (!process.env.RESEND_API_KEY) {
     return { success: false, error: 'RESEND_API_KEY not configured' };
@@ -103,20 +104,19 @@ export async function sendTicketHistoryFoiaEmail(params: {
 
   const { subject, body } = generateTicketHistoryFoiaEmail(params);
 
-  // Build attachments array — include signed authorization if available
-  const attachments: Array<{ filename: string; content: string }> = [];
-  if (params.authorizationHtml) {
-    // Resend expects base64-encoded content for attachments
-    const base64 = Buffer.from(params.authorizationHtml, 'utf-8').toString('base64');
+  // Build attachments array — include signed authorization PDF if available
+  const attachments: Array<{ filename: string; content: string; content_type?: string }> = [];
+  if (params.authorizationPdf) {
     attachments.push({
-      filename: `FOIA-Authorization-${params.licenseState}-${params.licensePlate}.html`,
-      content: base64,
+      filename: `FOIA-Authorization-${params.licenseState}-${params.licensePlate}.pdf`,
+      content: params.authorizationPdf.toString('base64'),
+      content_type: 'application/pdf',
     });
   }
 
   try {
     const emailPayload: any = {
-      from: `Autopilot America FOIA <foia@autopilotamerica.com>`,
+      from: `Scarlet Carson Inc FOIA <foia@autopilotamerica.com>`,
       to: [CHICAGO_FOIA_EMAIL],
       subject,
       text: body,
@@ -233,7 +233,7 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        from: 'Autopilot America by Scarlet Carson <alerts@autopilotamerica.com>',
         to: [params.email],
         subject: `Your ticket history request is in - we'll have results in 5 business days`,
         html,
@@ -321,7 +321,7 @@ export async function sendFoiaHistoryResultsEmail(params: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        from: 'Autopilot America by Scarlet Carson <alerts@autopilotamerica.com>',
         to: [params.email],
         subject: `Your ticket history: ${params.ticketCount} ticket${params.ticketCount !== 1 ? 's' : ''} found for plate ${params.licenseState} ${params.licensePlate}`,
         html,
