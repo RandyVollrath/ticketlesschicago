@@ -55,6 +55,7 @@ export default function TicketHistory() {
     e.preventDefault();
     if (!canSubmit) return;
     setError('');
+    setRequestId('');
     setStep('submitting');
 
     try {
