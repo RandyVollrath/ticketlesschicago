@@ -147,7 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'Content-Type': 'application/json',
           'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
         },
-        body: JSON.stringify({ query: stmt }),
+        body: JSON.stringify({ sql_string: stmt }),
       });
 
       if (response.ok) {
