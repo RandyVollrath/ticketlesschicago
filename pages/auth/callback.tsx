@@ -274,6 +274,17 @@ export default function AuthCallback() {
               console.log('✅ User profile created successfully');
             }
 
+            // Link any orphaned FOIA history requests submitted before signup
+            try {
+              await fetch('/api/foia/link-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id, email: user.email }),
+              });
+            } catch (e) {
+              // Non-critical — don't block signup
+            }
+
             await new Promise(r => setTimeout(r, 500));
             // Redirect to settings so they can complete their profile
             router.push('/settings?welcome=true');
@@ -282,6 +293,17 @@ export default function AuthCallback() {
 
           console.log('✅ Existing user profile found');
           setDebugInfo(`✅ Welcome back! Redirecting to app...`);
+
+          // Link any orphaned FOIA history requests (in case user submitted one while logged out)
+          try {
+            fetch('/api/foia/link-user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id, email: user.email }),
+            }); // fire-and-forget — don't await
+          } catch (e) {
+            // Non-critical
+          }
 
           // Handle email verification callback
           const isVerified = new URLSearchParams(window.location.search).get('verified') === 'true';
@@ -393,6 +415,17 @@ export default function AuthCallback() {
 
               if (result.success) {
                 console.log('✅ Free account created successfully');
+
+                // Link any orphaned FOIA history requests submitted before signup
+                try {
+                  await fetch('/api/foia/link-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id, email: user.email }),
+                  });
+                } catch (e) {
+                  // Non-critical
+                }
 
                 // Clean up pending signup from all sources
                 sessionStorage.removeItem('pendingSignup');
