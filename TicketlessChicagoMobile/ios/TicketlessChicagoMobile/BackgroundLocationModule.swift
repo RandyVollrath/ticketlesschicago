@@ -690,6 +690,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var speedSaysMoving = false            // True when GPS speed > threshold
   private var drivingStartTime: Date? = nil
   private var lastDrivingLocation: CLLocation? = nil  // Updated continuously while driving (any speed)
+  private var lastDrivingHeading: Double = -1          // Last valid GPS heading while driving (for street disambiguation at parking)
   private var locationAtStopStart: CLLocation? = nil   // Snapshot GPS at exact moment car stops
   private var lastStationaryTime: Date? = nil
   private var continuousGpsActive = false              // Whether high-frequency GPS is running
@@ -1921,6 +1922,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     speedMovingConsecutiveCount = 0
     drivingStartTime = nil
     lastDrivingLocation = nil
+    lastDrivingHeading = -1
     locationAtStopStart = nil
     lastStationaryTime = nil
     speedZeroStartTime = nil
@@ -2842,6 +2844,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // Save at ANY speed while CoreMotion says automotive (captures 1 mph creep into spot)
     if isDriving || coreMotionSaysAutomotive {
       lastDrivingLocation = location
+      // Capture heading while driving. CLLocation.course is only valid (>=0) when
+      // moving; at speed ≈ 0 it becomes -1. We save the last valid heading so we
+      // can send it with the parking event for street disambiguation at intersections
+      // (e.g. Wolcott vs Lawrence). The stopped-location's .course is usually -1.
+      if location.course >= 0 && speed > 1.0 {
+        lastDrivingHeading = location.course
+      }
     }
 
     // --- Speed-based driving detection (backup if CoreMotion is slow) ---
@@ -5695,18 +5704,34 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       body["locationSource"] = parkingLocationSource
       // Include heading (course) for street disambiguation at intersections.
       // CLLocation.course: 0-360 degrees clockwise from true north, -1 if invalid.
-      // Heading at stop time tells us which street the car was facing when it parked.
+      // At stop time, .course is usually -1 (speed too low for valid heading).
+      // Fall back to lastDrivingHeading — the last heading captured while the car
+      // was still moving (speed > 1 m/s). This is the direction the car was
+      // traveling just before it parked, which tells us which street it's on.
+      let effectiveHeading: Double
       if loc.course >= 0 {
-        body["heading"] = loc.course
+        effectiveHeading = loc.course
+      } else if lastDrivingHeading >= 0 {
+        effectiveHeading = lastDrivingHeading
+      } else {
+        effectiveHeading = -1
       }
-      self.log("Parking at (\(body["locationSource"]!)): \(loc.coordinate.latitude), \(loc.coordinate.longitude) ±\(loc.horizontalAccuracy)m heading=\(loc.course >= 0 ? String(format: "%.0f°", loc.course) : "n/a")")
+      if effectiveHeading >= 0 {
+        body["heading"] = effectiveHeading
+      }
+      let headingLabel = effectiveHeading >= 0
+        ? String(format: "%.0f°%@", effectiveHeading, loc.course < 0 ? " (from lastDriving)" : "")
+        : "n/a"
+      self.log("Parking at (\(body["locationSource"]!)): \(loc.coordinate.latitude), \(loc.coordinate.longitude) ±\(loc.horizontalAccuracy)m heading=\(headingLabel)")
     } else if let loc = currentLocation {
       body["latitude"] = loc.coordinate.latitude
       body["longitude"] = loc.coordinate.longitude
       body["accuracy"] = loc.horizontalAccuracy
       body["locationSource"] = "current_fallback"
-      if loc.course >= 0 {
-        body["heading"] = loc.course
+      // Same lastDrivingHeading fallback as primary path
+      let fallbackHeading = loc.course >= 0 ? loc.course : lastDrivingHeading
+      if fallbackHeading >= 0 {
+        body["heading"] = fallbackHeading
       }
       self.log("WARNING: Using current location as fallback")
     }
