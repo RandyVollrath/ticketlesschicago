@@ -1,8 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { appleAuth } from '@invertase/react-native-apple-authentication';
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
+
+// Custom native module for Apple Sign In (bypasses the invertase library which is
+// broken on iOS 26 — ASAuthorizationError 1000 because the library's
+// ASAuthorizationController presentation context fails silently).
+const AppleSignInModule = Platform.OS === 'ios' ? NativeModules.AppleSignInModule : null;
 import Config from '../config/config';
 import Logger from '../utils/Logger';
 
@@ -260,25 +264,20 @@ class AuthServiceClass {
       return { success: false, error: 'Sign in with Apple is only available on iOS' };
     }
 
-    if (!appleAuth.isSupported) {
-      return { success: false, error: 'Sign in with Apple is not supported on this device' };
+    if (!AppleSignInModule) {
+      log.error('AppleSignInModule native module not found');
+      return { success: false, error: 'Sign in with Apple is not available. Please try email sign in.' };
     }
 
     try {
-      // Perform the Apple auth request
-      const appleAuthRequestResponse = await appleAuth.performRequest({
-        requestedOperation: appleAuth.Operation.LOGIN,
-        requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
-      });
+      log.info('Starting Apple Sign In via custom native module');
 
-      // NOTE: We intentionally skip appleAuth.getCredentialStateForUser() here.
-      // On iOS 18+ simulators (which Apple reviewers use), getCredentialStateForUser
-      // always returns REVOKED even after a successful performRequest — an Apple
-      // simulator bug documented in invertase/react-native-apple-authentication#356.
-      // The credential state check is redundant anyway: performRequest already
-      // confirmed authorization, and Supabase validates the identity token server-side.
+      // Call our custom native Swift module which creates ASAuthorizationController
+      // directly with proper iOS 26 presentation context handling.
+      // Returns: { identityToken, nonce, user, email, fullName, authorizationCode, realUserStatus }
+      const result = await AppleSignInModule.performSignIn();
 
-      if (!appleAuthRequestResponse.identityToken) {
+      if (!result.identityToken) {
         log.error('No identityToken in Apple auth response');
         return { success: false, error: 'Failed to get Apple identity token. Please try again.' };
       }
@@ -286,22 +285,19 @@ class AuthServiceClass {
       log.info('Got Apple identity token, authenticating with Supabase');
 
       // Authenticate with Supabase using the Apple identity token.
-      // The library auto-generates a nonce (hashed) in the identity token,
-      // so we must pass the raw nonce to Supabase for verification.
+      // Our native module generates a raw nonce and sends the SHA256 hash to Apple.
+      // We pass the raw nonce to Supabase so it can verify the identity token.
       const { data, error } = await this.supabase.auth.signInWithIdToken({
         provider: 'apple',
-        token: appleAuthRequestResponse.identityToken,
-        nonce: appleAuthRequestResponse.nonce,
+        token: result.identityToken,
+        nonce: result.nonce,
       });
 
       if (error) {
         log.error('Supabase Apple auth error', { message: error.message, status: error.status, name: error.name });
-        // Provide a user-friendly error message instead of raw Supabase errors
-        // Common errors: "provider is not enabled", "invalid client_id", nonce mismatch
         if (error.message?.includes('provider') || error.message?.includes('client')) {
           return { success: false, error: 'Sign in with Apple is temporarily unavailable. Please try signing in with email below.' };
         }
-        // Show the actual error message for debugging — helps identify configuration issues
         return { success: false, error: `Apple sign-in failed: ${error.message || 'Unknown error'}. Please try signing in with email instead.` };
       }
 
@@ -324,7 +320,7 @@ class AuthServiceClass {
       });
 
       // Handle user cancellation (error code 1001)
-      if (error.code === appleAuth.Error.CANCELED || error.code === '1001' || error.code === 1001) {
+      if (error.code === '1001' || error.code === 1001) {
         return { success: false, error: 'Sign in was cancelled' };
       }
 

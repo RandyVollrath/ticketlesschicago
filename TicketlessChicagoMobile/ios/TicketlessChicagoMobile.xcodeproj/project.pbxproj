@@ -30,6 +30,8 @@
 		A1B2C3D401000001MOTIO003 /* MotionActivityModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */; };
 		A1B2C3D401000001SPEEC001 /* SpeechModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001SPEEC002 /* SpeechModule.swift */; };
 		A1B2C3D401000001SPEEC003 /* SpeechModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001SPEEC004 /* SpeechModule.m */; };
+		A1B2C3D401000001APPLE001 /* AppleSignInModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001APPLE002 /* AppleSignInModule.swift */; };
+		A1B2C3D401000001APPLE003 /* AppleSignInModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001APPLE004 /* AppleSignInModule.m */; };
 		A5C4A613131D4E5D89A863DE /* SimpleLineIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D6FC69E075F446558DAB12BA /* SimpleLineIcons.ttf */; };
 		ABA594F2300C40CCA0D8ED5E /* MaterialIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 571B5CA5F34D47F99B31C16C /* MaterialIcons.ttf */; };
 		C43826487FF1883095ABEF6C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
@@ -64,6 +66,8 @@
 		A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MotionActivityModule.m; path = TicketlessChicagoMobile/MotionActivityModule.m; sourceTree = "<group>"; };
 		A1B2C3D401000001SPEEC002 /* SpeechModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpeechModule.swift; path = TicketlessChicagoMobile/SpeechModule.swift; sourceTree = "<group>"; };
 		A1B2C3D401000001SPEEC004 /* SpeechModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SpeechModule.m; path = TicketlessChicagoMobile/SpeechModule.m; sourceTree = "<group>"; };
+		A1B2C3D401000001APPLE002 /* AppleSignInModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleSignInModule.swift; path = TicketlessChicagoMobile/AppleSignInModule.swift; sourceTree = "<group>"; };
+		A1B2C3D401000001APPLE004 /* AppleSignInModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleSignInModule.m; path = TicketlessChicagoMobile/AppleSignInModule.m; sourceTree = "<group>"; };
 		A625434B00424C00AC75DD3C /* Feather.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Feather.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Feather.ttf"; sourceTree = "<group>"; };
 		BB5BF92DB7D34D4B816F4F6C /* FontAwesome5_Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf"; sourceTree = "<group>"; };
 		D6FC69E075F446558DAB12BA /* SimpleLineIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = SimpleLineIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/SimpleLineIcons.ttf"; sourceTree = "<group>"; };
@@ -102,6 +106,8 @@
 				A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */,
 				A1B2C3D401000001SPEEC002 /* SpeechModule.swift */,
 				A1B2C3D401000001SPEEC004 /* SpeechModule.m */,
+				A1B2C3D401000001APPLE002 /* AppleSignInModule.swift */,
+				A1B2C3D401000001APPLE004 /* AppleSignInModule.m */,
 				GSERVICEINFO001A68108700A75A /* GoogleService-Info.plist */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -389,6 +395,8 @@
 				A1B2C3D401000001MOTIO003 /* MotionActivityModule.m in Sources */,
 				A1B2C3D401000001SPEEC001 /* SpeechModule.swift in Sources */,
 				A1B2C3D401000001SPEEC003 /* SpeechModule.m in Sources */,
+				A1B2C3D401000001APPLE001 /* AppleSignInModule.swift in Sources */,
+				A1B2C3D401000001APPLE003 /* AppleSignInModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
