@@ -5,10 +5,14 @@ import React
 import CommonCrypto
 
 @objc(AppleSignInModule)
-class AppleSignInModule: NSObject {
+class AppleSignInModule: RCTEventEmitter {
 
-  @objc static func requiresMainQueueSetup() -> Bool {
+  @objc override static func requiresMainQueueSetup() -> Bool {
     return true
+  }
+
+  override func supportedEvents() -> [String]! {
+    return []  // No events emitted, but RCTEventEmitter requires this override
   }
 
   // Strong reference to keep the delegate alive during the auth flow
