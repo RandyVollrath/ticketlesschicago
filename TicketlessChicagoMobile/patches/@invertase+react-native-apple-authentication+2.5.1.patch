@@ -1,9 +1,8 @@
 diff --git a/node_modules/@invertase/react-native-apple-authentication/ios/RNAppleAuthentication/RNAppleAuthASAuthorizationDelegates.m b/node_modules/@invertase/react-native-apple-authentication/ios/RNAppleAuthentication/RNAppleAuthASAuthorizationDelegates.m
-index 1234567..abcdefg 100644
+index 5e8940e..588d150 100644
 --- a/node_modules/@invertase/react-native-apple-authentication/ios/RNAppleAuthentication/RNAppleAuthASAuthorizationDelegates.m
 +++ b/node_modules/@invertase/react-native-apple-authentication/ios/RNAppleAuthentication/RNAppleAuthASAuthorizationDelegates.m
-@@ -40,21 +40,27 @@
- - (ASPresentationAnchor)presentationAnchorForAuthorizationController:(ASAuthorizationController *)controller {
+@@ -41,24 +41,30 @@ - (ASPresentationAnchor)presentationAnchorForAuthorizationController:(ASAuthoriz
  #if TARGET_OS_OSX
      return [[NSApplication sharedApplication] keyWindow];
  #else
@@ -11,12 +10,6 @@ index 1234567..abcdefg 100644
 -        // visionOS
 -        UIWindow *window = nil;
 -        NSSet<UIScene *> *connectedScenes = [UIApplication sharedApplication].connectedScenes;
--        for (UIScene *scene in connectedScenes) {
--            if (scene.activationState == UISceneActivationStateForegroundActive && [scene isKindOfClass:[UIWindowScene class]]) {
--                UIWindowScene *windowScene = (UIWindowScene *)scene;
--                window = windowScene.windows.firstObject;
--                break;
--            }
 +    // Use the modern connectedScenes API (iOS 13+) instead of the deprecated keyWindow.
 +    // keyWindow was removed/broken in iOS 26, causing ASAuthorizationError 1000.
 +    UIWindow *window = nil;
@@ -26,6 +19,21 @@ index 1234567..abcdefg 100644
 +            UIWindowScene *windowScene = (UIWindowScene *)scene;
 +            window = windowScene.windows.firstObject;
 +            break;
++        }
++    }
++    // Fallback: if no foreground-active scene, try any connected window scene
++    if (!window) {
+         for (UIScene *scene in connectedScenes) {
+-            if (scene.activationState == UISceneActivationStateForegroundActive && [scene isKindOfClass:[UIWindowScene class]]) {
++            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                 UIWindowScene *windowScene = (UIWindowScene *)scene;
+-                window = windowScene.windows.firstObject;
+-                break;
++                if (windowScene.windows.count > 0) {
++                    window = windowScene.windows.firstObject;
++                    break;
++                }
+             }
          }
 -        return window;
 -    #else
@@ -35,18 +43,7 @@ index 1234567..abcdefg 100644
 -        return [[UIApplication sharedApplication] keyWindow];
 -    #endif
 +    }
-+    // Fallback: if no foreground-active scene, try any connected window scene
-+    if (!window) {
-+        for (UIScene *scene in connectedScenes) {
-+            if ([scene isKindOfClass:[UIWindowScene class]]) {
-+                UIWindowScene *windowScene = (UIWindowScene *)scene;
-+                if (windowScene.windows.count > 0) {
-+                    window = windowScene.windows.firstObject;
-+                    break;
-+                }
-+            }
-+        }
-+    }
 +    return window;
  #endif
  }
+ 
