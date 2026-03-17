@@ -1,0 +1,52 @@
+diff --git a/node_modules/@invertase/react-native-apple-authentication/ios/RNAppleAuthentication/RNAppleAuthASAuthorizationDelegates.m b/node_modules/@invertase/react-native-apple-authentication/ios/RNAppleAuthentication/RNAppleAuthASAuthorizationDelegates.m
+index 1234567..abcdefg 100644
+--- a/node_modules/@invertase/react-native-apple-authentication/ios/RNAppleAuthentication/RNAppleAuthASAuthorizationDelegates.m
++++ b/node_modules/@invertase/react-native-apple-authentication/ios/RNAppleAuthentication/RNAppleAuthASAuthorizationDelegates.m
+@@ -40,21 +40,27 @@
+ - (ASPresentationAnchor)presentationAnchorForAuthorizationController:(ASAuthorizationController *)controller {
+ #if TARGET_OS_OSX
+     return [[NSApplication sharedApplication] keyWindow];
+ #else
+-    #if TARGET_OS_VISION
+-        // visionOS
+-        UIWindow *window = nil;
+-        NSSet<UIScene *> *connectedScenes = [UIApplication sharedApplication].connectedScenes;
+-        for (UIScene *scene in connectedScenes) {
+-            if (scene.activationState == UISceneActivationStateForegroundActive && [scene isKindOfClass:[UIWindowScene class]]) {
+-                UIWindowScene *windowScene = (UIWindowScene *)scene;
+-                window = windowScene.windows.firstObject;
+-                break;
+-            }
++    // Use the modern connectedScenes API (iOS 13+) instead of the deprecated keyWindow.
++    // keyWindow was removed/broken in iOS 26, causing ASAuthorizationError 1000.
++    UIWindow *window = nil;
++    NSSet<UIScene *> *connectedScenes = [UIApplication sharedApplication].connectedScenes;
++    for (UIScene *scene in connectedScenes) {
++        if (scene.activationState == UISceneActivationStateForegroundActive && [scene isKindOfClass:[UIWindowScene class]]) {
++            UIWindowScene *windowScene = (UIWindowScene *)scene;
++            window = windowScene.windows.firstObject;
++            break;
+         }
+-        return window;
+-    #else
+-        // I believe the vision OS one above is actually the best way to handle the deprecation:
+-        // Apple Auth not supported until iOS13 anyway, so the solution above should be using avaliable APIs (13+)
+-        // iPadOS optimal solution also relies on using activation state vs just using last connected Scene
+-        return [[UIApplication sharedApplication] keyWindow];
+-    #endif
++    }
++    // Fallback: if no foreground-active scene, try any connected window scene
++    if (!window) {
++        for (UIScene *scene in connectedScenes) {
++            if ([scene isKindOfClass:[UIWindowScene class]]) {
++                UIWindowScene *windowScene = (UIWindowScene *)scene;
++                if (windowScene.windows.count > 0) {
++                    window = windowScene.windows.firstObject;
++                    break;
++                }
++            }
++        }
++    }
++    return window;
+ #endif
+ }
