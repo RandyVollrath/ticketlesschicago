@@ -730,7 +730,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                       })}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <Text style={styles.correctionLink}>Hours wrong on your block?</Text>
+                      <Text style={styles.correctionLink}>Submit a correction</Text>
                     </TouchableOpacity>
                   )}
                 </View>
