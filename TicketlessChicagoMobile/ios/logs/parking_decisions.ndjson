@@ -1,6 +1,2 @@
-{"ts":1773738012529.623,"hasConfirmedParkingThisSession":false,"isDriving":false,"coreMotionAutomotive":false,"speedSaysMoving":false,"event":"module_initialized"}
-{"speedSaysMoving":false,"ts":1773738012549.553,"hasAlwaysPermission":false,"lowPowerModeEnabled":false,"coreMotionAutomotive":false,"authRaw":0,"backgroundRefreshStatus":"available","hasConfirmedParkingThisSession":false,"isDriving":false,"event":"location_auth_changed"}
-{"isDriving":false,"coreMotionAutomotive":false,"speedSaysMoving":false,"event":"module_initialized","ts":1773780849652.8379,"hasConfirmedParkingThisSession":false}
-{"coreMotionAutomotive":false,"backgroundRefreshStatus":"available","speedSaysMoving":false,"authRaw":0,"hasConfirmedParkingThisSession":false,"ts":1773780849670.6829,"hasAlwaysPermission":false,"lowPowerModeEnabled":false,"event":"location_auth_changed","isDriving":false}
-{"hasConfirmedParkingThisSession":false,"ts":1773786420158.7251,"isDriving":false,"event":"module_initialized","coreMotionAutomotive":false,"speedSaysMoving":false}
-{"hasConfirmedParkingThisSession":false,"hasAlwaysPermission":false,"event":"location_auth_changed","authRaw":0,"lowPowerModeEnabled":false,"backgroundRefreshStatus":"available","ts":1773786420173.8469,"speedSaysMoving":false,"isDriving":false,"coreMotionAutomotive":false}
+{"ts":1773786817846.2991,"isDriving":false,"speedSaysMoving":false,"event":"module_initialized","coreMotionAutomotive":false,"hasConfirmedParkingThisSession":false}
+{"event":"location_auth_changed","backgroundRefreshStatus":"available","coreMotionAutomotive":false,"ts":1773786817865.1938,"hasAlwaysPermission":false,"isDriving":false,"hasConfirmedParkingThisSession":false,"speedSaysMoving":false,"lowPowerModeEnabled":false,"authRaw":0}
