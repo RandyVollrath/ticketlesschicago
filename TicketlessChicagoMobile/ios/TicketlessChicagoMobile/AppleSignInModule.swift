@@ -5,13 +5,9 @@ import React
 import CommonCrypto
 
 @objc(AppleSignInModule)
-class AppleSignInModule: NSObject, RCTBridgeModule {
+class AppleSignInModule: NSObject {
 
-  static func moduleName() -> String! {
-    return "AppleSignInModule"
-  }
-
-  static func requiresMainQueueSetup() -> Bool {
+  @objc static func requiresMainQueueSetup() -> Bool {
     return true
   }
 
