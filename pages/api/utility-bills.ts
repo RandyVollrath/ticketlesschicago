@@ -59,6 +59,26 @@ function detectEvidenceSource(senderEmail: string): EvidenceSourceType | null {
   return null;
 }
 
+/**
+ * When a user forwards a receipt, the `from` header is the user's own email,
+ * not the original sender. Gmail/Outlook/Apple Mail include the original sender
+ * in the forwarded message body. This function searches the email text and HTML
+ * for known sender addresses in forwarded-message patterns.
+ *
+ * Patterns matched:
+ *   - Gmail:   "---------- Forwarded message ----------\nFrom: Name <sender@example.com>"
+ *   - Outlook: "From: Name <sender@example.com>"
+ *   - Apple:   "Begin forwarded message:\n\nFrom: sender@example.com"
+ *   - Generic: any occurrence of the known sender email address in the body
+ */
+function detectEvidenceSourceFromBody(text?: string | null, html?: string | null): EvidenceSourceType | null {
+  const haystack = `${text || ''}\n${html || ''}`.toLowerCase();
+
+  if (haystack.includes(CITY_STICKER_SENDER)) return 'city_sticker';
+  if (haystack.includes(LICENSE_PLATE_SENDER)) return 'license_plate';
+  return null;
+}
+
 function parseReceiptMetadata(subject: string, text?: string | null, sourceType?: EvidenceSourceType | null) {
   const haystack = `${subject || ''}\n${text || ''}`;
   const orderMatch = haystack.match(/\b(?:order|confirmation|transaction)\s*(?:#|number|no\.?)?\s*[:\-]?\s*([A-Z0-9\-]{5,})\b/i);
@@ -274,7 +294,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const senderEmail = (email.from || '').toLowerCase();
-    const evidenceSource = detectEvidenceSource(senderEmail);
+    // First check the from-header (direct send). If no match, check the email
+    // body for the original sender — handles forwarded receipts where from is the
+    // user's own address but the body contains "From: chicagovehiclestickers@sebis.com".
+    const evidenceSource = detectEvidenceSource(senderEmail)
+      ?? detectEvidenceSourceFromBody(email.text, email.html);
     const isRegistrationEvidenceReceipt = evidenceSource != null;
     const targetBucket = isRegistrationEvidenceReceipt ? REGISTRATION_BUCKET_NAME : UTILITY_BUCKET_NAME;
 
@@ -282,14 +306,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({
         error: 'Registration inbox only accepts registration receipts from supported senders',
         sender: senderEmail,
+        hint: 'Forward the original receipt email — the body must contain the original sender address',
       });
     }
+
+    // Determine the original sender for DB storage. If detected from body
+    // (forwarded email), use the known sender address instead of the forwarder's email.
+    const detectedFromHeader = detectEvidenceSource(senderEmail) != null;
+    const originalSender = isRegistrationEvidenceReceipt
+      ? (detectedFromHeader
+          ? senderEmail
+          : evidenceSource === 'city_sticker' ? CITY_STICKER_SENDER : LICENSE_PLATE_SENDER)
+      : senderEmail;
 
     console.log(`✅ Found user profile:`, {
       has_contesting: profile.has_contesting,
       has_permit_zone: profile.has_permit_zone,
       email_forwarding_address: profile.email_forwarding_address,
       evidence_source: evidenceSource,
+      detected_from: detectedFromHeader ? 'from-header' : 'email-body (forwarded)',
+      original_sender: originalSender,
     });
 
     // All forwarding workflows require Protection.
@@ -405,7 +441,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         screenshotPath = `snapshots/${evidenceSource}/${userId}/${dateFolder}/${ts}-email-evidence.png`;
         const screenshotBuffer = await generateEmailEvidenceScreenshot({
           sourceType: evidenceSource,
-          sender: email.from || '',
+          sender: originalSender,
           subject: email.subject || '',
           body: email.text || '',
           forwardedAtIso: payload.created_at || new Date().toISOString(),
@@ -432,7 +468,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .insert({
           user_id: userId,
           source_type: evidenceSource,
-          sender_email: email.from,
+          sender_email: originalSender,
           email_subject: email.subject || null,
           email_text: email.text || null,
           email_html: email.html || null,
