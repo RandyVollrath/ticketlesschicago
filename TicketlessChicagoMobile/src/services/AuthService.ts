@@ -335,18 +335,14 @@ class AuthServiceClass {
         return { success: false, error: 'Sign in was cancelled' };
       }
 
-      // Error 1000 (ASAuthorizationErrorUnknown) — often means the device
-      // is not signed into iCloud/Apple ID, or there's a provisioning issue
-      if (error.code === '1000' || error.code === 1000) {
-        return {
-          success: false,
-          error: 'Apple Sign In could not complete. Please make sure you are signed into your Apple ID in Settings, then try again. You can also sign in with email below.',
-        };
-      }
-
-      // For any other error, show the actual error details so we can debug
-      const errorDetail = error.code ? ` (code: ${error.code})` : '';
-      return { success: false, error: `Apple sign-in failed${errorDetail}. Please try signing in with email instead.` };
+      // DEBUG: For now, always show the raw native error details so we can diagnose
+      // The native module now sends detailed error info including underlying errors
+      const rawMessage = error.message || 'no message';
+      const rawCode = error.code || 'no code';
+      return {
+        success: false,
+        error: `[DEBUG] Native error: code=${rawCode} message=${rawMessage}`,
+      };
     }
   }
 

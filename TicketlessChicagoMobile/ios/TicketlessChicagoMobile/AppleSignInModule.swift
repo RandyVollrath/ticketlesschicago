@@ -30,19 +30,30 @@ class AppleSignInModule: RCTEventEmitter {
         return
       }
 
+      // Log environment info for debugging
+      let bundleId = Bundle.main.bundleIdentifier ?? "nil"
+      NSLog("AppleSignInModule: Bundle ID=%@", bundleId)
+
+      // Log provisioning profile info
+      if let provisionPath = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision") {
+        NSLog("AppleSignInModule: Has embedded.mobileprovision at %@", provisionPath)
+      } else {
+        NSLog("AppleSignInModule: No embedded.mobileprovision found (debug build with automatic signing)")
+      }
+
       // Generate a raw nonce for Supabase verification
       let rawNonce = self.randomNonceString(length: 32)
       let hashedNonce = self.sha256(rawNonce)
       NSLog("AppleSignInModule: Generated nonce (length=%d), hashed for Apple", rawNonce.count)
 
-      // Create the Apple ID request
+      // Create the Apple ID request — ONLY Apple ID, no password provider
       let appleIDProvider = ASAuthorizationAppleIDProvider()
       let request = appleIDProvider.createRequest()
       request.requestedScopes = [.fullName, .email]
       request.nonce = hashedNonce
       NSLog("AppleSignInModule: Created ASAuthorizationAppleIDRequest with scopes [fullName, email]")
 
-      // Create the authorization controller
+      // Create the authorization controller with ONLY the Apple ID request
       let authorizationController = ASAuthorizationController(authorizationRequests: [request])
       NSLog("AppleSignInModule: Created ASAuthorizationController")
 
@@ -56,14 +67,12 @@ class AppleSignInModule: RCTEventEmitter {
 
       // Log the window we'll present on
       let window = delegate.presentationAnchor(for: authorizationController)
-      NSLog("AppleSignInModule: Presentation anchor found: %@, frame=%@, isKeyWindow=%d",
+      NSLog("AppleSignInModule: Presentation anchor: %@, frame=%@, isKeyWindow=%d",
             String(describing: type(of: window)),
             NSCoder.string(for: window.frame),
             window.isKeyWindow ? 1 : 0)
       if let scene = window.windowScene {
-        NSLog("AppleSignInModule: Window scene state: %d, title: %@",
-              scene.activationState.rawValue,
-              scene.title)
+        NSLog("AppleSignInModule: Window scene state: %d", scene.activationState.rawValue)
       } else {
         NSLog("AppleSignInModule: WARNING - window has no windowScene!")
       }
@@ -126,19 +135,9 @@ private class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, 
     NSLog("AppleSignInDelegate: %d connected scenes", connectedScenes.count)
 
     for scene in connectedScenes {
-      NSLog("AppleSignInDelegate: Scene: %@, state=%d, isKind=%d",
-            String(describing: type(of: scene)),
-            scene.activationState.rawValue,
-            scene is UIWindowScene ? 1 : 0)
-
       if scene.activationState == .foregroundActive,
          let windowScene = scene as? UIWindowScene {
         NSLog("AppleSignInDelegate: Found foreground-active UIWindowScene with %d windows", windowScene.windows.count)
-        for (i, win) in windowScene.windows.enumerated() {
-          NSLog("AppleSignInDelegate:   Window[%d]: isKeyWindow=%d, isHidden=%d, frame=%@",
-                i, win.isKeyWindow ? 1 : 0, win.isHidden ? 1 : 0,
-                NSCoder.string(for: win.frame))
-        }
         if let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
           NSLog("AppleSignInDelegate: Returning key window")
           return keyWindow
@@ -170,11 +169,14 @@ private class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, 
   // MARK: - ASAuthorizationControllerDelegate
 
   func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-    NSLog("AppleSignInDelegate: didCompleteWithAuthorization")
+    NSLog("AppleSignInDelegate: didCompleteWithAuthorization - credential type: %@",
+          String(describing: type(of: authorization.credential)))
 
     guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-      NSLog("AppleSignInDelegate: Credential is not ASAuthorizationAppleIDCredential")
-      reject?("E_UNEXPECTED_CREDENTIAL", "Unexpected credential type", nil)
+      // Could be ASPasswordCredential if we added password provider — handle gracefully
+      NSLog("AppleSignInDelegate: Credential is not ASAuthorizationAppleIDCredential, type=%@",
+            String(describing: type(of: authorization.credential)))
+      reject?("E_UNEXPECTED_CREDENTIAL", "Unexpected credential type: \(type(of: authorization.credential))", nil)
       cleanup()
       return
     }
@@ -226,13 +228,24 @@ private class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, 
     let nsError = error as NSError
     NSLog("AppleSignInDelegate: didCompleteWithError - code=%d, domain=%@, description=%@",
           nsError.code, nsError.domain, nsError.localizedDescription)
+    NSLog("AppleSignInDelegate: Full userInfo: %@", nsError.userInfo.description)
 
     if let underlyingError = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
       NSLog("AppleSignInDelegate: Underlying error - code=%d, domain=%@, description=%@",
             underlyingError.code, underlyingError.domain, underlyingError.localizedDescription)
+      NSLog("AppleSignInDelegate: Underlying userInfo: %@", underlyingError.userInfo.description)
     }
 
-    reject?(String(nsError.code), nsError.localizedDescription, error)
+    // Build a detailed error message for JS-side diagnosis
+    var detailedMessage = "code=\(nsError.code) domain=\(nsError.domain) desc=\(nsError.localizedDescription)"
+    if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+      detailedMessage += " | underlying: code=\(underlying.code) domain=\(underlying.domain) desc=\(underlying.localizedDescription)"
+    }
+    // Include all userInfo keys for debugging
+    let userInfoKeys = nsError.userInfo.keys.map { String(describing: $0) }.joined(separator: ", ")
+    detailedMessage += " | userInfoKeys=[\(userInfoKeys)]"
+
+    reject?(String(nsError.code), detailedMessage, error)
     cleanup()
   }
 
