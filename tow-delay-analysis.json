@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "foia_records": 100518,
+    "portal_records": 5201,
+    "matched_records": 4242,
+    "match_rate_pct": 4.27190332326284,
+    "complete_date_records": 4242
+  },
+  "portal_vs_tow_delay_hours": {
+    "min": -360.0,
+    "max": 0.0,
+    "mean": -0.1867043847241867,
+    "median": 0.0,
+    "p25": 0.0,
+    "p75": 0.0,
+    "p90": 0.0,
+    "p95": 0.0,
+    "p99": 0.0
+  },
+  "histogram": [
+    {
+      "bucket": "0-1h",
+      "count": 4235,
+      "percentage": 99.83498349834984
+    },
+    {
+      "bucket": "1-6h",
+      "count": 0,
+      "percentage": 0.0
+    },
+    {
+      "bucket": "6-12h",
+      "count": 0,
+      "percentage": 0.0
+    },
+    {
+      "bucket": "12-24h",
+      "count": 0,
+      "percentage": 0.0
+    },
+    {
+      "bucket": "24-48h",
+      "count": 0,
+      "percentage": 0.0
+    },
+    {
+      "bucket": "48-72h",
+      "count": 0,
+      "percentage": 0.0
+    },
+    {
+      "bucket": "3-7 days",
+      "count": 0,
+      "percentage": 0.0
+    },
+    {
+      "bucket": "7-14 days",
+      "count": 0,
+      "percentage": 0.0
+    },
+    {
+      "bucket": "14+ days",
+      "count": 0,
+      "percentage": 0.0
+    }
+  ],
+  "date_alignment": {
+    "portal_matches_foia_tow_date": 4235,
+    "portal_matches_foia_tow_date_pct": 99.83498349834984
+  }
+}
