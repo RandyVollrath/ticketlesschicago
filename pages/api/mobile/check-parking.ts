@@ -205,11 +205,11 @@ export default async function handler(
         );
 
         if (!snapError && snapData && snapData.length > 0 && snapData[0].was_snapped) {
-          let candidates = snapData.filter((s: any) => s.was_snapped);
+          const allCandidates = snapData.filter((s: any) => s.was_snapped);
           const maxSnapDistance = accuracyMeters ? Math.max(accuracyMeters, 30) : 40;
 
           // Filter by max snap distance
-          candidates = candidates.filter((s: any) => s.snap_distance_meters <= maxSnapDistance);
+          let candidates = allCandidates.filter((s: any) => s.snap_distance_meters <= maxSnapDistance);
 
           if (candidates.length > 0) {
             let bestCandidate = candidates[0]; // Default: closest
@@ -226,30 +226,62 @@ export default async function handler(
               const headingIsNS = isHeadingNorthSouth(headingDeg);
               const headingDir = headingIsNS ? 'N-S' : 'E-W';
 
+              // First look within distance-filtered candidates
+              let found = false;
               for (const c of candidates) {
                 const streetDir = getChicagoStreetOrientation(c.street_name);
                 if (streetDir === headingDir) {
                   bestCandidate = c;
                   console.log(`[check-parking] Heading disambiguation: ${headingDeg.toFixed(0)}° (${headingDir}) → chose ${c.street_name} over ${candidates[0].street_name}`);
+                  found = true;
                   break;
                 }
               }
+
+              // If no heading match in distance-filtered candidates, search ALL candidates
+              // (up to 50m). This catches the case where the heading-matching street was
+              // just beyond the accuracy-based distance filter.
+              if (!found) {
+                for (const c of allCandidates) {
+                  if (candidates.includes(c)) continue; // Already checked
+                  const cDir = getChicagoStreetOrientation(c.street_name);
+                  if (cDir === headingDir && c.snap_distance_meters <= 50) {
+                    bestCandidate = c;
+                    console.log(`[check-parking] Heading disambiguation (extended search): ${headingDeg.toFixed(0)}° (${headingDir}) → chose ${c.street_name} at ${c.snap_distance_meters.toFixed(1)}m`);
+                    found = true;
+                    break;
+                  }
+                }
+              }
             } else if (hasHeading && candidates.length === 1) {
-              // Single candidate — verify heading alignment. If mismatched, SKIP the snap
-              // entirely and use original coordinates. The reverse geocode (Nominatim/Google)
-              // will determine the street from the raw GPS, which is often correct for the
-              // street name even when offset by 10-30m.
+              // Single candidate — verify heading alignment. If mismatched, search ALL
+              // snap candidates (including those beyond max distance) for a heading match.
+              // This handles the case where the heading-matching street is slightly farther
+              // away but still a valid snap target (e.g., Byron at 16m when Lawrence at 3m
+              // was the only distance-qualifying candidate).
               //
-              // Example: Near Lawrence (E-W) & Wolcott (N-S) intersection:
-              //   - Snap picks Lawrence (closest snow route at 8m)
-              //   - Heading is 170° (south) → N-S street
-              //   - Mismatch! Skip snap → reverse geocode finds "Wolcott Ave" ✓
+              // Fallback: if no heading match in allCandidates, skip snap entirely and use
+              // original coordinates for reverse geocode.
               const streetDir = getChicagoStreetOrientation(candidates[0].street_name);
               const headingDir = isHeadingNorthSouth(headingDeg) ? 'N-S' : 'E-W';
               if (streetDir && streetDir !== headingDir) {
-                console.log(`[check-parking] Heading mismatch: heading ${headingDeg.toFixed(0)}° (${headingDir}) but snap target is ${candidates[0].street_name} (${streetDir}). Skipping snap — using original coordinates for reverse geocode.`);
-                // Don't apply this candidate — fall through with checkLat/checkLng unchanged
-                bestCandidate = null as any;
+                // Search ALL candidates (not just distance-filtered) for heading match
+                let headingMatch = null;
+                for (const c of allCandidates) {
+                  const cDir = getChicagoStreetOrientation(c.street_name);
+                  if (cDir === headingDir && c.snap_distance_meters <= 50) {
+                    headingMatch = c;
+                    break;
+                  }
+                }
+
+                if (headingMatch) {
+                  console.log(`[check-parking] Heading mismatch with closest (${candidates[0].street_name}, ${streetDir}), but found heading-matching candidate: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${headingDeg.toFixed(0)}° → ${headingDir})`);
+                  bestCandidate = headingMatch;
+                } else {
+                  console.log(`[check-parking] Heading mismatch: heading ${headingDeg.toFixed(0)}° (${headingDir}) but snap target is ${candidates[0].street_name} (${streetDir}). No heading-matching candidate found. Skipping snap — using original coordinates for reverse geocode.`);
+                  bestCandidate = null as any;
+                }
               }
             }
 
