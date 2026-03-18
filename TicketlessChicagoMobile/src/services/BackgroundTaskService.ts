@@ -1681,15 +1681,33 @@ class BackgroundTaskServiceClass {
       if (persistParkingEvent) {
         try {
           const fcmToken = await PushNotificationService.getToken();
-          if (fcmToken && AuthService.isAuthenticated()) {
-            // Use raw API response data for mapping to server fields
-            const rawData = result.rawApiData || await this.getRawParkingData(result);
-            const saveResult = await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
-            if (saveResult.success && saveResult.id) {
-              parkingSessionId = saveResult.id;
+          if (fcmToken) {
+            // If not authenticated, attempt a proactive token refresh before giving up.
+            // Background sessions on iOS can lose auth state when the Supabase auto-refresh
+            // doesn't fire (JS suspended). The refresh token in AsyncStorage may still be valid
+            // even when the in-memory session has expired.
+            if (!AuthService.isAuthenticated()) {
+              log.info('Server save: not authenticated, attempting proactive token refresh');
+              const refreshed = await AuthService.refreshToken();
+              if (refreshed) {
+                log.info('Server save: token refresh succeeded, proceeding with save');
+              } else {
+                log.warn('Server save: token refresh failed, skipping server save (local save intact)');
+              }
+            }
+
+            if (AuthService.isAuthenticated()) {
+              // Use raw API response data for mapping to server fields
+              const rawData = result.rawApiData || await this.getRawParkingData(result);
+              const saveResult = await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
+              if (saveResult.success && saveResult.id) {
+                parkingSessionId = saveResult.id;
+              } else {
+                log.warn('Server save returned failure (API may have returned 401, authPost will have attempted refresh)');
+              }
             }
           } else {
-            log.debug('Skipping server save: no FCM token or not authenticated');
+            log.debug('Skipping server save: no FCM token');
           }
         } catch (serverSaveError) {
           // Non-fatal — local notifications still work without server save
