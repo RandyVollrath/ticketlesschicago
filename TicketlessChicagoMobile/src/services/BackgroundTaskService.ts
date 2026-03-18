@@ -152,6 +152,19 @@ class BackgroundTaskServiceClass {
       // Load persisted state
       await this.loadState();
 
+      // Restore parking history from server if local storage is empty (e.g. after reinstall).
+      // This is critical for ticket contest evidence — history must survive app reinstalls.
+      // ParkingHistoryService.getHistory() already checks: if local is empty AND user is
+      // authenticated, it fetches from Supabase and backfills AsyncStorage.
+      // Fire-and-forget: don't block startup waiting for this.
+      ParkingHistoryService.getHistory()
+        .then((items) => {
+          if (items.length > 0) {
+            log.info(`Parking history ready: ${items.length} items (may have restored from server)`);
+          }
+        })
+        .catch((e) => log.debug('Parking history preload failed (non-fatal)', e));
+
       // Setup app state listener for foreground/background transitions
       this.appStateSubscription = AppState.addEventListener(
         'change',
