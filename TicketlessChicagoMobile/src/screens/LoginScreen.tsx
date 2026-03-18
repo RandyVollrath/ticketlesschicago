@@ -134,9 +134,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       if (!isMountedRef.current) return;
 
       if (result.success) {
-        // Apple OAuth opens Safari — auth completion happens via deep link callback.
-        // The user will return to the app automatically when sign-in completes.
-        // Don't call onAuthSuccess here; DeepLinkingService handles navigation.
+        onAuthSuccess?.();
       } else {
         if (result.error !== 'Sign in was cancelled') {
           setError(result.error || 'Apple sign-in failed');
