@@ -1,23 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { Platform, NativeModules, Alert as RNAlert } from 'react-native';
+import { Platform, NativeModules, Linking } from 'react-native';
 
-// Custom native module for Apple Sign In (bypasses the invertase library which is
-// broken on iOS 26 — ASAuthorizationError 1000 because the library's
-// ASAuthorizationController presentation context fails silently).
+// Custom native module for Apple Sign In
 const AppleSignInModule = Platform.OS === 'ios' ? NativeModules.AppleSignInModule : null;
-
-// DEBUG: Log all available native modules on iOS to diagnose module discovery issues
-if (Platform.OS === 'ios') {
-  const moduleNames = Object.keys(NativeModules).sort();
-  const debugInfo = `Module count: ${moduleNames.length}\nAppleSignInModule found: ${!!NativeModules.AppleSignInModule}\nMethods: ${NativeModules.AppleSignInModule ? Object.keys(NativeModules.AppleSignInModule).join(', ') : 'N/A'}\nAll modules: ${moduleNames.join(', ')}`;
-  console.log(`[AppleSignIn DEBUG] ${debugInfo}`);
-  // Show visible alert on screen so we can debug without syslog
-  setTimeout(() => {
-    RNAlert.alert('Apple SignIn Module Debug', debugInfo);
-  }, 3000);
-}
 import Config from '../config/config';
 import Logger from '../utils/Logger';
 
@@ -275,73 +262,74 @@ class AuthServiceClass {
       return { success: false, error: 'Sign in with Apple is only available on iOS' };
     }
 
-    if (!AppleSignInModule) {
-      log.error('AppleSignInModule native module not found');
-      return { success: false, error: 'Sign in with Apple is not available. Please try email sign in.' };
+    // Try native ASAuthorizationController first (best UX — shows native Apple sheet)
+    if (AppleSignInModule) {
+      try {
+        log.info('Attempting native Apple Sign In via ASAuthorizationController');
+        const result = await AppleSignInModule.performSignIn();
+
+        if (!result.identityToken) {
+          log.error('No identityToken in Apple auth response');
+          return { success: false, error: 'Failed to get Apple identity token. Please try again.' };
+        }
+
+        log.info('Got Apple identity token, authenticating with Supabase');
+
+        const { data, error } = await this.supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: result.identityToken,
+          nonce: result.nonce,
+        });
+
+        if (error) {
+          log.error('Supabase Apple auth error', { message: error.message, status: error.status });
+          return { success: false, error: `Apple sign-in failed: ${error.message}` };
+        }
+
+        if (data?.session) {
+          this.updateAuthState(data.session);
+        }
+
+        log.info('Supabase Apple authentication successful (native)');
+        return { success: true };
+      } catch (nativeError: any) {
+        // Error 1001 = user cancelled — don't fall through
+        if (nativeError.code === '1001' || nativeError.code === 1001) {
+          return { success: false, error: 'Sign in was cancelled' };
+        }
+
+        // Error 1000 = entitlement/provisioning issue — fall through to OAuth
+        log.warn('Native Apple Sign In failed, falling back to OAuth flow', {
+          code: nativeError.code,
+          message: nativeError.message,
+        });
+      }
     }
 
+    // Fallback: Supabase OAuth flow via Safari
+    // This works without the Sign in with Apple entitlement in the provisioning profile
     try {
-      log.info('Starting Apple Sign In via custom native module');
+      log.info('Starting Apple Sign In via Supabase OAuth flow (Safari)');
 
-      // Call our custom native Swift module which creates ASAuthorizationController
-      // directly with proper iOS 26 presentation context handling.
-      // Returns: { identityToken, nonce, user, email, fullName, authorizationCode, realUserStatus }
-      const result = await AppleSignInModule.performSignIn();
+      const redirectTo = 'autopilotamerica://auth/callback';
+      const oauthUrl = `${Config.SUPABASE_URL}/auth/v1/authorize?provider=apple&redirect_to=${encodeURIComponent(redirectTo)}`;
 
-      if (!result.identityToken) {
-        log.error('No identityToken in Apple auth response');
-        return { success: false, error: 'Failed to get Apple identity token. Please try again.' };
+      const canOpen = await Linking.canOpenURL(oauthUrl);
+      if (!canOpen) {
+        return { success: false, error: 'Cannot open browser for Apple sign-in. Please try email sign in.' };
       }
 
-      log.info('Got Apple identity token, authenticating with Supabase');
+      await Linking.openURL(oauthUrl);
 
-      // Authenticate with Supabase using the Apple identity token.
-      // Our native module generates a raw nonce and sends the SHA256 hash to Apple.
-      // We pass the raw nonce to Supabase so it can verify the identity token.
-      const { data, error } = await this.supabase.auth.signInWithIdToken({
-        provider: 'apple',
-        token: result.identityToken,
-        nonce: result.nonce,
-      });
-
-      if (error) {
-        log.error('Supabase Apple auth error', { message: error.message, status: error.status, name: error.name });
-        if (error.message?.includes('provider') || error.message?.includes('client')) {
-          return { success: false, error: 'Sign in with Apple is temporarily unavailable. Please try signing in with email below.' };
-        }
-        return { success: false, error: `Apple sign-in failed: ${error.message || 'Unknown error'}. Please try signing in with email instead.` };
-      }
-
-      // Eagerly update auth state before returning — don't wait for onAuthStateChange
-      // which fires asynchronously and causes a race condition where callers see
-      // isAuthenticated()=false immediately after a successful sign-in.
-      if (data?.session) {
-        this.updateAuthState(data.session);
-      }
-
-      log.info('Supabase Apple authentication successful');
+      // Auth completion happens asynchronously via deep link callback
+      // (DeepLinkingService handles autopilotamerica://auth/callback)
+      log.info('Apple OAuth flow launched in Safari');
       return { success: true };
     } catch (error: any) {
-      log.error('Apple sign-in error', {
-        code: error.code,
-        message: error.message,
-        domain: error.domain,
-        nativeErrorCode: error.nativeErrorCode,
-        userInfo: error.userInfo,
-      });
-
-      // Handle user cancellation (error code 1001)
-      if (error.code === '1001' || error.code === 1001) {
-        return { success: false, error: 'Sign in was cancelled' };
-      }
-
-      // DEBUG: For now, always show the raw native error details so we can diagnose
-      // The native module now sends detailed error info including underlying errors
-      const rawMessage = error.message || 'no message';
-      const rawCode = error.code || 'no code';
+      log.error('Apple OAuth sign-in error', { message: error.message });
       return {
         success: false,
-        error: `[DEBUG] Native error: code=${rawCode} message=${rawMessage}`,
+        error: 'Failed to open Apple sign-in. Please try signing in with email instead.',
       };
     }
   }
