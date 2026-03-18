@@ -55,20 +55,17 @@ class AppleSignInModule: RCTEventEmitter {
       NSLog("AppleSignInModule: Set delegate and presentationContextProvider")
 
       // Log the window we'll present on
-      if let window = delegate.presentationAnchor(for: authorizationController) {
-        NSLog("AppleSignInModule: Presentation anchor found: %@, frame=%@, isKeyWindow=%d",
-              String(describing: type(of: window)),
-              NSCoder.string(for: window.frame),
-              window.isKeyWindow ? 1 : 0)
-        if let scene = window.windowScene {
-          NSLog("AppleSignInModule: Window scene state: %d, title: %@",
-                scene.activationState.rawValue,
-                scene.title)
-        } else {
-          NSLog("AppleSignInModule: WARNING - window has no windowScene!")
-        }
+      let window = delegate.presentationAnchor(for: authorizationController)
+      NSLog("AppleSignInModule: Presentation anchor found: %@, frame=%@, isKeyWindow=%d",
+            String(describing: type(of: window)),
+            NSCoder.string(for: window.frame),
+            window.isKeyWindow ? 1 : 0)
+      if let scene = window.windowScene {
+        NSLog("AppleSignInModule: Window scene state: %d, title: %@",
+              scene.activationState.rawValue,
+              scene.title)
       } else {
-        NSLog("AppleSignInModule: WARNING - No presentation anchor available!")
+        NSLog("AppleSignInModule: WARNING - window has no windowScene!")
       }
 
       // Perform the request

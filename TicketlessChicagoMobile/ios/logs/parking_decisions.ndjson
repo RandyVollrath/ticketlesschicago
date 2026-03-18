@@ -1,2 +1,2 @@
-{"ts":1773786817846.2991,"isDriving":false,"speedSaysMoving":false,"event":"module_initialized","coreMotionAutomotive":false,"hasConfirmedParkingThisSession":false}
-{"event":"location_auth_changed","backgroundRefreshStatus":"available","coreMotionAutomotive":false,"ts":1773786817865.1938,"hasAlwaysPermission":false,"isDriving":false,"hasConfirmedParkingThisSession":false,"speedSaysMoving":false,"lowPowerModeEnabled":false,"authRaw":0}
+{"ts":1773798711518.1069,"event":"module_initialized","hasConfirmedParkingThisSession":false,"coreMotionAutomotive":false,"isDriving":false,"speedSaysMoving":false}
+{"event":"location_auth_changed","backgroundRefreshStatus":"available","coreMotionAutomotive":false,"isDriving":false,"lowPowerModeEnabled":false,"hasConfirmedParkingThisSession":false,"ts":1773798711538.6602,"speedSaysMoving":false,"authRaw":0,"hasAlwaysPermission":false}
