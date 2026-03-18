@@ -89,12 +89,49 @@ export default withAdminAuth(async (req, res, adminUser) => {
         }
       }
 
+      // Get red-light receipt info for each user (for letters with red-light violations)
+      let redLightMap: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: receipts } = await supabase
+          .from('red_light_receipts')
+          .select('id, user_id, device_timestamp, camera_address, full_stop_detected, full_stop_duration_sec, approach_speed_mph, min_speed_mph, speed_delta_mph, evidence_hash')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false });
+
+        if (receipts) {
+          // Group by user_id, keep latest per user
+          for (const r of receipts) {
+            if (!redLightMap[r.user_id]) {
+              redLightMap[r.user_id] = r;
+            }
+          }
+        }
+      }
+
       // Enrich letters with user and ticket info
-      const enrichedLetters = letters?.map(letter => ({
-        ...letter,
-        user_email: userMap[letter.user_id] || null,
-        ticket_info: ticketMap[letter.ticket_id] || null
-      }));
+      const enrichedLetters = letters?.map(letter => {
+        const ticketInfo = ticketMap[letter.ticket_id] || null;
+        const violationDesc = (ticketInfo?.violation_description || '').toLowerCase();
+        const isRedLight = violationDesc.includes('red light');
+        const redLightReceipt = isRedLight ? redLightMap[letter.user_id] || null : null;
+
+        return {
+          ...letter,
+          user_email: userMap[letter.user_id] || null,
+          ticket_info: ticketInfo,
+          red_light_evidence: redLightReceipt ? {
+            receipt_id: redLightReceipt.id,
+            camera_address: redLightReceipt.camera_address,
+            full_stop_detected: redLightReceipt.full_stop_detected,
+            full_stop_duration_sec: redLightReceipt.full_stop_duration_sec,
+            approach_speed_mph: redLightReceipt.approach_speed_mph,
+            min_speed_mph: redLightReceipt.min_speed_mph,
+            speed_delta_mph: redLightReceipt.speed_delta_mph,
+            has_evidence_hash: !!redLightReceipt.evidence_hash,
+            device_timestamp: redLightReceipt.device_timestamp,
+          } : null,
+        };
+      });
 
       // Get total count
       const { count: totalCount } = await supabase

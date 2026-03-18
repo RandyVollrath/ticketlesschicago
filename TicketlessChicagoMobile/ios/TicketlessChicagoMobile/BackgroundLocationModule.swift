@@ -6229,6 +6229,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     drivingStartTime = nil
     lastStationaryTime = nil
     locationAtStopStart = nil
+    // Invalidate speedZeroTimer BEFORE resetting speedZeroStartTime.
+    // Between confirmParking() (which invalidates speedZeroTimer) and this
+    // finalizeParkingConfirmation() call (5-11s later), a new GPS update with
+    // speed ≤ 0.5 can re-create speedZeroTimer (because isDriving is still true
+    // and speedZeroTimer is nil). Without this invalidation, the recreated timer
+    // fires every 3 seconds for hours generating thousands of spurious
+    // gps_coremotion_gate_wait events and wasting battery.
+    speedZeroTimer?.invalidate()
+    speedZeroTimer = nil
     speedZeroStartTime = nil
     stopWindowMaxSpeedMps = 0
     intersectionDwellStartAt = nil

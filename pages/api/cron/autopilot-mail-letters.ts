@@ -1032,6 +1032,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         ${result.pdfUrl ? `<tr><td style="padding: 6px 0; color: #6b7280;">PDF Preview:</td><td style="padding: 6px 0;"><a href="${result.pdfUrl}" style="color: #2563eb;">View Letter PDF</a></td></tr>` : ''}
                         <tr><td style="padding: 6px 0; color: #6b7280;">Evidence Images:</td><td style="padding: 6px 0;">${evidenceImages.length > 0 ? `${evidenceImages.length} attached` : 'None'}</td></tr>
                       </table>
+                      ${redLightEvidence ? `
+                      <div style="background: #ecfdf5; border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                        <h3 style="color: #065f46; margin: 0 0 10px; font-size: 15px;">Red-Light Camera Evidence Included</h3>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                          <tr><td style="padding: 4px 0; color: #047857; width: 160px;">Camera:</td><td style="padding: 4px 0; font-weight: 600; color: #065f46;">${redLightEvidence.cameraAddress}</td></tr>
+                          <tr><td style="padding: 4px 0; color: #047857;">Full Stop Detected:</td><td style="padding: 4px 0; font-weight: 600; color: ${redLightEvidence.fullStopDetected ? '#065f46' : '#b45309'};">${redLightEvidence.fullStopDetected ? 'YES' + (redLightEvidence.fullStopDurationSec != null ? ` (${redLightEvidence.fullStopDurationSec.toFixed(1)}s)` : '') : 'No'}</td></tr>
+                          <tr><td style="padding: 4px 0; color: #047857;">Approach Speed:</td><td style="padding: 4px 0;">${redLightEvidence.approachSpeedMph != null ? redLightEvidence.approachSpeedMph.toFixed(1) + ' mph' : 'N/A'}</td></tr>
+                          <tr><td style="padding: 4px 0; color: #047857;">Minimum Speed:</td><td style="padding: 4px 0;">${redLightEvidence.minSpeedMph != null ? redLightEvidence.minSpeedMph.toFixed(1) + ' mph' : 'N/A'}</td></tr>
+                          <tr><td style="padding: 4px 0; color: #047857;">GPS Trace Points:</td><td style="padding: 4px 0;">${redLightEvidence.tracePointCount} over ${redLightEvidence.traceDurationSec.toFixed(0)}s</td></tr>
+                          <tr><td style="padding: 4px 0; color: #047857;">Speed Profile:</td><td style="padding: 4px 0;">${redLightEvidence.speedProfile.length} readings in exhibit</td></tr>
+                          ${redLightEvidence.accelSamples ? `<tr><td style="padding: 4px 0; color: #047857;">Accelerometer:</td><td style="padding: 4px 0;">${redLightEvidence.accelSamples} samples${redLightEvidence.peakDecelG ? ` (peak: ${redLightEvidence.peakDecelG.toFixed(3)} G)` : ''}</td></tr>` : ''}
+                          ${redLightEvidence.violationDatetime ? `<tr><td style="padding: 4px 0; color: #047857;">Timestamp Match:</td><td style="padding: 4px 0;">${redLightEvidence.timeDiffMinutes != null && redLightEvidence.timeDiffMinutes < 5 ? 'STRONG' : redLightEvidence.timeDiffMinutes != null && redLightEvidence.timeDiffMinutes < 60 ? 'POSSIBLE' : 'WEAK'} (${redLightEvidence.timeDiffMinutes != null ? redLightEvidence.timeDiffMinutes.toFixed(1) + ' min diff' : 'N/A'})</td></tr>` : ''}
+                          <tr><td style="padding: 4px 0; color: #047857;">Evidence Hash:</td><td style="padding: 4px 0; font-family: monospace; font-size: 11px; word-break: break-all;">${redLightEvidence.evidenceHash.substring(0, 16)}...${redLightEvidence.evidenceHash.substring(redLightEvidence.evidenceHash.length - 8)}</td></tr>
+                          <tr><td style="padding: 4px 0; color: #047857;">Receipt ID:</td><td style="padding: 4px 0; font-family: monospace; font-size: 11px;">${redLightEvidence.receiptId}</td></tr>
+                        </table>
+                      </div>
+                      ` : ''}
                       <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 20px 0;">
                       <h3 style="color: #374151; margin: 0 0 12px;">Full Letter Content</h3>
                       <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 20px; border-radius: 6px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; color: #1f2937;">${letterText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>

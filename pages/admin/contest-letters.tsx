@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
 
+interface RedLightEvidence {
+  receipt_id: string;
+  camera_address: string;
+  full_stop_detected: boolean;
+  full_stop_duration_sec: number | null;
+  approach_speed_mph: number | null;
+  min_speed_mph: number | null;
+  speed_delta_mph: number | null;
+  has_evidence_hash: boolean;
+  device_timestamp: string;
+}
+
 interface ContestLetter {
   id: string;
   ticket_id: string;
@@ -26,6 +38,7 @@ interface ContestLetter {
     ticket_amount: number;
     ticket_location: string;
   } | null;
+  red_light_evidence: RedLightEvidence | null;
 }
 
 export default function AdminContestLetters() {
@@ -223,7 +236,7 @@ export default function AdminContestLetters() {
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(5, 1fr)',
           gap: '16px',
           marginBottom: '24px'
         }}>
@@ -245,6 +258,17 @@ export default function AdminContestLetters() {
             <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>AI Enhanced</p>
             <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>
               {letters.filter(l => l.evidence_integrated).length}
+            </p>
+          </div>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>Red-Light Evidence</p>
+            <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#15803d' }}>
+              {letters.filter(l => l.red_light_evidence).length}
             </p>
           </div>
           <div style={{
@@ -420,6 +444,19 @@ export default function AdminContestLetters() {
                           color: '#10b981'
                         }}>
                           AI Enhanced
+                        </span>
+                      )}
+                      {letter.red_light_evidence && (
+                        <span style={{
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          backgroundColor: letter.red_light_evidence.full_stop_detected ? '#dcfce720' : '#fef3c720',
+                          color: letter.red_light_evidence.full_stop_detected ? '#15803d' : '#a16207',
+                          border: `1px solid ${letter.red_light_evidence.full_stop_detected ? '#86efac' : '#fde68a'}`,
+                        }}>
+                          {letter.red_light_evidence.full_stop_detected ? 'Full Stop' : 'Red-Light GPS'}
                         </span>
                       )}
                     </div>
@@ -640,6 +677,92 @@ export default function AdminContestLetters() {
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Red-Light Evidence Status */}
+            {selectedLetter.red_light_evidence && (
+              <div style={{
+                backgroundColor: selectedLetter.red_light_evidence.full_stop_detected ? '#f0fdf4' : '#fffbeb',
+                border: `1px solid ${selectedLetter.red_light_evidence.full_stop_detected ? '#86efac' : '#fde68a'}`,
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '18px' }}>
+                    {selectedLetter.red_light_evidence.full_stop_detected ? '\u2705' : '\u26A0\uFE0F'}
+                  </span>
+                  <div>
+                    <p style={{
+                      fontWeight: '600',
+                      color: selectedLetter.red_light_evidence.full_stop_detected ? '#065f46' : '#92400e',
+                      margin: 0
+                    }}>
+                      Red-Light Camera Evidence {selectedLetter.red_light_evidence.full_stop_detected ? '— Full Stop Detected' : '— GPS Data Attached'}
+                    </p>
+                    <p style={{ fontSize: '13px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                      Sensor data exhibit included in mailed letter
+                    </p>
+                  </div>
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: '12px',
+                  fontSize: '13px'
+                }}>
+                  <div>
+                    <p style={{ color: '#9ca3af', marginBottom: '2px' }}>Camera</p>
+                    <p style={{ fontWeight: '600', color: '#111827' }}>
+                      {selectedLetter.red_light_evidence.camera_address}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#9ca3af', marginBottom: '2px' }}>Full Stop</p>
+                    <p style={{
+                      fontWeight: '600',
+                      color: selectedLetter.red_light_evidence.full_stop_detected ? '#15803d' : '#b45309'
+                    }}>
+                      {selectedLetter.red_light_evidence.full_stop_detected
+                        ? `YES${selectedLetter.red_light_evidence.full_stop_duration_sec != null ? ` (${selectedLetter.red_light_evidence.full_stop_duration_sec.toFixed(1)}s)` : ''}`
+                        : 'No'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#9ca3af', marginBottom: '2px' }}>SHA-256 Hash</p>
+                    <p style={{ fontWeight: '600', color: '#111827' }}>
+                      {selectedLetter.red_light_evidence.has_evidence_hash ? 'Verified' : 'Server-computed'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#9ca3af', marginBottom: '2px' }}>Approach Speed</p>
+                    <p style={{ color: '#111827' }}>
+                      {selectedLetter.red_light_evidence.approach_speed_mph != null
+                        ? `${selectedLetter.red_light_evidence.approach_speed_mph.toFixed(1)} mph`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#9ca3af', marginBottom: '2px' }}>Min Speed</p>
+                    <p style={{ color: '#111827' }}>
+                      {selectedLetter.red_light_evidence.min_speed_mph != null
+                        ? `${selectedLetter.red_light_evidence.min_speed_mph.toFixed(1)} mph`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: '#9ca3af', marginBottom: '2px' }}>Speed Reduction</p>
+                    <p style={{ color: '#111827' }}>
+                      {selectedLetter.red_light_evidence.speed_delta_mph != null
+                        ? `${selectedLetter.red_light_evidence.speed_delta_mph.toFixed(1)} mph`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+                <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '10px', fontFamily: 'monospace' }}>
+                  Receipt: {selectedLetter.red_light_evidence.receipt_id}
+                </p>
               </div>
             )}
 
