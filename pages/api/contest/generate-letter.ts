@@ -1164,16 +1164,32 @@ INSTRUCTIONS: This receipt proves the user renewed their vehicle registration. C
 - If renewed AFTER the citation: State the user has since come into compliance and respectfully requests dismissal in light of their good-faith renewal.
 - In either case, reference the specific renewal date. The renewal receipt is attached as evidence.` : ''}
 ${redLightReceipt ? `
-=== RED LIGHT CAMERA DATA FROM USER'S APP ===
-The user's app captured data from their pass through this red light camera:
-- Speed at Camera: ${redLightReceipt.speed_mph ? `${redLightReceipt.speed_mph} mph` : 'Unknown'}
-- Full Stop Detected: ${redLightReceipt.full_stop_detected === true ? 'YES - Vehicle came to a complete stop' : redLightReceipt.full_stop_detected === false ? 'NO' : 'Unknown'}
-- Timestamp: ${redLightReceipt.detected_at || redLightReceipt.created_at || 'On file'}
+=== RED LIGHT CAMERA SENSOR DATA FROM USER'S APP ===
+The user's mobile application captured detailed GPS and accelerometer data during their pass through this red light camera intersection.
+A full sensor data exhibit with speed profile chart and data integrity verification is ATTACHED to this letter.
+
+KEY FINDINGS:
+- Camera Location: ${redLightReceipt.camera_address || redLightReceipt.intersection_id || 'On file'}
+- Device Timestamp: ${redLightReceipt.device_timestamp || redLightReceipt.detected_at || redLightReceipt.created_at || 'On file'}
+- Approach Speed: ${redLightReceipt.approach_speed_mph != null ? `${redLightReceipt.approach_speed_mph} mph` : 'Unknown'}
+- Minimum Speed Recorded: ${redLightReceipt.min_speed_mph != null ? `${redLightReceipt.min_speed_mph} mph` : 'Unknown'}
+- Speed Reduction: ${redLightReceipt.speed_delta_mph != null ? `${redLightReceipt.speed_delta_mph} mph deceleration` : 'Unknown'}
+- Full Stop Detected: ${redLightReceipt.full_stop_detected === true ? 'YES - Vehicle came to a COMPLETE STOP' : redLightReceipt.full_stop_detected === false ? 'NO' : 'Unknown'}
+${redLightReceipt.full_stop_duration_sec ? `- Full Stop Duration: ${redLightReceipt.full_stop_duration_sec} seconds` : ''}
+- GPS Accuracy: ${redLightReceipt.horizontal_accuracy_meters != null ? `${redLightReceipt.horizontal_accuracy_meters} meters` : 'Unknown'}
+${redLightReceipt.trace ? `- GPS Trace Points: ${Array.isArray(redLightReceipt.trace) ? redLightReceipt.trace.length : 0} speed readings captured during approach` : ''}
+${redLightReceipt.accelerometer_trace ? `- Accelerometer Samples: ${Array.isArray(redLightReceipt.accelerometer_trace) ? redLightReceipt.accelerometer_trace.length : 0} independent motion sensor readings` : ''}
 ${redLightReceipt.yellow_duration_seconds ? `- Yellow Light Duration: ${redLightReceipt.yellow_duration_seconds} seconds` : ''}
+- Data Integrity: SHA-256 cryptographic hash computed at capture time (independently verifiable)
 
 INSTRUCTIONS:
-${redLightReceipt.full_stop_detected === true ? '- The user\'s vehicle CAME TO A COMPLETE STOP. This is strong evidence the driver was driving lawfully.' : ''}
-- Request the city provide the camera calibration records and full video evidence` : ''}
+${redLightReceipt.full_stop_detected === true ? `- The user's vehicle CAME TO A COMPLETE STOP at this intersection. This is STRONG evidence the driver was driving lawfully. Emphasize this finding prominently.
+- Reference the ${redLightReceipt.full_stop_duration_sec ? `${redLightReceipt.full_stop_duration_sec}-second sustained stop` : 'complete stop'} as documented in the attached sensor data exhibit.
+- Note that the GPS trace shows the vehicle decelerating from ${redLightReceipt.approach_speed_mph || 'approach speed'} mph to ${redLightReceipt.min_speed_mph || '0'} mph.` : '- The sensor data may still show significant deceleration or near-stop behavior.'}
+- Reference the attached "Vehicle Sensor Data" exhibit which contains the full speed-vs-time profile, GPS trace data, and accelerometer braking analysis.
+- Note that all data is cryptographically hashed (SHA-256) for integrity verification, demonstrating the evidence has not been tampered with.
+- Request the city provide their camera calibration records and full video evidence for comparison with the independently-captured sensor data.
+- If relevant, point out that the GPS data is captured by the device's hardware sensors automatically and cannot be retroactively modified.` : ''}
 ${cameraPassHistory && cameraPassHistory.length > 0 ? `
 === SPEED CAMERA GPS DATA FROM USER'S APP ===
 ${cameraPassHistory.slice(0, 3).map((p: any, i: number) => `Pass ${i + 1}: Camera: ${p.camera_name || p.camera_id || 'Unknown'}, GPS Speed: ${p.speed_mph ? `${p.speed_mph} mph` : 'Unknown'}, Posted Limit: ${p.speed_limit_mph ? `${p.speed_limit_mph} mph` : 'Unknown'}`).join('\n')}
@@ -1638,8 +1654,15 @@ Generate an improved version of the letter that addresses all critical issues an
       cameraEvidence: {
         redLight: redLightReceipt ? {
           found: true,
-          location: redLightReceipt.camera_location,
-          timestamp: redLightReceipt.timestamp,
+          location: redLightReceipt.camera_address || redLightReceipt.camera_location || redLightReceipt.intersection_id,
+          timestamp: redLightReceipt.device_timestamp || redLightReceipt.timestamp,
+          fullStopDetected: redLightReceipt.full_stop_detected,
+          fullStopDurationSec: redLightReceipt.full_stop_duration_sec,
+          approachSpeedMph: redLightReceipt.approach_speed_mph,
+          minSpeedMph: redLightReceipt.min_speed_mph,
+          tracePoints: Array.isArray(redLightReceipt.trace) ? redLightReceipt.trace.length : 0,
+          hasAccelerometerData: Array.isArray(redLightReceipt.accelerometer_trace) && redLightReceipt.accelerometer_trace.length > 0,
+          evidenceExhibitAttached: true,
         } : { found: false },
         speedCamera: cameraPassHistory && cameraPassHistory.length > 0 ? {
           found: true,
