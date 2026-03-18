@@ -129,29 +129,21 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
     setError(null);
 
     try {
-      // DEBUG: Show module status before attempting sign-in
-      const { NativeModules: NM } = require('react-native');
-      const moduleFound = !!NM.AppleSignInModule;
-      const methods = moduleFound ? Object.keys(NM.AppleSignInModule).join(', ') : 'N/A';
-      Alert.alert('Apple SignIn Pre-Check', `Module found: ${moduleFound}\nMethods: ${methods}`);
-
       const result = await AuthService.signInWithApple();
 
       if (!isMountedRef.current) return;
 
       if (result.success) {
-        onAuthSuccess?.();
+        // Apple OAuth opens Safari — auth completion happens via deep link callback.
+        // The user will return to the app automatically when sign-in completes.
+        // Don't call onAuthSuccess here; DeepLinkingService handles navigation.
       } else {
         if (result.error !== 'Sign in was cancelled') {
-          // DEBUG: Show full error in alert for diagnosis
-          Alert.alert('Apple SignIn Result', `Success: false\nError: ${result.error}`);
           setError(result.error || 'Apple sign-in failed');
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       log.error('Apple sign-in error', err);
-      // DEBUG: Show exception details
-      Alert.alert('Apple SignIn Exception', `${err.message}\nCode: ${err.code}\nStack: ${err.stack?.substring(0, 200)}`);
       if (isMountedRef.current) {
         setError('An unexpected error occurred. Please try again.');
       }
