@@ -232,7 +232,7 @@ function GmailInstructions({ forwardingEmail, copied, onCopy }: {
         </Step>
         <Step n={2}>
           <p style={{ margin: 0 }}>
-            Click <strong>&quot;Create filter&quot;</strong>, then check <strong>&quot;Forward it to&quot;</strong> and paste your address.
+            Click <strong>&quot;Create filter&quot;</strong> to advance to the next screen. Check <strong>&quot;Forward it to&quot;</strong> and paste the address you copied.
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748B' }}>
             If the address isn&apos;t in the dropdown, click &quot;Add forwarding address&quot; — Gmail will send a verification email that we confirm automatically.

@@ -2867,15 +2867,6 @@ function SettingsPageInner() {
             }}>
               View receipt history
             </Link>
-            <span style={{ color: COLORS.border }}>|</span>
-            <Link href="/utility-evidence" style={{
-              fontSize: 13,
-              color: COLORS.accent,
-              textDecoration: 'none',
-              fontWeight: 600,
-            }}>
-              Utility bill forwarding (residency proof)
-            </Link>
           </div>
         </Card>
 
