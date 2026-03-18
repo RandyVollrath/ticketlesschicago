@@ -7,3 +7,12 @@
 [2026-03-18 02:34:13.668] [DECISION] {"hasConfirmedParkingThisSession":false,"isDriving":false,"speedSaysMoving":false,"ts":1773819253646.501,"coreMotionAutomotive":false,"event":"module_initialized"}
 [2026-03-18 02:34:13.681] Auth changed: 0
 [2026-03-18 02:34:13.686] [DECISION] {"isDriving":false,"coreMotionAutomotive":false,"lowPowerModeEnabled":false,"authRaw":0,"speedSaysMoving":false,"backgroundRefreshStatus":"available","ts":1773819253685.1458,"hasConfirmedParkingThisSession":false,"hasAlwaysPermission":false,"event":"location_auth_changed"}
+[2026-03-18 02:47:54.957] === Log file opened ===
+[2026-03-18 02:47:54.958] Log path: /var/mobile/Containers/Data/Application/67D44A26-2699-47C5-95EE-3E7097460FDA/Documents/parking_detection.log
+[2026-03-18 02:47:54.958] Decision log path: /var/mobile/Containers/Data/Application/67D44A26-2699-47C5-95EE-3E7097460FDA/Documents/parking_decisions.ndjson
+[2026-03-18 02:47:54.959] Restored camera settings: enabled=true speed=true redlight=true volume=1.0
+[2026-03-18 02:47:54.960] Registered parking_detected notification category with Correct/Wrong actions
+[2026-03-18 02:47:54.960] BackgroundLocationModule initialized
+[2026-03-18 02:47:54.962] [DECISION] {"event":"module_initialized","coreMotionAutomotive":false,"isDriving":false,"hasConfirmedParkingThisSession":false,"ts":1773820074960.5378,"speedSaysMoving":false}
+[2026-03-18 02:47:55.315] Auth changed: 0
+[2026-03-18 02:47:55.329] [DECISION] {"event":"location_auth_changed","hasAlwaysPermission":false,"isDriving":false,"coreMotionAutomotive":false,"speedSaysMoving":false,"backgroundRefreshStatus":"available","authRaw":0,"ts":1773820075327.9719,"hasConfirmedParkingThisSession":false,"lowPowerModeEnabled":false}
