@@ -60,8 +60,33 @@ const STOP_MIN_DURATION_MS = 2000;
 
 const mpsToMph = (mps: number): number => mps * 2.2369362920544;
 
+/** Max time difference (ms) between two receipts at the same intersection to consider them duplicates. */
+const DEDUPE_TIME_WINDOW_MS = 60_000; // 60 seconds
+
 function buildIntersectionId(lat: number, lng: number): string {
   return `${lat.toFixed(4)},${lng.toFixed(4)}`;
+}
+
+/**
+ * Find an existing receipt at the same intersection within a time window.
+ * Returns the index of the duplicate, or -1 if none found.
+ */
+function findDuplicateByProximity(
+  existing: RedLightReceipt[],
+  intersectionId: string,
+  deviceTimestamp: number,
+  windowMs: number = DEDUPE_TIME_WINDOW_MS,
+): number {
+  for (let i = 0; i < existing.length; i++) {
+    const r = existing[i];
+    if (
+      r.intersectionId === intersectionId &&
+      Math.abs(r.deviceTimestamp - deviceTimestamp) <= windowMs
+    ) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 function estimateSpeedAccuracyMph(trace: RedLightTracePoint[]): number | null {
@@ -283,6 +308,22 @@ class RedLightReceiptServiceClass {
       const receipt = buildReceipt(params);
       const stored = await AsyncStorage.getItem(RECEIPTS_KEY);
       const existing: RedLightReceipt[] = stored ? JSON.parse(stored) : [];
+
+      // Deduplicate: if a native receipt already exists for the same intersection
+      // within 60s, replace it — JS pass-finalized receipts have better data
+      // (full deceleration trace, real GPS accuracy, actual min speed).
+      const dupeIdx = findDuplicateByProximity(existing, receipt.intersectionId, receipt.deviceTimestamp);
+      if (dupeIdx >= 0) {
+        const old = existing[dupeIdx];
+        log.info('Replacing duplicate receipt (native→JS upgrade)', {
+          oldId: old.id,
+          newId: receipt.id,
+          intersection: receipt.intersectionId,
+          timeDiffSec: Math.round(Math.abs(old.deviceTimestamp - receipt.deviceTimestamp) / 1000),
+        });
+        existing.splice(dupeIdx, 1);
+      }
+
       const updated = [receipt, ...existing].slice(0, MAX_RECEIPTS);
       await AsyncStorage.setItem(RECEIPTS_KEY, JSON.stringify(updated));
       AppEvents.emit('red-light-receipts-updated');
@@ -575,10 +616,22 @@ class RedLightReceiptServiceClass {
       };
 
       // Deduplicate — skip if we already have a receipt with the same id
+      // OR a receipt at the same intersection within 60s (JS pass-finalized receipt
+      // already captured with better data quality)
       const stored = await AsyncStorage.getItem(RECEIPTS_KEY);
       const existing: RedLightReceipt[] = stored ? JSON.parse(stored) : [];
       if (existing.some(r => r.id === receipt.id)) {
         log.debug('Native evidence already ingested, skipping duplicate', { id: receipt.id });
+        return false;
+      }
+      const dupeIdx = findDuplicateByProximity(existing, receipt.intersectionId, receipt.deviceTimestamp);
+      if (dupeIdx >= 0) {
+        log.info('Native evidence skipped — JS receipt already exists for this intersection', {
+          nativeId: receipt.id,
+          existingId: existing[dupeIdx].id,
+          intersection: receipt.intersectionId,
+          timeDiffSec: Math.round(Math.abs(existing[dupeIdx].deviceTimestamp - receipt.deviceTimestamp) / 1000),
+        });
         return false;
       }
 
