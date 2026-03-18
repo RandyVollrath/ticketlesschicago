@@ -288,12 +288,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const senderLookupEmail = (email.from || '').toLowerCase();
       console.log(`🔍 Shared address — looking up user by sender: ${senderLookupEmail}`);
 
-      const { data: authUsers } = await supabase.auth.admin.listUsers();
-      const authUser = authUsers?.users?.find(
-        u => u.email?.toLowerCase() === senderLookupEmail
-      );
+      // Also search the forwarded email body for the original sender (e.g. chicagovehiclestickers@sebis.com)
+      const emailBody = email.text || email.html || '';
+      const possibleEmails = [senderLookupEmail];
 
-      if (!authUser) {
+      // Try user_profiles table first (no pagination issues)
+      let foundUserId: string | null = null;
+      for (const lookupEmail of possibleEmails) {
+        const { data: profiles } = await supabase
+          .from('user_profiles')
+          .select('user_id')
+          .ilike('email', lookupEmail)
+          .limit(1);
+        if (profiles?.[0]) {
+          foundUserId = profiles[0].user_id;
+          console.log(`✅ Matched user via user_profiles: ${lookupEmail} → ${foundUserId}`);
+          break;
+        }
+      }
+
+      // Fallback: paginate through auth.users if not found in profiles
+      if (!foundUserId) {
+        let page = 1;
+        const perPage = 100;
+        let found = false;
+        while (!found) {
+          const { data: authPage } = await supabase.auth.admin.listUsers({ page, perPage });
+          if (!authPage?.users?.length) break;
+          const authUser = authPage.users.find(
+            u => u.email?.toLowerCase() === senderLookupEmail
+          );
+          if (authUser) {
+            foundUserId = authUser.id;
+            console.log(`✅ Matched user via auth.users page ${page}: ${senderLookupEmail} → ${foundUserId}`);
+            found = true;
+          }
+          if (authPage.users.length < perPage) break;
+          page++;
+        }
+      }
+
+      if (!foundUserId) {
         console.error('❌ No account found for sender email:', senderLookupEmail);
         return res.status(404).json({
           error: 'No account found for sender email',
@@ -302,8 +337,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      userId = authUser.id;
-      console.log(`✅ Matched user by sender email: ${senderLookupEmail} → ${userId}`);
+      userId = foundUserId;
     }
 
     console.log(`📨 Received utility bill email for user ${userId}`);
