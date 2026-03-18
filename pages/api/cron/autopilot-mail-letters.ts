@@ -2,7 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import Anthropic from '@anthropic-ai/sdk';
-import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS } from '../../../lib/lob-service';
+import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS, RedLightEvidenceExhibit } from '../../../lib/lob-service';
+import { computeEvidenceHash } from '../../../lib/red-light-evidence-report';
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 
@@ -198,7 +199,8 @@ async function mailLetter(
   letter: LetterToMail,
   profile: UserProfile,
   ticketNumber: string,
-  evidenceImages?: string[]
+  evidenceImages?: string[],
+  redLightEvidence?: RedLightEvidenceExhibit
 ): Promise<{ success: boolean; lobId?: string; expectedDelivery?: string; pdfUrl?: string; error?: string }> {
   console.log(`  Mailing letter ${letter.id} for ticket ${ticketNumber}...`);
 
@@ -232,12 +234,13 @@ async function mailLetter(
       throw new Error('No letter content found');
     }
 
-    // Format letter as HTML with evidence images and Street View exhibits
+    // Format letter as HTML with evidence images, Street View exhibits, and red-light sensor data
     const htmlContent = formatLetterAsHTML(letterText, {
       evidenceImages: evidenceImages,
       streetViewImages: letter.street_view_exhibit_urls || undefined,
       streetViewDate: letter.street_view_date || undefined,
       streetViewAddress: letter.street_view_address || undefined,
+      redLightEvidence: redLightEvidence,
     });
 
     if (evidenceImages && evidenceImages.length > 0) {
@@ -245,6 +248,9 @@ async function mailLetter(
     }
     if (letter.street_view_exhibit_urls && letter.street_view_exhibit_urls.length > 0) {
       console.log(`    Including ${letter.street_view_exhibit_urls.length} Street View exhibit(s) in letter`);
+    }
+    if (redLightEvidence) {
+      console.log(`    Including red-light camera sensor data exhibit (${redLightEvidence.tracePointCount} GPS points, full_stop=${redLightEvidence.fullStopDetected})`);
     }
 
     // Send via Lob
@@ -606,6 +612,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           violation_type,
           amount,
           location,
+          issue_datetime,
           evidence_deadline,
           auto_send_deadline,
           is_test,
@@ -867,11 +874,113 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
+      // Fetch red-light camera receipt data for red-light violations
+      let redLightEvidence: RedLightEvidenceExhibit | undefined;
+      const ticketViolationType = ticket?.violation_type || '';
+      const ticketViolationDesc = (ticket?.violation_description || '').toLowerCase();
+      if (ticketViolationType === 'red_light' || ticketViolationDesc.includes('red light')) {
+        try {
+          const { data: receipts } = await supabaseAdmin
+            .from('red_light_receipts')
+            .select('*')
+            .eq('user_id', letter.user_id)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          if (receipts && receipts.length > 0) {
+            // Try to match by date, fall back to most recent
+            const ticketDateStr = ticket?.violation_date || '';
+            const matched = receipts.find((r: any) => {
+              if (!r.device_timestamp || !ticketDateStr) return false;
+              return r.device_timestamp.startsWith(ticketDateStr);
+            }) || receipts[0];
+
+            const trace = Array.isArray(matched.trace) ? matched.trace : [];
+            const baseTs = trace.length > 0 ? trace[0].timestamp : 0;
+            const traceDuration = trace.length > 1
+              ? (trace[trace.length - 1].timestamp - trace[0].timestamp) / 1000
+              : 0;
+
+            // Sample speed profile (max 25 readings for the exhibit)
+            const step = trace.length <= 25 ? 1 : Math.ceil(trace.length / 25);
+            const speedProfile = trace
+              .filter((_: any, i: number) => i % step === 0)
+              .map((t: any) => ({
+                elapsedSec: (t.timestamp - baseTs) / 1000,
+                speedMph: t.speedMph || 0,
+              }));
+
+            // Compute peak deceleration from accelerometer
+            const accelTrace = Array.isArray(matched.accelerometer_trace) ? matched.accelerometer_trace : [];
+            let peakDecelG = 0;
+            for (const a of accelTrace) {
+              const mag = Math.sqrt((a.x || 0) ** 2 + (a.y || 0) ** 2 + (a.z || 0) ** 2);
+              if (mag > peakDecelG) peakDecelG = mag;
+            }
+
+            // Check for violation timestamp from detected_tickets
+            let violationDatetime: string | null = null;
+            let timeDiffMinutes: number | null = null;
+            if (ticket?.issue_datetime) {
+              violationDatetime = ticket.issue_datetime;
+              const vTime = new Date(ticket.issue_datetime).getTime();
+              const dTime = new Date(matched.device_timestamp).getTime();
+              timeDiffMinutes = Math.abs(vTime - dTime) / 60000;
+            }
+
+            // Compute evidence hash
+            const evidenceHash = matched.evidence_hash || computeEvidenceHash({
+              id: matched.id,
+              device_timestamp: matched.device_timestamp,
+              camera_address: matched.camera_address || matched.intersection_id || '',
+              camera_latitude: matched.camera_latitude || 0,
+              camera_longitude: matched.camera_longitude || 0,
+              intersection_id: matched.intersection_id || '',
+              heading: matched.heading || 0,
+              approach_speed_mph: matched.approach_speed_mph ?? null,
+              min_speed_mph: matched.min_speed_mph ?? null,
+              speed_delta_mph: matched.speed_delta_mph ?? null,
+              full_stop_detected: matched.full_stop_detected ?? false,
+              full_stop_duration_sec: matched.full_stop_duration_sec ?? null,
+              horizontal_accuracy_meters: matched.horizontal_accuracy_meters ?? null,
+              estimated_speed_accuracy_mph: matched.estimated_speed_accuracy_mph ?? null,
+              trace: trace,
+              accelerometer_trace: accelTrace,
+            });
+
+            redLightEvidence = {
+              cameraAddress: matched.camera_address || matched.intersection_id || 'Unknown',
+              deviceTimestamp: matched.device_timestamp,
+              approachSpeedMph: matched.approach_speed_mph ?? null,
+              minSpeedMph: matched.min_speed_mph ?? null,
+              speedDeltaMph: matched.speed_delta_mph ?? null,
+              fullStopDetected: matched.full_stop_detected ?? false,
+              fullStopDurationSec: matched.full_stop_duration_sec ?? null,
+              gpsAccuracyMeters: matched.horizontal_accuracy_meters ?? null,
+              tracePointCount: trace.length,
+              traceDurationSec: traceDuration,
+              speedProfile,
+              accelSamples: accelTrace.length > 0 ? accelTrace.length : undefined,
+              peakDecelG: peakDecelG > 0 ? peakDecelG : undefined,
+              violationDatetime,
+              timeDiffMinutes,
+              evidenceHash,
+              receiptId: matched.id,
+            };
+
+            console.log(`    Found red-light receipt ${matched.id} — full_stop=${matched.full_stop_detected}, ${trace.length} trace points`);
+          }
+        } catch (redLightErr: any) {
+          console.error(`    Red-light receipt lookup failed: ${redLightErr.message}`);
+        }
+      }
+
       const result = await mailLetter(
         letter as LetterToMail,
         profile as UserProfile,
         ticketNumber,
-        evidenceImages
+        evidenceImages,
+        redLightEvidence
       );
 
       if (result.success) {

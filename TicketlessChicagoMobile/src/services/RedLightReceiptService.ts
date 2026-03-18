@@ -55,6 +55,50 @@ export interface RedLightReceipt {
 const RECEIPTS_KEY = StorageKeys.RED_LIGHT_RECEIPTS;
 const MAX_RECEIPTS = 120;
 
+/**
+ * Compute SHA-256 hash of the canonical evidence data for chain-of-custody integrity.
+ * Uses the same canonical format as the server's computeEvidenceHash() so hashes match.
+ * Falls back gracefully if SubtleCrypto is not available.
+ */
+async function computeEvidenceHash(receipt: RedLightReceipt): Promise<string | null> {
+  try {
+    const canonical = JSON.stringify({
+      device_timestamp: new Date(receipt.deviceTimestamp).toISOString(),
+      camera_latitude: receipt.cameraLatitude,
+      camera_longitude: receipt.cameraLongitude,
+      intersection_id: receipt.intersectionId,
+      heading: receipt.heading,
+      approach_speed_mph: receipt.approachSpeedMph,
+      min_speed_mph: receipt.minSpeedMph,
+      full_stop_detected: receipt.fullStopDetected,
+      full_stop_duration_sec: receipt.fullStopDurationSec,
+      trace: receipt.trace.map(t => ({
+        ts: t.timestamp,
+        lat: t.latitude,
+        lng: t.longitude,
+        spd: t.speedMph,
+        acc: t.horizontalAccuracyMeters,
+      })),
+      accel_count: receipt.accelerometerTrace?.length || 0,
+    });
+
+    // Use Web Crypto API (available in Hermes on RN 0.82+)
+    if (typeof globalThis.crypto?.subtle?.digest === 'function') {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(canonical);
+      const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    log.debug('SubtleCrypto not available — hash will be computed server-side');
+    return null;
+  } catch (e) {
+    log.debug('Evidence hash computation failed (non-fatal)', e);
+    return null;
+  }
+}
+
 const STOP_SPEED_MPS = 0.2235; // 0.5 mph
 const STOP_MIN_DURATION_MS = 2000;
 
@@ -213,8 +257,13 @@ const syncAddToServer = async (receipt: RedLightReceipt): Promise<void> => {
     if (!AuthService.isAuthenticated()) return;
     const userId = AuthService.getUser()?.id;
     if (!userId) return;
+
+    // Compute evidence hash at capture time for chain-of-custody integrity
+    const evidenceHash = await computeEvidenceHash(receipt);
+    const now = new Date().toISOString();
+
     const supabase = AuthService.getSupabaseClient();
-    const { error } = await supabase.from('red_light_receipts').insert({
+    const insertData: Record<string, any> = {
       user_id: userId,
       device_timestamp: new Date(receipt.deviceTimestamp).toISOString(),
       camera_address: receipt.cameraAddress,
@@ -234,8 +283,33 @@ const syncAddToServer = async (receipt: RedLightReceipt): Promise<void> => {
       peak_deceleration_g: receipt.peakDecelerationG ?? null,
       expected_yellow_duration_sec: receipt.expectedYellowDurationSec ?? null,
       posted_speed_limit_mph: receipt.postedSpeedLimitMph ?? null,
-    });
-    if (error) log.debug('red-light sync failed (non-fatal)', error.message);
+    };
+
+    // Add hash fields only if hash was computed (columns may not exist yet)
+    if (evidenceHash) {
+      insertData.evidence_hash = evidenceHash;
+      insertData.evidence_hash_algorithm = 'sha256';
+      insertData.evidence_hashed_at = now;
+      log.info('Evidence hash computed at capture time', {
+        id: receipt.id,
+        hash: evidenceHash.slice(0, 16) + '...',
+      });
+    }
+
+    const { error } = await supabase.from('red_light_receipts').insert(insertData);
+    if (error) {
+      // If insert fails due to missing columns, retry without the hash fields
+      if (error.message?.includes('evidence_hash')) {
+        log.debug('evidence_hash column not found — retrying without hash fields');
+        delete insertData.evidence_hash;
+        delete insertData.evidence_hash_algorithm;
+        delete insertData.evidence_hashed_at;
+        const { error: retryError } = await supabase.from('red_light_receipts').insert(insertData);
+        if (retryError) log.debug('red-light sync retry failed (non-fatal)', retryError.message);
+      } else {
+        log.debug('red-light sync failed (non-fatal)', error.message);
+      }
+    }
   } catch (e) {
     log.debug('red-light sync exception (non-fatal)', e);
   }

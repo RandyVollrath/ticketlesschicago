@@ -38,6 +38,7 @@ export interface PortalTicket {
   ticket_number: string;
   ticket_type: string; // parking, red light, speed camera
   issue_date: string;
+  issue_datetime: string | null; // Full ISO timestamp from the API (e.g. "2026-02-07T21:07:00") — preserved for correlation with red-light receipt timestamps
   violation_description: string;
   current_amount_due: number;
   original_amount: number;
@@ -142,8 +143,11 @@ function parseItemRow(row: any, rawJson: string): PortalTicket | null {
   // Parse issue date — API returns ISO format like "2026-02-07T21:07:00"
   const rawDate = fields['Date Issued'] || '';
   let issueDate = rawDate;
+  let issueDatetime: string | null = null;
   if (rawDate.includes('T')) {
-    // Convert to MM/DD/YYYY for consistency with the rest of the codebase
+    // Preserve the full ISO timestamp for correlation with red-light receipt data
+    issueDatetime = rawDate;
+    // Also produce MM/DD/YYYY for display/backward compatibility
     try {
       const d = new Date(rawDate);
       issueDate = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
@@ -167,6 +171,7 @@ function parseItemRow(row: any, rawJson: string): PortalTicket | null {
     ticket_number: ticketNumber,
     ticket_type: ticketType,
     issue_date: issueDate,
+    issue_datetime: issueDatetime,
     violation_description: fields['Violation Description'] || '',
     current_amount_due: amountDue,
     original_amount: amountDue, // API doesn't provide original amount separately
@@ -201,10 +206,17 @@ function parseReceivable(recv: any, rawJson: string): PortalTicket {
     ticketType = 'speed_camera';
   }
 
+  // Legacy format may have ISO timestamps too
+  let issueDatetimeLegacy: string | null = null;
+  if (issueDate && issueDate.includes('T')) {
+    issueDatetimeLegacy = issueDate;
+  }
+
   return {
     ticket_number: String(ticketNumber),
     ticket_type: ticketType,
     issue_date: issueDate,
+    issue_datetime: issueDatetimeLegacy,
     violation_description: recv.violationDescription || recv.violation_description || recv.description || '',
     current_amount_due: parseFloat(recv.currentAmountDue || recv.current_amount_due || recv.amountDue || 0),
     original_amount: parseFloat(recv.originalAmount || recv.original_amount || recv.fineAmount || 0),
@@ -770,6 +782,7 @@ function parseTicketFromText(text: string): PortalTicket | null {
     ticket_number: ticketNumber,
     ticket_type: ticketType,
     issue_date: issueDate,
+    issue_datetime: null, // Not available from text parsing
     violation_description: violationDesc,
     current_amount_due: currentAmount,
     original_amount: originalAmount,
