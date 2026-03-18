@@ -134,9 +134,15 @@ function parseReceiptMetadata(subject: string, text?: string | null, sourceType?
   };
 }
 
-function parseRecipient(toAddress: string): { userId: string; inboxType: InboundInboxType } | null {
+function parseRecipient(toAddress: string): { userId: string | null; inboxType: InboundInboxType } | null {
+  // Shared forwarding address: receipts@autopilotamerica.com (user identified by sender email)
+  if (/^receipts@autopilotamerica\.com$/i.test(toAddress)) {
+    return { userId: null, inboxType: 'registration' };
+  }
+
+  // Per-user UUID addresses (legacy and subdomain formats)
   const match = toAddress.match(
-    /([a-f0-9\-]+)@(?:(bills)\.autopilotamerica\.com|(receipts)\.autopilotamerica\.com|linguistic-louse\.resend\.app)/i
+    /([a-f0-9\-]+)@(?:(bills)\.autopilotamerica\.com|(receipts)\.autopilotamerica\.com|autopilotamerica\.com|linguistic-louse\.resend\.app)/i
   );
   if (!match) return null;
 
@@ -261,19 +267,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('📎 Attachment details:', JSON.stringify(email.attachments, null, 2));
 
-    // Extract user UUID from "to" address
-    // Format: {uuid}@bills.autopilotamerica.com OR {uuid}@linguistic-louse.resend.app
+    // Extract user from "to" address
+    // Shared address: receipts@autopilotamerica.com (user identified by sender email)
+    // Legacy UUID addresses: {uuid}@bills.autopilotamerica.com, {uuid}@autopilotamerica.com, {uuid}@linguistic-louse.resend.app
     const toAddress = email.to[0]; // Primary recipient
     console.log(`🔍 Parsing email address: ${toAddress}`);
 
     const recipient = parseRecipient(toAddress);
     if (!recipient) {
       console.error('❌ Invalid email format:', toAddress);
-      console.error('Expected format: {uuid}@bills.autopilotamerica.com, {uuid}@receipts.autopilotamerica.com, or {uuid}@linguistic-louse.resend.app');
+      console.error('Expected: receipts@autopilotamerica.com or {uuid}@autopilotamerica.com');
       return res.status(400).json({ error: 'Invalid email format', toAddress });
     }
 
-    const userId = recipient.userId;
+    // Resolve userId: from address UUID or by looking up sender email
+    let userId = recipient.userId;
+
+    if (!userId) {
+      // Shared address — look up user by sender email
+      const senderLookupEmail = (email.from || '').toLowerCase();
+      console.log(`🔍 Shared address — looking up user by sender: ${senderLookupEmail}`);
+
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      const authUser = authUsers?.users?.find(
+        u => u.email?.toLowerCase() === senderLookupEmail
+      );
+
+      if (!authUser) {
+        console.error('❌ No account found for sender email:', senderLookupEmail);
+        return res.status(404).json({
+          error: 'No account found for sender email',
+          sender: senderLookupEmail,
+          hint: 'Forward from the email address associated with your Autopilot account',
+        });
+      }
+
+      userId = authUser.id;
+      console.log(`✅ Matched user by sender email: ${senderLookupEmail} → ${userId}`);
+    }
 
     console.log(`📨 Received utility bill email for user ${userId}`);
     console.log(`  - From: ${email.from}`);

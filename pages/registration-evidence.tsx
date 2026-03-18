@@ -38,7 +38,7 @@ export default function RegistrationEvidencePage() {
 
         const uid = authData.user.id;
         setUserId(uid);
-        setRegistrationForwardingEmail(`${uid}@linguistic-louse.resend.app`);
+        setRegistrationForwardingEmail('receipts@autopilotamerica.com');
 
         const { data: receiptRows, error: receiptsError } = await supabase
           .from('registration_evidence_receipts' as any)

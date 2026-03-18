@@ -932,7 +932,7 @@ export default function StartFunnel() {
 
               {user?.id && (
                 <RegistrationForwardingSetup
-                  forwardingEmail={`${user.id}@linguistic-louse.resend.app`}
+                  forwardingEmail="receipts@autopilotamerica.com"
                   compact
                   userEmail={user.email}
                 />
