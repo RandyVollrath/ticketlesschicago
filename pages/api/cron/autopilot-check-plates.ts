@@ -245,7 +245,7 @@ async function sendEvidenceRequestEmail(
         </div>
 
         ${(() => {
-          const fwdAddr = userId ? `${userId}@receipts.autopilotamerica.com` : null;
+          const fwdAddr = userId ? `${userId}@linguistic-louse.resend.app` : null;
           if ((violationType === 'no_city_sticker' || violationType === 'expired_plates') && fwdAddr) {
             const rType = violationType === 'no_city_sticker' ? 'City Sticker' : 'Plate Sticker';
             const sender = violationType === 'no_city_sticker' ? 'chicagovehiclestickers@sebis.com' : 'ecommerce@ilsos.gov';

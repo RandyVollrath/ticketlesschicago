@@ -1687,7 +1687,7 @@ async function sendEvidenceRequestEmail(
   const ticketSpecificReplyTo = `evidence+${ticketId}@autopilotamerica.com`;
 
   // Build receipt forwarding callout for sticker/plate tickets
-  const forwardingAddress = userId ? `${userId}@receipts.autopilotamerica.com` : null;
+  const forwardingAddress = userId ? `${userId}@linguistic-louse.resend.app` : null;
   let receiptForwardingHtml = '';
   if ((violationType === 'no_city_sticker' || violationType === 'expired_plates') && forwardingAddress) {
     const receiptType = violationType === 'no_city_sticker' ? 'city sticker' : 'plate sticker';
@@ -2092,6 +2092,8 @@ async function processFoundTicket(
       // Store the plate/state from the ticket itself for clerical error detection
       ticket_plate: ticket.ticket_plate || null,
       ticket_state: ticket.ticket_state || null,
+      // Full ISO timestamp from portal API (e.g. "2026-02-07T21:07:00") for correlation with red-light receipt timestamps
+      issue_datetime: ticket.issue_datetime || null,
     })
     .select()
     .single();

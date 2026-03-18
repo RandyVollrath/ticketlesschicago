@@ -2853,7 +2853,7 @@ function SettingsPageInner() {
           </p>
           {userId && (
             <RegistrationForwardingSetup
-              forwardingEmail={`${userId}@receipts.autopilotamerica.com`}
+              forwardingEmail={`${userId}@linguistic-louse.resend.app`}
               compact
               userEmail={email}
             />
