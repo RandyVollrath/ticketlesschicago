@@ -150,6 +150,62 @@ export interface RedLightEvidenceExhibit {
   /** SHA-256 hash */
   evidenceHash: string;
   receiptId: string;
+
+  // ── New defense analysis fields (Mar 2026) ──
+
+  /** Yellow light timing analysis */
+  yellowLight?: {
+    postedSpeedMph: number;
+    iteRecommendedSec: number;
+    chicagoActualSec: number;
+    shortfallSec: number;
+    isShorterThanStandard: boolean;
+    explanation: string;
+    standardCitation: string;
+  } | null;
+
+  /** Right-turn-on-red detection */
+  rightTurn?: {
+    rightTurnDetected: boolean;
+    headingChangeDeg: number;
+    stoppedBeforeTurn: boolean;
+    minSpeedBeforeTurnMph: number;
+    isLegalRightOnRed: boolean;
+    explanation: string;
+  } | null;
+
+  /** Intersection geometry */
+  geometry?: {
+    approachDistanceMeters: number;
+    closestPointToCamera: number;
+    averageApproachSpeedMph: number;
+    summary: string;
+  } | null;
+
+  /** Weather/visibility at violation time */
+  weather?: {
+    hasAdverseConditions: boolean;
+    temperatureF: number | null;
+    visibilityMiles: number | null;
+    impairedVisibility: boolean;
+    precipitationType: string | null;
+    roadCondition: string | null;
+    sunPosition: string | null;
+    description: string;
+    defenseArguments: string[];
+    source: string;
+  } | null;
+
+  /** Overall defense score (0-100) */
+  defenseScore?: number;
+
+  /** Ordered defense arguments */
+  defenseArguments?: {
+    type: string;
+    strength: string;
+    title: string;
+    summary: string;
+  }[];
 }
 
 /**
@@ -381,6 +437,79 @@ export function formatLetterAsHTML(
             </tr>
             ${speedRows}
           </table>
+        ` : ''}
+
+        ${redLightEvidence.yellowLight?.isShorterThanStandard ? `
+          <div style="margin-top: 15px; padding: 12px; background: #fff3e0; border: 2px solid #ff9800; font-size: 10pt;">
+            <strong style="color: #e65100;">Yellow Light Timing Analysis</strong><br>
+            <table style="border-collapse: collapse; font-size: 9pt; margin-top: 6px; width: 100%;">
+              <tr><td style="padding: 2px 0; color: #bf360c; width: 180px;">Posted Speed:</td><td style="padding: 2px 0;">${redLightEvidence.yellowLight.postedSpeedMph} mph</td></tr>
+              <tr><td style="padding: 2px 0; color: #bf360c;">Chicago Yellow Duration:</td><td style="padding: 2px 0; font-weight: bold;">${redLightEvidence.yellowLight.chicagoActualSec.toFixed(1)} seconds</td></tr>
+              <tr><td style="padding: 2px 0; color: #bf360c;">ITE/MUTCD Recommended:</td><td style="padding: 2px 0; font-weight: bold;">${redLightEvidence.yellowLight.iteRecommendedSec.toFixed(1)} seconds</td></tr>
+              <tr><td style="padding: 2px 0; color: #bf360c;">Shortfall:</td><td style="padding: 2px 0; font-weight: bold; color: #d32f2f;">${redLightEvidence.yellowLight.shortfallSec.toFixed(1)} seconds below standard</td></tr>
+            </table>
+            <p style="font-size: 8pt; color: #795548; margin: 6px 0 0;">
+              Standard: ${redLightEvidence.yellowLight.standardCitation}
+            </p>
+          </div>
+        ` : ''}
+
+        ${redLightEvidence.rightTurn?.rightTurnDetected ? `
+          <div style="margin-top: 15px; padding: 12px; background: ${redLightEvidence.rightTurn.isLegalRightOnRed ? '#e8f5e9' : '#fff8e1'}; border: 2px solid ${redLightEvidence.rightTurn.isLegalRightOnRed ? '#4caf50' : '#ffc107'}; font-size: 10pt;">
+            <strong style="color: ${redLightEvidence.rightTurn.isLegalRightOnRed ? '#1b5e20' : '#f57f17'};">
+              ${redLightEvidence.rightTurn.isLegalRightOnRed ? 'FINDING: Legal Right-Turn-on-Red Detected' : 'Right Turn Detected'}
+            </strong><br>
+            <table style="border-collapse: collapse; font-size: 9pt; margin-top: 6px; width: 100%;">
+              <tr><td style="padding: 2px 0; color: #555; width: 180px;">Heading Change:</td><td style="padding: 2px 0;">${redLightEvidence.rightTurn.headingChangeDeg.toFixed(0)}&deg; clockwise (right turn)</td></tr>
+              <tr><td style="padding: 2px 0; color: #555;">Stopped Before Turn:</td><td style="padding: 2px 0; font-weight: bold; color: ${redLightEvidence.rightTurn.stoppedBeforeTurn ? '#1b5e20' : '#e65100'};">${redLightEvidence.rightTurn.stoppedBeforeTurn ? 'YES' : 'No'} (min speed: ${redLightEvidence.rightTurn.minSpeedBeforeTurnMph.toFixed(1)} mph)</td></tr>
+            </table>
+            <p style="font-size: 8pt; color: #555; margin: 6px 0 0;">
+              Under 625 ILCS 5/11-306(c), right turns on red are permitted after a complete stop unless posted otherwise.
+            </p>
+          </div>
+        ` : ''}
+
+        ${redLightEvidence.weather?.hasAdverseConditions ? `
+          <div style="margin-top: 15px; padding: 12px; background: #e3f2fd; border: 1px solid #2196f3; font-size: 10pt;">
+            <strong style="color: #0d47a1;">Weather Conditions at Time of Violation</strong><br>
+            <table style="border-collapse: collapse; font-size: 9pt; margin-top: 6px; width: 100%;">
+              <tr><td style="padding: 2px 0; color: #1565c0; width: 180px;">Conditions:</td><td style="padding: 2px 0;">${redLightEvidence.weather.description}</td></tr>
+              ${redLightEvidence.weather.temperatureF != null ? `<tr><td style="padding: 2px 0; color: #1565c0;">Temperature:</td><td style="padding: 2px 0;">${Math.round(redLightEvidence.weather.temperatureF)}&deg;F</td></tr>` : ''}
+              ${redLightEvidence.weather.visibilityMiles != null ? `<tr><td style="padding: 2px 0; color: #1565c0;">Visibility:</td><td style="padding: 2px 0; ${redLightEvidence.weather.impairedVisibility ? 'font-weight: bold; color: #d32f2f;' : ''}">${redLightEvidence.weather.visibilityMiles.toFixed(1)} miles${redLightEvidence.weather.impairedVisibility ? ' (IMPAIRED)' : ''}</td></tr>` : ''}
+              ${redLightEvidence.weather.roadCondition ? `<tr><td style="padding: 2px 0; color: #1565c0;">Road Conditions:</td><td style="padding: 2px 0; font-weight: bold;">${redLightEvidence.weather.roadCondition}</td></tr>` : ''}
+              ${redLightEvidence.weather.sunPosition ? `<tr><td style="padding: 2px 0; color: #1565c0;">Time of Day:</td><td style="padding: 2px 0;">${redLightEvidence.weather.sunPosition.charAt(0).toUpperCase() + redLightEvidence.weather.sunPosition.slice(1)}</td></tr>` : ''}
+            </table>
+            <p style="font-size: 8pt; color: #1565c0; margin: 6px 0 0;">
+              Source: ${redLightEvidence.weather.source}
+            </p>
+          </div>
+        ` : ''}
+
+        ${redLightEvidence.geometry ? `
+          <div style="margin-top: 15px;">
+            <table style="border-collapse: collapse; font-size: 9pt; width: 100%;">
+              <tr><td colspan="2" style="padding: 6px 0 3px; font-weight: bold; font-size: 10pt; border-top: 1px solid #ddd;">Intersection Approach Analysis</td></tr>
+              <tr><td style="padding: 2px 0; color: #555; width: 200px;">Approach Distance:</td><td style="padding: 2px 0;">${redLightEvidence.geometry.approachDistanceMeters.toFixed(0)} meters</td></tr>
+              <tr><td style="padding: 2px 0; color: #555;">Closest Point to Camera:</td><td style="padding: 2px 0;">${redLightEvidence.geometry.closestPointToCamera.toFixed(0)} meters</td></tr>
+              <tr><td style="padding: 2px 0; color: #555;">Avg Approach Speed:</td><td style="padding: 2px 0;">${redLightEvidence.geometry.averageApproachSpeedMph.toFixed(1)} mph</td></tr>
+            </table>
+          </div>
+        ` : ''}
+
+        ${redLightEvidence.defenseScore != null ? `
+          <div style="margin-top: 15px; padding: 10px; background: #f3e5f5; border: 1px solid #9c27b0; font-size: 9pt;">
+            <strong style="color: #4a148c;">Defense Analysis Summary</strong>
+            <span style="float: right; font-weight: bold; color: ${redLightEvidence.defenseScore >= 50 ? '#1b5e20' : redLightEvidence.defenseScore >= 25 ? '#e65100' : '#666'};">
+              Score: ${redLightEvidence.defenseScore}/100
+            </span>
+            ${redLightEvidence.defenseArguments && redLightEvidence.defenseArguments.length > 0 ? `
+              <ul style="margin: 6px 0 0; padding-left: 16px; font-size: 8pt;">
+                ${redLightEvidence.defenseArguments.map(a =>
+                  `<li style="margin-bottom: 3px;"><strong>[${a.strength.toUpperCase()}]</strong> ${a.title}: ${a.summary}</li>`
+                ).join('')}
+              </ul>
+            ` : ''}
+          </div>
         ` : ''}
 
         <div style="margin-top: 20px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; font-size: 8pt;">

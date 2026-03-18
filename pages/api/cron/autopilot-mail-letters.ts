@@ -4,6 +4,7 @@ import { Resend } from 'resend';
 import Anthropic from '@anthropic-ai/sdk';
 import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS, RedLightEvidenceExhibit } from '../../../lib/lob-service';
 import { computeEvidenceHash } from '../../../lib/red-light-evidence-report';
+import { analyzeRedLightDefense, type AnalysisInput } from '../../../lib/red-light-defense-analysis';
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 
@@ -948,6 +949,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               accelerometer_trace: accelTrace,
             });
 
+            // Run defense analysis (yellow light, right turn, weather, geometry)
+            let defenseAnalysis: Awaited<ReturnType<typeof analyzeRedLightDefense>> | null = null;
+            try {
+              const postedSpeed = matched.speed_limit_mph ?? 30; // Default to 30 mph (most Chicago camera intersections)
+              const analysisInput: AnalysisInput = {
+                trace,
+                cameraLatitude: matched.camera_latitude || 0,
+                cameraLongitude: matched.camera_longitude || 0,
+                postedSpeedMph: postedSpeed,
+                approachSpeedMph: matched.approach_speed_mph ?? null,
+                minSpeedMph: matched.min_speed_mph ?? null,
+                fullStopDetected: matched.full_stop_detected ?? false,
+                fullStopDurationSec: matched.full_stop_duration_sec ?? null,
+                speedDeltaMph: matched.speed_delta_mph ?? null,
+                violationDatetime,
+                deviceTimestamp: matched.device_timestamp,
+              };
+              defenseAnalysis = await analyzeRedLightDefense(analysisInput);
+              console.log(`    Defense analysis: score=${defenseAnalysis.overallDefenseScore}, args=${defenseAnalysis.defenseArguments.length}`);
+            } catch (defenseErr: any) {
+              console.error(`    Defense analysis failed (non-fatal): ${defenseErr.message}`);
+            }
+
             redLightEvidence = {
               cameraAddress: matched.camera_address || matched.intersection_id || 'Unknown',
               deviceTimestamp: matched.device_timestamp,
@@ -966,6 +990,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               timeDiffMinutes,
               evidenceHash,
               receiptId: matched.id,
+              // Defense analysis results
+              yellowLight: defenseAnalysis?.yellowLight ? {
+                postedSpeedMph: defenseAnalysis.yellowLight.postedSpeedMph,
+                iteRecommendedSec: defenseAnalysis.yellowLight.iteRecommendedSec,
+                chicagoActualSec: defenseAnalysis.yellowLight.chicagoActualSec,
+                shortfallSec: defenseAnalysis.yellowLight.shortfallSec,
+                isShorterThanStandard: defenseAnalysis.yellowLight.isShorterThanStandard,
+                explanation: defenseAnalysis.yellowLight.explanation,
+                standardCitation: defenseAnalysis.yellowLight.standardCitation,
+              } : undefined,
+              rightTurn: defenseAnalysis?.rightTurn ? {
+                rightTurnDetected: defenseAnalysis.rightTurn.rightTurnDetected,
+                headingChangeDeg: defenseAnalysis.rightTurn.headingChangeDeg,
+                stoppedBeforeTurn: defenseAnalysis.rightTurn.stoppedBeforeTurn,
+                minSpeedBeforeTurnMph: defenseAnalysis.rightTurn.minSpeedBeforeTurnMph,
+                isLegalRightOnRed: defenseAnalysis.rightTurn.isLegalRightOnRed,
+                explanation: defenseAnalysis.rightTurn.explanation,
+              } : undefined,
+              geometry: defenseAnalysis?.geometry ? {
+                approachDistanceMeters: defenseAnalysis.geometry.approachDistanceMeters,
+                closestPointToCamera: defenseAnalysis.geometry.closestPointToCamera,
+                averageApproachSpeedMph: defenseAnalysis.geometry.averageApproachSpeedMph,
+                summary: defenseAnalysis.geometry.summary,
+              } : undefined,
+              weather: defenseAnalysis?.weather ? {
+                hasAdverseConditions: defenseAnalysis.weather.hasAdverseConditions,
+                temperatureF: defenseAnalysis.weather.temperatureF,
+                visibilityMiles: defenseAnalysis.weather.visibilityMiles,
+                impairedVisibility: defenseAnalysis.weather.impairedVisibility,
+                precipitationType: defenseAnalysis.weather.precipitationType,
+                roadCondition: defenseAnalysis.weather.roadCondition,
+                sunPosition: defenseAnalysis.weather.sunPosition,
+                description: defenseAnalysis.weather.description,
+                defenseArguments: defenseAnalysis.weather.defenseArguments,
+                source: defenseAnalysis.weather.source,
+              } : undefined,
+              defenseScore: defenseAnalysis?.overallDefenseScore,
+              defenseArguments: defenseAnalysis?.defenseArguments.map(a => ({
+                type: a.type,
+                strength: a.strength,
+                title: a.title,
+                summary: a.summary,
+              })),
             };
 
             console.log(`    Found red-light receipt ${matched.id} — full_stop=${matched.full_stop_detected}, ${trace.length} trace points`);
@@ -1046,7 +1113,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                           ${redLightEvidence.violationDatetime ? `<tr><td style="padding: 4px 0; color: #047857;">Timestamp Match:</td><td style="padding: 4px 0;">${redLightEvidence.timeDiffMinutes != null && redLightEvidence.timeDiffMinutes < 5 ? 'STRONG' : redLightEvidence.timeDiffMinutes != null && redLightEvidence.timeDiffMinutes < 60 ? 'POSSIBLE' : 'WEAK'} (${redLightEvidence.timeDiffMinutes != null ? redLightEvidence.timeDiffMinutes.toFixed(1) + ' min diff' : 'N/A'})</td></tr>` : ''}
                           <tr><td style="padding: 4px 0; color: #047857;">Evidence Hash:</td><td style="padding: 4px 0; font-family: monospace; font-size: 11px; word-break: break-all;">${redLightEvidence.evidenceHash.substring(0, 16)}...${redLightEvidence.evidenceHash.substring(redLightEvidence.evidenceHash.length - 8)}</td></tr>
                           <tr><td style="padding: 4px 0; color: #047857;">Receipt ID:</td><td style="padding: 4px 0; font-family: monospace; font-size: 11px;">${redLightEvidence.receiptId}</td></tr>
+                          ${redLightEvidence.defenseScore !== undefined ? `<tr><td style="padding: 4px 0; color: #047857;">Defense Score:</td><td style="padding: 4px 0; font-weight: 600; color: ${redLightEvidence.defenseScore >= 60 ? '#065f46' : redLightEvidence.defenseScore >= 30 ? '#b45309' : '#991b1b'};">${redLightEvidence.defenseScore}/100</td></tr>` : ''}
                         </table>
+                        ${redLightEvidence.defenseArguments && redLightEvidence.defenseArguments.length > 0 ? `
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #a7f3d0;">
+                          <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #065f46;">Defense Arguments:</p>
+                          ${redLightEvidence.defenseArguments.map(a => `<div style="font-size: 12px; padding: 2px 0; color: #065f46;"><span style="display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; color: white; background: ${a.strength === 'strong' ? '#059669' : a.strength === 'moderate' ? '#d97706' : '#6b7280'}; margin-right: 6px;">${a.strength.toUpperCase()}</span>${a.title}: ${a.summary}</div>`).join('')}
+                        </div>
+                        ` : ''}
+                        ${redLightEvidence.yellowLight?.isShorterThanStandard ? `
+                        <div style="margin-top: 8px; padding: 8px; background: #fff7ed; border: 1px solid #f97316; border-radius: 4px; font-size: 12px; color: #9a3412;">
+                          <strong>Yellow Light:</strong> Chicago ${redLightEvidence.yellowLight.chicagoActualSec}s vs ITE ${redLightEvidence.yellowLight.iteRecommendedSec}s (${redLightEvidence.yellowLight.shortfallSec.toFixed(1)}s short)
+                        </div>` : ''}
+                        ${redLightEvidence.rightTurn?.isLegalRightOnRed ? `
+                        <div style="margin-top: 8px; padding: 8px; background: #ecfdf5; border: 1px solid #10b981; border-radius: 4px; font-size: 12px; color: #065f46;">
+                          <strong>Right Turn:</strong> Legal right-on-red detected (${redLightEvidence.rightTurn.headingChangeDeg.toFixed(0)}° turn after stop)
+                        </div>` : ''}
+                        ${redLightEvidence.weather?.hasAdverseConditions ? `
+                        <div style="margin-top: 8px; padding: 8px; background: #eff6ff; border: 1px solid #3b82f6; border-radius: 4px; font-size: 12px; color: #1e40af;">
+                          <strong>Weather:</strong> ${redLightEvidence.weather.description}${redLightEvidence.weather.roadCondition ? ` — ${redLightEvidence.weather.roadCondition}` : ''}
+                        </div>` : ''}
                       </div>
                       ` : ''}
                       <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 20px 0;">

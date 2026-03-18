@@ -20,6 +20,7 @@ import {
 } from '../../../lib/parking-evidence';
 import { getStreetViewEvidence, StreetViewResult, getStreetViewEvidenceWithAnalysis, StreetViewEvidencePackage } from '../../../lib/street-view-service';
 import { getOfficerIntelligence } from '../../../lib/contest-outcome-tracker';
+import { analyzeRedLightDefense, type AnalysisInput, type RedLightDefenseAnalysis } from '../../../lib/red-light-defense-analysis';
 
 // Weather relevance by violation type
 // PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
@@ -808,6 +809,31 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     // Wait for ALL evidence lookups to complete in parallel
     await Promise.all(evidencePromises);
 
+    // Run red-light defense analysis if we have a receipt
+    let redLightDefense: RedLightDefenseAnalysis | null = null;
+    if (redLightReceipt) {
+      try {
+        const trace = Array.isArray(redLightReceipt.trace) ? redLightReceipt.trace : [];
+        const defenseInput: AnalysisInput = {
+          trace,
+          cameraLatitude: redLightReceipt.camera_latitude || 0,
+          cameraLongitude: redLightReceipt.camera_longitude || 0,
+          postedSpeedMph: redLightReceipt.speed_limit_mph ?? 30,
+          approachSpeedMph: redLightReceipt.approach_speed_mph ?? null,
+          minSpeedMph: redLightReceipt.min_speed_mph ?? null,
+          fullStopDetected: redLightReceipt.full_stop_detected ?? false,
+          fullStopDurationSec: redLightReceipt.full_stop_duration_sec ?? null,
+          speedDeltaMph: redLightReceipt.speed_delta_mph ?? null,
+          violationDatetime: contest.ticket_date ? `${contest.ticket_date}T12:00:00Z` : null,
+          deviceTimestamp: redLightReceipt.device_timestamp,
+        };
+        redLightDefense = await analyzeRedLightDefense(defenseInput);
+        console.log(`  Defense analysis: score=${redLightDefense.overallDefenseScore}, args=${redLightDefense.defenseArguments.length}`);
+      } catch (e) {
+        console.error('Red-light defense analysis failed:', e);
+      }
+    }
+
     // Update userEvidence with schedule verification results
     if (streetCleaningVerification.checked) {
       userEvidence.hasScheduleVerification = true;
@@ -1190,6 +1216,65 @@ ${redLightReceipt.full_stop_detected === true ? `- The user's vehicle CAME TO A 
 - Note that all data is cryptographically hashed (SHA-256) for integrity verification, demonstrating the evidence has not been tampered with.
 - Request the city provide their camera calibration records and full video evidence for comparison with the independently-captured sensor data.
 - If relevant, point out that the GPS data is captured by the device's hardware sensors automatically and cannot be retroactively modified.` : ''}
+${redLightDefense && redLightDefense.defenseArguments.length > 0 ? `
+=== ADVANCED DEFENSE ANALYSIS (AUTOMATED) ===
+Overall Defense Strength Score: ${redLightDefense.overallDefenseScore}/100
+Number of Defense Arguments: ${redLightDefense.defenseArguments.length}
+
+${redLightDefense.yellowLight ? `
+YELLOW LIGHT TIMING ANALYSIS:
+- Posted Speed at Intersection: ${redLightDefense.yellowLight.postedSpeedMph} mph
+- Chicago's Yellow Duration: ${redLightDefense.yellowLight.chicagoActualSec} seconds
+- ITE/MUTCD Recommended Duration: ${redLightDefense.yellowLight.iteRecommendedSec} seconds
+- Shortfall: ${redLightDefense.yellowLight.shortfallSec > 0 ? `${redLightDefense.yellowLight.shortfallSec.toFixed(1)} seconds SHORTER than national standard` : 'Meets standard'}
+${redLightDefense.yellowLight.driverApproachSpeedMph !== redLightDefense.yellowLight.postedSpeedMph ? `- ITE Duration for Driver's Actual Speed (${redLightDefense.yellowLight.driverApproachSpeedMph} mph): ${redLightDefense.yellowLight.iteForDriverSpeedSec} seconds` : ''}
+- Analysis: ${redLightDefense.yellowLight.explanation}
+- Legal Citation: ${redLightDefense.yellowLight.standardCitation}
+${redLightDefense.yellowLight.isShorterThanStandard ? `
+INSTRUCTIONS: This is a STRONG defense argument. Chicago's yellow light at this intersection is shorter than the duration recommended by the Institute of Transportation Engineers. Reference the ITE standard and the specific shortfall. Note the 2014 Chicago Inspector General investigation that found similar timing issues generated tens of thousands of improper citations. Argue that the driver did not have adequate time to safely clear the intersection under national engineering standards.` : ''}` : ''}
+
+${redLightDefense.rightTurn?.rightTurnDetected ? `
+RIGHT-TURN-ON-RED ANALYSIS:
+- Right Turn Detected: YES (${redLightDefense.rightTurn.headingChangeDeg.toFixed(0)}° clockwise heading change)
+- Stopped Before Turn: ${redLightDefense.rightTurn.stoppedBeforeTurn ? 'YES' : 'NO'} (min speed: ${redLightDefense.rightTurn.minSpeedBeforeTurnMph.toFixed(1)} mph)
+- Legal Right-on-Red: ${redLightDefense.rightTurn.isLegalRightOnRed ? 'YES — This appears to be a lawful right-turn-on-red' : 'Potentially — turn detected but conditions may not fully qualify'}
+- Analysis: ${redLightDefense.rightTurn.explanation}
+${redLightDefense.rightTurn.isLegalRightOnRed ? `
+INSTRUCTIONS: This is a STRONG defense argument. The GPS heading data proves the vehicle executed a right turn after stopping. Under Illinois law (625 ILCS 5/11-306(c)), right turns on red are permitted after a complete stop unless specifically posted otherwise. Argue that this was a lawful right-turn-on-red maneuver and the camera citation was issued in error. Reference the specific heading change and stop detected in the GPS data.` : ''}` : ''}
+
+${redLightDefense.weather?.hasAdverseConditions ? `
+WEATHER CONDITIONS AT VIOLATION TIME:
+- Conditions: ${redLightDefense.weather.description}
+${redLightDefense.weather.temperatureF !== null ? `- Temperature: ${Math.round(redLightDefense.weather.temperatureF)}°F` : ''}
+${redLightDefense.weather.visibilityMiles !== null ? `- Visibility: ${redLightDefense.weather.visibilityMiles.toFixed(1)} miles` : ''}
+${redLightDefense.weather.precipitationType ? `- Precipitation: ${redLightDefense.weather.precipitationType}` : ''}
+${redLightDefense.weather.roadCondition ? `- Road Conditions: ${redLightDefense.weather.roadCondition}` : ''}
+${redLightDefense.weather.sunPosition ? `- Time of Day: ${redLightDefense.weather.sunPosition}` : ''}
+- Defense Arguments from Weather:
+${redLightDefense.weather.defenseArguments.map(a => `  * ${a}`).join('\n')}
+
+INSTRUCTIONS: Use weather conditions as a SUPPORTING argument. Adverse weather affects stopping distance, visibility, and signal perception. If roads were wet/icy, argue that attempting an emergency stop would have been unsafe. If visibility was impaired, argue the driver's perception of the signal timing was affected.` : ''}
+
+${redLightDefense.geometry ? `
+INTERSECTION APPROACH ANALYSIS:
+- Approach Distance: ${redLightDefense.geometry.approachDistanceMeters.toFixed(0)} meters from first GPS reading to camera
+- Closest Point to Camera: ${redLightDefense.geometry.closestPointToCamera.toFixed(0)} meters
+- Average Approach Speed: ${redLightDefense.geometry.averageApproachSpeedMph.toFixed(1)} mph
+- Analysis: ${redLightDefense.geometry.summary}` : ''}
+
+RANKED DEFENSE ARGUMENTS (strongest first):
+${redLightDefense.defenseArguments.map((a, i) => `${i + 1}. [${a.strength.toUpperCase()}] ${a.title}: ${a.summary}`).join('\n')}
+
+INSTRUCTIONS FOR USING DEFENSE ANALYSIS:
+1. Lead with the STRONGEST argument(s) — those marked [STRONG] above
+2. Use [MODERATE] arguments as supporting points
+3. [SUPPORTING] arguments provide context but should not be the primary focus
+4. The yellow light timing argument, if applicable, is particularly powerful because it cites national engineering standards
+5. The right-turn-on-red argument, if applicable, may completely invalidate the citation
+6. Weather arguments support the case but are rarely sufficient alone
+7. Reference the attached sensor data exhibit for all GPS/accelerometer claims
+8. DO NOT mention the defense score or automated analysis in the letter
+` : ''}
 ${cameraPassHistory && cameraPassHistory.length > 0 ? `
 === SPEED CAMERA GPS DATA FROM USER'S APP ===
 ${cameraPassHistory.slice(0, 3).map((p: any, i: number) => `Pass ${i + 1}: Camera: ${p.camera_name || p.camera_id || 'Unknown'}, GPS Speed: ${p.speed_mph ? `${p.speed_mph} mph` : 'Unknown'}, Posted Limit: ${p.speed_limit_mph ? `${p.speed_limit_mph} mph` : 'Unknown'}`).join('\n')}
