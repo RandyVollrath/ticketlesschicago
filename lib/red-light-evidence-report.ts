@@ -55,6 +55,51 @@ export interface RedLightReceiptData {
   ticket_number?: string | null;
   // Pre-computed hash (if available from capture time)
   evidence_hash?: string | null;
+
+  // Optional defense analysis results (Mar 2026)
+  defenseAnalysis?: {
+    yellowLight?: {
+      postedSpeedMph: number;
+      iteRecommendedSec: number;
+      chicagoActualSec: number;
+      shortfallSec: number;
+      isShorterThanStandard: boolean;
+      explanation: string;
+      standardCitation: string;
+    } | null;
+    rightTurn?: {
+      rightTurnDetected: boolean;
+      headingChangeDeg: number;
+      stoppedBeforeTurn: boolean;
+      minSpeedBeforeTurnMph: number;
+      isLegalRightOnRed: boolean;
+      explanation: string;
+    } | null;
+    geometry?: {
+      approachDistanceMeters: number;
+      closestPointToCamera: number;
+      averageApproachSpeedMph: number;
+      summary: string;
+    } | null;
+    weather?: {
+      hasAdverseConditions: boolean;
+      temperatureF: number | null;
+      visibilityMiles: number | null;
+      impairedVisibility: boolean;
+      precipitationType: string | null;
+      roadCondition: string | null;
+      sunPosition: string | null;
+      description: string;
+      source: string;
+    } | null;
+    overallDefenseScore: number;
+    defenseArguments: {
+      type: string;
+      strength: string;
+      title: string;
+      summary: string;
+    }[];
+  } | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -409,10 +454,186 @@ export async function generateEvidenceReportPDF(
         doc.moveDown(0.8);
       }
 
+      // ─── Defense Analysis Sections ──────────────────────────────────
+      let sectionNum = receipt.violation_datetime
+        ? (receipt.accelerometer_trace && receipt.accelerometer_trace.length > 10 ? 5 : 4)
+        : (receipt.accelerometer_trace && receipt.accelerometer_trace.length > 10 ? 4 : 3);
+
+      const defense = receipt.defenseAnalysis;
+
+      if (defense) {
+        // Yellow Light Timing
+        if (defense.yellowLight) {
+          sectionNum++;
+          if (doc.y > 620) doc.addPage();
+
+          doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+          doc.text(`${sectionNum}. YELLOW LIGHT TIMING ANALYSIS`);
+          doc.moveDown(0.3);
+
+          if (defense.yellowLight.isShorterThanStandard) {
+            const yBoxY = doc.y;
+            doc.rect(54, yBoxY, pageWidth, 44).fillAndStroke('#fff3e0', '#ff9800');
+            doc.fillColor('#e65100').font('Helvetica-Bold').fontSize(10);
+            doc.text(
+              `FINDING: Chicago yellow is ${defense.yellowLight.shortfallSec.toFixed(1)}s shorter than ITE national standard.`,
+              62, yBoxY + 6, { width: pageWidth - 16 }
+            );
+            doc.fontSize(8).font('Helvetica').fillColor('#bf360c');
+            doc.text(
+              `Chicago: ${defense.yellowLight.chicagoActualSec}s | ITE: ${defense.yellowLight.iteRecommendedSec}s | Speed: ${defense.yellowLight.postedSpeedMph} mph`,
+              62
+            );
+            doc.y = yBoxY + 48;
+          }
+
+          doc.moveDown(0.3);
+          doc.fontSize(10).font('Helvetica').fillColor('#000000');
+          doc.font('Helvetica-Bold').text('Posted Speed: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.yellowLight.postedSpeedMph} mph`);
+          doc.font('Helvetica-Bold').text('Chicago Yellow: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.yellowLight.chicagoActualSec} seconds`);
+          doc.font('Helvetica-Bold').text('ITE Standard: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.yellowLight.iteRecommendedSec} seconds`);
+          doc.font('Helvetica-Bold').text('Citation: ', { continued: true });
+          doc.font('Helvetica').fontSize(8).text(defense.yellowLight.standardCitation);
+
+          doc.moveDown(0.3);
+          doc.fontSize(8).font('Helvetica').fillColor('#555555');
+          doc.text(defense.yellowLight.explanation, { width: pageWidth });
+          doc.fillColor('#000000');
+          doc.moveDown(0.8);
+        }
+
+        // Right Turn on Red
+        if (defense.rightTurn?.rightTurnDetected) {
+          sectionNum++;
+          if (doc.y > 620) doc.addPage();
+
+          doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+          doc.text(`${sectionNum}. RIGHT-TURN-ON-RED ANALYSIS`);
+          doc.moveDown(0.3);
+
+          const isLegal = defense.rightTurn.isLegalRightOnRed;
+          const rtBoxY = doc.y;
+          doc.rect(54, rtBoxY, pageWidth, 32).fillAndStroke(
+            isLegal ? '#e8f5e9' : '#fff8e1',
+            isLegal ? '#4caf50' : '#ff9800'
+          );
+          doc.fillColor(isLegal ? '#1b5e20' : '#e65100').font('Helvetica-Bold').fontSize(10);
+          doc.text(
+            isLegal
+              ? `FINDING: Lawful right-turn-on-red (${defense.rightTurn.headingChangeDeg.toFixed(0)}° turn after stop).`
+              : `FINDING: Right turn detected (${defense.rightTurn.headingChangeDeg.toFixed(0)}°).`,
+            62, rtBoxY + 8, { width: pageWidth - 16 }
+          );
+          doc.y = rtBoxY + 36;
+
+          doc.moveDown(0.3);
+          doc.fontSize(10).font('Helvetica').fillColor('#000000');
+          doc.font('Helvetica-Bold').text('Heading Change: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.rightTurn.headingChangeDeg.toFixed(1)}° clockwise`);
+          doc.font('Helvetica-Bold').text('Stopped Before Turn: ', { continued: true });
+          doc.font('Helvetica').text(defense.rightTurn.stoppedBeforeTurn ? `Yes (${defense.rightTurn.minSpeedBeforeTurnMph.toFixed(1)} mph)` : 'No');
+
+          doc.moveDown(0.3);
+          doc.fontSize(8).font('Helvetica').fillColor('#555555');
+          doc.text(defense.rightTurn.explanation, { width: pageWidth });
+          doc.fillColor('#000000');
+          doc.moveDown(0.8);
+        }
+
+        // Weather
+        if (defense.weather?.hasAdverseConditions) {
+          sectionNum++;
+          if (doc.y > 620) doc.addPage();
+
+          doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+          doc.text(`${sectionNum}. WEATHER CONDITIONS`);
+          doc.moveDown(0.3);
+
+          const wbY = doc.y;
+          doc.rect(54, wbY, pageWidth, 28).fillAndStroke('#e3f2fd', '#2196f3');
+          doc.fillColor('#0d47a1').font('Helvetica-Bold').fontSize(10);
+          doc.text(`Conditions: ${defense.weather.description}`, 62, wbY + 6, { width: pageWidth - 16 });
+          doc.y = wbY + 32;
+
+          doc.moveDown(0.3);
+          doc.fontSize(10).font('Helvetica').fillColor('#000000');
+          if (defense.weather.temperatureF !== null) {
+            doc.font('Helvetica-Bold').text('Temperature: ', { continued: true });
+            doc.font('Helvetica').text(`${Math.round(defense.weather.temperatureF)}°F`);
+          }
+          if (defense.weather.visibilityMiles !== null) {
+            doc.font('Helvetica-Bold').text('Visibility: ', { continued: true });
+            doc.font('Helvetica').text(`${defense.weather.visibilityMiles.toFixed(1)} mi${defense.weather.impairedVisibility ? ' (IMPAIRED)' : ''}`);
+          }
+          if (defense.weather.roadCondition) {
+            doc.font('Helvetica-Bold').text('Road: ', { continued: true });
+            doc.font('Helvetica').text(defense.weather.roadCondition);
+          }
+
+          doc.fillColor('#000000');
+          doc.moveDown(0.8);
+        }
+
+        // Geometry
+        if (defense.geometry) {
+          sectionNum++;
+          if (doc.y > 650) doc.addPage();
+
+          doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+          doc.text(`${sectionNum}. INTERSECTION APPROACH`);
+          doc.moveDown(0.3);
+
+          doc.fontSize(10).font('Helvetica').fillColor('#000000');
+          doc.font('Helvetica-Bold').text('Approach Distance: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.geometry.approachDistanceMeters.toFixed(0)}m`);
+          doc.font('Helvetica-Bold').text('Closest to Camera: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.geometry.closestPointToCamera.toFixed(0)}m`);
+          doc.font('Helvetica-Bold').text('Avg Speed: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.geometry.averageApproachSpeedMph.toFixed(1)} mph`);
+
+          doc.moveDown(0.8);
+        }
+
+        // Defense Summary
+        if (defense.defenseArguments.length > 0) {
+          sectionNum++;
+          if (doc.y > 600) doc.addPage();
+
+          doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+          doc.text(`${sectionNum}. DEFENSE SUMMARY`);
+          doc.moveDown(0.3);
+
+          const dsY = doc.y;
+          doc.rect(54, dsY, pageWidth, 24).fillAndStroke('#f3e5f5', '#9c27b0');
+          doc.fillColor('#4a148c').font('Helvetica-Bold').fontSize(11);
+          doc.text(`Defense Strength: ${defense.overallDefenseScore}/100`, 62, dsY + 4, { width: pageWidth - 16 });
+          doc.y = dsY + 28;
+
+          doc.moveDown(0.3);
+          doc.fontSize(9).font('Helvetica').fillColor('#000000');
+
+          for (const arg of defense.defenseArguments) {
+            const badgeColor = arg.strength === 'strong' ? '#1b5e20' :
+              arg.strength === 'moderate' ? '#e65100' : '#555555';
+            doc.font('Helvetica-Bold').fillColor(badgeColor).text(
+              `[${arg.strength.toUpperCase()}] `, { continued: true }
+            );
+            doc.font('Helvetica-Bold').fillColor('#000000').text(arg.title);
+            doc.font('Helvetica').fillColor('#333333').text(arg.summary, { indent: 20 });
+            doc.moveDown(0.2);
+          }
+
+          doc.fillColor('#000000');
+          doc.moveDown(0.5);
+        }
+      }
+
       // ─── Section N: Data Integrity ──────────────────────────────────
-      const integritySection = receipt.violation_datetime
-        ? (receipt.accelerometer_trace && receipt.accelerometer_trace.length > 10 ? '5' : '4')
-        : (receipt.accelerometer_trace && receipt.accelerometer_trace.length > 10 ? '4' : '3');
+      sectionNum++;
+      const integritySection = String(sectionNum);
 
       // Ensure we're on a fresh area
       if (doc.y > 650) doc.addPage();
