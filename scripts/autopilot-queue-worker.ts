@@ -510,7 +510,7 @@ async function sendEvidenceRequestEmail(
   const ticketSpecificReplyTo = `evidence+${ticketId}@autopilotamerica.com`;
 
   // Build receipt forwarding callout for sticker/plate tickets
-  const forwardingAddress = userId ? `${userId}@linguistic-louse.resend.app` : null;
+  const forwardingAddress = 'receipts@autopilotamerica.com';
   let receiptForwardingHtml = '';
   if ((violationType === 'no_city_sticker' || violationType === 'expired_plates') && forwardingAddress) {
     const receiptType = violationType === 'no_city_sticker' ? 'city sticker' : 'plate sticker';
