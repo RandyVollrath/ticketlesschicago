@@ -1,12 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { Platform, NativeModules } from 'react-native';
+import { Platform, NativeModules, Alert as RNAlert } from 'react-native';
 
 // Custom native module for Apple Sign In (bypasses the invertase library which is
 // broken on iOS 26 — ASAuthorizationError 1000 because the library's
 // ASAuthorizationController presentation context fails silently).
 const AppleSignInModule = Platform.OS === 'ios' ? NativeModules.AppleSignInModule : null;
+
+// DEBUG: Log all available native modules on iOS to diagnose module discovery issues
+if (Platform.OS === 'ios') {
+  const moduleNames = Object.keys(NativeModules).sort();
+  const debugInfo = `Module count: ${moduleNames.length}\nAppleSignInModule found: ${!!NativeModules.AppleSignInModule}\nMethods: ${NativeModules.AppleSignInModule ? Object.keys(NativeModules.AppleSignInModule).join(', ') : 'N/A'}\nAll modules: ${moduleNames.join(', ')}`;
+  console.log(`[AppleSignIn DEBUG] ${debugInfo}`);
+  // Show visible alert on screen so we can debug without syslog
+  setTimeout(() => {
+    RNAlert.alert('Apple SignIn Module Debug', debugInfo);
+  }, 3000);
+}
 import Config from '../config/config';
 import Logger from '../utils/Logger';
 
