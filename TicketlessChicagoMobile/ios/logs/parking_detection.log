@@ -1,9 +1,9 @@
-[2026-03-17 17:33:37.843] === Log file opened ===
-[2026-03-17 17:33:37.844] Log path: /var/mobile/Containers/Data/Application/BFB93BFE-2617-4E3C-855D-EDBA44074BBF/Documents/parking_detection.log
-[2026-03-17 17:33:37.845] Decision log path: /var/mobile/Containers/Data/Application/BFB93BFE-2617-4E3C-855D-EDBA44074BBF/Documents/parking_decisions.ndjson
-[2026-03-17 17:33:37.845] Restored camera settings: enabled=true speed=true redlight=true volume=1.0
-[2026-03-17 17:33:37.846] Registered parking_detected notification category with Correct/Wrong actions
-[2026-03-17 17:33:37.846] BackgroundLocationModule initialized
-[2026-03-17 17:33:37.849] [DECISION] {"ts":1773786817846.2991,"isDriving":false,"speedSaysMoving":false,"event":"module_initialized","coreMotionAutomotive":false,"hasConfirmedParkingThisSession":false}
-[2026-03-17 17:33:37.861] Auth changed: 0
-[2026-03-17 17:33:37.866] [DECISION] {"event":"location_auth_changed","backgroundRefreshStatus":"available","coreMotionAutomotive":false,"ts":1773786817865.1938,"hasAlwaysPermission":false,"isDriving":false,"hasConfirmedParkingThisSession":false,"speedSaysMoving":false,"lowPowerModeEnabled":false,"authRaw":0}
+[2026-03-17 20:51:51.514] === Log file opened ===
+[2026-03-17 20:51:51.515] Log path: /var/mobile/Containers/Data/Application/31967E33-8A51-433B-B494-60C597B2E274/Documents/parking_detection.log
+[2026-03-17 20:51:51.516] Decision log path: /var/mobile/Containers/Data/Application/31967E33-8A51-433B-B494-60C597B2E274/Documents/parking_decisions.ndjson
+[2026-03-17 20:51:51.516] Restored camera settings: enabled=true speed=true redlight=true volume=1.0
+[2026-03-17 20:51:51.518] Registered parking_detected notification category with Correct/Wrong actions
+[2026-03-17 20:51:51.518] BackgroundLocationModule initialized
+[2026-03-17 20:51:51.521] [DECISION] {"ts":1773798711518.1069,"event":"module_initialized","hasConfirmedParkingThisSession":false,"coreMotionAutomotive":false,"isDriving":false,"speedSaysMoving":false}
+[2026-03-17 20:51:51.536] Auth changed: 0
+[2026-03-17 20:51:51.550] [DECISION] {"event":"location_auth_changed","backgroundRefreshStatus":"available","coreMotionAutomotive":false,"isDriving":false,"lowPowerModeEnabled":false,"hasConfirmedParkingThisSession":false,"ts":1773798711538.6602,"speedSaysMoving":false,"authRaw":0,"hasAlwaysPermission":false}

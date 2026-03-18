@@ -24,14 +24,14 @@
 		8BFEB00A0D8047E8A213033A /* FontAwesome6_Brands.ttf in Resources */ = {isa = PBXBuildFile; fileRef = EB85DA8294144CADB5496B00 /* FontAwesome6_Brands.ttf */; };
 		9117C1EEC8714B3EB04E79CE /* FontAwesome.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E833C5E395EE4F0E831D5AC3 /* FontAwesome.ttf */; };
 		92226F8329E94EA080F94173 /* AntDesign.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 184409CBD6314370B719C385 /* AntDesign.ttf */; };
+		A1B2C3D401000001APPLE001 /* AppleSignInModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001APPLE002 /* AppleSignInModule.swift */; };
+		A1B2C3D401000001APPLE003 /* AppleSignInModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001APPLE004 /* AppleSignInModule.m */; };
 		A1B2C3D401000001BGLOC001 /* BackgroundLocationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001BGLOC002 /* BackgroundLocationModule.swift */; };
 		A1B2C3D401000001BGLOC003 /* BackgroundLocationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001BGLOC004 /* BackgroundLocationModule.m */; };
 		A1B2C3D401000001MOTIO001 /* MotionActivityModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */; };
 		A1B2C3D401000001MOTIO003 /* MotionActivityModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */; };
 		A1B2C3D401000001SPEEC001 /* SpeechModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001SPEEC002 /* SpeechModule.swift */; };
 		A1B2C3D401000001SPEEC003 /* SpeechModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001SPEEC004 /* SpeechModule.m */; };
-		A1B2C3D401000001APPLE001 /* AppleSignInModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001APPLE002 /* AppleSignInModule.swift */; };
-		A1B2C3D401000001APPLE003 /* AppleSignInModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D401000001APPLE004 /* AppleSignInModule.m */; };
 		A5C4A613131D4E5D89A863DE /* SimpleLineIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D6FC69E075F446558DAB12BA /* SimpleLineIcons.ttf */; };
 		ABA594F2300C40CCA0D8ED5E /* MaterialIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 571B5CA5F34D47F99B31C16C /* MaterialIcons.ttf */; };
 		C43826487FF1883095ABEF6C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
@@ -43,43 +43,43 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		12C218E75A984085BCBD7C98 /* FontAwesome5_Brands.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Brands.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Brands.ttf"; sourceTree = "<group>"; };
-		13B07F961A680F5B00A75B9A /* TicketlessChicagoMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TicketlessChicagoMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		12C218E75A984085BCBD7C98 /* FontAwesome5_Brands.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Brands.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Brands.ttf"; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* Autopilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Autopilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = TicketlessChicagoMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = TicketlessChicagoMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = TicketlessChicagoMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		13E67B977E904149B66621C0 /* Ionicons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Ionicons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Ionicons.ttf"; sourceTree = "<group>"; };
-		184409CBD6314370B719C385 /* AntDesign.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = AntDesign.ttf; path = "../node_modules/react-native-vector-icons/Fonts/AntDesign.ttf"; sourceTree = "<group>"; };
-		2895E55391D94CC889B07AA8 /* EvilIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = EvilIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/EvilIcons.ttf"; sourceTree = "<group>"; };
+		13E67B977E904149B66621C0 /* Ionicons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Ionicons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Ionicons.ttf"; sourceTree = "<group>"; };
+		184409CBD6314370B719C385 /* AntDesign.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = AntDesign.ttf; path = "../node_modules/react-native-vector-icons/Fonts/AntDesign.ttf"; sourceTree = "<group>"; };
+		2895E55391D94CC889B07AA8 /* EvilIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = EvilIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/EvilIcons.ttf"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-TicketlessChicagoMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TicketlessChicagoMobile.debug.xcconfig"; path = "Target Support Files/Pods-TicketlessChicagoMobile/Pods-TicketlessChicagoMobile.debug.xcconfig"; sourceTree = "<group>"; };
-		444E0DA135824B178300D37C /* FontAwesome6_Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome6_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome6_Regular.ttf"; sourceTree = "<group>"; };
+		444E0DA135824B178300D37C /* FontAwesome6_Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome6_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome6_Regular.ttf"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-TicketlessChicagoMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TicketlessChicagoMobile.release.xcconfig"; path = "Target Support Files/Pods-TicketlessChicagoMobile/Pods-TicketlessChicagoMobile.release.xcconfig"; sourceTree = "<group>"; };
-		571B5CA5F34D47F99B31C16C /* MaterialIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = MaterialIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/MaterialIcons.ttf"; sourceTree = "<group>"; };
+		571B5CA5F34D47F99B31C16C /* MaterialIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = MaterialIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/MaterialIcons.ttf"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-TicketlessChicagoMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TicketlessChicagoMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = TicketlessChicagoMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = TicketlessChicagoMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		8804ECE0752348078ADA398A /* Octicons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Octicons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Octicons.ttf"; sourceTree = "<group>"; };
-		934C9279CB3C4521A502FBA7 /* Entypo.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Entypo.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Entypo.ttf"; sourceTree = "<group>"; };
+		8804ECE0752348078ADA398A /* Octicons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Octicons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Octicons.ttf"; sourceTree = "<group>"; };
+		934C9279CB3C4521A502FBA7 /* Entypo.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Entypo.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Entypo.ttf"; sourceTree = "<group>"; };
+		A1B2C3D401000001APPLE002 /* AppleSignInModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleSignInModule.swift; path = TicketlessChicagoMobile/AppleSignInModule.swift; sourceTree = "<group>"; };
+		A1B2C3D401000001APPLE004 /* AppleSignInModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleSignInModule.m; path = TicketlessChicagoMobile/AppleSignInModule.m; sourceTree = "<group>"; };
 		A1B2C3D401000001BGLOC002 /* BackgroundLocationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundLocationModule.swift; path = TicketlessChicagoMobile/BackgroundLocationModule.swift; sourceTree = "<group>"; };
 		A1B2C3D401000001BGLOC004 /* BackgroundLocationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackgroundLocationModule.m; path = TicketlessChicagoMobile/BackgroundLocationModule.m; sourceTree = "<group>"; };
 		A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MotionActivityModule.swift; path = TicketlessChicagoMobile/MotionActivityModule.swift; sourceTree = "<group>"; };
 		A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MotionActivityModule.m; path = TicketlessChicagoMobile/MotionActivityModule.m; sourceTree = "<group>"; };
 		A1B2C3D401000001SPEEC002 /* SpeechModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpeechModule.swift; path = TicketlessChicagoMobile/SpeechModule.swift; sourceTree = "<group>"; };
 		A1B2C3D401000001SPEEC004 /* SpeechModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SpeechModule.m; path = TicketlessChicagoMobile/SpeechModule.m; sourceTree = "<group>"; };
-		A1B2C3D401000001APPLE002 /* AppleSignInModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleSignInModule.swift; path = TicketlessChicagoMobile/AppleSignInModule.swift; sourceTree = "<group>"; };
-		A1B2C3D401000001APPLE004 /* AppleSignInModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleSignInModule.m; path = TicketlessChicagoMobile/AppleSignInModule.m; sourceTree = "<group>"; };
-		A625434B00424C00AC75DD3C /* Feather.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Feather.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Feather.ttf"; sourceTree = "<group>"; };
-		BB5BF92DB7D34D4B816F4F6C /* FontAwesome5_Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf"; sourceTree = "<group>"; };
-		D6FC69E075F446558DAB12BA /* SimpleLineIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = SimpleLineIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/SimpleLineIcons.ttf"; sourceTree = "<group>"; };
-		D7AD2C1D3A0B4CDE98B44E0C /* Zocial.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Zocial.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Zocial.ttf"; sourceTree = "<group>"; };
-		E206ECD2847C4873B78CB868 /* FontAwesome5_Solid.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Solid.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Solid.ttf"; sourceTree = "<group>"; };
-		E833C5E395EE4F0E831D5AC3 /* FontAwesome.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome.ttf"; sourceTree = "<group>"; };
-		E94DDE7433DB4CC5BDCD28CA /* FontAwesome6_Solid.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome6_Solid.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome6_Solid.ttf"; sourceTree = "<group>"; };
-		EB85DA8294144CADB5496B00 /* FontAwesome6_Brands.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome6_Brands.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome6_Brands.ttf"; sourceTree = "<group>"; };
+		A625434B00424C00AC75DD3C /* Feather.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Feather.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Feather.ttf"; sourceTree = "<group>"; };
+		BB5BF92DB7D34D4B816F4F6C /* FontAwesome5_Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf"; sourceTree = "<group>"; };
+		D6FC69E075F446558DAB12BA /* SimpleLineIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = SimpleLineIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/SimpleLineIcons.ttf"; sourceTree = "<group>"; };
+		D7AD2C1D3A0B4CDE98B44E0C /* Zocial.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Zocial.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Zocial.ttf"; sourceTree = "<group>"; };
+		E206ECD2847C4873B78CB868 /* FontAwesome5_Solid.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Solid.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Solid.ttf"; sourceTree = "<group>"; };
+		E833C5E395EE4F0E831D5AC3 /* FontAwesome.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome.ttf"; sourceTree = "<group>"; };
+		E94DDE7433DB4CC5BDCD28CA /* FontAwesome6_Solid.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome6_Solid.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome6_Solid.ttf"; sourceTree = "<group>"; };
+		EB85DA8294144CADB5496B00 /* FontAwesome6_Brands.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome6_Brands.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome6_Brands.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F526557D5AA3452D811FC63B /* MaterialCommunityIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = MaterialCommunityIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf"; sourceTree = "<group>"; };
-		FB605FD6CF4541558299A6B4 /* Fontisto.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Fontisto.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Fontisto.ttf"; sourceTree = "<group>"; };
-		FFC28FE371114B68B339CC64 /* Foundation.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Foundation.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Foundation.ttf"; sourceTree = "<group>"; };
+		F526557D5AA3452D811FC63B /* MaterialCommunityIcons.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = MaterialCommunityIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf"; sourceTree = "<group>"; };
+		FB605FD6CF4541558299A6B4 /* Fontisto.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Fontisto.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Fontisto.ttf"; sourceTree = "<group>"; };
+		FFC28FE371114B68B339CC64 /* Foundation.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Foundation.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Foundation.ttf"; sourceTree = "<group>"; };
 		GSERVICEINFO001A68108700A75A /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "TicketlessChicagoMobile/GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -100,14 +100,14 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				A1B2C3D401000001APPLE002 /* AppleSignInModule.swift */,
+				A1B2C3D401000001APPLE004 /* AppleSignInModule.m */,
 				A1B2C3D401000001BGLOC002 /* BackgroundLocationModule.swift */,
 				A1B2C3D401000001BGLOC004 /* BackgroundLocationModule.m */,
 				A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */,
 				A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */,
 				A1B2C3D401000001SPEEC002 /* SpeechModule.swift */,
 				A1B2C3D401000001SPEEC004 /* SpeechModule.m */,
-				A1B2C3D401000001APPLE002 /* AppleSignInModule.swift */,
-				A1B2C3D401000001APPLE004 /* AppleSignInModule.m */,
 				GSERVICEINFO001A68108700A75A /* GoogleService-Info.plist */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -150,7 +150,7 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* TicketlessChicagoMobile.app */,
+				13B07F961A680F5B00A75B9A /* Autopilot.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -179,7 +179,6 @@
 				E833C5E395EE4F0E831D5AC3 /* FontAwesome.ttf */,
 			);
 			name = Resources;
-			path = "";
 			sourceTree = "<group>";
 		};
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
@@ -214,7 +213,7 @@
 			);
 			name = TicketlessChicagoMobile;
 			productName = TicketlessChicagoMobile;
-			productReference = 13B07F961A680F5B00A75B9A /* TicketlessChicagoMobile.app */;
+			productReference = 13B07F961A680F5B00A75B9A /* Autopilot.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -389,14 +388,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				A1B2C3D401000001APPLE001 /* AppleSignInModule.swift in Sources */,
+				A1B2C3D401000001APPLE003 /* AppleSignInModule.m in Sources */,
 				A1B2C3D401000001BGLOC001 /* BackgroundLocationModule.swift in Sources */,
 				A1B2C3D401000001BGLOC003 /* BackgroundLocationModule.m in Sources */,
 				A1B2C3D401000001MOTIO001 /* MotionActivityModule.swift in Sources */,
 				A1B2C3D401000001MOTIO003 /* MotionActivityModule.m in Sources */,
 				A1B2C3D401000001SPEEC001 /* SpeechModule.swift in Sources */,
 				A1B2C3D401000001SPEEC003 /* SpeechModule.m in Sources */,
-				A1B2C3D401000001APPLE001 /* AppleSignInModule.swift in Sources */,
-				A1B2C3D401000001APPLE003 /* AppleSignInModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -410,6 +409,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = TicketlessChicagoMobile/TicketlessChicagoMobile.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = V22BMBQJ67;
@@ -428,6 +428,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = fyi.ticketless.app;
 				PRODUCT_NAME = Autopilot;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -441,6 +442,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = TicketlessChicagoMobile/TicketlessChicagoMobile.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 23;
 				DEVELOPMENT_TEAM = V22BMBQJ67;
@@ -458,6 +460,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = fyi.ticketless.app;
 				PRODUCT_NAME = Autopilot;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
