@@ -4699,6 +4699,17 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     hasCheckedForMissedParking = true
 
+    // GUARD: On first install / fresh reinstall, lastConfirmedParkingLocation is nil
+    // because the app has never confirmed any parking. CoreMotion's system-wide buffer
+    // may contain automotive activities from BEFORE the app was installed (the user was
+    // riding in a car, taking an Uber, etc.). Emitting "recovery" events for those trips
+    // creates false parking records at the user's current location.
+    guard lastConfirmedParkingLocation != nil else {
+      self.log("Recovery check: skipping — no prior confirmed parking (first install or fresh reinstall). CoreMotion history may predate app usage.")
+      decision("recovery_skipped_first_install")
+      return
+    }
+
     let now = Date()
     let lookback = now.addingTimeInterval(-6 * 60 * 60) // Check last 6 hours (app may have been killed for a long time)
 
