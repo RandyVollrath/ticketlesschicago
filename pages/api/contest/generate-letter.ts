@@ -20,7 +20,7 @@ import {
 } from '../../../lib/parking-evidence';
 import { getStreetViewEvidence, StreetViewResult, getStreetViewEvidenceWithAnalysis, StreetViewEvidencePackage } from '../../../lib/street-view-service';
 import { getOfficerIntelligence } from '../../../lib/contest-outcome-tracker';
-import { analyzeRedLightDefense, type AnalysisInput, type RedLightDefenseAnalysis } from '../../../lib/red-light-defense-analysis';
+import { analyzeRedLightDefense, analyzeFactualInconsistency, type AnalysisInput, type RedLightDefenseAnalysis, type FactualInconsistencyAnalysis } from '../../../lib/red-light-defense-analysis';
 
 // Weather relevance by violation type
 // PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
@@ -823,6 +823,48 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
       } catch (e) { /* non-fatal */ }
     }
 
+    // =====================================================================
+    // FACTUAL INCONSISTENCY CHECK — ALL VIOLATION TYPES
+    // Under Chicago Municipal Code 9-100-060, factual inconsistencies on
+    // the violation notice (wrong plate, wrong state) are grounds for
+    // dismissal for ANY ticket, not just red-light camera violations.
+    // =====================================================================
+    let factualInconsistency: FactualInconsistencyAnalysis | null = null;
+    if (detectedTicketData?.ticket_plate && detectedTicketData?.plate) {
+      try {
+        factualInconsistency = analyzeFactualInconsistency(
+          detectedTicketData.ticket_plate,
+          detectedTicketData.ticket_state || null,
+          detectedTicketData.plate,
+          detectedTicketData.state || 'IL',
+        );
+        if (factualInconsistency.hasInconsistency) {
+          console.log(`  ⚠️ Factual inconsistency detected: ${factualInconsistency.inconsistencyType}`);
+        }
+      } catch (e) { /* non-fatal */ }
+    }
+
+    // =====================================================================
+    // NOTIFICATION HISTORY — Good-Faith Compliance Evidence
+    // Query notification_logs for any alerts/reminders sent to this user
+    // before the violation date. Demonstrates the user was actively using
+    // a compliance tool and made good-faith efforts to obey the law.
+    // =====================================================================
+    let notificationHistory: Array<{ category: string; notification_type: string; subject: string | null; sent_at: string | null; status: string }> = [];
+    try {
+      const { data: notifications } = await supabase
+        .from('notification_logs')
+        .select('category, notification_type, subject, sent_at, status')
+        .eq('user_id', user.id)
+        .in('status', ['sent', 'delivered'])
+        .order('sent_at', { ascending: false })
+        .limit(50);
+      if (notifications && notifications.length > 0) {
+        notificationHistory = notifications;
+        console.log(`  Found ${notifications.length} notification history records for good-faith evidence`);
+      }
+    } catch (e) { /* notification_logs table may not exist yet — non-fatal */ }
+
     // Run red-light defense analysis if we have a receipt
     let redLightDefense: RedLightDefenseAnalysis | null = null;
     if (redLightReceipt) {
@@ -1435,7 +1477,38 @@ ${courtData.similarCases.slice(0, 3).map((c, i) => `${i + 1}. Citation #${c.tick
 
 ${!userEvidence.hasPhotos && courtData.evidenceGuidance.find(e => e.type === 'photos' && e.success_rate_with > e.success_rate_without + 20) ? '\n⚠️ WARNING: User lacks photos but they significantly improve success rates. Suggest alternative strong arguments.' : ''}
 ` : ''}
+${factualInconsistency?.hasInconsistency && !redLightDefense?.factualInconsistency?.hasInconsistency ? `
+=== FACTUAL INCONSISTENCY DEFENSE (PROCEDURAL — CASE DISPOSITIVE) ===
+- Inconsistency Type: ${factualInconsistency.inconsistencyType}
+- Analysis: ${factualInconsistency.explanation}
 
+INSTRUCTIONS: This is a STRONG procedural defense that applies to ALL violation types. Under Chicago Municipal Code 9-100-060, "the facts alleged in the violation notice are inconsistent or do not support a finding that the code was violated" is an official defense. The ${factualInconsistency.inconsistencyType} between the ticket and the actual vehicle registration creates reasonable doubt about whether the correct vehicle was identified. This argument should LEAD the letter — it is case-dispositive and the merits of the underlying violation are irrelevant if the notice identifies the wrong vehicle.
+` : ''}
+${notificationHistory.length > 0 ? `
+=== GOOD-FAITH COMPLIANCE HISTORY ===
+The vehicle owner actively used a compliance monitoring service (Autopilot America) that sent the following alerts and reminders:
+
+${(() => {
+  const categories: Record<string, number> = {};
+  const types: Record<string, number> = {};
+  for (const n of notificationHistory) {
+    categories[n.category] = (categories[n.category] || 0) + 1;
+    types[n.notification_type] = (types[n.notification_type] || 0) + 1;
+  }
+  const catLines = Object.entries(categories).map(([cat, count]) =>
+    '- ' + cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ': ' + count + ' alert(s) received'
+  ).join('\n');
+  const typeLines = Object.entries(types).map(([type, count]) =>
+    '- Via ' + type.toUpperCase() + ': ' + count + ' notification(s)'
+  ).join('\n');
+  return 'Alert Categories:\n' + catLines + '\n\nDelivery Channels:\n' + typeLines;
+})()}
+
+Total Notifications Received: ${notificationHistory.length}
+Most Recent Alert: ${notificationHistory[0]?.sent_at ? new Date(notificationHistory[0].sent_at).toLocaleDateString() : 'On file'}
+
+INSTRUCTIONS: Use this as a SUPPORTING argument demonstrating the vehicle owner's good faith. The owner subscribed to and actively used a compliance monitoring service that sends alerts for street cleaning schedules, vehicle sticker renewals, license plate renewals, and other city obligations. This history of receiving and acting on compliance notifications demonstrates a pattern of good-faith effort to obey city regulations. While not a legal defense per se, hearing officers regularly consider a motorist's demonstrated good faith when exercising discretion. Frame this as: "The respondent is a conscientious vehicle owner who actively monitors and responds to city compliance obligations, as evidenced by their use of automated compliance alerts."
+` : ''}
 Sender Information:
 - Name: ${profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : '[YOUR NAME]'}
 - Address: ${profile?.address || '[YOUR ADDRESS]'}
@@ -1493,6 +1566,8 @@ ${learningsText}${officerIntelText}`
     if (courtData.hasData) evidenceSources.push('court_data');
     if (streetCleaningSchedule) evidenceSources.push('street_cleaning_schedule');
     if (officerIntelText) evidenceSources.push('officer_intelligence');
+    if (factualInconsistency?.hasInconsistency) evidenceSources.push('factual_inconsistency');
+    if (notificationHistory.length > 0) evidenceSources.push('notification_history');
 
     // =====================================================================
     // LAYER 1: Post-Generation Self-Audit
@@ -1548,6 +1623,12 @@ ${learningsText}${officerIntelText}`
         }
         if (kitEvaluation) {
           availableEvidenceSummary.push(`Contest Kit: recommended "${kitEvaluation.selectedArgument.name}" (${Math.round(kitEvaluation.selectedArgument.winRate * 100)}% win rate)`);
+        }
+        if (factualInconsistency?.hasInconsistency) {
+          availableEvidenceSummary.push(`Factual Inconsistency: ${factualInconsistency.inconsistencyType} — ${factualInconsistency.explanation}`);
+        }
+        if (notificationHistory.length > 0) {
+          availableEvidenceSummary.push(`Notification History: ${notificationHistory.length} compliance alerts sent to user (good-faith evidence)`);
         }
 
         const auditMessage = await anthropic.messages.create({

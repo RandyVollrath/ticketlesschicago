@@ -39,6 +39,7 @@ import {
   VIOLATION_NAME_TO_CODE,
 } from '../lib/contest-kits';
 import type { TicketFacts, UserEvidence, ContestEvaluation } from '../lib/contest-kits/types';
+import { analyzeFactualInconsistency } from '../lib/red-light-defense-analysis';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -1366,6 +1367,8 @@ function generateLetterContent(
     location: string | null;
     plate: string;
     state: string;
+    ticket_plate?: string | null;
+    ticket_state?: string | null;
   },
   profile: {
     full_name: string | null;
@@ -1377,6 +1380,7 @@ function generateLetterContent(
     mailing_zip: string | null;
   },
   automatedEvidence?: AutomatedEvidence | null,
+  notificationHistory?: { count: number; summary: string } | null,
 ): { content: string; defenseType: string } {
   const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -1512,6 +1516,22 @@ function generateLetterContent(
           : '');
     }
 
+    // Factual inconsistency check — applies to ALL violation types
+    if (ticketData.ticket_plate && ticketData.plate) {
+      try {
+        const inconsistency = analyzeFactualInconsistency(
+          ticketData.ticket_plate,
+          ticketData.ticket_state || null,
+          ticketData.plate,
+          ticketData.state || 'IL',
+        );
+        if (inconsistency.hasInconsistency) {
+          content += `\n\nFACTUAL INCONSISTENCY:\n${inconsistency.explanation}`;
+          console.log(`      [Letter] Factual inconsistency detected: ${inconsistency.inconsistencyType}`);
+        }
+      } catch (e) { /* non-fatal */ }
+    }
+
     // Add codified defense assertion for all violation types
     content += `\n\nUnder Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses.`;
 
@@ -1557,7 +1577,31 @@ function generateLetterContent(
       }
     }
 
+    // Factual inconsistency check — applies to ALL violation types (fallback path)
+    if (ticketData.ticket_plate && ticketData.plate) {
+      try {
+        const inconsistency = analyzeFactualInconsistency(
+          ticketData.ticket_plate,
+          ticketData.ticket_state || null,
+          ticketData.plate,
+          ticketData.state || 'IL',
+        );
+        if (inconsistency.hasInconsistency) {
+          content += `\n\nFACTUAL INCONSISTENCY:\n${inconsistency.explanation}`;
+          console.log(`      [Letter] Factual inconsistency detected: ${inconsistency.inconsistencyType}`);
+        }
+      } catch (e) { /* non-fatal */ }
+    }
+
     defenseType = template.type;
+  }
+
+  // Add notification history as good-faith compliance evidence (applies to all violation types)
+  if (notificationHistory && notificationHistory.count > 0) {
+    content += `\n\nI would also like to note that I am a conscientious vehicle owner who actively uses ` +
+      `a compliance monitoring service to stay informed of my city obligations. I have received ` +
+      `${notificationHistory.count} compliance alerts and reminders (${notificationHistory.summary}), ` +
+      `demonstrating my ongoing good-faith effort to comply with all city regulations.`;
   }
 
   const fullLetter = `${today}
@@ -2119,6 +2163,29 @@ async function processFoundTicket(
     ticket.violation_description || null,
   );
 
+  // Query notification history for good-faith compliance evidence
+  let notificationCount = 0;
+  let notificationSummary = '';
+  try {
+    const { data: notifications } = await supabaseAdmin
+      .from('notification_logs')
+      .select('category, notification_type, status')
+      .eq('user_id', user_id)
+      .in('status', ['sent', 'delivered'])
+      .limit(100);
+    if (notifications && notifications.length > 0) {
+      notificationCount = notifications.length;
+      const categories: Record<string, number> = {};
+      for (const n of notifications) {
+        categories[n.category] = (categories[n.category] || 0) + 1;
+      }
+      notificationSummary = Object.entries(categories)
+        .map(([cat, count]) => `${cat.replace(/_/g, ' ')}: ${count}`)
+        .join(', ');
+      console.log(`      Found ${notificationCount} notification records for good-faith evidence (${notificationSummary})`);
+    }
+  } catch (e) { /* notification_logs table may not exist yet — non-fatal */ }
+
   // Generate contest letter (after evidence gathering so camera check findings can be injected)
   const letterProfile = {
     full_name: profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Vehicle Owner',
@@ -2140,9 +2207,12 @@ async function processFoundTicket(
       location: null,
       plate: plate.toUpperCase(),
       state: state.toUpperCase(),
+      ticket_plate: ticket.ticket_plate || null,
+      ticket_state: ticket.ticket_state || null,
     },
     letterProfile,
     automatedEvidence,
+    notificationCount > 0 ? { count: notificationCount, summary: notificationSummary } : null,
   );
 
   const { error: letterError } = await supabaseAdmin
