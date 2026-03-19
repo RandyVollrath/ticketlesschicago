@@ -191,6 +191,17 @@ interface EvidenceBundle {
   constructionPermits: ConstructionPermitResult | null;
   officerIntelligence: { hasData: boolean; officerBadge: string | null; totalCases: number; dismissalRate: number | null; tendency: string | null; recommendation: string | null } | null;
   locationPattern: { ticketCount: number; uniqueUsers: number; dismissalRate: number | null; defenseRecommendation: string | null } | null;
+  // FOIA user ticket history — for first-offense / clean-record arguments
+  userFoiaHistory: {
+    hasData: boolean;
+    totalLifetimeTickets: number;
+    totalLifetimeFines: number;
+    sameViolationTypeCount: number; // how many past tickets match this violation type
+    oldestTicketDate: string | null;
+    newestTicketDate: string | null;
+    parsedTickets: { ticket_number?: string; date?: string; type?: string; amount?: number; status?: string; location?: string }[];
+    foiaFulfilledAt: string | null;
+  } | null;
 }
 
 // ─── Levenshtein Distance (for clerical error detection) ────
@@ -418,6 +429,7 @@ async function gatherAllEvidence(
     constructionPermits: null,
     officerIntelligence: null,
     locationPattern: null,
+    userFoiaHistory: null,
   };
 
   // Resolve violation code
@@ -464,10 +476,10 @@ async function gatherAllEvidence(
   }
 
   // 3. City Sticker Receipt (for no_city_sticker violations)
-  // Include any receipt whose sticker is NOT expired. Stickers purchased AFTER the
-  // ticket are still valid evidence — hearing officers dismiss ~50% of the time when
-  // the user shows they eventually bought the sticker.
-  // Only skip receipts where the sticker has definitively expired (purchase_date + duration < today).
+  // Include receipts that were valid on the TICKET DATE (not today).
+  // Also include receipts purchased AFTER the ticket — hearing officers dismiss
+  // ~50% of the time when the user shows they eventually bought the sticker.
+  // The prompt instructs Claude to argue differently for before vs. after purchases.
   if (ticket.violation_type === 'no_city_sticker') {
     promises.push((async () => {
       try {
@@ -479,23 +491,28 @@ async function gatherAllEvidence(
           .order('parsed_purchase_date', { ascending: false })
           .limit(5);
         if (data && data.length > 0) {
-          const now = new Date();
+          // Compare against the ticket date, not today — a sticker valid on the
+          // ticket date is proof of compliance even if it has since expired.
+          const ticketDate = ticket.violation_date ? new Date(ticket.violation_date) : new Date();
           const validReceipt = data.find((r: any) => {
+            // Purchased AFTER the ticket? Still useful (good-faith compliance argument)
+            if (r.parsed_purchase_date && new Date(r.parsed_purchase_date) > ticketDate) return true;
+            // Check if sticker was valid on the ticket date
             if (r.parsed_expiration_date) {
-              return new Date(r.parsed_expiration_date) >= now;
+              return new Date(r.parsed_expiration_date) >= ticketDate;
             }
             if (!r.parsed_purchase_date) return false;
             const pDate = new Date(r.parsed_purchase_date);
             const durationMonths = r.sticker_duration_months || 12;
             const expDate = new Date(pDate);
             expDate.setMonth(expDate.getMonth() + durationMonths + 1, 0);
-            return expDate >= now;
+            return expDate >= ticketDate;
           });
           if (validReceipt) {
             bundle.cityStickerReceipt = validReceipt;
-            console.log(`    City sticker receipt found: purchased ${validReceipt.parsed_purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'}`);
+            console.log(`    City sticker receipt found: purchased ${validReceipt.parsed_purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'} (compared against ticket date ${ticket.violation_date})`);
           } else {
-            console.log(`    City sticker receipt found but EXPIRED — skipping (found ${data.length} receipts, all past expiration)`);
+            console.log(`    City sticker receipt found but expired BEFORE ticket date ${ticket.violation_date} — skipping (found ${data.length} receipts, all expired before violation)`);
           }
         }
       } catch (e) { console.error('    City sticker receipt lookup failed:', e); }
@@ -503,8 +520,8 @@ async function gatherAllEvidence(
   }
 
   // 4. Registration Evidence Receipt (for expired_plates violations)
-  // Same approach: include if the sticker hasn't expired yet, regardless of
-  // whether it was purchased before or after the ticket.
+  // Same approach: compare to ticket date, not today. Include post-ticket purchases
+  // for the good-faith compliance argument.
   if (ticket.violation_type === 'expired_plates') {
     promises.push((async () => {
       try {
@@ -516,23 +533,26 @@ async function gatherAllEvidence(
           .order('parsed_purchase_date', { ascending: false })
           .limit(5);
         if (data && data.length > 0) {
-          const now = new Date();
+          const ticketDate = ticket.violation_date ? new Date(ticket.violation_date) : new Date();
           const validReceipt = data.find((r: any) => {
+            // Purchased AFTER the ticket? Still useful (good-faith compliance argument)
+            if (r.parsed_purchase_date && new Date(r.parsed_purchase_date) > ticketDate) return true;
+            // Check if registration was valid on the ticket date
             if (r.parsed_expiration_date) {
-              return new Date(r.parsed_expiration_date) >= now;
+              return new Date(r.parsed_expiration_date) >= ticketDate;
             }
             if (!r.parsed_purchase_date) return false;
             const pDate = new Date(r.parsed_purchase_date);
             const durationMonths = r.sticker_duration_months || 12;
             const expDate = new Date(pDate);
             expDate.setMonth(expDate.getMonth() + durationMonths + 1, 0);
-            return expDate >= now;
+            return expDate >= ticketDate;
           });
           if (validReceipt) {
             bundle.registrationReceipt = validReceipt;
-            console.log(`    Registration receipt found: purchased ${validReceipt.parsed_purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'}`);
+            console.log(`    Registration receipt found: purchased ${validReceipt.parsed_purchase_date}, expires ${validReceipt.parsed_expiration_date || 'estimated ~12mo'} (compared against ticket date ${ticket.violation_date})`);
           } else {
-            console.log(`    Registration receipt found but EXPIRED — skipping (found ${data.length} receipts, all past expiration)`);
+            console.log(`    Registration receipt found but expired BEFORE ticket date ${ticket.violation_date} — skipping (found ${data.length} receipts, all expired before violation)`);
           }
         }
       } catch (e) { console.error('    Registration receipt lookup failed:', e); }
@@ -895,6 +915,73 @@ async function gatherAllEvidence(
         console.log(`    FOIA request: ${foiaReq.status}, sent ${daysElapsed} days ago`);
       }
     } catch (e) { /* No FOIA request for this ticket — that's fine */ }
+  })());
+
+  // ── FOIA User Ticket History (for first-offense / clean-record arguments) ──
+  promises.push((async () => {
+    try {
+      // Find the most recent fulfilled FOIA history request for this user+plate
+      const { data: foiaHistory } = await supabaseAdmin
+        .from('foia_history_requests' as any)
+        .select('parsed_tickets, ticket_count, total_fines, response_received_at, license_plate')
+        .eq('user_id', ticket.user_id)
+        .eq('status', 'fulfilled')
+        .order('response_received_at', { ascending: false })
+        .limit(5);
+
+      if (foiaHistory && foiaHistory.length > 0) {
+        // Prefer FOIA for the same plate as the ticket, fall back to any plate
+        const plateNormalized = (ticket.plate || '').replace(/[\s-]/g, '').toUpperCase();
+        const matchingPlate = foiaHistory.find((h: any) =>
+          (h.license_plate || '').replace(/[\s-]/g, '').toUpperCase() === plateNormalized
+        );
+        const bestMatch = matchingPlate || foiaHistory[0];
+
+        const parsedTickets = Array.isArray(bestMatch.parsed_tickets) ? bestMatch.parsed_tickets : [];
+        const totalCount = bestMatch.ticket_count ?? parsedTickets.length;
+        const totalFines = bestMatch.total_fines ?? 0;
+
+        // Count how many past tickets match the current violation type
+        const violationType = ticket.violation_type || '';
+        const violationDesc = (ticket.violation_description || '').toLowerCase();
+        const sameTypeCount = parsedTickets.filter((t: any) => {
+          const tType = (t.type || t.violation_type || '').toLowerCase();
+          // Match on violation_type key or fuzzy match on description
+          if (violationType === 'no_city_sticker' && (tType.includes('sticker') || tType.includes('city vehicle'))) return true;
+          if (violationType === 'expired_plates' && (tType.includes('registration') || tType.includes('expired') || tType.includes('plate'))) return true;
+          if (violationType === 'street_cleaning' && (tType.includes('street clean') || tType.includes('sweep'))) return true;
+          if (violationType === 'red_light' && (tType.includes('red light') || tType.includes('traffic signal'))) return true;
+          if (violationType === 'speed_camera' && (tType.includes('speed') || tType.includes('camera'))) return true;
+          if (violationType === 'expired_meter' && (tType.includes('meter') || tType.includes('parking meter'))) return true;
+          if (violationType === 'no_standing' && (tType.includes('standing') || tType.includes('no stand'))) return true;
+          if (violationType === 'snow_route' && (tType.includes('snow') || tType.includes('winter'))) return true;
+          // Generic fallback: check if the FOIA ticket description contains key words from the current violation
+          if (violationDesc && tType && violationDesc.split(' ').some((w: string) => w.length > 4 && tType.includes(w))) return true;
+          return false;
+        }).length;
+
+        // Find date range of past tickets
+        const ticketDates = parsedTickets
+          .map((t: any) => t.date || t.violation_date)
+          .filter(Boolean)
+          .map((d: string) => new Date(d))
+          .filter((d: Date) => !isNaN(d.getTime()))
+          .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+
+        bundle.userFoiaHistory = {
+          hasData: true,
+          totalLifetimeTickets: totalCount,
+          totalLifetimeFines: Number(totalFines) || 0,
+          sameViolationTypeCount: sameTypeCount,
+          oldestTicketDate: ticketDates.length > 0 ? ticketDates[0].toISOString().split('T')[0] : null,
+          newestTicketDate: ticketDates.length > 0 ? ticketDates[ticketDates.length - 1].toISOString().split('T')[0] : null,
+          parsedTickets: parsedTickets.slice(0, 20), // Cap at 20 for prompt size
+          foiaFulfilledAt: bestMatch.response_received_at || null,
+        };
+
+        console.log(`    FOIA user history: ${totalCount} lifetime tickets, ${sameTypeCount} same-type, $${totalFines} total fines (plate: ${bestMatch.license_plate})`);
+      }
+    } catch (e) { console.error('    FOIA user history lookup failed:', e); }
   })());
 
   // Wait for all evidence lookups to complete
@@ -1440,6 +1527,56 @@ INSTRUCTIONS: If space permits, briefly note (1 sentence) that the respondent ha
     }
   }
 
+  // ── Section 16: FOIA User Ticket History (first-offense / clean-record arguments) ──
+  if (evidence.userFoiaHistory?.hasData) {
+    const fh = evidence.userFoiaHistory;
+    const isFirstOffenseOfType = fh.sameViolationTypeCount === 0;
+    const isCleanRecord = fh.totalLifetimeTickets === 0;
+    const isNearCleanRecord = fh.totalLifetimeTickets > 0 && fh.totalLifetimeTickets <= 3;
+
+    let foiaHistorySection = `=== FOIA USER TICKET HISTORY — VERIFIED CITY RECORDS ===
+The City of Chicago responded to a FOIA request for this user's complete ticket history (fulfilled ${fh.foiaFulfilledAt ? new Date(fh.foiaFulfilledAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'on file'}).
+
+Summary:
+- Total lifetime tickets on record: ${fh.totalLifetimeTickets}
+- Total lifetime fines: $${fh.totalLifetimeFines.toFixed(2)}
+- Tickets of THIS violation type (${ticket.violation_type?.replace(/_/g, ' ') || 'this type'}): ${fh.sameViolationTypeCount}${fh.oldestTicketDate ? `\n- Record spans: ${fh.oldestTicketDate} to ${fh.newestTicketDate}` : ''}`;
+
+    if (isCleanRecord) {
+      foiaHistorySection += `
+
+FIRST-TIME OFFENDER — ZERO PRIOR TICKETS:
+The FOIA response confirms this user has ZERO prior parking tickets with the City of Chicago. This is an extremely strong mitigating factor.
+
+INSTRUCTIONS: This is a POWERFUL argument. Include prominently in the letter:
+- State that the respondent has a spotless record with zero prior violations of ANY kind, as confirmed by official City records obtained via FOIA
+- Frame this as evidence of a law-abiding citizen who made an honest, one-time oversight
+- Cite the respondent's perfect compliance history as grounds for leniency
+- Use language like: "As confirmed by the City's own records obtained through a Freedom of Information Act request, I have never received a parking citation in the City of Chicago. This isolated incident is entirely inconsistent with my perfect record of compliance."
+- This argument works for ANY violation type and is one of the most compelling mitigating factors available`;
+    } else if (isFirstOffenseOfType) {
+      foiaHistorySection += `
+
+FIRST-TIME OFFENDER FOR THIS VIOLATION TYPE:
+The FOIA response confirms this user has ZERO prior ${ticket.violation_type?.replace(/_/g, ' ') || 'this type of'} tickets, despite having ${fh.totalLifetimeTickets} total lifetime ticket(s) for other violations.
+
+INSTRUCTIONS: Include this as a supporting argument in the letter:
+- State that the respondent has never previously been cited for this specific violation, as confirmed by official City records
+- Frame this as a first-time oversight for this particular regulation, not a pattern of non-compliance
+- If the user has very few total tickets (${fh.totalLifetimeTickets}), also mention the overall responsible driving/parking record
+- Use language like: "City records confirm that I have never previously been cited for ${ticket.violation_description || 'this violation'}. This is my first and only instance of this type, demonstrating that this was an isolated oversight rather than a pattern of disregard for city regulations."`;
+    } else if (isNearCleanRecord) {
+      foiaHistorySection += `
+
+NEAR-CLEAN RECORD:
+The FOIA response shows only ${fh.totalLifetimeTickets} total lifetime ticket(s). While not a perfect record, this is still a very low count that suggests responsible behavior.
+
+INSTRUCTIONS: If other strong evidence exists, you may briefly mention (1-2 sentences) that the respondent's overall citation history is minimal, suggesting this is not a pattern of non-compliance. Do NOT emphasize this if the total count is high or if many are the same type. Use only as a supporting character reference.`;
+    }
+
+    sections.push(foiaHistorySection);
+  }
+
   // ── Final Instructions ──
   sections.push(`=== LETTER GENERATION INSTRUCTIONS ===
 
@@ -1466,6 +1603,7 @@ Generate a professional, formal contest letter that:
    ${evidence.alertSubscriptionEvidence?.hasAlerts ? `- Alert subscription: User enrolled in ${evidence.alertSubscriptionEvidence.alertTypes.join(', ')} before citation (${evidence.alertSubscriptionEvidence.relevantToViolation ? 'RELEVANT to this violation — SUPPORTING argument' : 'general compliance — brief mention only'})` : ''}
    ${evidence.userSubmittedEvidence?.hasEvidence ? `- User-submitted evidence: ${evidence.userSubmittedEvidence.text ? 'written statement' : ''}${evidence.userSubmittedEvidence.text && evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? ' + ' : ''}${evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? `${evidence.userSubmittedEvidence.photoAnalyses.length} AI-analyzed photo(s) (STRONGEST — user's own documentation)` : evidence.userSubmittedEvidence.attachmentUrls.length > 0 ? `${evidence.userSubmittedEvidence.attachmentUrls.length} attachment(s)` : ''}` : ''}
    ${evidence.clericalErrorCheck?.hasErrors ? `- CLERICAL ERROR DETECTED: Plate mismatch — ticket says "${evidence.clericalErrorCheck.ticketPlate}" but actual plate is "${evidence.clericalErrorCheck.userPlate}" (STRONGEST — grounds for immediate dismissal)` : evidence.clericalErrorCheck?.checked ? '- Clerical error check: PASSED (ticket plate matches user plate)' : ''}
+   ${evidence.userFoiaHistory?.hasData ? `- FOIA user ticket history: ${evidence.userFoiaHistory.totalLifetimeTickets === 0 ? 'ZERO prior tickets (POWERFUL — first-time offender argument)' : evidence.userFoiaHistory.sameViolationTypeCount === 0 ? `First offense for this type (${evidence.userFoiaHistory.totalLifetimeTickets} total lifetime — SUPPORTING argument)` : evidence.userFoiaHistory.totalLifetimeTickets <= 3 ? `Near-clean record (${evidence.userFoiaHistory.totalLifetimeTickets} total — brief mention)` : `${evidence.userFoiaHistory.totalLifetimeTickets} lifetime tickets (use cautiously)`}` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the reviewer for their consideration, sign with sender name only (Lob adds return address automatically). Do NOT suggest or request an in-person hearing — users want dismissal by mail, not additional time commitments
