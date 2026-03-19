@@ -519,7 +519,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let nonAutoAgeSec = coreMotionNotAutomotiveSince.map { now.timeIntervalSince($0) } ?? -1
     let unknownAgeSec = coreMotionUnknownSince.map { now.timeIntervalSince($0) } ?? -1
     let queuedAgeSec = queuedParkingAt.map { now.timeIntervalSince($0) } ?? -1
-    let lockoutRemainingSec: TimeInterval = 0  // Lockout removed — hotspot system handles false positive suppression
+    let lockoutRemainingSec: TimeInterval = 0  // Lockout + hotspot systems removed Mar 2026
     let bgRefreshString: String = {
       switch UIApplication.shared.backgroundRefreshStatus {
       case .available: return "available"
@@ -557,7 +557,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "recentVehicleSignal": hasRecentVehicleSignal(180),
       "cameraPrewarmRemainingSec": cameraPrewarmUntil.map { max(0, $0.timeIntervalSinceNow) } ?? 0,
       "lockoutRemainingSec": lockoutRemainingSec,
-      "hotspotCount": falsePositiveHotspots.count,
+      "hotspotCount": 0,  // Hotspot system removed Mar 2026
       "healthRecoveryCount": healthRecoveryCount,
       "lastParkingDecisionConfidence": lastParkingDecisionConfidence,
       "lastParkingDecisionSource": lastParkingDecisionSource,
@@ -717,7 +717,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var lastCarAudioConnectedAt: Date? = nil
   private var lastCarAudioDisconnectedAt: Date? = nil
   private var lastVehicleSignalPollAt: Date? = nil
-  private var falsePositiveHotspots: [[String: Any]] = []
+  // falsePositiveHotspots removed Mar 2026 — hotspot system had a fundamental flaw:
+  // blocking prevents the very parking event that would let the user "Correct" an incorrect hotspot.
   private var healthRecoveryCount = 0
   private var healthRecoveryWindowStart: Date? = nil
   private var lastHealthWarningAt: Date? = nil
@@ -831,7 +832,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let kLastParkingTimeKey = "bg_lastConfirmedParkingTime"
   private let kHasConfirmedParkingKey = "bg_hasConfirmedParking"
   private let kConfirmedParkingTimesKey = "bg_confirmedParkingTimes_v1"  // Ring buffer of recent confirmed parking timestamps+coords for recovery dedup
-  private let kFalsePositiveHotspotsKey = "bg_false_positive_hotspots_v1"
+  // kFalsePositiveHotspotsKey removed Mar 2026 — hotspot system removed
 
   // Pending parking event queue — survives stopMonitoring/startMonitoring cycles.
   // When JS is suspended by iOS, sendEvent("onParkingDetected") is silently lost.
@@ -923,9 +924,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let cameraPrewarmSec: TimeInterval = 180
   private let cameraPrewarmStrongSec: TimeInterval = 300
   private var stopWindowMaxSpeedMps: Double = 0
-  private let hotspotMergeRadiusMeters: Double = 20   // Reports within 20m count as same spot
-  private let hotspotBlockRadiusMeters: Double = 15   // Only block parking within 15m of false positive (was 90m — too aggressive, blocked entire city blocks)
-  private let hotspotBlockMinReports: Int = 1
+  // hotspotMergeRadiusMeters, hotspotBlockRadiusMeters, hotspotBlockMinReports removed Mar 2026
   private let parkingCandidateMaxAgeSec: TimeInterval = 40
   private let parkingCandidateHardStaleSec: TimeInterval = 75
   private let parkingCandidateFreshReplacementAgeSec: TimeInterval = 12
@@ -1008,7 +1007,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // resets all Clybourn guards to nil/false, allowing significantLocationChange
     // to create false parking at wrong addresses with cell-tower GPS.
     restorePersistedParkingState()
-    loadFalsePositiveHotspots()
     registerParkingNotificationCategory()
 
     // Listen for app resuming from iOS suspension. When iOS suspends the app,
@@ -1078,10 +1076,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       ])
     } else if actionId == "PARKING_WRONG" {
       log("Notification action: user reported NOT parked (lat=\(lat), lng=\(lng), source=\(source))")
-      // Also add to false positive hotspot natively
-      if lat != 0 && lng != 0 {
-        addFalsePositiveHotspot(lat: lat, lng: lng, source: source)
-      }
       sendEvent(withName: "onParkingGroundTruth", body: [
         "type": "parking_false_positive",
         "latitude": lat,
@@ -1168,7 +1162,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
   @objc func reportParkingFalsePositive(_ latitude: Double, longitude: Double,
                                         resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    addFalsePositiveHotspot(lat: latitude, lng: longitude, source: "user_report")
     decision("parking_false_positive_reported", [
       "lat": latitude,
       "lng": longitude,
@@ -1178,7 +1171,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
   @objc func reportParkingConfirmed(_ latitude: Double, longitude: Double,
                                     resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    reduceFalsePositiveHotspot(lat: latitude, lng: longitude, source: "user_confirm")
+    // Hotspot system removed — "Correct" tap is now a no-op natively (JS still tracks it for analytics)
     resolve(true)
   }
 
@@ -1329,7 +1322,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   // MARK: - Single Point of Emission for Parking Events
   //
   // ALL parking event emissions MUST go through this gateway.
-  // It centralizes: ring buffer dedup, hotspot check, zero-coord rejection,
+  // It centralizes: ring buffer dedup, zero-coord rejection,
   // ring buffer recording, event emission, and pending queue persistence.
   //
   // Callers: finalizeParkingConfirmation, recovery intermediate, recovery last trip, CLVisit.
@@ -1398,25 +1391,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
     }
 
-    // ── Gate 4: Hotspot check ──
-    // User-reported "Not parked" locations. Checked for all pipelines uniformly.
-    if hasCoords {
-      let loc = CLLocation(latitude: latitude, longitude: longitude)
-      if let h = hotspotInfo(near: loc), h.count >= hotspotBlockMinReports {
-        self.log("EMIT GATE [\(source)]: blocked — false positive hotspot (reports=\(h.count), dist=\(String(format: "%.0f", h.distance))m)")
-        self.decision("emit_gate_hotspot_blocked", [
-          "source": source,
-          "latitude": latitude,
-          "longitude": longitude,
-          "hotspotReports": h.count,
-          "hotspotDistanceMeters": h.distance,
-        ])
-        return false
-      }
-    }
-
-    // ── Gate 5 removed Mar 2026 — lockout caused cascading false positives ──
-    // The hotspot system (Gate 4) handles false positive suppression permanently.
+    // ── Gates 4 & 5 removed Mar 2026 ──
+    // Gate 4 (hotspot) removed: blocking prevented the "Correct" tap from ever appearing.
+    // Gate 5 (lockout) removed: caused cascading false positives.
+    // Signal processing guards (CoreMotion+GPS multi-gate) handle false positive prevention.
 
     // ── All gates passed — record, emit, persist ──
 
@@ -1520,104 +1498,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     self.log("Cleared pending parking event from UserDefaults queue")
   }
 
-  private func loadFalsePositiveHotspots() {
-    let defaults = UserDefaults.standard
-    guard let arr = defaults.array(forKey: kFalsePositiveHotspotsKey) as? [[String: Any]] else { return }
-    falsePositiveHotspots = arr
-    decision("hotspots_loaded", ["count": arr.count])
-  }
-
-  private func saveFalsePositiveHotspots() {
-    UserDefaults.standard.set(falsePositiveHotspots, forKey: kFalsePositiveHotspotsKey)
-  }
-
-  private func addFalsePositiveHotspot(lat: Double, lng: Double, source: String) {
-    let nowMs = Date().timeIntervalSince1970 * 1000
-    let newLoc = CLLocation(latitude: lat, longitude: lng)
-    var merged = false
-    for i in 0..<falsePositiveHotspots.count {
-      guard
-        let existingLat = falsePositiveHotspots[i]["lat"] as? Double,
-        let existingLng = falsePositiveHotspots[i]["lng"] as? Double
-      else { continue }
-      let dist = newLoc.distance(from: CLLocation(latitude: existingLat, longitude: existingLng))
-      if dist <= hotspotMergeRadiusMeters {
-        let prevCount = falsePositiveHotspots[i]["count"] as? Int ?? 1
-        falsePositiveHotspots[i]["count"] = min(prevCount + 1, 20)
-        falsePositiveHotspots[i]["lastTs"] = nowMs
-        merged = true
-        decision("hotspot_updated", [
-          "source": source,
-          "count": min(prevCount + 1, 20),
-          "distanceMeters": dist,
-        ])
-        break
-      }
-    }
-    if !merged {
-      falsePositiveHotspots.append([
-        "lat": lat,
-        "lng": lng,
-        "count": 1,
-        "firstTs": nowMs,
-        "lastTs": nowMs,
-      ])
-      decision("hotspot_added", [
-        "source": source,
-        "count": 1,
-      ])
-    }
-    if falsePositiveHotspots.count > 30 {
-      falsePositiveHotspots = Array(falsePositiveHotspots.suffix(30))
-    }
-    saveFalsePositiveHotspots()
-  }
-
-  private func reduceFalsePositiveHotspot(lat: Double, lng: Double, source: String) {
-    let loc = CLLocation(latitude: lat, longitude: lng)
-    for i in stride(from: falsePositiveHotspots.count - 1, through: 0, by: -1) {
-      guard
-        let hLat = falsePositiveHotspots[i]["lat"] as? Double,
-        let hLng = falsePositiveHotspots[i]["lng"] as? Double
-      else { continue }
-      let dist = loc.distance(from: CLLocation(latitude: hLat, longitude: hLng))
-      if dist <= hotspotMergeRadiusMeters {
-        let prevCount = falsePositiveHotspots[i]["count"] as? Int ?? 1
-        let next = max(0, prevCount - 1)
-        if next == 0 {
-          falsePositiveHotspots.remove(at: i)
-        } else {
-          falsePositiveHotspots[i]["count"] = next
-          falsePositiveHotspots[i]["lastTs"] = Date().timeIntervalSince1970 * 1000
-        }
-        decision("hotspot_reduced", [
-          "source": source,
-          "prevCount": prevCount,
-          "nextCount": next,
-          "distanceMeters": dist,
-        ])
-        saveFalsePositiveHotspots()
-        return
-      }
-    }
-  }
-
-  private func hotspotInfo(near location: CLLocation?) -> (count: Int, distance: Double)? {
-    guard let location = location else { return nil }
-    var best: (count: Int, distance: Double)? = nil
-    for item in falsePositiveHotspots {
-      guard let lat = item["lat"] as? Double, let lng = item["lng"] as? Double else { continue }
-      let dist = location.distance(from: CLLocation(latitude: lat, longitude: lng))
-      if dist > hotspotBlockRadiusMeters { continue }
-      let count = item["count"] as? Int ?? 1
-      if let cur = best {
-        if dist < cur.distance { best = (count, dist) }
-      } else {
-        best = (count, dist)
-      }
-    }
-    return best
-  }
+  // Hotspot functions removed Mar 2026:
+  // loadFalsePositiveHotspots, saveFalsePositiveHotspots, addFalsePositiveHotspot,
+  // reduceFalsePositiveHotspot, hotspotInfo — all removed. The hotspot system had a
+  // fundamental flaw: blocking parking detection prevented the "Correct" tap from
+  // ever appearing, creating permanent dead zones.
 
   @objc override static func requiresMainQueueSetup() -> Bool {
     return false
@@ -4890,19 +4775,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           ]
 
           if let visit = visitMatch {
-            // CLVisit provided coordinates — check hotspot before emitting
-            let recoveryLoc = CLLocation(latitude: visit.latitude, longitude: visit.longitude)
-            if let h = self.hotspotInfo(near: recoveryLoc), h.count >= self.hotspotBlockMinReports {
-              self.log("RECOVERY: Trip \(i + 1) — blocked by false positive hotspot (reports=\(h.count), dist=\(String(format: "%.0f", h.distance))m)")
-              self.decision("recovery_blocked_hotspot", [
-                "tripIndex": i + 1,
-                "latitude": visit.latitude,
-                "longitude": visit.longitude,
-                "hotspotReports": h.count,
-                "hotspotDistanceMeters": h.distance,
-              ])
-              continue  // Skip this trip entirely
-            }
             // CLVisit provided coordinates — JS CAN check parking rules!
             body["latitude"] = visit.latitude
             body["longitude"] = visit.longitude
@@ -5227,7 +5099,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
 
       // This visit is at a location we didn't detect parking for.
-      // Emit through the single gateway — handles hotspot, lockout, ring buffer, dedup, persist.
+      // Emit through the single gateway — handles ring buffer dedup, zero-coord rejection, persist.
       self.log("CLVisit: emitting parking event for undetected visit at (\(visit.coordinate.latitude), \(visit.coordinate.longitude)), dwell=\(String(format: "%.0f", dwellDuration))s, age=\(String(format: "%.0f", visitAge / 60))min")
 
       let body: [String: Any] = [
@@ -5520,7 +5392,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       decision("confirm_parking_skipped_finalization_pending", ["source": source])
       return
     }
-    // Lockout check removed Mar 2026 — hotspot system handles false positive suppression.
+    // Lockout + hotspot checks removed Mar 2026
 
     // ALWAYS cancel BOTH timers first to prevent double-triggering.
     // Previously only the "other" timer was cancelled, leaving the second
@@ -5627,8 +5499,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         return
       }
     }
-    let hotspotCandidate = parkingLocation ?? currentLocation
-    let hotspot = hotspotInfo(near: hotspotCandidate)
+    // Hotspot guard removed Mar 2026 — blocking prevented "Correct" tap from ever appearing
+    let locationCandidate = parkingLocation ?? currentLocation
     let walkingEvidenceSec = coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
     let zeroDurationSec = speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? 0
     let hasRecentDisconnectEvidence: Bool = {
@@ -5636,26 +5508,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       let age = Date().timeIntervalSince(disconnectedAt)
       return age >= 0 && age <= carDisconnectEvidenceWindowSec
     }()
-    if source != "location_stationary",
-       let h = hotspot,
-       h.count >= hotspotBlockMinReports,
-       walkingEvidenceSec < minWalkingEvidenceSec,
-       !hasRecentDisconnectEvidence,
-       zeroDurationSec < 25 {
-      self.log("Parking candidate blocked by hotspot guard (reports=\(h.count), dist=\(String(format: "%.0f", h.distance))m, zero=\(String(format: "%.0f", zeroDurationSec))s)")
-      decision("confirm_parking_blocked_hotspot", [
-        "source": source,
-        "hotspotReports": h.count,
-        "hotspotDistanceMeters": h.distance,
-        "zeroDurationSec": zeroDurationSec,
-        "walkingEvidenceSec": walkingEvidenceSec,
-      ])
-      tripSummaryHotspotBlockedCount += 1
-      lastStationaryTime = nil
-      locationAtStopStart = nil
-      return
-    }
-    let nearIntersectionRisk = self.isNearSignalizedIntersection(hotspotCandidate)
+    let nearIntersectionRisk = self.isNearSignalizedIntersection(locationCandidate)
     if nearIntersectionRisk &&
        source != "location_stationary" &&
        walkingEvidenceSec < minWalkingEvidenceSec &&
@@ -5678,8 +5531,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       zeroDurationSec: zeroDurationSec,
       walkingEvidenceSec: walkingEvidenceSec,
       hasRecentDisconnectEvidence: hasRecentDisconnectEvidence,
-      nearIntersectionRisk: nearIntersectionRisk,
-      hotspot: hotspot
+      nearIntersectionRisk: nearIntersectionRisk
     )
     if confidenceScore < 35 && walkingEvidenceSec < minWalkingEvidenceSec && !hasRecentDisconnectEvidence {
       self.log("Parking candidate blocked by low-confidence guard (score=\(confidenceScore), nearIntersection=\(nearIntersectionRisk))")
@@ -5700,7 +5552,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       source: source,
       zeroDurationSec: zeroDurationSec,
       walkingEvidenceSec: walkingEvidenceSec,
-      hotspot: hotspot,
       nearIntersectionRisk: nearIntersectionRisk,
       confidenceScore: confidenceScore
     )
@@ -5880,14 +5731,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     source: String,
     zeroDurationSec: TimeInterval,
     walkingEvidenceSec: TimeInterval,
-    hotspot: (count: Int, distance: Double)?,
     nearIntersectionRisk: Bool,
     confidenceScore: Int
   ) -> (seconds: TimeInterval, reason: String) {
-    // Strong hold near known false-positive hotspots and weak no-walking candidates.
-    if let h = hotspot, h.count >= hotspotBlockMinReports {
-      return (parkingFinalizationHoldStrongSec, "hotspot_high_reports")
-    }
+    // Hotspot hold removed Mar 2026
     if nearIntersectionRisk && walkingEvidenceSec < minWalkingEvidenceSec {
       return (parkingFinalizationHoldStrongSec, "intersection_no_walking")
     }
@@ -5908,8 +5755,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     zeroDurationSec: TimeInterval,
     walkingEvidenceSec: TimeInterval,
     hasRecentDisconnectEvidence: Bool,
-    nearIntersectionRisk: Bool,
-    hotspot: (count: Int, distance: Double)?
+    nearIntersectionRisk: Bool
   ) -> Int {
     var score = 0
 
@@ -5924,7 +5770,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     if source == "location_stationary" || source == "gps_unknown_fallback" { score += 10 }
 
     if nearIntersectionRisk && walkingEvidenceSec < minWalkingEvidenceSec { score -= 20 }
-    if let h = hotspot, h.count >= hotspotBlockMinReports { score -= 15 }
+    // Hotspot penalty removed Mar 2026
 
     return max(0, min(100, score))
   }
@@ -5976,7 +5822,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let movedMeters = location.distance(from: stopLoc)
     if movedMeters < 18 { return }
 
-    addFalsePositiveHotspot(lat: stopLoc.coordinate.latitude, lng: stopLoc.coordinate.longitude, source: "intersection_dwell_resume")
+    // Hotspot system removed Mar 2026
     decision("intersection_dwell_resumed_non_parking", [
       "dwellSec": dwellSec,
       "movedMeters": movedMeters,
@@ -6005,7 +5851,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // those conditions were true, leaving isDriving = false and blocking the
     // real Byron St parking detection entirely.
 
-    addFalsePositiveHotspot(lat: confirmedLoc.coordinate.latitude, lng: confirmedLoc.coordinate.longitude, source: "post_confirm_unwind")
+    // Hotspot system removed Mar 2026
 
     // Undo parking-state assumptions so the drive pipeline can continue normally.
     hasConfirmedParkingThisSession = false
