@@ -386,7 +386,10 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     }
 
     // Send voice call if enabled (morning reminders only)
-    if (user.phone_call_enabled && phoneNumber && type === 'morning_reminder') {
+    // Check both master toggle AND per-type call_alert_preferences
+    const callPrefs = (user.call_alert_preferences as Record<string, { enabled: boolean; hours_before?: number }>) || {};
+    const streetCleaningCallEnabled = callPrefs.street_cleaning ? callPrefs.street_cleaning.enabled !== false : true;
+    if (user.phone_call_enabled && streetCleaningCallEnabled && phoneNumber && type === 'morning_reminder') {
       console.log(`📞 Sending voice call to ${phoneNumber} for ${type}`);
       try {
         // Strip emojis for voice calls - they cause 500 errors in ClickSend
@@ -402,7 +405,7 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
         // Don't fail the whole notification if just voice call fails
       }
     } else {
-      console.log(`⏭️  Skipping voice call for ${user.email} (phone_call_enabled: ${user.phone_call_enabled}, phone: ${phoneNumber}, type: ${type})`);
+      console.log(`⏭️  Skipping voice call for ${user.email} (phone_call_enabled: ${user.phone_call_enabled}, street_cleaning_call: ${streetCleaningCallEnabled}, phone: ${phoneNumber}, type: ${type})`);
     }
 
     return true;

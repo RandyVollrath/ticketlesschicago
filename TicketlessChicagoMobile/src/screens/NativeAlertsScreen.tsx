@@ -167,6 +167,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [renewalReminders, setRenewalReminders] = useState(true);
   const [towAlerts, setTowAlerts] = useState(true);
   const [allClearAlerts, setAllClearAlerts] = useState(true);
+  const [dotPermitAlerts, setDotPermitAlerts] = useState(true);
   const [notificationDays, setNotificationDays] = useState<number[]>([30, 7, 1]);
 
   // Renewal Dates
@@ -196,6 +197,8 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadRef = useRef(true);
   const addressLookupRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Preserve server-side call_alert_preferences so auto-save doesn't erase per-type phone call settings
+  const serverCallAlertPrefsRef = useRef<any>(null);
 
   // ─── Load Data ──────────────────────────────────────────
 
@@ -266,13 +269,20 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           setAllClearAlerts(allClearPref);
           // Sync "All Clear" preference to AsyncStorage for BackgroundTaskService + HomeScreen
           AsyncStorage.setItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED, String(allClearPref)).catch(() => {});
+          setDotPermitAlerts((prefs as any).dot_permits ?? profileData.notify_dot_permits ?? true);
         } else {
           setEmailNotifications(profileData.notify_email ?? true);
           setSmsNotifications(profileData.notify_sms ?? false);
           setPhoneCallNotifications(profileData.phone_call_enabled ?? false);
           setSnowBanAlerts(profileData.notify_snow_ban ?? true);
           setTowAlerts(profileData.notify_tow ?? true);
+          setDotPermitAlerts(profileData.notify_dot_permits ?? true);
           setNotificationDays(profileData.notify_days_array || [30, 7, 1]);
+        }
+
+        // Preserve server-side call_alert_preferences so auto-save passes them through
+        if (profileData.call_alert_preferences) {
+          serverCallAlertPrefsRef.current = profileData.call_alert_preferences;
         }
       }
 
@@ -409,6 +419,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           phone_call_enabled: phoneCallNotifications,
           notify_snow_ban: snowBanAlerts,
           notify_tow: towAlerts,
+          notify_dot_permits: dotPermitAlerts,
           notify_days_array: notificationDays,
           notification_preferences: {
             email: emailNotifications,
@@ -419,8 +430,11 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             renewals: renewalReminders,
             tow: towAlerts,
             all_clear: allClearAlerts,
+            dot_permits: dotPermitAlerts,
             days_before: notificationDays,
           },
+          // Preserve per-type phone call settings from ProfileScreen
+          ...(serverCallAlertPrefsRef.current ? { call_alert_preferences: serverCallAlertPrefsRef.current } : {}),
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
 
@@ -478,7 +492,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, [userId, email, firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
       cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, renewalReminders, towAlerts, allClearAlerts, notificationDays,
+      streetCleaningAlerts, snowBanAlerts, renewalReminders, towAlerts, allClearAlerts, dotPermitAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded]);
 
@@ -494,7 +508,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, [firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
       cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, renewalReminders, towAlerts, allClearAlerts, notificationDays,
+      streetCleaningAlerts, snowBanAlerts, renewalReminders, towAlerts, allClearAlerts, dotPermitAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded, autoSave]);
 
@@ -1115,6 +1129,12 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               setAllClearAlerts(val);
               AsyncStorage.setItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED, String(val)).catch(() => {});
             }}
+          />
+          <ToggleRow
+            title="DOT permit alerts"
+            subtitle="Notify about DOT no-parking permits near you"
+            value={dotPermitAlerts}
+            onValueChange={setDotPermitAlerts}
             isLast
           />
 
