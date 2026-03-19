@@ -165,8 +165,44 @@ const syncDepartureToServer = async (item: ParkingHistoryItem): Promise<void> =>
   }
 };
 
-/** Restore history from Supabase when local storage is empty. */
-const restoreFromServer = async (): Promise<ParkingHistoryItem[]> => {
+/** Convert a Supabase parking_location_history row to a ParkingHistoryItem. */
+const serverRowToHistoryItem = (row: any): ParkingHistoryItem => {
+  const rules: ParkingRule[] = [];
+  if (row.on_winter_ban_street) {
+    rules.push({ type: 'winter_ban', severity: 'critical', streetName: row.winter_ban_street_name || '', description: 'Winter overnight parking ban' } as ParkingRule);
+  }
+  if (row.on_snow_route) {
+    rules.push({ type: 'snow_route', severity: 'warning', streetName: row.snow_route_name || '', description: 'Snow route' } as ParkingRule);
+  }
+  if (row.street_cleaning_date) {
+    rules.push({ type: 'street_cleaning', severity: 'warning', nextDate: row.street_cleaning_date, ward: row.street_cleaning_ward || '', section: row.street_cleaning_section || '', description: 'Street cleaning' } as ParkingRule);
+  }
+  if (row.permit_zone) {
+    rules.push({ type: 'permit_zone', severity: 'info', zone: row.permit_zone, schedule: row.permit_restriction_schedule || '', description: `Permit zone ${row.permit_zone}` } as ParkingRule);
+  }
+
+  const item: ParkingHistoryItem = {
+    id: new Date(row.parked_at).getTime().toString(),
+    coords: { latitude: parseFloat(row.latitude), longitude: parseFloat(row.longitude) },
+    address: row.address || undefined,
+    rules,
+    timestamp: new Date(row.parked_at).getTime(),
+  };
+
+  if (row.departure_confirmed_at) {
+    item.departure = {
+      confirmedAt: new Date(row.departure_confirmed_at).getTime(),
+      distanceMeters: row.departure_distance_meters || 0,
+      isConclusive: (row.departure_distance_meters || 0) > 50,
+      latitude: row.departure_latitude || 0,
+      longitude: row.departure_longitude || 0,
+    };
+  }
+  return item;
+};
+
+/** Fetch history items from Supabase. */
+const fetchFromServer = async (): Promise<ParkingHistoryItem[]> => {
   try {
     if (!AuthService.isAuthenticated()) return [];
     const supabase = AuthService.getSupabaseClient();
@@ -177,65 +213,72 @@ const restoreFromServer = async (): Promise<ParkingHistoryItem[]> => {
       .limit(MAX_HISTORY_ITEMS);
 
     if (error || !data || data.length === 0) return [];
-
-    // Convert server rows back to ParkingHistoryItem format
-    const items: ParkingHistoryItem[] = data.map((row: any) => {
-      const rules: ParkingRule[] = [];
-      if (row.on_winter_ban_street) {
-        rules.push({ type: 'winter_ban', severity: 'critical', streetName: row.winter_ban_street_name || '', description: 'Winter overnight parking ban' } as ParkingRule);
-      }
-      if (row.on_snow_route) {
-        rules.push({ type: 'snow_route', severity: 'warning', streetName: row.snow_route_name || '', description: 'Snow route' } as ParkingRule);
-      }
-      if (row.street_cleaning_date) {
-        rules.push({ type: 'street_cleaning', severity: 'warning', nextDate: row.street_cleaning_date, ward: row.street_cleaning_ward || '', section: row.street_cleaning_section || '', description: 'Street cleaning' } as ParkingRule);
-      }
-      if (row.permit_zone) {
-        rules.push({ type: 'permit_zone', severity: 'info', zone: row.permit_zone, schedule: row.permit_restriction_schedule || '', description: `Permit zone ${row.permit_zone}` } as ParkingRule);
-      }
-
-      const item: ParkingHistoryItem = {
-        id: new Date(row.parked_at).getTime().toString(),
-        coords: { latitude: parseFloat(row.latitude), longitude: parseFloat(row.longitude) },
-        address: row.address || undefined,
-        rules,
-        timestamp: new Date(row.parked_at).getTime(),
-      };
-
-      if (row.departure_confirmed_at) {
-        item.departure = {
-          confirmedAt: new Date(row.departure_confirmed_at).getTime(),
-          distanceMeters: row.departure_distance_meters || 0,
-          isConclusive: (row.departure_distance_meters || 0) > 50,
-          latitude: row.departure_latitude || 0,
-          longitude: row.departure_longitude || 0,
-        };
-      }
-      return item;
-    });
-
-    // Save restored data locally so subsequent reads are fast
-    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(items));
-    log.info(`Restored ${items.length} history items from server`);
-    return items;
+    return data.map(serverRowToHistoryItem);
   } catch (e) {
-    log.debug('Restore from server failed (non-fatal)', e);
+    log.debug('Fetch from server failed (non-fatal)', e);
     return [];
   }
+};
+
+/**
+ * Merge server records into local records, deduplicating by timestamp proximity.
+ * Two records are considered duplicates if their timestamps are within 5 minutes
+ * of each other. Local records take priority (they have the most accurate data).
+ */
+const mergeHistories = (local: ParkingHistoryItem[], server: ParkingHistoryItem[]): ParkingHistoryItem[] => {
+  const DEDUP_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+  // Start with all local items
+  const merged = [...local];
+  const localTimestamps = local.map(item => item.timestamp);
+
+  // Add server items that don't have a local duplicate
+  for (const serverItem of server) {
+    const isDuplicate = localTimestamps.some(
+      localTs => Math.abs(localTs - serverItem.timestamp) < DEDUP_THRESHOLD_MS
+    );
+    if (!isDuplicate) {
+      merged.push(serverItem);
+    }
+  }
+
+  // Sort by timestamp descending and cap at MAX_HISTORY_ITEMS
+  merged.sort((a, b) => b.timestamp - a.timestamp);
+  return merged.slice(0, MAX_HISTORY_ITEMS);
 };
 
 // ──────────────────────────────────────────────────────
 // Service to manage parking history (local-first + server sync)
 // ──────────────────────────────────────────────────────
+
+// Track whether we've already merged with the server this session.
+// Prevents hitting Supabase on every getHistory() call — the merge
+// only needs to happen once (or on explicit pull-to-refresh).
+let _serverMergeCompleted = false;
+
 export const ParkingHistoryService = {
-  async getHistory(): Promise<ParkingHistoryItem[]> {
+  async getHistory(forceServerRefresh: boolean = false): Promise<ParkingHistoryItem[]> {
     try {
       const stored = await AsyncStorage.getItem(HISTORY_KEY);
       const local: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
 
-      // If local is empty but user is authenticated, try restoring from server
-      if (local.length === 0 && AuthService.isAuthenticated()) {
-        return await restoreFromServer();
+      // Merge with server records when authenticated.
+      // This handles: app reinstalls, cleared AsyncStorage, new device,
+      // and the 24-day gap where server saves were broken but older records exist.
+      // Only fetch from server once per session unless explicitly refreshed.
+      const shouldFetchServer = AuthService.isAuthenticated() && (!_serverMergeCompleted || forceServerRefresh);
+      if (shouldFetchServer) {
+        const serverItems = await fetchFromServer();
+        _serverMergeCompleted = true;
+        if (serverItems.length > 0) {
+          const merged = mergeHistories(local, serverItems);
+          // Persist merged list so subsequent reads are fast (no server round-trip)
+          if (merged.length > local.length) {
+            await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(merged));
+            log.info(`Merged history: ${local.length} local + ${serverItems.length} server → ${merged.length} total`);
+          }
+          return merged;
+        }
       }
       return local;
     } catch (error) {
@@ -771,9 +814,9 @@ const HistoryScreen: React.FC = () => {
     return () => { isMountedRef.current = false; };
   }, []);
 
-  const loadHistory = useCallback(async () => {
+  const loadHistory = useCallback(async (forceServerRefresh: boolean = false) => {
     try {
-      const items = await ParkingHistoryService.getHistory();
+      const items = await ParkingHistoryService.getHistory(forceServerRefresh);
       const passItems = await CameraPassHistoryService.getHistory();
       const receiptItems = await RedLightReceiptService.getReceipts();
       if (isMountedRef.current) setHistory(items);
@@ -815,7 +858,7 @@ const HistoryScreen: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadHistory();
+    await loadHistory(true); // Force server refresh on pull-to-refresh
     if (isMountedRef.current) setRefreshing(false);
   }, [loadHistory]);
 
