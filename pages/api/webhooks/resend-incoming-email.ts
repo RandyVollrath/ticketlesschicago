@@ -367,9 +367,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let matchedUserId: string | null = null;
     let matchedUserEmail: string | null = null;
 
-    // Try to find in auth.users (for autopilot users)
-    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const authUser = authUsers?.users?.find(u => u.email?.toLowerCase() === fromEmail.toLowerCase());
+    // Try to find in auth.users (for autopilot users) — paginate to avoid 50-user default limit
+    let authUser: { id: string; email?: string } | undefined;
+    {
+      let page = 1;
+      const perPage = 100;
+      while (!authUser) {
+        const { data: authPage } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+        if (!authPage?.users?.length) break;
+        authUser = authPage.users.find(u => u.email?.toLowerCase() === fromEmail.toLowerCase());
+        if (authPage.users.length < perPage) break;
+        page++;
+      }
+    }
 
     if (authUser) {
       matchedUserId = authUser.id;

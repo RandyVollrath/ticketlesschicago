@@ -24,14 +24,7 @@ export default function UtilityEvidencePage() {
         const uid = authData.user.id;
         setUserId(uid);
 
-        const { data: profileData } = await supabase
-          .from('user_profiles')
-          .select('email_forwarding_address')
-          .eq('user_id', uid)
-          .single();
-
-        const fallbackUtilityAddress = `${uid}@bills.autopilotamerica.com`;
-        setUtilityForwardingEmail(profileData?.email_forwarding_address || fallbackUtilityAddress);
+        setUtilityForwardingEmail('receipts@autopilotamerica.com');
       } catch (e: any) {
         setError(e?.message || 'Failed to load utility evidence data');
       } finally {
