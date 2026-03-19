@@ -877,6 +877,7 @@ function SettingsPageInner() {
   const [renewalReminders, setRenewalReminders] = useState(true);
   const [towAlerts, setTowAlerts] = useState(true);
   const [dotPermitAlerts, setDotPermitAlerts] = useState(true);
+  const [allClearAlerts, setAllClearAlerts] = useState(true);
   const [notificationDays, setNotificationDays] = useState<number[]>([30, 7, 1]);
 
   // Renewal Dates
@@ -1098,6 +1099,7 @@ function SettingsPageInner() {
           setRenewalReminders(prefs.renewals ?? true);
           setTowAlerts(prefs.tow ?? profileData.notify_tow ?? true);
           setDotPermitAlerts(prefs.dot_permits ?? profileData.notify_dot_permits ?? true);
+          setAllClearAlerts(prefs.all_clear ?? true);
           setNotificationDays(prefs.days_before || profileData.notify_days_array || [30, 7, 1]);
         } else {
           // Fallback to individual columns
@@ -1311,6 +1313,7 @@ function SettingsPageInner() {
           renewals: renewalReminders,
           tow: towAlerts,
           dot_permits: dotPermitAlerts,
+          all_clear: allClearAlerts,
           days_before: notificationDays,
         },
         foia_wait_preference: foiaWaitPreference,
@@ -1366,10 +1369,18 @@ function SettingsPageInner() {
 
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2000);
+
+    // Notify mobile WebView so it can sync preferences to AsyncStorage
+    try {
+      (window as any).ReactNativeWebView?.postMessage(JSON.stringify({
+        type: 'settings_saved',
+        all_clear: allClearAlerts,
+      }));
+    } catch (_) {}
   }, [userId, email, firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
       cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, renewalReminders, dotPermitAlerts, notificationDays,
+      streetCleaningAlerts, snowBanAlerts, renewalReminders, dotPermitAlerts, allClearAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference, isPaidUser]);
 
@@ -2674,6 +2685,25 @@ function SettingsPageInner() {
               </p>
             </div>
             <Toggle checked={renewalReminders} onChange={setRenewalReminders} />
+          </div>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+            paddingBottom: 16,
+            borderBottom: `1px solid ${COLORS.border}`,
+          }}>
+            <div>
+              <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
+                &ldquo;All Clear&rdquo; notifications
+              </h4>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
+                Notify when no parking restrictions are found at your spot
+              </p>
+            </div>
+            <Toggle checked={allClearAlerts} onChange={setAllClearAlerts} />
           </div>
 
           <div>

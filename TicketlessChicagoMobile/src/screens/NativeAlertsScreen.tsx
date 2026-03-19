@@ -15,9 +15,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import AuthService from '../services/AuthService';
 import Config from '../config/config';
+import { StorageKeys } from '../constants';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('NativeAlertsScreen');
@@ -259,6 +261,9 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           setRenewalReminders((prefs as any).renewals ?? true);
           setTowAlerts((prefs as any).tow ?? profileData.notify_tow ?? true);
           setNotificationDays((prefs as any).days_before || profileData.notify_days_array || [30, 7, 1]);
+          // Sync "All Clear" preference to AsyncStorage for BackgroundTaskService + HomeScreen
+          const allClearPref = (prefs as any).all_clear ?? true;
+          AsyncStorage.setItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED, String(allClearPref)).catch(() => {});
         } else {
           setEmailNotifications(profileData.notify_email ?? true);
           setSmsNotifications(profileData.notify_sms ?? false);
