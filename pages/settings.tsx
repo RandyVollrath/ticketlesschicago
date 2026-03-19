@@ -1395,7 +1395,7 @@ function SettingsPageInner() {
   }, [firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
       cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, renewalReminders, dotPermitAlerts, notificationDays,
+      streetCleaningAlerts, snowBanAlerts, renewalReminders, dotPermitAlerts, allClearAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference, autoSave]);
 
