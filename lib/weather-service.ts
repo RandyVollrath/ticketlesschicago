@@ -673,3 +673,163 @@ export async function checkWeatherDefense(
     defenseParagraph,
   };
 }
+
+// ─── Hourly Historical Weather (for red-light camera defense) ───────────────
+
+export interface HourlyWeatherAtViolation {
+  /** Whether conditions were adverse */
+  hasAdverseConditions: boolean;
+  /** Temperature (F) */
+  temperatureF: number | null;
+  /** Visibility (miles) — null when using Open-Meteo (no visibility data) */
+  visibilityMiles: number | null;
+  /** Whether visibility was impaired (< 5 miles) */
+  impairedVisibility: boolean;
+  /** Precipitation type if any */
+  precipitationType: string | null;
+  /** Precipitation amount (inches) */
+  precipitationInches: number | null;
+  /** Road condition description */
+  roadCondition: string | null;
+  /** Wind speed (mph) */
+  windSpeedMph: number | null;
+  /** Sun position (day/night/dawn/dusk) */
+  sunPosition: string | null;
+  /** Human-readable weather description */
+  description: string;
+  /** Pre-built defense argument strings */
+  defenseArguments: string[];
+  /** Data source attribution */
+  source: string;
+}
+
+/**
+ * Fetch hourly weather conditions at a specific time and place.
+ * Uses Open-Meteo Historical API (free, no key required).
+ * Returns conditions for the specific hour of the violation.
+ */
+export async function getHourlyWeatherAtTime(
+  latitude: number,
+  longitude: number,
+  violationDatetime: string, // ISO timestamp
+): Promise<HourlyWeatherAtViolation | null> {
+  const violationDate = new Date(violationDatetime);
+  const dateStr = violationDate.toISOString().split('T')[0];
+  const hour = violationDate.getUTCHours();
+
+  // Determine sun position (Chicago is UTC-6 CST / UTC-5 CDT)
+  const chicagoHour = (hour - 6 + 24) % 24;
+  let sunPosition: string;
+  if (chicagoHour >= 6 && chicagoHour < 8) sunPosition = 'dawn';
+  else if (chicagoHour >= 8 && chicagoHour < 17) sunPosition = 'day';
+  else if (chicagoHour >= 17 && chicagoHour < 19) sunPosition = 'dusk';
+  else sunPosition = 'night';
+
+  try {
+    const url = `https://archive-api.open-meteo.com/v1/archive?` +
+      `latitude=${latitude}&longitude=${longitude}` +
+      `&start_date=${dateStr}&end_date=${dateStr}` +
+      `&hourly=temperature_2m,precipitation,snowfall,rain,weather_code,wind_speed_10m` +
+      `&timezone=America/Chicago` +
+      `&temperature_unit=fahrenheit` +
+      `&precipitation_unit=inch`;
+
+    const response = await fetchWithTimeout(url, {}, REQUEST_TIMEOUT);
+    if (!response.ok) throw new Error(`Open-Meteo API error: ${response.status}`);
+
+    const data = await response.json();
+    if (!data.hourly?.time) throw new Error('No hourly data');
+
+    const hourIdx = Math.min(hour, data.hourly.time.length - 1);
+
+    const temp = data.hourly.temperature_2m?.[hourIdx] ?? null;
+    const precip = data.hourly.precipitation?.[hourIdx] ?? null;
+    const snowfall = data.hourly.snowfall?.[hourIdx] ?? null;
+    const rain = data.hourly.rain?.[hourIdx] ?? null;
+    const weatherCode = data.hourly.weather_code?.[hourIdx] ?? null;
+    const windSpeed = data.hourly.wind_speed_10m?.[hourIdx] ?? null;
+
+    // WMO weather code descriptions
+    const codeDescriptions: Record<number, string> = {
+      0: 'Clear', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+      45: 'Fog', 48: 'Rime fog',
+      51: 'Light drizzle', 53: 'Moderate drizzle', 55: 'Dense drizzle',
+      56: 'Light freezing drizzle', 57: 'Dense freezing drizzle',
+      61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain',
+      66: 'Light freezing rain', 67: 'Heavy freezing rain',
+      71: 'Slight snow', 73: 'Moderate snow', 75: 'Heavy snow',
+      77: 'Snow grains', 80: 'Slight rain showers', 81: 'Moderate rain showers',
+      82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers',
+      95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Thunderstorm with heavy hail',
+    };
+
+    const conditions = weatherCode !== null ? (codeDescriptions[weatherCode] || `Code ${weatherCode}`) : 'Unknown';
+
+    // Determine precipitation type
+    let precipType: string | null = null;
+    if (snowfall && snowfall > 0) precipType = 'snow';
+    else if (weatherCode && weatherCode >= 66 && weatherCode <= 67) precipType = 'freezingrain';
+    else if (rain && rain > 0) precipType = 'rain';
+
+    let roadCondition: string | null = null;
+    if (temp !== null && temp < 32 && precip && precip > 0) {
+      roadCondition = 'Potentially icy/snowy road surface';
+    } else if (precipType === 'rain' && precip && precip > 0.1) {
+      roadCondition = 'Wet road surface';
+    } else if (precipType === 'snow') {
+      roadCondition = 'Snow-covered road surface';
+    } else if (precipType === 'freezingrain') {
+      roadCondition = 'Ice-covered road surface';
+    }
+
+    const defenseArguments: string[] = [];
+    if (sunPosition === 'night' || sunPosition === 'dawn' || sunPosition === 'dusk') {
+      defenseArguments.push(
+        `The violation occurred during ${sunPosition} hours when visibility is reduced.`
+      );
+    }
+    if (roadCondition) {
+      defenseArguments.push(
+        `Road conditions were adverse (${roadCondition}), affecting stopping distance.`
+      );
+    }
+    if (temp !== null && temp < 32) {
+      defenseArguments.push(
+        `Below-freezing temperature (${Math.round(temp)}°F) increases stopping distance.`
+      );
+    }
+    if (precipType) {
+      defenseArguments.push(
+        `Active precipitation (${precipType}) affected visibility and road conditions.`
+      );
+    }
+    if (windSpeed && windSpeed > 20) {
+      defenseArguments.push(
+        `High winds (${Math.round(windSpeed)} mph) may affect vehicle handling.`
+      );
+    }
+
+    const hasAdverse = !!roadCondition || !!precipType ||
+      (temp !== null && temp < 32) || sunPosition === 'night' ||
+      (windSpeed !== null && windSpeed > 20);
+
+    return {
+      hasAdverseConditions: hasAdverse,
+      temperatureF: temp,
+      visibilityMiles: null, // Open-Meteo doesn't provide visibility
+      impairedVisibility: false,
+      precipitationType: precipType,
+      precipitationInches: precip,
+      roadCondition,
+      windSpeedMph: windSpeed,
+      sunPosition,
+      description: `${conditions}${temp !== null ? `, ${Math.round(temp)}°F` : ''}` +
+        `${precipType ? `, ${precipType}` : ''}`,
+      defenseArguments,
+      source: 'Open-Meteo Historical Weather API',
+    };
+  } catch (err) {
+    console.error('Hourly weather fetch failed:', err);
+    return null;
+  }
+}
