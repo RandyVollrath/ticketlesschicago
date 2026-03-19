@@ -345,6 +345,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`  - Subject: ${email.subject}`);
     console.log(`  - Attachments: ${email.attachments?.length || 0}`);
 
+    // Resend webhook payloads only contain metadata — fetch full email content if body is missing
+    if (!email.text && !email.html && email.email_id) {
+      console.log(`📥 Fetching full email content from Resend API: ${email.email_id}`);
+      try {
+        const resendRes = await fetch(
+          `https://api.resend.com/emails/receiving/${email.email_id}`,
+          { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } }
+        );
+        if (resendRes.ok) {
+          const fullEmail = await resendRes.json();
+          email.text = fullEmail.text || email.text;
+          email.html = fullEmail.html || email.html;
+          if (!email.attachments?.length && fullEmail.attachments?.length) {
+            email.attachments = fullEmail.attachments;
+          }
+          console.log(`✅ Fetched email body: text=${!!email.text}, html=${!!email.html}, attachments=${email.attachments?.length || 0}`);
+        } else {
+          console.warn(`⚠️ Failed to fetch email content: ${resendRes.status} ${resendRes.statusText}`);
+        }
+      } catch (fetchErr: any) {
+        console.warn(`⚠️ Error fetching email content:`, fetchErr?.message);
+      }
+    }
+
     // Find user profile
     console.log(`🔍 Looking up user profile for: ${userId}`);
     const { data: profile, error: profileError } = await supabase
