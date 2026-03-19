@@ -519,7 +519,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let nonAutoAgeSec = coreMotionNotAutomotiveSince.map { now.timeIntervalSince($0) } ?? -1
     let unknownAgeSec = coreMotionUnknownSince.map { now.timeIntervalSince($0) } ?? -1
     let queuedAgeSec = queuedParkingAt.map { now.timeIntervalSince($0) } ?? -1
-    let lockoutRemainingSec = falsePositiveParkingLockoutUntil.map { max(0, $0.timeIntervalSinceNow) } ?? 0
+    let lockoutRemainingSec: TimeInterval = 0  // Lockout removed — hotspot system handles false positive suppression
     let bgRefreshString: String = {
       switch UIApplication.shared.backgroundRefreshStatus {
       case .available: return "available"
@@ -759,8 +759,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var tripSummaryStaleLocationBlockedCount = 0
   private var tripLastMotionState: String? = nil
   private var tripLastMotionAt: Date? = nil
-  private var falsePositiveParkingLockoutUntil: Date? = nil
-  private var falsePositiveParkingLockoutLocation: CLLocation? = nil
+  // Lockout removed Mar 2026 — caused cascading false positive problem where a false
+  // parking event blocked all real parking for 30 minutes. The hotspot system (1-tap
+  // permanent block) plus existing CoreMotion+GPS guards are sufficient.
   private var lastParkingDecisionConfidence: Int = -1
   private var lastParkingDecisionHoldReason: String = ""
   private var lastParkingDecisionSource: String = ""
@@ -902,8 +903,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let parkingFinalizationHoldFastSec: TimeInterval = 5
   private let parkingFinalizationHoldStrongSec: TimeInterval = 11
   private let parkingFinalizationMaxDriftMeters: Double = 35
-  private let falsePositiveParkingLockoutSec: TimeInterval = 1800  // 30 min — prevents re-detection near the false positive location
-  private let falsePositiveParkingLockoutRadiusMeters: Double = 200  // Only block parking within this radius of the false positive
+  // falsePositiveParkingLockoutSec and falsePositiveParkingLockoutRadiusMeters removed Mar 2026
   private let gpsZeroSpeedHardTimeoutSec: TimeInterval = 90  // Hard override: 90s of GPS speed≈0 = parked, even if CoreMotion still says automotive (was 45s, raised to avoid false positives at long red lights like Lincoln/Belmont/Ashland 6-way intersections)
   private let intersectionRiskRadiusMeters: Double = 95
   private let intersectionDwellAbortWindowSec: TimeInterval = 90
@@ -1169,14 +1169,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   @objc func reportParkingFalsePositive(_ latitude: Double, longitude: Double,
                                         resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     addFalsePositiveHotspot(lat: latitude, lng: longitude, source: "user_report")
-    falsePositiveParkingLockoutUntil = Date().addingTimeInterval(falsePositiveParkingLockoutSec)
-    falsePositiveParkingLockoutLocation = CLLocation(latitude: latitude, longitude: longitude)
     decision("parking_false_positive_reported", [
       "lat": latitude,
       "lng": longitude,
-      "lockoutSec": falsePositiveParkingLockoutSec,
-      "lockoutUntilTs": falsePositiveParkingLockoutUntil?.timeIntervalSince1970 ?? 0,
-      "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
     ])
     resolve(true)
   }
@@ -1420,31 +1415,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
     }
 
-    // ── Gate 5: False positive lockout (location-aware) ──
-    if let lockout = falsePositiveParkingLockoutUntil, Date() < lockout {
-      let lockoutLoc = falsePositiveParkingLockoutLocation
-      let eventLoc = hasCoords ? CLLocation(latitude: latitude, longitude: longitude) : nil
-      let distFromLockout = (eventLoc != nil && lockoutLoc != nil) ? eventLoc!.distance(from: lockoutLoc!) : 0
-      let isNearLockout = lockoutLoc == nil || eventLoc == nil || distFromLockout <= falsePositiveParkingLockoutRadiusMeters
-      if isNearLockout {
-        self.log("EMIT GATE [\(source)]: blocked — false positive lockout (\(String(format: "%.0f", distFromLockout))m from lockout)")
-        self.decision("emit_gate_lockout", [
-          "source": source,
-          "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
-          "distFromLockoutMeters": distFromLockout,
-          "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
-        ])
-        return false
-      } else {
-        self.log("EMIT GATE [\(source)]: lockout bypassed — \(String(format: "%.0f", distFromLockout))m from false positive")
-        self.decision("emit_gate_lockout_bypassed_distance", [
-          "source": source,
-          "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
-          "distFromLockoutMeters": distFromLockout,
-          "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
-        ])
-      }
-    }
+    // ── Gate 5 removed Mar 2026 — lockout caused cascading false positives ──
+    // The hotspot system (Gate 4) handles false positive suppression permanently.
 
     // ── All gates passed — record, emit, persist ──
 
@@ -1980,8 +1952,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     alertedCameraAtByIndex.removeAll()
     lastCameraAlertAt = nil
     lastCameraRejectLogAt = nil
-    falsePositiveParkingLockoutUntil = nil
-    falsePositiveParkingLockoutLocation = nil
     lastParkingDecisionConfidence = -1
     lastParkingDecisionHoldReason = ""
     lastParkingDecisionSource = ""
@@ -5550,36 +5520,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       decision("confirm_parking_skipped_finalization_pending", ["source": source])
       return
     }
-    if let lockoutUntil = falsePositiveParkingLockoutUntil, Date() < lockoutUntil {
-      // Location-aware lockout: only block parking near the false positive location.
-      // Parking far away (>200m) is allowed through — this fixes the cascading false
-      // positive problem where a false stop on Sheffield blocked real parking at Montana/Lincoln.
-      let currentLoc = locationManager.location ?? locationAtStopStart
-      let lockoutLoc = falsePositiveParkingLockoutLocation
-      let distFromLockout = (currentLoc != nil && lockoutLoc != nil) ? currentLoc!.distance(from: lockoutLoc!) : 0
-      let isNearLockout = lockoutLoc == nil || distFromLockout <= falsePositiveParkingLockoutRadiusMeters
-      if isNearLockout {
-        let remaining = lockoutUntil.timeIntervalSinceNow
-        self.log("confirmParking(\(source)) blocked by false-positive lockout (\(String(format: "%.0f", remaining))s remaining, \(String(format: "%.0f", distFromLockout))m from lockout)")
-        tripSummaryLockoutBlockedCount += 1
-        decision("confirm_parking_blocked_lockout", [
-          "source": source,
-          "remainingSec": remaining,
-          "distFromLockoutMeters": distFromLockout,
-          "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
-        ])
-        lastStationaryTime = nil
-        locationAtStopStart = nil
-        return
-      } else {
-        self.log("confirmParking(\(source)) lockout bypassed — \(String(format: "%.0f", distFromLockout))m from false positive (radius=\(String(format: "%.0f", falsePositiveParkingLockoutRadiusMeters))m)")
-        decision("confirm_parking_lockout_bypassed_distance", [
-          "source": source,
-          "distFromLockoutMeters": distFromLockout,
-          "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
-        ])
-      }
-    }
+    // Lockout check removed Mar 2026 — hotspot system handles false positive suppression.
 
     // ALWAYS cancel BOTH timers first to prevent double-triggering.
     // Previously only the "other" timer was cancelled, leaving the second
@@ -6035,19 +5976,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let movedMeters = location.distance(from: stopLoc)
     if movedMeters < 18 { return }
 
-    let extended = Date().addingTimeInterval(falsePositiveParkingLockoutSec)
-    if let existing = falsePositiveParkingLockoutUntil, existing > extended {
-      // Keep the longer lockout if one already exists.
-    } else {
-      falsePositiveParkingLockoutUntil = extended
-      falsePositiveParkingLockoutLocation = stopLoc
-    }
     addFalsePositiveHotspot(lat: stopLoc.coordinate.latitude, lng: stopLoc.coordinate.longitude, source: "intersection_dwell_resume")
     decision("intersection_dwell_resumed_non_parking", [
       "dwellSec": dwellSec,
       "movedMeters": movedMeters,
       "speed": speed,
-      "lockoutUntilTs": falsePositiveParkingLockoutUntil?.timeIntervalSince1970 ?? 0,
     ])
   }
 
@@ -6073,13 +6006,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // real Byron St parking detection entirely.
 
     addFalsePositiveHotspot(lat: confirmedLoc.coordinate.latitude, lng: confirmedLoc.coordinate.longitude, source: "post_confirm_unwind")
-    let extended = Date().addingTimeInterval(falsePositiveParkingLockoutSec)
-    if let existing = falsePositiveParkingLockoutUntil, existing > extended {
-      // Keep existing if already longer.
-    } else {
-      falsePositiveParkingLockoutUntil = extended
-      falsePositiveParkingLockoutLocation = confirmedLoc
-    }
 
     // Undo parking-state assumptions so the drive pipeline can continue normally.
     hasConfirmedParkingThisSession = false
