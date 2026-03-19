@@ -760,6 +760,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var tripLastMotionState: String? = nil
   private var tripLastMotionAt: Date? = nil
   private var falsePositiveParkingLockoutUntil: Date? = nil
+  private var falsePositiveParkingLockoutLocation: CLLocation? = nil
   private var lastParkingDecisionConfidence: Int = -1
   private var lastParkingDecisionHoldReason: String = ""
   private var lastParkingDecisionSource: String = ""
@@ -901,7 +902,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let parkingFinalizationHoldFastSec: TimeInterval = 5
   private let parkingFinalizationHoldStrongSec: TimeInterval = 11
   private let parkingFinalizationMaxDriftMeters: Double = 35
-  private let falsePositiveParkingLockoutSec: TimeInterval = 1800  // 30 min — prevents re-detection while user is still at the false positive location
+  private let falsePositiveParkingLockoutSec: TimeInterval = 1800  // 30 min — prevents re-detection near the false positive location
+  private let falsePositiveParkingLockoutRadiusMeters: Double = 200  // Only block parking within this radius of the false positive
   private let gpsZeroSpeedHardTimeoutSec: TimeInterval = 90  // Hard override: 90s of GPS speed≈0 = parked, even if CoreMotion still says automotive (was 45s, raised to avoid false positives at long red lights like Lincoln/Belmont/Ashland 6-way intersections)
   private let intersectionRiskRadiusMeters: Double = 95
   private let intersectionDwellAbortWindowSec: TimeInterval = 90
@@ -1168,11 +1170,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
                                         resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     addFalsePositiveHotspot(lat: latitude, lng: longitude, source: "user_report")
     falsePositiveParkingLockoutUntil = Date().addingTimeInterval(falsePositiveParkingLockoutSec)
+    falsePositiveParkingLockoutLocation = CLLocation(latitude: latitude, longitude: longitude)
     decision("parking_false_positive_reported", [
       "lat": latitude,
       "lng": longitude,
       "lockoutSec": falsePositiveParkingLockoutSec,
       "lockoutUntilTs": falsePositiveParkingLockoutUntil?.timeIntervalSince1970 ?? 0,
+      "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
     ])
     resolve(true)
   }
@@ -1416,14 +1420,30 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
     }
 
-    // ── Gate 5: False positive lockout ──
+    // ── Gate 5: False positive lockout (location-aware) ──
     if let lockout = falsePositiveParkingLockoutUntil, Date() < lockout {
-      self.log("EMIT GATE [\(source)]: blocked — false positive lockout (until \(lockout))")
-      self.decision("emit_gate_lockout", [
-        "source": source,
-        "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
-      ])
-      return false
+      let lockoutLoc = falsePositiveParkingLockoutLocation
+      let eventLoc = hasCoords ? CLLocation(latitude: latitude, longitude: longitude) : nil
+      let distFromLockout = (eventLoc != nil && lockoutLoc != nil) ? eventLoc!.distance(from: lockoutLoc!) : 0
+      let isNearLockout = lockoutLoc == nil || eventLoc == nil || distFromLockout <= falsePositiveParkingLockoutRadiusMeters
+      if isNearLockout {
+        self.log("EMIT GATE [\(source)]: blocked — false positive lockout (\(String(format: "%.0f", distFromLockout))m from lockout)")
+        self.decision("emit_gate_lockout", [
+          "source": source,
+          "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
+          "distFromLockoutMeters": distFromLockout,
+          "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
+        ])
+        return false
+      } else {
+        self.log("EMIT GATE [\(source)]: lockout bypassed — \(String(format: "%.0f", distFromLockout))m from false positive")
+        self.decision("emit_gate_lockout_bypassed_distance", [
+          "source": source,
+          "parkTimestamp": parkTimestamp.timeIntervalSince1970 * 1000,
+          "distFromLockoutMeters": distFromLockout,
+          "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
+        ])
+      }
     }
 
     // ── All gates passed — record, emit, persist ──
@@ -1961,6 +1981,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     lastCameraAlertAt = nil
     lastCameraRejectLogAt = nil
     falsePositiveParkingLockoutUntil = nil
+    falsePositiveParkingLockoutLocation = nil
     lastParkingDecisionConfidence = -1
     lastParkingDecisionHoldReason = ""
     lastParkingDecisionSource = ""
@@ -5530,16 +5551,34 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       return
     }
     if let lockoutUntil = falsePositiveParkingLockoutUntil, Date() < lockoutUntil {
-      let remaining = lockoutUntil.timeIntervalSinceNow
-      self.log("confirmParking(\(source)) blocked by false-positive lockout (\(String(format: "%.0f", remaining))s remaining)")
-      tripSummaryLockoutBlockedCount += 1
-      decision("confirm_parking_blocked_lockout", [
-        "source": source,
-        "remainingSec": remaining,
-      ])
-      lastStationaryTime = nil
-      locationAtStopStart = nil
-      return
+      // Location-aware lockout: only block parking near the false positive location.
+      // Parking far away (>200m) is allowed through — this fixes the cascading false
+      // positive problem where a false stop on Sheffield blocked real parking at Montana/Lincoln.
+      let currentLoc = locationManager.location ?? locationAtStopStart
+      let lockoutLoc = falsePositiveParkingLockoutLocation
+      let distFromLockout = (currentLoc != nil && lockoutLoc != nil) ? currentLoc!.distance(from: lockoutLoc!) : 0
+      let isNearLockout = lockoutLoc == nil || distFromLockout <= falsePositiveParkingLockoutRadiusMeters
+      if isNearLockout {
+        let remaining = lockoutUntil.timeIntervalSinceNow
+        self.log("confirmParking(\(source)) blocked by false-positive lockout (\(String(format: "%.0f", remaining))s remaining, \(String(format: "%.0f", distFromLockout))m from lockout)")
+        tripSummaryLockoutBlockedCount += 1
+        decision("confirm_parking_blocked_lockout", [
+          "source": source,
+          "remainingSec": remaining,
+          "distFromLockoutMeters": distFromLockout,
+          "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
+        ])
+        lastStationaryTime = nil
+        locationAtStopStart = nil
+        return
+      } else {
+        self.log("confirmParking(\(source)) lockout bypassed — \(String(format: "%.0f", distFromLockout))m from false positive (radius=\(String(format: "%.0f", falsePositiveParkingLockoutRadiusMeters))m)")
+        decision("confirm_parking_lockout_bypassed_distance", [
+          "source": source,
+          "distFromLockoutMeters": distFromLockout,
+          "lockoutRadiusMeters": falsePositiveParkingLockoutRadiusMeters,
+        ])
+      }
     }
 
     // ALWAYS cancel BOTH timers first to prevent double-triggering.
@@ -6001,6 +6040,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       // Keep the longer lockout if one already exists.
     } else {
       falsePositiveParkingLockoutUntil = extended
+      falsePositiveParkingLockoutLocation = stopLoc
     }
     addFalsePositiveHotspot(lat: stopLoc.coordinate.latitude, lng: stopLoc.coordinate.longitude, source: "intersection_dwell_resume")
     decision("intersection_dwell_resumed_non_parking", [
@@ -6038,6 +6078,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       // Keep existing if already longer.
     } else {
       falsePositiveParkingLockoutUntil = extended
+      falsePositiveParkingLockoutLocation = confirmedLoc
     }
 
     // Undo parking-state assumptions so the drive pipeline can continue normally.
