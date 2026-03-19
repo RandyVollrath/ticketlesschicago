@@ -5408,6 +5408,22 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let drivingDuration = Date().timeIntervalSince(drivingStartTime!)
     self.log("Parking detected after \(String(format: "%.0f", drivingDuration))s driving (walking=\(userIsWalking))")
 
+    // GUARD: Reject stops that happen before minDrivingDurationSec (10s) of driving.
+    // A 3-4 second alley slowdown or brief stop at a yield is NOT parking. CoreMotion
+    // can misclassify phone jostling as "walking" during slow turns, which would
+    // otherwise bypass all GPS guards via the coremotion_walking path.
+    // Bug: Mar 18 2026 — Sheffield 2300 block alley false positive. User stopped 3-4s
+    // in alley before turning, CoreMotion detected walking, confirmed parking immediately.
+    if drivingDuration < minDrivingDurationSec {
+      self.log("handlePotentialParking: driving duration \(String(format: "%.0f", drivingDuration))s < \(minDrivingDurationSec)s minimum — ignoring")
+      decision("parking_rejected_short_drive", [
+        "drivingDurationSec": drivingDuration,
+        "minDrivingDurationSec": minDrivingDurationSec,
+        "userIsWalking": userIsWalking,
+      ])
+      return
+    }
+
     if lastStationaryTime == nil {
       lastStationaryTime = Date()
     }
@@ -5441,12 +5457,35 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         return
       }
 
-      // Walking evidence = user exited car. Confirm immediately (no GPS wait needed).
+      // Walking evidence = user exited car. BUT still require GPS speed ≈ 0 for at
+      // least 8 seconds. CoreMotion can misclassify phone jostling during slow alley
+      // turns as "walking" — a 3-4 second stop is NOT parking even if CoreMotion
+      // thinks you're walking.
+      // Bug: Mar 18 2026 — Sheffield 2300 block alley. User stopped 3-4s in alley,
+      // CoreMotion detected walking from phone jostle, confirmed parking immediately
+      // with zero GPS validation. Walking evidence should REDUCE the GPS wait (from
+      // 45s to 8s), not ELIMINATE it.
       let walkingEvidenceSec = self.coreMotionWalkingSince.map { Date().timeIntervalSince($0) } ?? 0
+      let zeroDurationForWalking = self.speedZeroStartTime.map { Date().timeIntervalSince($0) } ?? 0
+      let minZeroSpeedWithWalkingSec: TimeInterval = 8  // Reduced from 10s (no-walking) but NOT zero
       if userIsWalking || walkingEvidenceSec >= self.minWalkingEvidenceSec {
-        self.log("handlePotentialParking: walking detected (\(String(format: "%.0f", walkingEvidenceSec))s) — confirming immediately via coremotion_walking")
-        self.confirmParking(source: "coremotion_walking")
-        return
+        if zeroDurationForWalking >= minZeroSpeedWithWalkingSec {
+          self.log("handlePotentialParking: walking detected (\(String(format: "%.0f", walkingEvidenceSec))s) + GPS zero for \(String(format: "%.0f", zeroDurationForWalking))s — confirming via coremotion_walking")
+          self.confirmParking(source: "coremotion_walking")
+          return
+        } else {
+          // Walking evidence present but GPS hasn't been zero long enough.
+          // Defer to the speedZeroTimer which will confirm once GPS catches up.
+          self.log("handlePotentialParking: walking detected (\(String(format: "%.0f", walkingEvidenceSec))s) but GPS zero only \(String(format: "%.0f", zeroDurationForWalking))s < \(minZeroSpeedWithWalkingSec)s — deferring to GPS speed path")
+          self.decision("coremotion_walking_deferred_to_gps", [
+            "walkingEvidenceSec": walkingEvidenceSec,
+            "zeroDurationSec": zeroDurationForWalking,
+            "minZeroSpeedWithWalkingSec": minZeroSpeedWithWalkingSec,
+            "speedSaysMoving": self.speedSaysMoving,
+          ])
+          // Fall through to the no-walking-evidence GPS deferral path below.
+          // locationAtStopStart is preserved for when the speedZeroTimer confirms.
+        }
       }
 
       // No walking evidence. DO NOT confirm from CoreMotion alone — a red light
