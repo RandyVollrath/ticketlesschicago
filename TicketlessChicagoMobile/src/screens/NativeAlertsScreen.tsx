@@ -1126,7 +1126,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
           <ToggleRow
             title="2-inch snow parking ban"
-            subtitle="Automatic — triggers when weather data shows 2\"+ snowfall"
+            subtitle="Alert when parked on a snow route and 2\"+ snowfall is forecast or confirmed"
             value={twoInchSnowAlerts}
             onValueChange={setTwoInchSnowAlerts}
           />
@@ -1144,7 +1144,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
           <ToggleRow
             title="Meter zone alerts"
-            subtitle="Meter expiry, time limits, and free-to-paid transitions"
+            subtitle="Meter expiry and free-to-paid time transitions"
             value={meterZoneAlerts}
             onValueChange={(val: boolean) => {
               setMeterZoneAlerts(val);
@@ -1267,9 +1267,19 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             isLast
           />
           {phoneCallNotifications && (
-            <Text style={styles.callAlertHint}>
-              Configure per-alert timing in Settings {'>'} Call Alerts
-            </Text>
+            <View>
+              <Text style={styles.callAlertHint}>
+                Default call timing:
+              </Text>
+              <Text style={styles.callAlertHint}>
+                {'\u2022'} Street cleaning: 2 hours before{'\n'}
+                {'\u2022'} Winter overnight ban: 6 hours before{'\n'}
+                {'\u2022'} Permit zone, snow route, no-parking: immediately when at risk
+              </Text>
+              <Text style={[styles.callAlertHint, { marginTop: 8 }]}>
+                Adjust per-alert timing in Settings {'>'} Call Alerts
+              </Text>
+            </View>
           )}
         </SettingsCard>
 
