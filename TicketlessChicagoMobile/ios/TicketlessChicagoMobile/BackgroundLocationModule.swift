@@ -923,8 +923,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let cameraPrewarmSec: TimeInterval = 180
   private let cameraPrewarmStrongSec: TimeInterval = 300
   private var stopWindowMaxSpeedMps: Double = 0
-  private let hotspotMergeRadiusMeters: Double = 80
-  private let hotspotBlockRadiusMeters: Double = 90
+  private let hotspotMergeRadiusMeters: Double = 20   // Reports within 20m count as same spot
+  private let hotspotBlockRadiusMeters: Double = 15   // Only block parking within 15m of false positive (was 90m — too aggressive, blocked entire city blocks)
   private let hotspotBlockMinReports: Int = 1
   private let parkingCandidateMaxAgeSec: TimeInterval = 40
   private let parkingCandidateHardStaleSec: TimeInterval = 75
