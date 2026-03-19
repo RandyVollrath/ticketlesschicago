@@ -2915,6 +2915,15 @@ class BackgroundTaskServiceClass {
    * Includes upcoming restriction context and enforcement risk intelligence.
    */
   private async sendSafeNotification(address: string, accuracy?: number, rawData?: any): Promise<void> {
+    // Check user preference — if "All Clear" alerts are disabled, skip entirely
+    try {
+      const pref = await AsyncStorage.getItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED);
+      if (pref === 'false') {
+        log.info(`Skipping "All Clear" notification — user disabled in settings`);
+        return;
+      }
+    } catch (e) { /* default to showing */ }
+
     // Dedup guard: don't spam the user with the same "All Clear" notification
     // for the same address within 3 minutes. This catches duplicate events from
     // checkForMissedParking recovery re-emitting the same parking event.

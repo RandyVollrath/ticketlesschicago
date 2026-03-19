@@ -251,6 +251,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
+  // User preference: show "All Clear" alerts (defaults to true, synced from profile)
+  const allClearEnabledRef = useRef(true);
 
   // iOS Debug Overlay state
   const [showDebug, setShowDebug] = useState(false);
@@ -501,6 +503,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       const zone = await AsyncStorage.getItem(StorageKeys.HOME_PERMIT_ZONE);
       setHomePermitZone(zone || null);
     } catch (e) { log.debug('Failed to load home permit zone on init', e); }
+
+    // Load "All Clear" notification preference
+    try {
+      const allClearPref = await AsyncStorage.getItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED);
+      if (allClearPref !== null) {
+        allClearEnabledRef.current = allClearPref !== 'false';
+      }
+    } catch (e) { log.debug('Failed to load all-clear preference', e); }
 
     // Show Quick Start card if not previously dismissed
     try {
@@ -775,7 +785,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       if (result.rules.length > 0) {
         await LocationService.sendParkingAlert(result.rules);
-      } else if (showAllClearAlert) {
+      } else if (showAllClearAlert && allClearEnabledRef.current) {
         const permitZone = result.rawApiData?.permitZone?.zoneName;
         const zoneLine = permitZone ? `\nPermit zone: ${permitZone}` : '';
         const accuracyInfo = coords.accuracy

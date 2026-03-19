@@ -10,9 +10,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import AuthService from '../services/AuthService';
 import Config from '../config/config';
+import { StorageKeys } from '../constants';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('AlertsScreen');
@@ -386,6 +388,15 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               log.warn('WebView auth_failed — showing native sign-in prompt');
               setIsAuthenticated(false);
               setIsLoading(false);
+            } else if (msg.startsWith('{')) {
+              // JSON message from settings page
+              try {
+                const data = JSON.parse(msg);
+                if (data.type === 'settings_saved' && data.all_clear !== undefined) {
+                  AsyncStorage.setItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED, String(data.all_clear)).catch(() => {});
+                  log.info(`Synced all_clear preference: ${data.all_clear}`);
+                }
+              } catch (_) {}
             } else if (msg === 'load_error') {
               // Web page crashed or loadData() threw.
               // Try refreshing auth once — the crash may be from expired tokens.

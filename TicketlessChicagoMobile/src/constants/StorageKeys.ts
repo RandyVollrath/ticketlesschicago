@@ -41,6 +41,7 @@ export const StorageKeys = {
   PHONE_CALL_ALERTS_ENABLED: 'phoneCallAlertsEnabled', // 'true' if user wants voice call alerts for parking violations
   PHONE_NUMBER: 'phoneNumber', // User's phone number for call alerts
   CALL_ALERT_PREFERENCES: 'callAlertPreferences', // JSON: per-alert-type call preferences { type: { enabled, hours_before } }
+  ALL_CLEAR_ALERTS_ENABLED: 'allClearAlertsEnabled', // 'true' (default) or 'false' — controls "All Clear" parking notifications
 
   // Cache
   LAST_API_RESPONSE_CACHE: 'lastApiResponseCache',
@@ -95,6 +96,7 @@ export const PERSISTENT_KEYS: StorageKey[] = [
   StorageKeys.PHONE_CALL_ALERTS_ENABLED,
   StorageKeys.PHONE_NUMBER,
   StorageKeys.CALL_ALERT_PREFERENCES,
+  StorageKeys.ALL_CLEAR_ALERTS_ENABLED,
 ];
 
 export default StorageKeys;
