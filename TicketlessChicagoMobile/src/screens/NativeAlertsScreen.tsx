@@ -172,6 +172,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [winterOvernightAlerts, setWinterOvernightAlerts] = useState(true);
   const [twoInchSnowAlerts, setTwoInchSnowAlerts] = useState(true);
   const [permitZoneAlerts, setPermitZoneAlerts] = useState(true);
+  // Meter zone alerts — shared with ProfileScreen's meterExpiryAlertsEnabled via AsyncStorage
   const [meterZoneAlerts, setMeterZoneAlerts] = useState(true);
   const [notificationDays, setNotificationDays] = useState<number[]>([30, 7, 1]);
 
@@ -283,7 +284,16 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           setWinterOvernightAlerts((prefs as any).winter_overnight ?? true);
           setTwoInchSnowAlerts((prefs as any).two_inch_snow ?? true);
           setPermitZoneAlerts((prefs as any).permit_zones ?? true);
-          setMeterZoneAlerts((prefs as any).meter_zones ?? true);
+          // Meter zone: load from Supabase prefs, then check ProfileScreen's AsyncStorage key as override
+          const meterPrefServer = (prefs as any).meter_zones ?? true;
+          try {
+            const meterAsyncVal = await AsyncStorage.getItem('meterExpiryAlertsEnabled');
+            // If AsyncStorage has a value, use it (ProfileScreen may have changed it)
+            // Otherwise fall back to server value
+            setMeterZoneAlerts(meterAsyncVal !== null ? meterAsyncVal !== 'false' : meterPrefServer);
+          } catch {
+            setMeterZoneAlerts(meterPrefServer);
+          }
         } else {
           setEmailNotifications(profileData.notify_email ?? true);
           setSmsNotifications(profileData.notify_sms ?? false);
@@ -1116,7 +1126,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
           <ToggleRow
             title="2-inch snow parking ban"
-            subtitle="City-wide ban during heavy snowfall"
+            subtitle="Automatic — triggers when weather data shows 2\"+ snowfall"
             value={twoInchSnowAlerts}
             onValueChange={setTwoInchSnowAlerts}
           />
@@ -1133,10 +1143,14 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             onValueChange={setPermitZoneAlerts}
           />
           <ToggleRow
-            title="Meter zones"
-            subtitle="Meter expiry and free-to-paid transitions"
+            title="Meter zone alerts"
+            subtitle="Meter expiry, time limits, and free-to-paid transitions"
             value={meterZoneAlerts}
-            onValueChange={setMeterZoneAlerts}
+            onValueChange={(val: boolean) => {
+              setMeterZoneAlerts(val);
+              // Sync with ProfileScreen's AsyncStorage key
+              AsyncStorage.setItem('meterExpiryAlertsEnabled', String(val)).catch(() => {});
+            }}
           />
           <ToggleRow
             title="Temporary no-parking"
