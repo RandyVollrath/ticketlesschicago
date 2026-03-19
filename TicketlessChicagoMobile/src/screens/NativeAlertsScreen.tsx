@@ -166,6 +166,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [snowBanAlerts, setSnowBanAlerts] = useState(true);
   const [renewalReminders, setRenewalReminders] = useState(true);
   const [towAlerts, setTowAlerts] = useState(true);
+  const [allClearAlerts, setAllClearAlerts] = useState(true);
   const [notificationDays, setNotificationDays] = useState<number[]>([30, 7, 1]);
 
   // Renewal Dates
@@ -261,8 +262,9 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           setRenewalReminders((prefs as any).renewals ?? true);
           setTowAlerts((prefs as any).tow ?? profileData.notify_tow ?? true);
           setNotificationDays((prefs as any).days_before || profileData.notify_days_array || [30, 7, 1]);
-          // Sync "All Clear" preference to AsyncStorage for BackgroundTaskService + HomeScreen
           const allClearPref = (prefs as any).all_clear ?? true;
+          setAllClearAlerts(allClearPref);
+          // Sync "All Clear" preference to AsyncStorage for BackgroundTaskService + HomeScreen
           AsyncStorage.setItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED, String(allClearPref)).catch(() => {});
         } else {
           setEmailNotifications(profileData.notify_email ?? true);
@@ -416,6 +418,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             snow_ban: snowBanAlerts,
             renewals: renewalReminders,
             tow: towAlerts,
+            all_clear: allClearAlerts,
             days_before: notificationDays,
           },
           updated_at: new Date().toISOString(),
@@ -475,7 +478,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, [userId, email, firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
       cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, renewalReminders, towAlerts, notificationDays,
+      streetCleaningAlerts, snowBanAlerts, renewalReminders, towAlerts, allClearAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded]);
 
@@ -491,7 +494,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, [firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
       cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, renewalReminders, towAlerts, notificationDays,
+      streetCleaningAlerts, snowBanAlerts, renewalReminders, towAlerts, allClearAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded, autoSave]);
 
@@ -1103,6 +1106,15 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             subtitle="City sticker, plates, and emissions"
             value={renewalReminders}
             onValueChange={setRenewalReminders}
+          />
+          <ToggleRow
+            title={'"All Clear" notifications'}
+            subtitle="Notify when no restrictions found at your spot"
+            value={allClearAlerts}
+            onValueChange={(val: boolean) => {
+              setAllClearAlerts(val);
+              AsyncStorage.setItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED, String(val)).catch(() => {});
+            }}
             isLast
           />
 
