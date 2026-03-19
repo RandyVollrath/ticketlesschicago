@@ -17,8 +17,8 @@ const TAB_LABELS: Record<string, string> = {
   Home: 'Home',
   Search: 'Search',
   History: 'History',
-  Manage: 'Manage',
-  Settings: 'Settings',
+  Manage: 'Future',
+  Settings: 'Present',
 };
 
 const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {

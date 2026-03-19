@@ -212,6 +212,13 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [cameraAlertVolume, setCameraAlertVolume] = useState(1.0);
   const [cameraSettingsLoaded, setCameraSettingsLoaded] = useState(false);
   const [meterExpiryAlertsEnabled, setMeterExpiryAlertsEnabled] = useState(true);
+  const [streetCleaningAlerts, setStreetCleaningAlerts] = useState(true);
+  const [twoInchSnowAlerts, setTwoInchSnowAlerts] = useState(true);
+  const [winterOvernightAlerts, setWinterOvernightAlerts] = useState(true);
+  const [permitZoneAlerts, setPermitZoneAlerts] = useState(true);
+  const [dotPermitAlerts, setDotPermitAlerts] = useState(true);
+  const [towAlerts, setTowAlerts] = useState(true);
+  const [allClearAlerts, setAllClearAlerts] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -263,6 +270,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     loadHomePermitZone();
     loadCameraAlertSettings();
     loadMeterExpiryAlertSetting();
+    loadParkingAlertSettings();
     loadPhoneCallAlertSettings();
     const unsubscribe = AuthService.subscribe((state: AuthState) => {
       if (isMountedRef.current) setUser(state.user);
@@ -334,7 +342,41 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const toggleMeterExpiryAlerts = useCallback(async (value: boolean) => {
     setMeterExpiryAlertsEnabled(value);
     await AsyncStorage.setItem('meterExpiryAlertsEnabled', value.toString());
-    showFeedback(value ? 'Meter expiry alerts enabled' : 'Meter expiry alerts disabled');
+    showFeedback(value ? 'Meter alerts enabled' : 'Meter alerts disabled');
+  }, [showFeedback]);
+
+  // Load parking push notification preferences from AsyncStorage
+  const loadParkingAlertSettings = useCallback(async () => {
+    try {
+      const keys = [
+        'pushAlert_streetCleaning',
+        'pushAlert_twoInchSnow',
+        'pushAlert_winterOvernight',
+        'pushAlert_permitZone',
+        'pushAlert_dotPermit',
+        'pushAlert_tow',
+        StorageKeys.ALL_CLEAR_ALERTS_ENABLED,
+      ];
+      const values = await AsyncStorage.multiGet(keys);
+      if (!isMountedRef.current) return;
+      // All default to true if never set
+      const getBool = (val: string | null) => val === null ? true : val === 'true';
+      setStreetCleaningAlerts(getBool(values[0][1]));
+      setTwoInchSnowAlerts(getBool(values[1][1]));
+      setWinterOvernightAlerts(getBool(values[2][1]));
+      setPermitZoneAlerts(getBool(values[3][1]));
+      setDotPermitAlerts(getBool(values[4][1]));
+      setTowAlerts(getBool(values[5][1]));
+      setAllClearAlerts(getBool(values[6][1]));
+    } catch (error) {
+      log.error('Error loading parking alert settings', error);
+    }
+  }, []);
+
+  const toggleParkingAlert = useCallback(async (key: string, value: boolean, setter: (v: boolean) => void, label: string) => {
+    setter(value);
+    await AsyncStorage.setItem(key, String(value));
+    showFeedback(value ? `${label} enabled` : `${label} disabled`);
   }, [showFeedback]);
 
   const loadPhoneCallAlertSettings = useCallback(async () => {
@@ -696,7 +738,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </RNAnimated.View>
       )}
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.title}>Present</Text>
+        <Text style={styles.screenSubtitle}>Alerts based on your car's current location</Text>
 
         {/* Account */}
         {user && (
@@ -844,10 +887,77 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <SettingRow
             icon="timer-alert-outline"
             iconColor={colors.warning}
-            title="Meter Expiry Alerts"
-            subtitle="Notify when max meter time is about to expire"
+            title="Meter Alerts"
+            subtitle="Meter expiry and free-to-paid time transitions"
             value={meterExpiryAlertsEnabled}
             onValueChange={toggleMeterExpiryAlerts}
+          />
+          <Divider />
+          <SettingRow
+            icon="broom"
+            iconColor="#F59E0B"
+            title="Street Cleaning"
+            subtitle="Move your car before street cleaning starts"
+            value={streetCleaningAlerts}
+            onValueChange={v => toggleParkingAlert('pushAlert_streetCleaning', v, setStreetCleaningAlerts, 'Street cleaning alerts')}
+          />
+          <Divider />
+          <SettingRow
+            icon="weather-snowy-heavy"
+            iconColor="#06B6D4"
+            title="2-Inch Snow Parking Ban"
+            subtitle={'Alert when parked on a snow route and 2"+ snowfall is forecast or confirmed'}
+            value={twoInchSnowAlerts}
+            onValueChange={v => toggleParkingAlert('pushAlert_twoInchSnow', v, setTwoInchSnowAlerts, '2-inch snow alerts')}
+          />
+          <Divider />
+          <SettingRow
+            icon="snowflake"
+            iconColor="#3B82F6"
+            title="Winter Overnight Ban"
+            subtitle="Dec 1 – Apr 1, 3am–7am on posted streets"
+            value={winterOvernightAlerts}
+            onValueChange={v => toggleParkingAlert('pushAlert_winterOvernight', v, setWinterOvernightAlerts, 'Winter overnight alerts')}
+          />
+          <Divider />
+          <SettingRow
+            icon="parking"
+            iconColor="#8B5CF6"
+            title="Permit Zones"
+            subtitle="When parked in a permit-restricted zone"
+            value={permitZoneAlerts}
+            onValueChange={v => toggleParkingAlert('pushAlert_permitZone', v, setPermitZoneAlerts, 'Permit zone alerts')}
+          />
+          <Divider />
+          <SettingRow
+            icon="road-variant"
+            iconColor="#EF4444"
+            title="Temporary No-Parking"
+            subtitle="Construction, film permits, and other restrictions"
+            value={dotPermitAlerts}
+            onValueChange={v => toggleParkingAlert('pushAlert_dotPermit', v, setDotPermitAlerts, 'No-parking alerts')}
+          />
+          <Divider />
+          <SettingRow
+            icon="tow-truck"
+            iconColor="#DC2626"
+            title="Tow Alerts"
+            subtitle="Get notified if your car is towed"
+            value={towAlerts}
+            onValueChange={v => toggleParkingAlert('pushAlert_tow', v, setTowAlerts, 'Tow alerts')}
+          />
+          <Divider />
+          <SettingRow
+            icon="check-circle-outline"
+            iconColor={colors.success}
+            title='"All Clear" Notifications'
+            subtitle="Notify when no restrictions found at your spot"
+            value={allClearAlerts}
+            onValueChange={v => {
+              setAllClearAlerts(v);
+              AsyncStorage.setItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED, String(v)).catch(() => {});
+              showFeedback(v ? 'All Clear alerts enabled' : 'All Clear alerts disabled');
+            }}
           />
         </Section>
         </View>
@@ -1139,6 +1249,11 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  screenSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
 
