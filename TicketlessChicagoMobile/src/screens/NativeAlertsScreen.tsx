@@ -1126,7 +1126,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
           <ToggleRow
             title="2-inch snow parking ban"
-            subtitle="Alert when parked on a snow route and 2\"+ snowfall is forecast or confirmed"
+            subtitle={'Alert when parked on a snow route and 2"+ snowfall is forecast or confirmed'}
             value={twoInchSnowAlerts}
             onValueChange={setTwoInchSnowAlerts}
           />
