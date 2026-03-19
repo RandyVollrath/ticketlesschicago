@@ -617,7 +617,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           evidence_deadline,
           auto_send_deadline,
           is_test,
-          user_evidence
+          user_evidence,
+          plate,
+          state,
+          ticket_plate,
+          ticket_state,
+          created_at
         )
       `)
       .or(`status.eq.approved,status.eq.pending_evidence,status.eq.draft,status.eq.ready,status.eq.awaiting_consent,status.eq.admin_approved,status.eq.needs_admin_review`)
@@ -949,10 +954,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               accelerometer_trace: accelTrace,
             });
 
-            // Run defense analysis (yellow light, right turn, weather, geometry)
+            // Run defense analysis (yellow light, right turn, weather, geometry, dilemma zone, spike, late notice, factual inconsistency)
             let defenseAnalysis: Awaited<ReturnType<typeof analyzeRedLightDefense>> | null = null;
             try {
               const postedSpeed = matched.speed_limit_mph ?? 30; // Default to 30 mph (most Chicago camera intersections)
+              // For late notice: use ticket created_at (when we first detected it on portal) as proxy for notice date
+              const noticeDate = ticket?.created_at || null;
               const analysisInput: AnalysisInput = {
                 trace,
                 cameraLatitude: matched.camera_latitude || 0,
@@ -965,6 +972,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 speedDeltaMph: matched.speed_delta_mph ?? null,
                 violationDatetime,
                 deviceTimestamp: matched.device_timestamp,
+                cameraAddress: matched.camera_address || matched.intersection_id || undefined,
+                noticeDate,
+                ticketPlate: ticket?.ticket_plate || null,
+                ticketState: ticket?.ticket_state || null,
+                userPlate: ticket?.plate || null,
+                userState: ticket?.state || null,
               };
               defenseAnalysis = await analyzeRedLightDefense(analysisInput);
               console.log(`    Defense analysis: score=${defenseAnalysis.overallDefenseScore}, args=${defenseAnalysis.defenseArguments.length}`);
@@ -1025,6 +1038,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 description: defenseAnalysis.weather.description,
                 defenseArguments: defenseAnalysis.weather.defenseArguments,
                 source: defenseAnalysis.weather.source,
+              } : undefined,
+              violationSpike: defenseAnalysis?.violationSpike ? {
+                violationsOnDate: defenseAnalysis.violationSpike.violationsOnDate,
+                averageDailyViolations: defenseAnalysis.violationSpike.averageDailyViolations,
+                spikeRatio: defenseAnalysis.violationSpike.spikeRatio,
+                isSpike: defenseAnalysis.violationSpike.isSpike,
+                explanation: defenseAnalysis.violationSpike.explanation,
+              } : undefined,
+              dilemmaZone: defenseAnalysis?.dilemmaZone ? {
+                inDilemmaZone: defenseAnalysis.dilemmaZone.inDilemmaZone,
+                stoppingDistanceFt: defenseAnalysis.dilemmaZone.stoppingDistanceFt,
+                distanceToStopBarFt: defenseAnalysis.dilemmaZone.distanceToStopBarFt,
+                distanceToClearFt: defenseAnalysis.dilemmaZone.distanceToClearFt,
+                canStop: defenseAnalysis.dilemmaZone.canStop,
+                canClear: defenseAnalysis.dilemmaZone.canClear,
+                explanation: defenseAnalysis.dilemmaZone.explanation,
+              } : undefined,
+              lateNotice: defenseAnalysis?.lateNotice ? {
+                daysBetween: defenseAnalysis.lateNotice.daysBetween,
+                exceeds90Days: defenseAnalysis.lateNotice.exceeds90Days,
+                explanation: defenseAnalysis.lateNotice.explanation,
+              } : undefined,
+              factualInconsistency: defenseAnalysis?.factualInconsistency ? {
+                hasInconsistency: defenseAnalysis.factualInconsistency.hasInconsistency,
+                inconsistencyType: defenseAnalysis.factualInconsistency.inconsistencyType,
+                explanation: defenseAnalysis.factualInconsistency.explanation,
               } : undefined,
               defenseScore: defenseAnalysis?.overallDefenseScore,
               defenseArguments: defenseAnalysis?.defenseArguments.map(a => ({

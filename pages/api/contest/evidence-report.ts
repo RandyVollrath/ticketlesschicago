@@ -15,6 +15,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { generateEvidenceReportPDF, RedLightReceiptData } from '../../../lib/red-light-evidence-report';
+import { analyzeRedLightDefense, type AnalysisInput } from '../../../lib/red-light-defense-analysis';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -90,6 +91,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ticketNumber = match.ticket_number || null;
     }
 
+    // Look up detected_ticket for plate and notice data
+    let detectedTicketData: any = null;
+    if (ticketNumber) {
+      const { data } = await supabase
+        .from('detected_tickets')
+        .select('ticket_plate, ticket_state, plate, state, created_at')
+        .eq('ticket_number', ticketNumber)
+        .limit(1)
+        .maybeSingle();
+      detectedTicketData = data;
+    }
+
+    // Run defense analysis
+    let defenseAnalysis: Awaited<ReturnType<typeof analyzeRedLightDefense>> | null = null;
+    try {
+      const trace = Array.isArray(receipt.trace) ? receipt.trace : [];
+      const analysisInput: AnalysisInput = {
+        trace,
+        cameraLatitude: receipt.camera_latitude || 0,
+        cameraLongitude: receipt.camera_longitude || 0,
+        postedSpeedMph: receipt.speed_limit_mph ?? 30,
+        approachSpeedMph: receipt.approach_speed_mph ?? null,
+        minSpeedMph: receipt.min_speed_mph ?? null,
+        fullStopDetected: receipt.full_stop_detected ?? false,
+        fullStopDurationSec: receipt.full_stop_duration_sec ?? null,
+        speedDeltaMph: receipt.speed_delta_mph ?? null,
+        violationDatetime: violationDatetime,
+        deviceTimestamp: receipt.device_timestamp,
+        cameraAddress: receipt.camera_address || receipt.intersection_id || undefined,
+        noticeDate: detectedTicketData?.created_at || null,
+        ticketPlate: detectedTicketData?.ticket_plate || null,
+        ticketState: detectedTicketData?.ticket_state || null,
+        userPlate: detectedTicketData?.plate || null,
+        userState: detectedTicketData?.state || null,
+      };
+      defenseAnalysis = await analyzeRedLightDefense(analysisInput);
+    } catch (e) {
+      // Non-fatal — PDF will just lack defense sections
+    }
+
     // Build the receipt data for the report
     const receiptData: RedLightReceiptData = {
       id: receipt.id,
@@ -111,6 +152,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       violation_datetime: violationDatetime,
       ticket_number: ticketNumber,
       evidence_hash: receipt.evidence_hash || null,
+      defenseAnalysis: defenseAnalysis ? {
+        yellowLight: defenseAnalysis.yellowLight ?? undefined,
+        rightTurn: defenseAnalysis.rightTurn ?? undefined,
+        geometry: defenseAnalysis.geometry ?? undefined,
+        weather: defenseAnalysis.weather ?? undefined,
+        violationSpike: defenseAnalysis.violationSpike ?? undefined,
+        dilemmaZone: defenseAnalysis.dilemmaZone ?? undefined,
+        lateNotice: defenseAnalysis.lateNotice ?? undefined,
+        factualInconsistency: defenseAnalysis.factualInconsistency ?? undefined,
+        overallDefenseScore: defenseAnalysis.overallDefenseScore,
+        defenseArguments: defenseAnalysis.defenseArguments,
+      } : undefined,
     };
 
     // Generate the PDF

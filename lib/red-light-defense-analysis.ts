@@ -8,9 +8,18 @@
  * 2. Right-Turn-on-Red Detection — GPS heading change analysis
  * 3. Intersection Geometry — approach distance, stop bar estimation
  * 4. Weather/Visibility Conditions — conditions at violation time
+ * 5. Violation Spike Detection — abnormal daily violation counts (camera malfunction)
+ * 6. Dilemma Zone Analysis — physics-based can't-stop/can't-clear analysis
+ * 7. Late Notice Detection — 625 ILCS 5/11-208.6 mailing deadline
+ * 8. Factual Inconsistency Check — plate/vehicle mismatch on notice
  *
  * All analysis is deterministic and based on publicly available standards.
  */
+
+import {
+  getHourlyWeatherAtTime,
+  type HourlyWeatherAtViolation,
+} from './weather-service';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -78,32 +87,8 @@ export interface IntersectionGeometry {
   summary: string;
 }
 
-export interface WeatherAtViolation {
-  /** Whether conditions were adverse */
-  hasAdverseConditions: boolean;
-  /** Temperature (F) */
-  temperatureF: number | null;
-  /** Visibility (miles) */
-  visibilityMiles: number | null;
-  /** Whether visibility was impaired (< 5 miles) */
-  impairedVisibility: boolean;
-  /** Precipitation type if any */
-  precipitationType: string | null;
-  /** Precipitation amount (inches) */
-  precipitationInches: number | null;
-  /** Road condition description */
-  roadCondition: string | null;
-  /** Wind speed (mph) */
-  windSpeedMph: number | null;
-  /** Sun position (day/night/dawn/dusk) */
-  sunPosition: string | null;
-  /** Human-readable weather description */
-  description: string;
-  /** Defense arguments based on weather */
-  defenseArguments: string[];
-  /** Data source */
-  source: string;
-}
+/** Re-export weather type from weather-service for backward compatibility */
+export type WeatherAtViolation = HourlyWeatherAtViolation;
 
 export interface RedLightDefenseAnalysis {
   /** Yellow light timing analysis */
@@ -114,6 +99,14 @@ export interface RedLightDefenseAnalysis {
   geometry: IntersectionGeometry | null;
   /** Weather at violation time */
   weather: WeatherAtViolation | null;
+  /** Violation spike / camera malfunction analysis */
+  violationSpike: ViolationSpikeAnalysis | null;
+  /** Dilemma zone analysis */
+  dilemmaZone: DilemmaZoneAnalysis | null;
+  /** Late notice analysis (90-day statutory deadline) */
+  lateNotice: LateNoticeAnalysis | null;
+  /** Factual inconsistency check (plate/state mismatch) */
+  factualInconsistency: FactualInconsistencyAnalysis | null;
   /** Combined defense strength (0-100) */
   overallDefenseScore: number;
   /** Ordered list of defense arguments, strongest first */
@@ -121,11 +114,60 @@ export interface RedLightDefenseAnalysis {
 }
 
 export interface DefenseArgument {
-  type: 'yellow_timing' | 'right_turn' | 'full_stop' | 'weather' | 'geometry' | 'deceleration';
+  type: 'yellow_timing' | 'right_turn' | 'full_stop' | 'weather' | 'geometry' | 'deceleration' |
+        'violation_spike' | 'dilemma_zone' | 'late_notice' | 'factual_inconsistency';
   strength: 'strong' | 'moderate' | 'supporting';
   title: string;
   summary: string;
   details: string;
+}
+
+export interface ViolationSpikeAnalysis {
+  /** Daily violation count at this camera on the violation date */
+  violationsOnDate: number;
+  /** Average daily violations at this camera (30-day window) */
+  averageDailyViolations: number;
+  /** Ratio of violation-date count to average (>3x is suspicious) */
+  spikeRatio: number;
+  /** Whether this represents an anomalous spike */
+  isSpike: boolean;
+  /** Human-readable explanation */
+  explanation: string;
+}
+
+export interface DilemmaZoneAnalysis {
+  /** Whether the driver was in the dilemma zone at yellow onset */
+  inDilemmaZone: boolean;
+  /** Estimated stopping distance at approach speed (feet) */
+  stoppingDistanceFt: number;
+  /** Estimated distance to stop bar at yellow onset (feet) */
+  distanceToStopBarFt: number;
+  /** Estimated distance to clear intersection (feet) */
+  distanceToClearFt: number;
+  /** Whether driver could safely stop */
+  canStop: boolean;
+  /** Whether driver could clear intersection before red */
+  canClear: boolean;
+  /** Human-readable explanation */
+  explanation: string;
+}
+
+export interface LateNoticeAnalysis {
+  /** Days between violation date and notice issue date */
+  daysBetween: number;
+  /** Whether notice was sent after 90-day statutory deadline */
+  exceeds90Days: boolean;
+  /** Human-readable explanation */
+  explanation: string;
+}
+
+export interface FactualInconsistencyAnalysis {
+  /** Whether any inconsistency was found */
+  hasInconsistency: boolean;
+  /** Type of inconsistency (plate_mismatch, state_mismatch, etc.) */
+  inconsistencyType: string | null;
+  /** Human-readable explanation */
+  explanation: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -383,266 +425,258 @@ export function analyzeIntersectionGeometry(
 
 // ─── Weather at Violation Time ───────────────────────────────────────────────
 
+// ─── Violation Spike Detection ───────────────────────────────────────────────
+
 /**
- * Fetch weather conditions at the time and place of a violation.
- * Uses Visual Crossing Timeline API (free tier: 1,000 records/day).
- * Falls back to Open-Meteo if Visual Crossing is unavailable.
+ * Check if the camera had an abnormally high number of violations on the
+ * violation date — possible evidence of a malfunction.
+ *
+ * Uses Chicago Open Data Portal: Red Light Camera Violations dataset.
+ * API: https://data.cityofchicago.org/resource/spqx-js37.json
  */
-export async function getWeatherAtViolationTime(
-  latitude: number,
-  longitude: number,
-  violationDatetime: string, // ISO timestamp
-): Promise<WeatherAtViolation | null> {
-  const apiKey = process.env.VISUAL_CROSSING_API_KEY;
-
-  // Parse the violation time
-  const violationDate = new Date(violationDatetime);
-  const dateStr = violationDate.toISOString().split('T')[0]; // YYYY-MM-DD
-  const hour = violationDate.getUTCHours();
-
-  // Determine sun position based on hour (Chicago timezone approximation)
-  // Chicago is UTC-6 (CST) or UTC-5 (CDT)
-  const chicagoHour = (hour - 6 + 24) % 24; // rough CST approximation
-  let sunPosition: string;
-  if (chicagoHour >= 6 && chicagoHour < 8) sunPosition = 'dawn';
-  else if (chicagoHour >= 8 && chicagoHour < 17) sunPosition = 'day';
-  else if (chicagoHour >= 17 && chicagoHour < 19) sunPosition = 'dusk';
-  else sunPosition = 'night';
-
-  if (apiKey) {
-    try {
-      return await fetchVisualCrossingWeather(latitude, longitude, dateStr, hour, sunPosition, apiKey);
-    } catch (err) {
-      console.error('Visual Crossing weather fetch failed, trying Open-Meteo fallback:', err);
-    }
-  }
-
-  // Fallback to Open-Meteo (no visibility data but still useful)
+export async function analyzeViolationSpike(
+  cameraAddress: string,
+  violationDatetime: string,
+): Promise<ViolationSpikeAnalysis | null> {
   try {
-    return await fetchOpenMeteoWeather(latitude, longitude, dateStr, hour, sunPosition);
+    const violationDate = new Date(violationDatetime);
+    const dateStr = violationDate.toISOString().split('T')[0];
+
+    // Build a 30-day window around the violation (15 before, 15 after)
+    const windowStart = new Date(violationDate);
+    windowStart.setDate(windowStart.getDate() - 15);
+    const windowEnd = new Date(violationDate);
+    windowEnd.setDate(windowEnd.getDate() + 15);
+    const startStr = windowStart.toISOString().split('T')[0];
+    const endStr = windowEnd.toISOString().split('T')[0];
+
+    // Normalize address for matching (the dataset uses uppercase, e.g. "ASHLAND AND FULLERTON")
+    const normalizedAddr = cameraAddress.toUpperCase().replace(/\./g, '').trim();
+
+    // Query the open data API for this camera's violations in the window
+    const url = `https://data.cityofchicago.org/resource/spqx-js37.json?` +
+      `$where=violation_date >= '${startStr}' AND violation_date <= '${endStr}' ` +
+      `AND upper(address) like '%25${encodeURIComponent(normalizedAddr.split(' ')[0])}%25'` +
+      `&$limit=100&$order=violation_date`;
+
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(15000),
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!response.ok) {
+      console.error(`Open data API error: ${response.status}`);
+      return null;
+    }
+
+    const rows: any[] = await response.json();
+    if (!rows || rows.length === 0) return null;
+
+    // Find the violation date count and compute average
+    let violationDayCount = 0;
+    let totalCount = 0;
+    let dayCount = 0;
+
+    for (const row of rows) {
+      const rowDate = (row.violation_date || '').substring(0, 10);
+      const count = parseInt(row.violations) || 0;
+      totalCount += count;
+      dayCount++;
+      if (rowDate === dateStr) {
+        violationDayCount += count;
+      }
+    }
+
+    if (dayCount === 0 || violationDayCount === 0) return null;
+
+    const avgDaily = totalCount / dayCount;
+    const spikeRatio = violationDayCount / avgDaily;
+    const isSpike = spikeRatio >= 3.0 && violationDayCount >= 10;
+
+    let explanation: string;
+    if (isSpike) {
+      explanation = `The camera at ${cameraAddress} recorded ${violationDayCount} violations on the date of ` +
+        `this ticket — ${spikeRatio.toFixed(1)}x the 30-day average of ${avgDaily.toFixed(1)} violations/day. ` +
+        `This abnormal spike may indicate a camera malfunction, signal timing change, or other ` +
+        `equipment issue that warrants investigation. Per Chicago Municipal Code, camera equipment ` +
+        `must be properly calibrated and maintained.`;
+    } else {
+      explanation = `The camera at ${cameraAddress} recorded ${violationDayCount} violations on this date ` +
+        `(30-day average: ${avgDaily.toFixed(1)}/day, ratio: ${spikeRatio.toFixed(1)}x). ` +
+        `No anomalous spike detected.`;
+    }
+
+    return {
+      violationsOnDate: violationDayCount,
+      averageDailyViolations: Math.round(avgDaily * 10) / 10,
+      spikeRatio: Math.round(spikeRatio * 10) / 10,
+      isSpike,
+      explanation,
+    };
   } catch (err) {
-    console.error('Open-Meteo weather fetch also failed:', err);
+    console.error('Violation spike analysis failed:', err);
     return null;
   }
 }
 
-async function fetchVisualCrossingWeather(
-  lat: number, lon: number,
-  dateStr: string, hour: number,
-  sunPosition: string,
-  apiKey: string,
-): Promise<WeatherAtViolation> {
-  const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
-    `${lat},${lon}/${dateStr}/${dateStr}?` +
-    `key=${apiKey}&include=hours&unitGroup=us&contentType=json`;
+// ─── Dilemma Zone Analysis ──────────────────────────────────────────────────
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!response.ok) {
-    throw new Error(`Visual Crossing API error: ${response.status}`);
-  }
+/**
+ * Determine if the driver was in the "dilemma zone" — the area where
+ * a driver can neither stop safely nor clear the intersection before
+ * the light turns red.
+ *
+ * Physics:
+ * - Stopping distance = v² / (2 * a), where a = comfortable deceleration
+ * - Comfortable deceleration = 10 ft/s² (ITE standard)
+ * - Clearing distance = intersection width + vehicle length ≈ 60-80 ft
+ * - Clearing time = clearing_distance / v
+ * - Dilemma zone exists when stopping_distance > distance_to_stop_bar
+ *   AND clearing_time > remaining_yellow
+ */
+export function analyzeDilemmaZone(
+  approachSpeedMph: number,
+  distanceToStopBarMeters: number,
+  yellowDurationSec: number,
+  intersectionWidthFt: number = 70, // typical Chicago intersection
+): DilemmaZoneAnalysis {
+  const MPH_TO_FPS = 1.467; // mph to feet/second
+  const COMFORTABLE_DECEL = 10; // ft/s² (ITE standard)
+  const VEHICLE_LENGTH_FT = 17; // average vehicle length
 
-  const data = await response.json();
-  const day = data.days?.[0];
-  if (!day) throw new Error('No weather data returned');
+  const v_fps = approachSpeedMph * MPH_TO_FPS;
+  const distToStopFt = distanceToStopBarMeters * 3.281; // meters to feet
 
-  // Find the hour closest to the violation time
-  const hourData = day.hours?.find((h: any) => {
-    const hHour = parseInt(h.datetime?.split(':')?.[0] || '-1');
-    return hHour === hour;
-  }) || day.hours?.[Math.min(hour, (day.hours?.length || 1) - 1)];
+  // Stopping distance (physics: d = v²/(2a))
+  const stoppingDistanceFt = (v_fps * v_fps) / (2 * COMFORTABLE_DECEL);
 
-  const temp = hourData?.temp ?? day.temp ?? null;
-  const visibility = hourData?.visibility ?? day.visibility ?? null;
-  const precipType = hourData?.preciptype?.[0] ?? null;
-  const precipAmount = hourData?.precip ?? day.precip ?? null;
-  const windSpeed = hourData?.windspeed ?? day.windspeed ?? null;
-  const conditions = hourData?.conditions ?? day.conditions ?? 'Unknown';
-  const humidity = hourData?.humidity ?? null;
+  // Distance to clear intersection = distance to stop bar + intersection width + vehicle length
+  const distanceToClearFt = distToStopFt + intersectionWidthFt + VEHICLE_LENGTH_FT;
 
-  const impairedVisibility = visibility !== null && visibility < 5;
+  // Time to clear intersection at current speed
+  const timeToClearSec = distanceToClearFt / v_fps;
 
-  // Determine road condition
-  let roadCondition: string | null = null;
-  if (temp !== null && temp < 32 && precipAmount && precipAmount > 0) {
-    roadCondition = 'Potentially icy/snowy road surface';
-  } else if (precipType === 'rain' && precipAmount && precipAmount > 0.1) {
-    roadCondition = 'Wet road surface';
-  } else if (precipType === 'snow' || precipType === 'freezingrain') {
-    roadCondition = precipType === 'snow' ? 'Snow-covered road surface' : 'Ice-covered road surface';
-  }
+  // Can stop? Stopping distance must be <= distance to stop bar
+  const canStop = stoppingDistanceFt <= distToStopFt;
 
-  // Build defense arguments
-  const defenseArguments: string[] = [];
-  if (impairedVisibility) {
-    defenseArguments.push(
-      `Visibility was only ${visibility?.toFixed(1)} miles at the time of the violation, ` +
-      `significantly below the 10+ miles of clear-day visibility. Reduced visibility affects ` +
-      `a driver's ability to judge traffic signal timing and intersection geometry.`
-    );
-  }
-  if (sunPosition === 'night' || sunPosition === 'dawn' || sunPosition === 'dusk') {
-    defenseArguments.push(
-      `The violation occurred during ${sunPosition} hours when visibility is naturally reduced ` +
-      `and glare can obscure traffic signals.`
-    );
-  }
-  if (roadCondition) {
-    defenseArguments.push(
-      `Road conditions were adverse (${roadCondition}), which affects stopping distance ` +
-      `and may require drivers to proceed through intersections rather than attempting ` +
-      `an unsafe stop on a slippery surface.`
-    );
-  }
-  if (temp !== null && temp < 32) {
-    defenseArguments.push(
-      `The temperature was ${Math.round(temp)}°F (below freezing), which increases stopping ` +
-      `distance due to potential ice on the road surface.`
-    );
-  }
-  if (precipType) {
-    defenseArguments.push(
-      `Active precipitation (${precipType}) was occurring, which affects visibility, ` +
-      `road grip, and stopping distance.`
-    );
-  }
-  if (windSpeed && windSpeed > 20) {
-    defenseArguments.push(
-      `Wind speeds of ${Math.round(windSpeed)} mph were recorded, which can affect vehicle ` +
-      `handling and contribute to camera false triggers.`
-    );
-  }
+  // Can clear? Time to clear must be <= yellow duration
+  const canClear = timeToClearSec <= yellowDurationSec;
 
-  const hasAdverse = impairedVisibility || !!roadCondition || !!precipType ||
-    (temp !== null && temp < 32) || sunPosition === 'night' ||
-    (windSpeed !== null && windSpeed > 20);
+  // Dilemma zone = can't stop AND can't clear
+  const inDilemmaZone = !canStop && !canClear;
+
+  let explanation: string;
+  if (inDilemmaZone) {
+    explanation = `At ${approachSpeedMph.toFixed(0)} mph, the vehicle required ${stoppingDistanceFt.toFixed(0)} ft ` +
+      `to stop safely (at comfortable deceleration of ${COMFORTABLE_DECEL} ft/s²), but was only ` +
+      `${distToStopFt.toFixed(0)} ft from the stop bar. Simultaneously, the vehicle needed ` +
+      `${timeToClearSec.toFixed(1)} seconds to clear the intersection, but the yellow signal ` +
+      `duration was only ${yellowDurationSec.toFixed(1)} seconds. This places the driver in the ` +
+      `"dilemma zone" — the area recognized by the ITE and FHWA where neither stopping nor ` +
+      `proceeding is safe. This is a known traffic engineering problem, not driver error.`;
+  } else if (!canStop) {
+    explanation = `At ${approachSpeedMph.toFixed(0)} mph, the stopping distance (${stoppingDistanceFt.toFixed(0)} ft) ` +
+      `exceeded the distance to the stop bar (${distToStopFt.toFixed(0)} ft). The driver could not ` +
+      `have stopped safely and chose to proceed through the intersection.`;
+  } else {
+    explanation = `At ${approachSpeedMph.toFixed(0)} mph, the vehicle could have stopped within ` +
+      `${stoppingDistanceFt.toFixed(0)} ft (${distToStopFt.toFixed(0)} ft available). ` +
+      `Dilemma zone defense does not apply.`;
+  }
 
   return {
-    hasAdverseConditions: hasAdverse,
-    temperatureF: temp,
-    visibilityMiles: visibility,
-    impairedVisibility,
-    precipitationType: precipType,
-    precipitationInches: precipAmount,
-    roadCondition,
-    windSpeedMph: windSpeed,
-    sunPosition,
-    description: `${conditions}${temp !== null ? `, ${Math.round(temp)}°F` : ''}` +
-      `${visibility !== null ? `, ${visibility.toFixed(1)} mi visibility` : ''}` +
-      `${precipType ? `, ${precipType}` : ''}`,
-    defenseArguments,
-    source: 'Visual Crossing Weather API',
+    inDilemmaZone,
+    stoppingDistanceFt: Math.round(stoppingDistanceFt),
+    distanceToStopBarFt: Math.round(distToStopFt),
+    distanceToClearFt: Math.round(distanceToClearFt),
+    canStop,
+    canClear,
+    explanation,
   };
 }
 
-async function fetchOpenMeteoWeather(
-  lat: number, lon: number,
-  dateStr: string, hour: number,
-  sunPosition: string,
-): Promise<WeatherAtViolation> {
-  const url = `https://archive-api.open-meteo.com/v1/archive?` +
-    `latitude=${lat}&longitude=${lon}` +
-    `&start_date=${dateStr}&end_date=${dateStr}` +
-    `&hourly=temperature_2m,precipitation,snowfall,rain,weather_code,wind_speed_10m` +
-    `&timezone=America/Chicago` +
-    `&temperature_unit=fahrenheit` +
-    `&precipitation_unit=inch`;
+// ─── Late Notice Detection ──────────────────────────────────────────────────
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!response.ok) {
-    throw new Error(`Open-Meteo API error: ${response.status}`);
+/**
+ * Check if the violation notice was mailed beyond the statutory deadline.
+ * Under 625 ILCS 5/11-208.6, the notice must be mailed no later than
+ * 90 days after the violation date.
+ */
+export function analyzeLateNotice(
+  violationDateStr: string,
+  noticeDateStr: string,
+): LateNoticeAnalysis {
+  const violationDate = new Date(violationDateStr);
+  const noticeDate = new Date(noticeDateStr);
+
+  const diffMs = noticeDate.getTime() - violationDate.getTime();
+  const daysBetween = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  const exceeds90 = daysBetween > 90;
+
+  let explanation: string;
+  if (exceeds90) {
+    explanation = `The violation notice was issued ${daysBetween} days after the alleged violation — ` +
+      `exceeding the 90-day statutory deadline under 625 ILCS 5/11-208.6. ` +
+      `Illinois law requires that the written notice be mailed to the registered owner ` +
+      `no later than 90 days after the violation. A notice issued ${daysBetween} days later ` +
+      `may be subject to dismissal on procedural grounds.`;
+  } else if (daysBetween > 60) {
+    explanation = `The notice was issued ${daysBetween} days after the violation (within the 90-day ` +
+      `statutory limit but approaching the deadline). This extended delay may be relevant ` +
+      `context for the adjudicator.`;
+  } else {
+    explanation = `The notice was issued ${daysBetween} days after the violation, within normal ` +
+      `processing timelines.`;
   }
 
-  const data = await response.json();
-  if (!data.hourly?.time) throw new Error('No hourly data');
+  return { daysBetween, exceeds90Days: exceeds90, explanation };
+}
 
-  // Find the hour index
-  const hourIdx = Math.min(hour, data.hourly.time.length - 1);
+// ─── Factual Inconsistency Check ────────────────────────────────────────────
 
-  const temp = data.hourly.temperature_2m?.[hourIdx] ?? null;
-  const precip = data.hourly.precipitation?.[hourIdx] ?? null;
-  const snowfall = data.hourly.snowfall?.[hourIdx] ?? null;
-  const rain = data.hourly.rain?.[hourIdx] ?? null;
-  const weatherCode = data.hourly.weather_code?.[hourIdx] ?? null;
-  const windSpeed = data.hourly.wind_speed_10m?.[hourIdx] ?? null;
+/**
+ * Compare information on the violation notice against the user's actual
+ * vehicle/plate data. Inconsistencies are an official Chicago defense
+ * under Municipal Code 9-100-060.
+ */
+export function analyzeFactualInconsistency(
+  ticketPlate: string | null,
+  ticketState: string | null,
+  userPlate: string,
+  userState: string,
+): FactualInconsistencyAnalysis {
+  const normTicketPlate = (ticketPlate || '').replace(/[\s-]/g, '').toUpperCase();
+  const normUserPlate = userPlate.replace(/[\s-]/g, '').toUpperCase();
+  const normTicketState = (ticketState || '').toUpperCase().trim();
+  const normUserState = userState.toUpperCase().trim();
 
-  // Weather code descriptions (WMO)
-  const codeDescriptions: Record<number, string> = {
-    0: 'Clear', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
-    45: 'Fog', 48: 'Rime fog',
-    51: 'Light drizzle', 53: 'Moderate drizzle', 55: 'Dense drizzle',
-    56: 'Light freezing drizzle', 57: 'Dense freezing drizzle',
-    61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain',
-    66: 'Light freezing rain', 67: 'Heavy freezing rain',
-    71: 'Slight snow', 73: 'Moderate snow', 75: 'Heavy snow',
-    77: 'Snow grains', 80: 'Slight rain showers', 81: 'Moderate rain showers',
-    82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers',
-    95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Thunderstorm with heavy hail',
-  };
-
-  const conditions = weatherCode !== null ? (codeDescriptions[weatherCode] || `Code ${weatherCode}`) : 'Unknown';
-
-  // Determine precipitation type
-  let precipType: string | null = null;
-  if (snowfall && snowfall > 0) precipType = 'snow';
-  else if (weatherCode && weatherCode >= 66 && weatherCode <= 67) precipType = 'freezingrain';
-  else if (rain && rain > 0) precipType = 'rain';
-
-  let roadCondition: string | null = null;
-  if (temp !== null && temp < 32 && precip && precip > 0) {
-    roadCondition = 'Potentially icy/snowy road surface';
-  } else if (precipType === 'rain' && precip && precip > 0.1) {
-    roadCondition = 'Wet road surface';
-  } else if (precipType === 'snow') {
-    roadCondition = 'Snow-covered road surface';
-  } else if (precipType === 'freezingrain') {
-    roadCondition = 'Ice-covered road surface';
+  if (normTicketPlate && normTicketPlate !== normUserPlate) {
+    return {
+      hasInconsistency: true,
+      inconsistencyType: 'plate_mismatch',
+      explanation: `The license plate on the violation notice (${ticketPlate}) does not match ` +
+        `the vehicle owner's actual plate (${userPlate}). Under Chicago Municipal Code 9-100-060, ` +
+        `"the facts alleged in the violation notice are inconsistent or do not support a finding ` +
+        `that the code was violated" is an official defense. A plate mismatch means the ticket ` +
+        `may have been issued to the wrong vehicle.`,
+    };
   }
 
-  const defenseArguments: string[] = [];
-  if (sunPosition === 'night' || sunPosition === 'dawn' || sunPosition === 'dusk') {
-    defenseArguments.push(
-      `The violation occurred during ${sunPosition} hours when visibility is reduced.`
-    );
+  if (normTicketState && normTicketState !== normUserState) {
+    return {
+      hasInconsistency: true,
+      inconsistencyType: 'state_mismatch',
+      explanation: `The plate state on the violation notice (${ticketState}) does not match ` +
+        `the vehicle's actual registration state (${userState}). This factual inconsistency ` +
+        `is a recognized defense under Chicago Municipal Code 9-100-060.`,
+    };
   }
-  if (roadCondition) {
-    defenseArguments.push(
-      `Road conditions were adverse (${roadCondition}), affecting stopping distance.`
-    );
-  }
-  if (temp !== null && temp < 32) {
-    defenseArguments.push(
-      `Below-freezing temperature (${Math.round(temp)}°F) increases stopping distance.`
-    );
-  }
-  if (precipType) {
-    defenseArguments.push(
-      `Active precipitation (${precipType}) affected visibility and road conditions.`
-    );
-  }
-  if (windSpeed && windSpeed > 20) {
-    defenseArguments.push(
-      `High winds (${Math.round(windSpeed)} mph) may affect vehicle handling.`
-    );
-  }
-
-  const hasAdverse = !!roadCondition || !!precipType ||
-    (temp !== null && temp < 32) || sunPosition === 'night' ||
-    (windSpeed !== null && windSpeed > 20);
 
   return {
-    hasAdverseConditions: hasAdverse,
-    temperatureF: temp,
-    visibilityMiles: null, // Open-Meteo doesn't have visibility
-    impairedVisibility: false,
-    precipitationType: precipType,
-    precipitationInches: precip,
-    roadCondition,
-    windSpeedMph: windSpeed,
-    sunPosition,
-    description: `${conditions}${temp !== null ? `, ${Math.round(temp)}°F` : ''}` +
-      `${precipType ? `, ${precipType}` : ''}`,
-    defenseArguments,
-    source: 'Open-Meteo Historical Weather API',
+    hasInconsistency: false,
+    inconsistencyType: null,
+    explanation: 'No factual inconsistencies detected between ticket and vehicle registration.',
   };
 }
 
@@ -660,6 +694,18 @@ export interface AnalysisInput {
   speedDeltaMph: number | null;
   violationDatetime: string | null; // ISO timestamp
   deviceTimestamp: string; // ISO timestamp
+  /** Camera address for violation spike lookup (e.g. "2359 N ASHLAND AVE") */
+  cameraAddress?: string;
+  /** Date the violation notice was issued/mailed (ISO date string), for late-notice defense */
+  noticeDate?: string | null;
+  /** License plate on the ticket, for factual inconsistency check */
+  ticketPlate?: string | null;
+  /** State on the ticket */
+  ticketState?: string | null;
+  /** User's actual license plate */
+  userPlate?: string | null;
+  /** User's actual plate state */
+  userState?: string | null;
 }
 
 /**
@@ -674,6 +720,8 @@ export async function analyzeRedLightDefense(
     approachSpeedMph, minSpeedMph, fullStopDetected,
     fullStopDurationSec, speedDeltaMph,
     violationDatetime, deviceTimestamp,
+    cameraAddress, noticeDate,
+    ticketPlate, ticketState, userPlate, userState,
   } = input;
 
   // 1. Yellow light timing
@@ -685,19 +733,86 @@ export async function analyzeRedLightDefense(
   // 3. Intersection geometry
   const geometry = analyzeIntersectionGeometry(trace, cameraLatitude, cameraLongitude);
 
-  // 4. Weather (async)
+  // 4. Weather (async — uses shared Open-Meteo service)
   let weather: WeatherAtViolation | null = null;
   const weatherTime = violationDatetime || deviceTimestamp;
   if (weatherTime) {
     try {
-      weather = await getWeatherAtViolationTime(cameraLatitude, cameraLongitude, weatherTime);
+      weather = await getHourlyWeatherAtTime(cameraLatitude, cameraLongitude, weatherTime);
     } catch (err) {
       console.error('Weather analysis failed:', err);
     }
   }
 
+  // 5. Violation spike detection (async — queries Chicago Open Data Portal)
+  let violationSpike: ViolationSpikeAnalysis | null = null;
+  if (cameraAddress && weatherTime) {
+    try {
+      violationSpike = await analyzeViolationSpike(cameraAddress, weatherTime);
+    } catch (err) {
+      console.error('Violation spike analysis failed:', err);
+    }
+  }
+
+  // 6. Dilemma zone analysis (requires approach speed and geometry)
+  let dilemmaZone: DilemmaZoneAnalysis | null = null;
+  if (approachSpeedMph && approachSpeedMph > 5 && geometry) {
+    const chicagoYellow = chicagoYellowDuration(postedSpeedMph);
+    dilemmaZone = analyzeDilemmaZone(
+      approachSpeedMph,
+      geometry.closestPointToCamera, // meters to stop bar
+      chicagoYellow,
+    );
+  }
+
+  // 7. Late notice analysis
+  let lateNotice: LateNoticeAnalysis | null = null;
+  const violationDateStr = violationDatetime || deviceTimestamp;
+  if (violationDateStr && noticeDate) {
+    lateNotice = analyzeLateNotice(violationDateStr, noticeDate);
+  }
+
+  // 8. Factual inconsistency check
+  let factualInconsistency: FactualInconsistencyAnalysis | null = null;
+  if (userPlate && userState && (ticketPlate || ticketState)) {
+    factualInconsistency = analyzeFactualInconsistency(
+      ticketPlate || null, ticketState || null,
+      userPlate, userState,
+    );
+  }
+
   // Build ordered defense arguments
   const defenseArguments: DefenseArgument[] = [];
+
+  // Factual inconsistency (if found, this is the strongest possible defense)
+  if (factualInconsistency?.hasInconsistency) {
+    defenseArguments.push({
+      type: 'factual_inconsistency',
+      strength: 'strong',
+      title: 'Factual Inconsistency on Violation Notice',
+      summary: `${factualInconsistency.inconsistencyType === 'plate_mismatch' ? 'License plate' : 'Plate state'} on ticket does not match vehicle registration.`,
+      details: factualInconsistency.explanation,
+    });
+  }
+
+  // Late notice (procedural — can be case-dispositive)
+  if (lateNotice?.exceeds90Days) {
+    defenseArguments.push({
+      type: 'late_notice',
+      strength: 'strong',
+      title: 'Notice Mailed After 90-Day Statutory Deadline',
+      summary: `Notice issued ${lateNotice.daysBetween} days after violation (90-day limit under 625 ILCS 5/11-208.6).`,
+      details: lateNotice.explanation,
+    });
+  } else if (lateNotice && lateNotice.daysBetween > 60) {
+    defenseArguments.push({
+      type: 'late_notice',
+      strength: 'supporting',
+      title: 'Near-Deadline Notice Issuance',
+      summary: `Notice issued ${lateNotice.daysBetween} days after violation (approaching 90-day statutory deadline).`,
+      details: lateNotice.explanation,
+    });
+  }
 
   // Full stop (from existing receipt data, not re-analyzed here)
   if (fullStopDetected) {
@@ -731,6 +846,25 @@ export async function analyzeRedLightDefense(
     });
   }
 
+  // Dilemma zone
+  if (dilemmaZone?.inDilemmaZone) {
+    defenseArguments.push({
+      type: 'dilemma_zone',
+      strength: 'strong',
+      title: 'Driver Was in Dilemma Zone',
+      summary: `At ${approachSpeedMph?.toFixed(0)} mph: couldn't stop (${dilemmaZone.stoppingDistanceFt} ft needed, ${dilemmaZone.distanceToStopBarFt} ft available) AND couldn't clear intersection.`,
+      details: dilemmaZone.explanation,
+    });
+  } else if (dilemmaZone && !dilemmaZone.canStop) {
+    defenseArguments.push({
+      type: 'dilemma_zone',
+      strength: 'moderate',
+      title: 'Stopping Distance Exceeded Available Distance',
+      summary: `Stopping required ${dilemmaZone.stoppingDistanceFt} ft but only ${dilemmaZone.distanceToStopBarFt} ft was available.`,
+      details: dilemmaZone.explanation,
+    });
+  }
+
   // Yellow light timing shortfall
   if (yellowLight.isShorterThanStandard && yellowLight.shortfallSec >= 0.3) {
     defenseArguments.push({
@@ -747,6 +881,17 @@ export async function analyzeRedLightDefense(
       title: 'Yellow Light Marginally Below Standard',
       summary: `Chicago yellow is ${yellowLight.shortfallSec.toFixed(2)}s shorter than ITE standard.`,
       details: yellowLight.explanation,
+    });
+  }
+
+  // Violation spike / camera malfunction
+  if (violationSpike?.isSpike) {
+    defenseArguments.push({
+      type: 'violation_spike',
+      strength: 'moderate',
+      title: 'Abnormal Violation Spike at Camera',
+      summary: `${violationSpike.violationsOnDate} violations on this date — ${violationSpike.spikeRatio}x the 30-day average of ${violationSpike.averageDailyViolations}/day.`,
+      details: violationSpike.explanation,
     });
   }
 
@@ -799,6 +944,10 @@ export async function analyzeRedLightDefense(
     rightTurn,
     geometry,
     weather,
+    violationSpike,
+    dilemmaZone,
+    lateNotice,
+    factualInconsistency,
     overallDefenseScore: overallScore,
     defenseArguments,
   };

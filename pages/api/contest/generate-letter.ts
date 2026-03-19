@@ -809,6 +809,20 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     // Wait for ALL evidence lookups to complete in parallel
     await Promise.all(evidencePromises);
 
+    // Look up detected_ticket plate data for defense analysis (ticket_plate, ticket_state, user plate, notice timing)
+    let detectedTicketData: { ticket_plate?: string; ticket_state?: string; plate?: string; state?: string; created_at?: string } | null = null;
+    if (contest.ticket_number) {
+      try {
+        const { data } = await supabase
+          .from('detected_tickets')
+          .select('ticket_plate, ticket_state, plate, state, created_at')
+          .eq('ticket_number', contest.ticket_number)
+          .limit(1)
+          .maybeSingle();
+        detectedTicketData = data;
+      } catch (e) { /* non-fatal */ }
+    }
+
     // Run red-light defense analysis if we have a receipt
     let redLightDefense: RedLightDefenseAnalysis | null = null;
     if (redLightReceipt) {
@@ -826,6 +840,12 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
           speedDeltaMph: redLightReceipt.speed_delta_mph ?? null,
           violationDatetime: contest.ticket_date ? `${contest.ticket_date}T12:00:00Z` : null,
           deviceTimestamp: redLightReceipt.device_timestamp,
+          cameraAddress: redLightReceipt.camera_address || redLightReceipt.intersection_id || undefined,
+          noticeDate: detectedTicketData?.created_at || null,
+          ticketPlate: detectedTicketData?.ticket_plate || null,
+          ticketState: detectedTicketData?.ticket_state || null,
+          userPlate: detectedTicketData?.plate || null,
+          userState: detectedTicketData?.state || null,
         };
         redLightDefense = await analyzeRedLightDefense(defenseInput);
         console.log(`  Defense analysis: score=${redLightDefense.overallDefenseScore}, args=${redLightDefense.defenseArguments.length}`);
@@ -1067,10 +1087,10 @@ INSTRUCTIONS: Apply these proven lessons to strengthen the letter. Do NOT cite t
     // =====================================================================
     let officerIntelText = '';
     try {
-      // Look up detected_ticket by ticket_number to get officer_badge
+      // Look up detected_ticket by ticket_number for officer badge, plate data, and notice timing
       const { data: detectedTicket } = await supabase
         .from('detected_tickets')
-        .select('officer_badge')
+        .select('officer_badge, ticket_plate, ticket_state, plate, state, created_at')
         .eq('ticket_number', contest.ticket_number || '')
         .limit(1)
         .maybeSingle();
@@ -1262,18 +1282,55 @@ INTERSECTION APPROACH ANALYSIS:
 - Average Approach Speed: ${redLightDefense.geometry.averageApproachSpeedMph.toFixed(1)} mph
 - Analysis: ${redLightDefense.geometry.summary}` : ''}
 
+${redLightDefense.dilemmaZone?.inDilemmaZone ? `
+DILEMMA ZONE ANALYSIS (PHYSICS-BASED):
+- Stopping Distance Required: ${redLightDefense.dilemmaZone.stoppingDistanceFt.toFixed(0)} ft (at standard 10 ft/s² deceleration)
+- Distance to Stop Bar: ${redLightDefense.dilemmaZone.distanceToStopBarFt.toFixed(0)} ft
+- Distance to Clear Intersection: ${redLightDefense.dilemmaZone.distanceToClearFt.toFixed(0)} ft
+- Could Stop Safely: ${redLightDefense.dilemmaZone.canStop ? 'YES' : 'NO'}
+- Could Clear Intersection: ${redLightDefense.dilemmaZone.canClear ? 'YES' : 'NO'}
+- Analysis: ${redLightDefense.dilemmaZone.explanation}
+
+INSTRUCTIONS: This is a STRONG physics-based defense. The driver was in the "dilemma zone" — too close to stop safely but unable to clear the intersection during the yellow phase. This is a recognized traffic engineering concept (ITE/FHWA). Explain that the laws of physics made it impossible for the driver to either stop safely OR clear the intersection before the light turned red. Reference the specific stopping distance vs. distance to stop bar. This is NOT the driver's fault — it's a design deficiency in the intersection's signal timing.` : ''}
+
+${redLightDefense.violationSpike?.isSpike ? `
+VIOLATION SPIKE ANALYSIS (CAMERA MALFUNCTION INDICATOR):
+- Violations on Date: ${redLightDefense.violationSpike.violationsOnDate}
+- 30-Day Average: ${redLightDefense.violationSpike.averageDailyViolations.toFixed(1)} violations/day
+- Spike Ratio: ${redLightDefense.violationSpike.spikeRatio.toFixed(1)}x the average
+- Analysis: ${redLightDefense.violationSpike.explanation}
+
+INSTRUCTIONS: Use this as a SUPPORTING argument suggesting possible camera malfunction or miscalibration. An abnormally high number of violations on the date in question suggests the camera system may have been malfunctioning. Reference the specific spike ratio and daily count vs. average. Request that the city provide camera calibration and maintenance records for this date. Note that the Chicago Inspector General has previously found camera timing and calibration issues.` : ''}
+
+${redLightDefense.lateNotice?.exceeds90Days ? `
+LATE NOTICE DEFENSE (PROCEDURAL — CASE DISPOSITIVE):
+- Days Between Violation & Notice: ${redLightDefense.lateNotice.daysBetween}
+- Exceeds 90-Day Statutory Limit: YES
+- Analysis: ${redLightDefense.lateNotice.explanation}
+
+INSTRUCTIONS: This is a STRONG procedural defense that should LEAD the letter. Under 625 ILCS 5/11-208.6, violation notices must be mailed within 90 days of the violation. This notice was sent ${redLightDefense.lateNotice.daysBetween} days after the violation, exceeding the statutory limit. Argue that the citation is procedurally deficient and must be dismissed regardless of the underlying facts. This is a purely legal/procedural argument — the merits of the violation are irrelevant if the notice was late.` : ''}
+
+${redLightDefense.factualInconsistency?.hasInconsistency ? `
+FACTUAL INCONSISTENCY DEFENSE (PROCEDURAL — CASE DISPOSITIVE):
+- Inconsistency Type: ${redLightDefense.factualInconsistency.inconsistencyType}
+- Analysis: ${redLightDefense.factualInconsistency.explanation}
+
+INSTRUCTIONS: This is a STRONG procedural defense. Under Chicago Municipal Code 9-100-060, facts alleged in the violation notice that are inconsistent with the actual vehicle are grounds for dismissal. The ${redLightDefense.factualInconsistency.inconsistencyType} between the ticket and the actual vehicle registration creates reasonable doubt about whether the correct vehicle was identified. Argue that the citation should be dismissed due to this factual inconsistency.` : ''}
+
 RANKED DEFENSE ARGUMENTS (strongest first):
 ${redLightDefense.defenseArguments.map((a, i) => `${i + 1}. [${a.strength.toUpperCase()}] ${a.title}: ${a.summary}`).join('\n')}
 
 INSTRUCTIONS FOR USING DEFENSE ANALYSIS:
-1. Lead with the STRONGEST argument(s) — those marked [STRONG] above
+1. Lead with the STRONGEST argument(s) — those marked [STRONG] above. Procedural defenses (late notice, factual inconsistency) should come FIRST as they can be case-dispositive.
 2. Use [MODERATE] arguments as supporting points
 3. [SUPPORTING] arguments provide context but should not be the primary focus
-4. The yellow light timing argument, if applicable, is particularly powerful because it cites national engineering standards
-5. The right-turn-on-red argument, if applicable, may completely invalidate the citation
-6. Weather arguments support the case but are rarely sufficient alone
-7. Reference the attached sensor data exhibit for all GPS/accelerometer claims
-8. DO NOT mention the defense score or automated analysis in the letter
+4. The dilemma zone argument, if applicable, is a powerful physics-based defense recognized by traffic engineers
+5. The yellow light timing argument, if applicable, cites national engineering standards
+6. The right-turn-on-red argument, if applicable, may completely invalidate the citation
+7. The violation spike argument supports a camera malfunction theory
+8. Weather arguments support the case but are rarely sufficient alone
+9. Reference the attached sensor data exhibit for all GPS/accelerometer claims
+10. DO NOT mention the defense score or automated analysis in the letter
 ` : ''}
 ${cameraPassHistory && cameraPassHistory.length > 0 ? `
 === SPEED CAMERA GPS DATA FROM USER'S APP ===
