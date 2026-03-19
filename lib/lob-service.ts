@@ -196,6 +196,40 @@ export interface RedLightEvidenceExhibit {
     source: string;
   } | null;
 
+  /** Violation spike analysis (camera malfunction indicator) */
+  violationSpike?: {
+    violationsOnDate: number;
+    averageDailyViolations: number;
+    spikeRatio: number;
+    isSpike: boolean;
+    explanation: string;
+  } | null;
+
+  /** Dilemma zone analysis (physics-based) */
+  dilemmaZone?: {
+    inDilemmaZone: boolean;
+    stoppingDistanceFt: number;
+    distanceToStopBarFt: number;
+    distanceToClearFt: number;
+    canStop: boolean;
+    canClear: boolean;
+    explanation: string;
+  } | null;
+
+  /** Late notice analysis (90-day statutory limit) */
+  lateNotice?: {
+    daysBetween: number;
+    exceeds90Days: boolean;
+    explanation: string;
+  } | null;
+
+  /** Factual inconsistency (plate/state mismatch) */
+  factualInconsistency?: {
+    hasInconsistency: boolean;
+    inconsistencyType: string | null;
+    explanation: string;
+  } | null;
+
   /** Overall defense score (0-100) */
   defenseScore?: number;
 

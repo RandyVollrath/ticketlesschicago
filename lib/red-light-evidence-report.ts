@@ -92,6 +92,32 @@ export interface RedLightReceiptData {
       description: string;
       source: string;
     } | null;
+    violationSpike?: {
+      violationsOnDate: number;
+      averageDailyViolations: number;
+      spikeRatio: number;
+      isSpike: boolean;
+      explanation: string;
+    } | null;
+    dilemmaZone?: {
+      inDilemmaZone: boolean;
+      stoppingDistanceFt: number;
+      distanceToStopBarFt: number;
+      distanceToClearFt: number;
+      canStop: boolean;
+      canClear: boolean;
+      explanation: string;
+    } | null;
+    lateNotice?: {
+      daysBetween: number;
+      exceeds90Days: boolean;
+      explanation: string;
+    } | null;
+    factualInconsistency?: {
+      hasInconsistency: boolean;
+      inconsistencyType: string | null;
+      explanation: string;
+    } | null;
     overallDefenseScore: number;
     defenseArguments: {
       type: string;
@@ -594,6 +620,132 @@ export async function generateEvidenceReportPDF(
           doc.font('Helvetica-Bold').text('Avg Speed: ', { continued: true });
           doc.font('Helvetica').text(`${defense.geometry.averageApproachSpeedMph.toFixed(1)} mph`);
 
+          doc.moveDown(0.8);
+        }
+
+        // Dilemma Zone
+        if (defense.dilemmaZone?.inDilemmaZone) {
+          sectionNum++;
+          if (doc.y > 620) doc.addPage();
+
+          doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+          doc.text(`${sectionNum}. DILEMMA ZONE ANALYSIS`);
+          doc.moveDown(0.3);
+
+          const dzBoxY = doc.y;
+          doc.rect(54, dzBoxY, pageWidth, 44).fillAndStroke('#fce4ec', '#e53935');
+          doc.fillColor('#b71c1c').font('Helvetica-Bold').fontSize(10);
+          doc.text(
+            `FINDING: Driver was in the dilemma zone — could not safely stop or clear the intersection.`,
+            62, dzBoxY + 6, { width: pageWidth - 16 }
+          );
+          doc.fontSize(8).font('Helvetica').fillColor('#c62828');
+          doc.text(
+            `Stopping: ${defense.dilemmaZone.stoppingDistanceFt.toFixed(0)} ft needed vs ${defense.dilemmaZone.distanceToStopBarFt.toFixed(0)} ft available | Can stop: ${defense.dilemmaZone.canStop ? 'YES' : 'NO'} | Can clear: ${defense.dilemmaZone.canClear ? 'YES' : 'NO'}`,
+            62
+          );
+          doc.y = dzBoxY + 48;
+
+          doc.moveDown(0.3);
+          doc.fontSize(10).font('Helvetica').fillColor('#000000');
+          doc.font('Helvetica-Bold').text('Stopping Distance: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.dilemmaZone.stoppingDistanceFt.toFixed(0)} ft (at 10 ft/s² deceleration)`);
+          doc.font('Helvetica-Bold').text('Distance to Stop Bar: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.dilemmaZone.distanceToStopBarFt.toFixed(0)} ft`);
+          doc.font('Helvetica-Bold').text('Distance to Clear: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.dilemmaZone.distanceToClearFt.toFixed(0)} ft`);
+
+          doc.moveDown(0.3);
+          doc.fontSize(8).font('Helvetica').fillColor('#555555');
+          doc.text(defense.dilemmaZone.explanation, { width: pageWidth });
+          doc.fillColor('#000000');
+          doc.moveDown(0.8);
+        }
+
+        // Violation Spike
+        if (defense.violationSpike?.isSpike) {
+          sectionNum++;
+          if (doc.y > 620) doc.addPage();
+
+          doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+          doc.text(`${sectionNum}. VIOLATION SPIKE ANALYSIS`);
+          doc.moveDown(0.3);
+
+          const vsBoxY = doc.y;
+          doc.rect(54, vsBoxY, pageWidth, 32).fillAndStroke('#fff3e0', '#ff9800');
+          doc.fillColor('#e65100').font('Helvetica-Bold').fontSize(10);
+          doc.text(
+            `FINDING: ${defense.violationSpike.spikeRatio.toFixed(1)}x normal violation rate (${defense.violationSpike.violationsOnDate} violations vs avg ${defense.violationSpike.averageDailyViolations.toFixed(1)}/day)`,
+            62, vsBoxY + 6, { width: pageWidth - 16 }
+          );
+          doc.y = vsBoxY + 36;
+
+          doc.moveDown(0.3);
+          doc.fontSize(8).font('Helvetica').fillColor('#555555');
+          doc.text(defense.violationSpike.explanation, { width: pageWidth });
+          doc.fillColor('#000000');
+          doc.moveDown(0.8);
+        }
+
+        // Late Notice
+        if (defense.lateNotice?.exceeds90Days) {
+          sectionNum++;
+          if (doc.y > 620) doc.addPage();
+
+          doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+          doc.text(`${sectionNum}. LATE NOTICE DEFENSE`);
+          doc.moveDown(0.3);
+
+          const lnBoxY = doc.y;
+          doc.rect(54, lnBoxY, pageWidth, 44).fillAndStroke('#fce4ec', '#d32f2f');
+          doc.fillColor('#b71c1c').font('Helvetica-Bold').fontSize(10);
+          doc.text(
+            `FINDING: Notice sent ${defense.lateNotice.daysBetween} days after violation — exceeds 90-day statutory limit (625 ILCS 5/11-208.6).`,
+            62, lnBoxY + 6, { width: pageWidth - 16 }
+          );
+          doc.y = lnBoxY + 48;
+
+          doc.moveDown(0.3);
+          doc.fontSize(10).font('Helvetica').fillColor('#000000');
+          doc.font('Helvetica-Bold').text('Days Between Violation & Notice: ', { continued: true });
+          doc.font('Helvetica').text(`${defense.lateNotice.daysBetween} (limit: 90)`);
+
+          doc.moveDown(0.3);
+          doc.fontSize(8).font('Helvetica').fillColor('#555555');
+          doc.text(defense.lateNotice.explanation, { width: pageWidth });
+          doc.fillColor('#000000');
+          doc.moveDown(0.8);
+        }
+
+        // Factual Inconsistency
+        if (defense.factualInconsistency?.hasInconsistency) {
+          sectionNum++;
+          if (doc.y > 620) doc.addPage();
+
+          doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
+          doc.text(`${sectionNum}. FACTUAL INCONSISTENCY`);
+          doc.moveDown(0.3);
+
+          const fiBoxY = doc.y;
+          doc.rect(54, fiBoxY, pageWidth, 44).fillAndStroke('#fce4ec', '#d32f2f');
+          doc.fillColor('#b71c1c').font('Helvetica-Bold').fontSize(10);
+          doc.text(
+            `FINDING: ${defense.factualInconsistency.inconsistencyType === 'plate_mismatch' ? 'License plate' : 'Plate state'} mismatch — ticket does not match registered vehicle.`,
+            62, fiBoxY + 6, { width: pageWidth - 16 }
+          );
+          doc.fontSize(8).font('Helvetica').fillColor('#c62828');
+          doc.text('Chicago Municipal Code 9-100-060', 62);
+          doc.y = fiBoxY + 48;
+
+          doc.moveDown(0.3);
+          doc.fontSize(10).font('Helvetica').fillColor('#000000');
+          doc.font('Helvetica-Bold').text('Inconsistency Type: ', { continued: true });
+          doc.font('Helvetica').text(defense.factualInconsistency.inconsistencyType || 'Unknown');
+
+          doc.moveDown(0.3);
+          doc.fontSize(8).font('Helvetica').fillColor('#555555');
+          doc.text(defense.factualInconsistency.explanation, { width: pageWidth });
+          doc.fillColor('#000000');
           doc.moveDown(0.8);
         }
 
