@@ -18,7 +18,6 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import AuthService from '../services/AuthService';
-import CameraAlertService from '../services/CameraAlertService';
 import Config from '../config/config';
 import { StorageKeys } from '../constants';
 import Logger from '../utils/Logger';
@@ -159,27 +158,11 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [mailingState, setMailingState] = useState('IL');
   const [mailingZip, setMailingZip] = useState('');
 
-  // Notifications
+  // Notifications (only settings still controlled on this screen)
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
-  const [phoneCallNotifications, setPhoneCallNotifications] = useState(false);
-  const [streetCleaningAlerts, setStreetCleaningAlerts] = useState(true);
-  const [snowBanAlerts, setSnowBanAlerts] = useState(true);
   const [renewalReminders, setRenewalReminders] = useState(true);
-  const [towAlerts, setTowAlerts] = useState(true);
-  const [allClearAlerts, setAllClearAlerts] = useState(true);
-  const [dotPermitAlerts, setDotPermitAlerts] = useState(true);
-  const [winterOvernightAlerts, setWinterOvernightAlerts] = useState(true);
-  const [twoInchSnowAlerts, setTwoInchSnowAlerts] = useState(true);
-  const [permitZoneAlerts, setPermitZoneAlerts] = useState(true);
-  // Meter zone alerts — shared with ProfileScreen's meterExpiryAlertsEnabled via AsyncStorage
-  const [meterZoneAlerts, setMeterZoneAlerts] = useState(true);
   const [notificationDays, setNotificationDays] = useState<number[]>([30, 7, 1]);
-
-  // Camera alerts (synced via CameraAlertService, not Supabase)
-  const [speedCameraAlerts, setSpeedCameraAlerts] = useState(true);
-  const [redLightCameraAlerts, setRedLightCameraAlerts] = useState(true);
-  const [cameraSettingsLoaded, setCameraSettingsLoaded] = useState(false);
 
   // Renewal Dates
   const [cityStickerExpiry, setCityStickerExpiry] = useState('');
@@ -263,44 +246,21 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           setPlateState(profileData.license_state || 'IL');
         }
 
-        // Notification preferences
+        // Notification preferences (only load settings this screen controls)
         if (profileData.notification_preferences) {
           const prefs = typeof profileData.notification_preferences === 'object'
             ? profileData.notification_preferences
             : {};
           setEmailNotifications((prefs as any).email ?? profileData.notify_email ?? true);
           setSmsNotifications((prefs as any).sms ?? profileData.notify_sms ?? false);
-          setPhoneCallNotifications((prefs as any).phone_call ?? profileData.phone_call_enabled ?? false);
-          setStreetCleaningAlerts((prefs as any).street_cleaning ?? true);
-          setSnowBanAlerts((prefs as any).snow_ban ?? profileData.notify_snow_ban ?? true);
           setRenewalReminders((prefs as any).renewals ?? true);
-          setTowAlerts((prefs as any).tow ?? profileData.notify_tow ?? true);
           setNotificationDays((prefs as any).days_before || profileData.notify_days_array || [30, 7, 1]);
-          const allClearPref = (prefs as any).all_clear ?? true;
-          setAllClearAlerts(allClearPref);
           // Sync "All Clear" preference to AsyncStorage for BackgroundTaskService + HomeScreen
+          const allClearPref = (prefs as any).all_clear ?? true;
           AsyncStorage.setItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED, String(allClearPref)).catch(() => {});
-          setDotPermitAlerts((prefs as any).dot_permits ?? profileData.notify_dot_permits ?? true);
-          setWinterOvernightAlerts((prefs as any).winter_overnight ?? true);
-          setTwoInchSnowAlerts((prefs as any).two_inch_snow ?? true);
-          setPermitZoneAlerts((prefs as any).permit_zones ?? true);
-          // Meter zone: load from Supabase prefs, then check ProfileScreen's AsyncStorage key as override
-          const meterPrefServer = (prefs as any).meter_zones ?? true;
-          try {
-            const meterAsyncVal = await AsyncStorage.getItem('meterExpiryAlertsEnabled');
-            // If AsyncStorage has a value, use it (ProfileScreen may have changed it)
-            // Otherwise fall back to server value
-            setMeterZoneAlerts(meterAsyncVal !== null ? meterAsyncVal !== 'false' : meterPrefServer);
-          } catch {
-            setMeterZoneAlerts(meterPrefServer);
-          }
         } else {
           setEmailNotifications(profileData.notify_email ?? true);
           setSmsNotifications(profileData.notify_sms ?? false);
-          setPhoneCallNotifications(profileData.phone_call_enabled ?? false);
-          setSnowBanAlerts(profileData.notify_snow_ban ?? true);
-          setTowAlerts(profileData.notify_tow ?? true);
-          setDotPermitAlerts(profileData.notify_dot_permits ?? true);
           setNotificationDays(profileData.notify_days_array || [30, 7, 1]);
         }
 
@@ -391,16 +351,6 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         setEmailOnApprovalNeeded(settingsData.email_on_approval_needed);
       }
 
-      // Load camera alert settings from CameraAlertService (AsyncStorage-backed)
-      try {
-        const cameraSettings = await CameraAlertService.getSettings();
-        setSpeedCameraAlerts(cameraSettings.speedEnabled);
-        setRedLightCameraAlerts(cameraSettings.redLightEnabled);
-      } catch (e) {
-        log.error('loadCameraSettings error', e);
-      }
-      setCameraSettingsLoaded(true);
-
       setLoading(false);
       setRefreshing(false);
       setTimeout(() => { initialLoadRef.current = false; }, 100);
@@ -450,25 +400,10 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           emissions_date: emissionsDate || null,
           notify_email: emailNotifications,
           notify_sms: smsNotifications,
-          phone_call_enabled: phoneCallNotifications,
-          notify_snow_ban: twoInchSnowAlerts || winterOvernightAlerts,
-          notify_tow: towAlerts,
-          notify_dot_permits: dotPermitAlerts,
-          notify_days_array: notificationDays,
           notification_preferences: {
             email: emailNotifications,
             sms: smsNotifications,
-            phone_call: phoneCallNotifications,
-            street_cleaning: streetCleaningAlerts,
-            snow_ban: twoInchSnowAlerts || winterOvernightAlerts,
-            winter_overnight: winterOvernightAlerts,
-            two_inch_snow: twoInchSnowAlerts,
-            permit_zones: permitZoneAlerts,
-            meter_zones: meterZoneAlerts,
             renewals: renewalReminders,
-            tow: towAlerts,
-            all_clear: allClearAlerts,
-            dot_permits: dotPermitAlerts,
             days_before: notificationDays,
           },
           // Preserve per-type phone call settings from ProfileScreen
@@ -529,9 +464,8 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [userId, email, firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
-      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, winterOvernightAlerts, twoInchSnowAlerts, permitZoneAlerts, meterZoneAlerts,
-      renewalReminders, towAlerts, allClearAlerts, dotPermitAlerts, notificationDays,
+      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications,
+      renewalReminders, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded]);
 
@@ -546,9 +480,8 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     };
   }, [firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
-      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, winterOvernightAlerts, twoInchSnowAlerts, permitZoneAlerts, meterZoneAlerts,
-      renewalReminders, towAlerts, allClearAlerts, dotPermitAlerts, notificationDays,
+      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications,
+      renewalReminders, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded, autoSave]);
 
@@ -689,9 +622,14 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header with save status */}
       <View style={styles.header}>
-        <Text style={styles.title}>
-          {activeTab === 'dashboard' ? 'Dashboard' : 'Settings'}
-        </Text>
+        <View>
+          <Text style={styles.title}>
+            {activeTab === 'dashboard' ? 'Dashboard' : 'Future'}
+          </Text>
+          {activeTab === 'settings' && (
+            <Text style={styles.headerSubtitle}>Address-based alerts, renewals, and ticket contesting</Text>
+          )}
+        </View>
         {saveStatus !== 'idle' && (
           <Text style={[styles.saveStatusText, saveStatus === 'saved' && { color: '#10B981' }]}>
             {saveStatus === 'saving' ? 'Saving...' : 'Saved'}
@@ -1115,113 +1053,6 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </SettingsCard>
 
-        {/* ── Push Notification Alerts ── */}
-        <SettingsCard title="Push Notification Alerts" icon="bell-ring-outline">
-          <Text style={styles.sectionHint}>What we notify you about when your car is parked</Text>
-          <ToggleRow
-            title="Street cleaning"
-            subtitle="Move your car before street cleaning starts"
-            value={streetCleaningAlerts}
-            onValueChange={setStreetCleaningAlerts}
-          />
-          <ToggleRow
-            title="2-inch snow parking ban"
-            subtitle={'Alert when parked on a snow route and 2"+ snowfall is forecast or confirmed'}
-            value={twoInchSnowAlerts}
-            onValueChange={setTwoInchSnowAlerts}
-          />
-          <ToggleRow
-            title="Winter overnight parking ban"
-            subtitle="Dec 1 – Apr 1, 3am–7am on posted streets"
-            value={winterOvernightAlerts}
-            onValueChange={setWinterOvernightAlerts}
-          />
-          <ToggleRow
-            title="Residential permit zones"
-            subtitle="When parked in a permit-restricted zone"
-            value={permitZoneAlerts}
-            onValueChange={setPermitZoneAlerts}
-          />
-          <ToggleRow
-            title="Meter zone alerts"
-            subtitle="Meter expiry and free-to-paid time transitions"
-            value={meterZoneAlerts}
-            onValueChange={(val: boolean) => {
-              setMeterZoneAlerts(val);
-              // Sync with ProfileScreen's AsyncStorage key
-              AsyncStorage.setItem('meterExpiryAlertsEnabled', String(val)).catch(() => {});
-            }}
-          />
-          <ToggleRow
-            title="Temporary no-parking"
-            subtitle="Construction, film permits, and other restrictions"
-            value={dotPermitAlerts}
-            onValueChange={setDotPermitAlerts}
-          />
-          <ToggleRow
-            title="Tow alerts"
-            subtitle="Get notified if your car is towed"
-            value={towAlerts}
-            onValueChange={setTowAlerts}
-          />
-          <ToggleRow
-            title="Speed cameras"
-            subtitle="Alert when approaching speed cameras while driving"
-            value={speedCameraAlerts}
-            onValueChange={async (val: boolean) => {
-              setSpeedCameraAlerts(val);
-              try {
-                await CameraAlertService.setSpeedAlertsEnabled(val);
-                // If both are off, disable master; if either on, enable master
-                if (!val && !redLightCameraAlerts) {
-                  await CameraAlertService.setEnabled(false);
-                } else {
-                  await CameraAlertService.setEnabled(true);
-                }
-              } catch (e) { log.error('toggleSpeedCamera', e); }
-            }}
-          />
-          <ToggleRow
-            title="Red-light cameras"
-            subtitle="Alert when approaching red-light cameras while driving"
-            value={redLightCameraAlerts}
-            onValueChange={async (val: boolean) => {
-              setRedLightCameraAlerts(val);
-              try {
-                await CameraAlertService.setRedLightAlertsEnabled(val);
-                if (!val && !speedCameraAlerts) {
-                  await CameraAlertService.setEnabled(false);
-                } else {
-                  await CameraAlertService.setEnabled(true);
-                }
-              } catch (e) { log.error('toggleRedLightCamera', e); }
-            }}
-            isLast
-          />
-
-          <Text style={styles.fieldLabel}>Days before to notify</Text>
-          <View style={styles.chipRow}>
-            {NOTIFICATION_DAYS.map(day => (
-              <TouchableOpacity
-                key={day}
-                style={[
-                  styles.chip,
-                  notificationDays.includes(day) && styles.chipActive,
-                ]}
-                onPress={() => toggleNotificationDay(day)}
-                activeOpacity={0.7}
-              >
-                <Text style={[
-                  styles.chipText,
-                  notificationDays.includes(day) && styles.chipTextActive,
-                ]}>
-                  {day === 0 ? 'Day of' : `${day}d`}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </SettingsCard>
-
         {/* ── General Notification Settings ── */}
         <SettingsCard title="General Settings" icon="cog-outline">
           <ToggleRow
@@ -1242,45 +1073,8 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             subtitle="City sticker, plates, and emissions"
             value={renewalReminders}
             onValueChange={setRenewalReminders}
-          />
-          <ToggleRow
-            title={'"All Clear" notifications'}
-            subtitle="Notify when no restrictions found at your spot"
-            value={allClearAlerts}
-            onValueChange={(val: boolean) => {
-              setAllClearAlerts(val);
-              AsyncStorage.setItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED, String(val)).catch(() => {});
-            }}
             isLast
           />
-        </SettingsCard>
-
-        {/* ── Phone Call Alerts ── */}
-        <SettingsCard title="Phone Call Alerts" icon="phone-ring-outline">
-          <Text style={styles.sectionHint}>Add voice call reminders for parking alerts above</Text>
-          <ToggleRow
-            title="Call me for parking alerts"
-            subtitle="Automated voice call when your car is at risk"
-            value={phoneCallNotifications}
-            onValueChange={setPhoneCallNotifications}
-            disabled={!phone}
-            isLast
-          />
-          {phoneCallNotifications && (
-            <View>
-              <Text style={styles.callAlertHint}>
-                Default call timing:
-              </Text>
-              <Text style={styles.callAlertHint}>
-                {'\u2022'} Street cleaning: 2 hours before{'\n'}
-                {'\u2022'} Winter overnight ban: 6 hours before{'\n'}
-                {'\u2022'} Permit zone, snow route, no-parking: immediately when at risk
-              </Text>
-              <Text style={[styles.callAlertHint, { marginTop: 8 }]}>
-                Adjust per-alert timing in Settings {'>'} Call Alerts
-              </Text>
-            </View>
-          )}
         </SettingsCard>
 
         {/* Renewal Dates */}
@@ -1328,6 +1122,15 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               setAutoMailEnabled(!checked);
             }}
           />
+
+          {requireApproval && (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningText}>
+                Letters will NOT be mailed unless you approve them. You'll receive an email with the draft letter and must confirm before it's sent.
+              </Text>
+            </View>
+          )}
+
           <ToggleRow
             title="Full auto-pilot (no approval)"
             subtitle="We detect, build, and mail letters automatically"
@@ -1341,7 +1144,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {autoMailEnabled && (
             <View style={styles.warningBox}>
               <Text style={styles.warningText}>
-                Letters will be mailed to the City of Chicago on your behalf without you seeing them first.
+                Letters will be mailed to the City of Chicago on your behalf without you seeing them first. You can still submit evidence (photos, dashcam footage) before the letter is sent — we'll email you when a ticket is found with time to attach evidence.
               </Text>
             </View>
           )}
@@ -1564,6 +1367,11 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
   },
   saveStatusText: {
     fontSize: 12,
