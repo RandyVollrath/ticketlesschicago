@@ -213,7 +213,7 @@ async function checkNotificationErrors(): Promise<CheckResult> {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabaseAdmin!
       .from('notification_log' as any)
-      .select('id, channel, error')
+      .select('id, channel')
       .eq('status', 'error')
       .gte('created_at', oneDayAgo);
 
