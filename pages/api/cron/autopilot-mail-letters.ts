@@ -874,9 +874,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                      lowerUrl.includes('.png') ||
                      lowerUrl.includes('.gif') ||
                      lowerUrl.includes('.webp') ||
-                     // Vercel Blob URLs don't have extensions, check content type hints
+                     lowerUrl.includes('.heic') ||
+                     // Vercel Blob evidence uploads (MMS images may not have extensions)
+                     lowerUrl.includes('blob.vercel-storage.com/evidence') ||
                      lowerUrl.includes('image');
             });
+          }
+          // Fallback: extract image URLs from photo_analyses (each has {url, filename, description})
+          if (evidenceImages.length === 0 && userEvidence?.photo_analyses && Array.isArray(userEvidence.photo_analyses)) {
+            evidenceImages = userEvidence.photo_analyses
+              .filter((pa: any) => pa.url)
+              .map((pa: any) => pa.url);
           }
           // Fallback: also check sms_attachments (legacy SMS evidence format)
           if (evidenceImages.length === 0 && userEvidence?.sms_attachments && Array.isArray(userEvidence.sms_attachments)) {

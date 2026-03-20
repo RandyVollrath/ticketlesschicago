@@ -634,21 +634,32 @@ function summarizeUserEvidence(userEvidence: any): string | null {
     if (Array.isArray(parsed)) {
       return `${parsed.length} file(s) submitted`;
     }
-    const channel = parsed.received_via === 'sms' ? 'SMS' : 'email';
-    // SMS evidence with photo attachments
+    // Determine channel label
+    const via = parsed.received_via;
+    const channel = via === 'both' ? 'SMS + email' : via === 'sms' ? 'SMS' : 'email';
+
+    // Count total attachments from the canonical attachment_urls array
+    const attachmentCount = Array.isArray(parsed.attachment_urls) ? parsed.attachment_urls.length : 0;
+    // Count photo analyses (AI-described photos)
+    const analysisCount = Array.isArray(parsed.photo_analyses) ? parsed.photo_analyses.length : 0;
+    const hasText = parsed.text && parsed.text !== 'See attached photos' && parsed.text !== 'See attachments';
+
+    if (attachmentCount > 0) {
+      const parts: string[] = [];
+      parts.push(`${attachmentCount} photo(s)`);
+      if (analysisCount > 0) parts.push(`${analysisCount} analyzed`);
+      if (hasText) parts.push('+ text');
+      return `${parts.join(', ')} via ${channel}`;
+    }
+    // Fallback: legacy sms_attachments format
     if (parsed.sms_attachments && Array.isArray(parsed.sms_attachments)) {
       const photoCount = parsed.sms_attachments.length;
-      const hasText = parsed.text && parsed.text !== 'See attached photos';
       return `${photoCount} photo(s) via ${channel}${hasText ? ' + text' : ''}`;
     }
-    // Email/SMS evidence with attachment_urls
-    if (parsed.attachment_urls && Array.isArray(parsed.attachment_urls)) {
-      return `${parsed.attachment_urls.length} attachment(s) via ${channel}`;
-    }
     if (parsed.attachments) {
-      return `${parsed.attachments.length} attachment(s) from ${channel}`;
+      return `${parsed.attachments.length} attachment(s) via ${channel}`;
     }
-    if (parsed.text || parsed.body) {
+    if (hasText) {
       return `Text evidence via ${channel}`;
     }
     return 'Evidence submitted';

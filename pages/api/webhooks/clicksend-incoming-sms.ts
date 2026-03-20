@@ -568,19 +568,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // code picks up these images as exhibits in the physical letter.
             const existingAttachmentUrls: string[] = existingEvidence.attachment_urls || [];
             const newAttachmentUrls = uploadedMedia.map((m: any) => m.url);
+            // Merge photo analyses with existing ones (use consistent field name with email webhook)
+            const existingPhotoAnalyses: any[] = existingEvidence.photo_analyses || [];
+            const newPhotoAnalyses = photoAnalysisResults.length > 0 ? photoAnalysisResults : [];
+
             const updatedEvidence = {
               ...existingEvidence,
               text: existingEvidence.text
                 ? `${existingEvidence.text}\n\n--- SMS Evidence ---\n${evidenceText}`
                 : evidenceText,
               received_at: new Date().toISOString(),
-              received_via: 'sms',
+              received_via: existingEvidence.received_via
+                ? (existingEvidence.received_via === 'sms' ? 'sms' : 'both')
+                : 'sms',
               has_attachments: true,
               attachment_urls: [...existingAttachmentUrls, ...newAttachmentUrls],
               sms_attachments: smsAttachmentObjects,
-              photo_analysis: photoAnalysisResults.length > 0
-                ? photoAnalysisResults.map((pa: any) => pa.description)
-                : undefined,
+              // Store full photo analysis objects (consistent with email webhook format)
+              photo_analyses: [...existingPhotoAnalyses, ...newPhotoAnalyses],
             };
 
             // Update ticket with evidence

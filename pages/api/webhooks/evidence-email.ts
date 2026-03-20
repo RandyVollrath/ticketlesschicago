@@ -347,12 +347,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq('user_id', user.id)
       .single();
 
-    // Store evidence
+    // Store evidence — merge with any existing evidence (e.g. from prior SMS submission)
     const evidenceText = textBody || 'See attachments';
+    const existingEvidenceRaw = ticket.user_evidence;
+    let existingEvidence: any = {};
+    if (existingEvidenceRaw) {
+      try {
+        existingEvidence = typeof existingEvidenceRaw === 'string'
+          ? JSON.parse(existingEvidenceRaw)
+          : existingEvidenceRaw;
+      } catch {
+        existingEvidence = {};
+      }
+    }
+
+    // Merge text: append email text to any prior evidence text
+    const mergedText = existingEvidence.text
+      ? `${existingEvidence.text}\n\n--- Email Evidence ---\n${evidenceText}`
+      : evidenceText;
+
     const evidenceData: any = {
-      text: evidenceText,
+      ...existingEvidence, // preserve prior SMS fields (sms_attachments, photo_analysis, etc.)
+      text: mergedText,
       received_at: new Date().toISOString(),
-      has_attachments: attachments.length > 0,
+      has_attachments: (existingEvidence.has_attachments || false) || attachments.length > 0,
+      // Track which channels have submitted evidence
+      received_via: existingEvidence.received_via
+        ? (existingEvidence.received_via === 'email' ? 'email' : 'both')
+        : 'email',
     };
 
     // Process attachments if any
@@ -471,16 +493,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      evidenceData.attachment_urls = attachmentUrls;
-      console.log(`Total attachments uploaded: ${attachmentUrls.length}`);
+      // Merge attachment URLs with any existing ones (from prior SMS submission)
+      const existingAttachmentUrls: string[] = existingEvidence.attachment_urls || [];
+      evidenceData.attachment_urls = [...existingAttachmentUrls, ...attachmentUrls];
+      console.log(`Total attachments: ${evidenceData.attachment_urls.length} (${existingAttachmentUrls.length} existing + ${attachmentUrls.length} new)`);
 
       // Run Claude Vision analysis on uploaded photos
       const photoUrls = attachmentUrls.filter((u: string) => /\.(jpg|jpeg|png|gif|heic|webp)/i.test(u));
       if (photoUrls.length > 0) {
         const photoAnalysisResults = await analyzeEvidencePhotos(photoUrls, ticket);
         if (photoAnalysisResults.length > 0) {
-          evidenceData.photo_analyses = photoAnalysisResults;
-          console.log(`Successfully analyzed ${photoAnalysisResults.length} photo(s)`);
+          // Merge photo analyses with any existing ones (use consistent field name)
+          const existingAnalyses: any[] = existingEvidence.photo_analyses || [];
+          evidenceData.photo_analyses = [...existingAnalyses, ...photoAnalysisResults];
+          console.log(`Photo analyses: ${evidenceData.photo_analyses.length} total (${existingAnalyses.length} existing + ${photoAnalysisResults.length} new)`);
         }
       }
     }
@@ -564,14 +590,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (letter) {
       const originalLetter = letter.letter_content || letter.letter_text || '';
 
-      // Use AI to integrate evidence, guided by kit evaluation strategy
-      // Pass Claude Vision photo analyses if available
+      // Use AI to integrate ALL evidence (merged from SMS + email), guided by kit evaluation strategy
       const photoAnalysesForPrompt = evidenceData.photo_analyses || [];
+      const allEvidenceText = evidenceData.text || evidenceText; // Use merged text (includes prior SMS text if any)
       regeneratedLetterContent = await regenerateLetterWithAI(
         originalLetter,
-        evidenceText,
+        allEvidenceText,
         ticket,
-        attachments.length > 0,
+        evidenceData.has_attachments || attachments.length > 0,
         kitEval,
         photoAnalysesForPrompt
       );
