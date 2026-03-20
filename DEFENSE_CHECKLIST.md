@@ -101,60 +101,64 @@ These checks run automatically for every single ticket, regardless of violation 
 
 ## Violation-Specific Defense Checks
 
+**Legend:**
+- ✅ = **Fully automated** — data is fetched and analyzed automatically, no user input needed
+- 💬 = **Argument strategy** — the AI raises this argument in the letter, but we don't have an automated data source to verify it. These are valid legal arguments that shift the burden of proof to the city.
+
 ### Street Cleaning (9-64-010) — $60 Fine
 All universal checks plus:
-- **Schedule verification**: PostGIS geocoding to determine ward/section, then lookup whether street cleaning was actually scheduled on the ticket date
-- **Cleaning occurrence**: Whether the street sweeper actually serviced the specific block (request for GPS logs)
-- **Weather cancellation**: Whether bad weather caused cleaning to be cancelled
-- **Signage compliance**: Sign spacing, visibility, and placement per city requirements
+- ✅ **Schedule verification** *(Automated)*: PostGIS geocoding to determine ward/section, then lookup whether street cleaning was actually scheduled on the ticket date
+- ✅ **Weather cancellation** *(Automated)*: Whether bad weather caused cleaning to be cancelled (from historical weather data)
+- ✅ **Signage compliance** *(Automated via Street View)*: Sign spacing, visibility, and placement per city requirements
+- 💬 **Cleaning occurrence** *(Argument strategy — no data source)*: The AI argues the city should provide GPS logs showing the sweeper actually serviced the block. No public sweeper GPS data exists; this is a FOIA-based argument.
 
 ### Snow Route (9-64-100) — $150 Fine
 All universal checks plus:
-- **Snowfall threshold**: Whether the 2-inch snowfall threshold was actually met
-- **Snow ban activation**: Whether the snow route ban was officially activated
-- **Timing**: Whether the vehicle was parked before the ban was declared
+- ✅ **Snowfall threshold** *(Automated)*: Compares actual snowfall (from Open-Meteo/NOAA historical data) against the 2-inch threshold required under Chicago Municipal Code 9-64-100. If snowfall was below 2 inches, this is flagged as a case-dispositive defense.
+- 💬 **Snow ban activation** *(Argument strategy — no data source)*: The AI argues the city should prove the snow route ban was officially activated. No public API for snow emergency declarations exists.
+- 💬 **Timing** *(Argument strategy)*: The AI argues the vehicle was parked before the ban was declared. GPS departure proof (if available) can support this.
 
 ### Parking in Alley (9-64-020) — $50 Fine
 All universal checks plus:
-- **Active loading/unloading**: Whether the vehicle was actively loading or unloading
-- **Public vs. private alley**: Whether the alley is actually a public alley
-- **Emergency weather**: Whether severe weather created an emergency need to shelter
+- 💬 **Active loading/unloading** *(Argument strategy — requires user info)*: The AI raises this if the user mentions loading/unloading in their context
+- 💬 **Public vs. private alley** *(Argument strategy — no data source)*: No GIS alley classification data exists publicly
+- ✅ **Emergency weather** *(Automated)*: Whether severe weather created an emergency need to shelter (from weather data)
 
 ### Bus Stop (9-64-050) — $100 Fine
 All universal checks plus:
-- **Signage/markings**: Whether bus stop signs were present and visible
-- **Curb markings**: Whether yellow/red curb markings were visible or faded
-- **Active bus stop**: Whether the stop is actively serviced by CTA
+- ✅ **Signage/markings** *(Automated via Street View)*: Whether bus stop signs were present and visible
+- ✅ **Curb markings** *(Automated via Street View)*: Whether yellow/red curb markings were visible or faded
+- 💬 **Active bus stop** *(Argument strategy — no data source)*: No CTA route/schedule database integration. The AI argues the city should verify the stop was actively serviced.
 
 ### Residential Permit Parking (9-64-070) — $65 Fine
 All universal checks plus:
-- **Permit validity**: Whether the user had a valid residential parking permit
-- **Zone verification**: Whether the vehicle was actually in a permit zone
-- **Signage**: Whether permit zone signs were properly posted
+- 💬 **Permit validity** *(Argument strategy — requires user info)*: Requires the user to provide their permit details
+- ✅ **Zone verification** *(Automated via Street View)*: Whether permit zone signs were properly posted at the location
+- ✅ **Signage** *(Automated via Street View)*: Whether permit zone signs were properly posted
 
 ### Bike Lane (9-64-090) — $150 Fine
 All universal checks plus:
-- **Lane markings**: Whether bike lane markings were visible or faded
-- **Active loading**: Whether the vehicle was actively loading/unloading (allowed briefly)
-- **Obstruction**: Whether construction or other conditions obscured the lane markings
+- ✅ **Lane markings** *(Automated via Street View)*: Whether bike lane markings were visible or faded
+- 💬 **Active loading** *(Argument strategy — requires user info)*: Whether the vehicle was actively loading/unloading (allowed briefly)
+- ✅ **Obstruction** *(Automated via Street View)*: Whether construction or other conditions obscured the lane markings
 
 ### Fire Hydrant (9-64-130) — $150 Fine
 All universal checks plus:
-- **Distance measurement**: Whether the vehicle was actually within 15 feet of the hydrant
-- **Hydrant visibility**: Whether the hydrant was obscured by snow, vegetation, or other objects
-- **GPS evidence**: Precise parking location vs. hydrant location
+- 💬 **Distance measurement** *(Argument strategy — no GIS data)*: No GIS hydrant location database. GPS parking evidence can provide approximate distance.
+- ✅ **Hydrant visibility** *(Automated via Street View + Weather)*: Whether the hydrant was obscured by snow, vegetation, or other objects
+- ✅ **GPS evidence** *(Automated)*: Precise parking location from app GPS data
 
 ### Expired Meter (9-64-170) — $65 Fine
 All universal checks plus:
-- **Meter malfunction**: Whether the parking meter was functioning properly
-- **Payment evidence**: Whether the user made a payment that wasn't registered
-- **Grace period**: Whether the ticket was issued within the grace period
+- 💬 **Meter malfunction** *(Argument strategy — no data source)*: No meter status data. The AI argues the city should verify meter functionality.
+- 💬 **Payment evidence** *(Argument strategy — no ParkChicago integration)*: Requires user to provide receipts
+- 💬 **Grace period** *(Argument strategy)*: No automated ordinance timing logic. The AI cites the grace period rule.
 
 ### Handicapped Zone (9-64-180) — $250 Fine
 All universal checks plus:
-- **Signage/markings**: Whether handicapped zone signs and markings were present and visible
-- **Placard validity**: Whether the user has a valid disabled parking placard
-- **Emergency conditions**: Whether weather or medical emergency required immediate parking
+- ✅ **Signage/markings** *(Automated via Street View)*: Whether handicapped zone signs and markings were present and visible
+- 💬 **Placard validity** *(Argument strategy — requires user info)*: Requires the user to provide their disabled parking placard details
+- ✅ **Emergency conditions** *(Automated via Weather)*: Whether weather or medical emergency required immediate parking
 
 ### No City Sticker (9-64-125 / 9-100-010) — $200 Fine
 All universal checks plus:
@@ -284,4 +288,4 @@ Speed camera violations receive all universal checks plus:
 
 ---
 
-*This document reflects the complete defense pipeline as of March 2026. The system continuously improves as new court outcomes are analyzed and new defense strategies are identified.*
+*This document reflects the complete defense pipeline as of March 2026. Items marked ✅ are fully automated with real data sources. Items marked 💬 are argument strategies the AI uses in letters — valid legal arguments, but relying on burden-shifting rather than automated data verification. The system continuously improves as new court outcomes are analyzed, new data sources are integrated, and new defense strategies are identified.*
