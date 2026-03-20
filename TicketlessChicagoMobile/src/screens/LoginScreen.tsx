@@ -266,7 +266,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           <View style={styles.formCard}>
             <Text style={styles.formTitle}>Sign In</Text>
             <Text style={styles.formSubtitle}>
-              Sign in with your Google or Apple account to get started.
+              Sign in to your Autopilot account.
             </Text>
 
             {error && (
