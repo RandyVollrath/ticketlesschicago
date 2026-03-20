@@ -718,6 +718,18 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
         impactScore: 0.35,
         goodExample: '"I was pulled over by CPD at this intersection and received citation #12345 for the same red light. Photo of the officer\'s ticket attached."',
       },
+      {
+        text: 'Were YOU actually driving the vehicle at the time of the violation, or was someone else? Under Chicago law, camera tickets go to the vehicle OWNER — but you may have a defense if you weren\'t driving.',
+        whyItMatters: 'Under CMC § 9-102-060, the registered owner is presumed liable for camera tickets. However, if you can identify the actual driver and provide a sworn affidavit, the liability transfers to them. "Citizen was Not Owner or Lessee" is a recognized defense that has resulted in 11,000+ dismissals in FOIA hearing data.',
+        impactScore: 0.30,
+        goodExample: '"I was not driving my car that day. My spouse was using the vehicle. I can provide an affidavit identifying them as the driver at the time of the violation."',
+      },
+      {
+        text: 'Is the cited vehicle a commercial vehicle — a truck, bus, or any vehicle with air brakes? If so, what type? (e.g., box truck, semi, transit bus, delivery van over 10,000 lbs)',
+        whyItMatters: 'Commercial vehicles with air brakes need significantly longer to stop than passenger cars. Air brakes have a 0.5-1 second delay before engaging, and heavy vehicles decelerate 30% slower. The yellow light timing at Chicago intersections is calculated for passenger cars — it may be physically impossible for a commercial vehicle to stop safely in the time provided.',
+        impactScore: 0.30,
+        goodExample: '"This is a 26-foot box truck (GVWR 16,000 lbs) with air brakes. I was fully loaded at the time of the violation."',
+      },
     ],
     quickTips: [
       'REVIEW YOUR VIOLATION VIDEO at chicago.gov/finance — this is the single most important step',

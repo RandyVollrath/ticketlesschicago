@@ -162,25 +162,29 @@ I respectfully request that this citation be dismissed.`,
     },
 
     secondary: {
-      id: 'yellow_light_timing',
-      name: 'Insufficient Yellow Light Duration',
-      template: `I respectfully contest this red light camera citation on the grounds that the yellow light duration at this intersection does not meet minimum safety standards.
+      id: 'illinois_statute_yellow',
+      name: 'Yellow Light Violates Illinois Statute (625 ILCS 5/11-306)',
+      template: `I respectfully contest this red light camera citation on the grounds that the yellow light duration at this intersection does not meet the minimum required by Illinois state law.
 
-Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION]. After reviewing the violation video and timing the yellow light phase, I found:
+Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION].
+
+Illinois statute 625 ILCS 5/11-306(c-5) explicitly requires that intersections equipped with automated red light enforcement systems must have a yellow change interval of at least the MUTCD (Manual on Uniform Traffic Control Devices) minimum PLUS ONE ADDITIONAL SECOND.
+
+For this [SPEED_LIMIT] mph intersection:
+- MUTCD minimum yellow: [MUTCD_MIN] seconds
+- Illinois statutory minimum for camera intersections: [STATUTORY_MIN] seconds (MUTCD + 1.0s)
+- Chicago's actual yellow at this intersection: [CHICAGO_ACTUAL] seconds
+- Shortfall below legal minimum: [SHORTFALL] seconds
 
 [YELLOW_TIMING_EVIDENCE]
 
-The Illinois Department of Transportation (IDOT) requires minimum yellow light durations based on speed limit:
-- 30 mph: minimum 3.0 seconds
-- 35 mph: minimum 3.5 seconds
-- 40 mph: minimum 4.0 seconds
-- 45 mph: minimum 4.5 seconds
+This is not merely an engineering recommendation — it is a binding requirement of Illinois state law that applies specifically to camera-enforced intersections. The 2014 Chicago Inspector General investigation confirmed that even small yellow light shortfalls generated tens of thousands of improper citations.
 
-The speed limit at this intersection is [SPEED_LIMIT] mph, requiring at least [MIN_YELLOW] seconds of yellow. The yellow phase I observed was approximately [OBSERVED_YELLOW] seconds.
+I have also submitted a Freedom of Information Act request to the Chicago Department of Transportation for the signal timing plan at this intersection to verify the actual yellow duration programmed at the time of the violation.
 
-An inadequately timed yellow light does not provide sufficient warning for safe stopping, violating both safety standards and due process. I respectfully request that this citation be dismissed.`,
+I respectfully request that this citation be dismissed on the grounds that the traffic control device at this camera-enforced intersection was not configured in compliance with 625 ILCS 5/11-306(c-5).`,
       requiredFacts: ['ticketNumber', 'date', 'intersection', 'speedLimit'],
-      winRate: 0.30,
+      winRate: 0.35,
       conditions: [
         { field: 'yellowLightShort', operator: 'equals', value: true },
       ],
@@ -291,6 +295,30 @@ I respectfully request that this citation be dismissed based on these emergency 
         supportingEvidence: ['emergency_documentation'],
         category: 'emergency',
       },
+      {
+        id: 'commercial_vehicle_braking',
+        name: 'Commercial Vehicle Cannot Stop Safely',
+        template: `I respectfully contest this red light camera citation on the grounds that the cited vehicle is a commercial vehicle with air brakes, and the yellow light duration at this intersection is physically insufficient for safe stopping.
+
+Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION]. The cited vehicle is a [VEHICLE_TYPE].
+
+Commercial vehicles equipped with air brakes require significantly longer stopping distances than passenger cars for two engineering reasons:
+1. Air Brake Lag: Air brakes have a 0.5-1.0 second delay before brakes engage (air pressure must build in the system). This adds to the perception-reaction time that yellow lights are designed to accommodate.
+2. Lower Deceleration Rate: Heavy vehicles decelerate at approximately 7 ft/s² versus 10 ft/s² for passenger cars, as documented in FMCSA braking standards.
+
+At the posted speed limit of [SPEED_LIMIT] mph, this commercial vehicle requires approximately [COMMERCIAL_YELLOW] seconds of yellow to safely perceive the signal, build air brake pressure, and decelerate. Chicago provides only [CHICAGO_ACTUAL] seconds — [SHORTFALL] seconds less than needed.
+
+The ITE yellow light formula and Chicago's signal timing are calibrated for passenger cars. Applying passenger car assumptions to a commercial vehicle creates a physical impossibility: the driver cannot stop safely in the time provided. This is a due process concern — the driver is penalized for a situation the traffic signal design did not account for.
+
+I respectfully request that this citation be dismissed.`,
+        requiredFacts: ['ticketNumber', 'date', 'intersection', 'speedLimit'],
+        winRate: 0.25,
+        conditions: [
+          { field: 'isCommercialVehicle', operator: 'equals', value: true },
+        ],
+        supportingEvidence: ['violation_footage_review'],
+        category: 'technical',
+      },
     ],
   },
 
@@ -300,7 +328,7 @@ I respectfully request that this citation be dismissed based on these emergency 
         id: 'defense_type',
         label: 'Primary Defense Used',
         type: 'select',
-        options: ['Factually inconsistent', 'Yellow light timing', 'Right turn on red', 'Vehicle stolen/sold', 'Emergency', 'Other'],
+        options: ['Factually inconsistent', 'Illinois statute (yellow timing)', 'Yellow light timing', 'Right turn on red', 'Vehicle stolen/sold', 'Commercial vehicle', 'Emergency', 'Other'],
         required: true,
       },
       {
@@ -334,12 +362,13 @@ I respectfully request that this citation be dismissed based on these emergency 
 
   tips: [
     'REVIEW YOUR VIOLATION VIDEO at chicago.gov/finance — this is the #1 most important step',
+    'ILLINOIS LAW requires camera intersections to add 1 EXTRA SECOND to the MUTCD minimum yellow (625 ILCS 5/11-306). At 30mph that means 4.0 seconds — Chicago only provides 3.0 seconds!',
     'Count the yellow light seconds in the video — under 3 seconds at 30mph is grounds for dismissal',
     'Right turns on red WITH a full stop are LEGAL — if the video shows a stop, you should win',
     'Camera tickets do NOT go on your driving record or affect your insurance in Illinois',
     'The fine is $100, but ignoring it can lead to a $100 late penalty + vehicle boot',
     'You can contest by mail — you don\'t need to appear in person',
-    'Request camera calibration and maintenance records if you believe the camera malfunctioned',
+    'We automatically FOIA both CDOT (signal timing) and Finance (ticket records) for every red light camera ticket',
     '"Failed to Select Codified Defense" causes many losses — our system handles this for you',
   ],
 
