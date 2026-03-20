@@ -367,9 +367,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Handle permit zone document uploads via MMS
+    // Only treat as permit docs if the message explicitly mentions permit-related keywords
     const isPermitDocs = (messageLower.includes('permit') || messageLower.includes('document') ||
                          messageLower.includes('id') || messageLower.includes('license') ||
-                         messageLower.includes('residency') || mediaFiles.length > 0) &&
+                         messageLower.includes('residency')) &&
                         mediaFiles.length > 0;
 
     if (isPermitDocs && matchedUser && mediaFiles.length > 0) {
@@ -602,6 +603,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
 
             // Regenerate letter with AI if we have a letter
+            let finalLetterContent = letter?.letter_content || letter?.letter_text || '';
             if (letter) {
               try {
                 const originalLetter = letter.letter_content || letter.letter_text || '';
@@ -615,6 +617,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 );
 
                 if (newLetter) {
+                  finalLetterContent = newLetter;
                   await supabaseAdmin
                     .from('contest_letters')
                     .update({
@@ -645,7 +648,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   ticket.id,
                   matchedUserId!,
                   letter.id,
-                  letter.letter_content || letter.letter_text || '',
+                  finalLetterContent,
                   violationTypeDisplay,
                   ticket.violation_date || null,
                   ticket.amount || null,
