@@ -76,6 +76,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (isFoiaResponseEmail(fromEmail, subject, text)) {
       console.log('FOIA response email detected from city');
 
+      // Upload FOIA attachments to Vercel Blob (PDFs, CSVs, XLSX files from city)
+      const foiaAttachmentsMeta: { filename: string; content_type: string; url?: string }[] = [];
+      let foiaAttachmentTextContent = ''; // Extracted text from CSV/text attachments for AI parsing
+      if (attachments.length > 0) {
+        try {
+          const { put } = await import('@vercel/blob');
+          for (const attachment of attachments) {
+            const filename = attachment.filename || `foia-doc-${Date.now()}`;
+            const contentType = attachment.content_type || 'application/octet-stream';
+            const buffer = Buffer.from(attachment.content, 'base64');
+
+            const blobPath = `foia-responses/${Date.now()}-${filename}`;
+            const blob = await put(blobPath, buffer, {
+              access: 'private',
+              contentType: contentType,
+            });
+
+            foiaAttachmentsMeta.push({
+              filename,
+              content_type: contentType,
+              url: blob.url,
+            });
+            console.log(`  ✅ Uploaded FOIA attachment: ${filename} (${contentType}, ${buffer.length} bytes) → ${blob.url}`);
+
+            // Extract text content from CSV/TSV/text attachments for AI parsing
+            const lowerFilename = filename.toLowerCase();
+            if (contentType.startsWith('text/') || lowerFilename.endsWith('.csv') || lowerFilename.endsWith('.tsv') || lowerFilename.endsWith('.txt')) {
+              try {
+                const textContent = buffer.toString('utf-8');
+                foiaAttachmentTextContent += `\n\n--- ATTACHMENT: ${filename} ---\n${textContent}`;
+                console.log(`  📄 Extracted ${textContent.length} chars of text from ${filename}`);
+              } catch (e) { /* non-text content, skip */ }
+            }
+          }
+        } catch (uploadError: any) {
+          console.error('  ❌ Error uploading FOIA attachments:', uploadError.message);
+          // Fall back to metadata-only if upload fails
+          for (const a of attachments) {
+            foiaAttachmentsMeta.push({
+              filename: a.filename || 'unknown',
+              content_type: a.content_type || 'application/octet-stream',
+            });
+          }
+        }
+      }
+
+      // Combine email body with any extracted attachment text for fuller AI parsing
+      const enrichedBody = foiaAttachmentTextContent
+        ? `${text}\n\n${foiaAttachmentTextContent}`
+        : text;
+
       // Extract email headers for In-Reply-To matching (Layer 2)
       const emailHeaders = {
         inReplyTo: data.headers?.['in-reply-to'] || data.in_reply_to || undefined,
@@ -89,10 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           fromEmail,
           subject,
           text,
-          attachments.map((a: any) => ({
-            filename: a.filename || 'unknown',
-            content_type: a.content_type || 'application/octet-stream',
-          })),
+          foiaAttachmentsMeta,
           emailHeaders,
         );
         console.log(`  FOIA result: ${foiaResult.action} (matched: ${foiaResult.matched}, type: ${foiaResult.foiaType})`);
@@ -106,11 +154,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               foiaResult.requestId,
               fromEmail,
               subject,
-              text,
-              attachments.map((a: any) => ({
-                filename: a.filename || 'unknown',
-                content_type: a.content_type || 'application/octet-stream',
-              })),
+              enrichedBody, // Use enriched body with CSV/text attachment content
+              foiaAttachmentsMeta,
             );
             console.log(`  History FOIA: ${historyResult.action} (${historyResult.parsedTicketCount} tickets parsed)`);
 
@@ -249,7 +294,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                           </div>
                           <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
                             <p>${userMessage}</p>
-                            ${isDenial ? '<p style="background: #f3e8ff; padding: 12px; border-radius: 8px; border-left: 4px solid #7C3AED;"><strong>What this means:</strong> Under the Illinois FOIA Act (5 ILCS 140), the city had 5 business days to produce the enforcement records. Their failure to do so — or denial that records exist — means they cannot prove the violation occurred as described. This is one of the strongest supplementary arguments for dismissal.</p>' : ''}
+                            ${isDenial ? '<p style="background: #f3e8ff; padding: 12px; border-radius: 8px; border-left: 4px solid #7C3AED;"><strong>What this means:</strong> Under the Illinois FOIA Act (5 ILCS 140), the city had 5 business days to produce the enforcement records. Their denial that records exist means no supporting enforcement documentation is available for this citation. This strengthens the due process argument in your contest letter.</p>' : ''}
                             <p style="color: #6b7280; font-size: 13px; margin-top: 16px;">No action needed from you — we handle everything automatically.</p>
                           </div>
                         </div>

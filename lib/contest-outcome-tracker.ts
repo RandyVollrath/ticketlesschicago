@@ -705,8 +705,8 @@ async function processEvidenceFoiaMatch(
   const notes = isFulfillment
     ? `City produced ${attachments.length} document(s). Review for defense-relevant information.`
     : isDenial
-    ? 'City responded: no responsive records found. Strengthens "Prima Facie Case Not Established" argument.'
-    : 'City responded but produced no records. Strengthens prima facie argument.';
+    ? 'City responded: no responsive records found. Strengthens due process argument — no supporting enforcement documentation exists.'
+    : 'City responded but produced no records. Supports due process argument.';
 
   // Update the FOIA request
   await supabase
@@ -720,7 +720,7 @@ async function processEvidenceFoiaMatch(
         subject,
         body_preview: body.substring(0, 500),
         attachment_count: attachments.length,
-        attachments: attachments.map(a => ({ filename: a.filename, type: a.content_type })),
+        attachments: attachments.map(a => ({ filename: a.filename, type: a.content_type, ...(a.url ? { url: a.url } : {}) })),
         is_denial: isDenial,
         received_at: new Date().toISOString(),
         match_method: matchMethod,
@@ -809,6 +809,7 @@ export async function processHistoryFoiaResponse(
       subject,
       body_preview: body.substring(0, 500),
       attachment_count: attachments.length,
+      attachments: attachments.map(a => ({ filename: a.filename, type: a.content_type, ...(a.url ? { url: a.url } : {}) })),
       received_at: new Date().toISOString(),
     },
     ticket_count: ticketCount,

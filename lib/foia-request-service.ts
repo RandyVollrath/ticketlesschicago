@@ -3,7 +3,8 @@
  *
  * Automates Freedom of Information Act requests to the Chicago Department of Finance
  * for parking ticket enforcement records. When the city fails to produce records,
- * it becomes a powerful argument: "Prima Facie Case Not Established by City."
+ * it becomes a due process argument: the respondent was denied the opportunity
+ * to review enforcement documentation and prepare a defense.
  *
  * FOIA submission: email to DOFfoia@cityofchicago.org
  * Legal basis: Illinois FOIA (5 ILCS 140)
