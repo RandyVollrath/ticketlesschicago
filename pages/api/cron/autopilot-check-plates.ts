@@ -547,9 +547,12 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
     const violationType = mapViolationType(ticket.violation_code);
     const cameraViolation = isCameraViolation(violationType);
     // Calculate deadlines based on ticket issue date (21-day contest window)
-    const ticketDate = new Date(ticket.issue_date);
-    const autoSendDeadline = new Date(ticketDate.getTime() + 17 * 24 * 60 * 60 * 1000); // Day 17 auto-send
-    const contestDeadline = new Date(ticketDate.getTime() + 21 * 24 * 60 * 60 * 1000); // Day 21 hard deadline
+    // Use Chicago timezone for calendar-day arithmetic to avoid UTC midnight edge cases
+    const ticketDateRaw = new Date(ticket.issue_date);
+    const chicagoTicketStr = ticketDateRaw.toLocaleDateString('en-US', { timeZone: 'America/Chicago' });
+    const chicagoTicketDate = new Date(chicagoTicketStr);
+    const autoSendDeadline = new Date(chicagoTicketDate.getTime() + 17 * 24 * 60 * 60 * 1000); // Day 17 auto-send
+    const contestDeadline = new Date(chicagoTicketDate.getTime() + 21 * 24 * 60 * 60 * 1000); // Day 21 hard deadline
     // evidence_deadline = Day 17 (auto-send date, unified across all code paths)
     const evidenceDeadline = autoSendDeadline;
 

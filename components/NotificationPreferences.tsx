@@ -162,7 +162,7 @@ export default function NotificationPreferences({ userId, onSave }: Notification
           phone_call_enabled: preferences.phone_call_enabled,
           sms_enabled: preferences.street_cleaning_sms,
           email_enabled: preferences.street_cleaning_email,
-          marketing_opt_out: !preferences.marketing_emails,
+          marketing_consent: preferences.marketing_emails,
         })
         .eq('user_id', userId);
 

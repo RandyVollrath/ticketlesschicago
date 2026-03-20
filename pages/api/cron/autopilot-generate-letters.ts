@@ -257,7 +257,7 @@ function generateApprovalToken(ticketId: string, userId: string, letterId: strin
   return jwt.sign(
     { ticket_id: ticketId, user_id: userId, letter_id: letterId },
     JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: '30d' }
   );
 }
 
