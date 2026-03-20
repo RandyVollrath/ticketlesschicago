@@ -229,7 +229,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     ? `FOIA Update: No Records Found — Ticket #${ticketData.ticket_number}`
                     : `FOIA Update: City Responded — Ticket #${ticketData.ticket_number}`;
                   const userMessage = isDenial
-                    ? `The City of Chicago responded to our FOIA request for ticket #${ticketData.ticket_number} and stated that no responsive records were found. This actually strengthens your contest — the city cannot establish a prima facie case without enforcement records. Your contest letter will be updated to include this argument.`
+                    ? `The City of Chicago responded to our FOIA request for ticket #${ticketData.ticket_number} and stated that no responsive records were found. This strengthens your contest — the city's own records system has no supporting enforcement documentation for this citation. Your contest letter will be updated to include this as a due process argument.`
                     : `The City of Chicago responded to our FOIA request for ticket #${ticketData.ticket_number} and provided ${attachments.length} document(s). We're reviewing the records and updating your contest letter accordingly.`;
 
                   await fetch('https://api.resend.com/emails', {

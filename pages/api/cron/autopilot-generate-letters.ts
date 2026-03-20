@@ -1401,21 +1401,20 @@ NOTE: This is the city's schedule. We do NOT have data confirming whether cleani
     const responsePayload = evidence.foiaRequest.responsePayload;
 
     if (foiaStatus === 'fulfilled_denial' || (foiaStatus === 'fulfilled' && responsePayload?.is_denial)) {
-      // City responded but denied records exist — strongest prima facie argument
+      // City responded but denied records exist — strong supplementary argument
       sections.push(`=== FOIA EVIDENCE REQUEST — CITY DENIED RECORDS EXIST ===
 
 On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to the Department of Finance requesting the enforcement records for this citation, including the issuing officer's field notes, photographs, handheld device data, and violation-specific records.
 
-The City RESPONDED to the FOIA request and stated that NO RESPONSIVE RECORDS WERE FOUND. This is a critical admission — the city's own records system cannot produce the enforcement documentation for this citation.
+The City RESPONDED to the FOIA request and stated that NO RESPONSIVE RECORDS WERE FOUND.
 
-INSTRUCTIONS: This is a VERY STRONG argument — possibly the strongest supplementary argument available. Include a paragraph stating:
+INSTRUCTIONS: This is a STRONG supplementary argument — stronger than non-response because the city affirmatively stated the records don't exist. However, do NOT claim this alone prevents the city from establishing a prima facie case — for automated camera violations, the hearing officer has independent access to the camera photos/video through the city's ticket system. Include a paragraph stating:
 1. A FOIA request was filed on ${sentFormatted} for the enforcement records
 2. The City's Department of Finance responded that no responsive records were found
-3. This means the city cannot produce the officer's contemporaneous notes, photographs, or device data that would establish a prima facie case
-4. Without enforcement documentation, the city has not met its burden of proof that the violation occurred as described
-5. Under Illinois administrative law, the respondent (city) bears the burden of establishing the violation by a preponderance of the evidence. The absence of records from the city's own system is dispositive.
-
-Frame this as: "The city's own records system confirms that the enforcement documentation for this citation does not exist, which renders the city unable to establish a prima facie case."`);
+3. This means the city has no officer's contemporaneous field notes, device calibration data, or supplementary enforcement documentation for this citation beyond the automated camera images
+4. The absence of any supporting documentation beyond the automated images raises questions about the reliability and completeness of the enforcement record
+5. The respondent was denied the opportunity to review evidence that could corroborate or contradict the alleged violation
+Frame as a transparency and due process concern that strengthens the other substantive arguments in the letter — not as independently dispositive.`);
 
     } else if (foiaStatus === 'fulfilled_with_records' || (foiaStatus === 'fulfilled' && !responsePayload?.is_denial)) {
       // City responded with actual records — analyze what was produced
@@ -1427,11 +1426,11 @@ On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submi
 
 City's response summary: "${bodyPreview}"
 
-INSTRUCTIONS: The city produced some records in response to our FOIA request. This means:
+INSTRUCTIONS: The city produced some records in response to our FOIA request. Use this as a supplementary point:
 1. Mention that a FOIA request was filed and the city responded
-2. If the records produced are INCOMPLETE (e.g., no officer field notes, no photographs, no device data), argue that the incomplete production means key evidence is missing — the city cannot fully establish a prima facie case
-3. If the response only includes generic records (e.g., a copy of the citation itself), argue that mere reproduction of the citation is not independent evidence of the violation
-4. Note that the respondent has reviewed the records produced and they do not establish the factual basis for the citation
+2. If the records produced are INCOMPLETE (e.g., no officer field notes, no device calibration data), note that the production was incomplete and raises questions about the thoroughness of the enforcement record
+3. If the response only includes generic records (e.g., a copy of the citation itself), note that the city produced no independent documentation beyond what was already available
+4. Do NOT claim incomplete records prevent the city from establishing a prima facie case — the hearing officer has independent access to the camera images/video. Frame as: the limited records produced suggest a lack of supporting documentation beyond the automated camera system itself
 5. Do NOT assume or fabricate what the records contain — use general language about what would be expected vs what was (or wasn't) produced`);
 
     } else if (foiaStatus === 'sent' && evidence.foiaRequest.daysElapsed >= 7) {
@@ -1442,7 +1441,13 @@ On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submi
 
 As of this letter, ${evidence.foiaRequest.daysElapsed} days have elapsed and the Department has NOT produced the requested records, exceeding the statutory five-business-day response period.
 
-INSTRUCTIONS: Include a paragraph in the contest letter noting that a FOIA request was filed on ${sentFormatted} for the enforcement records and the city failed to respond within the statutory deadline. Argue that the absence of these records means the city cannot establish a prima facie case. This is a STRONG supplementary argument — "Prima Facie Case Not Established by City" is one of the top reasons tickets are dismissed. Frame it as: without the officer's contemporaneous notes and photographic evidence, the city has not met its burden of proving the violation occurred as described.`);
+INSTRUCTIONS: This is a SUPPLEMENTARY due process argument — do NOT claim this alone prevents the city from establishing a prima facie case (the hearing officer has independent access to the violation photos/video). Instead, frame it as:
+1. A FOIA request was filed on ${sentFormatted} for the enforcement records and the city failed to respond within the statutory deadline
+2. This denied the respondent the opportunity to review and prepare a defense against the specific evidence the city relies upon
+3. The city's failure to comply with its own transparency obligations under 5 ILCS 140 raises concerns about the completeness and reliability of the enforcement record
+4. The respondent was unable to verify whether officer field notes, device calibration data, or other documentation supports the citation
+5. Frame as a procedural fairness / due process concern: "The city's failure to produce the requested records within the statutory deadline denied the respondent a meaningful opportunity to review the evidence and prepare a defense."
+Do NOT overstate this as a case-killer — it adds credibility to the contest and supports other substantive arguments.`);
 
     } else if (foiaStatus === 'sent') {
       // FOIA was sent but city still has time to respond
@@ -1454,8 +1459,9 @@ INSTRUCTIONS: Mention in the letter that a FOIA request was filed requesting the
     }
   }
 
-  // ── Section 13b: CDOT FOIA (Signal Timing) Request ──
-  if (evidence.cdotFoiaRequest.hasFoiaRequest && evidence.cdotFoiaRequest.sentDate) {
+  // ── Section 13b: CDOT FOIA (Signal Timing) Request — only for camera violations ──
+  const isCameraViolation = ticket.violation_type === 'red_light' || ticket.violation_type === 'speed_camera';
+  if (isCameraViolation && evidence.cdotFoiaRequest.hasFoiaRequest && evidence.cdotFoiaRequest.sentDate) {
     const cdotSentFormatted = new Date(evidence.cdotFoiaRequest.sentDate).toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
@@ -1881,7 +1887,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
         }
 
         if (foiaDeadlineExpired && !foiaResponded) {
-          console.log(`    FOIA deadline EXPIRED (${businessDays} business days) — prima facie argument available`);
+          console.log(`    FOIA deadline EXPIRED (${businessDays} business days) — due process argument available`);
         } else if (foiaResponded) {
           console.log(`    FOIA response received (${foiaReq.status}) — proceeding with letter`);
         }

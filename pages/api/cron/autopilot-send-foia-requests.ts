@@ -8,7 +8,8 @@
  * FOIA requests are queued at ticket DETECTION time (by autopilot-check-plates.ts),
  * NOT at mailing time. This ensures the city's 5-business-day response deadline
  * expires well before the contest letter is generated (~day 17), giving us a
- * ready-made "Prima Facie Case Not Established" argument.
+ * due process / transparency argument (city failed to produce records the
+ * respondent requested to prepare their defense).
  *
  * The FOIA request asks for:
  * - Officer's field notes and observations

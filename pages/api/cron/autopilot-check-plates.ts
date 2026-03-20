@@ -688,8 +688,8 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
 
       // Queue FOIA evidence request immediately at detection time.
       // Filing early means the city's 5-business-day response deadline expires
-      // BEFORE we generate/mail the contest letter, giving us a ready-made
-      // "Prima Facie Case Not Established" argument if they fail to respond.
+      // BEFORE we generate/mail the contest letter, giving us a due process
+      // argument if they fail to respond (denied opportunity to review evidence).
       try {
         const now = new Date().toISOString();
         await supabaseAdmin
