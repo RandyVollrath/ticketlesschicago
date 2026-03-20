@@ -175,6 +175,7 @@ interface EvidenceBundle {
   streetViewEvidence: StreetViewResult | null;
   streetViewPackage: StreetViewEvidencePackage | null;
   foiaRequest: FoiaRequestStatus;
+  cdotFoiaRequest: FoiaRequestStatus;
   alertSubscriptionEvidence: AlertSubscriptionEvidence | null;
   userSubmittedEvidence: {
     hasEvidence: boolean;
@@ -415,6 +416,12 @@ async function gatherAllEvidence(
     streetViewEvidence: null,
     streetViewPackage: null,
     foiaRequest: {
+      hasFoiaRequest: false,
+      sentDate: null,
+      daysElapsed: 0,
+      status: 'none',
+    },
+    cdotFoiaRequest: {
       hasFoiaRequest: false,
       sentDate: null,
       daysElapsed: 0,
@@ -917,6 +924,34 @@ async function gatherAllEvidence(
     } catch (e) { /* No FOIA request for this ticket — that's fine */ }
   })());
 
+  // ── CDOT FOIA (Signal Timing) Request Status ──
+  promises.push((async () => {
+    try {
+      const { data: cdotFoiaReq } = await supabaseAdmin
+        .from('ticket_foia_requests' as any)
+        .select('status, sent_at, response_payload, notes, fulfilled_at')
+        .eq('ticket_id', ticket.id)
+        .eq('request_type', 'signal_timing')
+        .single();
+
+      if (cdotFoiaReq && cdotFoiaReq.sent_at) {
+        const sentDate = new Date(cdotFoiaReq.sent_at);
+        const now = new Date();
+        const daysElapsed = Math.floor((now.getTime() - sentDate.getTime()) / (1000 * 60 * 60 * 24));
+        bundle.cdotFoiaRequest = {
+          hasFoiaRequest: true,
+          sentDate: cdotFoiaReq.sent_at,
+          daysElapsed,
+          status: cdotFoiaReq.status,
+          responsePayload: cdotFoiaReq.response_payload || null,
+          notes: cdotFoiaReq.notes || null,
+          fulfilledAt: cdotFoiaReq.fulfilled_at || null,
+        };
+        console.log(`    CDOT FOIA request: ${cdotFoiaReq.status}, sent ${daysElapsed} days ago`);
+      }
+    } catch (e) { /* No CDOT FOIA request for this ticket — that's fine */ }
+  })());
+
   // ── FOIA User Ticket History (for first-offense / clean-record arguments) ──
   promises.push((async () => {
     try {
@@ -1416,6 +1451,66 @@ INSTRUCTIONS: Include a paragraph in the contest letter noting that a FOIA reque
 A Freedom of Information Act request was submitted on ${sentFormatted} for the enforcement records for this citation. The city's response is still pending (${evidence.foiaRequest.daysElapsed} days elapsed).
 
 INSTRUCTIONS: Mention in the letter that a FOIA request was filed requesting the officer's field notes and enforcement records. Note that the results are pending and the respondent reserves the right to supplement this contest with any records produced. This shows diligence and puts the reviewer on notice that the enforcement documentation is being scrutinized.`);
+    }
+  }
+
+  // ── Section 13b: CDOT FOIA (Signal Timing) Request ──
+  if (evidence.cdotFoiaRequest.hasFoiaRequest && evidence.cdotFoiaRequest.sentDate) {
+    const cdotSentFormatted = new Date(evidence.cdotFoiaRequest.sentDate).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+    const cdotStatus = evidence.cdotFoiaRequest.status;
+
+    if (cdotStatus === 'fulfilled_denial' || (cdotStatus === 'fulfilled' && evidence.cdotFoiaRequest.responsePayload?.is_denial)) {
+      sections.push(`=== CDOT FOIA — SIGNAL TIMING RECORDS DENIED ===
+
+On ${cdotSentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to the Chicago Department of Transportation (CDOT) requesting the signal timing plan for this intersection, including the programmed yellow change interval duration at the time of the alleged violation.
+
+CDOT RESPONDED and stated that NO RESPONSIVE RECORDS WERE FOUND for the signal timing at this intersection.
+
+INSTRUCTIONS: This is a VERY STRONG argument for red light camera tickets. Include a paragraph stating:
+1. A FOIA request was filed on ${cdotSentFormatted} to CDOT for the signal timing plan at this intersection
+2. CDOT responded that no responsive records were found
+3. Without the signal timing plan, the city cannot demonstrate that the yellow change interval at this camera-enforced intersection complied with 625 ILCS 5/11-306(c-5), which REQUIRES the yellow interval to be at least MUTCD minimum + 1 additional second
+4. The city bears the burden of proving the traffic control device was lawfully configured — and CDOT's own records system cannot produce this proof
+5. Frame as: "The city cannot establish that this camera-enforced intersection's signal timing met the minimum statutory requirements, as CDOT has no records of the timing configuration."`);
+
+    } else if (cdotStatus === 'fulfilled_with_records' || (cdotStatus === 'fulfilled' && !evidence.cdotFoiaRequest.responsePayload?.is_denial)) {
+      const bodyPreview = evidence.cdotFoiaRequest.responsePayload?.body_preview || '';
+      sections.push(`=== CDOT FOIA — SIGNAL TIMING RECORDS PRODUCED ===
+
+On ${cdotSentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to CDOT for the signal timing plan at this intersection. CDOT responded and produced records.
+
+CDOT's response summary: "${bodyPreview}"
+
+INSTRUCTIONS: The city produced signal timing records. Mention this in the letter:
+1. Note that the respondent filed a FOIA request for the signal timing plan and CDOT responded
+2. If the response does NOT include the specific yellow change interval duration, argue the production is incomplete
+3. If it DOES include the yellow duration, compare it against the 625 ILCS 5/11-306(c-5) requirement (MUTCD minimum + 1 second)
+4. At 30 mph: statutory minimum is 4.0 seconds. At 35 mph: 4.5 seconds. At 40 mph: 5.0 seconds. At 45 mph: 5.5 seconds.
+5. If the yellow is below the statutory minimum, this is BINDING STATE LAW being violated — lead with this argument`);
+
+    } else if (cdotStatus === 'sent' && evidence.cdotFoiaRequest.daysElapsed >= 7) {
+      sections.push(`=== CDOT FOIA — CITY FAILED TO PRODUCE SIGNAL TIMING RECORDS ===
+
+On ${cdotSentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to the Chicago Department of Transportation (CDOT) requesting the signal timing plan for this intersection — specifically, the programmed yellow change interval duration at the time of the alleged violation.
+
+As of this letter, ${evidence.cdotFoiaRequest.daysElapsed} days have elapsed and CDOT has NOT produced the requested signal timing records, exceeding the statutory five-business-day response period.
+
+INSTRUCTIONS: This is a STRONG supplementary argument for red light camera tickets. Include a paragraph stating:
+1. A FOIA request was filed on ${cdotSentFormatted} to CDOT for the signal timing plan
+2. CDOT failed to respond within the statutory deadline (5 ILCS 140 requires 5 business days)
+3. Without the signal timing plan, there is no way to verify that the yellow change interval at this camera-enforced intersection complied with Illinois law (625 ILCS 5/11-306(c-5))
+4. Under that statute, camera-enforced intersections MUST have a yellow interval of at least the MUTCD minimum PLUS ONE ADDITIONAL SECOND — Chicago has been caught violating this before (2014 Inspector General investigation)
+5. The respondent reserves the right to supplement this contest if CDOT eventually produces the records
+6. Frame as: "The city's failure to produce the signal timing plan for this camera-enforced intersection prevents verification of compliance with the statutory yellow light minimum required by 625 ILCS 5/11-306(c-5)."`);
+
+    } else if (cdotStatus === 'sent') {
+      sections.push(`=== CDOT FOIA — SIGNAL TIMING REQUEST PENDING ===
+
+A Freedom of Information Act request was submitted on ${cdotSentFormatted} to the Chicago Department of Transportation requesting the signal timing plan for this intersection, including the programmed yellow change interval. The response is still pending (${evidence.cdotFoiaRequest.daysElapsed} days elapsed).
+
+INSTRUCTIONS: Mention that a FOIA request was filed to CDOT for the signal timing records. Note that the results are pending and the respondent reserves the right to supplement this contest with the timing data once produced. This demonstrates the respondent's diligence in verifying whether the yellow light duration at this camera-enforced intersection complies with 625 ILCS 5/11-306(c-5).`);
     }
   }
 
