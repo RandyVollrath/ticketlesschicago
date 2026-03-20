@@ -707,8 +707,9 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
         </View>
 
-        {/* Subscription Info */}
-        {autopilotSubscription && (
+        {/* Subscription Info — hidden on iOS (App Store Guideline 3.1.1:
+           showing subscription status/renewal reveals paid model to reviewers) */}
+        {Platform.OS !== 'ios' && autopilotSubscription && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Subscription</Text>

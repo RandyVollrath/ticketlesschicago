@@ -22,11 +22,12 @@ interface AccountInactiveScreenProps {
 }
 
 /**
- * Shown when a user logs in but doesn't have an active paid account.
- * Directs them to the website to purchase a membership.
+ * Shown when a user logs in but doesn't have an active account.
+ * This is a "login only" app — accounts are created/managed on the website.
  *
- * On iOS: No pricing or purchase links are shown (App Store guideline 3.1.1).
- * On Android: Shows the website URL with pricing.
+ * On iOS: No pricing, purchase links, or subscription language (App Store guideline 3.1.1).
+ *         Tells user to visit autopilotamerica.com to set up their account (text only, no link).
+ * On Android: Shows a clickable "Set Up on Website" button.
  */
 export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: AccountInactiveScreenProps) {
   const [signingOut, setSigningOut] = useState(false);
@@ -72,18 +73,18 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>Account Not Active</Text>
+        <Text style={styles.title}>Account Required</Text>
 
         {/* Message - different per platform */}
         {Platform.OS === 'ios' ? (
           <Text style={styles.message}>
-            Your account needs to be activated before you can use the app.
-            If you've already activated, tap the button below to refresh.
+            An active Autopilot account is required to use this app.{'\n\n'}
+            Visit autopilotamerica.com to set up your account, then come back and tap the button below.
           </Text>
         ) : (
           <Text style={styles.message}>
-            Your account needs to be activated before you can use the app.
-            Visit autopilotamerica.com to activate your membership.
+            An active Autopilot account is required to use this app.{'\n\n'}
+            Visit autopilotamerica.com to set up your account.
           </Text>
         )}
 
@@ -96,11 +97,12 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
         )}
 
         {/* Open website button - Android only. iOS App Store Guideline 3.1.1
-           prohibits linking to external purchase flows. */}
+           prohibits linking to external purchase flows. On iOS, the website
+           URL is mentioned as plain text in the message above instead. */}
         {Platform.OS !== 'ios' && (
           <TouchableOpacity style={styles.primaryButton} onPress={handleOpenWebsite}>
             <MaterialCommunityIcons name="web" size={20} color={colors.textInverse} />
-            <Text style={styles.primaryButtonText}>Activate on Website</Text>
+            <Text style={styles.primaryButtonText}>Set Up on Website</Text>
           </TouchableOpacity>
         )}
 
@@ -115,7 +117,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
           ) : (
             <>
               <MaterialCommunityIcons name="refresh" size={20} color={colors.primary} />
-              <Text style={styles.secondaryButtonText}>I've already activated</Text>
+              <Text style={styles.secondaryButtonText}>I've already set up my account</Text>
             </>
           )}
         </TouchableOpacity>
