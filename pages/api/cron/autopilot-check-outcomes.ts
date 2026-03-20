@@ -86,8 +86,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // For each ticket, check the portal API for status changes
     // We use the Vercel-based API endpoint to check individual tickets
     for (const ticket of trackedTickets) {
-      result.ticketsChecked++;
-
       try {
         // Skip if checked within the last 12 hours
         if (ticket.last_portal_check) {
@@ -97,6 +95,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             continue;
           }
         }
+
+        result.ticketsChecked++;
 
         // Check via the autopilot-check-plates portal API
         // We'll query our own DB for the latest portal data from the scraper

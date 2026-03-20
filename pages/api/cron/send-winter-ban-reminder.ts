@@ -10,13 +10,14 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
  */
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Verify cron secret for Vercel cron jobs
+  // Verify cron secret
   const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // Also allow manual trigger in dev
-    if (process.env.NODE_ENV === 'production' && req.method !== 'POST') {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  const keyParam = req.query.key as string | undefined;
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}` || keyParam === process.env.CRON_SECRET;
+
+  if (!isVercelCron && !isAuthorized) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   console.log('🌨️ Starting Winter Ban Reminder job...');

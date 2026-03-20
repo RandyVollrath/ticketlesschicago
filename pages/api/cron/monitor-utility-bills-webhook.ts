@@ -19,6 +19,16 @@ const supabase = createClient(
 );
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Verify cron secret
+  const authHeader = req.headers.authorization;
+  const keyParam = req.query.key as string | undefined;
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}` || keyParam === process.env.CRON_SECRET;
+
+  if (!isVercelCron && !isAuthorized) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   console.log('🏥 Running utility bills webhook health check...');
 
   try {
