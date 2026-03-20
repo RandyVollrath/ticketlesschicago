@@ -634,11 +634,22 @@ function summarizeUserEvidence(userEvidence: any): string | null {
     if (Array.isArray(parsed)) {
       return `${parsed.length} file(s) submitted`;
     }
+    const channel = parsed.received_via === 'sms' ? 'SMS' : 'email';
+    // SMS evidence with photo attachments
+    if (parsed.sms_attachments && Array.isArray(parsed.sms_attachments)) {
+      const photoCount = parsed.sms_attachments.length;
+      const hasText = parsed.text && parsed.text !== 'See attached photos';
+      return `${photoCount} photo(s) via ${channel}${hasText ? ' + text' : ''}`;
+    }
+    // Email/SMS evidence with attachment_urls
+    if (parsed.attachment_urls && Array.isArray(parsed.attachment_urls)) {
+      return `${parsed.attachment_urls.length} attachment(s) via ${channel}`;
+    }
     if (parsed.attachments) {
-      return `${parsed.attachments.length} attachment(s) from email`;
+      return `${parsed.attachments.length} attachment(s) from ${channel}`;
     }
     if (parsed.text || parsed.body) {
-      return 'Text evidence submitted via email';
+      return `Text evidence via ${channel}`;
     }
     return 'Evidence submitted';
   } catch {

@@ -559,6 +559,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Store evidence on the ticket
             const existingEvidence = ticket.user_evidence || {};
+            const smsAttachmentObjects = uploadedMedia.map((m: any) => ({
+              url: m.url,
+              filename: m.filename,
+              content_type: m.contentType,
+            }));
+            // Also populate attachment_urls (flat string array) so the Lob mailing
+            // code picks up these images as exhibits in the physical letter.
+            const existingAttachmentUrls: string[] = existingEvidence.attachment_urls || [];
+            const newAttachmentUrls = uploadedMedia.map((m: any) => m.url);
             const updatedEvidence = {
               ...existingEvidence,
               text: existingEvidence.text
@@ -567,11 +576,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               received_at: new Date().toISOString(),
               received_via: 'sms',
               has_attachments: true,
-              sms_attachments: uploadedMedia.map((m: any) => ({
-                url: m.url,
-                filename: m.filename,
-                content_type: m.contentType,
-              })),
+              attachment_urls: [...existingAttachmentUrls, ...newAttachmentUrls],
+              sms_attachments: smsAttachmentObjects,
               photo_analysis: photoAnalysisResults.length > 0
                 ? photoAnalysisResults.map((pa: any) => pa.description)
                 : undefined,
