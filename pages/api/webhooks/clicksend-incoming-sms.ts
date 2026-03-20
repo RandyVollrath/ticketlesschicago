@@ -481,9 +481,232 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Handle MMS evidence for pending tickets
+    // If a matched user sends MMS photos and has a pending ticket, treat it as ticket evidence
+    const hasMediaForEvidence = mediaFiles.length > 0 && matchedUser && !isPermitDocs;
+    let evidenceProcessed = false;
+
+    if (hasMediaForEvidence) {
+      try {
+        // Check if user has any pending_evidence tickets (use separate queries to avoid Supabase join typing issues)
+        const { data: pendingTickets } = await supabaseAdmin
+          .from('detected_tickets')
+          .select('*')
+          .eq('user_id', matchedUserId!)
+          .eq('status', 'pending_evidence')
+          .order('evidence_deadline', { ascending: true })
+          .limit(1);
+
+        if (pendingTickets && pendingTickets.length > 0) {
+          const ticket = pendingTickets[0] as any;
+
+          // Get associated letter
+          const { data: letters } = await supabaseAdmin
+            .from('contest_letters')
+            .select('id, letter_content, letter_text, defense_type')
+            .eq('ticket_id', ticket.id)
+            .limit(1);
+          const letter = letters?.[0] as any;
+
+          console.log(`📸 Processing MMS evidence for ticket ${ticket.ticket_number} from ${maskPhone(fromNumber)}`);
+
+          // Import shared evidence processing functions
+          const {
+            downloadAndUploadMedia,
+            parseUserEvidence,
+            reEvaluateWithKit,
+            regenerateLetterWithAI,
+            sendApprovalEmailForEvidence,
+            analyzeEvidencePhotos,
+          } = await import('../../../lib/evidence-processing');
+
+          // Download MMS media and upload to Vercel Blob
+          const uploadedMedia = await downloadAndUploadMedia(
+            mediaFiles,
+            matchedUserId!,
+            ticket.id,
+          );
+
+          if (uploadedMedia.length === 0) {
+            console.error('❌ Failed to download/upload any MMS media');
+          } else {
+            console.log(`✅ Uploaded ${uploadedMedia.length} evidence files to blob storage`);
+
+            // Get user profile for letter regeneration
+            const { data: profile } = await supabaseAdmin
+              .from('user_profiles')
+              .select('*')
+              .eq('user_id', matchedUserId)
+              .single();
+
+            // Build evidence data
+            const evidenceText = messageBody || 'See attached photos';
+            const photoUrls = uploadedMedia
+              .filter(m => /^image\//i.test(m.contentType))
+              .map(m => m.url);
+            const attachmentFilenames = uploadedMedia.map(m => m.filename);
+
+            // Analyze photos with Claude Vision
+            let photoAnalysisResults: { url: string; filename: string; description: string }[] = [];
+            if (photoUrls.length > 0) {
+              try {
+                photoAnalysisResults = await analyzeEvidencePhotos(photoUrls, ticket);
+              } catch (analysisError) {
+                console.error('Photo analysis error (continuing):', analysisError);
+              }
+            }
+
+            // Store evidence on the ticket
+            const existingEvidence = ticket.user_evidence || {};
+            const updatedEvidence = {
+              ...existingEvidence,
+              text: existingEvidence.text
+                ? `${existingEvidence.text}\n\n--- SMS Evidence ---\n${evidenceText}`
+                : evidenceText,
+              received_at: new Date().toISOString(),
+              received_via: 'sms',
+              has_attachments: true,
+              sms_attachments: uploadedMedia.map((m: any) => ({
+                url: m.url,
+                filename: m.filename,
+                content_type: m.contentType,
+              })),
+              photo_analysis: photoAnalysisResults.length > 0
+                ? photoAnalysisResults.map((pa: any) => pa.description)
+                : undefined,
+            };
+
+            // Update ticket with evidence
+            await supabaseAdmin
+              .from('detected_tickets')
+              .update({
+                user_evidence: updatedEvidence,
+                evidence_received_at: new Date().toISOString(),
+                status: 'evidence_received',
+              } as any)
+              .eq('id', ticket.id);
+
+            // Re-evaluate with contest kit
+            const parsedEvidence = parseUserEvidence(
+              evidenceText,
+              true,
+              attachmentFilenames,
+              ticket.violation_type
+            );
+
+            let reEvaluation: any = null;
+            try {
+              reEvaluation = await reEvaluateWithKit(ticket, parsedEvidence);
+            } catch (kitError) {
+              console.error('Kit re-evaluation error (continuing):', kitError);
+            }
+
+            // Regenerate letter with AI if we have a letter
+            if (letter) {
+              try {
+                const originalLetter = letter.letter_content || letter.letter_text || '';
+                const newLetter = await regenerateLetterWithAI(
+                  originalLetter,
+                  evidenceText,
+                  ticket,
+                  true, // hasAttachments
+                  reEvaluation,
+                  photoAnalysisResults,
+                );
+
+                if (newLetter) {
+                  await supabaseAdmin
+                    .from('contest_letters')
+                    .update({
+                      letter_content: newLetter,
+                      letter_text: newLetter,
+                      updated_at: new Date().toISOString(),
+                      evidence_integrated: true,
+                    } as any)
+                    .eq('id', letter.id);
+
+                  console.log(`✅ Letter regenerated with SMS evidence for ticket ${ticket.ticket_number}`);
+                }
+              } catch (regenError) {
+                console.error('Letter regeneration error (continuing):', regenError);
+              }
+            }
+
+            // Send approval email (admin reviews before mailing)
+            try {
+              const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(matchedUserId!);
+              const userEmail = authUser?.user?.email;
+              if (userEmail && letter) {
+                const violationTypeDisplay = ticket.violation_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Parking';
+                await sendApprovalEmailForEvidence(
+                  userEmail,
+                  profile?.first_name || 'there',
+                  ticket.ticket_number,
+                  ticket.id,
+                  matchedUserId!,
+                  letter.id,
+                  letter.letter_content || letter.letter_text || '',
+                  violationTypeDisplay,
+                  ticket.violation_date || null,
+                  ticket.amount || null,
+                );
+              }
+            } catch (approvalError) {
+              console.error('Approval email error (continuing):', approvalError);
+            }
+
+            // Send confirmation SMS to user
+            const violationTypeDisplay = ticket.violation_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'parking';
+            const confirmMessage = `Got it! We received ${uploadedMedia.length} photo(s) for your ${violationTypeDisplay} ticket. We're updating your contest letter now. You'll get an email when it's ready to review.`;
+
+            try {
+              const { sendClickSendSMS } = await import('../../../lib/sms-service');
+              await sendClickSendSMS(fromNumber, confirmMessage);
+              console.log('✅ Evidence confirmation SMS sent');
+            } catch (smsError) {
+              console.error('Error sending evidence confirmation SMS:', smsError);
+            }
+
+            evidenceProcessed = true;
+
+            // Audit log
+            try {
+              await supabaseAdmin
+                .from('ticket_audit_log')
+                .insert({
+                  ticket_id: ticket.id,
+                  user_id: matchedUserId,
+                  action: 'evidence_received_sms',
+                  details: {
+                    source: 'sms_mms',
+                    from_number: fromNumber.substring(0, 6) + '****',
+                    media_count: uploadedMedia.length,
+                    has_text: !!messageBody,
+                    photo_analysis_count: photoAnalysisResults.length,
+                    re_evaluation: reEvaluation ? {
+                      selectedArgument: reEvaluation.selectedArgument?.name,
+                      estimatedWinRate: reEvaluation.estimatedWinRate,
+                    } : null,
+                  },
+                  performed_by: 'sms_webhook',
+                } as any);
+            } catch (auditError) {
+              console.error('Audit log error (non-fatal):', auditError);
+            }
+          }
+        } else {
+          console.log(`📸 MMS received but no pending tickets for user ${maskEmail(matchedEmail)}`);
+        }
+      } catch (evidenceError) {
+        console.error('❌ Error processing MMS evidence:', evidenceError);
+      }
+    }
+
     // Send email notification to ticketlessamerica@gmail.com
     try {
-      const emailSubject = isPermitDocs
+      const emailSubject = evidenceProcessed
+        ? `📸 TICKET EVIDENCE via SMS from ${matchedEmail || fromNumber}`
+        : isPermitDocs
         ? `📄 PERMIT DOCUMENTS via SMS from ${matchedEmail || fromNumber}`
         : matchedUser
           ? `Profile Update Request from ${matchedEmail}`
@@ -491,7 +714,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">📱 Incoming SMS ${isPermitDocs ? '- PERMIT DOCUMENTS' : 'Reply'}</h2>
+          <h2 style="color: #2563eb;">📱 Incoming SMS ${evidenceProcessed ? '- TICKET EVIDENCE' : isPermitDocs ? '- PERMIT DOCUMENTS' : 'Reply'}</h2>
+
+          ${evidenceProcessed ? `
+            <div style="background: #dcfce7; border: 2px solid #22c55e; padding: 16px; border-radius: 8px; margin: 16px 0;">
+              <p style="margin: 0; color: #166534; font-weight: 600; font-size: 18px;">
+                📸 TICKET EVIDENCE RECEIVED (${mediaFiles.length} photos)
+              </p>
+              <p style="margin: 8px 0 0; color: #166534;">
+                Evidence has been processed, letter regenerated, and approval email sent.
+              </p>
+            </div>
+          ` : ''}
 
           ${isPermitDocs ? `
             <div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 16px 0;">
