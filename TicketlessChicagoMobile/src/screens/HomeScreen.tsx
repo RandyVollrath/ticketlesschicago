@@ -1670,9 +1670,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 setShowCrossPollinationPrompt(false);
                 navigation.navigate('Manage');
               }}
-              accessibilityLabel="Set up advance alerts in the Manage tab"
+              accessibilityLabel="Set up advance alerts in the Address tab"
             >
-              <Text style={styles.crossPollCtaText}>Set Up in Manage</Text>
+              <Text style={styles.crossPollCtaText}>Set Up in Address</Text>
               <MaterialCommunityIcons name="chevron-right" size={16} color="#5856D6" />
             </TouchableOpacity>
           </View>
