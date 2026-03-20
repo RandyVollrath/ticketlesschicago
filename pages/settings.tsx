@@ -848,6 +848,9 @@ function SettingsPageInner() {
   const [isLeased, setIsLeased] = useState(false);
   const [vin, setVin] = useState('');
   const [vehicleType, setVehicleType] = useState('Sedan');
+  const [vehicleMake, setVehicleMake] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
+  const [vehicleColor, setVehicleColor] = useState('');
 
   // Home Address (for street cleaning)
   const [homeAddress, setHomeAddress] = useState('');
@@ -1076,6 +1079,9 @@ function SettingsPageInner() {
         setMailingZip(profileData.mailing_zip || '');
         setVin(profileData.vin || '');
         setVehicleType(profileData.vehicle_type || 'Sedan');
+        setVehicleMake(profileData.vehicle_make || '');
+        setVehicleModel(profileData.vehicle_model || '');
+        setVehicleColor(profileData.vehicle_color || '');
         setCityStickerExpiry(profileData.city_sticker_expiry || '');
         setLicensePlateExpiry(profileData.license_plate_expiry || '');
         setEmissionsDate(profileData.emissions_date || '');
@@ -1292,6 +1298,9 @@ function SettingsPageInner() {
         mailing_state: mailingState || 'IL',
         mailing_zip: mailingZip || null,
         vin: vin || null,
+        vehicle_make: vehicleMake || null,
+        vehicle_model: vehicleModel || null,
+        vehicle_color: vehicleColor || null,
         license_plate: plateUpper || null,
         license_state: plateState || 'IL',
         city_sticker_expiry: cityStickerExpiry || null,
@@ -2030,6 +2039,99 @@ function SettingsPageInner() {
                 </p>
               )}
             </div>
+
+            {/* Vehicle Make / Model / Color — used for camera ticket vehicle mismatch detection */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: COLORS.textMuted,
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                }}>
+                  Make
+                </label>
+                <input
+                  type="text"
+                  value={vehicleMake}
+                  onChange={(e) => setVehicleMake(e.target.value)}
+                  placeholder="e.g. Toyota"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                    fontSize: 14,
+                    color: COLORS.primary,
+                    backgroundColor: COLORS.bgLight,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: COLORS.textMuted,
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                }}>
+                  Model
+                </label>
+                <input
+                  type="text"
+                  value={vehicleModel}
+                  onChange={(e) => setVehicleModel(e.target.value)}
+                  placeholder="e.g. Camry"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                    fontSize: 14,
+                    color: COLORS.primary,
+                    backgroundColor: COLORS.bgLight,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.textMuted,
+                marginBottom: 6,
+                textTransform: 'uppercase',
+              }}>
+                Color
+              </label>
+              <input
+                type="text"
+                value={vehicleColor}
+                onChange={(e) => setVehicleColor(e.target.value)}
+                placeholder="e.g. Silver"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  fontSize: 14,
+                  color: COLORS.primary,
+                  backgroundColor: COLORS.bgLight,
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            {(!vehicleMake || !vehicleModel || !vehicleColor) && (
+              <p style={{ margin: 0, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.4 }}>
+                Providing your vehicle make, model, and color helps us detect if a camera ticket was issued to the wrong car (cloned plates, misread plates).
+              </p>
+            )}
 
             {/* VIN */}
             <div>
