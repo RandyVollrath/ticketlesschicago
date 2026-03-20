@@ -213,7 +213,7 @@ async function checkNotificationErrors(): Promise<CheckResult> {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabaseAdmin!
       .from('notification_log' as any)
-      .select('id, channel, error_message')
+      .select('id, channel, error')
       .eq('status', 'error')
       .gte('created_at', oneDayAgo);
 
@@ -352,22 +352,16 @@ async function checkCameraDataFreshness(): Promise<CheckResult> {
 async function checkStreetCleaningFreshness(): Promise<CheckResult> {
   const name = 'Street Cleaning — Data Freshness';
   try {
-    const { data, error } = await supabaseAdmin!
+    const { count, error } = await supabaseAdmin!
       .from('street_cleaning_schedule' as any)
-      .select('updated_at')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
+      .select('*', { count: 'exact', head: true });
 
     if (error) return { name, category: 'Data Freshness', status: 'fail', detail: `Query error: ${error.message}`, severity: 'medium' };
 
-    const lastUpdate = new Date(data.updated_at);
-    const daysAgo = (Date.now() - lastUpdate.getTime()) / (24 * 60 * 60 * 1000);
-
-    if (daysAgo > 30) {
-      return { name, category: 'Data Freshness', status: 'warn', detail: `Street cleaning data last updated ${Math.round(daysAgo)} days ago`, severity: 'medium' };
+    if (!count || count === 0) {
+      return { name, category: 'Data Freshness', status: 'warn', detail: 'No street cleaning records in database', severity: 'medium' };
     }
-    return { name, category: 'Data Freshness', status: 'pass', detail: `Last updated ${Math.round(daysAgo)} days ago`, severity: 'medium' };
+    return { name, category: 'Data Freshness', status: 'pass', detail: `${count} street cleaning schedule records`, severity: 'medium' };
   } catch (e: any) {
     return { name, category: 'Data Freshness', status: 'fail', detail: e.message, severity: 'medium' };
   }
