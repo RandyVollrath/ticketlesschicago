@@ -92,6 +92,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
   }
 
+  // ── Recovery: Re-queue orphaned 'drafting' rows (cron crashed mid-send) ──
+  // If a row has been in 'drafting' for >5 minutes, the previous run died.
+  // Reset to 'queued' so it gets picked up this run.
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: orphanedDrafting } = await supabaseAdmin
+    .from('ticket_foia_requests' as any)
+    .update({
+      status: 'queued',
+      updated_at: new Date().toISOString(),
+      notes: 'Re-queued: was stuck in drafting (previous cron run crashed)',
+    })
+    .eq('status', 'drafting')
+    .lt('updated_at', fiveMinutesAgo)
+    .select('id');
+  if (orphanedDrafting && orphanedDrafting.length > 0) {
+    console.log(`  ♻️ Recovered ${orphanedDrafting.length} orphaned 'drafting' FOIA request(s)`);
+  }
+
+  // ── Recovery: Retry 'failed' rows (up to 3 attempts, oldest first) ──
+  // Transient Resend errors shouldn't permanently kill a FOIA. Re-queue failed
+  // rows that haven't exceeded max retries, but only up to 10 per run so we
+  // don't flood if there's a systemic issue.
+  const { data: failedRetries } = await supabaseAdmin
+    .from('ticket_foia_requests' as any)
+    .select('id, notes, request_payload')
+    .eq('status', 'failed')
+    .eq('request_type', 'ticket_evidence_packet')
+    .order('updated_at', { ascending: true })
+    .limit(10);
+  let retried = 0;
+  if (failedRetries && failedRetries.length > 0) {
+    for (const fr of failedRetries) {
+      const attempts = fr.request_payload?.retry_count || 0;
+      if (attempts >= 3) continue; // max 3 retries
+      await supabaseAdmin
+        .from('ticket_foia_requests' as any)
+        .update({
+          status: 'queued',
+          updated_at: new Date().toISOString(),
+          request_payload: { ...fr.request_payload, retry_count: attempts + 1 },
+          notes: `Retry #${attempts + 1}: ${fr.notes || 'previous attempt failed'}`,
+        })
+        .eq('id', fr.id);
+      retried++;
+    }
+    if (retried > 0)
+      console.log(`  ♻️ Re-queued ${retried} failed FOIA request(s) for retry`);
+  }
+
   // Fetch queued FOIA requests (50 per run — Resend allows 100/day on free tier)
   const { data: queuedRequests, error: fetchError } = await supabaseAdmin
     .from('ticket_foia_requests' as any)
@@ -107,7 +156,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!queuedRequests || queuedRequests.length === 0) {
     console.log('No queued FOIA requests to process.');
-    return res.status(200).json({ message: 'No queued requests', processed: 0 });
+    return res.status(200).json({
+      message: 'No queued requests',
+      processed: 0,
+      retried,
+      recovered: orphanedDrafting?.length || 0,
+    });
   }
 
   console.log(`Found ${queuedRequests.length} queued FOIA requests`);
@@ -320,45 +374,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // Update status to sent — store reference_id and resend_message_id for response matching
+        // Update status to sent — store reference_id and resend_message_id for response matching.
+        // This is wrapped in try-catch because the email was ALREADY SENT at this point.
+        // If the DB update fails, we must NOT let the outer catch call markFailed() which
+        // would overwrite the status back to 'failed' even though the email went out.
         const updatePayload: any = {
           status: 'sent',
           sent_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          reference_id: referenceId,
+          resend_message_id: result.emailId,
           response_payload: {
             resend_email_id: result.emailId,
             ...(cdotEmailId ? { cdot_resend_email_id: cdotEmailId } : {}),
           },
           notes: `Sent to DOFfoia@cityofchicago.org${cdotEmailId ? ' + cdotfoia@cityofchicago.org' : ''} on behalf of ${requesterName}. Ref: ${referenceId}`,
         };
-        // These columns may not exist yet if migration hasn't been applied
+
         try {
-          updatePayload.reference_id = referenceId;
-          updatePayload.resend_message_id = result.emailId;
-        } catch {}
+          await supabaseAdmin
+            .from('ticket_foia_requests' as any)
+            .update(updatePayload)
+            .eq('id', request.id);
+        } catch (dbErr: any) {
+          // Email was sent but DB update failed — log loudly but do NOT markFailed()
+          console.error(`    ⚠️ CRITICAL: FOIA email sent but DB update failed: ${dbErr.message}. Row ${request.id} may be stuck in 'drafting'. Will be recovered on next run.`);
+        }
 
-        await supabaseAdmin
-          .from('ticket_foia_requests' as any)
-          .update(updatePayload)
-          .eq('id', request.id);
+        // Audit log (non-blocking)
+        try {
+          await supabaseAdmin
+            .from('ticket_audit_log')
+            .insert({
+              ticket_id: ticketId,
+              action: 'foia_request_sent',
+              details: {
+                resend_email_id: result.emailId,
+                recipient: 'DOFfoia@cityofchicago.org',
+                requester: requesterName,
+                violation_type: violationType,
+              },
+              performed_by: null,
+            });
+        } catch (auditErr: any) {
+          console.error(`    ⚠️ Audit log insert failed (non-blocking): ${auditErr.message}`);
+        }
 
-        // Audit log
-        await supabaseAdmin
-          .from('ticket_audit_log')
-          .insert({
-            ticket_id: ticketId,
-            action: 'foia_request_sent',
-            details: {
-              resend_email_id: result.emailId,
-              recipient: 'DOFfoia@cityofchicago.org',
-              requester: requesterName,
-              violation_type: violationType,
-            },
-            performed_by: null,
-          });
-
-        // Also send the user a notification that we filed on their behalf
-        await notifyUserOfFoiaFiling(userEmail, requesterName, ticket.ticket_number, violationDate, violationType, cdotEmailId !== undefined);
+        // Notify the user — wrapped in try-catch so a notification failure
+        // doesn't propagate to the outer catch which would call markFailed()
+        try {
+          await notifyUserOfFoiaFiling(userEmail, requesterName, ticket.ticket_number, violationDate, violationType, cdotEmailId !== undefined);
+        } catch (notifyErr: any) {
+          console.error(`    ⚠️ User notification failed (non-blocking): ${notifyErr.message}`);
+        }
 
         sent++;
       } else {

@@ -303,6 +303,10 @@ export async function sendFoiaRequestEmail(params: {
   const { subject, body } = generateFoiaRequestEmail(params);
 
   try {
+    // 30-second timeout prevents Resend API hangs from blocking the entire cron run
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -316,10 +320,12 @@ export async function sendFoiaRequestEmail(params: {
         text: body,
         reply_to: params.requesterEmail,
         headers: {
-          'X-Entity-Ref-ID': params.referenceId || `foia-${params.ticketNumber}`, // Unique ID for response matching
+          'X-Entity-Ref-ID': params.referenceId || `foia-${params.ticketNumber}`,
         },
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -329,7 +335,8 @@ export async function sendFoiaRequestEmail(params: {
     const data = await response.json();
     return { success: true, emailId: data.id };
   } catch (err: any) {
-    return { success: false, error: `Send exception: ${err.message}` };
+    const msg = err.name === 'AbortError' ? 'Resend API timeout (30s)' : err.message;
+    return { success: false, error: `Send exception: ${msg}` };
   }
 }
 
@@ -428,6 +435,9 @@ export async function sendCdotFoiaRequestEmail(params: {
   const { subject, body } = generateCdotFoiaRequestEmail(params);
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -444,7 +454,9 @@ export async function sendCdotFoiaRequestEmail(params: {
           'X-Entity-Ref-ID': params.referenceId || `cdot-foia-${params.ticketNumber}`,
         },
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -454,7 +466,8 @@ export async function sendCdotFoiaRequestEmail(params: {
     const data = await response.json();
     return { success: true, emailId: data.id };
   } catch (err: any) {
-    return { success: false, error: `Send exception (CDOT): ${err.message}` };
+    const msg = err.name === 'AbortError' ? 'Resend API timeout (30s)' : err.message;
+    return { success: false, error: `Send exception (CDOT): ${msg}` };
   }
 }
 

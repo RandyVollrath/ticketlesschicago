@@ -147,6 +147,10 @@ export async function sendTicketHistoryFoiaEmail(params: {
       emailPayload.attachments = attachments;
     }
 
+    // 30-second timeout prevents a Resend hang from blocking the entire cron run
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -154,7 +158,9 @@ export async function sendTicketHistoryFoiaEmail(params: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(emailPayload),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -164,7 +170,8 @@ export async function sendTicketHistoryFoiaEmail(params: {
     const data = await response.json();
     return { success: true, emailId: data.id };
   } catch (err: any) {
-    return { success: false, error: `Send exception: ${err.message}` };
+    const msg = err.name === 'AbortError' ? 'Resend API timeout (30s)' : err.message;
+    return { success: false, error: `Send exception: ${msg}` };
   }
 }
 
