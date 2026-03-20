@@ -1442,7 +1442,25 @@ INTERSECTION APPROACH ANALYSIS:
 - Approach Distance: ${redLightDefense.geometry.approachDistanceMeters.toFixed(0)} meters from first GPS reading to camera
 - Closest Point to Camera: ${redLightDefense.geometry.closestPointToCamera.toFixed(0)} meters
 - Average Approach Speed: ${redLightDefense.geometry.averageApproachSpeedMph.toFixed(1)} mph
-- Analysis: ${redLightDefense.geometry.summary}` : ''}
+- Analysis: ${redLightDefense.geometry.summary}
+
+INSTRUCTIONS: Use this approach data as SUPPORTING context for other defense arguments. The GPS trace shows the vehicle's actual trajectory approaching the intersection — speed, distance, and timing. This data corroborates the physics-based arguments (dilemma zone, stopping distance) with real-world measurements from the driver's device.` : ''}
+
+${redLightDefense.defenseArguments.some(a => a.type === 'full_stop') ? `
+FULL STOP DEFENSE:
+${(() => { const fs = redLightDefense!.defenseArguments.find(a => a.type === 'full_stop')!; return `- Strength: ${fs.strength.toUpperCase()}
+- Summary: ${fs.summary}
+- Details: ${fs.details}
+
+INSTRUCTIONS: This is a STRONG defense argument. The GPS and accelerometer data PROVE the vehicle came to a complete stop before proceeding through the intersection. This is critical for right-turn-on-red cases (a full stop makes the turn legal) and also demonstrates the driver was exercising caution. Reference the specific stop duration and GPS coordinates showing the stop occurred before the crosswalk/stop line.`; })()}` : ''}
+
+${redLightDefense.defenseArguments.some(a => a.type === 'deceleration') ? `
+SIGNIFICANT DECELERATION DEFENSE:
+${(() => { const dec = redLightDefense!.defenseArguments.find(a => a.type === 'deceleration')!; return `- Strength: ${dec.strength.toUpperCase()}
+- Summary: ${dec.summary}
+- Details: ${dec.details}
+
+INSTRUCTIONS: Use this as a ${dec.strength === 'moderate' ? 'MODERATE' : 'SUPPORTING'} defense argument. The GPS data shows the driver significantly reduced speed when approaching the intersection, demonstrating they were attempting to comply with the traffic signal. The speed reduction of ${redLightDefense!.dilemmaZone?.speedAtOnsetMph ? `from ${redLightDefense!.dilemmaZone.speedAtOnsetMph.toFixed(0)} mph` : 'recorded in the trace'} shows responsible driving behavior, not reckless disregard of the signal.`; })()}` : ''}
 
 ${redLightDefense.dilemmaZone?.inDilemmaZone ? `
 DILEMMA ZONE ANALYSIS (PHYSICS-BASED):

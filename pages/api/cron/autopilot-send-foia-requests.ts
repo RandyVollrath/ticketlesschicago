@@ -240,51 +240,80 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             cdotEmailId = cdotResult.emailId;
             console.log(`    ✅ CDOT FOIA sent (Resend ID: ${cdotEmailId}, Ref: ${cdotRefId})`);
 
-            // Track CDOT FOIA in ticket_foia_requests so letter generators can check non-response
-            const cdotNow = new Date().toISOString();
-            await supabaseAdmin
-              .from('ticket_foia_requests' as any)
-              .upsert({
-                ticket_id: ticketId,
-                user_id: request.user_id,
-                request_type: 'signal_timing',
-                status: 'sent',
-                source: 'autopilot_detection',
-                sent_at: cdotNow,
-                requested_at: cdotNow,
-                updated_at: cdotNow,
-                request_payload: {
-                  ticket_number: ticketNumber,
-                  violation_type: violationType,
-                  queued_by: 'autopilot_send_foia_cron',
-                  recipient: 'cdotfoia@cityofchicago.org',
-                },
-                response_payload: {
-                  resend_email_id: cdotEmailId,
-                },
-                reference_id: cdotRefId,
-                resend_message_id: cdotEmailId,
-                notes: `Sent to cdotfoia@cityofchicago.org for signal timing records. Ref: ${cdotRefId}`,
-              } as any, { onConflict: 'ticket_id,request_type' });
-
-            // Audit log for CDOT FOIA
-            await supabaseAdmin
-              .from('ticket_audit_log')
-              .insert({
-                ticket_id: ticketId,
-                action: 'foia_request_sent',
-                details: {
-                  resend_email_id: cdotEmailId,
-                  recipient: 'cdotfoia@cityofchicago.org',
+            // Track CDOT FOIA in ticket_foia_requests — wrapped in try-catch so a DB
+            // error doesn't cascade to mark the Finance FOIA as failed
+            try {
+              const cdotNow = new Date().toISOString();
+              await supabaseAdmin
+                .from('ticket_foia_requests' as any)
+                .upsert({
+                  ticket_id: ticketId,
+                  user_id: request.user_id,
                   request_type: 'signal_timing',
-                  requester: requesterName,
-                  violation_type: violationType,
+                  status: 'sent',
+                  source: 'autopilot_detection',
+                  sent_at: cdotNow,
+                  requested_at: cdotNow,
+                  updated_at: cdotNow,
+                  request_payload: {
+                    ticket_number: ticketNumber,
+                    violation_type: violationType,
+                    queued_by: 'autopilot_send_foia_cron',
+                    recipient: 'cdotfoia@cityofchicago.org',
+                  },
+                  response_payload: {
+                    resend_email_id: cdotEmailId,
+                  },
                   reference_id: cdotRefId,
-                },
-                performed_by: null,
-              });
+                  resend_message_id: cdotEmailId,
+                  notes: `Sent to cdotfoia@cityofchicago.org for signal timing records. Ref: ${cdotRefId}`,
+                } as any, { onConflict: 'ticket_id,request_type' });
+
+              // Audit log for CDOT FOIA
+              await supabaseAdmin
+                .from('ticket_audit_log')
+                .insert({
+                  ticket_id: ticketId,
+                  action: 'foia_request_sent',
+                  details: {
+                    resend_email_id: cdotEmailId,
+                    recipient: 'cdotfoia@cityofchicago.org',
+                    request_type: 'signal_timing',
+                    requester: requesterName,
+                    violation_type: violationType,
+                    reference_id: cdotRefId,
+                  },
+                  performed_by: null,
+                });
+            } catch (cdotDbErr: any) {
+              console.error(`    ⚠️ CDOT FOIA DB upsert failed (non-blocking): ${cdotDbErr.message}`);
+            }
           } else {
-            console.error(`    ⚠️ CDOT FOIA failed (non-blocking): ${cdotResult.error}`);
+            console.error(`    ⚠️ CDOT FOIA send failed (non-blocking): ${cdotResult.error}`);
+            // Create a failed row so letter generators know CDOT FOIA was attempted
+            try {
+              const cdotNow = new Date().toISOString();
+              await supabaseAdmin
+                .from('ticket_foia_requests' as any)
+                .upsert({
+                  ticket_id: ticketId,
+                  user_id: request.user_id,
+                  request_type: 'signal_timing',
+                  status: 'failed',
+                  source: 'autopilot_detection',
+                  requested_at: cdotNow,
+                  updated_at: cdotNow,
+                  request_payload: {
+                    ticket_number: ticketNumber,
+                    violation_type: violationType,
+                    queued_by: 'autopilot_send_foia_cron',
+                    recipient: 'cdotfoia@cityofchicago.org',
+                  },
+                  notes: `CDOT FOIA send failed: ${cdotResult.error}`,
+                } as any, { onConflict: 'ticket_id,request_type' });
+            } catch (cdotFailErr: any) {
+              console.error(`    ⚠️ CDOT FOIA failed row creation also failed: ${cdotFailErr.message}`);
+            }
           }
 
           // Small delay between emails

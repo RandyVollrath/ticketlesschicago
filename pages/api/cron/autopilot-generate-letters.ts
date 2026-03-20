@@ -31,6 +31,11 @@ import {
   getOfficerIntelligence,
   getLocationPatternForAddress,
 } from '../../../lib/contest-outcome-tracker';
+import {
+  analyzeRedLightDefense,
+  type AnalysisInput,
+  type RedLightDefenseAnalysis,
+} from '../../../lib/red-light-defense-analysis';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -167,6 +172,7 @@ interface EvidenceBundle {
   cityStickerReceipt: any | null;
   registrationReceipt: any | null;
   redLightReceipt: any | null;
+  redLightDefense: RedLightDefenseAnalysis | null;
   cameraPassHistory: any[] | null;
   foiaData: FoiaData;
   kitEvaluation: ContestEvaluation | null;
@@ -401,6 +407,7 @@ async function gatherAllEvidence(
     cityStickerReceipt: null,
     registrationReceipt: null,
     redLightReceipt: null,
+    redLightDefense: null,
     cameraPassHistory: null,
     foiaData: {
       hasData: false,
@@ -1022,6 +1029,39 @@ async function gatherAllEvidence(
   // Wait for all evidence lookups to complete
   await Promise.all(promises);
 
+  // Run red light defense analysis if we have receipt data (this depends on redLightReceipt
+  // being populated, so it must run after Promise.all)
+  if (bundle.redLightReceipt && (ticket.violation_type === 'red_light' || ticket.violation_type === 'speed_camera')) {
+    try {
+      const r = bundle.redLightReceipt;
+      const trace = r.trace || [];
+      const defenseInput: AnalysisInput = {
+        trace,
+        cameraLatitude: r.camera_latitude || 0,
+        cameraLongitude: r.camera_longitude || 0,
+        postedSpeedMph: r.speed_limit_mph ?? 30,
+        approachSpeedMph: r.approach_speed_mph ?? null,
+        minSpeedMph: r.min_speed_mph ?? null,
+        fullStopDetected: r.full_stop_detected ?? false,
+        fullStopDurationSec: r.full_stop_duration_sec ?? null,
+        speedDeltaMph: r.speed_delta_mph ?? null,
+        violationDatetime: ticket.violation_date ? `${ticket.violation_date}T12:00:00Z` : null,
+        deviceTimestamp: r.device_timestamp || r.detected_at || r.created_at,
+        cameraAddress: r.camera_address || r.intersection_id || ticket.location || undefined,
+        noticeDate: ticket.violation_date || null, // detected_tickets uses violation_date as proxy
+        ticketPlate: ticket.plate || null,
+        ticketState: ticket.state || null,
+        userPlate: ticket.plate || null,
+        userState: ticket.state || null,
+        isCommercialVehicle: false, // autopilot doesn't have user context for this
+      };
+      bundle.redLightDefense = await analyzeRedLightDefense(defenseInput);
+      console.log(`    Red light defense analysis: score=${bundle.redLightDefense.overallDefenseScore}, args=${bundle.redLightDefense.defenseArguments.length}`);
+    } catch (e) {
+      console.error('    Red light defense analysis failed:', e);
+    }
+  }
+
   return bundle;
 }
 
@@ -1227,6 +1267,169 @@ ${r.speed_mph && r.speed_mph < 20 ? '- The user was traveling at a low speed, su
 - Request the city provide the camera calibration records and full video evidence
 - If the yellow light duration was less than the MUTCD minimum (3.0s for 25mph zones, 3.6s for 30mph), argue the intersection timing was inadequate
 - This GPS data from the user's vehicle contradicts or contextualizes the camera's automated determination`);
+  }
+
+  // ── Section 8b: Advanced Red Light Defense Analysis ──
+  const redLightDefense = evidence.redLightDefense;
+  if (redLightDefense && redLightDefense.defenseArguments.length > 0) {
+    let defenseSection = `=== ADVANCED DEFENSE ANALYSIS (AUTOMATED) ===
+Overall Defense Strength Score: ${redLightDefense.overallDefenseScore}/100
+Number of Defense Arguments: ${redLightDefense.defenseArguments.length}
+`;
+
+    if (redLightDefense.yellowLight) {
+      defenseSection += `
+YELLOW LIGHT TIMING ANALYSIS:
+- Posted Speed at Intersection: ${redLightDefense.yellowLight.postedSpeedMph} mph
+- Chicago's Yellow Duration: ${redLightDefense.yellowLight.chicagoActualSec} seconds
+- ITE/MUTCD Recommended Duration: ${redLightDefense.yellowLight.iteRecommendedSec} seconds
+- Shortfall vs ITE: ${redLightDefense.yellowLight.shortfallSec > 0 ? `${redLightDefense.yellowLight.shortfallSec.toFixed(1)} seconds SHORTER than national standard` : 'Meets standard'}
+- Illinois Statutory Minimum for Camera Intersections: ${redLightDefense.yellowLight.illinoisStatutoryMinSec} seconds (MUTCD minimum + 1 second, per 625 ILCS 5/11-306(c-5))
+- Violates Illinois Statute: ${redLightDefense.yellowLight.violatesIllinoisStatute ? `YES — Chicago's ${redLightDefense.yellowLight.chicagoActualSec}s yellow is ${redLightDefense.yellowLight.statutoryShortfallSec.toFixed(1)}s BELOW the legal minimum` : 'NO'}
+${redLightDefense.yellowLight.roadGradePercent !== 0 ? `- Road Grade Adjustment: ${redLightDefense.yellowLight.roadGradePercent > 0 ? 'Downhill' : 'Uphill'} ${Math.abs(redLightDefense.yellowLight.roadGradePercent).toFixed(1)}% grade applied to calculations` : ''}
+- Analysis: ${redLightDefense.yellowLight.explanation}
+- Legal Citation: ${redLightDefense.yellowLight.standardCitation}
+`;
+      if (redLightDefense.yellowLight.violatesIllinoisStatute) {
+        defenseSection += `
+INSTRUCTIONS: This is a VERY STRONG defense argument — it is based on BINDING STATE LAW. Illinois statute 625 ILCS 5/11-306(c-5) REQUIRES that camera-enforced intersections have a yellow change interval of at least the MUTCD minimum PLUS ONE ADDITIONAL SECOND. Chicago's yellow of ${redLightDefense.yellowLight.chicagoActualSec}s is ${redLightDefense.yellowLight.statutoryShortfallSec.toFixed(1)}s below the statutory minimum of ${redLightDefense.yellowLight.illinoisStatutoryMinSec}s. This should be the LEADING technical argument.
+`;
+      } else if (redLightDefense.yellowLight.isShorterThanStandard) {
+        defenseSection += `
+INSTRUCTIONS: This is a STRONG defense argument. Chicago's yellow light at this intersection is shorter than the ITE standard. Reference the ITE standard and the specific shortfall.
+`;
+      }
+    }
+
+    if (redLightDefense.rightTurn?.rightTurnDetected) {
+      defenseSection += `
+RIGHT-TURN-ON-RED ANALYSIS:
+- Right Turn Detected: YES (${redLightDefense.rightTurn.headingChangeDeg.toFixed(0)}° clockwise heading change)
+- Stopped Before Turn: ${redLightDefense.rightTurn.stoppedBeforeTurn ? 'YES' : 'NO'}
+- Legal Right-on-Red: ${redLightDefense.rightTurn.isLegalRightOnRed ? 'YES — This appears to be a lawful right-turn-on-red' : 'Potentially'}
+- Analysis: ${redLightDefense.rightTurn.explanation}
+`;
+      if (redLightDefense.rightTurn.isLegalRightOnRed) {
+        defenseSection += `
+INSTRUCTIONS: This is a STRONG defense argument. GPS heading data proves the vehicle executed a right turn after stopping. Under Illinois law (625 ILCS 5/11-306(c)), right turns on red are permitted after a complete stop.
+`;
+      }
+    }
+
+    if (redLightDefense.weather?.hasAdverseConditions) {
+      defenseSection += `
+WEATHER CONDITIONS AT VIOLATION TIME:
+- Conditions: ${redLightDefense.weather.description}
+${redLightDefense.weather.temperatureF !== null ? `- Temperature: ${Math.round(redLightDefense.weather.temperatureF)}°F` : ''}
+${redLightDefense.weather.roadCondition ? `- Road Conditions: ${redLightDefense.weather.roadCondition}` : ''}
+- Defense Arguments from Weather:
+${redLightDefense.weather.defenseArguments.map((a: string) => `  * ${a}`).join('\n')}
+
+INSTRUCTIONS: Use weather conditions as a SUPPORTING argument. Adverse weather affects stopping distance and visibility.
+`;
+    }
+
+    if (redLightDefense.geometry) {
+      defenseSection += `
+INTERSECTION APPROACH ANALYSIS:
+- Approach Distance: ${redLightDefense.geometry.approachDistanceMeters.toFixed(0)} meters
+- Closest Point to Camera: ${redLightDefense.geometry.closestPointToCamera.toFixed(0)} meters
+- Average Approach Speed: ${redLightDefense.geometry.averageApproachSpeedMph.toFixed(1)} mph
+- Analysis: ${redLightDefense.geometry.summary}
+
+INSTRUCTIONS: Use this approach data as SUPPORTING context for other defense arguments.
+`;
+    }
+
+    if (redLightDefense.dilemmaZone?.inDilemmaZone) {
+      defenseSection += `
+DILEMMA ZONE ANALYSIS (PHYSICS-BASED):
+- Stopping Distance Required: ${redLightDefense.dilemmaZone.stoppingDistanceFt.toFixed(0)} ft
+- Distance to Stop Bar: ${redLightDefense.dilemmaZone.distanceToStopBarFt.toFixed(0)} ft
+- Could Stop Safely: ${redLightDefense.dilemmaZone.canStop ? 'YES' : 'NO'}
+- Could Clear Intersection: ${redLightDefense.dilemmaZone.canClear ? 'YES' : 'NO'}
+- Analysis: ${redLightDefense.dilemmaZone.explanation}
+
+INSTRUCTIONS: This is a STRONG physics-based defense. The driver was in the "dilemma zone" — too close to stop safely but unable to clear the intersection.
+`;
+    }
+
+    // Full stop defense
+    const fullStopArg = redLightDefense.defenseArguments.find(a => a.type === 'full_stop');
+    if (fullStopArg) {
+      defenseSection += `
+FULL STOP DEFENSE:
+- Strength: ${fullStopArg.strength.toUpperCase()}
+- Summary: ${fullStopArg.summary}
+- Details: ${fullStopArg.details}
+
+INSTRUCTIONS: This is a STRONG defense argument. GPS and accelerometer data PROVE the vehicle came to a complete stop.
+`;
+    }
+
+    // Deceleration defense
+    const decArg = redLightDefense.defenseArguments.find(a => a.type === 'deceleration');
+    if (decArg) {
+      defenseSection += `
+SIGNIFICANT DECELERATION DEFENSE:
+- Strength: ${decArg.strength.toUpperCase()}
+- Summary: ${decArg.summary}
+- Details: ${decArg.details}
+
+INSTRUCTIONS: The GPS speed data shows the driver was actively decelerating — NOT the behavior of someone who ran a red light.
+`;
+    }
+
+    // Violation spike (camera malfunction)
+    if (redLightDefense.violationSpike?.isSpike) {
+      defenseSection += `
+VIOLATION SPIKE ANALYSIS (CAMERA MALFUNCTION INDICATOR):
+- Violations on Date: ${redLightDefense.violationSpike.violationsOnDate}
+- 30-Day Average: ${redLightDefense.violationSpike.averageDailyViolations.toFixed(1)} violations/day
+- Spike Ratio: ${redLightDefense.violationSpike.spikeRatio.toFixed(1)}x the average
+- Analysis: ${redLightDefense.violationSpike.explanation}
+
+INSTRUCTIONS: Use as a SUPPORTING argument suggesting possible camera malfunction.
+`;
+    }
+
+    // Late notice
+    if (redLightDefense.lateNotice?.exceeds90Days) {
+      defenseSection += `
+LATE NOTICE DEFENSE (PROCEDURAL — CASE DISPOSITIVE):
+- Days Between Violation & Notice: ${redLightDefense.lateNotice.daysBetween}
+- Exceeds 90-Day Statutory Limit: YES
+
+INSTRUCTIONS: This is a STRONG procedural defense that should LEAD the letter. Under 625 ILCS 5/11-208.6, violation notices must be mailed within 90 days. This notice was sent ${redLightDefense.lateNotice.daysBetween} days after the violation.
+`;
+    }
+
+    // Factual inconsistency
+    if (redLightDefense.factualInconsistency?.hasInconsistency) {
+      defenseSection += `
+FACTUAL INCONSISTENCY DEFENSE:
+- Inconsistency Type: ${redLightDefense.factualInconsistency.inconsistencyType}
+- Analysis: ${redLightDefense.factualInconsistency.explanation}
+
+INSTRUCTIONS: This is a STRONG procedural defense. Under Chicago Municipal Code 9-100-060, factual inconsistencies are grounds for dismissal.
+`;
+    }
+
+    // Ranked defense arguments summary
+    defenseSection += `
+RANKED DEFENSE ARGUMENTS (strongest first):
+${redLightDefense.defenseArguments.map((a, i) => `${i + 1}. [${a.strength.toUpperCase()}] ${a.title}: ${a.summary}`).join('\n')}
+
+INSTRUCTIONS FOR USING DEFENSE ANALYSIS:
+1. Lead with the STRONGEST arguments — those marked [STRONG] above. Procedural defenses should come FIRST.
+2. The ILLINOIS STATUTE argument (625 ILCS 5/11-306(c-5)), if applicable, is the STRONGEST technical defense.
+3. Use [MODERATE] arguments as supporting points
+4. [SUPPORTING] arguments provide context but should not be the primary focus
+5. Reference the attached sensor data exhibit for all GPS/accelerometer claims
+6. DO NOT mention the defense score or automated analysis in the letter
+`;
+
+    sections.push(defenseSection);
   }
 
   // ── Section 9: Speed Camera Pass Data ──
