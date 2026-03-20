@@ -870,6 +870,10 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     if (redLightReceipt) {
       try {
         const trace = Array.isArray(redLightReceipt.trace) ? redLightReceipt.trace : [];
+        // Detect commercial vehicle from user context or contest grounds
+        const allUserText = [additionalContext, ...(contestGrounds || [])].join(' ').toLowerCase();
+        const isCommercialVehicle = /\b(commercial\s*vehicle|truck|semi|box\s*truck|tractor.?trailer|bus|transit|delivery\s*van|air\s*brake|cdl|18.?wheel|big\s*rig|over\s*10[,.]?000\s*lbs?)\b/.test(allUserText);
+
         const defenseInput: AnalysisInput = {
           trace,
           cameraLatitude: redLightReceipt.camera_latitude || 0,
@@ -888,6 +892,7 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
           ticketState: detectedTicketData?.ticket_state || null,
           userPlate: detectedTicketData?.plate || null,
           userState: detectedTicketData?.state || null,
+          isCommercialVehicle,
         };
         redLightDefense = await analyzeRedLightDefense(defenseInput);
         console.log(`  Defense analysis: score=${redLightDefense.overallDefenseScore}, args=${redLightDefense.defenseArguments.length}`);
@@ -1288,11 +1293,15 @@ YELLOW LIGHT TIMING ANALYSIS:
 - Posted Speed at Intersection: ${redLightDefense.yellowLight.postedSpeedMph} mph
 - Chicago's Yellow Duration: ${redLightDefense.yellowLight.chicagoActualSec} seconds
 - ITE/MUTCD Recommended Duration: ${redLightDefense.yellowLight.iteRecommendedSec} seconds
-- Shortfall: ${redLightDefense.yellowLight.shortfallSec > 0 ? `${redLightDefense.yellowLight.shortfallSec.toFixed(1)} seconds SHORTER than national standard` : 'Meets standard'}
+- Shortfall vs ITE: ${redLightDefense.yellowLight.shortfallSec > 0 ? `${redLightDefense.yellowLight.shortfallSec.toFixed(1)} seconds SHORTER than national standard` : 'Meets standard'}
 ${redLightDefense.yellowLight.driverApproachSpeedMph !== redLightDefense.yellowLight.postedSpeedMph ? `- ITE Duration for Driver's Actual Speed (${redLightDefense.yellowLight.driverApproachSpeedMph} mph): ${redLightDefense.yellowLight.iteForDriverSpeedSec} seconds` : ''}
+- Illinois Statutory Minimum for Camera Intersections: ${redLightDefense.yellowLight.illinoisStatutoryMinSec} seconds (MUTCD minimum + 1 second, per 625 ILCS 5/11-306(c-5))
+- Violates Illinois Statute: ${redLightDefense.yellowLight.violatesIllinoisStatute ? `YES — Chicago's ${redLightDefense.yellowLight.chicagoActualSec}s yellow is ${redLightDefense.yellowLight.statutoryShortfallSec.toFixed(1)}s BELOW the legal minimum` : 'NO'}
+${redLightDefense.yellowLight.roadGradePercent !== 0 ? `- Road Grade Adjustment: ${redLightDefense.yellowLight.roadGradePercent > 0 ? 'Downhill' : 'Uphill'} ${Math.abs(redLightDefense.yellowLight.roadGradePercent).toFixed(1)}% grade applied to calculations` : ''}
 - Analysis: ${redLightDefense.yellowLight.explanation}
 - Legal Citation: ${redLightDefense.yellowLight.standardCitation}
-${redLightDefense.yellowLight.isShorterThanStandard ? `
+${redLightDefense.yellowLight.violatesIllinoisStatute ? `
+INSTRUCTIONS: This is a VERY STRONG defense argument — it is based on BINDING STATE LAW, not just engineering recommendations. Illinois statute 625 ILCS 5/11-306(c-5) REQUIRES that camera-enforced intersections have a yellow change interval of at least the MUTCD minimum PLUS ONE ADDITIONAL SECOND. This is not a guideline — it is a legal mandate that applies specifically to automated enforcement intersections. Chicago's yellow of ${redLightDefense.yellowLight.chicagoActualSec}s is ${redLightDefense.yellowLight.statutoryShortfallSec.toFixed(1)}s below the statutory minimum of ${redLightDefense.yellowLight.illinoisStatutoryMinSec}s. This should be the LEADING technical argument in the letter. Reference the specific statute, the exact shortfall, and note that the 2014 Chicago Inspector General investigation confirmed that short yellow lights generated tens of thousands of improper citations. Also note that we have submitted a FOIA request to the Chicago Department of Transportation requesting the actual signal timing plan for this intersection.` : redLightDefense.yellowLight.isShorterThanStandard ? `
 INSTRUCTIONS: This is a STRONG defense argument. Chicago's yellow light at this intersection is shorter than the duration recommended by the Institute of Transportation Engineers. Reference the ITE standard and the specific shortfall. Note the 2014 Chicago Inspector General investigation that found similar timing issues generated tens of thousands of improper citations. Argue that the driver did not have adequate time to safely clear the intersection under national engineering standards.` : ''}` : ''}
 
 ${redLightDefense.rightTurn?.rightTurnDetected ? `
@@ -1335,6 +1344,14 @@ DILEMMA ZONE ANALYSIS (PHYSICS-BASED):
 
 INSTRUCTIONS: This is a STRONG physics-based defense. The driver was in the "dilemma zone" — too close to stop safely but unable to clear the intersection during the yellow phase. This is a recognized traffic engineering concept (ITE/FHWA). Explain that the laws of physics made it impossible for the driver to either stop safely OR clear the intersection before the light turned red. Reference the specific stopping distance vs. distance to stop bar. This is NOT the driver's fault — it's a design deficiency in the intersection's signal timing.` : ''}
 
+${redLightDefense.defenseArguments.some(a => a.type === 'commercial_vehicle') ? `
+COMMERCIAL VEHICLE DEFENSE:
+${(() => { const cv = redLightDefense!.defenseArguments.find(a => a.type === 'commercial_vehicle')!; return `- Strength: ${cv.strength.toUpperCase()}
+- Summary: ${cv.summary}
+- Details: ${cv.details}
+
+INSTRUCTIONS: This is a ${cv.strength === 'strong' ? 'STRONG' : 'MODERATE'} defense argument. The cited vehicle is a commercial vehicle with air brakes, which have a 0.5-1.0 second lag before brakes engage plus a lower deceleration rate (7 ft/s² vs 10 ft/s² for passenger cars). Chicago's yellow light duration is calculated for passenger cars — it is physically insufficient for this commercial vehicle to stop safely. Reference FMCSA braking standards and the ITE yellow light formula. Note that this creates a due process concern: the driver is being penalized for a situation the traffic engineering did not account for.`; })()}` : ''}
+
 ${redLightDefense.violationSpike?.isSpike ? `
 VIOLATION SPIKE ANALYSIS (CAMERA MALFUNCTION INDICATOR):
 - Violations on Date: ${redLightDefense.violationSpike.violationsOnDate}
@@ -1364,15 +1381,17 @@ ${redLightDefense.defenseArguments.map((a, i) => `${i + 1}. [${a.strength.toUppe
 
 INSTRUCTIONS FOR USING DEFENSE ANALYSIS:
 1. Lead with the STRONGEST argument(s) — those marked [STRONG] above. Procedural defenses (late notice, factual inconsistency) should come FIRST as they can be case-dispositive.
-2. Use [MODERATE] arguments as supporting points
-3. [SUPPORTING] arguments provide context but should not be the primary focus
-4. The dilemma zone argument, if applicable, is a powerful physics-based defense recognized by traffic engineers
-5. The yellow light timing argument, if applicable, cites national engineering standards
-6. The right-turn-on-red argument, if applicable, may completely invalidate the citation
-7. The violation spike argument supports a camera malfunction theory
-8. Weather arguments support the case but are rarely sufficient alone
-9. Reference the attached sensor data exhibit for all GPS/accelerometer claims
-10. DO NOT mention the defense score or automated analysis in the letter
+2. The ILLINOIS STATUTE argument (625 ILCS 5/11-306(c-5)), if applicable, is the STRONGEST technical defense because it is BINDING LAW — not just an engineering recommendation. It should be the lead technical argument when present.
+3. Use [MODERATE] arguments as supporting points
+4. [SUPPORTING] arguments provide context but should not be the primary focus
+5. The dilemma zone argument, if applicable, is a powerful physics-based defense recognized by traffic engineers
+6. The yellow light timing argument, if applicable, cites national engineering standards
+7. The commercial vehicle argument, if applicable, demonstrates the yellow light is physically insufficient for air-brake vehicles
+8. The right-turn-on-red argument, if applicable, may completely invalidate the citation
+9. The violation spike argument supports a camera malfunction theory
+10. Weather arguments support the case but are rarely sufficient alone
+11. Reference the attached sensor data exhibit for all GPS/accelerometer claims
+12. DO NOT mention the defense score or automated analysis in the letter
 ` : ''}
 ${cameraPassHistory && cameraPassHistory.length > 0 ? `
 === SPEED CAMERA GPS DATA FROM USER'S APP ===
