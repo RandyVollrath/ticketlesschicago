@@ -191,6 +191,12 @@ export interface TicketFacts {
   meterWasBroken?: boolean;
   permitWasDisplayed?: boolean;
   cleaningDidNotOccur?: boolean;
+  /** Whether the user is a non-Chicago resident (based on mailing address) — strong defense for 9-64-125 */
+  isNonResident?: boolean;
+  /** The user's mailing city if non-resident */
+  nonResidentCity?: string;
+  /** The user's mailing state if non-resident */
+  nonResidentState?: string;
 
   // Time-based calculations
   daysSinceTicket: number;

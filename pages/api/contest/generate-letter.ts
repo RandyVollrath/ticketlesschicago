@@ -296,7 +296,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get user profile for name/address
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('first_name, last_name, address, email, phone')
+      .select('first_name, last_name, address, email, phone, mailing_city, mailing_state, mailing_address')
       .eq('user_id', user.id)
       .single();
 
@@ -490,6 +490,7 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
     let parkingEvidence: ParkingEvidenceResult | null = null;
     let parkingEvidenceText = '';
     let cityStickerReceipt: any = null;
+    let nonResidentDetected: { isNonResident: boolean; mailingCity: string | null; mailingState: string | null } | null = null;
     let registrationReceipt: any = null;
     let redLightReceipt: any = null;
     let cameraPassHistory: any[] | null = null;
@@ -600,6 +601,21 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
           }
         } catch (e) { console.error('City sticker receipt lookup failed:', e); }
       })());
+
+      // Non-resident detection for city sticker violations (synchronous, from profile)
+      // Per Chicago Municipal Code 9-100-030, non-residents are exempt from city sticker requirement.
+      // This is a true prima facie case failure — 80% win rate from FOIA data.
+      if (profile) {
+        const mailingCity = ((profile as any).mailing_city || '').trim().toLowerCase();
+        if (mailingCity && mailingCity !== 'chicago') {
+          nonResidentDetected = {
+            isNonResident: true,
+            mailingCity: (profile as any).mailing_city,
+            mailingState: (profile as any).mailing_state,
+          };
+          console.log(`Non-resident detected: city="${(profile as any).mailing_city}", state="${(profile as any).mailing_state}" — prima facie defense for city sticker`);
+        }
+      }
     }
 
     // 3. Registration Evidence Receipt (for expired_plates violations)
@@ -1370,6 +1386,22 @@ INSTRUCTIONS: This receipt proves the user purchased a city sticker. Compare the
 - If purchased BEFORE the citation: State the user was already in compliance at the time of the citation. This is the strongest argument.
 - If purchased AFTER the citation: State the user has since come into compliance and respectfully requests the citation be dismissed in light of their good-faith compliance. Hearing officers dismiss these cases approximately half the time.
 - In either case, reference the specific purchase date. This receipt is attached as evidence.` : ''}
+${nonResidentDetected?.isNonResident ? `
+=== NON-RESIDENT DEFENSE — THIS IS THE PRIMARY ARGUMENT (80% WIN RATE) ===
+
+CRITICAL: The user is NOT a Chicago resident. Their mailing address is in ${nonResidentDetected.mailingCity || 'a city outside Chicago'}${nonResidentDetected.mailingState ? `, ${nonResidentDetected.mailingState}` : ''}.
+
+LEGAL BASIS: Chicago Municipal Code Section 9-64-125 requires a city vehicle sticker for vehicles "principally used or kept" in Chicago. Section 9-100-030 states that the prima facie case for automated violations requires the registered owner to be subject to the ordinance. A non-resident is NOT subject to the city sticker requirement.
+
+This is a TRUE PRIMA FACIE CASE FAILURE — the city literally cannot establish the violation against a non-resident.
+
+INSTRUCTIONS:
+1. LEAD with the non-resident defense — it is the STRONGEST possible argument (80% win rate in FOIA data)
+2. State clearly: "I am not a resident of the City of Chicago. My permanent address is in ${nonResidentDetected.mailingCity || '[city]'}${nonResidentDetected.mailingState ? `, ${nonResidentDetected.mailingState}` : ''}."
+3. Cite CMC 9-64-125 and explain that the city sticker requirement applies only to vehicles principally used or kept in Chicago
+4. State: "As a non-resident, I am not subject to this ordinance, and the City cannot establish a prima facie case under 9-100-030."
+5. If a city sticker receipt is also available, mention it as an alternative argument but keep non-residency as the PRIMARY argument
+6. Request dismissal based on non-resident status` : ''}
 ${registrationReceipt ? `
 === VEHICLE REGISTRATION EVIDENCE ===
 The user has vehicle registration/renewal documentation on file:
