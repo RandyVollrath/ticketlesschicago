@@ -626,9 +626,20 @@ export async function downloadAndUploadMedia(
 
       // Extract filename from URL or generate one
       const urlParts = mediaUrl.split('/');
-      const rawFilename = urlParts[urlParts.length - 1] || `${source}-image-${Date.now()}.jpg`;
+      let rawFilename = urlParts[urlParts.length - 1] || `${source}-image-${Date.now()}.jpg`;
       // Clean filename (remove query params)
-      const filename = rawFilename.split('?')[0];
+      let filename = rawFilename.split('?')[0];
+
+      // Ensure filename has an image extension based on content-type
+      // MMS URLs often have no extension (e.g. /media/abc123)
+      if (!/\.(jpg|jpeg|png|gif|webp|heic)$/i.test(filename) && contentType.startsWith('image/')) {
+        const extMap: Record<string, string> = {
+          'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif',
+          'image/webp': '.webp', 'image/heic': '.heic',
+        };
+        const ext = extMap[contentType] || '.jpg';
+        filename = `${filename}${ext}`;
+      }
 
       const timestamp = Date.now();
       const blobPath = `evidence/${userId}/${ticketId}/${timestamp}-${filename}`;
