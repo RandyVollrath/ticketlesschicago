@@ -854,6 +854,23 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
       })());
     }
 
+    // 9. Sweeper Tracker GPS Verification (for street cleaning violations)
+    // Queries the City of Chicago's SweepTracker API to check whether a street
+    // sweeper actually visited the cited block on the ticket date. If it didn't,
+    // that's a strong defense: the ticket was issued for a cleaning that never occurred.
+    if ((violationType === 'street_cleaning' || contest.violation_code === '9-64-010') && ticketDate && contest.ticket_location) {
+      evidencePromises.push((async () => {
+        try {
+          sweeperVerification = await verifySweeperVisit(contest.ticket_location, ticketDate);
+          if (sweeperVerification.checked) {
+            console.log(`  Sweeper verification: ${sweeperVerification.sweptOnDate ? 'SWEPT' : 'NOT SWEPT'} on ${ticketDate} — ${sweeperVerification.message}`);
+          }
+        } catch (e) {
+          console.error('Sweeper tracker verification failed (non-fatal):', e);
+        }
+      })());
+    }
+
     // Wait for ALL evidence lookups to complete in parallel
     await Promise.all(evidencePromises);
 
@@ -1585,6 +1602,30 @@ INSTRUCTIONS FOR LETTER:
 2. Request that the city provide proof the street sweeper ACTUALLY serviced this specific block on this date
 3. The city's schedule showing cleaning was planned does NOT prove it occurred — request sweeper GPS logs
 `}` : ''}
+${sweeperVerification?.checked ? `
+=== STREET SWEEPER GPS VERIFICATION (City of Chicago SweepTracker) ===
+${sweeperVerification.streetSegment ? `Street Segment: ${sweeperVerification.streetSegment} (TransID: ${sweeperVerification.transId})` : 'Street segment: Could not be identified'}
+Ticket Date: ${sweeperVerification.ticketDate}
+Sweeper Visited on Ticket Date: ${sweeperVerification.sweptOnDate ? 'YES' : 'NO'}
+
+${sweeperVerification.message}
+
+${!sweeperVerification.sweptOnDate && !sweeperVerification.error ? `
+*** CRITICAL DEFENSE FINDING: NO SWEEPER GPS ACTIVITY ON TICKET DATE ***
+The City of Chicago's own SweepTracker GPS system — which records real-time location data for every city street sweeper — shows NO sweeper visited this block on ${sweeperVerification.ticketDate}.
+
+INSTRUCTIONS FOR LETTER:
+1. This is POWERFUL evidence — the city's own GPS tracking system contradicts the basis for the ticket
+2. State that according to the City's SweepTracker GPS records, no street sweeper serviced this block on the ticket date
+3. Argue that if no sweeper cleaned the street, the parking restriction served no purpose and the ticket is unjust
+4. The city cannot claim the street needed to be clear for cleaning if their own records show no cleaner came
+5. Combine with schedule verification above — if cleaning wasn't even scheduled OR the sweeper didn't come, the ticket lacks justification
+6. Do NOT cite "SweepTracker" by name — instead say "the City's own street sweeper GPS tracking records"
+` : ''}${sweeperVerification.sweptOnDate ? `
+The sweeper DID visit this block on the ticket date. Do NOT argue that the sweeper didn't come.
+Instead, focus on other defenses: signage adequacy, weather conditions, departure timing, or posted hours.
+${sweeperVerification.visitsOnDate.length > 0 ? `Sweeper visit times: ${sweeperVerification.visitsOnDate.map(v => v.postingTimeFormatted || v.postingTime).join(', ')}` : ''}
+` : ''}` : ''}
 ${courtData.hasData ? `HISTORICAL COURT DATA (analyzed ${courtData.totalCasesAnalyzed} cases, found ${courtData.matchingCasesCount} matching user's evidence):
 
 User's Evidence Availability:
@@ -1855,6 +1896,9 @@ ${learningsText}${officerIntelText}`
         }
         if (streetCleaningVerification.checked) {
           availableEvidenceSummary.push(`Schedule Verification: ${streetCleaningVerification.message}`);
+        }
+        if (sweeperVerification?.checked) {
+          availableEvidenceSummary.push(`Sweeper GPS Verification: ${sweeperVerification.sweptOnDate ? 'Sweeper DID visit on ticket date' : 'NO sweeper visit on ticket date'} — ${sweeperVerification.message}`);
         }
         if (streetViewPackage?.hasImagery) {
           availableEvidenceSummary.push(`Street View: ${streetViewPackage.analyses.length} angles analyzed. ${streetViewPackage.hasSignageIssue ? 'SIGNAGE ISSUE FOUND.' : 'No signage issues found.'} Summary: ${streetViewPackage.analysisSummary}`);

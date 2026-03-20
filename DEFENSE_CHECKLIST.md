@@ -110,7 +110,7 @@ All universal checks plus:
 - ✅ **Schedule verification** *(Automated)*: PostGIS geocoding to determine ward/section, then lookup whether street cleaning was actually scheduled on the ticket date
 - ✅ **Weather cancellation** *(Automated)*: Whether bad weather caused cleaning to be cancelled (from historical weather data)
 - ✅ **Signage compliance** *(Automated via Street View)*: Sign spacing, visibility, and placement per city requirements
-- 💬 **Cleaning occurrence** *(Argument strategy — no data source)*: The AI argues the city should provide GPS logs showing the sweeper actually serviced the block. No public sweeper GPS data exists; this is a FOIA-based argument.
+- ✅ **Sweeper GPS verification** *(Automated)*: Queries the City of Chicago's SweepTracker GPS system to determine whether a street sweeper actually visited the block on the ticket date. Uses TransLegend MapServer to identify the street segment, then checks sweeper visit history. If no sweeper visited, this is a powerful defense — the city's own data contradicts the need for the parking restriction.
 
 ### Snow Route (9-64-100) — $150 Fine
 All universal checks plus:
@@ -261,6 +261,7 @@ Speed camera violations receive all universal checks plus:
 | City Sticker Receipt | Purchase date, amount, validity | City sticker violations |
 | Registration Receipt | Renewal date, amount, grace period | Registration/plate violations |
 | Street Cleaning Schedule | Ward/section lookup, schedule verification | Street cleaning violations |
+| Sweeper GPS Tracker | TransID lookup, sweeper visit history, date matching | Street cleaning violations |
 | Red Light Sensor Data | Speed profile, GPS trace, accelerometer, cryptographic hash | Red light violations |
 | Yellow Light Timing | ITE standard vs. Chicago actual, shortfall analysis | Red light violations |
 | Right-Turn Detection | Heading change, stop detection, legal qualification | Red light violations |
