@@ -624,10 +624,10 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>
-            {activeTab === 'dashboard' ? 'Dashboard' : 'Future'}
+            {activeTab === 'dashboard' ? 'Dashboard' : 'Address'}
           </Text>
           {activeTab === 'settings' && (
-            <Text style={styles.headerSubtitle}>Address-based alerts, renewals, and ticket contesting</Text>
+            <Text style={styles.headerSubtitle}>Alerts for your registered address, renewals & tickets</Text>
           )}
         </View>
         {saveStatus !== 'idle' && (
@@ -1075,6 +1075,31 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             onValueChange={setRenewalReminders}
             isLast
           />
+          {renewalReminders && (
+            <>
+              <Text style={styles.fieldLabel}>Days before to notify</Text>
+              <View style={styles.chipRow}>
+                {NOTIFICATION_DAYS.map(day => (
+                  <TouchableOpacity
+                    key={day}
+                    style={[
+                      styles.chip,
+                      notificationDays.includes(day) && styles.chipActive,
+                    ]}
+                    onPress={() => toggleNotificationDay(day)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.chipText,
+                      notificationDays.includes(day) && styles.chipTextActive,
+                    ]}>
+                      {day === 0 ? 'Day of' : `${day}d`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
         </SettingsCard>
 
         {/* Renewal Dates */}

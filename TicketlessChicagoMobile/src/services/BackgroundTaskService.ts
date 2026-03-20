@@ -2707,6 +2707,29 @@ class BackgroundTaskServiceClass {
     }
 
     if (restrictions.length > 0) {
+      // Filter scheduled reminders by user's per-type push notification preferences
+      const prefKeys = Object.values(BackgroundTaskService.PUSH_ALERT_PREF_KEYS);
+      try {
+        const stored = await AsyncStorage.multiGet(prefKeys);
+        const disabledTypes = new Set<string>();
+        for (const [ruleType, asyncKey] of Object.entries(BackgroundTaskService.PUSH_ALERT_PREF_KEYS)) {
+          const entry = stored.find(([k]) => k === asyncKey);
+          if (entry && entry[1] === 'false') disabledTypes.add(ruleType);
+        }
+        if (disabledTypes.size > 0) {
+          const before = restrictions.length;
+          const filtered = restrictions.filter(r => !disabledTypes.has(r.type));
+          if (filtered.length < before) {
+            log.info(`Filtered ${before - filtered.length} scheduled reminders by user prefs (disabled: ${[...disabledTypes].join(', ')})`);
+          }
+          if (filtered.length === 0) return;
+          await LocalNotificationService.scheduleNotificationsForParking(filtered);
+          log.info(`Scheduled ${filtered.length} local reminder notifications`);
+          return;
+        }
+      } catch (e) {
+        log.warn('Error reading push alert prefs for reminders, scheduling all:', e);
+      }
       await LocalNotificationService.scheduleNotificationsForParking(restrictions);
       log.info(`Scheduled ${restrictions.length} local reminder notifications`);
     }
@@ -2834,6 +2857,56 @@ class BackgroundTaskServiceClass {
    * Send notification about parking restrictions.
    * Now includes enforcement risk intelligence from 1.18M FOIA ticket records.
    */
+  /**
+   * Map from ParkingRule.type to AsyncStorage key for user preference.
+   * If a key is present and its value is 'false', that rule type is suppressed from notifications.
+   * All default to enabled (true) if the key doesn't exist.
+   */
+  private static readonly PUSH_ALERT_PREF_KEYS: Record<string, string> = {
+    street_cleaning: 'pushAlert_streetCleaning',
+    snow_route: 'pushAlert_twoInchSnow',
+    winter_ban: 'pushAlert_winterOvernight',
+    permit_zone: 'pushAlert_permitZone',
+    dot_permit: 'pushAlert_dotPermit',
+    tow_zone: 'pushAlert_tow',
+  };
+
+  /**
+   * Filter rules based on user's per-type push notification preferences.
+   * Returns only rules whose type the user hasn't disabled.
+   */
+  private async filterRulesByUserPrefs(
+    rules: Array<{ message: string; severity: string; type?: string }>
+  ): Promise<Array<{ message: string; severity: string; type?: string }>> {
+    try {
+      const keys = Object.values(BackgroundTaskService.PUSH_ALERT_PREF_KEYS);
+      const stored = await AsyncStorage.multiGet(keys);
+      // Build a set of disabled types
+      const disabledTypes = new Set<string>();
+      for (const [ruleType, asyncKey] of Object.entries(BackgroundTaskService.PUSH_ALERT_PREF_KEYS)) {
+        const entry = stored.find(([k]) => k === asyncKey);
+        if (entry && entry[1] === 'false') {
+          disabledTypes.add(ruleType);
+        }
+      }
+      if (disabledTypes.size === 0) return rules;
+
+      const filtered = rules.filter(r => {
+        const ruleType = (r as any).type;
+        if (ruleType && disabledTypes.has(ruleType)) {
+          log.info(`Suppressing ${ruleType} notification — user disabled in settings`);
+          return false;
+        }
+        return true;
+      });
+      return filtered;
+    } catch (e) {
+      // On error, default to showing all — never silently swallow alerts
+      log.warn('Error reading push alert prefs, showing all:', e);
+      return rules;
+    }
+  }
+
   private async sendParkingNotification(
     result: {
       address: string;
@@ -2842,6 +2915,15 @@ class BackgroundTaskServiceClass {
     accuracy?: number,
     rawData?: any
   ): Promise<void> {
+    // Filter rules by user's per-type push notification preferences
+    const filteredRules = await this.filterRulesByUserPrefs(result.rules);
+    if (filteredRules.length === 0) {
+      log.info('All restriction types disabled by user — skipping parking notification');
+      return;
+    }
+    // Use filtered rules for the rest of the notification
+    result = { ...result, rules: filteredRules };
+
     // Dedup guard: don't spam the same restriction notification within 3 minutes
     const timeSinceLastNotif = Date.now() - this.lastParkingNotificationAt;
     if (timeSinceLastNotif < this.PARKING_NOTIFICATION_DEDUP_MS && this.lastParkingNotificationAddress === result.address) {
