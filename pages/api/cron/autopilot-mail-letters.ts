@@ -711,7 +711,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // AUTHORIZATION GATE: Do not mail letters without contest consent
-      if (!profile.contest_consent) {
+      // Exception: admin_approved letters bypass consent — the admin approval IS the authorization
+      // (this is the Day-19 safety net: if the user never responded to consent emails,
+      //  an admin can approve the letter directly)
+      if (!profile.contest_consent && letter.status !== 'admin_approved') {
         console.log(`  ⚠️ Skipping letter ${letter.id}: User ${letter.user_id} has not provided contest authorization (no e-signature on file)`);
         // Update letter status so it's not retried every run
         await supabaseAdmin

@@ -33,9 +33,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify cron key
-  const cronKey = req.headers['x-cron-key'] || req.query.key;
-  if (cronKey !== process.env.CRON_SECRET_KEY) {
+  // Verify cron secret
+  const authHeader = req.headers.authorization;
+  const keyParam = req.query.key as string | undefined;
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}` || keyParam === process.env.CRON_SECRET;
+
+  if (!isVercelCron && !isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
