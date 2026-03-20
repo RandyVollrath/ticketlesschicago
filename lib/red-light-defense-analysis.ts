@@ -48,10 +48,20 @@ export interface YellowLightAnalysis {
   driverApproachSpeedMph: number;
   /** ITE recommended duration based on driver's actual speed (not posted limit) */
   iteForDriverSpeedSec: number;
+  /** Illinois statutory minimum for camera intersections (MUTCD + 1 second) */
+  illinoisStatutoryMinSec: number;
+  /** Whether Chicago's yellow violates the Illinois +1 second law for camera intersections */
+  violatesIllinoisStatute: boolean;
+  /** Shortfall vs Illinois statutory minimum (positive = Chicago is shorter than law requires) */
+  statutoryShortfallSec: number;
   /** Human-readable explanation */
   explanation: string;
   /** Legal citation for the standard */
   standardCitation: string;
+  /** Road grade used in calculation (0 = flat, positive = downhill toward intersection) */
+  roadGradePercent: number;
+  /** Whether grade adjustment was applied */
+  gradeAdjusted: boolean;
 }
 
 export interface RightTurnAnalysis {
@@ -114,8 +124,8 @@ export interface RedLightDefenseAnalysis {
 }
 
 export interface DefenseArgument {
-  type: 'yellow_timing' | 'right_turn' | 'full_stop' | 'weather' | 'geometry' | 'deceleration' |
-        'violation_spike' | 'dilemma_zone' | 'late_notice' | 'factual_inconsistency';
+  type: 'yellow_timing' | 'illinois_statute' | 'right_turn' | 'full_stop' | 'weather' | 'geometry' | 'deceleration' |
+        'violation_spike' | 'dilemma_zone' | 'late_notice' | 'factual_inconsistency' | 'commercial_vehicle';
   strength: 'strong' | 'moderate' | 'supporting';
   title: string;
   summary: string;
@@ -150,6 +160,14 @@ export interface DilemmaZoneAnalysis {
   canClear: boolean;
   /** Human-readable explanation */
   explanation: string;
+  /** Road grade percent used (positive = downhill, increases stopping distance) */
+  roadGradePercent: number;
+  /** Whether commercial vehicle braking was applied */
+  commercialVehicle: boolean;
+  /** Deceleration rate used (ft/s²) */
+  decelRateUsed: number;
+  /** Intersection width used (ft) */
+  intersectionWidthFt: number;
 }
 
 export interface LateNoticeAnalysis {
@@ -189,7 +207,17 @@ export interface FactualInconsistencyAnalysis {
  */
 const ITE_PERCEPTION_REACTION_SEC = 1.0;
 const ITE_DECEL_RATE_FT_PER_SEC2 = 10.0;
+const GRAVITY_FT_PER_SEC2 = 32.2; // gravitational acceleration
 const MPH_TO_FPS = 1.467; // 1 mph = 1.467 ft/s
+
+/**
+ * Commercial vehicle braking parameters.
+ * Air brakes have a 0.5-1.0 second lag before brakes engage (pressure buildup).
+ * Heavy vehicles also decelerate slower due to mass.
+ * Source: FMCSA braking standards, FHWA vehicle classification guidelines.
+ */
+const COMMERCIAL_PERCEPTION_REACTION_SEC = 1.5; // 1.0s base + 0.5s air brake lag
+const COMMERCIAL_DECEL_RATE_FT_PER_SEC2 = 7.0; // trucks/buses decelerate slower than cars
 
 /**
  * Chicago yellow light durations by posted speed.
@@ -209,6 +237,48 @@ const CHICAGO_YELLOW_DURATIONS: Record<number, number> = {
 };
 
 /**
+ * MUTCD minimum yellow light durations by speed.
+ * Source: MUTCD Table 4D-102, "Minimum Yellow Change Interval"
+ */
+const MUTCD_MINIMUM_YELLOW: Record<number, number> = {
+  25: 3.0,
+  30: 3.0,
+  35: 3.5,
+  40: 4.0,
+  45: 4.5,
+  50: 5.0,
+  55: 5.5,
+};
+
+/**
+ * Illinois Statutory Minimum for Red Light Camera Intersections
+ *
+ * Illinois law (625 ILCS 5/11-306(c-5)) requires that intersections equipped
+ * with automated traffic law enforcement systems (red light cameras) must have
+ * a yellow change interval of AT LEAST the MUTCD minimum PLUS 1 SECOND.
+ *
+ * This means a 30 mph camera intersection needs 4.0 seconds, not Chicago's 3.0.
+ * At 35 mph it needs 4.5 seconds, not 4.0.
+ *
+ * This is STATE LAW — not just an engineering recommendation.
+ */
+function illinoisStatutoryMinimumYellow(postedSpeedMph: number): number {
+  // Get MUTCD minimum, then add 1 second per Illinois statute
+  const mutcdMin = getMutcdMinimum(postedSpeedMph);
+  return mutcdMin + 1.0;
+}
+
+function getMutcdMinimum(postedSpeedMph: number): number {
+  if (postedSpeedMph <= 25) return 3.0;
+  if (postedSpeedMph <= 30) return 3.0;
+  if (postedSpeedMph <= 35) return 3.5;
+  if (postedSpeedMph <= 40) return 4.0;
+  if (postedSpeedMph <= 45) return 4.5;
+  if (postedSpeedMph <= 50) return 5.0;
+  return 5.5;
+}
+
+/**
  * Earth radius in meters (WGS84 mean)
  */
 const EARTH_RADIUS_M = 6_371_000;
@@ -217,11 +287,99 @@ const EARTH_RADIUS_M = 6_371_000;
 
 /**
  * Calculate ITE-recommended yellow light duration for a given approach speed.
- * Uses the simplified ITE formula: Y = 1.0 + (v_fps) / (2 * 10) = 1.0 + v_fps/20
+ *
+ * Full formula: Y = t + v / (2 * (a + g * G))
+ * Where G = grade as decimal (positive = downhill toward intersection, negative = uphill)
+ * Downhill = longer yellow needed (gravity fights braking)
+ * Uphill = shorter yellow ok (gravity helps braking)
+ *
+ * For flat grade (G=0): Y = t + v / (2a) = 1.0 + v_fps/20
  */
-function iteYellowDuration(approachSpeedMph: number): number {
+function iteYellowDuration(approachSpeedMph: number, gradePercent: number = 0): number {
   const vFps = approachSpeedMph * MPH_TO_FPS;
-  return ITE_PERCEPTION_REACTION_SEC + vFps / (2 * ITE_DECEL_RATE_FT_PER_SEC2);
+  const gradeDecimal = gradePercent / 100; // Convert percent to decimal
+  const effectiveDecel = ITE_DECEL_RATE_FT_PER_SEC2 + GRAVITY_FT_PER_SEC2 * gradeDecimal;
+  // Guard against division by zero or negative decel (extreme downhill)
+  if (effectiveDecel <= 1.0) {
+    return ITE_PERCEPTION_REACTION_SEC + vFps / (2 * 1.0); // Use minimum 1 ft/s²
+  }
+  return ITE_PERCEPTION_REACTION_SEC + vFps / (2 * effectiveDecel);
+}
+
+/**
+ * Calculate yellow duration for commercial vehicles (trucks, buses with air brakes).
+ * Air brakes have 0.5-1.0 second lag before engagement, and heavy vehicles
+ * decelerate at ~7 ft/s² vs 10 ft/s² for passenger cars.
+ */
+function commercialYellowDuration(approachSpeedMph: number, gradePercent: number = 0): number {
+  const vFps = approachSpeedMph * MPH_TO_FPS;
+  const gradeDecimal = gradePercent / 100;
+  const effectiveDecel = COMMERCIAL_DECEL_RATE_FT_PER_SEC2 + GRAVITY_FT_PER_SEC2 * gradeDecimal;
+  if (effectiveDecel <= 1.0) {
+    return COMMERCIAL_PERCEPTION_REACTION_SEC + vFps / (2 * 1.0);
+  }
+  return COMMERCIAL_PERCEPTION_REACTION_SEC + vFps / (2 * effectiveDecel);
+}
+
+/**
+ * Fetch elevation for a coordinate using Open-Meteo Elevation API (free, no API key).
+ * Returns elevation in meters above sea level.
+ */
+export async function getElevation(lat: number, lon: number): Promise<number | null> {
+  try {
+    const url = `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data?.elevation?.[0] !== undefined) {
+      return data.elevation[0];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Calculate road grade between two GPS points using elevation data.
+ * Returns grade as a percentage (positive = downhill toward intersection, which is WORSE for stopping).
+ * Convention: downhill = positive (harder to stop), uphill = negative (easier to stop)
+ * This matches the ITE formula where positive G = downhill = longer yellow needed.
+ */
+export async function calculateRoadGrade(
+  approachLat: number, approachLon: number,
+  intersectionLat: number, intersectionLon: number,
+): Promise<{ gradePercent: number; approachElevation: number; intersectionElevation: number } | null> {
+  try {
+    // Fetch both elevations in a single API call
+    const url = `https://api.open-meteo.com/v1/elevation?latitude=${approachLat},${intersectionLat}&longitude=${approachLon},${intersectionLon}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data?.elevation || data.elevation.length < 2) return null;
+
+    const approachElev = data.elevation[0];
+    const intersectionElev = data.elevation[1];
+    const horizontalDistM = haversineDistance(approachLat, approachLon, intersectionLat, intersectionLon);
+
+    if (horizontalDistM < 10) return null; // Too close for meaningful grade
+
+    // Positive = downhill (approach is higher than intersection)
+    // This matches ITE convention: positive grade = gravity fights braking = need longer yellow
+    const elevDrop = approachElev - intersectionElev;
+    const gradePercent = (elevDrop / horizontalDistM) * 100;
+
+    // Clamp to reasonable range (roads are rarely > 10% grade)
+    const clampedGrade = Math.max(-10, Math.min(10, gradePercent));
+
+    return {
+      gradePercent: parseFloat(clampedGrade.toFixed(1)),
+      approachElevation: approachElev,
+      intersectionElevation: intersectionElev,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -240,28 +398,51 @@ function chicagoYellowDuration(postedSpeedMph: number): number {
 export function analyzeYellowLightTiming(
   postedSpeedMph: number,
   driverApproachSpeedMph: number | null,
+  roadGradePercent: number = 0,
 ): YellowLightAnalysis {
   const effectiveApproachSpeed = driverApproachSpeedMph ?? postedSpeedMph;
-  const iteRecommended = iteYellowDuration(postedSpeedMph);
-  const iteForDriverSpeed = iteYellowDuration(effectiveApproachSpeed);
+  const iteRecommended = iteYellowDuration(postedSpeedMph, roadGradePercent);
+  const iteForDriverSpeed = iteYellowDuration(effectiveApproachSpeed, roadGradePercent);
   const chicagoActual = chicagoYellowDuration(postedSpeedMph);
   const shortfall = iteRecommended - chicagoActual;
 
+  // Illinois statutory minimum for camera intersections: MUTCD + 1 second
+  const statutoryMin = illinoisStatutoryMinimumYellow(postedSpeedMph);
+  const statutoryShortfall = statutoryMin - chicagoActual;
+  const violatesStatute = statutoryShortfall > 0.05;
+
+  const gradeAdjusted = Math.abs(roadGradePercent) > 0.5;
+  const gradeNote = gradeAdjusted
+    ? ` (adjusted for ${roadGradePercent > 0 ? 'downhill' : 'uphill'} grade of ${Math.abs(roadGradePercent).toFixed(1)}%)`
+    : '';
+
   let explanation: string;
-  if (shortfall > 0.3) {
+
+  // Lead with the Illinois statute violation — this is the strongest argument
+  if (violatesStatute) {
+    explanation = `ILLINOIS LAW VIOLATION: Illinois statute 625 ILCS 5/11-306(c-5) requires that intersections ` +
+      `with automated red light enforcement systems must have a yellow change interval of at least the MUTCD minimum ` +
+      `plus one additional second. For this ${postedSpeedMph} mph intersection, the statutory minimum is ` +
+      `${statutoryMin.toFixed(1)} seconds (MUTCD ${getMutcdMinimum(postedSpeedMph).toFixed(1)}s + 1.0s). ` +
+      `Chicago's yellow light at this intersection is only ${chicagoActual.toFixed(1)} seconds — ` +
+      `${statutoryShortfall.toFixed(1)} seconds BELOW the legal minimum required by state law${gradeNote}. ` +
+      `This is not merely an engineering recommendation — it is a binding legal requirement for camera-enforced intersections. ` +
+      `The 2014 Chicago Inspector General investigation confirmed that even small yellow light shortfalls ` +
+      `generated tens of thousands of improper citations.`;
+  } else if (shortfall > 0.3) {
     explanation = `Chicago's yellow light at this ${postedSpeedMph} mph intersection is ${chicagoActual.toFixed(1)} seconds — ` +
       `${shortfall.toFixed(1)} seconds shorter than the ${iteRecommended.toFixed(1)} seconds recommended by the Institute of ` +
-      `Transportation Engineers (ITE) and MUTCD standards. This means drivers have less time to safely clear the intersection ` +
+      `Transportation Engineers (ITE)${gradeNote}. This means drivers have less time to safely clear the intersection ` +
       `than national engineering standards prescribe. ` +
       `A 2014 Chicago Inspector General investigation found that similar yellow light shortfalls generated tens of thousands of ` +
       `citations that would not have been issued under proper timing.`;
   } else if (shortfall > 0) {
     explanation = `Chicago's yellow light at this ${postedSpeedMph} mph intersection is ${chicagoActual.toFixed(1)} seconds, ` +
-      `which is ${shortfall.toFixed(1)} seconds shorter than the ITE-recommended ${iteRecommended.toFixed(1)} seconds. ` +
+      `which is ${shortfall.toFixed(1)} seconds shorter than the ITE-recommended ${iteRecommended.toFixed(1)} seconds${gradeNote}. ` +
       `While a small difference, this reduces the margin of safety for drivers approaching at the posted speed.`;
   } else {
     explanation = `Chicago's yellow light timing of ${chicagoActual.toFixed(1)} seconds at this ${postedSpeedMph} mph intersection ` +
-      `meets or exceeds the ${iteRecommended.toFixed(1)}-second ITE recommended minimum.`;
+      `meets or exceeds the ${iteRecommended.toFixed(1)}-second ITE recommended minimum${gradeNote}.`;
   }
 
   return {
@@ -272,8 +453,13 @@ export function analyzeYellowLightTiming(
     isShorterThanStandard: shortfall > 0.05,
     driverApproachSpeedMph: effectiveApproachSpeed,
     iteForDriverSpeedSec: parseFloat(iteForDriverSpeed.toFixed(1)),
+    illinoisStatutoryMinSec: parseFloat(statutoryMin.toFixed(1)),
+    violatesIllinoisStatute: violatesStatute,
+    statutoryShortfallSec: parseFloat(statutoryShortfall.toFixed(2)),
     explanation,
-    standardCitation: 'ITE Traffic Engineering Handbook (7th Ed.), MUTCD §4D.26, Illinois Vehicle Code 625 ILCS 5/11-306',
+    standardCitation: '625 ILCS 5/11-306(c-5) (Illinois +1s statute), ITE Traffic Engineering Handbook (7th Ed.), MUTCD §4D.26',
+    roadGradePercent: parseFloat(roadGradePercent.toFixed(1)),
+    gradeAdjusted,
   };
 }
 
@@ -539,16 +725,28 @@ export function analyzeDilemmaZone(
   distanceToStopBarMeters: number,
   yellowDurationSec: number,
   intersectionWidthFt: number = 70, // typical Chicago intersection
+  roadGradePercent: number = 0,
+  isCommercialVehicle: boolean = false,
 ): DilemmaZoneAnalysis {
-  const MPH_TO_FPS = 1.467; // mph to feet/second
-  const COMFORTABLE_DECEL = 10; // ft/s² (ITE standard)
-  const VEHICLE_LENGTH_FT = 17; // average vehicle length
-
   const v_fps = approachSpeedMph * MPH_TO_FPS;
   const distToStopFt = distanceToStopBarMeters * 3.281; // meters to feet
 
+  // Select deceleration rate based on vehicle type
+  const baseDecel = isCommercialVehicle ? COMMERCIAL_DECEL_RATE_FT_PER_SEC2 : ITE_DECEL_RATE_FT_PER_SEC2;
+
+  // Adjust deceleration for grade (downhill = harder to stop, uphill = easier)
+  const gradeDecimal = roadGradePercent / 100;
+  const effectiveDecel = baseDecel + GRAVITY_FT_PER_SEC2 * gradeDecimal;
+  const safeDecel = Math.max(effectiveDecel, 1.0); // Minimum 1 ft/s²
+
+  const VEHICLE_LENGTH_FT = isCommercialVehicle ? 45 : 17; // buses/trucks are ~45 ft
+
   // Stopping distance (physics: d = v²/(2a))
-  const stoppingDistanceFt = (v_fps * v_fps) / (2 * COMFORTABLE_DECEL);
+  const stoppingDistanceFt = (v_fps * v_fps) / (2 * safeDecel);
+
+  // For commercial vehicles, also account for air brake lag distance
+  const brakeLagDistanceFt = isCommercialVehicle ? v_fps * 0.5 : 0; // 0.5s of travel before brakes engage
+  const totalStoppingDistanceFt = stoppingDistanceFt + brakeLagDistanceFt;
 
   // Distance to clear intersection = distance to stop bar + intersection width + vehicle length
   const distanceToClearFt = distToStopFt + intersectionWidthFt + VEHICLE_LENGTH_FT;
@@ -556,8 +754,8 @@ export function analyzeDilemmaZone(
   // Time to clear intersection at current speed
   const timeToClearSec = distanceToClearFt / v_fps;
 
-  // Can stop? Stopping distance must be <= distance to stop bar
-  const canStop = stoppingDistanceFt <= distToStopFt;
+  // Can stop? Total stopping distance must be <= distance to stop bar
+  const canStop = totalStoppingDistanceFt <= distToStopFt;
 
   // Can clear? Time to clear must be <= yellow duration
   const canClear = timeToClearSec <= yellowDurationSec;
@@ -565,33 +763,45 @@ export function analyzeDilemmaZone(
   // Dilemma zone = can't stop AND can't clear
   const inDilemmaZone = !canStop && !canClear;
 
+  const vehicleType = isCommercialVehicle ? 'commercial vehicle (truck/bus)' : 'vehicle';
+  const gradeNote = Math.abs(roadGradePercent) > 0.5
+    ? ` on a ${roadGradePercent > 0 ? 'downhill' : 'uphill'} grade of ${Math.abs(roadGradePercent).toFixed(1)}%`
+    : '';
+  const brakeLagNote = isCommercialVehicle
+    ? ` (including ${brakeLagDistanceFt.toFixed(0)} ft of travel during air brake pressure buildup)`
+    : '';
+
   let explanation: string;
   if (inDilemmaZone) {
-    explanation = `At ${approachSpeedMph.toFixed(0)} mph, the vehicle required ${stoppingDistanceFt.toFixed(0)} ft ` +
-      `to stop safely (at comfortable deceleration of ${COMFORTABLE_DECEL} ft/s²), but was only ` +
-      `${distToStopFt.toFixed(0)} ft from the stop bar. Simultaneously, the vehicle needed ` +
-      `${timeToClearSec.toFixed(1)} seconds to clear the intersection, but the yellow signal ` +
+    explanation = `At ${approachSpeedMph.toFixed(0)} mph, the ${vehicleType} required ${Math.round(totalStoppingDistanceFt)} ft ` +
+      `to stop safely${brakeLagNote} (at ${safeDecel.toFixed(1)} ft/s² deceleration${gradeNote}), but was only ` +
+      `${distToStopFt.toFixed(0)} ft from the stop bar. Simultaneously, the ${vehicleType} needed ` +
+      `${timeToClearSec.toFixed(1)} seconds to clear the ${intersectionWidthFt}-foot-wide intersection, but the yellow signal ` +
       `duration was only ${yellowDurationSec.toFixed(1)} seconds. This places the driver in the ` +
       `"dilemma zone" — the area recognized by the ITE and FHWA where neither stopping nor ` +
       `proceeding is safe. This is a known traffic engineering problem, not driver error.`;
   } else if (!canStop) {
-    explanation = `At ${approachSpeedMph.toFixed(0)} mph, the stopping distance (${stoppingDistanceFt.toFixed(0)} ft) ` +
-      `exceeded the distance to the stop bar (${distToStopFt.toFixed(0)} ft). The driver could not ` +
+    explanation = `At ${approachSpeedMph.toFixed(0)} mph, the stopping distance (${Math.round(totalStoppingDistanceFt)} ft${brakeLagNote}) ` +
+      `exceeded the distance to the stop bar (${distToStopFt.toFixed(0)} ft)${gradeNote}. The driver could not ` +
       `have stopped safely and chose to proceed through the intersection.`;
   } else {
-    explanation = `At ${approachSpeedMph.toFixed(0)} mph, the vehicle could have stopped within ` +
-      `${stoppingDistanceFt.toFixed(0)} ft (${distToStopFt.toFixed(0)} ft available). ` +
+    explanation = `At ${approachSpeedMph.toFixed(0)} mph, the ${vehicleType} could have stopped within ` +
+      `${Math.round(totalStoppingDistanceFt)} ft (${distToStopFt.toFixed(0)} ft available)${gradeNote}. ` +
       `Dilemma zone defense does not apply.`;
   }
 
   return {
     inDilemmaZone,
-    stoppingDistanceFt: Math.round(stoppingDistanceFt),
+    stoppingDistanceFt: Math.round(totalStoppingDistanceFt),
     distanceToStopBarFt: Math.round(distToStopFt),
     distanceToClearFt: Math.round(distanceToClearFt),
     canStop,
     canClear,
     explanation,
+    roadGradePercent: parseFloat(roadGradePercent.toFixed(1)),
+    commercialVehicle: isCommercialVehicle,
+    decelRateUsed: parseFloat(safeDecel.toFixed(1)),
+    intersectionWidthFt,
   };
 }
 
@@ -706,6 +916,12 @@ export interface AnalysisInput {
   userPlate?: string | null;
   /** User's actual plate state */
   userState?: string | null;
+  /** Road grade percentage (positive = downhill, negative = uphill). Auto-fetched if not provided. */
+  roadGradePercent?: number;
+  /** Whether the cited vehicle is a commercial vehicle (truck, bus, etc.) */
+  isCommercialVehicle?: boolean;
+  /** Intersection width in feet (used for dilemma zone calc). Auto-defaults to 70 ft if not provided. */
+  intersectionWidthFt?: number;
 }
 
 /**
@@ -722,10 +938,29 @@ export async function analyzeRedLightDefense(
     violationDatetime, deviceTimestamp,
     cameraAddress, noticeDate,
     ticketPlate, ticketState, userPlate, userState,
+    isCommercialVehicle = false,
+    intersectionWidthFt = 70,
   } = input;
 
-  // 1. Yellow light timing
-  const yellowLight = analyzeYellowLightTiming(postedSpeedMph, approachSpeedMph);
+  // 0. Auto-fetch road grade if not provided and we have enough GPS trace
+  let roadGradePercent = input.roadGradePercent ?? 0;
+  if (input.roadGradePercent === undefined && trace.length >= 4) {
+    // Use the earliest trace point (approach) and camera coords (intersection)
+    try {
+      const gradeResult = await calculateRoadGrade(
+        trace[0].latitude, trace[0].longitude,
+        cameraLatitude, cameraLongitude,
+      );
+      if (gradeResult) {
+        roadGradePercent = gradeResult.gradePercent;
+      }
+    } catch (err) {
+      console.error('Road grade auto-fetch failed:', err);
+    }
+  }
+
+  // 1. Yellow light timing (with grade adjustment)
+  const yellowLight = analyzeYellowLightTiming(postedSpeedMph, approachSpeedMph, roadGradePercent);
 
   // 2. Right-turn detection
   const rightTurn = analyzeRightTurn(trace);
@@ -762,6 +997,9 @@ export async function analyzeRedLightDefense(
       approachSpeedMph,
       geometry.closestPointToCamera, // meters to stop bar
       chicagoYellow,
+      intersectionWidthFt,
+      roadGradePercent,
+      isCommercialVehicle,
     );
   }
 
@@ -792,6 +1030,25 @@ export async function analyzeRedLightDefense(
       title: 'Factual Inconsistency on Violation Notice',
       summary: `${factualInconsistency.inconsistencyType === 'plate_mismatch' ? 'License plate' : 'Plate state'} on ticket does not match vehicle registration.`,
       details: factualInconsistency.explanation,
+    });
+  }
+
+  // Illinois +1 second statute violation (strong — it's STATE LAW, not just engineering)
+  if (yellowLight.violatesIllinoisStatute) {
+    defenseArguments.push({
+      type: 'illinois_statute',
+      strength: 'strong',
+      title: 'Yellow Light Violates Illinois Statute (625 ILCS 5/11-306)',
+      summary: `Illinois law requires camera intersections to have ${yellowLight.illinoisStatutoryMinSec}s yellow (MUTCD + 1s). Chicago provides only ${yellowLight.chicagoActualSec}s — ${yellowLight.statutoryShortfallSec.toFixed(1)}s below the legal minimum.`,
+      details: `Illinois statute 625 ILCS 5/11-306(c-5) explicitly requires that intersections equipped with automated ` +
+        `red light enforcement systems must have a yellow change interval of at least the MUTCD minimum plus one ` +
+        `additional second. For this ${yellowLight.postedSpeedMph} mph intersection, the MUTCD minimum is ` +
+        `${getMutcdMinimum(yellowLight.postedSpeedMph).toFixed(1)} seconds, making the statutory minimum ` +
+        `${yellowLight.illinoisStatutoryMinSec} seconds. Chicago's actual yellow of ${yellowLight.chicagoActualSec} ` +
+        `seconds is ${yellowLight.statutoryShortfallSec.toFixed(1)} seconds below this legal requirement. ` +
+        `This is not an engineering recommendation — it is binding state law. Any citation issued at an intersection ` +
+        `that does not comply with this statutory minimum is subject to challenge on the grounds that the traffic ` +
+        `control device was not in proper working condition as required by law.`,
     });
   }
 
@@ -863,6 +1120,31 @@ export async function analyzeRedLightDefense(
       summary: `Stopping required ${dilemmaZone.stoppingDistanceFt} ft but only ${dilemmaZone.distanceToStopBarFt} ft was available.`,
       details: dilemmaZone.explanation,
     });
+  }
+
+  // Commercial vehicle braking disadvantage
+  if (isCommercialVehicle && approachSpeedMph && approachSpeedMph > 5) {
+    const commercialYellow = commercialYellowDuration(approachSpeedMph, roadGradePercent);
+    const chicagoActual = chicagoYellowDuration(postedSpeedMph);
+    const commercialShortfall = commercialYellow - chicagoActual;
+
+    if (commercialShortfall > 0.3) {
+      defenseArguments.push({
+        type: 'commercial_vehicle',
+        strength: commercialShortfall >= 1.0 ? 'strong' : 'moderate',
+        title: 'Commercial Vehicle Requires Longer Yellow',
+        summary: `This commercial vehicle requires ${commercialYellow.toFixed(1)}s yellow to stop safely at ${approachSpeedMph.toFixed(0)} mph. Chicago provides only ${chicagoActual}s — ${commercialShortfall.toFixed(1)}s short.`,
+        details: `This citation was issued to a commercial vehicle (truck/bus). Commercial vehicles equipped with ` +
+          `air brakes have an inherent 0.5-1.0 second delay before brakes engage (air pressure buildup), ` +
+          `and decelerate at approximately 7 ft/s² versus 10 ft/s² for passenger cars (per FMCSA braking standards). ` +
+          `At the approach speed of ${approachSpeedMph.toFixed(0)} mph${roadGradePercent > 0.5 ? ` on a ${roadGradePercent.toFixed(1)}% downhill grade` : ''}, ` +
+          `this vehicle requires a minimum yellow duration of ${commercialYellow.toFixed(1)} seconds to perceive the signal, ` +
+          `build air brake pressure, and decelerate safely. Chicago's ${chicagoActual}-second yellow provides ` +
+          `${commercialShortfall.toFixed(1)} seconds less than required. ` +
+          `The ITE yellow light formula assumes passenger car braking — applying it to a commercial vehicle without ` +
+          `adjustment creates an impossible stopping scenario and a due process concern.`,
+      });
+    }
   }
 
   // Yellow light timing shortfall

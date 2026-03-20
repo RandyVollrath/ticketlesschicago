@@ -23,9 +23,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import {
   sendFoiaRequestEmail,
+  sendCdotFoiaRequestEmail,
   generateFoiaRequestEmail,
   generateEvidenceReferenceId,
 } from '../../../lib/foia-request-service';
+
+/** Violation types that need a CDOT FOIA in addition to the Finance FOIA */
+const CAMERA_VIOLATION_TYPES = new Set(['red_light', 'speed_camera']);
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -214,15 +218,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       if (result.success) {
-        console.log(`    ✅ FOIA request sent (Resend ID: ${result.emailId}, Ref: ${referenceId})`);
+        console.log(`    ✅ Finance FOIA sent (Resend ID: ${result.emailId}, Ref: ${referenceId})`);
+
+        // For camera violations, also send CDOT FOIA for signal timing / calibration records
+        let cdotEmailId: string | undefined;
+        if (CAMERA_VIOLATION_TYPES.has(violationType)) {
+          const cdotRefId = `CDOT-${referenceId.slice(4)}`; // Reuse same nanoid but prefix differently
+          const cdotResult = await sendCdotFoiaRequestEmail({
+            ticketNumber: ticket.ticket_number,
+            violationDate,
+            violationLocation,
+            requesterName,
+            requesterEmail: userEmail,
+            requesterAddress,
+            plate: ticket.plate || 'On file',
+            referenceId: cdotRefId,
+          });
+
+          if (cdotResult.success) {
+            cdotEmailId = cdotResult.emailId;
+            console.log(`    ✅ CDOT FOIA sent (Resend ID: ${cdotEmailId}, Ref: ${cdotRefId})`);
+
+            // Audit log for CDOT FOIA
+            await supabaseAdmin
+              .from('ticket_audit_log')
+              .insert({
+                ticket_id: ticketId,
+                action: 'foia_request_sent',
+                details: {
+                  resend_email_id: cdotEmailId,
+                  recipient: 'cdotfoia@cityofchicago.org',
+                  request_type: 'signal_timing',
+                  requester: requesterName,
+                  violation_type: violationType,
+                  reference_id: cdotRefId,
+                },
+                performed_by: null,
+              });
+          } else {
+            console.error(`    ⚠️ CDOT FOIA failed (non-blocking): ${cdotResult.error}`);
+          }
+
+          // Small delay between emails
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
 
         // Update status to sent — store reference_id and resend_message_id for response matching
         const updatePayload: any = {
           status: 'sent',
           sent_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          response_payload: { resend_email_id: result.emailId },
-          notes: `Sent to DOFfoia@cityofchicago.org on behalf of ${requesterName}. Ref: ${referenceId}`,
+          response_payload: {
+            resend_email_id: result.emailId,
+            ...(cdotEmailId ? { cdot_resend_email_id: cdotEmailId } : {}),
+          },
+          notes: `Sent to DOFfoia@cityofchicago.org${cdotEmailId ? ' + cdotfoia@cityofchicago.org' : ''} on behalf of ${requesterName}. Ref: ${referenceId}`,
         };
         // These columns may not exist yet if migration hasn't been applied
         try {
@@ -251,7 +301,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
 
         // Also send the user a notification that we filed on their behalf
-        await notifyUserOfFoiaFiling(userEmail, requesterName, ticket.ticket_number, violationDate, violationType);
+        await notifyUserOfFoiaFiling(userEmail, requesterName, ticket.ticket_number, violationDate, violationType, cdotEmailId !== undefined);
 
         sent++;
       } else {
@@ -296,6 +346,7 @@ async function notifyUserOfFoiaFiling(
   ticketNumber: string,
   violationDate: string,
   violationType: string,
+  cdotFoiaSent: boolean = false,
 ): Promise<void> {
   if (!process.env.RESEND_API_KEY) return;
 
@@ -309,18 +360,20 @@ async function notifyUserOfFoiaFiling(
         <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${userName},</p>
 
         <p style="color: #374151; font-size: 15px; line-height: 1.6;">
-          We just filed an official <strong>Freedom of Information Act (FOIA) request</strong> with the
-          Chicago Department of Finance requesting the enforcement records for your
+          We just filed ${cdotFoiaSent ? '<strong>two</strong> official' : 'an official'} <strong>Freedom of Information Act (FOIA) ${cdotFoiaSent ? 'requests' : 'request'}</strong> ${cdotFoiaSent ? 'with the Chicago Department of Finance AND the Department of Transportation' : 'with the Chicago Department of Finance'} requesting the enforcement records for your
           ticket <strong>#${ticketNumber}</strong> (${violationDate}).
         </p>
 
         <div style="background: #f5f3ff; border: 1px solid #c4b5fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 12px; color: #5b21b6; font-size: 16px;">What We Requested</h3>
           <ul style="margin: 0; padding-left: 20px; color: #6d28d9; font-size: 14px; line-height: 1.8;">
-            <li>Officer's notes and observations from the scene</li>
-            <li>Any photos taken at the time of the ticket</li>
-            <li>Handheld device data and timestamps</li>
+            <li>Camera calibration records and accuracy testing</li>
+            <li>Complete violation video/image package with chain of custody</li>
+            <li>Camera vendor maintenance logs and error reports</li>
             <li>Enforcement and equipment records related to your violation</li>
+            ${cdotFoiaSent ? `<li><strong>Signal timing plan</strong> (yellow light duration, all-red clearance)</li>
+            <li><strong>Intersection width</strong> and approach speed data</li>
+            <li><strong>Illinois +1 second compliance records</strong> (state law requires camera intersections to add 1 second to the minimum yellow)</li>` : ''}
           </ul>
         </div>
 

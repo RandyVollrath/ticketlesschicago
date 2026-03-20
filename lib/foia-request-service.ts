@@ -76,14 +76,18 @@ const VIOLATION_SPECIFIC_RECORDS: Record<string, string[]> = {
     'Most recent system accuracy audit for this enforcement camera',
   ],
   speed_camera: [
-    'Speed camera calibration records, accuracy testing results, and maintenance logs for the camera at this location',
-    'The complete violation video/image package including all frames captured',
+    'Speed camera calibration records, accuracy testing results, and maintenance logs for the camera at this location for the 90 days preceding the violation',
+    'The complete violation video/image package including all frames captured, with chain of custody documentation',
     'Speed limit signage survey and posting records for this location',
+    'Camera vendor maintenance visit logs and any system error/fault reports for this camera for the 30 days preceding the violation',
   ],
   red_light: [
-    'Red light camera calibration records and accuracy testing for the camera at this intersection',
-    'Yellow light timing records and signal timing plan for this intersection',
-    'The complete violation video/image package including all frames captured',
+    'Red light camera calibration records, accuracy testing results, and maintenance logs for the camera at this intersection for the 90 days preceding the violation',
+    'Yellow light timing records and the complete signal timing plan (including yellow change interval duration, all-red clearance interval, and cycle length) for this intersection on the violation date',
+    'The complete violation video/image package including all frames captured, with chain of custody documentation',
+    'The intersection width (curb-to-curb measurement) and approach speed limit for each approach',
+    'The most recent traffic engineering study or safety analysis conducted for this intersection',
+    'Camera vendor maintenance visit logs and any system error/fault reports for this camera for the 30 days preceding the violation',
   ],
   parking_prohibited: [
     'Sign posting records and most recent sign survey for this block',
@@ -268,9 +272,17 @@ export function generateFoiaRequestHtml(params: {
 }
 
 /**
- * FOIA request email destination
+ * FOIA request email destinations
+ *
+ * Finance (DOF): Ticket records, enforcement data, officer notes
+ * CDOT: Signal timing, intersection engineering, camera hardware/calibration
+ *
+ * Red light camera tickets need BOTH — Finance for the citation records,
+ * CDOT for the intersection engineering records that prove whether the
+ * yellow light met the Illinois +1 second statutory minimum.
  */
 export const CHICAGO_FINANCE_FOIA_EMAIL = 'DOFfoia@cityofchicago.org';
+export const CHICAGO_CDOT_FOIA_EMAIL = 'cdotfoia@cityofchicago.org';
 
 /**
  * Send a FOIA request via email using Resend.
@@ -322,6 +334,133 @@ export async function sendFoiaRequestEmail(params: {
     return { success: true, emailId: data.id };
   } catch (err: any) {
     return { success: false, error: `Send exception: ${err.message}` };
+  }
+}
+
+/**
+ * CDOT Signal Timing FOIA — records to request.
+ * These go to CDOT (not Finance) because signal timing is an engineering function.
+ */
+const CDOT_SIGNAL_TIMING_RECORDS = [
+  'The complete signal timing plan for this intersection, including yellow change interval, all-red clearance interval, cycle length, and phase sequence, as programmed on the date of the violation',
+  'Any signal timing changes or re-timing events at this intersection within the 12 months preceding the violation',
+  'The intersection approach speed limit and the engineering basis for the current yellow light duration',
+  'The intersection geometry including curb-to-curb width for each approach',
+  'The most recent traffic signal permit or signal modification order for this intersection',
+  'Compliance verification records showing this camera-enforced intersection meets the yellow light minimum required by 625 ILCS 5/11-306(c-5) (MUTCD minimum plus one second)',
+];
+
+/**
+ * Generate a CDOT FOIA request email for signal timing and intersection engineering records.
+ * This is a SEPARATE FOIA from the Finance FOIA — it goes to CDOT which maintains the signals.
+ */
+export function generateCdotFoiaRequestEmail(params: {
+  ticketNumber: string;
+  violationDate: string;
+  violationLocation: string; // intersection name, e.g. "Western Ave & Belmont Ave"
+  requesterName: string;
+  requesterEmail: string;
+  requesterAddress: string;
+  plate: string;
+  referenceId?: string;
+}): { subject: string; body: string } {
+  const recordsList = CDOT_SIGNAL_TIMING_RECORDS
+    .map((r, i) => `   ${i + 1}. ${r}`)
+    .join('\n');
+
+  const refSuffix = params.referenceId ? ` [Ref: ${params.referenceId}]` : '';
+  const subject = `FOIA Request - Signal Timing Records - ${params.violationLocation} - Citation #${params.ticketNumber}${refSuffix}`;
+
+  const body = `Chicago Department of Transportation
+FOIA Officer
+2 North LaSalle Street, Suite 1110
+Chicago, Illinois 60602
+
+Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+
+Re: Freedom of Information Act Request
+    Signal Timing & Intersection Engineering Records
+    Intersection: ${params.violationLocation}
+    Related Citation: #${params.ticketNumber}
+    Violation Date: ${params.violationDate}
+
+Dear FOIA Officer:
+
+Pursuant to the Illinois Freedom of Information Act (5 ILCS 140), I am writing on behalf of ${params.requesterName} in connection with the administrative contest of an automated red light camera citation issued at the above intersection. ${params.requesterName} has authorized Autopilot America to act as their agent for the purpose of submitting this FOIA request and receiving responsive records.
+
+Illinois law (625 ILCS 5/11-306(c-5)) requires that intersections equipped with automated traffic law enforcement systems must have a yellow change interval duration that is not less than the established engineering standard, plus an additional one second. I am requesting the following records to verify compliance:
+
+${recordsList}
+
+These records are necessary to determine whether the yellow light duration at this camera-enforced intersection meets the statutory minimum required by Illinois law at the time this citation was issued.
+
+Please provide responsive records in electronic format via email to foia@autopilotamerica.com. If any records are unavailable, I request a written explanation of why they cannot be produced, as required by 5 ILCS 140/3(g).
+
+Under the Act, you are required to respond to this request within five (5) business days. If you need additional time, please provide written notice as required by 5 ILCS 140/3(e).
+
+I am willing to pay reasonable copying fees up to $25.00 on behalf of the requester. If fees will exceed this amount, please notify me before processing.
+
+Thank you for your prompt attention to this matter.
+
+Sincerely,
+
+Autopilot America
+Authorized Agent for ${params.requesterName}
+${params.requesterAddress}
+Contact: ${params.requesterEmail}
+Agent Contact: foia@autopilotamerica.com`;
+
+  return { subject, body };
+}
+
+/**
+ * Send a CDOT FOIA request for signal timing records via Resend.
+ * Returns the Resend email ID on success.
+ */
+export async function sendCdotFoiaRequestEmail(params: {
+  ticketNumber: string;
+  violationDate: string;
+  violationLocation: string;
+  requesterName: string;
+  requesterEmail: string;
+  requesterAddress: string;
+  plate: string;
+  referenceId?: string;
+}): Promise<{ success: boolean; emailId?: string; error?: string }> {
+  if (!process.env.RESEND_API_KEY) {
+    return { success: false, error: 'RESEND_API_KEY not configured' };
+  }
+
+  const { subject, body } = generateCdotFoiaRequestEmail(params);
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `Autopilot America - Agent for ${params.requesterName} <foia@autopilotamerica.com>`,
+        to: [CHICAGO_CDOT_FOIA_EMAIL],
+        subject,
+        text: body,
+        reply_to: params.requesterEmail,
+        headers: {
+          'X-Entity-Ref-ID': params.referenceId || `cdot-foia-${params.ticketNumber}`,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, error: `Resend API error (CDOT): ${errorText}` };
+    }
+
+    const data = await response.json();
+    return { success: true, emailId: data.id };
+  } catch (err: any) {
+    return { success: false, error: `Send exception (CDOT): ${err.message}` };
   }
 }
 
