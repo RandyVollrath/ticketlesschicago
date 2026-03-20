@@ -485,25 +485,42 @@ async function sendLetterMailedNotification(
  * Increment user's letter count and check if they've exceeded included letters
  */
 async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean; count: number }> {
-  const { data: sub } = await supabaseAdmin
-    .from('autopilot_subscriptions')
-    .select('letters_used_this_period, letters_included')
-    .eq('user_id', userId)
-    .single();
+  // Use atomic SQL increment to prevent race conditions with concurrent mailing
+  const { data: updated, error } = await supabaseAdmin
+    .rpc('increment_letters_used', { p_user_id: userId });
 
-  if (!sub) {
-    return { exceeded: false, count: 0 };
+  // Fallback if RPC doesn't exist yet
+  if (error) {
+    console.warn(`  RPC increment_letters_used failed (${error.message}), using fallback`);
+    const { data: sub } = await supabaseAdmin
+      .from('autopilot_subscriptions')
+      .select('letters_used_this_period, letters_included')
+      .eq('user_id', userId)
+      .single();
+
+    if (!sub) {
+      return { exceeded: false, count: 0 };
+    }
+
+    const newCount = (sub.letters_used_this_period || 0) + 1;
+
+    await supabaseAdmin
+      .from('autopilot_subscriptions')
+      .update({ letters_used_this_period: newCount })
+      .eq('user_id', userId);
+
+    return {
+      exceeded: newCount > (sub.letters_included || 1),
+      count: newCount,
+    };
   }
 
-  const newCount = (sub.letters_used_this_period || 0) + 1;
-
-  await supabaseAdmin
-    .from('autopilot_subscriptions')
-    .update({ letters_used_this_period: newCount })
-    .eq('user_id', userId);
+  // RPC returns { new_count, letters_included }
+  const newCount = updated?.new_count ?? 0;
+  const included = updated?.letters_included ?? 1;
 
   return {
-    exceeded: newCount > (sub.letters_included || 1),
+    exceeded: newCount > included,
     count: newCount,
   };
 }
