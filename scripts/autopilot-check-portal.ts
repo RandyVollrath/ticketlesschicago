@@ -40,6 +40,7 @@ import {
 } from '../lib/contest-kits';
 import type { TicketFacts, UserEvidence, ContestEvaluation } from '../lib/contest-kits/types';
 import { analyzeFactualInconsistency } from '../lib/red-light-defense-analysis';
+import { sendClickSendSMS } from '../lib/sms-service';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -2035,6 +2036,52 @@ async function sendEvidenceRequestEmail(
 }
 
 /**
+ * Send evidence request via SMS when a new ticket is detected.
+ * Tells the user they can reply with photos/text as evidence.
+ */
+async function sendEvidenceRequestSMS(
+  userPhone: string,
+  userName: string,
+  ticketNumber: string,
+  violationType: string,
+  violationDate: string | null,
+  amount: number | null,
+  plate: string,
+  evidenceDeadline: Date,
+): Promise<boolean> {
+  try {
+    const violationTypeDisplay = violationType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const violationDateFormatted = violationDate
+      ? new Date(violationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : 'recent';
+    const deadlineFormatted = evidenceDeadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const amountStr = amount ? ` ($${amount.toFixed(0)})` : '';
+
+    const message = [
+      `Hi ${userName}! Autopilot America found a ${violationTypeDisplay} ticket${amountStr} on your ${plate} plate (${violationDateFormatted}).`,
+      ``,
+      `We're already building your contest letter. Got photos of the scene, signs, or receipts? Reply to this text with them and we'll strengthen your case.`,
+      ``,
+      `Deadline: ${deadlineFormatted}`,
+      ``,
+      `Reply STOP to opt out.`,
+    ].join('\n');
+
+    const result = await sendClickSendSMS(userPhone, message);
+    if (result.success) {
+      console.log(`      Sent evidence request SMS to ${userPhone.substring(0, 3)}***`);
+      return true;
+    } else {
+      console.error(`      SMS send failed: ${result.error}`);
+      return false;
+    }
+  } catch (err: any) {
+    console.error(`      SMS send exception: ${err.message}`);
+    return false;
+  }
+}
+
+/**
  * Process a single ticket found on the portal
  * Creates detected_ticket, contest_letter, sends email
  */
@@ -2299,6 +2346,22 @@ async function processFoundTicket(
     if (emailSent) {
       console.log(`      Sent evidence request email to ${userEmail}`);
     }
+  }
+
+  // Send evidence request SMS if user has a phone number
+  const userPhone = profile?.phone || profile?.phone_number;
+  if (userPhone) {
+    const userName = profile?.first_name || profile?.full_name?.split(' ')[0] || 'there';
+    await sendEvidenceRequestSMS(
+      userPhone,
+      userName,
+      ticket.ticket_number,
+      violationType,
+      violationDate,
+      amount,
+      plate.toUpperCase(),
+      evidenceDeadline,
+    );
   }
 
   // Audit log
