@@ -627,7 +627,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             {activeTab === 'dashboard' ? 'Dashboard' : 'Address'}
           </Text>
           {activeTab === 'settings' && (
-            <Text style={styles.headerSubtitle}>Alerts for your registered address, renewals & tickets</Text>
+            <Text style={styles.headerSubtitle}>Alerts for your address, renewals & tickets</Text>
           )}
         </View>
         {saveStatus !== 'idle' && (
