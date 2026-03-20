@@ -1701,6 +1701,26 @@ export default function AdminPortal() {
           >
             Remitters
           </button>
+          <a
+            href="/admin/foia-tracker"
+            style={{
+              padding: '16px 24px',
+              border: 'none',
+              background: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#8b5cf6',
+              borderBottom: '2px solid transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              whiteSpace: 'nowrap',
+              textDecoration: 'none',
+            }}
+          >
+            FOIA Tracker &#8599;
+          </a>
         </div>
       </div>
 
