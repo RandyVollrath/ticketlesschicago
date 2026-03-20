@@ -1655,12 +1655,12 @@ On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submi
 
 The City RESPONDED to the FOIA request and stated that NO RESPONSIVE RECORDS WERE FOUND.
 
-INSTRUCTIONS: This is a VERY STRONG argument. Include a paragraph stating:
+INSTRUCTIONS: This is a STRONG supplementary argument — stronger than non-response because the city affirmatively confirmed the records don't exist. However, do NOT claim this alone prevents the city from establishing a prima facie case — for automated camera violations, the hearing officer has independent access to the camera photos/video. Include a paragraph stating:
 1. A FOIA request was filed on ${sentFormatted} for the enforcement records
 2. The City's Department of Finance responded that no responsive records were found
-3. This means the city cannot produce the officer's contemporaneous notes, photographs, or device data
-4. Without enforcement documentation, the city has not met its burden of proof
-5. Frame as: "The city's own records system confirms that the enforcement documentation for this citation does not exist."`);
+3. This means the city has no officer's field notes, device calibration data, or supplementary enforcement documentation beyond the automated camera images
+4. The absence of supporting documentation raises questions about the reliability and completeness of the enforcement record
+5. Frame as a transparency and due process concern that strengthens the other substantive arguments — not as independently dispositive.`);
 
     } else if (foiaFinanceStatus.status === 'fulfilled_with_records' || (foiaFinanceStatus.status === 'fulfilled' && !foiaFinanceStatus.responsePayload?.is_denial)) {
       const attachmentCount = foiaFinanceStatus.responsePayload?.attachment_count || 0;
@@ -1680,7 +1680,11 @@ On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submi
 
 As of this letter, ${foiaFinanceStatus.daysElapsed} days have elapsed and the Department has NOT produced the requested records, exceeding the statutory five-business-day response period.
 
-INSTRUCTIONS: This is a STRONG supplementary argument — "Prima Facie Case Not Established by City" is one of the top reasons tickets are dismissed. Argue that without the officer's contemporaneous notes and photographic evidence, the city has not met its burden of proving the violation occurred as described.`);
+INSTRUCTIONS: This is a SUPPLEMENTARY due process argument — do NOT claim this alone prevents the city from establishing a prima facie case (the hearing officer has independent access to the violation photos/video). Frame as:
+1. The FOIA request was filed on ${sentFormatted} and the city failed to respond within the statutory deadline
+2. This denied the respondent the opportunity to review the enforcement records and prepare a defense
+3. The city's failure to comply with its transparency obligations under 5 ILCS 140 raises concerns about the completeness of the enforcement record
+4. Frame as a procedural fairness concern that strengthens the other substantive arguments in the letter.`);
 
     } else if (foiaFinanceStatus.status === 'sent') {
       foiaSections.push(`=== FOIA EVIDENCE REQUEST — PENDING ===
@@ -1691,8 +1695,9 @@ INSTRUCTIONS: Mention that a FOIA request was filed requesting the officer's fie
     }
   }
 
-  // CDOT FOIA non-response section
-  if (foiaCdotStatus.hasFoiaRequest && foiaCdotStatus.sentDate) {
+  // CDOT FOIA non-response section — only relevant for camera violations (signal timing)
+  const isCameraViolation = violationType === 'red_light' || violationType === 'speed_camera';
+  if (isCameraViolation && foiaCdotStatus.hasFoiaRequest && foiaCdotStatus.sentDate) {
     const cdotSentFormatted = new Date(foiaCdotStatus.sentDate).toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
