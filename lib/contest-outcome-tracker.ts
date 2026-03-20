@@ -695,15 +695,17 @@ async function processEvidenceFoiaMatch(
     lowerBody.includes('enclosed') ||
     lowerBody.includes('responsive documents');
 
-  const status = isDenial
-    ? 'fulfilled_denial'
-    : isFulfillment
+  // Fulfillment takes priority: if attachments are present, treat as fulfillment even if
+  // body also contains denial-like language (e.g. "no responsive records" + attached docs)
+  const status = isFulfillment
     ? 'fulfilled_with_records'
+    : isDenial
+    ? 'fulfilled_denial'
     : 'fulfilled_denial'; // No records = effectively a denial
-  const notes = isDenial
-    ? 'City responded: no responsive records found. Strengthens "Prima Facie Case Not Established" argument.'
-    : isFulfillment
+  const notes = isFulfillment
     ? `City produced ${attachments.length} document(s). Review for defense-relevant information.`
+    : isDenial
+    ? 'City responded: no responsive records found. Strengthens "Prima Facie Case Not Established" argument.'
     : 'City responded but produced no records. Strengthens prima facie argument.';
 
   // Update the FOIA request
@@ -794,17 +796,23 @@ export async function processHistoryFoiaResponse(
   }
 
   // Update the history request
+  // Note: foia_history_requests uses `response_received_at` (not `fulfilled_at` which is on ticket_foia_requests)
+  // and `response_data` (not `response_payload`)
+  const ticketCount = parsedResult?.tickets?.length || 0;
+  const totalFines = parsedResult?.total_fines || 0;
   const updatePayload: any = {
     status: 'fulfilled',
-    fulfilled_at: new Date().toISOString(),
+    response_received_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    response_payload: {
+    response_data: {
       from: fromEmail,
       subject,
       body_preview: body.substring(0, 500),
       attachment_count: attachments.length,
       received_at: new Date().toISOString(),
     },
+    ticket_count: ticketCount,
+    total_fines: totalFines,
   };
 
   if (parsedResult) {
@@ -823,8 +831,6 @@ export async function processHistoryFoiaResponse(
     .eq('id', requestId);
 
   // Send results email to user
-  const ticketCount = parsedResult?.tickets?.length || 0;
-  const totalFines = parsedResult?.total_fines || 0;
   try {
     const { sendFoiaHistoryResultsEmail } = await import('./foia-history-service');
     await sendFoiaHistoryResultsEmail({
@@ -834,7 +840,7 @@ export async function processHistoryFoiaResponse(
       licenseState: historyRequest.license_state,
       ticketCount,
       totalFines,
-      resultsUrl: `https://autopilotamerica.com/settings`,
+      resultsUrl: `https://autopilotamerica.com/my-tickets?plate=${encodeURIComponent(historyRequest.license_plate)}&state=${encodeURIComponent(historyRequest.license_state)}`,
     });
   } catch (emailErr: any) {
     console.error(`  Failed to send results email: ${emailErr.message}`);

@@ -190,7 +190,7 @@ export default async function handler(
     }
 
     return res.status(200).json({
-      success: true,
+      success: results.errors.length === 0,
       welcomeEmails: results.welcomeEmails,
       proofEmails: results.proofEmails,
       softSellEmails: results.softSellEmails,

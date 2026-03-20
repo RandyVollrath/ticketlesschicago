@@ -219,7 +219,7 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
           <p style="margin: 0; color: #7C2D12; font-size: 14px; line-height: 1.6;">
             The city is required by law to respond within <strong>5 business days</strong>.
             Once we receive your data, we'll email you a full report and make it available
-            on your dashboard at <a href="https://autopilotamerica.com/settings" style="color: #2563EB;">autopilotamerica.com/settings</a>.
+            on your dashboard at <a href="https://autopilotamerica.com/my-tickets" style="color: #2563EB;">autopilotamerica.com/my-tickets</a>.
           </p>
         </div>
 
