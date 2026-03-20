@@ -568,8 +568,12 @@ function buildEmailHtml(results: CheckResult[], runTime: number): string {
 // ─── Main Handler ─────────────────────────────────────────────────────
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Auth check
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Auth check — accept Vercel cron header, Bearer token, x-cron-secret, or query param
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const bearerMatch = req.headers.authorization === `Bearer ${process.env.CRON_SECRET}`;
+  const headerMatch = req.headers['x-cron-secret'] === process.env.CRON_SECRET;
+  const queryMatch = req.query.secret === process.env.CRON_SECRET;
+  if (!isVercelCron && !bearerMatch && !headerMatch && !queryMatch) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
