@@ -239,6 +239,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             cdotEmailId = cdotResult.emailId;
             console.log(`    ✅ CDOT FOIA sent (Resend ID: ${cdotEmailId}, Ref: ${cdotRefId})`);
 
+            // Track CDOT FOIA in ticket_foia_requests so letter generators can check non-response
+            const cdotNow = new Date().toISOString();
+            await supabaseAdmin
+              .from('ticket_foia_requests' as any)
+              .upsert({
+                ticket_id: ticketId,
+                user_id: request.user_id,
+                request_type: 'signal_timing',
+                status: 'sent',
+                source: 'autopilot_detection',
+                sent_at: cdotNow,
+                requested_at: cdotNow,
+                updated_at: cdotNow,
+                request_payload: {
+                  ticket_number: ticketNumber,
+                  violation_type: violationType,
+                  queued_by: 'autopilot_send_foia_cron',
+                  recipient: 'cdotfoia@cityofchicago.org',
+                },
+                response_payload: {
+                  resend_email_id: cdotEmailId,
+                },
+                reference_id: cdotRefId,
+                resend_message_id: cdotEmailId,
+                notes: `Sent to cdotfoia@cityofchicago.org for signal timing records. Ref: ${cdotRefId}`,
+              } as any, { onConflict: 'ticket_id,request_type' });
+
             // Audit log for CDOT FOIA
             await supabaseAdmin
               .from('ticket_audit_log')

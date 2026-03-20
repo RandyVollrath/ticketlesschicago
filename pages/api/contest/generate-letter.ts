@@ -810,12 +810,12 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     await Promise.all(evidencePromises);
 
     // Look up detected_ticket plate data for defense analysis (ticket_plate, ticket_state, user plate, notice timing)
-    let detectedTicketData: { ticket_plate?: string; ticket_state?: string; plate?: string; state?: string; created_at?: string } | null = null;
+    let detectedTicketData: { id?: string; ticket_plate?: string; ticket_state?: string; plate?: string; state?: string; created_at?: string } | null = null;
     if (contest.ticket_number) {
       try {
         const { data } = await supabase
           .from('detected_tickets')
-          .select('ticket_plate, ticket_state, plate, state, created_at')
+          .select('id, ticket_plate, ticket_state, plate, state, created_at')
           .eq('ticket_number', contest.ticket_number)
           .limit(1)
           .maybeSingle();
@@ -898,6 +898,69 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
         console.log(`  Defense analysis: score=${redLightDefense.overallDefenseScore}, args=${redLightDefense.defenseArguments.length}`);
       } catch (e) {
         console.error('Red-light defense analysis failed:', e);
+      }
+    }
+
+    // =====================================================================
+    // FOIA REQUEST STATUS — Check if we have outstanding or responded FOIAs
+    // Queries ticket_foia_requests for both Finance (evidence packet) and
+    // CDOT (signal timing) FOIAs. Non-response is a strong defense argument.
+    // =====================================================================
+    let foiaFinanceStatus: { hasFoiaRequest: boolean; sentDate: string | null; daysElapsed: number; status: string; responsePayload?: any; notes?: string | null; fulfilledAt?: string | null } = {
+      hasFoiaRequest: false, sentDate: null, daysElapsed: 0, status: 'none',
+    };
+    let foiaCdotStatus: { hasFoiaRequest: boolean; sentDate: string | null; daysElapsed: number; status: string; responsePayload?: any; notes?: string | null; fulfilledAt?: string | null } = {
+      hasFoiaRequest: false, sentDate: null, daysElapsed: 0, status: 'none',
+    };
+    if (detectedTicketData?.id) {
+      const ticketUuid = detectedTicketData.id;
+      try {
+        const [financeResult, cdotResult] = await Promise.all([
+          supabase
+            .from('ticket_foia_requests' as any)
+            .select('status, sent_at, response_payload, notes, fulfilled_at')
+            .eq('ticket_id', ticketUuid)
+            .eq('request_type', 'ticket_evidence_packet')
+            .maybeSingle(),
+          supabase
+            .from('ticket_foia_requests' as any)
+            .select('status, sent_at, response_payload, notes, fulfilled_at')
+            .eq('ticket_id', ticketUuid)
+            .eq('request_type', 'signal_timing')
+            .maybeSingle(),
+        ]);
+
+        if (financeResult.data?.sent_at) {
+          const sentDate = new Date(financeResult.data.sent_at);
+          const daysElapsed = Math.floor((Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24));
+          foiaFinanceStatus = {
+            hasFoiaRequest: true,
+            sentDate: financeResult.data.sent_at,
+            daysElapsed,
+            status: financeResult.data.status,
+            responsePayload: financeResult.data.response_payload || null,
+            notes: financeResult.data.notes || null,
+            fulfilledAt: financeResult.data.fulfilled_at || null,
+          };
+          console.log(`  FOIA Finance: ${financeResult.data.status}, sent ${daysElapsed} days ago`);
+        }
+
+        if (cdotResult.data?.sent_at) {
+          const sentDate = new Date(cdotResult.data.sent_at);
+          const daysElapsed = Math.floor((Date.now() - sentDate.getTime()) / (1000 * 60 * 60 * 24));
+          foiaCdotStatus = {
+            hasFoiaRequest: true,
+            sentDate: cdotResult.data.sent_at,
+            daysElapsed,
+            status: cdotResult.data.status,
+            responsePayload: cdotResult.data.response_payload || null,
+            notes: cdotResult.data.notes || null,
+            fulfilledAt: cdotResult.data.fulfilled_at || null,
+          };
+          console.log(`  FOIA CDOT: ${cdotResult.data.status}, sent ${daysElapsed} days ago`);
+        }
+      } catch (e) {
+        console.error('FOIA status lookup failed (non-fatal):', e);
       }
     }
 
@@ -1528,6 +1591,100 @@ Most Recent Alert: ${notificationHistory[0]?.sent_at ? new Date(notificationHist
 
 INSTRUCTIONS: Use this as a SUPPORTING argument demonstrating the vehicle owner's good faith. The owner subscribed to and actively used a compliance monitoring service that sends alerts for street cleaning schedules, vehicle sticker renewals, license plate renewals, and other city obligations. This history of receiving and acting on compliance notifications demonstrates a pattern of good-faith effort to obey city regulations. While not a legal defense per se, hearing officers regularly consider a motorist's demonstrated good faith when exercising discretion. Frame this as: "The respondent is a conscientious vehicle owner who actively monitors and responds to city compliance obligations, as evidenced by their use of automated compliance alerts."
 ` : ''}
+${(() => {
+  // Finance FOIA non-response section
+  const foiaSections: string[] = [];
+
+  if (foiaFinanceStatus.hasFoiaRequest && foiaFinanceStatus.sentDate) {
+    const sentFormatted = new Date(foiaFinanceStatus.sentDate).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+
+    if (foiaFinanceStatus.status === 'fulfilled_denial' || (foiaFinanceStatus.status === 'fulfilled' && foiaFinanceStatus.responsePayload?.is_denial)) {
+      foiaSections.push(`=== FOIA EVIDENCE REQUEST — CITY DENIED RECORDS EXIST ===
+
+On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to the Department of Finance requesting the enforcement records for this citation, including the issuing officer's field notes, photographs, handheld device data, and violation-specific records.
+
+The City RESPONDED to the FOIA request and stated that NO RESPONSIVE RECORDS WERE FOUND.
+
+INSTRUCTIONS: This is a VERY STRONG argument. Include a paragraph stating:
+1. A FOIA request was filed on ${sentFormatted} for the enforcement records
+2. The City's Department of Finance responded that no responsive records were found
+3. This means the city cannot produce the officer's contemporaneous notes, photographs, or device data
+4. Without enforcement documentation, the city has not met its burden of proof
+5. Frame as: "The city's own records system confirms that the enforcement documentation for this citation does not exist."`);
+
+    } else if (foiaFinanceStatus.status === 'fulfilled_with_records' || (foiaFinanceStatus.status === 'fulfilled' && !foiaFinanceStatus.responsePayload?.is_denial)) {
+      const attachmentCount = foiaFinanceStatus.responsePayload?.attachment_count || 0;
+      const bodyPreview = foiaFinanceStatus.responsePayload?.body_preview || '';
+      foiaSections.push(`=== FOIA EVIDENCE REQUEST — CITY PRODUCED RECORDS ===
+
+On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted for the enforcement records. The City responded and produced ${attachmentCount} document(s).
+
+City's response summary: "${bodyPreview}"
+
+INSTRUCTIONS: Mention that a FOIA request was filed and the city responded. If records are incomplete (no officer field notes, no photographs, no device data), argue the incomplete production means key evidence is missing.`);
+
+    } else if (foiaFinanceStatus.status === 'sent' && foiaFinanceStatus.daysElapsed >= 7) {
+      foiaSections.push(`=== FOIA EVIDENCE REQUEST — CITY FAILED TO RESPOND ===
+
+On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to the Department of Finance requesting the enforcement records for this citation.
+
+As of this letter, ${foiaFinanceStatus.daysElapsed} days have elapsed and the Department has NOT produced the requested records, exceeding the statutory five-business-day response period.
+
+INSTRUCTIONS: This is a STRONG supplementary argument — "Prima Facie Case Not Established by City" is one of the top reasons tickets are dismissed. Argue that without the officer's contemporaneous notes and photographic evidence, the city has not met its burden of proving the violation occurred as described.`);
+
+    } else if (foiaFinanceStatus.status === 'sent') {
+      foiaSections.push(`=== FOIA EVIDENCE REQUEST — PENDING ===
+
+A Freedom of Information Act request was submitted on ${sentFormatted} for the enforcement records for this citation. The city's response is still pending (${foiaFinanceStatus.daysElapsed} days elapsed).
+
+INSTRUCTIONS: Mention that a FOIA request was filed requesting the officer's field notes and enforcement records. Note that the results are pending and the respondent reserves the right to supplement this contest.`);
+    }
+  }
+
+  // CDOT FOIA non-response section
+  if (foiaCdotStatus.hasFoiaRequest && foiaCdotStatus.sentDate) {
+    const cdotSentFormatted = new Date(foiaCdotStatus.sentDate).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+
+    if (foiaCdotStatus.status === 'fulfilled_denial' || (foiaCdotStatus.status === 'fulfilled' && foiaCdotStatus.responsePayload?.is_denial)) {
+      foiaSections.push(`=== CDOT FOIA — SIGNAL TIMING RECORDS DENIED ===
+
+On ${cdotSentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to CDOT requesting the signal timing plan for this intersection, including the programmed yellow change interval duration.
+
+CDOT RESPONDED and stated that NO RESPONSIVE RECORDS WERE FOUND.
+
+INSTRUCTIONS: This is a VERY STRONG argument for red light camera tickets. Without the signal timing plan, the city cannot demonstrate that the yellow change interval complied with 625 ILCS 5/11-306(c-5), which REQUIRES camera-enforced intersections to have a yellow interval of MUTCD minimum + 1 additional second.`);
+
+    } else if (foiaCdotStatus.status === 'fulfilled_with_records' || (foiaCdotStatus.status === 'fulfilled' && !foiaCdotStatus.responsePayload?.is_denial)) {
+      foiaSections.push(`=== CDOT FOIA — SIGNAL TIMING RECORDS PRODUCED ===
+
+On ${cdotSentFormatted}, a FOIA request was submitted to CDOT for the signal timing plan. CDOT responded and produced records.
+
+INSTRUCTIONS: Mention in the letter. If records show the yellow duration, compare against 625 ILCS 5/11-306(c-5) requirements (MUTCD minimum + 1 second). At 30 mph: 4.0s minimum. At 35 mph: 4.5s. At 40 mph: 5.0s. At 45 mph: 5.5s.`);
+
+    } else if (foiaCdotStatus.status === 'sent' && foiaCdotStatus.daysElapsed >= 7) {
+      foiaSections.push(`=== CDOT FOIA — CITY FAILED TO PRODUCE SIGNAL TIMING RECORDS ===
+
+On ${cdotSentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to CDOT requesting the signal timing plan for this intersection — specifically, the programmed yellow change interval duration.
+
+As of this letter, ${foiaCdotStatus.daysElapsed} days have elapsed and CDOT has NOT produced the requested signal timing records.
+
+INSTRUCTIONS: This is a STRONG argument for red light camera tickets. Without the signal timing plan, there is no way to verify that the yellow change interval complied with Illinois law (625 ILCS 5/11-306(c-5)). Chicago has been caught violating this before (2014 Inspector General investigation). Frame as: "The city's failure to produce the signal timing plan prevents verification of compliance with the statutory yellow light minimum."`);
+
+    } else if (foiaCdotStatus.status === 'sent') {
+      foiaSections.push(`=== CDOT FOIA — SIGNAL TIMING REQUEST PENDING ===
+
+A FOIA request was submitted on ${cdotSentFormatted} to CDOT for the signal timing plan. Response pending (${foiaCdotStatus.daysElapsed} days elapsed).
+
+INSTRUCTIONS: Mention that a FOIA request was filed to CDOT for the signal timing records. The respondent reserves the right to supplement this contest with the timing data once produced.`);
+    }
+  }
+
+  return foiaSections.join('\n\n');
+})()}
 Sender Information:
 - Name: ${profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : '[YOUR NAME]'}
 - Address: ${profile?.address || '[YOUR ADDRESS]'}
