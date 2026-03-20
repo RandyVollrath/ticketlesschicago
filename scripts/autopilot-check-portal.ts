@@ -40,6 +40,7 @@ import {
 } from '../lib/contest-kits';
 import type { TicketFacts, UserEvidence, ContestEvaluation } from '../lib/contest-kits/types';
 import { analyzeFactualInconsistency } from '../lib/red-light-defense-analysis';
+import { detectVehicleMismatch, parseVehicleFromDescription, hasVehicleInfoForMismatch, VehicleInfo, MismatchResult } from '../lib/vehicle-mismatch';
 import { sendClickSendSMS } from '../lib/sms-service';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -1379,10 +1380,13 @@ function generateLetterContent(
     mailing_city: string | null;
     mailing_state: string | null;
     mailing_zip: string | null;
+    vehicle_make?: string | null;
+    vehicle_model?: string | null;
+    vehicle_color?: string | null;
   },
   automatedEvidence?: AutomatedEvidence | null,
   notificationHistory?: { count: number; summary: string } | null,
-): { content: string; defenseType: string } {
+): { content: string; defenseType: string; vehicleMismatch?: MismatchResult } {
   const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -1405,6 +1409,27 @@ function generateLetterContent(
   const fullName = profile.full_name ||
     `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
     'Vehicle Owner';
+
+  // ── Vehicle mismatch detection (for camera tickets) ──
+  let vehicleMismatch: MismatchResult | undefined;
+  const isCameraTicket = ['red_light', 'speed_camera'].includes(ticketData.violation_type);
+  if (isCameraTicket && profile.vehicle_make) {
+    const registeredVehicle: VehicleInfo = {
+      make: profile.vehicle_make || undefined,
+      model: profile.vehicle_model || undefined,
+      color: profile.vehicle_color || undefined,
+    };
+    // Try to parse vehicle info from the violation description
+    const observedVehicle = ticketData.violation_description
+      ? parseVehicleFromDescription(ticketData.violation_description)
+      : null;
+    if (observedVehicle && hasVehicleInfoForMismatch(registeredVehicle)) {
+      vehicleMismatch = detectVehicleMismatch(registeredVehicle, observedVehicle);
+      if (vehicleMismatch.hasMismatch) {
+        console.log(`      [Letter] Vehicle mismatch detected (confidence: ${vehicleMismatch.confidence}): ${vehicleMismatch.summary}`);
+      }
+    }
+  }
 
   // ── Try contest kit evaluation first (preferred path) ──
   const kitEval = automatedEvidence?.kitEvaluation?.evaluation;
@@ -1453,7 +1478,9 @@ function generateLetterContent(
       .replace(/\[PAYMENT_EXPIRATION\]/g, 'the expiration time on my payment record')
       .replace(/\[TICKET_TIME\]/g, 'the time indicated on the citation')
       .replace(/\[TIME_COMPARISON\]/g, 'I request the City verify the meter time logs against the citation time to confirm accuracy')
-      .replace(/\[IDENTIFICATION_ISSUES\]/g, 'I request the City provide clear violation photos that conclusively identify my vehicle')
+      .replace(/\[IDENTIFICATION_ISSUES\]/g, vehicleMismatch?.hasMismatch
+        ? `The violation description indicates a ${vehicleMismatch.mismatches.map(m => `${m.field.toLowerCase()}: ${m.observed}`).join(', ')}, but my registered vehicle is a ${[profile.vehicle_color, profile.vehicle_make, profile.vehicle_model].filter(Boolean).join(' ')}. This is not my vehicle.`
+        : 'I request the City provide clear violation photos that conclusively identify my vehicle')
       .replace(/\[SUPPORTING_INFO\]/g, '')
       .replace(/\[WEATHER_CONTEXT\]/g, kitEval.weatherDefense.paragraph || '')
       .replace(/\[WEATHER_CONDITION\]/g, automatedEvidence?.weather?.data?.summary || 'adverse conditions')
@@ -1533,6 +1560,11 @@ function generateLetterContent(
       } catch (e) { /* non-fatal */ }
     }
 
+    // Vehicle mismatch defense — for camera tickets where user has registered vehicle info
+    if (vehicleMismatch?.hasMismatch) {
+      content += `\n\n${vehicleMismatch.defenseText}`;
+    }
+
     // Add codified defense assertion for all violation types
     content += `\n\nUnder Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses.`;
 
@@ -1594,6 +1626,11 @@ function generateLetterContent(
       } catch (e) { /* non-fatal */ }
     }
 
+    // Vehicle mismatch defense — for camera tickets where user has registered vehicle info (fallback path)
+    if (vehicleMismatch?.hasMismatch) {
+      content += `\n\n${vehicleMismatch.defenseText}`;
+    }
+
     defenseType = template.type;
   }
 
@@ -1632,7 +1669,7 @@ Sincerely,
 ${fullName}
 ${addressLines.join('\n')}`;
 
-  return { content: fullLetter, defenseType };
+  return { content: fullLetter, defenseType, vehicleMismatch };
 }
 
 /**
@@ -2242,9 +2279,12 @@ async function processFoundTicket(
     mailing_city: profile?.mailing_city || DEFAULT_SENDER_ADDRESS.city,
     mailing_state: profile?.mailing_state || DEFAULT_SENDER_ADDRESS.state,
     mailing_zip: profile?.mailing_zip || DEFAULT_SENDER_ADDRESS.zip,
+    vehicle_make: profile?.vehicle_make || null,
+    vehicle_model: profile?.vehicle_model || null,
+    vehicle_color: profile?.vehicle_color || null,
   };
 
-  const { content: letterContent, defenseType } = generateLetterContent(
+  const { content: letterContent, defenseType, vehicleMismatch } = generateLetterContent(
     {
       ticket_number: ticket.ticket_number,
       violation_date: violationDate,
@@ -2278,6 +2318,22 @@ async function processFoundTicket(
     console.error(`      Failed to create letter: ${letterError.message}`);
   } else {
     console.log(`      Generated contest letter (${defenseType})`);
+  }
+
+  // Update ticket with vehicle mismatch results if detected
+  if (vehicleMismatch?.hasMismatch) {
+    await supabaseAdmin
+      .from('detected_tickets')
+      .update({
+        vehicle_mismatch_detected: true,
+        vehicle_mismatch_details: {
+          confidence: vehicleMismatch.confidence,
+          mismatches: vehicleMismatch.mismatches,
+          summary: vehicleMismatch.summary,
+        },
+      })
+      .eq('id', newTicket.id);
+    console.log(`      Updated ticket with vehicle mismatch (confidence: ${vehicleMismatch.confidence})`);
   }
 
   // Store evidence findings in the audit log for reference
@@ -2322,6 +2378,12 @@ async function processFoundTicket(
           confidence: automatedEvidence.kitEvaluation.evaluation ? Math.round(automatedEvidence.kitEvaluation.evaluation.confidence * 100) : null,
           weatherDefenseApplicable: automatedEvidence.kitEvaluation.evaluation?.weatherDefense.applicable || false,
           backupArgument: automatedEvidence.kitEvaluation.evaluation?.backupArgument?.name || null,
+        } : null,
+        vehicleMismatch: vehicleMismatch?.hasMismatch ? {
+          confidence: vehicleMismatch.confidence,
+          mismatchCount: vehicleMismatch.mismatches.length,
+          fields: vehicleMismatch.mismatches.map(m => m.field),
+          summary: vehicleMismatch.summary,
         } : null,
       },
       performed_by: 'portal_scraper',
