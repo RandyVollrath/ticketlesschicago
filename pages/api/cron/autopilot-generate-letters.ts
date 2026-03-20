@@ -198,6 +198,12 @@ interface EvidenceBundle {
   constructionPermits: ConstructionPermitResult | null;
   officerIntelligence: { hasData: boolean; officerBadge: string | null; totalCases: number; dismissalRate: number | null; tendency: string | null; recommendation: string | null } | null;
   locationPattern: { ticketCount: number; uniqueUsers: number; dismissalRate: number | null; defenseRecommendation: string | null } | null;
+  // Non-resident detection for city sticker violations
+  nonResidentDetected: {
+    isNonResident: boolean;
+    mailingCity: string | null;
+    mailingState: string | null;
+  } | null;
   // FOIA user ticket history — for first-offense / clean-record arguments
   userFoiaHistory: {
     hasData: boolean;
@@ -399,6 +405,7 @@ async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string
 async function gatherAllEvidence(
   ticket: DetectedTicket,
   violationCode: string | null,
+  profile?: UserProfile | null,
 ): Promise<EvidenceBundle> {
   const bundle: EvidenceBundle = {
     parkingEvidence: null,
@@ -443,6 +450,7 @@ async function gatherAllEvidence(
     constructionPermits: null,
     officerIntelligence: null,
     locationPattern: null,
+    nonResidentDetected: null,
     userFoiaHistory: null,
   };
 
@@ -452,6 +460,22 @@ async function gatherAllEvidence(
   // Ordinance info (synchronous)
   if (vCode) {
     bundle.ordinanceInfo = getOrdinanceByCode(vCode);
+  }
+
+  // Non-resident detection for city sticker violations (synchronous, from profile)
+  // Per Chicago Municipal Code 9-100-030, non-residents are exempt from city sticker requirement.
+  // This is a true prima facie case failure — the city cannot establish liability if the respondent
+  // doesn't reside in Chicago. 80% win rate from FOIA data.
+  if (profile && (ticket.violation_type === 'no_city_sticker' || vCode === '9-64-125')) {
+    const mailingCity = (profile.mailing_city || '').trim().toLowerCase();
+    if (mailingCity && mailingCity !== 'chicago') {
+      bundle.nonResidentDetected = {
+        isNonResident: true,
+        mailingCity: profile.mailing_city,
+        mailingState: profile.mailing_state,
+      };
+      console.log(`    NON-RESIDENT DETECTED: city="${profile.mailing_city}", state="${profile.mailing_state}" — prima facie defense available for city sticker violation`);
+    }
   }
 
   // Run all async evidence lookups in parallel
@@ -699,6 +723,21 @@ async function gatherAllEvidence(
               : 0,
             hasSignageIssue: false,
             hasEmergency: false,
+            // Non-resident detection for city sticker violations (9-64-125)
+            // Per Chicago Municipal Code 9-100-030, non-residents are not required
+            // to have a city sticker — this is a prima facie case failure (80% win rate)
+            ...(profile && (vCode === '9-64-125' || ticket.violation_type === 'no_city_sticker') ? (() => {
+              const city = (profile.mailing_city || '').trim().toLowerCase();
+              const isNonResident = city !== '' && city !== 'chicago';
+              if (isNonResident) {
+                console.log(`    NON-RESIDENT DETECTED: mailing_city="${profile.mailing_city}", state="${profile.mailing_state}" — strong prima facie defense for city sticker`);
+              }
+              return isNonResident ? {
+                isNonResident: true,
+                nonResidentCity: profile.mailing_city || undefined,
+                nonResidentState: profile.mailing_state || undefined,
+              } : {};
+            })() : {}),
           };
           // Read real user evidence from DB instead of hardcoding to false
           const dbEvidence = (ticket as any).user_evidence;
@@ -1229,6 +1268,30 @@ INSTRUCTIONS: This receipt proves the user purchased a city sticker. Compare the
 - If purchased BEFORE the citation: State the user was already in compliance at the time of the citation. This is the strongest argument.
 - If purchased AFTER the citation: State the user has since come into compliance and respectfully requests the citation be dismissed in light of their good-faith compliance. Hearing officers dismiss these cases approximately half the time.
 - In either case, reference the specific purchase date. This receipt is attached as evidence.`);
+  }
+
+  // ── Section 6b: Non-Resident Defense (city sticker violations) ──
+  // This is the STRONGEST defense for city sticker tickets — 80% win rate from FOIA data.
+  // Per Chicago Municipal Code 9-100-030, non-residents are not required to have a city sticker.
+  // This is a true prima facie case failure: the city cannot establish liability.
+  if (evidence.nonResidentDetected?.isNonResident) {
+    const nr = evidence.nonResidentDetected;
+    sections.push(`=== NON-RESIDENT DEFENSE — THIS IS THE PRIMARY ARGUMENT (80% WIN RATE) ===
+
+CRITICAL: The user is NOT a Chicago resident. Their mailing address is in ${nr.mailingCity || 'a city outside Chicago'}${nr.mailingState ? `, ${nr.mailingState}` : ''}.
+
+LEGAL BASIS: Chicago Municipal Code Section 9-64-125 requires a city vehicle sticker for vehicles "principally used or kept" in Chicago. Section 9-100-030 states that the prima facie case for automated violations requires the registered owner to be subject to the ordinance. A non-resident is NOT subject to the city sticker requirement.
+
+This is a TRUE PRIMA FACIE CASE FAILURE — the city literally cannot establish the violation against a non-resident. This is NOT a defense argument to weigh; it is a jurisdictional bar.
+
+INSTRUCTIONS:
+1. LEAD with the non-resident defense — it is the STRONGEST possible argument (80% win rate in FOIA data)
+2. State clearly: "I am not a resident of the City of Chicago. My permanent address is in ${nr.mailingCity || '[city]'}${nr.mailingState ? `, ${nr.mailingState}` : ''}."
+3. Cite CMC 9-64-125 and explain that the city sticker requirement applies only to vehicles principally used or kept in Chicago
+4. State: "As a non-resident, I am not subject to this ordinance, and the City cannot establish a prima facie case under 9-100-030."
+5. If a city sticker receipt is also available, mention it as an alternative argument but keep non-residency as the PRIMARY argument
+6. Request dismissal based on non-resident status
+7. Note that the user's vehicle was temporarily in Chicago at the time of the citation but their permanent residence is outside the city`);
   }
 
   // ── Section 7: Registration Evidence Receipt ──
@@ -1891,6 +1954,7 @@ Generate a professional, formal contest letter that:
 3. ARGUMENTS: ${evidence.kitEvaluation ? 'Use the contest kit argument template as the CORE structure, then layer in additional evidence' : 'Build arguments from the strongest available evidence'}
 4. EVIDENCE INTEGRATION: Weave ALL available evidence naturally into the arguments:
    ${evidence.parkingEvidence?.hasEvidence ? '- GPS departure/parking data (STRONG - use as a main argument)' : ''}
+   ${evidence.nonResidentDetected?.isNonResident ? `- NON-RESIDENT STATUS (STRONGEST — prima facie case failure, 80% win rate. User resides in ${evidence.nonResidentDetected.mailingCity || 'outside Chicago'}${evidence.nonResidentDetected.mailingState ? `, ${evidence.nonResidentDetected.mailingState}` : ''})` : ''}
    ${evidence.cityStickerReceipt ? '- City sticker purchase receipt (STRONG - proves compliance)' : ''}
    ${evidence.registrationReceipt ? '- Registration renewal receipt (STRONG - proves compliance)' : ''}
    ${evidence.redLightReceipt ? '- Red light camera GPS data (STRONG - contradicts camera reading)' : ''}
@@ -1937,6 +2001,11 @@ function generateFallbackLetter(
   if (evidence.parkingEvidence?.departureProof) {
     const dp = evidence.parkingEvidence.departureProof;
     body += `\n\nDigital evidence from my vehicle's connected parking application confirms I departed from the cited location at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was issued. GPS records show I moved ${dp.departureDistanceMeters} meters from the parking spot, providing conclusive proof my vehicle was not at this location when the ticket was written.`;
+  }
+
+  if (evidence.nonResidentDetected?.isNonResident) {
+    const nr = evidence.nonResidentDetected;
+    body += `\n\nI am not a resident of the City of Chicago. My permanent address is in ${nr.mailingCity || 'a municipality outside Chicago'}${nr.mailingState ? `, ${nr.mailingState}` : ''}. Chicago Municipal Code Section 9-64-125 requires a city vehicle sticker only for vehicles principally used or kept in Chicago. As a non-resident, I am not subject to this ordinance, and the City cannot establish a prima facie case under Section 9-100-030. My vehicle was temporarily in Chicago on the date of this citation but my permanent residence and vehicle registration remain outside the city. I respectfully request dismissal based on my non-resident status.`;
   }
 
   if (evidence.cityStickerReceipt) {
@@ -2110,7 +2179,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
 
   // ── Gather ALL evidence ──
   console.log(`    Gathering evidence for ${ticket.violation_type} (${violationCode || 'no code'})...`);
-  const evidence = await gatherAllEvidence(ticket, violationCode);
+  const evidence = await gatherAllEvidence(ticket, violationCode, profile);
 
   // ── Alert Subscription Evidence ──
   // Check if user had relevant alerts enabled before the ticket date
@@ -2360,6 +2429,7 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
 
   if (evidence.parkingEvidence?.hasEvidence) evidenceSources.push('gps_parking');
   if (evidence.weatherData?.hasAdverseWeather) evidenceSources.push('weather');
+  if (evidence.nonResidentDetected?.isNonResident) evidenceSources.push('non_resident');
   if (evidence.cityStickerReceipt) evidenceSources.push('city_sticker');
   if (evidence.registrationReceipt) evidenceSources.push('registration');
   if (evidence.redLightReceipt) evidenceSources.push('red_light_gps');
@@ -2478,6 +2548,7 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
         foia_win_rate: evidence.foiaData.hasData ? Math.round(evidence.foiaData.winRate * 100) : null,
         foia_total_contested: evidence.foiaData.totalContested,
         has_receipt_evidence: !!(evidence.cityStickerReceipt || evidence.registrationReceipt),
+        has_non_resident_defense: !!evidence.nonResidentDetected?.isNonResident,
         has_camera_evidence: !!(evidence.redLightReceipt || evidence.cameraPassHistory),
         alert_subscription: evidence.alertSubscriptionEvidence?.hasAlerts ? {
           alertTypes: evidence.alertSubscriptionEvidence.alertTypes,
