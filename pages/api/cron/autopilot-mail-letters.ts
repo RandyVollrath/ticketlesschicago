@@ -864,6 +864,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ? JSON.parse(userEvidenceRaw)
             : userEvidenceRaw;
 
+          // Check attachment_urls (populated by both email and SMS evidence webhooks)
           if (userEvidence?.attachment_urls && Array.isArray(userEvidence.attachment_urls)) {
             // Filter to only include image URLs (not PDFs or other files)
             evidenceImages = userEvidence.attachment_urls.filter((url: string) => {
@@ -876,7 +877,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                      // Vercel Blob URLs don't have extensions, check content type hints
                      lowerUrl.includes('image');
             });
-            console.log(`    Found ${evidenceImages.length} evidence image(s) to include`);
+          }
+          // Fallback: also check sms_attachments (legacy SMS evidence format)
+          if (evidenceImages.length === 0 && userEvidence?.sms_attachments && Array.isArray(userEvidence.sms_attachments)) {
+            evidenceImages = userEvidence.sms_attachments
+              .filter((att: any) => att.url && /^image\//i.test(att.content_type || ''))
+              .map((att: any) => att.url);
+          }
+          if (evidenceImages.length > 0) {
+            console.log(`    Found ${evidenceImages.length} evidence image(s) to include (source: ${userEvidence?.received_via || 'email'})`);
           }
         } catch (parseError) {
           console.error('    Failed to parse user_evidence JSON:', parseError);
