@@ -85,8 +85,6 @@ If any records are unavailable, we request a written explanation of why they can
 
 Under the Act, you are required to respond to this request within five (5) business days. If you need additional time, please provide written notice as required by 5 ILCS 140/3(e).
 
-We are willing to pay reasonable copying fees up to $25.00. If fees will exceed this amount, please notify us before processing.
-
 Thank you for your prompt attention to this matter.
 
 Sincerely,

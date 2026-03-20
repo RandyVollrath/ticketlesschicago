@@ -58,14 +58,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cleanName = name.trim();
   const cleanState = (licenseState || 'IL').toUpperCase().trim();
 
-  // Check for duplicate recent requests (same plate + email in last 30 days)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Check for duplicate recent requests (same plate + email in last 7 days)
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data: existing } = await supabaseAdmin
     .from('foia_history_requests')
     .select('id, status, created_at')
     .eq('license_plate', cleanPlate)
     .eq('email', cleanEmail)
-    .gte('created_at', thirtyDaysAgo)
+    .gte('created_at', sevenDaysAgo)
     .order('created_at', { ascending: false })
     .limit(1);
 
