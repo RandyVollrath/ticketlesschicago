@@ -173,8 +173,6 @@ Please provide responsive records in electronic format via email to foia@autopil
 
 Under the Act, you are required to respond to this request within five (5) business days. If you need additional time, please provide written notice as required by 5 ILCS 140/3(e).
 
-I am willing to pay reasonable copying fees up to $25.00 on behalf of the requester. If fees will exceed this amount, please notify me before processing.
-
 Thank you for your prompt attention to this matter.
 
 Sincerely,
@@ -254,8 +252,6 @@ export function generateFoiaRequestHtml(params: {
   <p>Please provide responsive records in electronic format via email to <strong>foia@autopilotamerica.com</strong>. If any records are unavailable, I request a written explanation of why they cannot be produced, as required by 5 ILCS 140/3(g).</p>
 
   <p>Under the Act, you are required to respond to this request within five (5) business days. If you need additional time, please provide written notice as required by 5 ILCS 140/3(e).</p>
-
-  <p>I am willing to pay reasonable copying fees up to $25.00 on behalf of the requester. If fees will exceed this amount, please notify me before processing.</p>
 
   <p>Thank you for your prompt attention to this matter.</p>
 
@@ -397,8 +393,6 @@ These records are necessary to determine whether the yellow light duration at th
 Please provide responsive records in electronic format via email to foia@autopilotamerica.com. If any records are unavailable, I request a written explanation of why they cannot be produced, as required by 5 ILCS 140/3(g).
 
 Under the Act, you are required to respond to this request within five (5) business days. If you need additional time, please provide written notice as required by 5 ILCS 140/3(e).
-
-I am willing to pay reasonable copying fees up to $25.00 on behalf of the requester. If fees will exceed this amount, please notify me before processing.
 
 Thank you for your prompt attention to this matter.
 
