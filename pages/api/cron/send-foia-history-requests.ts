@@ -43,6 +43,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
   }
 
+  // ── Recovery: Re-queue orphaned 'drafting' rows (cron crashed mid-send) ──
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: orphanedDrafting } = await supabaseAdmin
+    .from('foia_history_requests')
+    .update({
+      status: 'queued',
+      updated_at: new Date().toISOString(),
+      notes: 'Re-queued: was stuck in drafting (previous cron run crashed)',
+    } as any)
+    .eq('status', 'drafting')
+    .lt('updated_at', fiveMinutesAgo)
+    .select('id');
+  if (orphanedDrafting && orphanedDrafting.length > 0) {
+    console.log(`  ♻️ Recovered ${orphanedDrafting.length} orphaned 'drafting' history FOIA request(s)`);
+  }
+
+  // ── Recovery: Retry 'failed' rows (up to 3 attempts, oldest first) ──
+  const { data: failedRetries } = await supabaseAdmin
+    .from('foia_history_requests')
+    .select('id, notes, request_payload')
+    .eq('status', 'failed')
+    .order('updated_at', { ascending: true })
+    .limit(10);
+  let retried = 0;
+  if (failedRetries && failedRetries.length > 0) {
+    for (const fr of failedRetries as any[]) {
+      const attempts = fr.request_payload?.retry_count || 0;
+      if (attempts >= 3) continue; // max 3 retries
+      await supabaseAdmin
+        .from('foia_history_requests')
+        .update({
+          status: 'queued',
+          updated_at: new Date().toISOString(),
+          request_payload: { ...fr.request_payload, retry_count: attempts + 1 },
+          notes: `Retry #${attempts + 1}: ${fr.notes || 'previous attempt failed'}`,
+        } as any)
+        .eq('id', fr.id);
+      retried++;
+    }
+    if (retried > 0)
+      console.log(`  ♻️ Re-queued ${retried} failed history FOIA request(s) for retry`);
+  }
+
   // Fetch queued requests (limit 5 per run)
   const { data: queuedRequests, error: fetchError } = await supabaseAdmin
     .from('foia_history_requests')
@@ -58,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!queuedRequests || queuedRequests.length === 0) {
     console.log('No queued FOIA history requests to process.');
-    return res.status(200).json({ message: 'No queued requests', processed: 0 });
+    return res.status(200).json({ message: 'No queued requests', processed: 0, retried, recovered: orphanedDrafting?.length || 0 });
   }
 
   console.log(`Found ${queuedRequests.length} queued FOIA history requests`);
@@ -70,6 +113,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`  Processing FOIA history request ${request.id} for plate ${request.license_state} ${request.license_plate}`);
 
     try {
+      // Mark as drafting to prevent double-sends if cron runs overlap
+      await supabaseAdmin
+        .from('foia_history_requests')
+        .update({ status: 'drafting', updated_at: new Date().toISOString() } as any)
+        .eq('id', request.id);
+
       // Generate a signed authorization PDF to attach to the FOIA email
       let authorizationPdf: Buffer | undefined;
       if (request.signature_name) {
@@ -109,32 +158,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (result.success) {
         console.log(`    Sent (Resend ID: ${result.emailId}, Ref: ${referenceId})`);
 
-        // Update status — store reference_id and resend_message_id for response matching
+        // Update status — wrapped in try-catch because the email was ALREADY SENT
+        // If this fails, the orphan recovery logic will re-queue it on the next run
         const updatePayload: any = {
           status: 'sent',
           foia_sent_at: new Date().toISOString(),
           foia_email_id: result.emailId || null,
           updated_at: new Date().toISOString(),
+          reference_id: referenceId,
+          resend_message_id: result.emailId,
           notes: `Sent to DOFfoia@cityofchicago.org on behalf of ${request.name}. Ref: ${referenceId}`,
         };
-        // These columns may not exist yet if migration hasn't been applied
+
         try {
-          updatePayload.reference_id = referenceId;
-          updatePayload.resend_message_id = result.emailId;
-        } catch {}
+          await supabaseAdmin
+            .from('foia_history_requests')
+            .update(updatePayload)
+            .eq('id', request.id);
+        } catch (dbErr: any) {
+          console.error(`    ⚠️ CRITICAL: History FOIA email sent but DB update failed: ${dbErr.message}. Row ${request.id} may be stuck in 'drafting'. Will be recovered on next run.`);
+        }
 
-        await supabaseAdmin
-          .from('foia_history_requests')
-          .update(updatePayload)
-          .eq('id', request.id);
-
-        // Send confirmation email to the user
-        await sendFoiaHistoryConfirmationEmail({
-          email: request.email,
-          name: request.name,
-          licensePlate: request.license_plate,
-          licenseState: request.license_state,
-        });
+        // Send confirmation email to the user (non-blocking — must not mark FOIA as failed)
+        try {
+          await sendFoiaHistoryConfirmationEmail({
+            email: request.email,
+            name: request.name,
+            licensePlate: request.license_plate,
+            licenseState: request.license_state,
+          });
+        } catch (notifyErr: any) {
+          console.error(`    ⚠️ User confirmation email failed (non-blocking): ${notifyErr.message}`);
+        }
 
         sent++;
       } else {
@@ -145,7 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             status: 'failed',
             notes: result.error || 'Send failed',
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq('id', request.id);
         failed++;
       }
@@ -157,7 +212,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: 'failed',
           notes: err.message,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', request.id);
       failed++;
     }
