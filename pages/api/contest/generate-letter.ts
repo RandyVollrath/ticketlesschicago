@@ -371,8 +371,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           weatherData = await getHistoricalWeather(ticketDate);
 
           // Generate different prompts based on how weather relates to this violation
-          if (weatherRelevanceType === 'primary' && weatherData.defenseRelevant) {
-            // PRIMARY: Weather is the main defense
+
+          // ── SNOW ROUTE 2-INCH THRESHOLD CHECK (9-64-100) ──
+          // Chicago Municipal Code requires ≥2 inches of snowfall for snow route
+          // parking bans to be enforceable. If the actual snowfall was below this
+          // threshold, the ticket is invalid regardless of other weather conditions.
+          const isSnowRoute = contest.violation_code === '9-64-100';
+          const snowfallInches = weatherData.snowfall ?? 0;
+          const snowThresholdMet = snowfallInches >= 2.0;
+
+          if (isSnowRoute) {
+            // Snow route gets a specialized defense block
+            if (!snowThresholdMet) {
+              // STRONGEST DEFENSE: snowfall below 2-inch threshold
+              weatherDefenseText = `
+SNOW ROUTE THRESHOLD DEFENSE — CASE-DISPOSITIVE ARGUMENT (LEAD WITH THIS):
+Date: ${weatherData.date}
+Recorded Snowfall: ${snowfallInches.toFixed(1)} inches
+Required Threshold: 2.0 inches (Chicago Municipal Code 9-64-100)
+THRESHOLD MET: NO — Snowfall was ${snowfallInches < 0.1 ? 'negligible/zero' : `only ${snowfallInches.toFixed(1)} inches`}
+${weatherData.temperature !== null ? `Temperature: ${Math.round(weatherData.temperature)}°F` : ''}
+${weatherData.windSpeed ? `Wind Speed: ${Math.round(weatherData.windSpeed)} mph` : ''}
+Conditions: ${weatherData.weatherDescription}
+
+CRITICAL DEFENSE: Under Chicago Municipal Code 9-64-100, snow route parking restrictions
+are only enforceable when there is a snowfall of 2 inches or more. Historical weather
+records from the Open-Meteo archive (sourced from NOAA) show that on ${weatherData.date},
+total snowfall was only ${snowfallInches.toFixed(1)} inches — BELOW the 2-inch threshold.
+
+This is a CASE-DISPOSITIVE defense. The snow route ban was not legally enforceable on this
+date because the triggering condition (≥2 inches of snow) was not met. This argument should
+be the FIRST and PRIMARY argument in the letter. Cite the specific snowfall amount and the
+ordinance threshold.`;
+            } else {
+              // Threshold was met — weather data is context, not a defense
+              weatherDefenseText = `
+SNOW ROUTE WEATHER DATA — THRESHOLD WAS MET (USE ONLY AS SUPPORTING CONTEXT):
+Date: ${weatherData.date}
+Recorded Snowfall: ${snowfallInches.toFixed(1)} inches
+Required Threshold: 2.0 inches
+THRESHOLD MET: YES — The 2-inch snowfall threshold was met on this date.
+${weatherData.temperature !== null ? `Temperature: ${Math.round(weatherData.temperature)}°F` : ''}
+Conditions: ${weatherData.weatherDescription}
+
+NOTE: The snowfall threshold WAS met, so the snow route ban was legally enforceable.
+Do NOT argue that the threshold was not met. Instead, focus on other defenses such as
+inadequate signage, timing of the ban declaration, or whether the vehicle was parked
+before the ban was activated. The weather data is provided for context only.`;
+            }
+          } else if (weatherRelevanceType === 'primary' && weatherData.defenseRelevant) {
+            // PRIMARY: Weather is the main defense (non-snow-route violations)
             weatherDefenseText = `
 WEATHER DEFENSE DATA - PRIMARY ARGUMENT (USE THIS PROMINENTLY IN THE LETTER):
 Date: ${weatherData.date}
