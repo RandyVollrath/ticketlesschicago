@@ -9,16 +9,16 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Home: { active: 'shield-check', inactive: 'shield-check-outline' },
   Search: { active: 'map-search', inactive: 'map-search-outline' },
   History: { active: 'history', inactive: 'clock-outline' },
-  Manage: { active: 'clipboard-check', inactive: 'clipboard-check-outline' },
-  Settings: { active: 'cog', inactive: 'cog-outline' },
+  Manage: { active: 'home-map-marker', inactive: 'home-outline' },
+  Settings: { active: 'car', inactive: 'car-outline' },
 };
 
 const TAB_LABELS: Record<string, string> = {
   Home: 'Home',
   Search: 'Search',
   History: 'History',
-  Manage: 'Future',
-  Settings: 'Present',
+  Manage: 'Address',
+  Settings: 'Car',
 };
 
 const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {

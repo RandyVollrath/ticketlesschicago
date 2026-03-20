@@ -738,8 +738,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </RNAnimated.View>
       )}
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Present</Text>
-        <Text style={styles.screenSubtitle}>Alerts based on your car's current location</Text>
+        <Text style={styles.title}>Car</Text>
+        <Text style={styles.screenSubtitle}>Alerts based on your car's location and driving</Text>
 
         {/* Account */}
         {user && (
