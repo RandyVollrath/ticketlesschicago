@@ -398,6 +398,37 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           setCallAlertPrefs(prev => ({ ...prev, ...parsed }));
         } catch { /* ignore bad JSON */ }
       }
+
+      // If no local phone number, try to sync from server profile
+      if (!storedPhone && AuthService.isAuthenticated()) {
+        try {
+          const userId = AuthService.getUser()?.id;
+          if (userId) {
+            const response = await ApiClient.authGet<any>(`/api/user-profile?userId=${userId}`, {
+              retries: 1,
+              timeout: 10000,
+              showErrorAlert: false,
+            });
+            if (response.success && response.data?.phone_number && isMountedRef.current) {
+              // Normalize: server stores as +1XXXXXXXXXX or 1XXXXXXXXXX
+              const serverPhone = String(response.data.phone_number).replace(/\D/g, '');
+              const normalized = serverPhone.length === 11 && serverPhone[0] === '1'
+                ? serverPhone
+                : serverPhone.length === 10
+                ? `1${serverPhone}`
+                : null;
+              if (normalized) {
+                await AsyncStorage.setItem(StorageKeys.PHONE_NUMBER, normalized);
+                setPhoneNumber(normalized);
+                setPhoneNumberInput(normalized);
+                log.info('Synced phone number from server profile');
+              }
+            }
+          }
+        } catch (serverErr) {
+          log.debug('Could not fetch phone number from server (non-fatal):', serverErr);
+        }
+      }
     } catch (error) {
       log.error('Error loading phone call alert settings', error);
     }

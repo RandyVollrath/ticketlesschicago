@@ -126,9 +126,10 @@ function isCallTimeWindow(
   const callTargetMs = enforcementTime.getTime() - hoursBefore * 60 * 60 * 1000;
   const nowMs = chicagoNow.getTime();
   const diffMs = nowMs - callTargetMs;
-  // Call if we're within 0-15 minutes AFTER the target call time
-  // (the cron runs every 15 minutes, so this catches the right window)
-  return diffMs >= 0 && diffMs <= 15 * 60 * 1000;
+  // Call if we're within ±7.5 minutes of the target call time (centered window)
+  // The cron runs every 15 minutes, so this catches the right window whether
+  // the cron fires slightly before or after the target time
+  return Math.abs(diffMs) <= 7.5 * 60 * 1000;
 }
 
 /**
