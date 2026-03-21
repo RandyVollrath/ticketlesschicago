@@ -83,6 +83,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Non-fatal — user can still proceed to checkout
     }
 
+    // Enroll in drip campaign (welcome → proof → soft-sell emails)
+    try {
+      await supabaseAdmin
+        .from('drip_campaign_status')
+        .upsert({
+          user_id: userId,
+          email,
+          enrolled_at: new Date().toISOString(),
+          welcome_sent: false,
+          proof_sent: false,
+          soft_sell_sent: false,
+          unsubscribed: false,
+        }, { onConflict: 'user_id' });
+    } catch (dripErr) {
+      console.error('Drip campaign enrollment failed (non-fatal):', dripErr);
+    }
+
     return res.status(200).json({ userId });
   } catch (error: any) {
     console.error('Start funnel create-account error:', error);

@@ -50,8 +50,50 @@ export default withAdminAuth(async (req, res) => {
     // Get unique user count
     const userIds = new Set((reports || []).map((r: any) => r.user_id));
 
+    // Enrich each report with the zone's current DB hours and source
+    const enrichedReports = await Promise.all((reports || []).map(async (report: any) => {
+      let dbSchedule: string | null = null;
+      let dbSource: string | null = null;
+
+      // Check block-level override first
+      if (report.block_number && report.street_name) {
+        const { data: override } = await supabaseAdmin
+          .from('permit_zone_block_overrides')
+          .select('restriction_schedule, source, confidence')
+          .eq('zone', report.zone)
+          .eq('block_number', report.block_number)
+          .eq('street_name', report.street_name)
+          .limit(1)
+          .single();
+        if (override) {
+          dbSchedule = override.restriction_schedule;
+          dbSource = override.source;
+        }
+      }
+
+      // Fall back to zone-level hours
+      if (!dbSchedule && report.zone) {
+        const { data: zoneHours } = await supabaseAdmin
+          .from('permit_zone_hours')
+          .select('restriction_schedule, source')
+          .eq('zone', report.zone)
+          .limit(1)
+          .single();
+        if (zoneHours) {
+          dbSchedule = zoneHours.restriction_schedule;
+          dbSource = zoneHours.source;
+        }
+      }
+
+      return {
+        ...report,
+        db_current_schedule: dbSchedule || report.current_schedule || 'Unknown',
+        db_schedule_source: dbSource || 'unknown',
+      };
+    }));
+
     return res.status(200).json({
-      reports: reports || [],
+      reports: enrichedReports,
       stats: {
         total: totalCount || 0,
         applied: appliedCount || 0,

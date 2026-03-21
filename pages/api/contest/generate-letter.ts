@@ -909,13 +909,25 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     let detectedTicketData: { id?: string; ticket_plate?: string; ticket_state?: string; plate?: string; state?: string; created_at?: string; sweeper_verification?: any } | null = null;
     if (contest.ticket_number) {
       try {
-        const { data } = await supabase
+        // Try to include sweeper_verification column (may not exist yet)
+        const { data, error } = await supabase
           .from('detected_tickets')
           .select('id, ticket_plate, ticket_state, plate, state, created_at, sweeper_verification')
           .eq('ticket_number', contest.ticket_number)
           .limit(1)
           .maybeSingle();
-        detectedTicketData = data;
+        if (error && error.message?.includes('sweeper_verification')) {
+          // Column doesn't exist yet — retry without it
+          const { data: fallbackData } = await supabase
+            .from('detected_tickets')
+            .select('id, ticket_plate, ticket_state, plate, state, created_at')
+            .eq('ticket_number', contest.ticket_number)
+            .limit(1)
+            .maybeSingle();
+          detectedTicketData = fallbackData;
+        } else {
+          detectedTicketData = data;
+        }
       } catch (e) { /* non-fatal */ }
     }
 

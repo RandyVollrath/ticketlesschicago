@@ -223,9 +223,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!zone || !schedule) {
       return res.status(400).json({ error: 'zone and schedule are required' });
     }
-    if (!photoBase64) {
-      return res.status(400).json({ error: 'A photo of the sign is required' });
-    }
+    // Photo is optional — corrections without photo go to pending_review for admin approval
 
     // ── Rate limit: max N reports per user per 24h ──
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -281,43 +279,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch {}
     }
 
-    // ── EXIF GPS verification ──
-    const photoBuffer = Buffer.from(photoBase64, 'base64');
-    const exifGps = await extractExifGps(photoBuffer);
-
+    // ── Photo verification (only when photo is provided) ──
+    let photoBuffer: Buffer | null = null;
+    let exifGps: { lat: number; lng: number } | null = null;
     let gpsVerified = false;
     let gpsDistance: number | null = null;
     let gpsNote = '';
-
-    if (exifGps && latitude && longitude) {
-      gpsDistance = haversineMeters(exifGps.lat, exifGps.lng, latitude, longitude);
-      gpsVerified = gpsDistance <= MAX_GPS_DISTANCE_METERS;
-      gpsNote = gpsVerified
-        ? `Photo GPS ${Math.round(gpsDistance)}m from stated location — verified`
-        : `Photo GPS ${Math.round(gpsDistance)}m from stated location — too far (max ${MAX_GPS_DISTANCE_METERS}m)`;
-      console.log(`[report-zone-hours] ${gpsNote} (EXIF: ${exifGps.lat.toFixed(5)},${exifGps.lng.toFixed(5)} vs stated: ${latitude.toFixed(5)},${longitude.toFixed(5)})`);
-    } else if (!exifGps) {
-      gpsNote = 'No GPS metadata in photo — cannot verify location';
-      console.log('[report-zone-hours] No EXIF GPS in photo');
-    }
-
-    // ── Gemini AI verification ──
-    const gemini = await verifyPhotoWithGemini(photoBase64);
-
     let aiVerified = false;
     let aiNote = '';
+    let gemini = { hoursExtracted: null as string | null, signFound: false, rawResponse: '' };
 
-    if (gemini.signFound && gemini.hoursExtracted) {
-      aiVerified = schedulesMatch(schedule, gemini.hoursExtracted);
-      aiNote = aiVerified
-        ? `AI extracted "${gemini.hoursExtracted}" — matches user input`
-        : `AI extracted "${gemini.hoursExtracted}" — does NOT match user input "${schedule}"`;
-    } else if (gemini.signFound) {
-      aiNote = 'AI found sign but could not extract hours';
+    if (photoBase64) {
+      photoBuffer = Buffer.from(photoBase64, 'base64');
+      exifGps = await extractExifGps(photoBuffer);
+
+      if (exifGps && latitude && longitude) {
+        gpsDistance = haversineMeters(exifGps.lat, exifGps.lng, latitude, longitude);
+        gpsVerified = gpsDistance <= MAX_GPS_DISTANCE_METERS;
+        gpsNote = gpsVerified
+          ? `Photo GPS ${Math.round(gpsDistance)}m from stated location — verified`
+          : `Photo GPS ${Math.round(gpsDistance)}m from stated location — too far (max ${MAX_GPS_DISTANCE_METERS}m)`;
+        console.log(`[report-zone-hours] ${gpsNote} (EXIF: ${exifGps.lat.toFixed(5)},${exifGps.lng.toFixed(5)} vs stated: ${latitude.toFixed(5)},${longitude.toFixed(5)})`);
+      } else if (!exifGps) {
+        gpsNote = 'No GPS metadata in photo — cannot verify location';
+        console.log('[report-zone-hours] No EXIF GPS in photo');
+      }
+
+      // ── Gemini AI verification ──
+      gemini = await verifyPhotoWithGemini(photoBase64);
+
+      if (gemini.signFound && gemini.hoursExtracted) {
+        aiVerified = schedulesMatch(schedule, gemini.hoursExtracted);
+        aiNote = aiVerified
+          ? `AI extracted "${gemini.hoursExtracted}" — matches user input`
+          : `AI extracted "${gemini.hoursExtracted}" — does NOT match user input "${schedule}"`;
+      } else if (gemini.signFound) {
+        aiNote = 'AI found sign but could not extract hours';
+      } else {
+        aiNote = 'AI did not find a permit sign in the photo';
+      }
+      console.log(`[report-zone-hours] ${aiNote}`);
     } else {
-      aiNote = 'AI did not find a permit sign in the photo';
+      gpsNote = 'No photo submitted — pending admin review';
+      aiNote = 'No photo — text-only correction';
+      console.log('[report-zone-hours] No photo — text-only correction, will require admin approval');
     }
-    console.log(`[report-zone-hours] ${aiNote}`);
 
     // ── Decide outcome ──
     //   GPS verified + AI verified → auto-apply
@@ -328,7 +334,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let status: string;
     let applied = false;
 
-    if (gpsDistance !== null && !gpsVerified) {
+    if (!photoBase64) {
+      // No photo — always requires admin review
+      status = 'pending_review';
+    } else if (gpsDistance !== null && !gpsVerified) {
       // Photo was taken too far from the stated block
       status = 'rejected_gps';
     } else if (gpsVerified && (aiVerified || (gemini.signFound && !gemini.hoursExtracted))) {
@@ -356,31 +365,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? gemini.hoursExtracted
       : schedule;
 
-    // ── Upload photo ──
+    // ── Upload photo (only if provided) ──
     let photoUrl: string | null = null;
-    try {
-      const fileName = `zone-reports/${zone}/${Date.now()}_${userId}.jpg`;
-      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
-      if (!buckets?.find(b => b.name === 'zone-sign-photos')) {
-        await supabaseAdmin.storage.createBucket('zone-sign-photos', {
-          public: true,
-          fileSizeLimit: 10 * 1024 * 1024,
-        });
-      }
-      const { error: uploadError } = await supabaseAdmin.storage
-        .from('zone-sign-photos')
-        .upload(fileName, photoBuffer, {
-          contentType: 'image/jpeg',
-          upsert: true,
-        });
-      if (!uploadError) {
-        const { data: urlData } = supabaseAdmin.storage
+    if (photoBuffer) {
+      try {
+        const fileName = `zone-reports/${zone}/${Date.now()}_${userId}.jpg`;
+        const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+        if (!buckets?.find(b => b.name === 'zone-sign-photos')) {
+          await supabaseAdmin.storage.createBucket('zone-sign-photos', {
+            public: true,
+            fileSizeLimit: 10 * 1024 * 1024,
+          });
+        }
+        const { error: uploadError } = await supabaseAdmin.storage
           .from('zone-sign-photos')
-          .getPublicUrl(fileName);
-        photoUrl = urlData?.publicUrl || null;
+          .upload(fileName, photoBuffer, {
+            contentType: 'image/jpeg',
+            upsert: true,
+          });
+        if (!uploadError) {
+          const { data: urlData } = supabaseAdmin.storage
+            .from('zone-sign-photos')
+            .getPublicUrl(fileName);
+          photoUrl = urlData?.publicUrl || null;
+        }
+      } catch (uploadErr: any) {
+        console.warn('[report-zone-hours] photo upload failed:', uploadErr?.message);
       }
-    } catch (uploadErr: any) {
-      console.warn('[report-zone-hours] photo upload failed:', uploadErr?.message);
     }
 
     // ── Save audit trail ──
