@@ -130,7 +130,7 @@ export default async function handler(
         street_cleaning_ward: input.street_cleaning_ward || null,
         street_cleaning_section: input.street_cleaning_section || null,
         permit_zone: input.permit_zone || null,
-        permit_restriction_schedule: null,
+        permit_restriction_schedule: input.permit_restriction_schedule || null,
 
         dot_permit_active: input.dot_permit_active,
         dot_permit_type: input.dot_permit_type || null,
@@ -184,7 +184,7 @@ export default async function handler(
           street_cleaning_ward: input.street_cleaning_ward || null,
           street_cleaning_section: input.street_cleaning_section || null,
           permit_zone: input.permit_zone || null,
-          permit_restriction_schedule: null,
+          permit_restriction_schedule: input.permit_restriction_schedule || null,
         })
         .eq('id', recentDuplicate.id);
 
@@ -211,7 +211,7 @@ export default async function handler(
           street_cleaning_ward: input.street_cleaning_ward || null,
           street_cleaning_section: input.street_cleaning_section || null,
           permit_zone: input.permit_zone || null,
-          permit_restriction_schedule: null,
+          permit_restriction_schedule: input.permit_restriction_schedule || null,
 
           parked_at: parkedAt,
         });
