@@ -421,11 +421,21 @@ function fillArgumentTemplate(arg: ArgumentTemplate, context: ArgumentContext): 
     replacements['[WEATHER_TYPE]'] = weatherDefense.data.conditions.join(', ') || 'adverse';
   }
 
+  // Non-resident defense replacements (city sticker violations)
+  if (ticketFacts.isNonResident) {
+    const cityState = `${ticketFacts.nonResidentCity || '[CITY]'}${ticketFacts.nonResidentState ? `, ${ticketFacts.nonResidentState}` : ''}`;
+    replacements['[REGISTRATION_ADDRESS]'] = cityState;
+    replacements['[RESIDENCY_EVIDENCE]'] = ticketFacts.nonResidentCity
+      ? `My permanent mailing address is in ${cityState}, outside Chicago city limits. My vehicle registration confirms my non-resident status.`
+      : 'I have attached documentation confirming my non-resident status.';
+    replacements['[REASON]'] = 'personal business';
+  }
+
   // Generic placeholders that need user input
   const userInputPlaceholders = [
     '[SIGNAGE_ISSUE]', '[SPECIFIC_SIGNAGE_PROBLEM]', '[EVIDENCE_REFERENCE]',
     '[PERMIT_NUMBER]', '[ZONE_NUMBER]', '[PERMIT_LOCATION]', '[PERMIT_EXPIRATION]',
-    '[STICKER_STATUS]', '[REGISTRATION_ADDRESS]', '[MALFUNCTION_DESCRIPTION]',
+    '[STICKER_STATUS]', '[MALFUNCTION_DESCRIPTION]',
     '[PAYMENT_METHOD]', '[PAYMENT_TIME]', '[PAYMENT_EXPIRATION]', '[TICKET_TIME]',
     '[TIME_COMPARISON]', '[SUPPORTING_INFO]', '[WEATHER_CONTEXT]',
   ];
