@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import jwt from 'jsonwebtoken';
 import { getHistoricalWeather, HistoricalWeatherData } from '../../../lib/weather-service';
 import { getOrdinanceByCode } from '../../../lib/chicago-ordinances';
+import { verifySweeperVisit, type SweeperVerification } from '../../../lib/sweeper-tracker';
 import {
   lookupParkingEvidence,
   generateEvidenceParagraph,
@@ -111,6 +112,11 @@ interface UserProfile {
   address: string | null;
   email: string | null;
   phone: string | null;
+  vehicle_make: string | null;
+  vehicle_model: string | null;
+  vehicle_color: string | null;
+  vehicle_year: number | null;
+  license_plate: string | null;
 }
 
 interface UserSettings {
@@ -215,6 +221,7 @@ interface EvidenceBundle {
     parsedTickets: { ticket_number?: string; date?: string; type?: string; amount?: number; status?: string; location?: string }[];
     foiaFulfilledAt: string | null;
   } | null;
+  sweeperVerification: SweeperVerification | null;
 }
 
 // ─── Levenshtein Distance (for clerical error detection) ────
@@ -452,6 +459,7 @@ async function gatherAllEvidence(
     locationPattern: null,
     nonResidentDetected: null,
     userFoiaHistory: null,
+    sweeperVerification: null,
   };
 
   // Resolve violation code
@@ -785,6 +793,33 @@ async function gatherAllEvidence(
           console.log(`    Street cleaning schedule found: ${data.length} records for ticket date`);
         }
       } catch (e) { /* Schedule lookup is optional */ }
+    })());
+  }
+
+  // 10b. Sweeper GPS Verification (for street_cleaning violations — must capture ASAP before rolling window expires)
+  if (ticket.violation_type === 'street_cleaning' && ticket.location && ticket.violation_date) {
+    promises.push((async () => {
+      try {
+        const sweeperResult = await verifySweeperVisit(ticket.location!, ticket.violation_date!);
+        if (sweeperResult.checked) {
+          bundle.sweeperVerification = sweeperResult;
+          console.log(`    Sweeper verification: ${sweeperResult.sweptOnDate ? 'Sweeper DID visit' : 'NO sweeper visit'} on ticket date (TransID: ${sweeperResult.transId || 'unknown'})`);
+
+          // Persist sweeper evidence immediately — the city's API has a rolling 7-30 day window
+          // If we don't capture this now, the data may be gone by the time we need it
+          try {
+            await supabaseAdmin
+              .from('detected_tickets')
+              .update({ sweeper_verification: sweeperResult })
+              .eq('id', ticket.id);
+          } catch (saveErr) {
+            // Column may not exist yet — log but don't fail
+            console.log(`    (sweeper_verification column save skipped — column may not exist yet)`);
+          }
+        }
+      } catch (e) {
+        console.error('    Sweeper verification failed:', e);
+      }
     })());
   }
 
@@ -1189,9 +1224,20 @@ INSTRUCTIONS: Use the argument template above as the CORE of your letter. Fill i
     const pe = evidence.parkingEvidence;
     const evidenceParagraph = generateEvidenceParagraph(pe, violationCode);
 
+    // Build vehicle identification for evidence tie-in
+    const vehicleParts = [profile?.vehicle_color, profile?.vehicle_year, profile?.vehicle_make, profile?.vehicle_model].filter(Boolean);
+    const vehicleDescription = vehicleParts.length > 0 ? vehicleParts.join(' ') : null;
+    const vehiclePlate = profile?.license_plate || null;
+
+    const vehicleIdSection = vehicleDescription || vehiclePlate
+      ? `\nREGISTERED VEHICLE: ${vehicleDescription || 'N/A'}${vehiclePlate ? ` (Plate: ${vehiclePlate})` : ''}
+This is the user's registered vehicle in the app. Reference it in the letter to tie the GPS evidence to this specific vehicle.`
+      : '';
+
     sections.push(`=== GPS PARKING EVIDENCE FROM USER'S MOBILE APP ===
 
-The user has the Autopilot parking protection app, which tracks their parking via Bluetooth vehicle connection and GPS. This data provides timestamped, GPS-verified evidence.
+The user has the Autopilot parking protection app, which continuously monitors their vehicle's location using GPS. When the app detects the user has parked, it records the precise GPS coordinates and timestamp. This data provides timestamped, GPS-verified evidence of parking and departure times.
+${vehicleIdSection}
 
 ${pe.evidenceSummary}
 
@@ -1209,11 +1255,12 @@ ${evidenceParagraph}
 
 INSTRUCTIONS FOR USING THIS EVIDENCE:
 1. INCORPORATE the GPS departure proof as a STRONG supporting argument in the letter
-2. Present it as "digital evidence from my vehicle's connected parking application"
+2. Present it as "digital evidence from my parking application"
 3. Reference specific timestamps and distances - these are verifiable GPS records
 4. This is factual, timestamped data - present it confidently as evidence
 5. If departure proof exists, it should be one of the MAIN arguments alongside any other defenses
-6. DO NOT overstate the evidence - stick to the exact timestamps and distances provided`);
+6. DO NOT overstate the evidence - stick to the exact timestamps and distances provided
+7. If vehicle info is provided above, reference the specific vehicle (make, model, plate) to tie the evidence to the ticketed vehicle`);
   }
 
   // ── Section 5: Weather Data (only when relevant to violation or we have no other evidence) ──
@@ -1658,6 +1705,42 @@ ${scs.map((s: any) => `- Ward ${s.ward}, Section ${s.section}: ${s.status || 'sc
 NOTE: This is the city's schedule. We do NOT have data confirming whether cleaning actually occurred. You may argue that street cleaning is frequently cancelled or rescheduled, and request the city provide proof that cleaning actually took place on this date and block.`);
   }
 
+  // ── Section 12b: Sweeper GPS Verification ──
+  if (evidence.sweeperVerification?.checked) {
+    const sv = evidence.sweeperVerification;
+    let sweeperSection = `=== STREET SWEEPER GPS VERIFICATION (City of Chicago SweepTracker) ===
+${sv.streetSegment ? `Street Segment: ${sv.streetSegment} (TransID: ${sv.transId})` : 'Street segment: Could not be identified'}
+Ticket Date: ${sv.ticketDate}
+Sweeper Visited on Ticket Date: ${sv.sweptOnDate ? 'YES' : 'NO'}
+
+${sv.message}`;
+
+    if (!sv.sweptOnDate && !sv.error) {
+      sweeperSection += `
+
+*** CRITICAL DEFENSE FINDING: NO SWEEPER GPS ACTIVITY ON TICKET DATE ***
+The City of Chicago's own SweepTracker GPS system — which tracks every city street sweeper in real-time — shows NO street sweeper visited this block on the date of the citation.
+
+This is POWERFUL evidence that directly contradicts the basis for the parking restriction. If no sweeper came, the street cleaning parking restriction served no purpose, and the ticket should not have been issued.
+
+INSTRUCTIONS FOR LETTER:
+1. This is POWERFUL evidence — the city's own GPS tracking system contradicts the basis for the ticket
+2. State that according to the City's street sweeper GPS tracking records, no street sweeper serviced this block on the ticket date
+3. Argue that the parking restriction served no purpose if no sweeper actually came to clean
+4. Frame it as: the city enforced a restriction that was unnecessary — penalizing the driver for no reason
+5. Combine with any signage issues or schedule discrepancies for a multi-layered defense
+6. Do NOT cite "SweepTracker" by name — instead say "the City's own street sweeper GPS tracking records"`;
+    } else if (sv.sweptOnDate) {
+      sweeperSection += `
+
+The sweeper DID visit this block on the ticket date. Do NOT argue that the sweeper didn't come.
+Instead, focus on other defense arguments (signage, weather, GPS departure timing, clerical errors, etc.).
+The sweeper visit data can still be mentioned neutrally — e.g., "While the respondent acknowledges that street cleaning was scheduled and performed on this date, the signage at this location was [inadequate/obscured/missing]..."`;
+    }
+
+    sections.push(sweeperSection);
+  }
+
   // ── Section 13: FOIA Evidence Request ──
   if (evidence.foiaRequest.hasFoiaRequest && evidence.foiaRequest.sentDate) {
     const sentFormatted = new Date(evidence.foiaRequest.sentDate).toLocaleDateString('en-US', {
@@ -2000,7 +2083,7 @@ function generateFallbackLetter(
   // Add evidence-specific paragraphs
   if (evidence.parkingEvidence?.departureProof) {
     const dp = evidence.parkingEvidence.departureProof;
-    body += `\n\nDigital evidence from my vehicle's connected parking application confirms I departed from the cited location at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was issued. GPS records show I moved ${dp.departureDistanceMeters} meters from the parking spot, providing conclusive proof my vehicle was not at this location when the ticket was written.`;
+    body += `\n\nDigital evidence from my parking application confirms I departed from the cited location at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was issued. GPS records show my vehicle moved ${dp.departureDistanceMeters} meters from the parking spot, providing conclusive proof my vehicle was not at this location when the ticket was written.`;
   }
 
   if (evidence.nonResidentDetected?.isNonResident) {
@@ -2457,6 +2540,12 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
     evidenceSources.push('clerical_error_check');
     if (evidence.clericalErrorCheck.hasErrors) evidenceSources.push('clerical_error_found');
   }
+  if (evidence.sweeperVerification?.checked) {
+    evidenceSources.push('sweeper_verification');
+    if (!evidence.sweeperVerification.sweptOnDate && !evidence.sweeperVerification.error) {
+      evidenceSources.push('sweeper_no_visit_found');
+    }
+  }
 
   if (anthropic) {
     try {
@@ -2571,6 +2660,15 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
         } : { checked: false },
         street_view_available: evidence.streetViewEvidence?.hasImagery || false,
         street_view_date: evidence.streetViewEvidence?.imageDate || null,
+        sweeper_verification: evidence.sweeperVerification?.checked ? {
+          checked: true,
+          sweptOnDate: evidence.sweeperVerification.sweptOnDate,
+          transId: evidence.sweeperVerification.transId,
+          streetSegment: evidence.sweeperVerification.streetSegment,
+          ticketDate: evidence.sweeperVerification.ticketDate,
+          message: evidence.sweeperVerification.message,
+          error: evidence.sweeperVerification.error || null,
+        } : null,
       },
       performed_by: 'autopilot_cron',
     });

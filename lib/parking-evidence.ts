@@ -565,28 +565,28 @@ export function generateEvidenceParagraph(
       switch (violationType) {
         case 'street_cleaning':
           paragraphs.push(
-            `Furthermore, I have GPS-verified evidence from my vehicle's connected mobile application showing that I departed from the parking location at ${dp.departureTimeFormatted}, which is ${dp.minutesBeforeTicket} minutes before this citation was issued. The GPS data confirms I moved ${dp.departureDistanceMeters} meters from my parking spot, providing conclusive proof that my vehicle was no longer at this location during street cleaning operations. This timestamped departure data serves as digital evidence that my vehicle did not obstruct street cleaning.`
+            `Furthermore, I have GPS-verified evidence from my parking application showing that I departed from the parking location at ${dp.departureTimeFormatted}, which is ${dp.minutesBeforeTicket} minutes before this citation was issued. The GPS data confirms my vehicle moved ${dp.departureDistanceMeters} meters from my parking spot, providing conclusive proof that my vehicle was no longer at this location during street cleaning operations. This timestamped departure data serves as digital evidence that my vehicle did not obstruct street cleaning.`
           );
           break;
         case 'snow_route':
           paragraphs.push(
-            `Additionally, GPS data from my vehicle's connected mobile application confirms I moved my vehicle from this location at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was written. The GPS verified I traveled ${dp.departureDistanceMeters} meters from the parking spot. My vehicle was not present on this snow route at the time of citation and did not interfere with snow removal operations.`
+            `Additionally, GPS data from my parking application confirms I moved my vehicle from this location at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was written. The GPS verified my vehicle traveled ${dp.departureDistanceMeters} meters from the parking spot. My vehicle was not present on this snow route at the time of citation and did not interfere with snow removal operations.`
           );
           break;
         case 'expired_meter':
           paragraphs.push(
-            `GPS records from my vehicle's connected application confirm I departed from the metered parking spot at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was issued. The GPS data shows I moved ${dp.departureDistanceMeters} meters from the spot, proving my vehicle had already vacated the space.`
+            `GPS records from my parking application confirm I departed from the metered parking spot at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was issued. The GPS data shows my vehicle moved ${dp.departureDistanceMeters} meters from the spot, proving my vehicle had already vacated the space.`
           );
           break;
         default:
           paragraphs.push(
-            `I have GPS-verified evidence from my vehicle's connected mobile application confirming I departed from the cited location at ${dp.departureTimeFormatted}, which is ${dp.minutesBeforeTicket} minutes before this citation was issued. The GPS shows I moved ${dp.departureDistanceMeters} meters from the parking spot, providing conclusive proof my vehicle was not at this location when the ticket was written.`
+            `I have GPS-verified evidence from my parking application confirming I departed from the cited location at ${dp.departureTimeFormatted}, which is ${dp.minutesBeforeTicket} minutes before this citation was issued. The GPS shows my vehicle moved ${dp.departureDistanceMeters} meters from the parking spot, providing conclusive proof my vehicle was not at this location when the ticket was written.`
           );
       }
     } else if (dp.minutesBeforeTicket > 0) {
       // Non-conclusive but still valuable
       paragraphs.push(
-        `My vehicle's connected mobile application detected that I began driving away from this location at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was issued. This provides evidence that my vehicle was in the process of departing when the citation was written.`
+        `My parking application detected that I began driving away from this location at ${dp.departureTimeFormatted}, ${dp.minutesBeforeTicket} minutes before this citation was issued. This provides evidence that my vehicle was in the process of departing when the citation was written.`
       );
     }
   }
@@ -602,7 +602,7 @@ export function generateEvidenceParagraph(
   // Restriction conflict paragraph
   if (evidence.restrictionCapture?.hasConflict) {
     paragraphs.push(
-      `Notably, when I parked at this location, my vehicle's parking restriction detection system did not identify the restriction cited on this ticket. ${evidence.restrictionCapture.conflictDescription} This discrepancy suggests the restriction may not have been adequately posted or communicated.`
+      `Notably, when I parked at this location, my parking application's restriction detection system did not identify the restriction cited on this ticket. ${evidence.restrictionCapture.conflictDescription} This discrepancy suggests the restriction may not have been adequately posted or communicated.`
     );
   }
 
