@@ -21,6 +21,7 @@ import {
 import { getStreetViewEvidence, StreetViewResult, getStreetViewEvidenceWithAnalysis, StreetViewEvidencePackage } from '../../../lib/street-view-service';
 import { getOfficerIntelligence } from '../../../lib/contest-outcome-tracker';
 import { analyzeRedLightDefense, analyzeFactualInconsistency, type AnalysisInput, type RedLightDefenseAnalysis, type FactualInconsistencyAnalysis } from '../../../lib/red-light-defense-analysis';
+import { verifySweeperVisit, type SweeperVerification } from '../../../lib/sweeper-tracker';
 
 // Weather relevance by violation type
 // PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
@@ -296,7 +297,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get user profile for name/address
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('first_name, last_name, address, email, phone, mailing_city, mailing_state, mailing_address')
+      .select('first_name, last_name, address, email, phone, mailing_city, mailing_state, mailing_address, vehicle_make, vehicle_model, vehicle_color, vehicle_year, license_plate')
       .eq('user_id', user.id)
       .single();
 
@@ -497,6 +498,7 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
     let streetViewEvidence: StreetViewResult | null = null;
     let streetViewPackage: StreetViewEvidencePackage | null = null;
     let streetCleaningSchedule: any[] | null = null;
+    let sweeperVerification: SweeperVerification | null = null;
     let streetCleaningVerification: {
       checked: boolean;
       ward: string | null;
@@ -535,10 +537,22 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
         if (parkingEvidence?.hasEvidence) {
           userEvidence.hasLocationEvidence = true;
           const evidenceParagraph = generateEvidenceParagraph(parkingEvidence, contest.violation_code);
+
+          // Build vehicle identification string from user profile
+          const vehicleParts = [profile?.vehicle_color, profile?.vehicle_year, profile?.vehicle_make, profile?.vehicle_model].filter(Boolean);
+          const vehicleDescription = vehicleParts.length > 0 ? vehicleParts.join(' ') : null;
+          const vehiclePlate = profile?.license_plate || null;
+
+          const vehicleIdSection = vehicleDescription || vehiclePlate
+            ? `\nREGISTERED VEHICLE: ${vehicleDescription || 'N/A'}${vehiclePlate ? ` (Plate: ${vehiclePlate})` : ''}
+This is the user's registered vehicle in the app. Reference it in the letter to tie the GPS evidence to this specific vehicle.`
+            : '';
+
           parkingEvidenceText = `
 === GPS PARKING EVIDENCE FROM USER'S MOBILE APP ===
 
-The user has the Autopilot parking protection app, which tracks their parking via Bluetooth vehicle connection and GPS. This data provides timestamped, GPS-verified evidence.
+The user has the Autopilot parking protection app, which continuously monitors their vehicle's location using GPS. When the app detects the user has parked, it records the precise GPS coordinates and timestamp. This data provides timestamped, GPS-verified evidence of parking and departure times.
+${vehicleIdSection}
 
 ${parkingEvidence.evidenceSummary}
 
@@ -556,11 +570,12 @@ ${evidenceParagraph}
 
 INSTRUCTIONS FOR USING THIS EVIDENCE:
 1. INCORPORATE the GPS departure proof as a STRONG supporting argument in the letter
-2. Present it as "digital evidence from my vehicle's connected parking application"
+2. Present it as "digital evidence from my parking application"
 3. Reference specific timestamps and distances - these are verifiable GPS records
 4. This is factual, timestamped data - present it confidently as evidence
 5. If departure proof exists, it should be one of the MAIN arguments alongside any other defenses
-6. DO NOT overstate the evidence - stick to the exact timestamps and distances provided`;
+6. DO NOT overstate the evidence - stick to the exact timestamps and distances provided
+7. If vehicle info is provided above, reference the specific vehicle (make, model, plate) to tie the evidence to the ticketed vehicle`;
         }
       } catch (e) { console.error('GPS evidence lookup failed:', e); }
     })());
@@ -891,17 +906,24 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     await Promise.all(evidencePromises);
 
     // Look up detected_ticket plate data for defense analysis (ticket_plate, ticket_state, user plate, notice timing)
-    let detectedTicketData: { id?: string; ticket_plate?: string; ticket_state?: string; plate?: string; state?: string; created_at?: string } | null = null;
+    let detectedTicketData: { id?: string; ticket_plate?: string; ticket_state?: string; plate?: string; state?: string; created_at?: string; sweeper_verification?: any } | null = null;
     if (contest.ticket_number) {
       try {
         const { data } = await supabase
           .from('detected_tickets')
-          .select('id, ticket_plate, ticket_state, plate, state, created_at')
+          .select('id, ticket_plate, ticket_state, plate, state, created_at, sweeper_verification')
           .eq('ticket_number', contest.ticket_number)
           .limit(1)
           .maybeSingle();
         detectedTicketData = data;
       } catch (e) { /* non-fatal */ }
+    }
+
+    // If sweeper data wasn't fetched live but was saved earlier (from autopilot cron),
+    // use the saved copy — the city's API has a rolling 7-30 day history window
+    if (!sweeperVerification?.checked && detectedTicketData?.sweeper_verification?.checked) {
+      sweeperVerification = detectedTicketData.sweeper_verification;
+      console.log(`  Using saved sweeper verification (from detection time): ${sweeperVerification!.sweptOnDate ? 'SWEPT' : 'NOT SWEPT'}`);
     }
 
     // =====================================================================
