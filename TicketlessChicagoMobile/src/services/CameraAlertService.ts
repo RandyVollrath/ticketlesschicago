@@ -10,9 +10,12 @@
  * 2. Filters 510 cameras down to nearby ones using a fast bounding box check
  * 3. Calculates exact distance via Haversine formula
  * 4. Filters by direction: only alerts if user's heading matches camera's
- *    monitored approach directions (±45° tolerance)
+ *    monitored approach directions (±35° tolerance)
  * 4b. Filters by bearing: only alerts if camera is AHEAD of user (±30° cone),
  *     not to the side on a parallel street
+ * 4c. Filters by lateral offset: only alerts if user is within 50m of the
+ *     camera's approach axis (perpendicular distance), rejecting cameras on
+ *     adjacent/diagonal streets like Lincoln Ave vs Ashland Ave
  * 5. Speaks via TTS when within speed-adaptive alert radius (150-250m)
  * 6. Tracks alerted cameras to avoid repeating until user moves away (~400m)
  *
@@ -247,10 +250,16 @@ const APPROACH_TO_HEADING: Record<string, number> = {
 
 /**
  * Maximum angular difference (degrees) between GPS heading and camera
- * approach direction to consider a match. ±45° means if a camera watches
- * NB (0°), headings from 315° to 45° will match.
+ * approach direction to consider a match. ±35° means if a camera watches
+ * NB (0°), headings from 325° to 35° will match.
+ *
+ * Tightened from 45° to 35° (Mar 2026) to reject diagonal-street false
+ * positives. E.g., driving SE on Lincoln Ave (135°) vs SB camera on
+ * Ashland (180°): diff=45° was passing at ±45° but fails at ±35°.
+ * GPS heading noise at driving speed is typically ±5-10°, so ±35° still
+ * has plenty of margin for legitimate alerts.
  */
-const HEADING_TOLERANCE_DEGREES = 45;
+const HEADING_TOLERANCE_DEGREES = 35;
 
 /**
  * Maximum bearing-off-heading (degrees) for a camera to be considered
@@ -265,6 +274,72 @@ const HEADING_TOLERANCE_DEGREES = 45;
  * Fail-open when heading is unavailable (heading = -1).
  */
 const MAX_BEARING_OFF_HEADING_DEGREES = 30;
+
+/**
+ * Maximum lateral (cross-track) offset in meters between the user's position
+ * and the camera's approach axis. This is the perpendicular distance from the
+ * user to a line drawn through the camera in its approach direction.
+ *
+ * Purpose: filters cameras on adjacent streets. A user on Lincoln Ave driving
+ * SE passes within ~100-150m of cameras on Ashland Ave (N-S), but the lateral
+ * offset to the Ashland camera's N-S axis is 80-120m — well above this
+ * threshold. A user actually on Ashland would have lateral offset ~5-15m
+ * (lane width + GPS drift).
+ *
+ * 50m is generous: 4-lane road is ~13m wide, typical GPS error is 5-15m,
+ * worst case urban canyon is ~30m. 50m accommodates all of these with margin.
+ * Chicago blocks are ~100-125m apart E-W, so 50m cleanly separates adjacent
+ * parallel streets.
+ */
+const MAX_LATERAL_OFFSET_METERS = 50;
+
+/**
+ * Calculate the lateral (cross-track) offset from the user's position to the
+ * camera's approach axis. Returns the perpendicular distance in meters from
+ * the user to a line drawn through the camera in its monitored direction.
+ *
+ * For cameras with multiple approaches (e.g., NB + SB), returns the MINIMUM
+ * offset across all approaches (the user only needs to be on-axis for one).
+ *
+ * Returns null if heading data is unavailable (fail-open).
+ *
+ * Math: Convert camera approach direction to a unit vector, compute vector
+ * from camera to user in local meters, cross-product magnitude = lateral offset.
+ */
+function getLateralOffset(
+  userLat: number,
+  userLng: number,
+  camLat: number,
+  camLng: number,
+  approaches: string[]
+): number | null {
+  if (approaches.length === 0) return null; // No approach data — fail open
+
+  // Convert lat/lng difference to meters (flat earth approximation, fine for <500m)
+  const dLatMeters = (userLat - camLat) * 111320;
+  const dLngMeters = (userLng - camLng) * 111320 * Math.cos(toRad(camLat));
+
+  let minOffset = Infinity;
+
+  for (const approach of approaches) {
+    const approachHeading = APPROACH_TO_HEADING[approach];
+    if (approachHeading === undefined) return null; // Unknown approach — fail open
+
+    // Unit vector along camera's approach axis
+    const axisX = Math.sin(toRad(approachHeading)); // East component
+    const axisY = Math.cos(toRad(approachHeading)); // North component
+
+    // Cross product magnitude = perpendicular distance
+    // |user_vector × axis_vector| = |dLngMeters * axisY - dLatMeters * axisX|
+    const crossTrack = Math.abs(dLngMeters * axisY - dLatMeters * axisX);
+
+    if (crossTrack < minOffset) {
+      minOffset = crossTrack;
+    }
+  }
+
+  return Number.isFinite(minOffset) ? minOffset : null;
+}
 
 /**
  * Check if the user's GPS heading matches any of the camera's approach directions.
@@ -356,6 +431,7 @@ interface CameraTripSummary {
   distanceFiltered: number;
   headingFiltered: number;
   bearingFiltered: number;
+  lateralFiltered: number;
   nearestRedlightMeters: number | null;
   nearestSpeedMeters: number | null;
   noAlertTopReason: string;
@@ -429,6 +505,7 @@ class CameraAlertServiceClass {
   private tripDistanceFiltered = 0;
   private tripHeadingFiltered = 0;
   private tripBearingFiltered = 0;
+  private tripLateralFiltered = 0;
   private tripAudioSpeakAttempts = 0;
   private tripAudioSpeakSuccess = 0;
   private tripAudioSpeakFailures = 0;
@@ -457,6 +534,7 @@ class CameraAlertServiceClass {
     distanceFiltered: number;
     headingFiltered: number;
     bearingFiltered: number;
+    lateralFiltered: number;
     passed: number;
     redlightPassed: number;
     speedPassed: number;
@@ -828,6 +906,7 @@ class CameraAlertServiceClass {
     this.tripDistanceFiltered = 0;
     this.tripHeadingFiltered = 0;
     this.tripBearingFiltered = 0;
+    this.tripLateralFiltered = 0;
     this.tripAudioSpeakAttempts = 0;
     this.tripAudioSpeakSuccess = 0;
     this.tripAudioSpeakFailures = 0;
@@ -892,6 +971,7 @@ class CameraAlertServiceClass {
         distanceFiltered: this.tripDistanceFiltered,
         headingFiltered: this.tripHeadingFiltered,
         bearingFiltered: this.tripBearingFiltered,
+        lateralFiltered: this.tripLateralFiltered,
         nearestRedlightMeters: Number.isFinite(this.tripNearestRedlightDistance) ? this.tripNearestRedlightDistance : null,
         nearestSpeedMeters: Number.isFinite(this.tripNearestSpeedDistance) ? this.tripNearestSpeedDistance : null,
         noAlertTopReason: this.topNoAlertReason(),
@@ -1005,7 +1085,7 @@ class CameraAlertServiceClass {
         const diag = this.lastDiagnostic;
         log.info(`[DIAG] GPS#${this.gpsUpdateCount}: ${latitude.toFixed(5)},${longitude.toFixed(5)} spd=${speedMph}mph hdg=${Math.round(heading)}° radius=${alertRadius}m found=${nearbyCameras.length} ` +
           `settings(speed=${this.speedAlertsEnabled},redlight=${this.redLightAlertsEnabled}) ` +
-          (diag ? `filter(type=${diag.typeFiltered},spd=${diag.speedFiltered},bbox=${diag.bboxFiltered},dist=${diag.distanceFiltered},hdg=${diag.headingFiltered},brg=${diag.bearingFiltered},pass=${diag.passed}) ` +
+          (diag ? `filter(type=${diag.typeFiltered},spd=${diag.speedFiltered},bbox=${diag.bboxFiltered},dist=${diag.distanceFiltered},hdg=${diag.headingFiltered},brg=${diag.bearingFiltered},lat=${diag.lateralFiltered},pass=${diag.passed}) ` +
             `nearest(rl=${diag.nearestRedlightDistance === Infinity ? 'none' : Math.round(diag.nearestRedlightDistance) + 'm'},sp=${diag.nearestSpeedDistance === Infinity ? 'none' : Math.round(diag.nearestSpeedDistance) + 'm'})` : 'no-diag'));
       }
 
@@ -1380,6 +1460,7 @@ class CameraAlertServiceClass {
     let distanceFiltered = 0;
     let headingFiltered = 0;
     let bearingFiltered = 0;
+    let lateralFiltered = 0;
     let nearestRedlightDistance = Infinity;
     let nearestSpeedDistance = Infinity;
     let nearestRejected:
@@ -1469,6 +1550,20 @@ class CameraAlertServiceClass {
           continue;
         }
 
+        // Lateral offset filter: reject cameras on adjacent streets.
+        // Measures perpendicular distance from user to the camera's approach axis.
+        // A user on the same street is within ~15m; a user on a parallel/diagonal
+        // street is typically 80-200m off-axis.
+        const lateralOffset = getLateralOffset(lat, lng, cam.latitude, cam.longitude, cam.approaches);
+        if (lateralOffset !== null && lateralOffset > MAX_LATERAL_OFFSET_METERS) {
+          lateralFiltered++;
+          if (distance <= rejectDebugRadius && (!nearestRejected || distance < nearestRejected.distance)) {
+            nearestRejected = { reason: 'lateral_offset', index: i, distance, camera: cam };
+          }
+          log.debug(`LATERAL REJECT: ${cam.address} offset=${Math.round(lateralOffset)}m (max ${MAX_LATERAL_OFFSET_METERS}m) dist=${Math.round(distance)}m`);
+          continue;
+        }
+
         const confidenceScore = this.computeCameraConfidenceScore(cam, distance, speed, heading, alertRadius);
         const confidenceTier: CameraConfidenceTier =
           confidenceScore >= 75 ? 'high' : confidenceScore >= 55 ? 'medium' : 'low';
@@ -1508,6 +1603,7 @@ class CameraAlertServiceClass {
       distanceFiltered,
       headingFiltered,
       bearingFiltered,
+      lateralFiltered,
       passed: results.length,
       redlightPassed,
       speedPassed,
@@ -1520,6 +1616,7 @@ class CameraAlertServiceClass {
     this.tripDistanceFiltered += distanceFiltered;
     this.tripHeadingFiltered += headingFiltered;
     this.tripBearingFiltered += bearingFiltered;
+    this.tripLateralFiltered += lateralFiltered;
     this.tripNearestRedlightDistance = Math.min(this.tripNearestRedlightDistance, nearestRedlightDistance);
     this.tripNearestSpeedDistance = Math.min(this.tripNearestSpeedDistance, nearestSpeedDistance);
 
@@ -1543,6 +1640,7 @@ class CameraAlertServiceClass {
       ['outside_radius', this.tripDistanceFiltered],
       ['heading_mismatch', this.tripHeadingFiltered],
       ['camera_not_ahead', this.tripBearingFiltered],
+      ['lateral_offset', this.tripLateralFiltered],
     ];
     rows.sort((a, b) => b[1] - a[1]);
     const top = rows[0];

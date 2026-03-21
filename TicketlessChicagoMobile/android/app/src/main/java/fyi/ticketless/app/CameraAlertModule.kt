@@ -31,7 +31,7 @@ import kotlin.math.*
  * Mirrors the iOS BackgroundLocationModule.swift camera alert behavior:
  * - Embedded camera data (510 Chicago cameras)
  * - Proximity detection with dynamic radius (150-250m based on speed)
- * - Heading/bearing matching (45° heading tolerance, 30° ahead cone)
+ * - Heading/bearing matching (35° heading tolerance, 30° ahead cone, 50m lateral offset)
  * - Per-camera debounce (3 min) and global debounce (5 sec)
  * - Android TextToSpeech for voice alerts
  * - Notification channel for visual alerts
@@ -52,7 +52,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         private const val BASE_ALERT_RADIUS_METERS = 150.0
         private const val MAX_ALERT_RADIUS_METERS = 250.0
         private const val TARGET_WARNING_SECONDS = 10.0
-        private const val HEADING_TOLERANCE_DEGREES = 45.0
+        private const val HEADING_TOLERANCE_DEGREES = 35.0
         private const val MAX_BEARING_OFF_HEADING_DEGREES = 30.0
         private const val MIN_SPEED_SPEED_CAM_MPS = 3.2   // ~7 mph
         private const val MIN_SPEED_REDLIGHT_MPS = 1.0     // ~2 mph
@@ -64,6 +64,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         private const val SPEED_CAMERA_ENFORCE_START_HOUR = 6
         private const val SPEED_CAMERA_ENFORCE_END_HOUR = 23
         private const val HEADING_BUFFER_SIZE = 5  // Circular mean of last N headings for noise reduction
+        private const val MAX_LATERAL_OFFSET_METERS = 50.0  // Max perpendicular distance from camera approach axis
 
         // Approach direction to compass heading mapping
         private val APPROACH_TO_HEADING = mapOf(
@@ -832,6 +833,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         var distanceFilteredCount = 0
         var headingFilteredCount = 0
         var bearingFilteredCount = 0
+        var lateralFilteredCount = 0
         var dedupeFilteredCount = 0
         var nearestRejectedIdx = -1
         var nearestRejectedDist = Double.MAX_VALUE
@@ -888,6 +890,17 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
                 continue
             }
 
+            // Lateral offset check: reject cameras on adjacent/diagonal streets
+            val lateralOffset = getLateralOffset(lat, lng, cam.lat, cam.lng, cam.approaches)
+            if (lateralOffset != null && lateralOffset > MAX_LATERAL_OFFSET_METERS) {
+                lateralFilteredCount++
+                if (distance < nearestRejectedDist) {
+                    nearestRejectedIdx = i; nearestRejectedDist = distance; nearestRejectedReason = "lateral_offset"
+                }
+                Log.d(TAG, "LATERAL_REJECT: ${cam.address} offset=${lateralOffset.toInt()}m (max ${MAX_LATERAL_OFFSET_METERS.toInt()}m) dist=${distance.toInt()}m")
+                continue
+            }
+
             // Per-camera debounce
             val lastAlertTime = alertedCameras[i] ?: 0L
             if (now - lastAlertTime < PER_CAMERA_DEBOUNCE_MS) {
@@ -934,7 +947,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
                 "spd=${speedMph}mph hdg=${heading.toInt()}° radius=${alertRadius.toInt()}m " +
                 "total=${cameras.size} type_off=$typeFilteredCount spd_low=$speedFilteredCount " +
                 "bbox=$bboxCandidateCount dist=$distanceFilteredCount hdg=$headingFilteredCount " +
-                "brg=$bearingFilteredCount dedup=$dedupeFilteredCount"
+                "brg=$bearingFilteredCount lat=$lateralFilteredCount dedup=$dedupeFilteredCount"
             if (nearestRejectedIdx >= 0) {
                 val rCam = cameras[nearestRejectedIdx]
                 Log.i(TAG, "$summary nearest_reject=${rCam.address}(${nearestRejectedDist.toInt()}m,$nearestRejectedReason)")
@@ -1014,6 +1027,34 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
             if (diff <= tolerance) return true
         }
         return false
+    }
+
+    /**
+     * Calculate the lateral (cross-track) offset from the user to the camera's approach axis.
+     * Returns the minimum perpendicular distance in meters across all approach directions,
+     * or null if approach data is missing (fail-open).
+     */
+    private fun getLateralOffset(userLat: Double, userLng: Double, camLat: Double, camLng: Double, approaches: List<String>): Double? {
+        if (approaches.isEmpty()) return null
+
+        val dLatMeters = (userLat - camLat) * 111320.0
+        val dLngMeters = (userLng - camLng) * 111320.0 * cos(Math.toRadians(camLat))
+
+        var minOffset = Double.MAX_VALUE
+
+        for (approach in approaches) {
+            val approachHeading = APPROACH_TO_HEADING[approach] ?: return null // Unknown — fail open
+
+            val axisX = sin(Math.toRadians(approachHeading)) // East component
+            val axisY = cos(Math.toRadians(approachHeading)) // North component
+
+            val crossTrack = abs(dLngMeters * axisY - dLatMeters * axisX)
+            if (crossTrack < minOffset) {
+                minOffset = crossTrack
+            }
+        }
+
+        return if (minOffset < Double.MAX_VALUE) minOffset else null
     }
 
     private fun isCameraAhead(userLat: Double, userLng: Double, camLat: Double, camLng: Double, heading: Double, bearingTolerance: Double = MAX_BEARING_OFF_HEADING_DEGREES): Boolean {
