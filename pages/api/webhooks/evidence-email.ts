@@ -174,14 +174,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const data = event.data;
     const fromEmail = data.from;
-    const toEmail = data.to;
+    // Resend sends `to` as an array of strings
+    const toEmailRaw = data.to;
+    const toEmail = Array.isArray(toEmailRaw) ? toEmailRaw[0] : toEmailRaw;
     const subject = data.subject || '(no subject)';
-    const textBody = data.text || '';
-    const htmlBody = data.html || '';
-    const attachments = data.attachments || [];
+    const emailId = data.email_id; // Resend email ID for fetching full content
+    let textBody = data.text || '';
+    let htmlBody = data.html || '';
+    let attachments = data.attachments || [];
 
     console.log(`Evidence email from ${fromEmail}: "${subject}"`);
-    console.log(`Attachments: ${attachments.length}`);
+    console.log(`To (raw): ${JSON.stringify(toEmailRaw)}, parsed: ${toEmail}`);
+    console.log(`Attachments: ${attachments.length}, email_id: ${emailId}`);
 
     // Only process emails sent to evidence@autopilotamerica.com (or evidence+TICKET_ID@)
     // Match both evidence@autopilotamerica.com and evidence+UUID@autopilotamerica.com
@@ -190,12 +194,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ message: 'Not an evidence email' });
     }
 
+    // Resend webhook payloads only contain metadata — fetch full email content if body is missing
+    if (!textBody && !htmlBody && emailId) {
+      console.log(`Fetching full email content from Resend API: ${emailId}`);
+      try {
+        const resendRes = await fetch(
+          `https://api.resend.com/emails/receiving/${emailId}`,
+          { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } }
+        );
+        if (resendRes.ok) {
+          const fullEmail = await resendRes.json();
+          textBody = fullEmail.text || textBody;
+          htmlBody = fullEmail.html || htmlBody;
+          if (!attachments?.length && fullEmail.attachments?.length) {
+            attachments = fullEmail.attachments;
+          }
+          console.log(`Fetched email body: text=${!!textBody}, html=${!!htmlBody}, attachments=${attachments?.length || 0}`);
+        } else {
+          console.warn(`Failed to fetch email content: ${resendRes.status} ${resendRes.statusText}`);
+        }
+      } catch (fetchErr: any) {
+        console.warn(`Error fetching email content:`, fetchErr?.message);
+      }
+    }
+
     // Find user by email
     // Method 1: Use auth.admin API (most reliable)
     let user: { id: string; email: string | undefined } | null = null;
     try {
       const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-      const foundUser = authUsers?.users?.find(u =>
+      const foundUser = (authUsers?.users as any[])?.find((u: any) =>
         u.email?.toLowerCase() === fromEmail.trim().toLowerCase()
       );
       if (foundUser) {
@@ -208,11 +236,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Method 2: Fallback to RPC function
     if (!user) {
       try {
-        const { data: sqlUser } = await supabaseAdmin.rpc('get_user_by_email', {
+        const { data: sqlUser } = await supabaseAdmin.rpc('get_user_by_email' as any, {
           user_email: fromEmail.trim().toLowerCase()
         });
-        if (sqlUser && sqlUser.length > 0) {
-          user = sqlUser[0];
+        if (sqlUser && (sqlUser as any[]).length > 0) {
+          user = (sqlUser as any[])[0];
         }
       } catch (rpcErr: any) {
         console.error('get_user_by_email RPC failed:', rpcErr.message);
@@ -386,22 +414,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
           const filename = attachment.filename || attachment.name || 'attachment';
           const contentType = attachment.content_type || attachment.contentType || attachment.type || 'application/octet-stream';
-          const encoding = attachment.encoding || attachment.content_transfer_encoding || 'base64';
 
-          // Log all attachment properties for debugging
+          // Log attachment properties for debugging
           console.log(`Processing attachment: ${filename}`);
           console.log(`  - contentType: ${contentType}`);
-          console.log(`  - encoding: ${encoding}`);
-          console.log(`  - has content: ${!!attachment.content}`);
-          console.log(`  - content length: ${attachment.content?.length || 0}`);
-          console.log(`  - has url: ${!!attachment.url}`);
-          console.log(`  - has data: ${!!attachment.data}`);
           console.log(`  - attachment keys: ${Object.keys(attachment).join(', ')}`);
 
           let buffer: Buffer | null = null;
 
-          // Method 1: If attachment has a URL, fetch the content from it
-          if (attachment.url) {
+          // Method 1: Fetch from Resend attachment download API (primary for Resend webhooks)
+          // Resend webhooks only include metadata (id, filename, content_type) — not content.
+          // Must fetch via: GET /emails/receiving/{email_id}/attachments/{attachment_id}
+          if (!buffer && emailId && attachment.id) {
+            console.log(`  Fetching attachment from Resend API: email=${emailId}, attachment=${attachment.id}`);
+            try {
+              const attachMetaRes = await fetch(
+                `https://api.resend.com/emails/receiving/${emailId}/attachments/${attachment.id}`,
+                { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } }
+              );
+              if (attachMetaRes.ok) {
+                const attachMeta = await attachMetaRes.json();
+                if (attachMeta.download_url) {
+                  console.log(`  Downloading from: ${attachMeta.download_url}`);
+                  const downloadRes = await fetch(attachMeta.download_url);
+                  if (downloadRes.ok) {
+                    const arrayBuffer = await downloadRes.arrayBuffer();
+                    buffer = Buffer.from(arrayBuffer);
+                    console.log(`  Downloaded ${buffer.length} bytes from Resend`);
+                  } else {
+                    console.error(`  Download failed: ${downloadRes.status}`);
+                  }
+                } else if (attachMeta.content) {
+                  // Some versions return base64 content directly
+                  buffer = Buffer.from(attachMeta.content, 'base64');
+                  console.log(`  Got ${buffer.length} bytes from Resend content field`);
+                }
+              } else {
+                console.error(`  Resend attachment API failed: ${attachMetaRes.status}`);
+              }
+            } catch (fetchErr: any) {
+              console.error(`  Error fetching from Resend API: ${fetchErr.message}`);
+            }
+          }
+
+          // Method 2: If attachment has a direct URL (Cloudflare worker format)
+          if (!buffer && attachment.url) {
             console.log(`  Fetching attachment from URL: ${attachment.url}`);
             try {
               const response = await fetch(attachment.url);
@@ -417,48 +474,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
 
-          // Method 2: If attachment has content (base64 or raw)
+          // Method 3: If attachment has inline content (base64 or raw)
           if (!buffer && attachment.content) {
             const content = attachment.content;
-
-            if (encoding === 'base64' || typeof content === 'string') {
-              // Try base64 decoding
-              // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+            if (typeof content === 'string') {
               let base64Data = content;
-              if (typeof base64Data === 'string') {
-                const dataUrlMatch = base64Data.match(/^data:[^;]+;base64,(.+)$/);
-                if (dataUrlMatch) {
-                  base64Data = dataUrlMatch[1];
-                }
-                // Remove whitespace and newlines
-                base64Data = base64Data.replace(/[\s\r\n]/g, '');
-              }
-
+              const dataUrlMatch = base64Data.match(/^data:[^;]+;base64,(.+)$/);
+              if (dataUrlMatch) base64Data = dataUrlMatch[1];
+              base64Data = base64Data.replace(/[\s\r\n]/g, '');
               buffer = Buffer.from(base64Data, 'base64');
               console.log(`  Decoded base64 content: ${buffer.length} bytes`);
-
-              // Verify it's valid binary (not just the string re-encoded)
-              if (buffer.length < 100 && content.length > 1000) {
-                console.log(`  Warning: base64 decode may have failed, trying raw buffer`);
-                buffer = Buffer.from(content);
-              }
             } else if (Buffer.isBuffer(content)) {
               buffer = content;
-              console.log(`  Content is already a Buffer: ${buffer.length} bytes`);
-            } else if (content instanceof Uint8Array || content instanceof ArrayBuffer) {
-              buffer = Buffer.from(content);
-              console.log(`  Content is Uint8Array/ArrayBuffer: ${buffer.length} bytes`);
-            }
-          }
-
-          // Method 3: If attachment has 'data' field (alternative format)
-          if (!buffer && attachment.data) {
-            if (typeof attachment.data === 'string') {
-              const cleanData = attachment.data.replace(/[\s\r\n]/g, '');
-              buffer = Buffer.from(cleanData, 'base64');
-              console.log(`  Decoded data field: ${buffer.length} bytes`);
-            } else if (Buffer.isBuffer(attachment.data)) {
-              buffer = attachment.data;
             }
           }
 
@@ -467,15 +494,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.log(`  Skipping empty/unparseable attachment: ${filename}`);
             continue;
           }
-
-          // Validate the buffer looks like an image (check magic bytes)
-          const isJpeg = buffer[0] === 0xFF && buffer[1] === 0xD8;
-          const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
-          const isGif = buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46;
-          const isPdf = buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46;
-
-          console.log(`  Buffer validation - JPEG: ${isJpeg}, PNG: ${isPng}, GIF: ${isGif}, PDF: ${isPdf}`);
-          console.log(`  First 20 bytes: ${buffer.slice(0, 20).toString('hex')}`);
 
           const timestamp = Date.now();
           const blobPath = `evidence/${user.id}/${ticket.id}/${timestamp}-${filename}`;

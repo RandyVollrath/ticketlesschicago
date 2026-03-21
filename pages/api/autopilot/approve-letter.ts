@@ -70,11 +70,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (action === 'approve') {
-      // Approve the ticket and letter
+      // Approve the ticket and letter (user_id guard for defense-in-depth)
       await supabaseAdmin
         .from('detected_tickets')
         .update({ status: 'approved' })
-        .eq('id', ticket_id);
+        .eq('id', ticket_id)
+        .eq('user_id', user_id);
 
       await supabaseAdmin
         .from('contest_letters')
@@ -83,7 +84,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           approved_at: new Date().toISOString(),
           approved_by: 'email_link'
         })
-        .eq('id', letter_id);
+        .eq('id', letter_id)
+        .eq('user_id', user_id);
 
       // Log to audit
       await supabaseAdmin
@@ -98,16 +100,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return res.redirect(`/tickets/${ticket_id}?message=approved`);
     } else {
-      // Skip the ticket
+      // Skip the ticket (user_id guard for defense-in-depth)
       await supabaseAdmin
         .from('detected_tickets')
         .update({ status: 'skipped', skip_reason: 'User declined via email' })
-        .eq('id', ticket_id);
+        .eq('id', ticket_id)
+        .eq('user_id', user_id);
 
       await supabaseAdmin
         .from('contest_letters')
         .update({ status: 'cancelled' })
-        .eq('id', letter_id);
+        .eq('id', letter_id)
+        .eq('user_id', user_id);
 
       // Log to audit
       await supabaseAdmin
