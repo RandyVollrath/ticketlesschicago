@@ -223,6 +223,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     tripSummaryCameraRejectRadius = 0
     tripSummaryCameraRejectHeading = 0
     tripSummaryCameraRejectAhead = 0
+    tripSummaryCameraRejectLateral = 0
     tripSummaryCameraRejectDedupe = 0
     tripSummaryCameraScanCount = 0
     tripSummaryCameraSkippedDisabledCount = 0
@@ -290,6 +291,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         ("outside_radius", tripSummaryCameraRejectRadius),
         ("heading_mismatch", tripSummaryCameraRejectHeading),
         ("camera_not_ahead", tripSummaryCameraRejectAhead),
+        ("lateral_offset", tripSummaryCameraRejectLateral),
         ("per_camera_dedupe", tripSummaryCameraRejectDedupe),
       ]
       let top = reasons.max(by: { $0.1 < $1.1 })
@@ -344,6 +346,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "cameraRejectRadiusCount": tripSummaryCameraRejectRadius,
       "cameraRejectHeadingCount": tripSummaryCameraRejectHeading,
       "cameraRejectAheadCount": tripSummaryCameraRejectAhead,
+      "cameraRejectLateralCount": tripSummaryCameraRejectLateral,
       "cameraRejectDedupeCount": tripSummaryCameraRejectDedupe,
       "cameraScanCount": tripSummaryCameraScanCount,
       "cameraSkippedDisabledCount": tripSummaryCameraSkippedDisabledCount,
@@ -387,6 +390,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     tripSummaryCameraRejectRadius = 0
     tripSummaryCameraRejectHeading = 0
     tripSummaryCameraRejectAhead = 0
+    tripSummaryCameraRejectLateral = 0
     tripSummaryCameraRejectDedupe = 0
     tripSummaryCameraScanCount = 0
     tripSummaryCameraSkippedDisabledCount = 0
@@ -752,6 +756,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var tripSummaryCameraRejectRadius = 0
   private var tripSummaryCameraRejectHeading = 0
   private var tripSummaryCameraRejectAhead = 0
+  private var tripSummaryCameraRejectLateral = 0
   private var tripSummaryCameraRejectDedupe = 0
   private var tripSummaryCameraScanCount = 0
   private var tripSummaryCameraSkippedDisabledCount = 0
@@ -941,8 +946,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let camAnnounceMinIntervalSec: TimeInterval = 5
   private let camAlertDedupeSec: TimeInterval = 3 * 60
   private let camBBoxDegrees: Double = 0.0025
-  private let camHeadingToleranceDeg: Double = 45  // Standard tolerance at normal driving speeds
+  private let camHeadingToleranceDeg: Double = 35  // Standard tolerance at normal driving speeds (tightened from 45 for diagonal street rejection)
   private let camMaxBearingOffHeadingDeg: Double = 30  // Standard forward cone at normal driving speeds
+  private let camMaxLateralOffsetMeters: Double = 50  // Max perpendicular distance from camera approach axis
   private let camRejectLogCooldownSec: TimeInterval = 10
   private let speedCamEnforceStartHour = 6
   private let speedCamEnforceEndHour = 23
@@ -956,7 +962,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     if speedMps < 0 { return camHeadingToleranceDeg }
     if speedMps < 5.0 { return 75 }  // <11 mph — very noisy heading
     if speedMps < 8.0 { return 60 }  // <18 mph — moderately noisy
-    return camHeadingToleranceDeg     // ≥18 mph — standard 45°
+    return camHeadingToleranceDeg     // ≥18 mph — standard 35°
   }
 
   /// Speed-adaptive bearing tolerance: widen forward cone at low speeds
@@ -3829,6 +3835,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     var distanceFilteredCount = 0
     var headingFilteredCount = 0
     var bearingFilteredCount = 0
+    var lateralFilteredCount = 0
     var dedupeFilteredCount = 0
 
     // Compute enforcement hour in Chicago timezone (not device timezone)
@@ -3858,6 +3865,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       let perCameraDeduped = alertedCameraAtByIndex[i].map { Date().timeIntervalSince($0) < camAlertDedupeSec } ?? false
       let headingOk = isHeadingMatch(headingDeg: heading, approaches: cam.approaches, tolerance: headingTol)
       let aheadOk = isCameraAhead(userLat: lat, userLng: lng, camLat: cam.lat, camLng: cam.lng, headingDeg: heading, bearingTolerance: bearingTol)
+      let lateralOffset = getLateralOffset(userLat: lat, userLng: lng, camLat: cam.lat, camLng: cam.lng, approaches: cam.approaches)
+      let lateralOk = lateralOffset == nil || lateralOffset! <= camMaxLateralOffsetMeters
 
       var rejectReason: String? = nil
       if speed >= 0 && speed < minSpeed {
@@ -3875,6 +3884,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       } else if !aheadOk {
         rejectReason = "camera_not_ahead"
         bearingFilteredCount += 1
+      } else if !lateralOk {
+        rejectReason = "lateral_offset"
+        lateralFilteredCount += 1
+        fileLog("LATERAL_REJECT: \(cam.address) offset=\(Int(lateralOffset!))m (max \(Int(camMaxLateralOffsetMeters))m) dist=\(Int(dist))m")
       }
 
       if let reason = rejectReason {
@@ -3903,6 +3916,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           tripSummaryCameraRejectHeading += 1
         } else if reason == "camera_not_ahead" {
           tripSummaryCameraRejectAhead += 1
+        } else if reason == "lateral_offset" {
+          tripSummaryCameraRejectLateral += 1
         } else if reason == "per_camera_dedupe" {
           tripSummaryCameraRejectDedupe += 1
         }
@@ -3927,6 +3942,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
               "distance": distanceFilteredCount,
               "heading": headingFilteredCount,
               "bearing": bearingFilteredCount,
+              "lateral": lateralFilteredCount,
               "dedupe": dedupeFilteredCount,
             ],
           ])
@@ -4532,6 +4548,37 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     var diff = abs(headingDeg - bearing)
     if diff > 180 { diff = 360 - diff }
     return diff <= (bearingTolerance ?? camMaxBearingOffHeadingDeg)
+  }
+
+  /// Calculate the lateral (cross-track) offset from the user to the camera's approach axis.
+  /// Returns the minimum perpendicular distance in meters across all approach directions,
+  /// or nil if approach data is missing (fail-open).
+  private func getLateralOffset(userLat: Double, userLng: Double, camLat: Double, camLng: Double, approaches: [String]) -> Double? {
+    if approaches.isEmpty { return nil }
+
+    let mapping: [String: Double] = [
+      "NB": 0, "NEB": 45, "EB": 90, "SEB": 135,
+      "SB": 180, "SWB": 225, "WB": 270, "NWB": 315,
+    ]
+
+    let dLatMeters = (userLat - camLat) * 111320.0
+    let dLngMeters = (userLng - camLng) * 111320.0 * cos(camLat * Double.pi / 180.0)
+
+    var minOffset = Double.greatestFiniteMagnitude
+
+    for approach in approaches {
+      guard let approachHeading = mapping[approach] else { return nil } // Unknown — fail open
+
+      let axisX = sin(approachHeading * Double.pi / 180.0) // East component
+      let axisY = cos(approachHeading * Double.pi / 180.0) // North component
+
+      let crossTrack = abs(dLngMeters * axisY - dLatMeters * axisX)
+      if crossTrack < minOffset {
+        minOffset = crossTrack
+      }
+    }
+
+    return minOffset < Double.greatestFiniteMagnitude ? minOffset : nil
   }
 
   private func isHeadingMatch(headingDeg: Double, approaches: [String], tolerance: Double? = nil) -> Bool {
