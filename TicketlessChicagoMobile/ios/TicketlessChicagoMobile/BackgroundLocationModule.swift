@@ -3887,7 +3887,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       } else if !lateralOk {
         rejectReason = "lateral_offset"
         lateralFilteredCount += 1
-        fileLog("LATERAL_REJECT: \(cam.address) offset=\(Int(lateralOffset!))m (max \(Int(camMaxLateralOffsetMeters))m) dist=\(Int(dist))m")
+        log("LATERAL_REJECT: \(cam.address) offset=\(Int(lateralOffset!))m (max \(Int(camMaxLateralOffsetMeters))m) dist=\(Int(dist))m")
       }
 
       if let reason = rejectReason {
