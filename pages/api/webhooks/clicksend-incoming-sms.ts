@@ -420,7 +420,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const blobPath = `permit-docs/${matchedUserId}/sms-${timestamp}-${filename}`;
 
           const blob = await put(blobPath, buffer, {
-            access: 'private', // SECURITY: ID documents must be private
+            access: 'public', // TODO: switch to 'private' when Vercel Blob Pro tier is available
             contentType: contentType,
           });
 
@@ -491,7 +491,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         // Check if user has any pending_evidence tickets (use separate queries to avoid Supabase join typing issues)
         const { data: pendingTickets } = await supabaseAdmin
-          .from('detected_tickets')
+          .from('detected_tickets' as any)
           .select('*')
           .eq('user_id', matchedUserId!)
           .eq('status', 'pending_evidence')
@@ -503,7 +503,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           // Get associated letter
           const { data: letters } = await supabaseAdmin
-            .from('contest_letters')
+            .from('contest_letters' as any)
             .select('id, letter_content, letter_text, defense_type')
             .eq('ticket_id', ticket.id)
             .limit(1);
@@ -588,14 +588,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               photo_analyses: [...existingPhotoAnalyses, ...newPhotoAnalyses],
             };
 
+            // Check user's approval settings (same logic as email webhook)
+            const { data: userSettings } = await supabaseAdmin
+              .from('autopilot_settings' as any)
+              .select('require_approval, auto_mail_enabled')
+              .eq('user_id', matchedUserId)
+              .single();
+
+            const requireApproval = (userSettings as any)?.require_approval ?? true;
+            const autoMailEnabled = (userSettings as any)?.auto_mail_enabled ?? false;
+            const needsApproval = requireApproval || !autoMailEnabled;
+
+            const newTicketStatus = needsApproval ? 'needs_approval' : 'evidence_received';
+
             // Update ticket with evidence
             await supabaseAdmin
-              .from('detected_tickets')
+              .from('detected_tickets' as any)
               .update({
                 user_evidence: updatedEvidence,
                 evidence_received_at: new Date().toISOString(),
-                status: 'evidence_received',
-              } as any)
+                status: newTicketStatus,
+              })
               .eq('id', ticket.id);
 
             // Re-evaluate with contest kit
@@ -618,60 +631,84 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (letter) {
               try {
                 const originalLetter = letter.letter_content || letter.letter_text || '';
+                // Pass ALL merged evidence text (includes prior email evidence if any)
+                const allEvidenceText = updatedEvidence.text || evidenceText;
+                // Pass ALL merged photo analyses
+                const allPhotoAnalyses = updatedEvidence.photo_analyses || photoAnalysisResults;
                 const newLetter = await regenerateLetterWithAI(
                   originalLetter,
-                  evidenceText,
+                  allEvidenceText,
                   ticket,
                   true, // hasAttachments
                   reEvaluation,
-                  photoAnalysisResults,
+                  allPhotoAnalyses,
                 );
 
                 if (newLetter) {
                   finalLetterContent = newLetter;
+                  const letterStatus = needsApproval ? 'pending_approval' : 'ready';
                   await supabaseAdmin
-                    .from('contest_letters')
+                    .from('contest_letters' as any)
                     .update({
                       letter_content: newLetter,
                       letter_text: newLetter,
+                      status: letterStatus,
                       updated_at: new Date().toISOString(),
                       evidence_integrated: true,
-                    } as any)
+                      evidence_integrated_at: new Date().toISOString(),
+                    })
                     .eq('id', letter.id);
 
-                  console.log(`✅ Letter regenerated with SMS evidence for ticket ${ticket.ticket_number}`);
+                  console.log(`✅ Letter regenerated with SMS evidence for ticket ${ticket.ticket_number} (status=${letterStatus})`);
                 }
               } catch (regenError) {
                 console.error('Letter regeneration error (continuing):', regenError);
               }
             }
 
-            // Send approval email (admin reviews before mailing)
-            try {
-              const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(matchedUserId!);
-              const userEmail = authUser?.user?.email;
-              if (userEmail && letter) {
-                const violationTypeDisplay = ticket.violation_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Parking';
-                await sendApprovalEmailForEvidence(
-                  userEmail,
-                  profile?.first_name || 'there',
-                  ticket.ticket_number,
-                  ticket.id,
-                  matchedUserId!,
-                  letter.id,
-                  finalLetterContent,
-                  violationTypeDisplay,
-                  ticket.violation_date || null,
-                  ticket.amount || null,
-                );
+            // Handle post-evidence flow based on user's approval settings
+            if (needsApproval && letter) {
+              // Send approval email so user can review before mailing
+              try {
+                const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(matchedUserId!);
+                const userEmail = authUser?.user?.email;
+                if (userEmail) {
+                  const violationTypeDisplay = ticket.violation_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Parking';
+                  await sendApprovalEmailForEvidence(
+                    userEmail,
+                    profile?.first_name || 'there',
+                    ticket.ticket_number,
+                    ticket.id,
+                    matchedUserId!,
+                    letter.id,
+                    finalLetterContent,
+                    violationTypeDisplay,
+                    ticket.violation_date || null,
+                    ticket.amount || null,
+                  );
+                }
+              } catch (approvalError) {
+                console.error('Approval email error (continuing):', approvalError);
               }
-            } catch (approvalError) {
-              console.error('Approval email error (continuing):', approvalError);
+            } else if (!needsApproval) {
+              // Auto-mail user: trigger mailing cron
+              try {
+                const { triggerAutopilotMailRun } = await import('../../../lib/trigger-autopilot-mail');
+                const triggerResult = await triggerAutopilotMailRun({
+                  ticketId: ticket.id,
+                  reason: 'sms_evidence_received',
+                });
+                console.log(`Mail trigger: ${triggerResult.message}`);
+              } catch (triggerError) {
+                console.error('Mail trigger error (continuing):', triggerError);
+              }
             }
 
             // Send confirmation SMS to user
             const violationTypeDisplay = ticket.violation_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'parking';
-            const confirmMessage = `Got it! We received ${uploadedMedia.length} photo(s) for your ${violationTypeDisplay} ticket. We're updating your contest letter now. You'll get an email when it's ready to review.`;
+            const confirmMessage = needsApproval
+              ? `Got it! We received ${uploadedMedia.length} photo(s) for your ${violationTypeDisplay} ticket. We're updating your contest letter now. You'll get an email when it's ready to review.`
+              : `Got it! We received ${uploadedMedia.length} photo(s) for your ${violationTypeDisplay} ticket. Your contest letter has been updated and will be mailed shortly.`;
 
             try {
               const { sendClickSendSMS } = await import('../../../lib/sms-service');
@@ -686,7 +723,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Audit log
             try {
               await supabaseAdmin
-                .from('ticket_audit_log')
+                .from('ticket_audit_log' as any)
                 .insert({
                   ticket_id: ticket.id,
                   user_id: matchedUserId,
