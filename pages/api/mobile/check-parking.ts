@@ -70,16 +70,20 @@ interface MobileCheckParkingResponse {
     severity?: 'critical' | 'warning' | 'info' | 'none';
   };
   winterOvernightBan: {
+    found: boolean;
     active: boolean;
     message: string;
     severity?: 'critical' | 'warning' | 'info' | 'none';
+    streetName?: string;
     startTime?: string;
     endTime?: string;
   };
   twoInchSnowBan: {
+    found: boolean;
     active: boolean;
     message: string;
     severity?: 'critical' | 'warning' | 'info' | 'none';
+    streetName?: string;
     reason?: string;
   };
   permitZone: {
@@ -436,17 +440,21 @@ export default async function handler(
       },
 
       winterOvernightBan: {
+        found: result.winterBan.found,
         active: result.winterBan.isBanHours && result.winterBan.found,
         message: result.winterBan.message,
         severity: result.winterBan.severity,
+        streetName: result.winterBan.streetName || undefined,
         startTime: '3:00 AM',
         endTime: '7:00 AM',
       },
 
       twoInchSnowBan: {
+        found: result.snowBan.found,
         active: result.snowBan.isBanActive,
         message: result.snowBan.message,
         severity: result.snowBan.severity,
+        streetName: result.snowBan.streetName || undefined,
         reason: result.snowBan.snowAmount
           ? `${result.snowBan.snowAmount}" snowfall`
           : undefined,
@@ -520,8 +528,8 @@ export default async function handler(
       address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
       coordinates: { latitude, longitude },
       streetCleaning: { hasRestriction: false, message: 'Error checking restrictions' },
-      winterOvernightBan: { active: false, message: 'Error checking restrictions' },
-      twoInchSnowBan: { active: false, message: 'Error checking restrictions' },
+      winterOvernightBan: { found: false, active: false, message: 'Error checking restrictions' },
+      twoInchSnowBan: { found: false, active: false, message: 'Error checking restrictions' },
       permitZone: { inPermitZone: false, message: 'Error checking restrictions' },
       meteredParking: { inMeteredZone: false, message: 'Error checking restrictions' },
       dotPermit: { hasActivePermit: false, message: 'Error checking restrictions' },

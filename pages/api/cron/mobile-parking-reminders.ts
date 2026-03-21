@@ -36,6 +36,7 @@ interface ParkedVehicle {
   dot_permit_start_date: string | null;
   // Notification tracking
   winter_ban_notified_at: string | null;
+  snow_ban_notified_at: string | null;
   street_cleaning_notified_at: string | null;
   permit_zone_notified_at: string | null;
   dot_permit_notified_at: string | null;
@@ -322,6 +323,7 @@ export default async function handler(
   try {
     const results = {
       winterBanReminders: 0,
+      snowRouteReminders: 0,
       streetCleaningReminders: 0,
       permitZoneReminders: 0,
       dotPermitReminders: 0,
@@ -358,10 +360,11 @@ export default async function handler(
         // PUSH NOTIFICATIONS (unchanged timing windows)
         // ——————————————————————————————————————————————
 
-        // Winter ban reminder (9pm check, ban starts at 3am)
-        // Changed from 10pm to 9pm to give users more time
-        // Only send once per parking session
-        if (chicagoHour >= 20 && chicagoHour <= 22 && isWinterSeason && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at) {
+        // Winter ban reminder — send from 8pm through 2am (ban starts at 3am)
+        // Wide window catches users who park late at night on winter ban streets.
+        // Only send once per parking session (tracked by winter_ban_notified_at).
+        const isWinterBanWindow = isWinterSeason && (chicagoHour >= 20 || chicagoHour <= 2);
+        if (isWinterBanWindow && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at) {
           const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Winter Parking Ban Reminder',
             body: `Your car at ${vehicle.address} is on a winter ban street. Move before 3am to avoid towing ($150+).`,
@@ -383,6 +386,47 @@ export default async function handler(
               .update({ is_active: false })
               .eq('id', vehicle.id);
             console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+          }
+        }
+
+        // Snow route reminder — when user is parked on a 2-inch snow ban street
+        // and snow is active or forecasted. This complements mobile-snow-notifications.ts
+        // (which is triggered by monitor-snow.ts on weather changes). This cron catches
+        // users who PARK on a snow route AFTER the snow event was already detected.
+        // Also sends call alerts for snow routes.
+        if (vehicle.on_snow_route && !vehicle.snow_ban_notified_at) {
+          // Check if there's an active snow event
+          const { data: activeSnowEvent } = await supabaseAdmin
+            .from('snow_events')
+            .select('id, snow_amount_inches, is_active')
+            .eq('is_active', true)
+            .order('event_date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (activeSnowEvent) {
+            const snowAmount = activeSnowEvent.snow_amount_inches || 2;
+            const result = await sendPushNotification(vehicle.fcm_token, {
+              title: '2-Inch Snow Ban — Move Your Car!',
+              body: `${snowAmount}" of snow detected. Your car at ${vehicle.address} is on a snow route and may be towed ($150+). Move now!`,
+              data: {
+                type: 'snow_ban_reminder',
+                lat: vehicle.latitude?.toString(),
+                lng: vehicle.longitude?.toString(),
+              },
+            });
+            if (result.success) {
+              await supabaseAdmin.from('user_parked_vehicles')
+                .update({ snow_ban_notified_at: new Date().toISOString() })
+                .eq('id', vehicle.id);
+              results.snowRouteReminders++;
+              console.log(`Sent snow route reminder to ${vehicle.user_id} (${snowAmount}" snow active)`);
+            } else if (result.invalidToken) {
+              await supabaseAdmin.from('user_parked_vehicles')
+                .update({ is_active: false })
+                .eq('id', vehicle.id);
+              console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+            }
           }
         }
 
@@ -650,6 +694,31 @@ export default async function handler(
               `A ${permitType.toLowerCase()} permit is active at ${vehicle.address}. Move your car to avoid towing.`,
               vehicle.address,
               dotEnforcement,
+              chicagoTime
+            );
+            if (callSent) results.callAlertsSent++;
+          }
+        }
+
+        // Snow route: call alert when snow ban is active (no fixed enforcement time,
+        // so pass null — only fires for users with hours_before === 0 aka "immediately")
+        if (vehicle.on_snow_route) {
+          // Reuse the snow event query result if we already checked above, or check now
+          const { data: snowEventForCall } = await supabaseAdmin
+            .from('snow_events')
+            .select('id, snow_amount_inches, is_active')
+            .eq('is_active', true)
+            .order('event_date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (snowEventForCall) {
+            const snowAmt = snowEventForCall.snow_amount_inches || 2;
+            const callSent = await sendCallAlertIfEnabled(
+              vehicle.user_id, vehicle.id, 'snow_route',
+              `${snowAmt} inches of snow detected. Your car at ${vehicle.address} is on a snow route and may be towed. Move your car now.`,
+              vehicle.address,
+              null, // No fixed enforcement time for snow bans
               chicagoTime
             );
             if (callSent) results.callAlertsSent++;
