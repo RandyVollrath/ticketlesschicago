@@ -538,6 +538,24 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
           userEvidence.hasLocationEvidence = true;
           const evidenceParagraph = generateEvidenceParagraph(parkingEvidence, contest.violation_code);
 
+          // Determine user's platform for accurate detection method description
+          let userPlatform: string | null = null;
+          try {
+            const { data: tokenData } = await supabase
+              .from('push_tokens')
+              .select('platform')
+              .eq('user_id', user.id)
+              .eq('is_active', true)
+              .order('last_used_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            userPlatform = tokenData?.platform || null;
+          } catch (_) { /* non-critical */ }
+
+          const detectionMethodDescription = userPlatform === 'android'
+            ? `The user has the Autopilot parking protection app on Android, which detects parking via Bluetooth connection to their vehicle and records precise GPS coordinates and timestamps when the vehicle is parked. This data provides timestamped, GPS-verified evidence of parking and departure times tied to the user's specific vehicle.`
+            : `The user has the Autopilot parking protection app, which continuously monitors their location using GPS and motion sensors. When the app detects the user has parked, it records the precise GPS coordinates and timestamp. This data provides timestamped, GPS-verified evidence of parking and departure times.`;
+
           // Build vehicle identification string from user profile
           const vehicleParts = [profile?.vehicle_color, profile?.vehicle_year, profile?.vehicle_make, profile?.vehicle_model].filter(Boolean);
           const vehicleDescription = vehicleParts.length > 0 ? vehicleParts.join(' ') : null;
@@ -551,7 +569,7 @@ This is the user's registered vehicle in the app. Reference it in the letter to 
           parkingEvidenceText = `
 === GPS PARKING EVIDENCE FROM USER'S MOBILE APP ===
 
-The user has the Autopilot parking protection app, which continuously monitors their vehicle's location using GPS. When the app detects the user has parked, it records the precise GPS coordinates and timestamp. This data provides timestamped, GPS-verified evidence of parking and departure times.
+${detectionMethodDescription}
 ${vehicleIdSection}
 
 ${parkingEvidence.evidenceSummary}
