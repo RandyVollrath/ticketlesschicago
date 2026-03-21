@@ -2136,7 +2136,7 @@ function SettingsPageInner() {
             </div>
             {(!vehicleMake || !vehicleModel || !vehicleColor) && (
               <p style={{ margin: 0, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.4 }}>
-                Providing your vehicle make, model, and color helps us detect if a camera ticket was issued to the wrong car (cloned plates, misread plates).
+                Your vehicle info helps us detect camera tickets issued to the wrong car and strengthens the evidence in your contest letters.
               </p>
             )}
 

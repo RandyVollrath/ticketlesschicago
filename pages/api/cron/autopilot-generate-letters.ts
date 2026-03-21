@@ -1150,6 +1150,7 @@ function buildClaudePrompt(
   profile: UserProfile,
   evidence: EvidenceBundle,
   violationCode: string | null,
+  userPlatform: string | null = null,
 ): string {
   const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -1234,9 +1235,13 @@ INSTRUCTIONS: Use the argument template above as the CORE of your letter. Fill i
 This is the user's registered vehicle in the app. Reference it in the letter to tie the GPS evidence to this specific vehicle.`
       : '';
 
+    const detectionMethodDescription = userPlatform === 'android'
+      ? `The user has the Autopilot parking protection app on Android, which detects parking via Bluetooth connection to their vehicle and records precise GPS coordinates and timestamps when the vehicle is parked. This data provides timestamped, GPS-verified evidence of parking and departure times tied to the user's specific vehicle.`
+      : `The user has the Autopilot parking protection app, which continuously monitors their location using GPS and motion sensors. When the app detects the user has parked, it records the precise GPS coordinates and timestamp. This data provides timestamped, GPS-verified evidence of parking and departure times.`;
+
     sections.push(`=== GPS PARKING EVIDENCE FROM USER'S MOBILE APP ===
 
-The user has the Autopilot parking protection app, which continuously monitors their vehicle's location using GPS. When the app detects the user has parked, it records the precise GPS coordinates and timestamp. This data provides timestamped, GPS-verified evidence of parking and departure times.
+${detectionMethodDescription}
 ${vehicleIdSection}
 
 ${pe.evidenceSummary}
@@ -2551,7 +2556,21 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
     try {
       console.log(`    Calling Claude AI with ${evidenceSources.length} evidence sources: ${evidenceSources.join(', ')}`);
 
-      const prompt = buildClaudePrompt(ticket, profile as UserProfile, evidence, violationCode);
+      // Look up user's platform for accurate detection method in letter
+      let userPlatform: string | null = null;
+      try {
+        const { data: tokenData } = await supabaseAdmin
+          .from('push_tokens')
+          .select('platform')
+          .eq('user_id', ticket.user_id)
+          .eq('is_active', true)
+          .order('last_used_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        userPlatform = tokenData?.platform || null;
+      } catch (_) { /* non-critical */ }
+
+      const prompt = buildClaudePrompt(ticket, profile as UserProfile, evidence, violationCode, userPlatform);
 
       const message = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
