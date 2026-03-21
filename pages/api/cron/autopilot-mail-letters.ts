@@ -344,6 +344,33 @@ async function mailLetter(
         performed_by: null,
       });
 
+    // Notify admin immediately so we can fix Lob failures ASAP
+    if (resend) {
+      try {
+        await resend.emails.send({
+          from: 'Autopilot America <alerts@autopilotamerica.com>',
+          to: ['randyvollrath@gmail.com'],
+          subject: `🚨 Lob Mailing FAILED — Ticket ${ticketNumber}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: #DC2626; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+                <h2 style="margin: 0;">Letter Mailing Failed</h2>
+              </div>
+              <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                <p style="margin: 0 0 12px; color: #374151;"><strong>Ticket:</strong> ${ticketNumber}</p>
+                <p style="margin: 0 0 12px; color: #374151;"><strong>Letter ID:</strong> ${letter.id}</p>
+                <p style="margin: 0 0 12px; color: #374151;"><strong>User ID:</strong> ${letter.user_id}</p>
+                <p style="margin: 0 0 12px; color: #DC2626;"><strong>Error:</strong> ${errorMessage}</p>
+                <p style="margin: 0; font-size: 13px; color: #6b7280;">Check Lob dashboard and Supabase contest_letters table. Letter status set to 'failed'.</p>
+              </div>
+            </div>
+          `,
+        });
+      } catch (notifyErr) {
+        console.error('    Failed to send admin failure notification:', notifyErr);
+      }
+    }
+
     return { success: false, error: errorMessage };
   }
 }
@@ -738,6 +765,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('contest_letters')
           .update({ status: 'awaiting_consent' })
           .eq('id', letter.id);
+        continue;
+      }
+
+      // SUBSCRIPTION GATE: Verify user has active subscription before mailing
+      const { data: subscription } = await supabaseAdmin
+        .from('autopilot_subscriptions')
+        .select('status, letters_used_this_period, letters_included')
+        .eq('user_id', letter.user_id)
+        .single();
+
+      if (!subscription || subscription.status !== 'active') {
+        console.log(`  ⚠️ Skipping letter ${letter.id}: User ${letter.user_id} subscription is ${subscription?.status || 'missing'} (not active)`);
         continue;
       }
 

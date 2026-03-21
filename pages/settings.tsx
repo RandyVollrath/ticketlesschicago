@@ -905,6 +905,13 @@ function SettingsPageInner() {
   const [receiptCount, setReceiptCount] = useState<number | null>(null); // null = not loaded yet
   const [receiptBannerDismissed, setReceiptBannerDismissed] = useState(false);
 
+  // Permit zone correction
+  const [zoneInput, setZoneInput] = useState('');
+  const [correctedSchedule, setCorrectedSchedule] = useState('');
+  const [correctionAddress, setCorrectionAddress] = useState('');
+  const [correctionStatus, setCorrectionStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [correctionMessage, setCorrectionMessage] = useState('');
+
   // Guided Setup Wizard
   const [guidedSetupStep, setGuidedSetupStep] = useState(0);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
@@ -3267,6 +3274,135 @@ function SettingsPageInner() {
         </Card>
           </>
         )}
+
+        {/* Permit Zone Hours Correction */}
+        <Card title="Permit Zone Hours" badge={
+          <span style={{ fontSize: 11, color: COLORS.textMuted }}>Help improve accuracy</span>
+        }>
+          <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
+            If the enforcement hours we show for your permit zone are wrong, let us know.
+            Our team will review your correction and update the data.
+          </p>
+          <div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+              <div style={{ flex: '0 0 100px' }}>
+                <label style={{
+                  display: 'block', fontSize: 12, fontWeight: 600,
+                  color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase',
+                }}>Zone</label>
+                <input
+                  type="text"
+                  value={zoneInput}
+                  onChange={(e) => setZoneInput(e.target.value)}
+                  placeholder="e.g. 383"
+                  maxLength={6}
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`, fontSize: 15,
+                    color: COLORS.primary, backgroundColor: COLORS.bgLight,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ flex: '1 1 200px' }}>
+                <label style={{
+                  display: 'block', fontSize: 12, fontWeight: 600,
+                  color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase',
+                }}>Cross street or address (optional)</label>
+                <input
+                  type="text"
+                  value={correctionAddress}
+                  onChange={(e) => setCorrectionAddress(e.target.value)}
+                  placeholder="e.g. 2300 N Lincoln Ave"
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`, fontSize: 15,
+                    color: COLORS.primary, backgroundColor: COLORS.bgLight,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{
+                display: 'block', fontSize: 12, fontWeight: 600,
+                color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase',
+              }}>What hours does the sign say?</label>
+              <input
+                type="text"
+                value={correctedSchedule}
+                onChange={(e) => setCorrectedSchedule(e.target.value)}
+                placeholder='e.g. "No parking 6pm-6am Mon-Fri" or "24/7"'
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`, fontSize: 15,
+                  color: COLORS.primary, backgroundColor: COLORS.bgLight,
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                onClick={async () => {
+                  if (!zoneInput.trim() || !correctedSchedule.trim()) return;
+                  setCorrectionStatus('submitting');
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const resp = await fetch('/api/submit-zone-correction', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                      },
+                      body: JSON.stringify({
+                        zone: zoneInput.trim().toUpperCase(),
+                        correctedSchedule: correctedSchedule.trim(),
+                        address: correctionAddress.trim() || undefined,
+                      }),
+                    });
+                    const data = await resp.json();
+                    if (resp.ok) {
+                      setCorrectionStatus('success');
+                      setCorrectionMessage(data.message || 'Correction submitted!');
+                      setZoneInput('');
+                      setCorrectedSchedule('');
+                      setCorrectionAddress('');
+                      setTimeout(() => setCorrectionStatus('idle'), 5000);
+                    } else {
+                      setCorrectionStatus('error');
+                      setCorrectionMessage(data.error || 'Failed to submit');
+                      setTimeout(() => setCorrectionStatus('idle'), 4000);
+                    }
+                  } catch {
+                    setCorrectionStatus('error');
+                    setCorrectionMessage('Network error. Please try again.');
+                    setTimeout(() => setCorrectionStatus('idle'), 4000);
+                  }
+                }}
+                disabled={correctionStatus === 'submitting' || !zoneInput.trim() || !correctedSchedule.trim()}
+                style={{
+                  padding: '10px 20px', borderRadius: 8,
+                  backgroundColor: correctionStatus === 'submitting' ? COLORS.textMuted : COLORS.primary,
+                  color: COLORS.white, border: 'none', fontSize: 14,
+                  fontWeight: 600, cursor: correctionStatus === 'submitting' ? 'wait' : 'pointer',
+                  opacity: (!zoneInput.trim() || !correctedSchedule.trim()) ? 0.5 : 1,
+                }}
+              >
+                {correctionStatus === 'submitting' ? 'Submitting...' : 'Submit Correction'}
+              </button>
+              {correctionStatus === 'success' && (
+                <span style={{ fontSize: 13, color: COLORS.accent, fontWeight: 600 }}>
+                  {correctionMessage}
+                </span>
+              )}
+              {correctionStatus === 'error' && (
+                <span style={{ fontSize: 13, color: COLORS.danger || '#DC2626', fontWeight: 600 }}>
+                  {correctionMessage}
+                </span>
+              )}
+            </div>
+          </div>
+        </Card>
 
         {/* Sign Out */}
         <div style={{ textAlign: 'center', marginTop: 32, marginBottom: 40 }}>
