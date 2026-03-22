@@ -46,6 +46,7 @@ export function parseUserEvidence(
   // Detect specific evidence types
   const hasPoliceReport = /police report|rd number|rd#|stolen|theft/i.test(text);
   const hasMedicalDocs = /medical|hospital|emergency room|doctor|ambulance/i.test(text);
+  const hasMeterIssue = /meter.*(broken|malfunction|error|out of order|not work|jammed|stuck)|broken.*meter|malfunction.*meter/i.test(text);
   const hasWitnesses = /witness|someone saw|my friend|passenger/i.test(text);
 
   // Detect photo types based on text content
@@ -79,6 +80,7 @@ export function parseUserEvidence(
     hasReceipts,
     hasPoliceReport,
     hasMedicalDocs,
+    hasMeterIssue,
     hasLocationEvidence: /gps|location|app.*park|parked.*at/i.test(text),
   };
 }
@@ -110,7 +112,7 @@ export async function reEvaluateWithKit(
       ? Math.floor((Date.now() - new Date(ticket.violation_date).getTime()) / (1000 * 60 * 60 * 24))
       : 0,
     hasSignageIssue: userEvidence.photoTypes.includes('signage_photos'),
-    meterWasBroken: userEvidence.docTypes.includes('311_report'),
+    meterWasBroken: userEvidence.photoTypes.includes('meter_photo') || userEvidence.hasMeterIssue || false,
     permitWasDisplayed: userEvidence.photoTypes.includes('permit_photo'),
     hasEmergency: userEvidence.hasMedicalDocs,
   };

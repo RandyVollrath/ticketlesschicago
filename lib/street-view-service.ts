@@ -394,8 +394,12 @@ export async function getStreetViewEvidenceWithAnalysis(
       );
       result.analyses = analyses;
 
+      // Filter out parse_error sentinels — these indicate analysis failure, not "no signs"
+      const validAnalyses = analyses.filter(a => (a as any).type !== 'parse_error');
+      const hadParseErrors = validAnalyses.length < analyses.length;
+
       // Determine if any signage/condition issues found
-      const issues = analyses.filter(a =>
+      const issues = validAnalyses.filter(a =>
         a.signCondition === 'faded' ||
         a.signCondition === 'damaged' ||
         a.signCondition === 'obscured' ||
@@ -405,16 +409,18 @@ export async function getStreetViewEvidenceWithAnalysis(
       result.hasSignageIssue = issues.length > 0;
 
       // Build violation-specific defense findings
-      const defenseFindings = buildViolationSpecificFindings(analyses, violationType);
+      const defenseFindings = buildViolationSpecificFindings(validAnalyses, violationType);
       result.defenseFindings = defenseFindings;
 
       // Build combined summary
-      const signViews = analyses.filter(a => a.signVisible);
-      const noSignViews = analyses.filter(a => !a.signVisible);
+      const signViews = validAnalyses.filter(a => a.signVisible);
+      const noSignViews = validAnalyses.filter(a => !a.signVisible);
 
       let summary = `Google Street View analysis of ${result.address || `${result.latitude}, ${result.longitude}`} (imagery from ${result.imageDate || 'unknown date'}):\n`;
 
-      if (noSignViews.length === 4) {
+      if (hadParseErrors && validAnalyses.length === 0) {
+        summary += 'AI analysis of Street View images could not be completed (parse failure). Images are still included as exhibits.\n';
+      } else if (noSignViews.length === 4) {
         summary += 'No parking restriction signs were visible from any of the 4 directions examined (North, East, South, West). This strongly suggests inadequate signage at this location.\n';
       } else {
         if (signViews.length > 0) {
@@ -874,7 +880,8 @@ async function analyzeStreetViewImages(
     const jsonMatch = responseText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       console.error('  Street View: Could not parse Claude Vision response');
-      return [];
+      // Return a sentinel indicating parse failure, NOT an empty "no signs found"
+      return [{ type: 'parse_error', text: 'Unable to analyze Street View imagery', condition: 'unknown', visible: false, relevance: 'unknown', confidence: 0 } as any];
     }
 
     const parsed = JSON.parse(jsonMatch[0]) as SignageAnalysis[];
@@ -882,7 +889,8 @@ async function analyzeStreetViewImages(
   } catch (parseError) {
     console.error('  Street View: JSON parse error:', parseError);
     console.error('  Response was:', responseText.substring(0, 500));
-    return [];
+    // Return a sentinel indicating parse failure, NOT an empty "no signs found"
+    return [{ type: 'parse_error', text: 'Unable to analyze Street View imagery', condition: 'unknown', visible: false, relevance: 'unknown', confidence: 0 } as any];
   }
 }
 

@@ -18,6 +18,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendClickSendSMS } from '../../../lib/sms-service';
+import { pushService } from '../../../lib/push-service';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -444,6 +445,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let lastChanceSent = 0;
     let autoSendTriggered = 0;
     let smsSent = 0;
+    let pushSent = 0;
 
     for (const ticket of tickets as PendingTicket[]) {
       if (!ticket.violation_date) continue;
@@ -556,6 +558,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         }
 
+        // Day 17 push notification — evidence deadline
+        try {
+          const pushResult = await pushService.sendToUser(ticket.user_id, {
+            title: 'Evidence Deadline Tomorrow',
+            body: `Last chance to submit evidence for ticket #${ticket.ticket_number}${ticket.amount ? ` ($${ticket.amount.toFixed(2)})` : ''}. Reply to your email with photos or we'll send with automated evidence.`,
+            data: {
+              type: 'evidence_deadline',
+              ticketId: ticket.id,
+              ticketNumber: ticket.ticket_number,
+            },
+            category: 'evidence_deadline',
+          });
+          if (pushResult.success) {
+            pushSent++;
+            console.log(`  Push notification sent for evidence deadline (ticket ${ticket.ticket_number})`);
+          }
+        } catch (pushErr) {
+          console.error(`  Push notification error for ${ticket.ticket_number}:`, pushErr);
+        }
+
         // Day 17 SMS — only if user hasn't submitted evidence
         if (!hasUserEvidence(ticket)) {
           const smsOk = await sendSmsReminder(ticket.user_id, ticket, 'day17');
@@ -643,7 +665,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    console.log(`Complete: ${remindersSent} reminders, ${lastChanceSent} last-chance, ${autoSendTriggered} auto-sends, ${smsSent} SMS`);
+    console.log(`Complete: ${remindersSent} reminders, ${lastChanceSent} last-chance, ${autoSendTriggered} auto-sends, ${smsSent} SMS, ${pushSent} push`);
 
     // ── CONSENT REMINDER EMAILS ──
     // Find users with contest letters stuck in 'awaiting_consent' and remind them
@@ -731,6 +753,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       lastChanceSent,
       autoSendTriggered,
       smsSent,
+      pushSent,
       consentRemindersSent,
       timestamp: new Date().toISOString(),
     });

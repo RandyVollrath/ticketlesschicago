@@ -246,7 +246,7 @@ I respectfully request that this citation be dismissed.`,
   },
 
   tips: [
-    'Double parking has a lower win rate (~25%) - be realistic about chances',
+    'Double parking has a 72% win rate on decided cases — best defenses are active loading or emergency',
     'Best defense is proving you were actively loading/unloading',
     'Commercial drivers: keep all delivery receipts with timestamps',
     'Vehicle breakdown is a valid defense - get tow/mechanic documentation',
