@@ -2092,7 +2092,7 @@ function SettingsPageInner() {
                   type="text"
                   value={vehicleModel}
                   onChange={(e) => setVehicleModel(e.target.value)}
-                  placeholder="e.g. Camry"
+                  placeholder="e.g. Corolla"
                   style={{
                     width: '100%',
                     padding: '10px 14px',
