@@ -343,6 +343,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         hasEmergency: contestGrounds?.some(g =>
           g.toLowerCase().includes('emergency')
         ),
+        // Non-resident detection for city sticker violations so the policy engine
+        // can correctly score the non_resident argument in the initial evaluation
+        ...(profile && (contest.violation_code === '9-64-125' || contest.violation_code === '9-100-010') ? (() => {
+          const city = ((profile as any).mailing_city || '').trim().toLowerCase();
+          const isNonRes = city !== '' && city !== 'chicago';
+          return isNonRes ? {
+            isNonResident: true,
+            nonResidentCity: (profile as any).mailing_city || undefined,
+            nonResidentState: (profile as any).mailing_state || undefined,
+          } : {};
+        })() : {}),
       };
 
       try {

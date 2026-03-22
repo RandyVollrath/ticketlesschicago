@@ -1104,6 +1104,47 @@ async function gatherAllEvidence(
   // Wait for all evidence lookups to complete
   await Promise.all(promises);
 
+  // Re-evaluate contest kit if sweeper verification shows cleaning did NOT occur.
+  // The kit evaluation (step 9) and sweeper verification (step 10b) run concurrently,
+  // so the initial evaluation doesn't have cleaningDidNotOccur. This re-evaluation
+  // unlocks the "cleaning_did_not_occur" argument which gets a +40 scoring boost.
+  if (ticket.violation_type === 'street_cleaning' && bundle.sweeperVerification?.checked
+      && !bundle.sweeperVerification.sweptOnDate && vCode) {
+    try {
+      const kit = getContestKit(vCode);
+      if (kit) {
+        const updatedFacts: TicketFacts = {
+          ticketNumber: ticket.ticket_number || '',
+          violationCode: vCode,
+          violationDescription: ticket.violation_description || '',
+          ticketDate: ticket.violation_date || '',
+          ticketTime: undefined,
+          location: ticket.location || '',
+          amount: ticket.amount || 0,
+          daysSinceTicket: ticket.violation_date
+            ? (() => {
+                const cNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+                const cTkt = new Date(new Date(ticket.violation_date).toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+                const nD = new Date(cNow.getFullYear(), cNow.getMonth(), cNow.getDate());
+                const tD = new Date(cTkt.getFullYear(), cTkt.getMonth(), cTkt.getDate());
+                return Math.round((nD.getTime() - tD.getTime()) / (1000 * 60 * 60 * 24));
+              })()
+            : 0,
+          hasSignageIssue: false,
+          hasEmergency: false,
+          cleaningDidNotOccur: true,
+        };
+        const userEvidence: UserEvidence = {
+          hasPhotos: false, photoTypes: [], hasWitnesses: false, hasDocs: false,
+          docTypes: [], hasReceipts: false, hasPoliceReport: false, hasMedicalDocs: false,
+          hasScheduleVerification: true,
+        };
+        bundle.kitEvaluation = await evaluateContest(updatedFacts, userEvidence);
+        console.log(`    Contest kit re-evaluated with cleaningDidNotOccur: estimated win ${Math.round(bundle.kitEvaluation.estimatedWinRate * 100)}%`);
+      }
+    } catch (e) { console.error('    Contest kit re-evaluation failed:', e); }
+  }
+
   // Run red light defense analysis if we have receipt data (this depends on redLightReceipt
   // being populated, so it must run after Promise.all)
   if (bundle.redLightReceipt && (ticket.violation_type === 'red_light' || ticket.violation_type === 'speed_camera')) {
