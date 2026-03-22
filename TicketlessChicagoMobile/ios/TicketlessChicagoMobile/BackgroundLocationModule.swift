@@ -1293,7 +1293,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   /// Check if a given parking time matches any recently confirmed parking event.
   /// Returns true if the parkTime is within `timeTolerance` seconds of a confirmed event
   /// AND (if coords are provided) within `distanceTolerance` meters.
-  private func isAlreadyConfirmedParking(parkTime: Date, coords: (lat: Double, lng: Double)?, timeTolerance: TimeInterval = 300, distanceTolerance: Double = 60) -> Bool {
+  private func isAlreadyConfirmedParking(parkTime: Date, coords: (lat: Double, lng: Double)?, timeTolerance: TimeInterval = 300, distanceTolerance: Double = 50) -> Bool {
     let defaults = UserDefaults.standard
     let entries = defaults.array(forKey: kConfirmedParkingTimesKey) as? [[String: Any]] ?? []
 
@@ -1367,12 +1367,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     // ── Gate 2: Ring buffer dedup ──
     // Check if this parking time+location was already emitted (by any pipeline).
-    // Tolerances: 60m / 300s. Recovery/CLVisit duplicates re-discover the same
+    // Tolerances: 50m / 300s. Recovery/CLVisit duplicates re-discover the same
     // physical stop, so coords are within GPS jitter (~10-30m). Legitimate
-    // re-parks after driving will always be further apart than 60m.
+    // re-parks after driving will always be further apart than 50m.
     // History: 500m/3600s blocked Kenmore→Montana (476m, 5 min) on Mar 21 2026.
     let coords: (lat: Double, lng: Double)? = hasCoords ? (lat: latitude, lng: longitude) : nil
-    if isAlreadyConfirmedParking(parkTime: parkTimestamp, coords: coords, timeTolerance: 300, distanceTolerance: 60) {
+    if isAlreadyConfirmedParking(parkTime: parkTimestamp, coords: coords, timeTolerance: 300, distanceTolerance: 50) {
       self.log("EMIT GATE [\(source)]: blocked — already in ring buffer")
       self.decision("emit_gate_ring_buffer_dedup", [
         "source": source,
@@ -1387,11 +1387,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // If we emitted a parking event very recently at nearly the same location,
     // this is a duplicate from another pipeline racing (e.g. CLVisit fires
     // moments after real-time pipeline already emitted for the same stop).
-    // Same 60m tolerance as Gate 2 — duplicate pipelines target the same stop.
+    // Same 50m tolerance as Gate 2 — duplicate pipelines target the same stop.
     if hasCoords, let lastAt = lastEmittedParkingAt, let lastCoord = lastEmittedParkingCoord {
       let timeSinceLastEmit = Date().timeIntervalSince(lastAt)
       let distFromLastEmit = CLLocation(latitude: latitude, longitude: longitude).distance(from: lastCoord)
-      if timeSinceLastEmit < 300 && distFromLastEmit < 60 {
+      if timeSinceLastEmit < 300 && distFromLastEmit < 50 {
         self.log("EMIT GATE [\(source)]: blocked — recent emission \(String(format: "%.0f", timeSinceLastEmit))s ago, \(String(format: "%.0f", distFromLastEmit))m away")
         self.decision("emit_gate_recent_emission_dedup", [
           "source": source,
