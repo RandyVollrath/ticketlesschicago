@@ -322,6 +322,7 @@ async function gatherAutomatedEvidence(
   amount?: number | null,
   location?: string | null,
   violationDescription?: string | null,
+  vehicleProfile?: { make?: string | null; model?: string | null; color?: string | null },
 ): Promise<AutomatedEvidence> {
   const evidence: AutomatedEvidence = {
     weather: { checked: false, data: null },
@@ -680,6 +681,26 @@ async function gatherAutomatedEvidence(
       const kit = getContestKitByName(violationType);
       evidence.kitEvaluation.kitName = kit?.name || null;
 
+      // ── Early vehicle mismatch detection for camera tickets ──
+      // Run BEFORE kit evaluation so hasIdentificationIssue can influence argument selection
+      const isCameraViolation = ['red_light', 'speed_camera'].includes(violationType);
+      let earlyMismatchDetected = false;
+      if (isCameraViolation && vehicleProfile?.make && violationDescription) {
+        const registeredVehicle: VehicleInfo = {
+          make: vehicleProfile.make || undefined,
+          model: vehicleProfile.model || undefined,
+          color: vehicleProfile.color || undefined,
+        };
+        const observedVehicle = parseVehicleFromDescription(violationDescription);
+        if (observedVehicle && hasVehicleInfoForMismatch(registeredVehicle)) {
+          const mismatchResult = detectVehicleMismatch(registeredVehicle, observedVehicle);
+          earlyMismatchDetected = mismatchResult.hasMismatch;
+          if (earlyMismatchDetected) {
+            console.log(`      [Evidence] Early mismatch detected (confidence: ${mismatchResult.confidence}): ${mismatchResult.summary}`);
+          }
+        }
+      }
+
       // Build TicketFacts from what we know
       const ticketFacts: TicketFacts = {
         ticketNumber: ticketNumber || '',
@@ -697,6 +718,11 @@ async function gatherAutomatedEvidence(
                          evidence.streetView.signageObservation?.toLowerCase().includes('obscured') || false,
         isWeekend: violationDate ? [0, 6].includes(new Date(violationDate).getDay()) : undefined,
         meterWasBroken: false, // Can't determine from automated data alone
+        // Camera ticket fields — enable policy engine to select vehicle_identification argument
+        hasIdentificationIssue: earlyMismatchDetected || undefined,
+        // For camera tickets, always flag footage as worth challenging
+        // (autopilot can't verify footage, but requesting review is a valid defense)
+        hasFootageIssue: isCameraViolation || undefined,
       };
 
       // Build UserEvidence — we don't have user-uploaded evidence at this stage,
@@ -2262,6 +2288,8 @@ async function processFoundTicket(
     amount,
     null, // Portal doesn't give us street location
     ticket.violation_description || null,
+    // Pass vehicle profile for early mismatch detection (before kit evaluation)
+    profile ? { make: profile.vehicle_make, model: profile.vehicle_model, color: profile.vehicle_color } : undefined,
   );
 
   // Query notification history for good-faith compliance evidence
