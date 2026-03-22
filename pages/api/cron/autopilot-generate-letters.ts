@@ -99,6 +99,7 @@ interface DetectedTicket {
   amount: number | null;
   location: string | null;
   officer_badge: string | null;
+  issue_datetime: string | null;
 }
 
 interface UserProfile {
@@ -800,7 +801,7 @@ async function gatherAllEvidence(
   if (ticket.violation_type === 'street_cleaning' && ticket.location && ticket.violation_date) {
     promises.push((async () => {
       try {
-        const sweeperResult = await verifySweeperVisit(ticket.location!, ticket.violation_date!);
+        const sweeperResult = await verifySweeperVisit(ticket.location!, ticket.violation_date!, ticket.issue_datetime);
         if (sweeperResult.checked) {
           bundle.sweeperVerification = sweeperResult;
           console.log(`    Sweeper verification: ${sweeperResult.sweptOnDate ? 'Sweeper DID visit' : 'NO sweeper visit'} on ticket date (TransID: ${sweeperResult.transId || 'unknown'})`);
@@ -1717,6 +1718,10 @@ NOTE: This is the city's schedule. We do NOT have data confirming whether cleani
 ${sv.streetSegment ? `Street Segment: ${sv.streetSegment} (TransID: ${sv.transId})` : 'Street segment: Could not be identified'}
 Ticket Date: ${sv.ticketDate}
 Sweeper Visited on Ticket Date: ${sv.sweptOnDate ? 'YES' : 'NO'}
+${sv.firstSweeperPassTime ? `First Sweeper Pass: ${sv.firstSweeperPassTime}` : ''}
+${sv.lastSweeperPassTime && sv.lastSweeperPassTime !== sv.firstSweeperPassTime ? `Last Sweeper Pass: ${sv.lastSweeperPassTime}` : ''}
+${sv.ticketIssuanceTime ? `Ticket Issued: ${sv.ticketIssuanceTime}` : ''}
+${sv.sweptBeforeTicket ? `*** SWEEPER PASSED BEFORE TICKET — ${sv.minutesBetweenSweepAndTicket} minutes before ***` : ''}
 
 ${sv.message}`;
 
@@ -1735,10 +1740,27 @@ INSTRUCTIONS FOR LETTER:
 4. Frame it as: the city enforced a restriction that was unnecessary — penalizing the driver for no reason
 5. Combine with any signage issues or schedule discrepancies for a multi-layered defense
 6. Do NOT cite "SweepTracker" by name — instead say "the City's own street sweeper GPS tracking records"`;
+    } else if (sv.sweptOnDate && sv.sweptBeforeTicket) {
+      sweeperSection += `
+
+*** CRITICAL DEFENSE FINDING: STREET SWEEPER ALREADY PASSED BEFORE TICKET WAS ISSUED ***
+The City's own GPS records show the street sweeper completed its pass on this block at ${sv.firstSweeperPassTime}, which is ${sv.minutesBetweenSweepAndTicket} minutes BEFORE the ticket was written.
+
+This is an EXTREMELY STRONG defense argument. The entire purpose of the street cleaning parking restriction is to allow sweepers to access the curb. Once the sweeper has passed, the restriction's purpose has been fulfilled. Ticketing a vehicle AFTER the sweeper already cleaned the street is punitive, not functional.
+
+INSTRUCTIONS FOR LETTER:
+1. This is the STRONGEST possible sweeper-related defense — use it as a primary argument
+2. State that the City's own street sweeper GPS tracking records show the sweeper completed its pass at ${sv.firstSweeperPassTime}
+3. State that the citation was not issued until ${sv.minutesBetweenSweepAndTicket} minutes AFTER the sweeper had already passed
+4. Argue that the parking restriction exists solely to facilitate street cleaning — once cleaning is complete, the restriction serves no further purpose
+5. The vehicle's presence did not impede or delay street cleaning in any way, as proven by the City's own records
+6. The citation is punitive, not functional — it penalizes the driver despite the purpose of the restriction having been fully satisfied
+7. Cite Municipal Code principle: parking restrictions must serve a legitimate public purpose. A restriction whose purpose has already been fulfilled is arbitrary enforcement
+8. Do NOT cite "SweepTracker" by name — instead say "the City's own street sweeper GPS tracking records"`;
     } else if (sv.sweptOnDate) {
       sweeperSection += `
 
-The sweeper DID visit this block on the ticket date. Do NOT argue that the sweeper didn't come.
+The sweeper DID visit this block on the ticket date.${sv.sweptBeforeTicket === false && sv.minutesBetweenSweepAndTicket !== null ? ` The sweeper passed AFTER the ticket was issued (${Math.abs(sv.minutesBetweenSweepAndTicket)} minutes later). This means the vehicle may have been blocking the sweeper when ticketed.` : ''} Do NOT argue that the sweeper didn't come.
 Instead, focus on other defense arguments (signage, weather, GPS departure timing, clerical errors, etc.).
 The sweeper visit data can still be mentioned neutrally — e.g., "While the respondent acknowledges that street cleaning was scheduled and performed on this date, the signage at this location was [inadequate/obscured/missing]..."`;
     }
