@@ -1033,7 +1033,7 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
       try {
         const trace = Array.isArray(redLightReceipt.trace) ? redLightReceipt.trace : [];
         // Detect commercial vehicle from user context or contest grounds
-        const allUserText = [additionalContext, ...(contestGrounds || [])].join(' ').toLowerCase();
+        const allUserText = [additionalContext || '', ...(contestGrounds || [])].join(' ').toLowerCase();
         const isCommercialVehicle = /\b(commercial\s*vehicle|truck|semi|box\s*truck|tractor.?trailer|bus|transit|delivery\s*van|air\s*brake|cdl|18.?wheel|big\s*rig|over\s*10[,.]?000\s*lbs?)\b/.test(allUserText);
 
         const defenseInput: AnalysisInput = {

@@ -2658,6 +2658,19 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
     defenseType = 'template_fallback';
   }
 
+  // ── Validate letter content before saving ──
+  if (!letterContent || letterContent.trim().length < 100) {
+    console.log(`    Letter content is empty or too short (${letterContent?.length || 0} chars) — marking as error`);
+    await supabaseAdmin
+      .from('detected_tickets')
+      .update({
+        status: 'error',
+        skip_reason: 'Letter generation failed: empty or malformed content from AI',
+      })
+      .eq('id', ticket.id);
+    return { success: false, status: 'error', error: 'Empty or malformed letter content' };
+  }
+
   // ── Save letter ──
   const { data: letter, error: letterError } = await supabaseAdmin
     .from('contest_letters')
