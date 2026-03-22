@@ -670,23 +670,36 @@ For EACH image, analyze and report:
   // JSON format instruction (same for all types)
   const jsonFormat = `
 
-Respond with a JSON array (one object per image) in this exact format:
+IMPORTANT: Your entire response must be a single valid JSON array that can be parsed by JSON.parse().
+Do NOT include any text before or after the JSON array.
+Do NOT wrap the JSON in markdown code fences (\`\`\`json ... \`\`\`).
+Do NOT include any explanation, preamble, or notes — ONLY the JSON array.
+
+Return exactly one object per image in this format:
 [
   {
     "direction": "North",
-    "signVisible": true/false,
-    "signText": "NO PARKING 7AM-9AM MON-FRI" or null,
-    "signCondition": "good" | "faded" | "damaged" | "obscured" | "missing" | "not_visible",
-    "obstructionDescription": "tree branch partially covering sign" or null,
-    "readableFromStreet": true/false/null,
+    "signVisible": true,
+    "signText": "NO PARKING 7AM-9AM MON-FRI",
+    "signCondition": "good",
+    "obstructionDescription": null,
+    "readableFromStreet": true,
     "observation": "A detailed 2-3 sentence description of what's visible and relevant to this violation type"
   }
 ]
 
+Field rules:
+- "direction": Must match the image label exactly (e.g. "North", "East", "South", "West")
+- "signVisible": boolean (true if any parking restriction sign is visible, false otherwise)
+- "signText": string with exact sign text if readable, or null if no sign or unreadable
+- "signCondition": one of "good", "faded", "damaged", "obscured", "missing", "not_visible"
+- "obstructionDescription": string describing what blocks the sign, or null
+- "readableFromStreet": boolean or null
+- "observation": string, 2-3 sentences, thorough and specific
+
 Use "missing" when you can see the location clearly but there is no sign or marking where one would be expected.
 Use "not_visible" when you simply cannot see a sign (might be there but not in frame).
-Be thorough and specific — your observations will be used as evidence in a formal contest letter to Chicago's Department of Finance. Cite exact sign text, distances, conditions, and anything else that would support a legal argument.
-Only output the JSON array, no other text.`;
+Be thorough and specific — your observations will be used as evidence in a formal contest letter to Chicago's Department of Finance. Cite exact sign text, distances, conditions, and anything else that would support a legal argument.`;
 
   return baseContext + specificInstructions + jsonFormat;
 }
@@ -825,17 +838,42 @@ async function analyzeStreetViewImages(
     try {
       // Use the public URL (Supabase) or Google URL
       const url = img.publicUrl || img.googleUrl;
-      const response = await fetch(url);
-      if (!response.ok) continue;
+      const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (!response.ok) {
+        console.warn(`  Street View: Failed to fetch ${img.direction} image (HTTP ${response.status})`);
+        continue;
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('image')) {
+        console.warn(`  Street View: ${img.direction} returned non-image content-type: ${contentType}`);
+        continue;
+      }
 
       const buffer = Buffer.from(await response.arrayBuffer());
+
+      // Skip tiny placeholder images (valid Street View images are at least ~10KB)
+      if (buffer.length < 5000) {
+        console.warn(`  Street View: ${img.direction} image too small (${buffer.length}b) — likely placeholder, skipping`);
+        continue;
+      }
+
+      // Verify JPEG or PNG magic bytes
+      const magic = buffer.slice(0, 4).toString('hex');
+      const isJpeg = magic.startsWith('ffd8');
+      const isPng = magic.startsWith('89504e47');
+      if (!isJpeg && !isPng) {
+        console.warn(`  Street View: ${img.direction} not a valid JPEG/PNG (magic: ${magic}), skipping`);
+        continue;
+      }
+
       imageContents.push({
         direction: img.direction,
         base64: buffer.toString('base64'),
-        mediaType: 'image/jpeg',
+        mediaType: isPng ? 'image/png' : 'image/jpeg',
       });
-    } catch {
-      // Skip failed downloads
+    } catch (err) {
+      console.warn(`  Street View: Error downloading ${img.direction} image:`, String(err));
     }
   }
 
@@ -866,30 +904,67 @@ async function analyzeStreetViewImages(
     });
   }
 
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2000,
-    messages: [{ role: 'user', content }],
-  });
-
-  // Parse response
-  const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+  // Call Claude Vision with retry on transient failures
+  let responseText = '';
+  const maxAttempts = 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const message = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content }],
+      });
+      responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+      break; // Success — exit retry loop
+    } catch (apiError) {
+      if (attempt === maxAttempts) {
+        console.error(`  Street View: Claude API failed after ${maxAttempts} attempts:`, String(apiError));
+        return [{ type: 'parse_error', text: 'Claude Vision API call failed', condition: 'unknown', visible: false, relevance: 'unknown', confidence: 0 } as any];
+      }
+      console.warn(`  Street View: Claude API attempt ${attempt} failed, retrying in 2s...`, String(apiError));
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
 
   try {
-    // Extract JSON from response (handle potential markdown fences)
-    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      console.error('  Street View: Could not parse Claude Vision response');
-      // Return a sentinel indicating parse failure, NOT an empty "no signs found"
+    let jsonStr = responseText.trim();
+
+    // Strip markdown code fences if Claude wrapped the response
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '');
+    }
+
+    // If Claude added preamble text before the JSON array, extract the array
+    if (!jsonStr.startsWith('[')) {
+      const arrayMatch = jsonStr.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (arrayMatch) {
+        jsonStr = arrayMatch[0];
+      } else {
+        console.error('  Street View: No JSON array found in response:', responseText.substring(0, 300));
+        return [{ type: 'parse_error', text: 'Unable to analyze Street View imagery', condition: 'unknown', visible: false, relevance: 'unknown', confidence: 0 } as any];
+      }
+    }
+
+    const parsed = JSON.parse(jsonStr) as any[];
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      console.error('  Street View: Parsed result is not a non-empty array');
       return [{ type: 'parse_error', text: 'Unable to analyze Street View imagery', condition: 'unknown', visible: false, relevance: 'unknown', confidence: 0 } as any];
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as SignageAnalysis[];
-    return parsed;
+    // Validate each object has the required fields
+    for (const item of parsed) {
+      if (typeof item.direction !== 'string') item.direction = 'Unknown';
+      if (typeof item.signVisible !== 'boolean') item.signVisible = false;
+      if (typeof item.observation !== 'string') item.observation = '';
+    }
+
+    return parsed as SignageAnalysis[];
   } catch (parseError) {
-    console.error('  Street View: JSON parse error:', parseError);
-    console.error('  Response was:', responseText.substring(0, 500));
-    // Return a sentinel indicating parse failure, NOT an empty "no signs found"
+    console.error('  Street View: JSON parse error:', {
+      error: String(parseError),
+      responseSnippet: responseText.substring(0, 300),
+      responseLength: responseText.length,
+    });
     return [{ type: 'parse_error', text: 'Unable to analyze Street View imagery', condition: 'unknown', visible: false, relevance: 'unknown', confidence: 0 } as any];
   }
 }

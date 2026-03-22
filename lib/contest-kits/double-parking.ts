@@ -1,7 +1,7 @@
 /**
  * Double Parking Contest Kit (9-64-110)
  *
- * Win Rate: 72% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: ~55% overall FOIA average; individual defenses range 30-35%
  * Primary defenses: Active loading, emergency, vehicle disabled
  */
 
@@ -13,7 +13,7 @@ export const doubleParkingKit: ContestKit = {
   description: 'Parking alongside another parked vehicle (double parking)',
   category: 'parking',
   fineAmount: 100,
-  baseWinRate: 0.72, // From FOIA data - 72% decided cases
+  baseWinRate: 0.55, // FOIA overall win rate ~55%; individual defenses range 30-35%
 
   eligibility: {
     rules: [
@@ -29,7 +29,7 @@ export const doubleParkingKit: ContestKit = {
         description: 'Has a valid defense',
         check: 'wasActivelyLoading OR hasEmergency OR vehicleDisabled',
         failureAction: 'warn',
-        failureMessage: 'Double parking tickets have a 72% win rate. Focus on active loading or emergency circumstances.',
+        failureMessage: 'Double parking contests work best with evidence of active loading, emergency, or vehicle breakdown.',
       },
     ],
     weatherRelevance: 'emergency', // Weather emergency could justify temporary stop
@@ -246,7 +246,7 @@ I respectfully request that this citation be dismissed.`,
   },
 
   tips: [
-    'Double parking has a 72% win rate on decided cases — best defenses are active loading or emergency',
+    'Double parking win rates depend heavily on evidence — 30-35% with strong documentation, lower without',
     'Best defense is proving you were actively loading/unloading',
     'Commercial drivers: keep all delivery receipts with timestamps',
     'Vehicle breakdown is a valid defense - get tow/mechanic documentation',
