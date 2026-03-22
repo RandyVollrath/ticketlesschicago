@@ -38,7 +38,10 @@ export default async function handler(
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get all inactive users with at least one renewal date set
+    // Get inactive users with at least one renewal date set.
+    // NOTE: This targets has_contesting=false (legacy "free" users). As of Mar 2026
+    // all new users are paid, so this set is shrinking. Kept for legacy accounts.
+    // Pagination prevents unbounded memory usage as user_profiles grows.
     const { data: users, error: usersError } = await supabaseAdmin
       .from('user_profiles')
       .select(`
@@ -52,7 +55,8 @@ export default async function handler(
         emissions_completed,
         notification_preferences
       `)
-      .eq('has_contesting', false);
+      .eq('has_contesting', false)
+      .limit(1000);
 
     if (usersError) {
       throw usersError;

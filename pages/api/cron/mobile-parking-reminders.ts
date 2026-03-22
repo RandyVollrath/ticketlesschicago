@@ -331,10 +331,10 @@ export default async function handler(
       errors: 0,
     };
 
-    // Get all active parked vehicles
+    // Get all active parked vehicles — only select needed columns
     const { data: parkedVehicles, error } = await supabaseAdmin
       .from('user_parked_vehicles')
-      .select('*')
+      .select('id, user_id, latitude, longitude, fcm_token, address, on_winter_ban_street, on_snow_route, street_cleaning_date, permit_zone, permit_restriction_schedule, parked_at, dot_permit_active, dot_permit_type, dot_permit_start_date, winter_ban_notified_at, snow_ban_notified_at, street_cleaning_notified_at, permit_zone_notified_at, dot_permit_notified_at')
       .eq('is_active', true);
 
     if (error) {
@@ -353,6 +353,38 @@ export default async function handler(
     const month = chicagoTime.getMonth();
     const day = chicagoTime.getDate();
     const isWinterSeason = month === 11 || month === 0 || month === 1 || month === 2 || (month === 3 && day === 1);
+
+    // Pre-fetch snow event ONCE (same for all vehicles, no need to query per-vehicle)
+    let activeSnowEvent: { id: string; snow_amount_inches: number | null; is_active: boolean } | null = null;
+    const hasSnowRouteVehicles = parkedVehicles.some((v: any) => v.on_snow_route);
+    if (hasSnowRouteVehicles) {
+      const { data } = await supabaseAdmin
+        .from('snow_events')
+        .select('id, snow_amount_inches, is_active')
+        .eq('is_active', true)
+        .order('event_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      activeSnowEvent = data;
+    }
+
+    // Pre-fetch user profiles for permit zone checks (batch instead of per-vehicle)
+    const permitZoneUserIds = parkedVehicles
+      .filter((v: any) => v.permit_zone && !v.permit_zone_notified_at)
+      .map((v: any) => v.user_id);
+    const permitZoneProfiles = new Map<string, { permit_zone_number: string | null; vehicle_zone: string | null }>();
+    if (permitZoneUserIds.length > 0) {
+      const uniqueIds = Array.from(new Set(permitZoneUserIds));
+      const { data: profiles } = await supabaseAdmin
+        .from('user_profiles')
+        .select('user_id, permit_zone_number, vehicle_zone')
+        .in('user_id', uniqueIds);
+      if (profiles) {
+        for (const p of profiles) {
+          permitZoneProfiles.set(p.user_id, { permit_zone_number: p.permit_zone_number, vehicle_zone: p.vehicle_zone });
+        }
+      }
+    }
 
     for (const vehicle of parkedVehicles as ParkedVehicle[]) {
       try {
@@ -395,15 +427,7 @@ export default async function handler(
         // users who PARK on a snow route AFTER the snow event was already detected.
         // Also sends call alerts for snow routes.
         if (vehicle.on_snow_route && !vehicle.snow_ban_notified_at) {
-          // Check if there's an active snow event
-          const { data: activeSnowEvent } = await supabaseAdmin
-            .from('snow_events')
-            .select('id, snow_amount_inches, is_active')
-            .eq('is_active', true)
-            .order('event_date', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
+          // Use pre-fetched snow event (queried once before the loop)
           if (activeSnowEvent) {
             const snowAmount = activeSnowEvent.snow_amount_inches || 2;
             const result = await sendPushNotification(vehicle.fcm_token, {
@@ -494,26 +518,17 @@ export default async function handler(
           const enforcement = getEnforcementStartingSoon(vehicle.permit_restriction_schedule, chicagoTime);
 
           if (enforcement) {
-            // Check if user has a permit for this zone
+            // Check if user has a permit for this zone (using pre-fetched profiles)
             let isOwnZone = false;
-            try {
-              const { data: userProfile } = await supabaseAdmin
-                .from('user_profiles')
-                .select('permit_zone_number, vehicle_zone')
-                .eq('user_id', vehicle.user_id)
-                .single();
+            const userProfile = permitZoneProfiles.get(vehicle.user_id);
+            if (userProfile) {
+              const homeZone = (userProfile.permit_zone_number || userProfile.vehicle_zone || '').toString().trim().toLowerCase().replace(/^zone\s*/i, '');
+              const parkedZone = (vehicle.permit_zone || '').trim().toLowerCase().replace(/^zone\s*/i, '');
 
-              if (userProfile) {
-                const homeZone = (userProfile.permit_zone_number || userProfile.vehicle_zone || '').toString().trim().toLowerCase().replace(/^zone\s*/i, '');
-                const parkedZone = (vehicle.permit_zone || '').trim().toLowerCase().replace(/^zone\s*/i, '');
-
-                if (homeZone && parkedZone && homeZone === parkedZone) {
-                  isOwnZone = true;
-                  console.log(`Skipping permit zone notification for ${vehicle.user_id} — parked in own zone (${vehicle.permit_zone})`);
-                }
+              if (homeZone && parkedZone && homeZone === parkedZone) {
+                isOwnZone = true;
+                console.log(`Skipping permit zone notification for ${vehicle.user_id} — parked in own zone (${vehicle.permit_zone})`);
               }
-            } catch (profileErr) {
-              console.warn(`Could not check permit zone for ${vehicle.user_id} — notifying to be safe:`, profileErr);
             }
 
             if (!isOwnZone) {
@@ -703,17 +718,9 @@ export default async function handler(
         // Snow route: call alert when snow ban is active (no fixed enforcement time,
         // so pass null — only fires for users with hours_before === 0 aka "immediately")
         if (vehicle.on_snow_route) {
-          // Reuse the snow event query result if we already checked above, or check now
-          const { data: snowEventForCall } = await supabaseAdmin
-            .from('snow_events')
-            .select('id, snow_amount_inches, is_active')
-            .eq('is_active', true)
-            .order('event_date', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (snowEventForCall) {
-            const snowAmt = snowEventForCall.snow_amount_inches || 2;
+          // Use pre-fetched snow event (queried once before the loop)
+          if (activeSnowEvent) {
+            const snowAmt = activeSnowEvent.snow_amount_inches || 2;
             const callSent = await sendCallAlertIfEnabled(
               vehicle.user_id, vehicle.id, 'snow_route',
               `${snowAmt} inches of snow detected. Your car at ${vehicle.address} is on a snow route and may be towed. Move your car now.`,
