@@ -170,8 +170,7 @@ export function detectVehicleMismatch(
   const definitiveCount = mismatches.filter(m => m.severity === 'definitive').length;
   const strongCount = mismatches.filter(m => m.severity === 'strong').length;
 
-  if (definitiveCount >= 2) confidence = 'high';
-  else if (definitiveCount >= 1) confidence = 'high';
+  if (definitiveCount >= 1) confidence = 'high';
   else if (strongCount >= 2) confidence = 'medium';
   else if (strongCount >= 1) confidence = 'low';
 
@@ -220,9 +219,9 @@ function generateDefenseText(
   if (mismatches.length === 0) return '';
 
   const regDesc = [registered.color, registered.make, registered.model]
-    .filter(Boolean).join(' ');
+    .filter(Boolean).join(' ') || 'my registered vehicle';
   const obsDesc = [observed.color, observed.make, observed.model]
-    .filter(Boolean).join(' ');
+    .filter(Boolean).join(' ') || 'the vehicle in the citation';
 
   const mismatchDetails = mismatches.map(m =>
     `- ${m.field}: My vehicle is a ${m.registered}; the vehicle in the photo is a ${m.observed}`
@@ -259,7 +258,22 @@ export function hasVehicleInfoForMismatch(info: VehicleInfo): boolean {
  */
 export function parseVehicleFromDescription(description: string): VehicleInfo | null {
   if (!description) return null;
-  const upper = description.toUpperCase();
+
+  // Strip known violation type phrases BEFORE parsing to prevent false matches.
+  // E.g., "RED LIGHT" should not match color "RED", "SPEED CAMERA" should not
+  // match anything vehicle-related. We replace them with spaces to preserve word boundaries.
+  const VIOLATION_PHRASES = [
+    'RED LIGHT', 'RED-LIGHT', 'SPEED CAMERA', 'SPEED CAM',
+    'AUTOMATED SPEED', 'AUTOMATED RED', 'CAMERA VIOLATION',
+    'TRAFFIC VIOLATION', 'PARKING VIOLATION', 'SCHOOL ZONE',
+    'CHILDREN\'S SAFETY', 'SAFETY ZONE', 'GOLD COAST',
+  ];
+  let sanitized = description.toUpperCase();
+  for (const phrase of VIOLATION_PHRASES) {
+    sanitized = sanitized.replace(new RegExp(phrase, 'g'), ' ');
+  }
+  // Collapse multiple spaces
+  const upper = sanitized.replace(/\s+/g, ' ').trim();
 
   const result: VehicleInfo = {};
 

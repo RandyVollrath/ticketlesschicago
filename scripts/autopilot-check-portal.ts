@@ -307,6 +307,8 @@ interface AutomatedEvidence {
     kitName: string | null;
     violationCode: string | null;
   };
+  // Vehicle mismatch detection result (camera tickets only)
+  vehicleMismatch: MismatchResult | null;
 }
 
 /**
@@ -343,6 +345,7 @@ async function gatherAutomatedEvidence(
       kitName: null,
       violationCode: null,
     },
+    vehicleMismatch: null,
   };
 
   // 1. Weather data
@@ -681,10 +684,11 @@ async function gatherAutomatedEvidence(
       const kit = getContestKitByName(violationType);
       evidence.kitEvaluation.kitName = kit?.name || null;
 
-      // ── Early vehicle mismatch detection for camera tickets ──
-      // Run BEFORE kit evaluation so hasIdentificationIssue can influence argument selection
+      // ── Vehicle mismatch detection for camera tickets ──
+      // Run BEFORE kit evaluation so hasIdentificationIssue can influence argument selection.
+      // Result is stored in evidence.vehicleMismatch and reused by generateLetterContent
+      // to avoid running detection twice.
       const isCameraViolation = ['red_light', 'speed_camera'].includes(violationType);
-      let earlyMismatchDetected = false;
       if (isCameraViolation && vehicleProfile?.make && violationDescription) {
         const registeredVehicle: VehicleInfo = {
           make: vehicleProfile.make || undefined,
@@ -693,11 +697,14 @@ async function gatherAutomatedEvidence(
         };
         const observedVehicle = parseVehicleFromDescription(violationDescription);
         if (observedVehicle && hasVehicleInfoForMismatch(registeredVehicle)) {
-          const mismatchResult = detectVehicleMismatch(registeredVehicle, observedVehicle);
-          earlyMismatchDetected = mismatchResult.hasMismatch;
-          if (earlyMismatchDetected) {
-            console.log(`      [Evidence] Early mismatch detected (confidence: ${mismatchResult.confidence}): ${mismatchResult.summary}`);
+          evidence.vehicleMismatch = detectVehicleMismatch(registeredVehicle, observedVehicle);
+          if (evidence.vehicleMismatch.hasMismatch) {
+            console.log(`      [Evidence] Vehicle mismatch detected (confidence: ${evidence.vehicleMismatch.confidence}): ${evidence.vehicleMismatch.summary}`);
+          } else {
+            console.log(`      [Evidence] Vehicle matches — no mismatch`);
           }
+        } else {
+          console.log(`      [Evidence] Could not parse vehicle info from description — mismatch detection skipped`);
         }
       }
 
@@ -719,7 +726,7 @@ async function gatherAutomatedEvidence(
         isWeekend: violationDate ? [0, 6].includes(new Date(violationDate).getDay()) : undefined,
         meterWasBroken: false, // Can't determine from automated data alone
         // Camera ticket fields — enable policy engine to select vehicle_identification argument
-        hasIdentificationIssue: earlyMismatchDetected || undefined,
+        hasIdentificationIssue: evidence.vehicleMismatch?.hasMismatch || undefined,
         // For camera tickets, always flag footage as worth challenging
         // (autopilot can't verify footage, but requesting review is a valid defense)
         hasFootageIssue: isCameraViolation || undefined,
@@ -1437,39 +1444,25 @@ function generateLetterContent(
     'Vehicle Owner';
 
   // ── Vehicle mismatch detection (for camera tickets) ──
-  let vehicleMismatch: MismatchResult | undefined;
+  // Reuse the result from gatherAutomatedEvidence (already ran before kit evaluation).
+  // Only re-run if evidence wasn't gathered (shouldn't happen in normal flow).
+  let vehicleMismatch: MismatchResult | undefined = automatedEvidence?.vehicleMismatch || undefined;
   const isCameraTicket = ['red_light', 'speed_camera'].includes(ticketData.violation_type);
-  if (isCameraTicket) {
-    console.log(`      [Letter] Camera ticket detected (${ticketData.violation_type})`);
-    console.log(`      [Letter] Violation description: "${ticketData.violation_description || '(empty)'}"`);
-    console.log(`      [Letter] User vehicle profile: make=${profile.vehicle_make || '(none)'}, model=${profile.vehicle_model || '(none)'}, color=${profile.vehicle_color || '(none)'}`);
-
-    if (profile.vehicle_make) {
-      const registeredVehicle: VehicleInfo = {
-        make: profile.vehicle_make || undefined,
-        model: profile.vehicle_model || undefined,
-        color: profile.vehicle_color || undefined,
-      };
-      // Try to parse vehicle info from the violation description
-      const observedVehicle = ticketData.violation_description
-        ? parseVehicleFromDescription(ticketData.violation_description)
-        : null;
-      if (observedVehicle) {
-        console.log(`      [Letter] Parsed vehicle from description: ${JSON.stringify(observedVehicle)}`);
-      } else {
-        console.log(`      [Letter] Could not parse vehicle info from description — mismatch detection skipped`);
-      }
-      if (observedVehicle && hasVehicleInfoForMismatch(registeredVehicle)) {
-        vehicleMismatch = detectVehicleMismatch(registeredVehicle, observedVehicle);
-        if (vehicleMismatch.hasMismatch) {
-          console.log(`      [Letter] Vehicle mismatch detected (confidence: ${vehicleMismatch.confidence}): ${vehicleMismatch.summary}`);
-        } else {
-          console.log(`      [Letter] Vehicle matches — no mismatch`);
-        }
-      }
-    } else {
-      console.log(`      [Letter] No vehicle_make in profile — mismatch detection skipped`);
+  if (isCameraTicket && !vehicleMismatch && profile.vehicle_make && ticketData.violation_description) {
+    // Fallback: re-run detection if evidence gathering didn't produce a result
+    console.log(`      [Letter] Running fallback mismatch detection (not found in automated evidence)`);
+    const registeredVehicle: VehicleInfo = {
+      make: profile.vehicle_make || undefined,
+      model: profile.vehicle_model || undefined,
+      color: profile.vehicle_color || undefined,
+    };
+    const observedVehicle = parseVehicleFromDescription(ticketData.violation_description);
+    if (observedVehicle && hasVehicleInfoForMismatch(registeredVehicle)) {
+      vehicleMismatch = detectVehicleMismatch(registeredVehicle, observedVehicle);
     }
+  }
+  if (isCameraTicket) {
+    console.log(`      [Letter] Camera ticket (${ticketData.violation_type}): mismatch=${vehicleMismatch?.hasMismatch ? `YES (${vehicleMismatch.confidence})` : 'no'}`);
   }
 
   // ── Try contest kit evaluation first (preferred path) ──
