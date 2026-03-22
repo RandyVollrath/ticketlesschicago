@@ -982,14 +982,14 @@ function generateTimingObservation(
 
   if (violationDate) {
     const imageDateParts = imageDate.split('-');
-    const imageYear = parseInt(imageDateParts[0]);
-    const imageMonth = parseInt(imageDateParts[1] || '1');
+    const imageYear = parseInt(imageDateParts[0], 10);
+    const imageMonth = parseInt(imageDateParts[1] || '1', 10);
     const violDate = new Date(violationDate);
     const violYear = violDate.getFullYear();
     const violMonth = violDate.getMonth() + 1;
     const monthsDiff = (violYear - imageYear) * 12 + (violMonth - imageMonth);
 
-    if (monthsDiff <= 6 && monthsDiff >= -6) {
+    if (monthsDiff >= 0 && monthsDiff <= 6) {
       return `Google Street View imagery from ${imageDate} (within 6 months of the violation) is available for this location. This imagery can be used to verify signage conditions at the time of the violation.`;
     } else if (monthsDiff > 6 && monthsDiff <= 24) {
       return `Google Street View imagery from ${imageDate} (${monthsDiff} months before the violation) shows the signage conditions at this location. While not from the exact date of violation, it provides baseline evidence of posted signage.`;
