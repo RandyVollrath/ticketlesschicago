@@ -1449,7 +1449,7 @@ CONFIDENCE: ${Math.round(kitEvaluation.confidence * 100)}%
 
 ${kitEvaluation.warnings.length > 0 ? `WARNINGS:\n${kitEvaluation.warnings.map(w => `- ${w}`).join('\n')}` : ''}
 
-INSTRUCTIONS: Use the argument template above as the CORE of your letter. Fill in any remaining placeholders with the ticket facts. The template is based on proven successful arguments for this specific violation type.
+INSTRUCTIONS: Use the argument template above as the CORE of your letter. Fill in any remaining [BRACKETED] placeholders with the ticket facts provided above. If a placeholder cannot be filled because the data is not available (e.g., [LOADING_DETAILS], [EMERGENCY_DESCRIPTION]), OMIT that entire paragraph rather than leaving the placeholder text or guessing. The template is based on proven successful arguments for this specific violation type.
 ` : ''}
 ${weatherDefenseText}
 ${parkingEvidenceText}
