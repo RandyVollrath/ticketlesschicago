@@ -1,0 +1,137 @@
+================================================================================
+DEPARTURE FLOW — QUICK REFERENCE GUIDE
+================================================================================
+
+WHEN USER DRIVES AWAY FROM CAR:
+- Android: Bluetooth ACL_CONNECTED event fires
+- iOS: CoreMotion detects automotive activity
+
+ENTRY POINT: handleCarReconnection() 
+- File: BackgroundTaskService.ts, Lines 1030-1042
+- Calls: markCarReconnected()
+
+STAGE 1: CLEAR PARKING DATA FROM ASYNCSTORAGE
+- File: BackgroundTaskService.ts, Lines 3572-3585
+- Function: markCarReconnected()
+- Clears 6 keys via AsyncStorage.multiRemove():
+  1. LAST_PARKING_LOCATION (hero card display)
+  2. LAST_PARKED_COORDS (rescan/snow coords)
+  3. RESCAN_LAST_RUN
+  4. RESCAN_LAST_RULES
+  5. SNOW_FORECAST_LAST_CHECK
+  6. SNOW_FORECAST_NOTIFIED
+
+STAGE 2: CLEAR REACT STATE IN HOMESCREEN
+- File: HomeScreen.tsx, Lines 654-668
+- Function: handleCarReconnect()
+- Clears: lastParkingCheck React state → null
+- Sets: isCarConnected → true
+- On iOS also sets: currentActivity → 'automotive'
+
+STAGE 3: STOP TIMERS & NOTIFICATIONS
+- File: BackgroundTaskService.ts, Lines 3564-3570
+- Function: markCarReconnected()
+- Stops: Rescan timer
+- Stops: Snow monitoring
+- Cancels: All scheduled parking reminders
+
+STAGE 4: CALL SERVER CLEAR ENDPOINT
+- File: LocationService.ts, Lines 1064-1095
+- Function: clearParkedLocation()
+- Endpoint: POST /api/mobile/clear-parked-location
+- Returns: parking_history_id for departure confirmation
+
+STAGE 5: SCHEDULE DEPARTURE CONFIRMATION (60 SECONDS LATER)
+- File: BackgroundTaskService.ts, Lines 3746-3757
+- Function: scheduleDepartureConfirmation()
+- Delay: 60000 ms (60 seconds)
+
+STAGE 6: CONFIRM DEPARTURE (AFTER 60 SECONDS)
+- File: BackgroundTaskService.ts, Lines 3815-3947
+- Function: confirmDeparture()
+- Gets fresh GPS (current position)
+- Calculates distance from parked location (50m threshold for "conclusive")
+- Saves clearance record to parking history
+- Clears pending departure state
+
+STAGE 7: CALL SERVER CONFIRM ENDPOINT
+- File: LocationService.ts, Lines 1105-1150
+- Function: confirmDeparture()
+- Endpoint: POST /api/mobile/confirm-departure
+- Server calculates distance and updates parking record
+
+================================================================================
+KEY QUESTIONS ANSWERED
+================================================================================
+
+Q: Is LAST_PARKED_COORDS cleared on departure?
+A: YES — BackgroundTaskService.ts:3576, via multiRemove()
+
+Q: Is LAST_PARKING_LOCATION cleared on departure?
+A: YES — BackgroundTaskService.ts:3575, via multiRemove()
+
+Q: Does handleCarReconnect clear the hero card state?
+A: YES — HomeScreen.tsx:659, sets lastParkingCheck to null
+
+Q: When are parking data keys cleared?
+A: Immediately when departure starts (T+10ms), in markCarReconnected()
+
+Q: What's NOT cleared (intentionally preserved)?
+A: - Parking history database (records are UPDATED, not deleted)
+   - Decision logs (audit trail preserved)
+   - Camera pass history
+   - Red light receipts
+
+================================================================================
+FILE LOCATIONS (ABSOLUTE PATHS)
+================================================================================
+
+/home/randy-vollrath/ticketless-chicago/TicketlessChicagoMobile/src/services/BackgroundTaskService.ts
+  - markCarReconnected(): 3541-3750
+  - handleCarReconnection(): 1030-1042
+  - scheduleDepartureConfirmation(): 3746-3757
+  - confirmDeparture(): 3815-3947
+
+/home/randy-vollrath/ticketless-chicago/TicketlessChicagoMobile/src/screens/HomeScreen.tsx
+  - handleCarReconnect(): 654-668
+  - handleCarDisconnect(): 638-652
+  - Callback setup: 589
+
+/home/randy-vollrath/ticketless-chicago/TicketlessChicagoMobile/src/services/LocationService.ts
+  - clearParkedLocation(): 1064-1095
+  - confirmDeparture(): 1105-1150
+
+/home/randy-vollrath/ticketless-chicago/TicketlessChicagoMobile/src/constants/StorageKeys.ts
+  - LAST_PARKING_LOCATION: 24
+  - LAST_PARKED_COORDS: 55
+
+================================================================================
+BACKEND ENDPOINTS CALLED
+================================================================================
+
+POST /api/mobile/clear-parked-location
+  - Called from: LocationService.clearParkedLocation()
+  - When: During markCarReconnected()
+  - Returns: parking_history_id, cleared_at, parked_location
+
+POST /api/mobile/confirm-departure
+  - Called from: LocationService.confirmDeparture()
+  - When: After 60 seconds
+  - Body: parking_history_id, latitude, longitude, accuracy_meters
+  - Returns: distance_from_parked_meters, is_conclusive
+
+================================================================================
+TIMELINE OF EVENTS
+================================================================================
+
+T+0ms      Car reconnects (BT or CoreMotion)
+T+10ms     AsyncStorage keys cleared (6 keys)
+T+20ms     React state cleared (HomeScreen)
+T+30ms     Timers stopped (rescan, snow monitoring)
+T+100ms    Server clear-parked-location endpoint called
+T+60s      Departure confirmation timer fires
+T+60s+10ms GPS freshness check
+T+61s      Server confirm-departure endpoint called
+T+62s      Pending departure state cleared
+
+================================================================================
