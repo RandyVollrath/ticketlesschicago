@@ -330,7 +330,7 @@ async function checkForSnowOpenWeatherMap(): Promise<SnowfallData> {
 
     // Also check weather conditions
     const weatherId = period.weather[0]?.id;
-    if (weatherId >= 600 && weatherId < 700) { // Snow weather codes
+    if (weatherId != null && weatherId >= 600 && weatherId < 700) { // Snow weather codes
       if (i === 0) isCurrentlySnowing = true;
     }
   }

@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Verify cron key
   const cronKey = req.headers['x-cron-key'] || req.query.key;
-  if (cronKey !== process.env.CRON_SECRET_KEY) {
+  if (cronKey !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

@@ -148,7 +148,7 @@ export default async function handler(
       .from('user_profiles')
       .select('user_id')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     // Update or create user profile
     let result;
