@@ -191,6 +191,16 @@ export interface TicketFacts {
   meterWasBroken?: boolean;
   permitWasDisplayed?: boolean;
   cleaningDidNotOccur?: boolean;
+  /** Whether a vehicle identification issue was detected (e.g. mismatch between registered vehicle and violation photo) */
+  hasIdentificationIssue?: boolean;
+  /** Whether the violation footage shows factual inconsistencies (camera tickets) */
+  hasFootageIssue?: boolean;
+  /** Whether the driver was making a right turn on red */
+  wasMakingRightTurn?: boolean;
+  /** Whether the vehicle was stolen at time of violation */
+  vehicleWasStolen?: boolean;
+  /** Whether the vehicle had been sold before the violation */
+  vehicleWasSold?: boolean;
   /** Whether the user is a non-Chicago resident (based on mailing address) — strong defense for 9-64-125 */
   isNonResident?: boolean;
   /** The user's mailing city if non-resident */

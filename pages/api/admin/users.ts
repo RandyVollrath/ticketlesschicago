@@ -25,28 +25,52 @@ export default withAdminAuth(async (req, res, adminUser) => {
       console.error('Vehicle reminders error:', vehicleError);
     }
 
-    // Also get auth users for comparison
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    console.log('Auth users query:', { 
-      userCount: authData?.users?.length || 0, 
-      authError 
+    // Fetch auth users in pages (Supabase defaults to 50 per page)
+    let allUsers: any[] = [];
+    let page = 1;
+    let authError: any = null;
+    const perPage = 100;
+
+    while (true) {
+      const { data: pageData, error: pageError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage,
+      });
+
+      if (pageError) {
+        authError = pageError;
+        break;
+      }
+
+      if (!pageData?.users?.length) break;
+
+      allUsers = allUsers.concat(pageData.users);
+
+      // If we got fewer than perPage, we've reached the last page
+      if (pageData.users.length < perPage) break;
+      page++;
+    }
+
+    console.log('Auth users query:', {
+      userCount: allUsers.length,
+      pages: page,
+      authError,
     });
 
     // Map auth users with their details
-    const authUsers = authData?.users?.map(user => ({
+    const authUsers = allUsers.map(user => ({
       id: user.id,
       email: user.email,
       email_confirmed_at: user.email_confirmed_at,
       created_at: user.created_at,
       last_sign_in_at: user.last_sign_in_at
-    })) || [];
+    }));
 
     return res.status(200).json({
       success: true,
       vehicleReminders: vehicleReminders || [],
       authUsers: authUsers,
-      authUsersCount: authData?.users?.length || 0,
+      authUsersCount: allUsers.length,
       errors: {
         vehicleError: vehicleError?.message || null,
         authError: authError?.message || null

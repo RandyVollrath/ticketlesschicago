@@ -263,39 +263,93 @@ export function parseVehicleFromDescription(description: string): VehicleInfo | 
 
   const result: VehicleInfo = {};
 
+  // Color matching: try full words first (more specific), then abbreviations
+  // Full color words that might appear in violation descriptions
+  const colorFullWords: Record<string, string> = {
+    'BLACK': 'Black', 'WHITE': 'White', 'SILVER': 'Silver', 'GRAY': 'Gray',
+    'GREY': 'Gray', 'RED': 'Red', 'BLUE': 'Blue', 'GREEN': 'Green',
+    'BROWN': 'Brown', 'TAN': 'Tan', 'GOLD': 'Gold', 'ORANGE': 'Orange',
+    'YELLOW': 'Yellow', 'MAROON': 'Maroon', 'BEIGE': 'Beige', 'CREAM': 'Cream',
+    'BURGUNDY': 'Maroon', 'CHARCOAL': 'Gray', 'BRONZE': 'Brown',
+    'PLATINUM': 'Silver', 'NAVY': 'Blue',
+  };
+
   // Common abbreviated colors in ticket descriptions
   const colorAbbrevs: Record<string, string> = {
     'BLK': 'Black', 'WHT': 'White', 'SLV': 'Silver', 'GRY': 'Gray',
-    'RED': 'Red', 'BLU': 'Blue', 'GRN': 'Green', 'BRN': 'Brown',
-    'TAN': 'Tan', 'GLD': 'Gold', 'ORG': 'Orange', 'YEL': 'Yellow',
+    'BLU': 'Blue', 'GRN': 'Green', 'BRN': 'Brown',
+    'GLD': 'Gold', 'ORG': 'Orange', 'YEL': 'Yellow',
     'MRN': 'Maroon', 'BGE': 'Beige', 'CRM': 'Cream',
   };
 
-  for (const [abbrev, color] of Object.entries(colorAbbrevs)) {
-    if (upper.includes(abbrev)) {
+  // Try full words first (use word boundary to avoid false matches)
+  for (const [word, color] of Object.entries(colorFullWords)) {
+    // Word boundary check: ensure the match isn't part of a larger word
+    const regex = new RegExp(`\\b${word}\\b`);
+    if (regex.test(upper)) {
       result.color = color;
       break;
     }
   }
 
-  // Common make abbreviations
-  const makeAbbrevs: Record<string, string> = {
-    'CHEV': 'Chevrolet', 'CHEVY': 'Chevrolet', 'FORD': 'Ford',
-    'TOYO': 'Toyota', 'HOND': 'Honda', 'NISS': 'Nissan',
-    'HYUN': 'Hyundai', 'KIA': 'Kia', 'BMW': 'BMW',
-    'MERC': 'Mercedes-Benz', 'AUDI': 'Audi', 'LEXU': 'Lexus',
-    'ACUR': 'Acura', 'JEEP': 'Jeep', 'DODG': 'Dodge',
-    'BUIC': 'Buick', 'CADI': 'Cadillac', 'GMC': 'GMC',
-    'SUBA': 'Subaru', 'MAZD': 'Mazda', 'VOLV': 'Volvo',
-    'MITS': 'Mitsubishi', 'INFI': 'Infiniti', 'LINC': 'Lincoln',
-    'CHRY': 'Chrysler', 'PONT': 'Pontiac', 'RAMS': 'Ram',
-    'TESL': 'Tesla', 'VOLK': 'Volkswagen',
+  // Fall back to abbreviations if no full word matched
+  if (!result.color) {
+    for (const [abbrev, color] of Object.entries(colorAbbrevs)) {
+      const regex = new RegExp(`\\b${abbrev}\\b`);
+      if (regex.test(upper)) {
+        result.color = color;
+        break;
+      }
+    }
+  }
+
+  // Make matching: try full names first, then abbreviations
+  // Full make names that might appear in violation descriptions
+  const makeFullWords: Record<string, string> = {
+    'CHEVROLET': 'Chevrolet', 'FORD': 'Ford', 'TOYOTA': 'Toyota',
+    'HONDA': 'Honda', 'NISSAN': 'Nissan', 'HYUNDAI': 'Hyundai',
+    'KIA': 'Kia', 'BMW': 'BMW', 'MERCEDES': 'Mercedes-Benz',
+    'AUDI': 'Audi', 'LEXUS': 'Lexus', 'ACURA': 'Acura',
+    'JEEP': 'Jeep', 'DODGE': 'Dodge', 'BUICK': 'Buick',
+    'CADILLAC': 'Cadillac', 'GMC': 'GMC', 'SUBARU': 'Subaru',
+    'MAZDA': 'Mazda', 'VOLVO': 'Volvo', 'MITSUBISHI': 'Mitsubishi',
+    'INFINITI': 'Infiniti', 'LINCOLN': 'Lincoln', 'CHRYSLER': 'Chrysler',
+    'PONTIAC': 'Pontiac', 'RAM': 'Ram', 'TESLA': 'Tesla',
+    'VOLKSWAGEN': 'Volkswagen', 'SATURN': 'Saturn', 'MERCURY': 'Mercury',
+    'OLDSMOBILE': 'Oldsmobile', 'MINI': 'Mini', 'PORSCHE': 'Porsche',
+    'JAGUAR': 'Jaguar', 'GENESIS': 'Genesis', 'RIVIAN': 'Rivian',
+    'LUCID': 'Lucid', 'POLESTAR': 'Polestar',
   };
 
-  for (const [abbrev, make] of Object.entries(makeAbbrevs)) {
-    if (upper.includes(abbrev)) {
+  // Common make abbreviations
+  const makeAbbrevs: Record<string, string> = {
+    'CHEV': 'Chevrolet', 'CHEVY': 'Chevrolet',
+    'TOYO': 'Toyota', 'HOND': 'Honda', 'NISS': 'Nissan',
+    'HYUN': 'Hyundai', 'MERC': 'Mercedes-Benz', 'LEXU': 'Lexus',
+    'ACUR': 'Acura', 'DODG': 'Dodge', 'BUIC': 'Buick',
+    'CADI': 'Cadillac', 'SUBA': 'Subaru', 'MAZD': 'Mazda',
+    'VOLV': 'Volvo', 'MITS': 'Mitsubishi', 'INFI': 'Infiniti',
+    'LINC': 'Lincoln', 'CHRY': 'Chrysler', 'PONT': 'Pontiac',
+    'RAMS': 'Ram', 'TESL': 'Tesla', 'VOLK': 'Volkswagen',
+  };
+
+  // Try full make names first
+  for (const [word, make] of Object.entries(makeFullWords)) {
+    const regex = new RegExp(`\\b${word}\\b`);
+    if (regex.test(upper)) {
       result.make = make;
       break;
+    }
+  }
+
+  // Fall back to abbreviations if no full name matched
+  if (!result.make) {
+    for (const [abbrev, make] of Object.entries(makeAbbrevs)) {
+      const regex = new RegExp(`\\b${abbrev}\\b`);
+      if (regex.test(upper)) {
+        result.make = make;
+        break;
+      }
     }
   }
 

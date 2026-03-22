@@ -61,66 +61,106 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
   const lobApiKey = process.env.LOB_API_KEY;
   const authHeader = 'Basic ' + Buffer.from(lobApiKey + ':').toString('base64');
 
-  try {
-    console.log('Sending letter via Lob API...');
-    console.log('  From:', from.name, '-', from.address, from.city, from.state, from.zip);
-    console.log('  To:', to.name, '-', to.address, to.city, to.state, to.zip);
-    console.log('  Letter content length:', letterContent.length, 'chars');
+  const MAX_RETRIES = 2; // 3 total attempts
+  let lastError: Error | null = null;
 
-    // Lob API expects letter content as HTML
-    const response = await fetch('https://api.lob.com/v1/letters', {
-      method: 'POST',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        description: description || 'Contest letter mailing',
-        to: {
-          name: to.name,
-          address_line1: to.address,
-          address_city: to.city,
-          address_state: to.state,
-          address_zip: to.zip,
-          address_country: 'US'
-        },
-        from: {
-          name: from.name,
-          address_line1: from.address,
-          address_city: from.city,
-          address_state: from.state,
-          address_zip: from.zip,
-          address_country: 'US'
-        },
-        file: letterContent, // HTML string
-        color: false, // Black & white printing (cheaper)
-        double_sided: false,
-        use_type: 'operational', // Required by Lob - operational for transactional mail like contest letters
-        metadata: metadata || {}
-      })
-    });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt === 0) {
+        console.log('Sending letter via Lob API...');
+        console.log('  From:', from.name, '-', from.address, from.city, from.state, from.zip);
+        console.log('  To:', to.name, '-', to.address, to.city, to.state, to.zip);
+        console.log('  Letter content length:', letterContent.length, 'chars');
+      } else {
+        console.log(`  Retry attempt ${attempt}/${MAX_RETRIES}...`);
+      }
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Lob API error response:', JSON.stringify(errorData, null, 2));
-      console.error('Lob API status code:', response.status);
-      const errorMessage = errorData.error?.message || errorData.message || JSON.stringify(errorData);
-      throw new Error(`Lob API error (${response.status}): ${errorMessage}`);
+      // Lob API expects letter content as HTML
+      const response = await fetch('https://api.lob.com/v1/letters', {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          description: description || 'Contest letter mailing',
+          to: {
+            name: to.name,
+            address_line1: to.address,
+            address_city: to.city,
+            address_state: to.state,
+            address_zip: to.zip,
+            address_country: 'US'
+          },
+          from: {
+            name: from.name,
+            address_line1: from.address,
+            address_city: from.city,
+            address_state: from.state,
+            address_zip: from.zip,
+            address_country: 'US'
+          },
+          file: letterContent, // HTML string
+          color: false, // Black & white printing (cheaper)
+          double_sided: false,
+          use_type: 'operational', // Required by Lob - operational for transactional mail like contest letters
+          metadata: metadata || {}
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Lob API error response:', JSON.stringify(errorData, null, 2));
+        console.error('Lob API status code:', response.status);
+        const errorMessage = errorData.error?.message || errorData.message || JSON.stringify(errorData);
+        const err = new Error(`Lob API error (${response.status}): ${errorMessage}`);
+
+        // Don't retry on 4xx client errors (bad request, auth, validation)
+        if (response.status >= 400 && response.status < 500) {
+          throw err;
+        }
+
+        // Retry on 5xx server errors with exponential backoff
+        lastError = err;
+        if (attempt < MAX_RETRIES) {
+          const backoffMs = 1000 * Math.pow(2, attempt); // 1s, 2s
+          console.log(`  Lob returned ${response.status}, retrying in ${backoffMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          continue;
+        }
+        throw err;
+      }
+
+      const data = await response.json();
+
+      return {
+        id: data.id,
+        url: data.url,
+        tracking_number: data.tracking_number,
+        expected_delivery_date: data.expected_delivery_date
+      };
+
+    } catch (error: any) {
+      // Re-throw 4xx errors immediately (already handled above)
+      if (error?.message?.includes('Lob API error (4')) {
+        throw error;
+      }
+
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < MAX_RETRIES) {
+        const backoffMs = 1000 * Math.pow(2, attempt);
+        console.log(`  Lob network error, retrying in ${backoffMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        continue;
+      }
+
+      console.error('Error sending letter via Lob after retries:', error);
+      throw error;
     }
-
-    const data = await response.json();
-
-    return {
-      id: data.id,
-      url: data.url,
-      tracking_number: data.tracking_number,
-      expected_delivery_date: data.expected_delivery_date
-    };
-
-  } catch (error) {
-    console.error('Error sending letter via Lob:', error);
-    throw error;
   }
+
+  throw lastError || new Error('Lob API failed after retries');
 }
 
 /**
@@ -385,8 +425,9 @@ export function formatLetterAsHTML(
       ? 'background: #e8f5e9; border: 2px solid #4caf50; padding: 10px; margin: 10px 0; font-weight: bold; color: #1b5e20;'
       : '';
 
-    // Build speed profile table rows (show up to 25 sampled readings)
-    const speedRows = redLightEvidence.speedProfile.slice(0, 25).map(p => {
+    // Build speed profile table rows (cap to 20 sampled readings to keep
+    // HTML payload small and prevent Lob rendering timeouts on large traces)
+    const speedRows = redLightEvidence.speedProfile.slice(0, 20).map(p => {
       const barWidth = Math.min(200, Math.max(2, (p.speedMph / 35) * 200));
       const barColor = p.speedMph <= 2.0 ? '#4caf50' : p.speedMph <= 10 ? '#ff9800' : '#f44336';
       const rowBg = p.speedMph <= 2.0 ? 'background: #e8f5e9;' : '';
@@ -538,8 +579,8 @@ export function formatLetterAsHTML(
             </span>
             ${redLightEvidence.defenseArguments && redLightEvidence.defenseArguments.length > 0 ? `
               <ul style="margin: 6px 0 0; padding-left: 16px; font-size: 8pt;">
-                ${redLightEvidence.defenseArguments.map(a =>
-                  `<li style="margin-bottom: 3px;"><strong>[${a.strength.toUpperCase()}]</strong> ${a.title}: ${a.summary}</li>`
+                ${redLightEvidence.defenseArguments.slice(0, 6).map(a =>
+                  `<li style="margin-bottom: 3px;"><strong>[${a.strength.toUpperCase()}]</strong> ${a.title}: ${a.summary.substring(0, 200)}</li>`
                 ).join('')}
               </ul>
             ` : ''}
