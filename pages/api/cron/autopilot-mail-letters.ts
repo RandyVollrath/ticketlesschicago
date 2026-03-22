@@ -66,11 +66,18 @@ async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string
 }
 
 /**
- * Check if test mode is enabled
+ * Check if test mode is enabled (env var OR database setting)
  * Test mode sends letters to user's address instead of city hall
  */
-function isTestModeEnabled(): boolean {
-  return process.env.LOB_TEST_MODE === 'true';
+async function isTestModeEnabled(): Promise<boolean> {
+  if (process.env.LOB_TEST_MODE === 'true') return true;
+  // Also check database setting (toggled from admin dashboard)
+  const { data } = await supabaseAdmin
+    .from('autopilot_admin_settings')
+    .select('value')
+    .eq('key', 'lob_test_mode')
+    .single();
+  return !!data?.value?.enabled;
 }
 
 /**
@@ -939,8 +946,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
-      // ── FOIA INTEGRATION GATE: Hold admin-approved letters until FOIA data is integrated ──
-      // If FOIA columns exist and either is false, hold the letter for FOIA integration
+      // ── FOIA INTEGRATION STATUS: Log which FOIA data has been integrated ──
+      // This is informational only — admin approval is the final gate.
+      // The admin can see FOIA status on the ticket page when reviewing.
       const cdotFoia = (letter as any).cdot_foia_integrated;
       const financeFoia = (letter as any).finance_foia_integrated;
       if (cdotFoia !== undefined && financeFoia !== undefined) {
@@ -948,8 +956,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (cdotFoia === false) missingFoia.push('CDOT FOIA');
         if (financeFoia === false) missingFoia.push('Finance FOIA');
         if (missingFoia.length > 0) {
-          console.log(`    ⏸ Letter ${letter.id} waiting for FOIA integration: ${missingFoia.join(', ')}`);
-          continue;
+          console.log(`    ℹ️ Letter ${letter.id} missing FOIA integration: ${missingFoia.join(', ')} (proceeding — admin approved)`);
+        } else {
+          console.log(`    ✅ Letter ${letter.id} has all FOIA data integrated`);
         }
       }
 
