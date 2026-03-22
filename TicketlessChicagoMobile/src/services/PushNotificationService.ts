@@ -158,12 +158,16 @@ class PushNotificationServiceClass {
 
       // Listen for token refresh
       messaging().onTokenRefresh(async (newToken: string) => {
-        log.debug('FCM token refreshed');
-        this.token = newToken;
-        await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
+        try {
+          log.debug('FCM token refreshed');
+          this.token = newToken;
+          await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
 
-        if (AuthService.isAuthenticated()) {
-          await this.registerTokenWithBackend(newToken);
+          if (AuthService.isAuthenticated()) {
+            await this.registerTokenWithBackend(newToken);
+          }
+        } catch (refreshError) {
+          log.error('Error handling FCM token refresh', refreshError);
         }
       });
 

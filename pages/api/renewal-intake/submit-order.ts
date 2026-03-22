@@ -130,6 +130,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Verify partner API key (passed via Authorization header or x-partner-key)
+    const partnerKey = req.headers['x-partner-key'] as string
+      || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+
     // Get partner info (for pricing)
     const { data: partner, error: partnerError } = await supabase
       .from('renewal_partners')
@@ -140,6 +144,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (partnerError || !partner) {
       return res.status(404).json({ error: 'Partner not found or inactive' });
+    }
+
+    // Validate partner API key if the partner has one configured
+    if (partner.api_key && partner.api_key !== partnerKey) {
+      return res.status(401).json({ error: 'Invalid or missing partner API key' });
     }
 
     // Calculate pricing

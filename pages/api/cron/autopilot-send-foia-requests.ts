@@ -436,7 +436,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } catch (err: any) {
       console.error(`    ❌ Exception: ${err.message}`);
-      await markFailed(request.id, err.message);
+      // Reset to 'queued' for transient errors so it gets picked up next run,
+      // rather than permanently marking as 'failed'. The retry recovery loop
+      // handles max retry count (3 attempts).
+      const retryCount = request.request_payload?.retry_count || 0;
+      if (retryCount < 3) {
+        await supabaseAdmin
+          .from('ticket_foia_requests' as any)
+          .update({
+            status: 'queued',
+            updated_at: new Date().toISOString(),
+            request_payload: { ...request.request_payload, retry_count: retryCount + 1 },
+            notes: `Auto-retry after exception (attempt ${retryCount + 1}): ${err.message}`,
+          })
+          .eq('id', request.id);
+        console.log(`    ♻️ Reset to queued for retry (attempt ${retryCount + 1}/3)`);
+      } else {
+        await markFailed(request.id, `Max retries exceeded: ${err.message}`);
+      }
       failed++;
     }
 
