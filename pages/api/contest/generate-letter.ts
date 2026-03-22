@@ -910,7 +910,9 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     if ((violationType === 'street_cleaning' || contest.violation_code === '9-64-010') && ticketDate && contest.ticket_location) {
       evidencePromises.push((async () => {
         try {
-          sweeperVerification = await verifySweeperVisit(contest.ticket_location, ticketDate);
+          // Pass ticket issuance time for "sweeper came before ticket" comparison
+          const ticketIssueTime = contest.extracted_data?.time || null;
+          sweeperVerification = await verifySweeperVisit(contest.ticket_location, ticketDate, ticketIssueTime);
           if (sweeperVerification.checked) {
             console.log(`  Sweeper verification: ${sweeperVerification.sweptOnDate ? 'SWEPT' : 'NOT SWEPT'} on ${ticketDate} — ${sweeperVerification.message}`);
           }
@@ -1691,6 +1693,10 @@ ${sweeperVerification?.checked ? `
 ${sweeperVerification.streetSegment ? `Street Segment: ${sweeperVerification.streetSegment} (TransID: ${sweeperVerification.transId})` : 'Street segment: Could not be identified'}
 Ticket Date: ${sweeperVerification.ticketDate}
 Sweeper Visited on Ticket Date: ${sweeperVerification.sweptOnDate ? 'YES' : 'NO'}
+${sweeperVerification.firstSweeperPassTime ? `First Sweeper Pass: ${sweeperVerification.firstSweeperPassTime}` : ''}
+${sweeperVerification.lastSweeperPassTime && sweeperVerification.lastSweeperPassTime !== sweeperVerification.firstSweeperPassTime ? `Last Sweeper Pass: ${sweeperVerification.lastSweeperPassTime}` : ''}
+${sweeperVerification.ticketIssuanceTime ? `Ticket Issued: ${sweeperVerification.ticketIssuanceTime}` : ''}
+${sweeperVerification.sweptBeforeTicket ? `*** SWEEPER PASSED BEFORE TICKET — ${sweeperVerification.minutesBetweenSweepAndTicket} minutes before ***` : ''}
 
 ${sweeperVerification.message}
 
@@ -1700,15 +1706,30 @@ The City of Chicago's own SweepTracker GPS system — which records real-time lo
 
 INSTRUCTIONS FOR LETTER:
 1. This is POWERFUL evidence — the city's own GPS tracking system contradicts the basis for the ticket
-2. State that according to the City's SweepTracker GPS records, no street sweeper serviced this block on the ticket date
+2. State that according to the City's street sweeper GPS tracking records, no street sweeper serviced this block on the ticket date
 3. Argue that if no sweeper cleaned the street, the parking restriction served no purpose and the ticket is unjust
 4. The city cannot claim the street needed to be clear for cleaning if their own records show no cleaner came
 5. Combine with schedule verification above — if cleaning wasn't even scheduled OR the sweeper didn't come, the ticket lacks justification
 6. Do NOT cite "SweepTracker" by name — instead say "the City's own street sweeper GPS tracking records"
-` : ''}${sweeperVerification.sweptOnDate ? `
-The sweeper DID visit this block on the ticket date. Do NOT argue that the sweeper didn't come.
+` : ''}${sweeperVerification.sweptOnDate && sweeperVerification.sweptBeforeTicket ? `
+*** CRITICAL DEFENSE FINDING: STREET SWEEPER ALREADY PASSED BEFORE TICKET WAS ISSUED ***
+The City's own GPS records show the street sweeper completed its pass on this block at ${sweeperVerification.firstSweeperPassTime}, which is ${sweeperVerification.minutesBetweenSweepAndTicket} minutes BEFORE the ticket was written.
+
+This is an EXTREMELY STRONG defense argument. The entire purpose of the street cleaning parking restriction is to allow sweepers to access the curb. Once the sweeper has passed, the restriction's purpose has been fulfilled. Ticketing a vehicle AFTER the sweeper already cleaned the street is punitive, not functional.
+
+INSTRUCTIONS FOR LETTER:
+1. This is the STRONGEST possible sweeper-related defense — use it as a primary argument
+2. State that the City's own street sweeper GPS tracking records show the sweeper completed its pass at ${sweeperVerification.firstSweeperPassTime}
+3. State that the citation was not issued until ${sweeperVerification.minutesBetweenSweepAndTicket} minutes AFTER the sweeper had already passed
+4. Argue that the parking restriction exists solely to facilitate street cleaning — once cleaning is complete, the restriction serves no further purpose
+5. The vehicle's presence did not impede or delay street cleaning in any way, as proven by the City's own records
+6. The citation is punitive, not functional — it penalizes the driver despite the purpose of the restriction having been fully satisfied
+7. Cite Municipal Code principle: parking restrictions must serve a legitimate public purpose. A restriction whose purpose has already been fulfilled is arbitrary enforcement
+8. Do NOT cite "SweepTracker" by name — instead say "the City's own street sweeper GPS tracking records"
+` : ''}${sweeperVerification.sweptOnDate && !sweeperVerification.sweptBeforeTicket ? `
+The sweeper DID visit this block on the ticket date.${sweeperVerification.sweptBeforeTicket === false && sweeperVerification.minutesBetweenSweepAndTicket !== null ? ` The sweeper passed AFTER the ticket was issued (${Math.abs(sweeperVerification.minutesBetweenSweepAndTicket)} minutes later). This means the vehicle may have been blocking the sweeper when ticketed.` : ''} Do NOT argue that the sweeper didn't come.
 Instead, focus on other defenses: signage adequacy, weather conditions, departure timing, or posted hours.
-${sweeperVerification.visitsOnDate.length > 0 ? `Sweeper visit times: ${sweeperVerification.visitsOnDate.map(v => v.postingTimeFormatted || v.postingTime).join(', ')}` : ''}
+${sweeperVerification.visitsOnDate.length > 0 ? `Sweeper visit times: ${sweeperVerification.visitsOnDate.map(v => v.chicagoTime || v.postingTimeFormatted || v.postingTime).join(', ')}` : ''}
 ` : ''}` : ''}
 ${courtData.hasData ? `HISTORICAL COURT DATA (analyzed ${courtData.totalCasesAnalyzed} cases, found ${courtData.matchingCasesCount} matching user's evidence):
 
