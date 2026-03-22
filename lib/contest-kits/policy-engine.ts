@@ -347,7 +347,12 @@ function evaluateCondition(condition: ArgumentCondition, context: ArgumentContex
     return compareCondition(evidenceValue, operator, value);
   }
 
-  // Unknown field - default to true (don't block)
+  // Unknown field — for 'equals' checks, an absent field cannot match a specific value.
+  // For 'notExists' this would correctly return true (the field genuinely doesn't exist).
+  // For other operators, default to true to avoid blocking arguments unnecessarily.
+  if (operator === 'equals') {
+    return false;
+  }
   return true;
 }
 
