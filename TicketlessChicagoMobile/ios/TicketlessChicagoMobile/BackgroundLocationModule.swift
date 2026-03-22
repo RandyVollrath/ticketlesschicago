@@ -3797,6 +3797,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       return
     }
 
+    // Require valid GPS speed — if speed is negative (iOS reports -1 when speed is
+    // unavailable), we have no evidence of movement. Without this check, the per-camera
+    // speed filter (`speed >= 0 && speed < minSpeed`) treats invalid speed as "unknown,
+    // pass through" and heading/bearing filters also fail-open on heading=-1. Together
+    // these let alerts fire while the user is stationary indoors.
+    // Bug: Mar 21, 2026 — user received "Red-light camera ahead" at 800 W Fullerton
+    // while sitting in a restaurant, because prewarm was still active and speed=-1
+    // bypassed all per-camera speed/heading filters.
+    if speed < 0 {
+      return
+    }
+
     // Dedupe overall announcements
     if let last = lastCameraAlertAt, Date().timeIntervalSince(last) < camAnnounceMinIntervalSec {
       return
