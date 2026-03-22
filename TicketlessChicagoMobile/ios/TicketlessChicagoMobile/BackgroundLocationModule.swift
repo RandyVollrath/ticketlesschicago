@@ -451,7 +451,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           "outputs": outputTypes.joined(separator: ","),
         ])
         log("Vehicle audio signal connected (\(outputTypes.joined(separator: ",")))")
-        extendCameraPrewarm(reason: "vehicle_signal_connected", seconds: cameraPrewarmStrongSec)
+        // Only extend camera prewarm from BT if not already confirmed parked.
+        // Connecting to BT audio while sitting indoors (AirPods, speaker) was
+        // re-arming cameras and causing false alerts hours after parking.
+        if !hasConfirmedParkingThisSession || isDriving {
+          extendCameraPrewarm(reason: "vehicle_signal_connected", seconds: cameraPrewarmStrongSec)
+        }
         if isMonitoring && (!continuousGpsActive || gpsInKeepaliveMode) {
           startBootstrapGpsWindow(reason: "vehicle_signal_connected")
         }
@@ -463,7 +468,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           "outputs": outputTypes.joined(separator: ","),
         ])
         log("Vehicle audio signal disconnected")
-        extendCameraPrewarm(reason: "vehicle_signal_disconnected", seconds: cameraPrewarmSec)
+        if !hasConfirmedParkingThisSession || isDriving {
+          extendCameraPrewarm(reason: "vehicle_signal_disconnected", seconds: cameraPrewarmSec)
+        }
       }
     }
   }
@@ -1744,10 +1751,18 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     startVehicleSignalMonitoring()
     isMonitoring = true
     UserDefaults.standard.set(true, forKey: kWasMonitoringKey)
-    // Extend camera prewarm on background relaunch — significantLocationChange
-    // fires because the user moved ~100-500m, likely driving. This eliminates
-    // the cold start arming gap where camera alerts wouldn't fire.
-    extendCameraPrewarm(reason: "background_relaunch", seconds: cameraPrewarmStrongSec)
+    // Only extend camera prewarm on background relaunch if NOT already parked.
+    // significantLocationChange fires on cell tower handoffs even while stationary,
+    // and unconditionally prewarm'ing here re-armed cameras repeatedly for hours
+    // after parking — causing false alerts (e.g. Fullerton camera alert 2+ hours
+    // after the user stopped driving, Mar 21 2026).
+    // When already parked (hasConfirmedParkingThisSession && !isDriving), the
+    // existing CoreMotion/GPS pipelines will arm cameras if driving actually starts.
+    if !hasConfirmedParkingThisSession || isDriving {
+      extendCameraPrewarm(reason: "background_relaunch", seconds: cameraPrewarmStrongSec)
+    } else {
+      self.log("Background relaunch: skipping camera prewarm — already parked")
+    }
     decision("background_relaunch_monitoring_started", [
       "coreMotionAvailable": coreMotionAvailable,
       "coreMotionAuthStatus": coreMotionAuthStatus.rawValue,
@@ -3205,7 +3220,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // scan for cameras immediately — don't wait for CoreMotion/BT to confirm driving.
     // This eliminates the cold start gap. Per-camera speed filters prevent false alerts.
     let speedTriggeredScan = cameraAlertsEnabled && location.speed >= 2.5
-    let cameraArmed = isDriving || coreMotionSaysAutomotive || speedSaysMoving || hasRecentVehicleSignal(120) || cameraPrewarmed || speedTriggeredScan
+    // Only use hasRecentVehicleSignal when NOT already confirmed parked. BT audio
+    // events while sitting indoors (connecting AirPods, etc.) were arming cameras
+    // and causing false alerts hours after parking (Mar 21, 2026).
+    let vehicleSignalArms = !hasConfirmedParkingThisSession && hasRecentVehicleSignal(120)
+    let cameraArmed = isDriving || coreMotionSaysAutomotive || speedSaysMoving || vehicleSignalArms || cameraPrewarmed || speedTriggeredScan
     if cameraArmed {
       if cameraAlertsEnabled {
         tripSummaryCameraScanCount += 1
