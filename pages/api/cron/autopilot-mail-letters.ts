@@ -493,6 +493,9 @@ async function sendLetterMailedNotification(
                style="display: inline-block; background: #0F172A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">
               View Your Letter (PDF)
             </a>
+            <p style="margin: 8px 0 0; font-size: 12px; color: #9CA3AF;">
+              This link expires in 30 days. Save or download a copy for your records.
+            </p>
           </div>
           ` : ''}
 
@@ -668,6 +671,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         street_view_exhibit_urls,
         street_view_date,
         street_view_address,
+        cdot_foia_integrated,
+        finance_foia_integrated,
         detected_tickets!inner (
           id,
           ticket_number,
@@ -932,6 +937,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('id', letter.id);
         }
         continue;
+      }
+
+      // ── FOIA INTEGRATION GATE: Hold admin-approved letters until FOIA data is integrated ──
+      // If FOIA columns exist and either is false, hold the letter for FOIA integration
+      const cdotFoia = (letter as any).cdot_foia_integrated;
+      const financeFoia = (letter as any).finance_foia_integrated;
+      if (cdotFoia !== undefined && financeFoia !== undefined) {
+        const missingFoia: string[] = [];
+        if (cdotFoia === false) missingFoia.push('CDOT FOIA');
+        if (financeFoia === false) missingFoia.push('Finance FOIA');
+        if (missingFoia.length > 0) {
+          console.log(`    ⏸ Letter ${letter.id} waiting for FOIA integration: ${missingFoia.join(', ')}`);
+          continue;
+        }
       }
 
       // Extract evidence image URLs from user_evidence JSON

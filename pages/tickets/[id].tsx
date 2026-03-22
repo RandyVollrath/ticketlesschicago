@@ -88,6 +88,12 @@ interface Letter {
   expected_delivery_date: string | null;
   delivered_at: string | null;
   last_tracking_update: string | null;
+  cdot_foia_integrated?: boolean;
+  cdot_foia_integrated_at?: string | null;
+  cdot_foia_notes?: string | null;
+  finance_foia_integrated?: boolean;
+  finance_foia_integrated_at?: string | null;
+  finance_foia_notes?: string | null;
 }
 
 interface FoiaRequest {
@@ -676,6 +682,59 @@ export default function TicketDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* FOIA Integration Status */}
+            {(letter.cdot_foia_integrated !== undefined || letter.finance_foia_integrated !== undefined) && (
+              <div style={{
+                backgroundColor: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                borderRadius: 8,
+                padding: 16,
+                marginBottom: 20,
+              }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#0369a1', margin: '0 0 12px 0' }}>
+                  FOIA Data Integration
+                </p>
+                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{letter.cdot_foia_integrated ? '\u2705' : '\u2B1C'}</span>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: COLORS.graphite, margin: 0 }}>
+                        CDOT FOIA {letter.cdot_foia_integrated ? 'Integrated' : 'Pending'}
+                      </p>
+                      {letter.cdot_foia_integrated_at && (
+                        <p style={{ fontSize: 11, color: COLORS.slate, margin: '2px 0 0 0' }}>
+                          {new Date(letter.cdot_foia_integrated_at).toLocaleDateString()}
+                        </p>
+                      )}
+                      {letter.cdot_foia_notes && (
+                        <p style={{ fontSize: 11, color: COLORS.slate, margin: '2px 0 0 0', fontStyle: 'italic' }}>
+                          {letter.cdot_foia_notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{letter.finance_foia_integrated ? '\u2705' : '\u2B1C'}</span>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: COLORS.graphite, margin: 0 }}>
+                        Finance FOIA {letter.finance_foia_integrated ? 'Integrated' : 'Pending'}
+                      </p>
+                      {letter.finance_foia_integrated_at && (
+                        <p style={{ fontSize: 11, color: COLORS.slate, margin: '2px 0 0 0' }}>
+                          {new Date(letter.finance_foia_integrated_at).toLocaleDateString()}
+                        </p>
+                      )}
+                      {letter.finance_foia_notes && (
+                        <p style={{ fontSize: 11, color: COLORS.slate, margin: '2px 0 0 0', fontStyle: 'italic' }}>
+                          {letter.finance_foia_notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Letter Preview */}
             <div style={{
