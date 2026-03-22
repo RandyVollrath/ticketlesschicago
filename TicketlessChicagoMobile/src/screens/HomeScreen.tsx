@@ -747,8 +747,63 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         }
       }
 
-      // Fallback: get user's current GPS location
+      // Cross-platform: use the car's stored parked location from auto-detection.
+      // LAST_PARKED_COORDS is set when BT disconnect (Android) or CoreMotion (iOS)
+      // detects parking — it has the car's actual GPS, not the phone's.
       if (!coords) {
+        try {
+          const parkedJson = await AsyncStorage.getItem(StorageKeys.LAST_PARKED_COORDS);
+          if (parkedJson) {
+            const parked = JSON.parse(parkedJson);
+            if (parked.lat && parked.lng) {
+              // Use stored car location regardless of age — the car hasn't moved
+              // since it was parked, so these coords are still accurate.
+              // Only skip if we've since departed (state machine is DRIVING).
+              const smState = ParkingDetectionStateMachine.state;
+              if (smState !== 'DRIVING' && smState !== 'PARKING_PENDING') {
+                coords = {
+                  latitude: parked.lat,
+                  longitude: parked.lng,
+                };
+                log.info(`Using stored car parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} (parked at ${parked.address || 'unknown'}, ${parked.parkedAt || 'unknown time'})`);
+              }
+            }
+          }
+        } catch (e) {
+          log.debug('Could not read stored parked coords', e);
+        }
+      }
+
+      // Second fallback: use coords from the last parking check result.
+      // This covers cases where LAST_PARKED_COORDS was cleared but the hero card
+      // still has a valid result (e.g., from a periodic rescan at the car's location).
+      if (!coords) {
+        try {
+          const lastCheckJson = await AsyncStorage.getItem(StorageKeys.LAST_PARKING_LOCATION);
+          if (lastCheckJson) {
+            const lastCheck = JSON.parse(lastCheckJson);
+            if (lastCheck.coords?.latitude && lastCheck.coords?.longitude) {
+              const ageMs = Date.now() - (lastCheck.timestamp || 0);
+              if (ageMs < 24 * 60 * 60 * 1000) {
+                coords = {
+                  latitude: lastCheck.coords.latitude,
+                  longitude: lastCheck.coords.longitude,
+                  accuracy: lastCheck.coords.accuracy,
+                };
+                log.info(`Using last parking check location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} (${Math.round(ageMs / 60000)}min old)`);
+              }
+            }
+          }
+        } catch (e) {
+          log.debug('Could not read last parking check coords', e);
+        }
+      }
+
+      // Final fallback: get user's current GPS location.
+      // This only fires if there's no stored car location at all (e.g., first-time
+      // user who hasn't auto-detected parking yet, or car location was cleared).
+      if (!coords) {
+        log.info('No stored car location found — falling back to phone GPS');
         if (useHighAccuracy) {
           coords = await LocationService.getHighAccuracyLocation(20, 15000);
         } else {
@@ -768,8 +823,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setCheckingAddress(result.address);
       await LocationService.saveParkingCheckResult(result);
 
-      // DO NOT save manual checks to parking history. Manual checks use the
-      // user's current phone GPS (which may be blocks away from the car).
+      // DO NOT save manual checks to parking history. Manual checks may use
+      // the car's stored parked coords (preferred) or phone GPS as fallback.
       // Only auto-detected parking (BT disconnect / CoreMotion) saves to
       // history because it captures GPS at the moment the car stops —
       // accurate location is critical for ticket contest evidence.
