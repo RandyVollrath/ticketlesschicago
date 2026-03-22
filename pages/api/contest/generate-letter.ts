@@ -270,6 +270,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    // Rate limit: max 5 letter generations per user per hour
+    // Prevents abuse of the Anthropic API (each call costs ~$0.02-0.05)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: recentGenerations } = await supabase
+      .from('ticket_contests')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('updated_at', oneHourAgo)
+      .not('letter_content', 'is', null);
+
+    if (recentGenerations !== null && recentGenerations >= 5) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded. You can generate up to 5 letters per hour. Please try again later.',
+      });
+    }
+
     // Validate request body
     const parseResult = generateLetterSchema.safeParse(req.body);
     if (!parseResult.success) {

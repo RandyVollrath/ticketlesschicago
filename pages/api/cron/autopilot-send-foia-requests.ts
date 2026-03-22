@@ -94,8 +94,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ── Recovery: Re-queue orphaned 'drafting' rows (cron crashed mid-send) ──
   // If a row has been in 'drafting' for >5 minutes, the previous run died.
-  // Reset to 'queued' so it gets picked up this run.
+  // BUT: If resend_message_id is set, the email was ALREADY SENT and the DB
+  // update just failed — mark as 'sent' instead of re-queuing (prevents
+  // sending duplicate FOIA emails).
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+  // First: fix rows where email was sent but status stuck in 'drafting'
+  const { data: sentButStuck } = await supabaseAdmin
+    .from('ticket_foia_requests' as any)
+    .select('id, resend_message_id')
+    .eq('status', 'drafting')
+    .lt('updated_at', fiveMinutesAgo)
+    .not('resend_message_id', 'is', null);
+
+  if (sentButStuck && sentButStuck.length > 0) {
+    for (const row of sentButStuck) {
+      await supabaseAdmin
+        .from('ticket_foia_requests' as any)
+        .update({
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          notes: 'Recovered: email was sent (has resend_message_id) but status was stuck in drafting',
+        })
+        .eq('id', row.id);
+    }
+    console.log(`  ✅ Fixed ${sentButStuck.length} sent-but-stuck FOIA request(s) (marked as sent)`);
+  }
+
+  // Then: re-queue truly orphaned rows (no resend_message_id = email never sent)
   const { data: orphanedDrafting } = await supabaseAdmin
     .from('ticket_foia_requests' as any)
     .update({
@@ -105,6 +132,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
     .eq('status', 'drafting')
     .lt('updated_at', fiveMinutesAgo)
+    .is('resend_message_id', null)
     .select('id');
   if (orphanedDrafting && orphanedDrafting.length > 0) {
     console.log(`  ♻️ Recovered ${orphanedDrafting.length} orphaned 'drafting' FOIA request(s)`);
@@ -274,6 +302,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (result.success) {
         console.log(`    ✅ Finance FOIA sent (Resend ID: ${result.emailId}, Ref: ${referenceId})`);
+
+        // Immediately persist the resend_message_id so the deduplication guard
+        // can detect this email was sent even if the full update below fails.
+        try {
+          await supabaseAdmin
+            .from('ticket_foia_requests' as any)
+            .update({ resend_message_id: result.emailId })
+            .eq('id', request.id);
+        } catch (earlyIdErr: any) {
+          console.warn(`    ⚠️ Early resend_message_id save failed (non-blocking): ${earlyIdErr.message}`);
+        }
 
         // For camera violations, also send CDOT FOIA for signal timing / calibration records
         let cdotEmailId: string | undefined;
