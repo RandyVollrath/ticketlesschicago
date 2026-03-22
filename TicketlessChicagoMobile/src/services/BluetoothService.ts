@@ -381,7 +381,7 @@ class BluetoothServiceClass {
 
   removeConnectionListener(onConnect: () => void, onDisconnect: () => void): void {
     this.connectionListeners = this.connectionListeners.filter(
-      l => l.onConnect !== onConnect || l.onDisconnect !== onDisconnect
+      l => l.onConnect !== onConnect && l.onDisconnect !== onDisconnect
     );
   }
 

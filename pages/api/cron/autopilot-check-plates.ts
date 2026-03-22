@@ -372,23 +372,17 @@ async function fetchChicagoTickets(plate: string, state: string): Promise<Chicag
     $order: 'issue_date DESC',
   });
 
-  try {
-    const response = await fetch(`${CHICAGO_TICKETS_API}?${params}`, {
-      headers: {
-        'X-App-Token': process.env.CHICAGO_DATA_PORTAL_TOKEN || '',
-      },
-    });
+  const response = await fetch(`${CHICAGO_TICKETS_API}?${params}`, {
+    headers: {
+      'X-App-Token': process.env.CHICAGO_DATA_PORTAL_TOKEN || '',
+    },
+  });
 
-    if (!response.ok) {
-      console.error(`Chicago API error: ${response.status}`);
-      return [];
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching Chicago tickets:', error);
-    return [];
+  if (!response.ok) {
+    throw new Error(`Chicago API error: ${response.status} ${response.statusText}`);
   }
+
+  return await response.json();
 }
 
 /**
@@ -401,11 +395,25 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
 
   console.log(`  Checking plate ${plate.plate} (${plate.state})...`);
 
-  // Fetch tickets from Chicago
-  const chicagoTickets = await fetchChicagoTickets(plate.plate, plate.state);
+  // Fetch tickets from Chicago — throws on API errors so we skip last_checked_at
+  let chicagoTickets: ChicagoTicket[];
+  try {
+    chicagoTickets = await fetchChicagoTickets(plate.plate, plate.state);
+  } catch (apiError: any) {
+    const msg = `Chicago API failed for ${plate.plate}: ${apiError.message}`;
+    console.error(`    ${msg}`);
+    errors.push(msg);
+    // Do NOT update last_checked_at — we want to retry next run
+    return { newTickets: 0, emailsSent: 0, errors };
+  }
 
   if (chicagoTickets.length === 0) {
     console.log(`    No tickets found`);
+    // API succeeded with empty result — safe to update last_checked_at
+    await supabaseAdmin
+      .from('monitored_plates')
+      .update({ last_checked_at: new Date().toISOString() })
+      .eq('id', plate.id);
     return { newTickets: 0, emailsSent: 0, errors };
   }
 
@@ -607,20 +615,32 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         userProfile
       );
 
-      const { error: letterError } = await supabaseAdmin
+      // Check for existing letter to prevent duplicates on cron retry
+      const { data: existingLetter } = await supabaseAdmin
         .from('contest_letters')
-        .insert({
-          ticket_id: newTicket.id,
-          user_id: plate.user_id,
-          letter_content: letterContent,
-          letter_text: letterContent,
-          defense_type: defenseType,
-          status: 'pending_evidence',
-          using_default_address: !profileData?.mailing_address,
-        });
+        .select('id')
+        .eq('ticket_id', newTicket.id)
+        .limit(1)
+        .maybeSingle();
 
-      if (letterError) {
-        errors.push(`Failed to create letter for ${ticket.ticket_number}: ${letterError.message}`);
+      if (!existingLetter) {
+        const { error: letterError } = await supabaseAdmin
+          .from('contest_letters')
+          .insert({
+            ticket_id: newTicket.id,
+            user_id: plate.user_id,
+            letter_content: letterContent,
+            letter_text: letterContent,
+            defense_type: defenseType,
+            status: 'pending_evidence',
+            using_default_address: !profileData?.mailing_address,
+          });
+
+        if (letterError) {
+          errors.push(`Failed to create letter for ${ticket.ticket_number}: ${letterError.message}`);
+        }
+      } else {
+        console.log(`    Letter already exists for ticket ${ticket.ticket_number}, skipping`);
       }
 
       if (emailEnabled && userEmail) {

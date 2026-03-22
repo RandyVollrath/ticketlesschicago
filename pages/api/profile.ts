@@ -28,21 +28,21 @@ export default async function handler(
 
   // Verify the user is authenticated and owns this profile
   const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Ensure user can only update their own profile
-    if (user.id !== userId) {
-      return res.status(403).json({ error: 'You can only update your own profile' });
-    }
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
   }
-  // Note: Allow unauthenticated updates for backward compatibility during signup flow
-  // TODO: Eventually require auth for all profile updates
+
+  const token = authHeader.substring(7);
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Ensure user can only update their own profile
+  if (user.id !== userId) {
+    return res.status(403).json({ error: 'You can only update your own profile' });
+  }
 
   try {
     console.log('Profile update request:', { userId, updateData });
@@ -113,9 +113,10 @@ export default async function handler(
       'concierge_service',
       
       // Ticketless-specific fields
-      'guarantee_opt_in_year',
-      'is_paid',
-      'role'
+      'guarantee_opt_in_year'
+      // NOTE: 'is_paid' and 'role' are NOT user-settable — only set via
+      // Stripe webhooks (is_paid) and admin tools (role) to prevent
+      // privilege escalation.
     ];
 
     // Filter data to only allowed fields
