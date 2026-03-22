@@ -213,6 +213,26 @@ Thank you for your consideration.`,
 
     situational: [
       {
+        id: 'vehicle_identification',
+        name: 'Vehicle Identification Error',
+        template: `I respectfully contest this red light camera citation on the grounds that the violation photos do not conclusively identify my vehicle as the one that committed the alleged violation.
+
+Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION]. After reviewing the violation photos and video at chicago.gov/finance:
+
+[IDENTIFICATION_ISSUES]
+
+Under Chicago Municipal Code Section 9-102-010, liability attaches to the registered owner only when the city establishes that the vehicle in the photos is the registered owner's vehicle. The city bears the burden of proving that the vehicle captured by the camera is mine. If the make, model, color, or plate shown in the violation photos do not match my registered vehicle, this citation was issued in error.
+
+I respectfully request that this citation be dismissed.`,
+        requiredFacts: ['ticketNumber', 'date', 'intersection'],
+        winRate: 0.30,
+        conditions: [
+          { field: 'hasIdentificationIssue', operator: 'equals', value: true },
+        ],
+        supportingEvidence: ['violation_footage_review'],
+        category: 'technical',
+      },
+      {
         id: 'right_turn_on_red',
         name: 'Legal Right Turn on Red',
         template: `I respectfully contest this red light camera citation on the grounds that I was making a legal right turn on red with a complete stop.
