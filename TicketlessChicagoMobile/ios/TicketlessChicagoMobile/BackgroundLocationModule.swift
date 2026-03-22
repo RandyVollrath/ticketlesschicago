@@ -1346,8 +1346,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     parkTimestamp: Date,
     latitude: Double,
     longitude: Double,
-    accuracy: Double,
-    skipDedup: Bool = false
+    accuracy: Double
   ) -> Bool {
     let hasCoords = (latitude != 0 || longitude != 0) && accuracy >= 0
 
@@ -1368,13 +1367,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
     // ── Gate 2: Ring buffer dedup ──
     // Check if this parking time+location was already emitted (by any pipeline).
-    // SKIP for real-time pipeline (finalizeParkingConfirmation) — it already went
-    // through driving detection, CoreMotion+GPS gate, finalization delay.
-    // The ring buffer was designed for recovery dedup, not for blocking legitimate
-    // short re-parks nearby (e.g. library closed → drove 2 blocks → parked again).
-    // Bug: Mar 21 2026 — Kenmore→Montana (476m, 5 min) was deduped as "same parking."
+    // Tolerances: 100m / 600s (10 min). Tightened from 500m / 3600s on Mar 21 2026
+    // because the old values blocked a legitimate re-park 476m / 5 min away
+    // (Kenmore → Montana, library was closed). Recovery/CLVisit duplicates have
+    // near-identical coords (<50m) and timestamps, so 100m catches them fine.
     let coords: (lat: Double, lng: Double)? = hasCoords ? (lat: latitude, lng: longitude) : nil
-    if !skipDedup && isAlreadyConfirmedParking(parkTime: parkTimestamp, coords: coords) {
+    if isAlreadyConfirmedParking(parkTime: parkTimestamp, coords: coords, timeTolerance: 600, distanceTolerance: 100) {
       self.log("EMIT GATE [\(source)]: blocked — already in ring buffer")
       self.decision("emit_gate_ring_buffer_dedup", [
         "source": source,
@@ -1388,8 +1386,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // ── Gate 3: Recent-emission dedup ──
     // If we emitted a parking event within the last 5 minutes at a location
     // within 200m, this is a duplicate from another pipeline racing.
-    // SKIP for real-time pipeline — same reason as Gate 2.
-    if !skipDedup, hasCoords, let lastAt = lastEmittedParkingAt, let lastCoord = lastEmittedParkingCoord {
+    if hasCoords, let lastAt = lastEmittedParkingAt, let lastCoord = lastEmittedParkingCoord {
       let timeSinceLastEmit = Date().timeIntervalSince(lastAt)
       let distFromLastEmit = CLLocation(latitude: latitude, longitude: longitude).distance(from: lastCoord)
       if timeSinceLastEmit < 300 && distFromLastEmit < 200 {
@@ -6107,9 +6104,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     persistParkingState()  // Survive app kills (Clybourn bug fix)
 
     // Emit through the single gateway — handles ring buffer, dedup, persist.
-    // skipDedup: true because the real-time pipeline (CoreMotion+GPS gate,
-    // finalization delay, minDrivingDuration) already validated this is a new
-    // parking event. Ring buffer dedup is for recovery pipelines only.
     var payload = body
     payload["detectionSource"] = source
     let lat = finalizedLocation?.coordinate.latitude ?? 0
@@ -6127,8 +6121,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       parkTimestamp: parkTs,
       latitude: lat,
       longitude: lng,
-      accuracy: acc,
-      skipDedup: true
+      accuracy: acc
     )
 
     // Reset driving state
