@@ -269,9 +269,13 @@ function selectArguments(
       backupArgument: scored[1].argument,
     };
   } else if (scored.length === 1) {
+    // Ensure backup is different from primary — if the only scored argument
+    // IS the fallback, use null as backup instead of a duplicate
+    const primary = scored[0].argument;
+    const backup = primary.id === kit.arguments.fallback.id ? null : kit.arguments.fallback;
     return {
-      selectedArgument: scored[0].argument,
-      backupArgument: kit.arguments.fallback,
+      selectedArgument: primary,
+      backupArgument: backup,
     };
   }
 
@@ -347,13 +351,26 @@ function evaluateCondition(condition: ArgumentCondition, context: ArgumentContex
     return compareCondition(evidenceValue, operator, value);
   }
 
-  // Unknown field — for 'equals' checks, an absent field cannot match a specific value.
-  // For 'notExists' this would correctly return true (the field genuinely doesn't exist).
-  // For other operators, default to true to avoid blocking arguments unnecessarily.
-  if (operator === 'equals') {
-    return false;
+  // Unknown field — handle each operator appropriately for absent fields:
+  // - 'equals': absent field cannot match a specific value → false
+  // - 'greaterThan'/'lessThan': absent field has no numeric value to compare → false
+  // - 'contains': absent field has no string to search → false
+  // - 'notEquals': absent is arguably "not equal" to anything → true
+  // - 'exists': absent field doesn't exist → false
+  // - 'notExists': absent field genuinely doesn't exist → true
+  switch (operator) {
+    case 'equals':
+    case 'greaterThan':
+    case 'lessThan':
+    case 'contains':
+    case 'exists':
+      return false;
+    case 'notEquals':
+    case 'notExists':
+      return true;
+    default:
+      return true; // Unknown operators default to permissive
   }
-  return true;
 }
 
 function compareCondition(actual: any, operator: string, expected: any): boolean {
