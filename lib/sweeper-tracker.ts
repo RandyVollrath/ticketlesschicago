@@ -493,7 +493,7 @@ export async function verifySweeperVisit(
 
   // Step 5: Build comprehensive summary message
   const dateRange = (() => {
-    const allDates = [...new Set(visits.map((v) => v.chicagoDate))].sort();
+    const allDates = Array.from(new Set(visits.map((v) => v.chicagoDate))).sort();
     return allDates.length > 1
       ? `${allDates[0]} to ${allDates[allDates.length - 1]}`
       : allDates[0] || 'unknown';
@@ -501,8 +501,8 @@ export async function verifySweeperVisit(
 
   if (visitsOnDate.length > 0) {
     // Deduplicate times (multiple GPS pings during same pass)
-    const uniqueTimes = [...new Set(visitsOnDate.map((v) => v.chicagoTime))];
-    const vehicleIds = [...new Set(visitsOnDate.map((v) => v.vehicleId))];
+    const uniqueTimes = Array.from(new Set(visitsOnDate.map((v) => v.chicagoTime)));
+    const vehicleIds = Array.from(new Set(visitsOnDate.map((v) => v.vehicleId)));
 
     let msg = `Street sweeper DID visit ${transResult.segment} on ${ticketDate}. ` +
       `Vehicle ${vehicleIds.join(', ')} recorded at: ${uniqueTimes.join(', ')} (Chicago time). ` +
@@ -533,7 +533,7 @@ export async function verifySweeperVisit(
     baseResult.message = msg;
   } else {
     // No sweeper on ticket date — build context
-    const sweptDates = [...new Set(visits.map((v) => v.chicagoDate))].sort();
+    const sweptDates = Array.from(new Set(visits.map((v) => v.chicagoDate))).sort();
 
     baseResult.message = `NO street sweeper visited ${transResult.segment} on ${ticketDate} according to ` +
       `the City of Chicago's SweepTracker GPS data. The tracker shows ${visits.length} sweeper GPS ping(s) ` +

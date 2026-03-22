@@ -217,6 +217,8 @@ export interface UserEvidence {
   hasReceipts: boolean;
   hasPoliceReport: boolean;
   hasMedicalDocs: boolean;
+  /** Whether user's evidence text mentions a broken/malfunctioning meter */
+  hasMeterIssue?: boolean;
   /** Whether GPS parking/departure evidence is available from the mobile app */
   hasLocationEvidence?: boolean;
   /** Whether we verified the street cleaning schedule for the ticket location/date */

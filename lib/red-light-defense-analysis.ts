@@ -362,7 +362,7 @@ export async function calculateRoadGrade(
     const intersectionElev = data.elevation[1];
     const horizontalDistM = haversineDistance(approachLat, approachLon, intersectionLat, intersectionLon);
 
-    if (horizontalDistM < 10) return null; // Too close for meaningful grade
+    if (!isFinite(horizontalDistM) || horizontalDistM < 10) return null; // NaN/Infinity/too close for meaningful grade
 
     // Positive = downhill (approach is higher than intersection)
     // This matches ITE convention: positive grade = gravity fights braking = need longer yellow

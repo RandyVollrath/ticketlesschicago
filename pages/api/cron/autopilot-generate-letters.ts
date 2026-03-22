@@ -2410,6 +2410,15 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
         const photoUrls = attachmentUrls.filter((u: string) => /\.(jpg|jpeg|png|gif|heic|webp)/i.test(u));
         const photoAnalyses: { url: string; filename: string; description: string }[] = [];
 
+        // Assign text evidence BEFORE photo analysis so it's preserved even if photos fail
+        evidence.userSubmittedEvidence = {
+          hasEvidence: true,
+          text: evidenceText || null,
+          attachmentUrls,
+          photoAnalyses, // Will be populated below; array reference is shared
+          receivedAt,
+        };
+
         // Run Claude Vision on user-submitted photos to describe what they show
         if (photoUrls.length > 0 && anthropic) {
           console.log(`    Analyzing ${photoUrls.length} user-submitted photo(s) with Claude Vision...`);
@@ -2462,13 +2471,6 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
           }
         }
 
-        evidence.userSubmittedEvidence = {
-          hasEvidence: true,
-          text: evidenceText || null,
-          attachmentUrls,
-          photoAnalyses,
-          receivedAt,
-        };
         console.log(`    User evidence: ${evidenceText ? 'text' : 'no text'}, ${attachmentUrls.length} attachment(s), ${photoAnalyses.length} photo(s) analyzed`);
       }
     }
@@ -2763,6 +2765,19 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
           ticketDate: evidence.sweeperVerification.ticketDate,
           message: evidence.sweeperVerification.message,
           error: evidence.sweeperVerification.error || null,
+        } : null,
+        user_foia_history: evidence.userFoiaHistory?.hasData ? {
+          totalLifetimeTickets: evidence.userFoiaHistory.totalLifetimeTickets,
+          totalLifetimeFines: evidence.userFoiaHistory.totalLifetimeFines,
+          sameViolationTypeCount: evidence.userFoiaHistory.sameViolationTypeCount,
+        } : null,
+        red_light_defense: evidence.redLightDefense ? {
+          overallScore: evidence.redLightDefense.overallDefenseScore,
+          argumentCount: evidence.redLightDefense.defenseArguments.length,
+          hasYellowLightDefense: !!evidence.redLightDefense.yellowLight,
+          violatesIllinoisStatute: evidence.redLightDefense.yellowLight?.violatesIllinoisStatute || false,
+          hasRightTurn: !!evidence.redLightDefense.rightTurn?.rightTurnDetected,
+          hasDilemmaZone: !!evidence.redLightDefense.dilemmaZone?.inDilemmaZone,
         } : null,
       },
       performed_by: 'autopilot_cron',
