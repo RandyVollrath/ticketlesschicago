@@ -423,7 +423,7 @@ function fillArgumentTemplate(arg: ArgumentTemplate, context: ArgumentContext): 
     replacements['[WEATHER_CONDITION]'] = weatherDefense.data.weatherDescription;
     replacements['[WEATHER_DATA]'] = weatherDefense.paragraph || '';
     replacements['[SNOWFALL_AMOUNT]'] = weatherDefense.data.snowfall?.toString() || 'minimal';
-    replacements['[WEATHER_TYPE]'] = weatherDefense.data.conditions.join(', ') || 'adverse';
+    replacements['[WEATHER_TYPE]'] = (weatherDefense.data.conditions || []).join(', ') || 'adverse';
   }
 
   // Non-resident defense replacements (city sticker violations)

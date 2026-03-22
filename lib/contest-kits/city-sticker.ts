@@ -204,7 +204,7 @@ Thank you for your consideration.`,
         name: 'Purchased Sticker After Ticket',
         template: `I respectfully contest this citation on the grounds that I have since purchased a valid City of Chicago vehicle sticker and am now in full compliance with the city vehicle sticker requirement.
 
-I received citation #{ticket_number} on {ticket_date} for not having a city sticker displayed. I have since purchased a valid city sticker, and I have attached the purchase receipt as proof of compliance.
+I received citation #[TICKET_NUMBER] on [DATE] for not having a city sticker displayed. I have since purchased a valid city sticker, and I have attached the purchase receipt as proof of compliance.
 
 [PURCHASE_RECEIPT]
 
