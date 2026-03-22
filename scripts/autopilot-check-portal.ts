@@ -1413,21 +1413,36 @@ function generateLetterContent(
   // ── Vehicle mismatch detection (for camera tickets) ──
   let vehicleMismatch: MismatchResult | undefined;
   const isCameraTicket = ['red_light', 'speed_camera'].includes(ticketData.violation_type);
-  if (isCameraTicket && profile.vehicle_make) {
-    const registeredVehicle: VehicleInfo = {
-      make: profile.vehicle_make || undefined,
-      model: profile.vehicle_model || undefined,
-      color: profile.vehicle_color || undefined,
-    };
-    // Try to parse vehicle info from the violation description
-    const observedVehicle = ticketData.violation_description
-      ? parseVehicleFromDescription(ticketData.violation_description)
-      : null;
-    if (observedVehicle && hasVehicleInfoForMismatch(registeredVehicle)) {
-      vehicleMismatch = detectVehicleMismatch(registeredVehicle, observedVehicle);
-      if (vehicleMismatch.hasMismatch) {
-        console.log(`      [Letter] Vehicle mismatch detected (confidence: ${vehicleMismatch.confidence}): ${vehicleMismatch.summary}`);
+  if (isCameraTicket) {
+    console.log(`      [Letter] Camera ticket detected (${ticketData.violation_type})`);
+    console.log(`      [Letter] Violation description: "${ticketData.violation_description || '(empty)'}"`);
+    console.log(`      [Letter] User vehicle profile: make=${profile.vehicle_make || '(none)'}, model=${profile.vehicle_model || '(none)'}, color=${profile.vehicle_color || '(none)'}`);
+
+    if (profile.vehicle_make) {
+      const registeredVehicle: VehicleInfo = {
+        make: profile.vehicle_make || undefined,
+        model: profile.vehicle_model || undefined,
+        color: profile.vehicle_color || undefined,
+      };
+      // Try to parse vehicle info from the violation description
+      const observedVehicle = ticketData.violation_description
+        ? parseVehicleFromDescription(ticketData.violation_description)
+        : null;
+      if (observedVehicle) {
+        console.log(`      [Letter] Parsed vehicle from description: ${JSON.stringify(observedVehicle)}`);
+      } else {
+        console.log(`      [Letter] Could not parse vehicle info from description — mismatch detection skipped`);
       }
+      if (observedVehicle && hasVehicleInfoForMismatch(registeredVehicle)) {
+        vehicleMismatch = detectVehicleMismatch(registeredVehicle, observedVehicle);
+        if (vehicleMismatch.hasMismatch) {
+          console.log(`      [Letter] Vehicle mismatch detected (confidence: ${vehicleMismatch.confidence}): ${vehicleMismatch.summary}`);
+        } else {
+          console.log(`      [Letter] Vehicle matches — no mismatch`);
+        }
+      }
+    } else {
+      console.log(`      [Letter] No vehicle_make in profile — mismatch detection skipped`);
     }
   }
 
@@ -1451,9 +1466,11 @@ function generateLetterContent(
       .replace(/\[TICKET_NUMBER\]/g, ticketData.ticket_number || 'N/A')
       .replace(/\[DATE\]/g, violationDate)
       .replace(/\[LOCATION\]/g, ticketData.location || 'the cited location')
+      .replace(/\[INTERSECTION\]/g, ticketData.location || 'the cited intersection')
       .replace(/\[VIOLATION_CODE\]/g, automatedEvidence?.kitEvaluation?.violationCode || '')
       .replace(/\[AMOUNT\]/g, ticketData.amount ? `$${ticketData.amount.toFixed(2)}` : 'the amount shown')
-      .replace(/\[USER_GROUNDS\]/g, ''); // Autopilot doesn't have user-selected grounds
+      .replace(/\[USER_GROUNDS\]/g, '') // Autopilot doesn't have user-selected grounds
+      .replace(/\[FOOTAGE_FINDINGS\]/g, 'I request the hearing officer carefully review the violation footage to verify the vehicle identification, the signal timing, and whether the evidence conclusively establishes a violation occurred.');
 
     // Fill signage placeholders with real AI analysis when available, or generic fallback
     const svFindings = automatedEvidence?.streetView;

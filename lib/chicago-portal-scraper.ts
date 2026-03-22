@@ -140,6 +140,14 @@ function parseItemRow(row: any, rawJson: string): PortalTicket | null {
   const ticketNumber = fields['Ticket Number'] || '';
   if (!ticketNumber) return null;
 
+  // Diagnostic logging for camera tickets — capture what the portal actually returns
+  // so we can learn what fields are available for vehicle mismatch detection
+  const descLower = (fields['Violation Description'] || '').toLowerCase();
+  if (descLower.includes('red light') || descLower.includes('camera') || descLower.includes('speed') || descLower.includes('automated')) {
+    console.log(`    [Camera Ticket Diagnostics] Ticket #${ticketNumber}`);
+    console.log(`    [Camera Ticket Diagnostics] All fields: ${JSON.stringify(fields)}`);
+  }
+
   // Parse issue date — API returns ISO format like "2026-02-07T21:07:00"
   const rawDate = fields['Date Issued'] || '';
   let issueDate = rawDate;
