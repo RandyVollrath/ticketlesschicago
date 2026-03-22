@@ -194,7 +194,7 @@ I respectfully request that this citation be dismissed.`,
         requiredFacts: ['location', 'date', 'emergencyDescription'],
         winRate: 0.28,
         conditions: [
-          { field: 'hadEmergency', operator: 'equals', value: true },
+          { field: 'hasEmergency', operator: 'equals', value: true },
         ],
         supportingEvidence: [],
         category: 'emergency',

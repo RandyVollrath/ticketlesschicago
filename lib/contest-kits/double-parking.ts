@@ -27,7 +27,7 @@ export const doubleParkingKit: ContestKit = {
       {
         id: 'valid_defense',
         description: 'Has a valid defense',
-        check: 'wasActivelyLoading OR hadEmergency OR vehicleDisabled',
+        check: 'wasActivelyLoading OR hasEmergency OR vehicleDisabled',
         failureAction: 'warn',
         failureMessage: 'Double parking tickets have a 72% win rate. Focus on active loading or emergency circumstances.',
       },
@@ -130,7 +130,7 @@ I respectfully request that this citation be dismissed.`,
       requiredFacts: ['location', 'date', 'emergencyDescription'],
       winRate: 0.30,
       conditions: [
-        { field: 'hadEmergency', operator: 'equals', value: true },
+        { field: 'hasEmergency', operator: 'equals', value: true },
       ],
       supportingEvidence: ['emergency_documentation'],
       category: 'emergency',
