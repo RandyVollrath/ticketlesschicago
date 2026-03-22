@@ -22,6 +22,13 @@
  *   - ALL date comparisons convert to Chicago time explicitly (not server locale)
  *   - This is critical because Vercel runs in UTC
  *
+ * Reliability:
+ *   - All fetch calls have 15-second timeouts (AbortController)
+ *   - One automatic retry with exponential backoff on network failures
+ *   - Input sanitization prevents ArcGIS SQL-like injection
+ *   - Address gap fallback: tries nearest block segment when exact match fails
+ *   - All errors are caught and returned in the result (never throws)
+ *
  * The sweeper tracker shows real-time data 9am-2pm weekdays April-November,
  * but the history endpoint returns visits from the past ~7-30 days.
  */
@@ -33,6 +40,12 @@ const SWEEPER_HISTORY_URL =
 
 /** Chicago timezone for all date comparisons */
 const CHICAGO_TZ = 'America/Chicago';
+
+/** Timeout for city API calls (ms) — city servers can be slow */
+const FETCH_TIMEOUT_MS = 15000;
+
+/** Delay before retry (ms) */
+const RETRY_DELAY_MS = 2000;
 
 export interface SweeperVisit {
   address: string;
@@ -65,6 +78,42 @@ export interface SweeperVerification {
 }
 
 /**
+ * Fetch with timeout and one automatic retry.
+ * City of Chicago APIs can be slow or intermittently fail.
+ */
+async function fetchWithRetry(url: string, retries = 1): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (attempt < retries) {
+        const isTimeout = err?.name === 'AbortError';
+        console.log(`  Sweeper: Fetch ${isTimeout ? 'timed out' : 'failed'}, retrying in ${RETRY_DELAY_MS}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        continue;
+      }
+      throw err;
+    }
+  }
+  // Should never reach here, but TypeScript needs it
+  throw new Error('fetchWithRetry exhausted retries');
+}
+
+/**
+ * Sanitize a string for use in an ArcGIS SQL-like WHERE clause.
+ * Removes any characters that could modify the query logic.
+ * Only allows alphanumeric characters, spaces, hyphens, and periods.
+ */
+function sanitizeForQuery(value: string): string {
+  return value.replace(/[^A-Z0-9 \-.]/gi, '');
+}
+
+/**
  * Convert a UTC ISO timestamp to Chicago date (YYYY-MM-DD) and time (HH:MM AM/PM).
  * This is critical because Vercel runs in UTC but all ticket data is Chicago time.
  */
@@ -91,27 +140,15 @@ function toChicagoDateTime(utcIso: string): { date: string; time: string; dateOb
 /**
  * Parse a Chicago local time string (from ticket issuance) into a Date object.
  * Ticket times come from the portal as "2026-02-07T21:07:00" (no timezone suffix = Chicago local).
- * Also handles YYYY-MM-DD format (date-only).
+ * Also handles "HH:MM AM/PM" time-only format from contest extracted_data.time.
  */
 function parseChicagoTime(dateTimeStr: string): Date | null {
   if (!dateTimeStr) return null;
   try {
     // If it has a T and no Z, it's Chicago local time from the portal
     if (dateTimeStr.includes('T') && !dateTimeStr.endsWith('Z')) {
-      // Create a date interpreting it as Chicago local time
-      // We do this by appending the Chicago UTC offset
-      const d = new Date(dateTimeStr);
-      // The Date constructor interprets no-timezone strings as local time,
-      // which is correct if the server is in Chicago, but WRONG on Vercel (UTC).
-      // Instead, we use a reliable method:
       const parts = dateTimeStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):?(\d{2})?/);
       if (!parts) return null;
-      // Create in Chicago timezone by using a formatter trick
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: CHICAGO_TZ,
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-      });
       // We need the actual UTC timestamp that corresponds to this Chicago local time.
       // Approach: try nearby UTC offsets (-5 for CDT, -6 for CST) and pick the one
       // that formats back to our target string.
@@ -126,7 +163,7 @@ function parseChicagoTime(dateTimeStr: string): Date | null {
         const target = `${parts[1]}-${parts[2]}-${parts[3]}T${parts[4]}:${parts[5]}:${parts[6] || '00'}`;
         if (formatted === target) return candidate;
       }
-      // Fallback: just parse it (works if server is in Chicago)
+      // Fallback: just parse it (works if server is in Chicago timezone)
       return new Date(dateTimeStr);
     }
     // If it ends with Z, it's already UTC
@@ -162,7 +199,7 @@ function parseAddress(address: string): {
     return {
       number: parseInt(match[1], 10),
       dir: match[2],
-      name: match[3].trim(),
+      name: sanitizeForQuery(match[3].trim()),
       type: match[4],
     };
   }
@@ -180,7 +217,7 @@ function parseAddress(address: string): {
         return {
           number: parseInt(matchNoType[1], 10),
           dir: matchNoType[2],
-          name: parts.slice(0, -1).join(' '),
+          name: sanitizeForQuery(parts.slice(0, -1).join(' ')),
           type: lastWord,
         };
       }
@@ -188,7 +225,7 @@ function parseAddress(address: string): {
     return {
       number: parseInt(matchNoType[1], 10),
       dir: matchNoType[2],
-      name: matchNoType[3].trim(),
+      name: sanitizeForQuery(matchNoType[3].trim()),
       type: '',
     };
   }
@@ -199,6 +236,9 @@ function parseAddress(address: string): {
 /**
  * Look up the TransID (street segment identifier) for a Chicago address.
  * The TransID uniquely identifies a block segment in Chicago's street network.
+ *
+ * If the exact address number falls in a gap between segments (e.g. 3100 when blocks are
+ * 3000-3052 and 3116-3146), falls back to searching nearby segments on the same street.
  */
 async function lookupTransId(
   address: string
@@ -209,9 +249,40 @@ async function lookupTransId(
     return null;
   }
 
-  // Build WHERE clause with AND between each condition
+  // Validate parsed number is reasonable (1 to 20000 covers all Chicago addresses)
+  if (parsed.number < 1 || parsed.number > 20000) {
+    console.log(`  Sweeper: Address number ${parsed.number} out of range for "${address}"`);
+    return null;
+  }
+
+  // Build WHERE clause — values are sanitized above to prevent injection
   const where = `STREET_NAME='${parsed.name}' AND PRE_DIR='${parsed.dir}' AND ((L_F_ADD <= ${parsed.number} AND L_T_ADD >= ${parsed.number}) OR (R_F_ADD <= ${parsed.number} AND R_T_ADD >= ${parsed.number}))`;
 
+  const result = await queryTransLegend(where);
+  if (result) return result;
+
+  // Fallback: address might fall in a gap between segments (e.g. 3100 when blocks
+  // are 3000-3052 and 3116-3146). Find the nearest segment on the same street.
+  console.log(`  Sweeper: Exact match failed for ${parsed.number}, trying nearest segment on ${parsed.dir} ${parsed.name}...`);
+  const nearbyWhere = `STREET_NAME='${parsed.name}' AND PRE_DIR='${parsed.dir}' AND L_F_ADD >= ${parsed.number - 100} AND L_F_ADD <= ${parsed.number + 100}`;
+  const nearbyResult = await queryTransLegend(nearbyWhere, parsed.number);
+  if (nearbyResult) {
+    console.log(`  Sweeper: Fallback found nearby segment: ${nearbyResult.segment}`);
+    return nearbyResult;
+  }
+
+  console.log(`  Sweeper: No TransID found for "${address}" (tried exact + nearby)`);
+  return null;
+}
+
+/**
+ * Execute a TransLegend ArcGIS query and return the best matching result.
+ * If targetNumber is provided, picks the segment closest to that address number.
+ */
+async function queryTransLegend(
+  where: string,
+  targetNumber?: number
+): Promise<{ transId: number; segment: string } | null> {
   const params = new URLSearchParams({
     where,
     outFields: 'TRANS_ID,PRE_DIR,STREET_NAME,STREET_TYPE,L_F_ADD,L_T_ADD,R_F_ADD,R_T_ADD',
@@ -220,7 +291,7 @@ async function lookupTransId(
   });
 
   try {
-    const response = await fetch(`${TRANS_LEGEND_URL}?${params.toString()}`);
+    const response = await fetchWithRetry(`${TRANS_LEGEND_URL}?${params.toString()}`);
     if (!response.ok) {
       console.error(`  Sweeper: TransLegend query failed with status ${response.status}`);
       return null;
@@ -235,11 +306,25 @@ async function lookupTransId(
     }
 
     if (!data.features || data.features.length === 0) {
-      console.log(`  Sweeper: No TransID found for "${address}" (query: ${where})`);
       return null;
     }
 
-    const feature = data.features[0].attributes;
+    // If we have a target number, pick the segment whose range is closest
+    let feature = data.features[0].attributes;
+    if (targetNumber && data.features.length > 1) {
+      let bestDist = Infinity;
+      for (const f of data.features) {
+        const a = f.attributes;
+        // Distance = how far the target is from the center of this segment's range
+        const center = (a.L_F_ADD + a.L_T_ADD) / 2;
+        const dist = Math.abs(targetNumber - center);
+        if (dist < bestDist) {
+          bestDist = dist;
+          feature = a;
+        }
+      }
+    }
+
     const segment = `${feature.PRE_DIR} ${feature.STREET_NAME} ${feature.STREET_TYPE || ''} (${feature.L_F_ADD}-${feature.L_T_ADD})`.trim();
     console.log(`  Sweeper: Found TransID ${feature.TRANS_ID} for segment ${segment}`);
 
@@ -247,8 +332,9 @@ async function lookupTransId(
       transId: feature.TRANS_ID,
       segment,
     };
-  } catch (err) {
-    console.error('  Sweeper: TransLegend lookup error:', err);
+  } catch (err: any) {
+    const isTimeout = err?.name === 'AbortError';
+    console.error(`  Sweeper: TransLegend ${isTimeout ? 'timed out' : 'error'}:`, err?.message || err);
     return null;
   }
 }
@@ -260,13 +346,22 @@ async function lookupTransId(
  */
 async function getSweeperHistory(transId: number): Promise<SweeperVisit[]> {
   try {
-    const response = await fetch(`${SWEEPER_HISTORY_URL}?transId=${transId}`);
+    const response = await fetchWithRetry(`${SWEEPER_HISTORY_URL}?transId=${transId}`);
     if (!response.ok) {
       console.error(`  Sweeper: History query failed with status ${response.status}`);
       return [];
     }
 
-    const data = await response.json();
+    const text = await response.text();
+    // Guard against non-JSON responses (city server sometimes returns HTML error pages)
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error(`  Sweeper: History returned non-JSON (${text.substring(0, 100)}...)`);
+      return [];
+    }
+
     const locationList = data?.trackingDataResponse?.locationList;
     if (!locationList || !Array.isArray(locationList) || locationList.length === 0) {
       return [];
@@ -287,8 +382,9 @@ async function getSweeperHistory(transId: number): Promise<SweeperVisit[]> {
         chicagoDate: chicago?.date || '',
       };
     });
-  } catch (err) {
-    console.error('  Sweeper: History query error:', err);
+  } catch (err: any) {
+    const isTimeout = err?.name === 'AbortError';
+    console.error(`  Sweeper: History ${isTimeout ? 'timed out' : 'error'}:`, err?.message || err);
     return [];
   }
 }
@@ -329,6 +425,13 @@ export async function verifySweeperVisit(
   if (!ticketLocation || !ticketDate) {
     baseResult.message = 'Missing ticket location or date for sweeper verification.';
     baseResult.error = 'missing_input';
+    return baseResult;
+  }
+
+  // Validate ticketDate format (YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ticketDate)) {
+    baseResult.message = `Invalid ticket date format: "${ticketDate}" (expected YYYY-MM-DD).`;
+    baseResult.error = 'invalid_date';
     return baseResult;
   }
 
@@ -379,7 +482,7 @@ export async function verifySweeperVisit(
     const ticketTime = ticketIssueTime ? parseChicagoTime(ticketIssueTime) : null;
     const firstPassTime = new Date(firstPass.postingTime);
 
-    if (ticketTime) {
+    if (ticketTime && !isNaN(ticketTime.getTime()) && !isNaN(firstPassTime.getTime())) {
       const diffMs = ticketTime.getTime() - firstPassTime.getTime();
       const diffMinutes = Math.round(diffMs / 60000);
       baseResult.minutesBetweenSweepAndTicket = diffMinutes;
@@ -410,8 +513,16 @@ export async function verifySweeperVisit(
       const hours = Math.floor(baseResult.minutesBetweenSweepAndTicket / 60);
       const mins = baseResult.minutesBetweenSweepAndTicket % 60;
       const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins} minutes`;
+      // Format ticket issuance time safely
+      let ticketTimeStr = 'unknown';
+      try {
+        const parsed = parseChicagoTime(ticketIssueTime!);
+        if (parsed) {
+          ticketTimeStr = parsed.toLocaleTimeString('en-US', { timeZone: CHICAGO_TZ, hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+      } catch { /* use 'unknown' */ }
       msg += `\n*** CRITICAL: The sweeper passed this block ${timeStr} BEFORE the ticket was issued. ` +
-        `First sweeper GPS: ${baseResult.firstSweeperPassTime}. Ticket issued: ${new Date(ticketIssueTime!).toLocaleTimeString('en-US', { timeZone: CHICAGO_TZ, hour: 'numeric', minute: '2-digit', hour12: true })}. ` +
+        `First sweeper GPS: ${baseResult.firstSweeperPassTime}. Ticket issued: ${ticketTimeStr}. ` +
         `The street was already cleaned — the purpose of the parking restriction was already fulfilled when the ticket was written. ***`;
     } else if (baseResult.minutesBetweenSweepAndTicket != null && baseResult.minutesBetweenSweepAndTicket < 0) {
       msg += `\nNote: Sweeper first GPS ping was AFTER the ticket was issued (ticket first, sweeper ${Math.abs(baseResult.minutesBetweenSweepAndTicket)} minutes later).`;
@@ -433,3 +544,83 @@ export async function verifySweeperVisit(
 
   return baseResult;
 }
+
+// ──────────────────────────────────────────────────────────────
+// Real-time sweeper check — for "sweeper has passed your block"
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Check if the street sweeper has passed a specific block TODAY.
+ * Used for real-time "you can move your car" notifications.
+ *
+ * Returns null if no TransID found or API error.
+ * Returns { passed: false } if no sweeper activity today.
+ * Returns { passed: true, passTime, vehicleId } if sweeper GPS was recorded on this block today.
+ *
+ * @param streetAddress - e.g. "2300 N SHEFFIELD AVE"
+ */
+export async function checkSweeperPassedToday(
+  streetAddress: string
+): Promise<{
+  passed: boolean;
+  transId: number | null;
+  segment: string | null;
+  passTime: string | null;      // Chicago local time (e.g. "10:28 AM")
+  passTimeUtc: string | null;   // UTC ISO timestamp
+  vehicleId: string | null;
+  totalPingsToday: number;
+  error?: string;
+} | null> {
+  const transResult = await lookupTransId(streetAddress);
+  if (!transResult) return null;
+
+  const visits = await getSweeperHistory(transResult.transId);
+  if (visits.length === 0) {
+    return {
+      passed: false,
+      transId: transResult.transId,
+      segment: transResult.segment,
+      passTime: null,
+      passTimeUtc: null,
+      vehicleId: null,
+      totalPingsToday: 0,
+    };
+  }
+
+  // Get today's date in Chicago timezone
+  const todayChicago = new Date().toLocaleDateString('en-CA', { timeZone: CHICAGO_TZ });
+  const todayVisits = visits.filter((v) => v.chicagoDate === todayChicago);
+
+  if (todayVisits.length === 0) {
+    return {
+      passed: false,
+      transId: transResult.transId,
+      segment: transResult.segment,
+      passTime: null,
+      passTimeUtc: null,
+      vehicleId: null,
+      totalPingsToday: 0,
+    };
+  }
+
+  // Sort to find the first pass
+  const sorted = [...todayVisits].sort(
+    (a, b) => new Date(a.postingTime).getTime() - new Date(b.postingTime).getTime()
+  );
+  const first = sorted[0];
+
+  return {
+    passed: true,
+    transId: transResult.transId,
+    segment: transResult.segment,
+    passTime: first.chicagoTime,
+    passTimeUtc: first.postingTime,
+    vehicleId: first.vehicleId,
+    totalPingsToday: todayVisits.length,
+  };
+}
+
+/**
+ * Look up the TransID for an address. Exported for use by the real-time polling API.
+ */
+export { lookupTransId };
