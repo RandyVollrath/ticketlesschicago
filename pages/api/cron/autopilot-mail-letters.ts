@@ -206,6 +206,26 @@ async function mailLetter(
   console.log(`  Mailing letter ${letter.id} for ticket ${ticketNumber}...`);
 
   try {
+    // Guard: Check if a Lob letter was already created for this letter ID.
+    // If the cron crashed after sendLetter() but before the DB update,
+    // the letter row still has its old status and will be retried — without
+    // this check, we'd create a duplicate physical letter.
+    const { data: existingLetter } = await supabaseAdmin
+      .from('contest_letters')
+      .select('lob_letter_id')
+      .eq('id', letter.id)
+      .single();
+
+    if (existingLetter?.lob_letter_id) {
+      console.log(`    Already mailed (Lob ID: ${existingLetter.lob_letter_id}), skipping duplicate`);
+      // Fix the status that got missed
+      await supabaseAdmin
+        .from('contest_letters')
+        .update({ status: 'sent', mailed_at: new Date().toISOString() })
+        .eq('id', letter.id);
+      return { success: true, lobId: existingLetter.lob_letter_id };
+    }
+
     // Build sender name
     const senderName = profile.full_name ||
       `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
@@ -714,10 +734,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Case 3: Auto-send — evidence deadline (Day 17) has passed
-      // Letters auto-mail once evidence_deadline <= now, regardless of evidence submission
+      // Letters auto-mail once evidence_deadline + 1h buffer <= now.
+      // The 1-hour buffer prevents a race condition where the cron fires
+      // at exactly the deadline time, mailing before the user's evidence
+      // window has fully expired.
       if (ticket.evidence_deadline) {
         const deadline = new Date(ticket.evidence_deadline);
-        if (deadline <= new Date()) {
+        const deadlineWithBuffer = new Date(deadline.getTime() + 60 * 60 * 1000); // +1 hour
+        if (deadlineWithBuffer <= new Date()) {
           return true;
         }
       }
