@@ -65,12 +65,14 @@ export interface SweeperVerification {
   transId: number | null;
   streetSegment: string | null;    // e.g. "N SHEFFIELD AVE (2300-2358)"
   ticketDate: string;              // YYYY-MM-DD
-  ticketIssuanceTime: string | null;  // ISO datetime of ticket issuance (Chicago local)
+  ticketIssuanceTime: string | null;  // Raw input (ISO or AM/PM)
+  ticketIssuanceTimeFormatted: string | null;  // Human-readable Chicago time (e.g. "2:30 PM")
   sweptOnDate: boolean;            // Did a sweeper visit on the ticket date?
   sweptBeforeTicket: boolean;      // Did the sweeper come BEFORE the ticket was issued?
   firstSweeperPassTime: string | null;  // Chicago local time of first sweeper pass on ticket date
   lastSweeperPassTime: string | null;   // Chicago local time of last sweeper pass on ticket date
   minutesBetweenSweepAndTicket: number | null; // Minutes between first sweep pass and ticket
+  timeBetweenFormatted: string | null;  // Human-readable time diff (e.g. "4h 37m")
   visitsOnDate: SweeperVisit[];    // Visits on the ticket date
   allRecentVisits: SweeperVisit[]; // All visits in history (for context)
   message: string;                 // Human-readable summary for the AI prompt
@@ -139,13 +141,20 @@ function toChicagoDateTime(utcIso: string): { date: string; time: string; dateOb
 
 /**
  * Parse a Chicago local time string (from ticket issuance) into a Date object.
- * Ticket times come from the portal as "2026-02-07T21:07:00" (no timezone suffix = Chicago local).
- * Also handles "HH:MM AM/PM" time-only format from contest extracted_data.time.
+ *
+ * Handles THREE formats:
+ *   1. Portal ISO: "2026-02-07T21:07:00" (no Z suffix = Chicago local time)
+ *   2. OCR time-only: "2:30 PM" or "11:45 AM" (needs fallbackDate to build full timestamp)
+ *   3. UTC ISO: "2026-02-07T21:07:00Z" (ends with Z)
+ *
+ * The fallbackDate (YYYY-MM-DD) is used when dateTimeStr is a time-only string
+ * from ticket photo OCR (extracted_data.time). Without a date, "2:30 PM" cannot
+ * become a Date object.
  */
-function parseChicagoTime(dateTimeStr: string): Date | null {
+function parseChicagoTime(dateTimeStr: string, fallbackDate?: string): Date | null {
   if (!dateTimeStr) return null;
   try {
-    // If it has a T and no Z, it's Chicago local time from the portal
+    // Format 1: Portal ISO — "2026-02-07T21:07:00" (no Z, Chicago local)
     if (dateTimeStr.includes('T') && !dateTimeStr.endsWith('Z')) {
       const parts = dateTimeStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):?(\d{2})?/);
       if (!parts) return null;
@@ -166,10 +175,37 @@ function parseChicagoTime(dateTimeStr: string): Date | null {
       // Fallback: just parse it (works if server is in Chicago timezone)
       return new Date(dateTimeStr);
     }
-    // If it ends with Z, it's already UTC
+
+    // Format 3: UTC ISO — "2026-02-07T21:07:00Z"
     if (dateTimeStr.endsWith('Z')) {
       return new Date(dateTimeStr);
     }
+
+    // Format 2: Time-only from OCR — "2:30 PM", "11:45 AM", "14:30", "2:30PM"
+    // Needs fallbackDate (the ticket date) to construct a full datetime.
+    const ampmMatch = dateTimeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (ampmMatch && fallbackDate) {
+      let hour = parseInt(ampmMatch[1], 10);
+      const minute = parseInt(ampmMatch[2], 10);
+      const isPM = ampmMatch[3].toUpperCase() === 'PM';
+      if (isPM && hour !== 12) hour += 12;
+      if (!isPM && hour === 12) hour = 0;
+      // Build ISO string in Chicago local time, then parse it
+      const isoStr = `${fallbackDate}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+      return parseChicagoTime(isoStr); // Recurse into Format 1 handler
+    }
+
+    // Try 24-hour format: "14:30" or "9:05"
+    const h24Match = dateTimeStr.match(/^(\d{1,2}):(\d{2})$/);
+    if (h24Match && fallbackDate) {
+      const hour = parseInt(h24Match[1], 10);
+      const minute = parseInt(h24Match[2], 10);
+      if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+        const isoStr = `${fallbackDate}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+        return parseChicagoTime(isoStr);
+      }
+    }
+
     // Date-only format (YYYY-MM-DD) — not useful for time comparison
     return null;
   } catch {
@@ -412,11 +448,13 @@ export async function verifySweeperVisit(
     streetSegment: null,
     ticketDate,
     ticketIssuanceTime: ticketIssueTime || null,
+    ticketIssuanceTimeFormatted: null,
     sweptOnDate: false,
     sweptBeforeTicket: false,
     firstSweeperPassTime: null,
     lastSweeperPassTime: null,
     minutesBetweenSweepAndTicket: null,
+    timeBetweenFormatted: null,
     visitsOnDate: [],
     allRecentVisits: [],
     message: '',
@@ -478,8 +516,9 @@ export async function verifySweeperVisit(
     baseResult.firstSweeperPassTime = firstPass.chicagoTime;
     baseResult.lastSweeperPassTime = lastPass.chicagoTime;
 
-    // If we have the ticket issuance time, calculate the time difference
-    const ticketTime = ticketIssueTime ? parseChicagoTime(ticketIssueTime) : null;
+    // If we have the ticket issuance time, calculate the time difference.
+    // Pass ticketDate as fallback for AM/PM-only times from OCR (e.g. "2:30 PM").
+    const ticketTime = ticketIssueTime ? parseChicagoTime(ticketIssueTime, ticketDate) : null;
     const firstPassTime = new Date(firstPass.postingTime);
 
     if (ticketTime && !isNaN(ticketTime.getTime()) && !isNaN(firstPassTime.getTime())) {
@@ -488,6 +527,15 @@ export async function verifySweeperVisit(
       baseResult.minutesBetweenSweepAndTicket = diffMinutes;
       // Sweeper passed BEFORE ticket if the first GPS ping was before ticket issuance
       baseResult.sweptBeforeTicket = diffMinutes > 0;
+      // Human-readable time diff
+      const absMins = Math.abs(diffMinutes);
+      const hours = Math.floor(absMins / 60);
+      const mins = absMins % 60;
+      baseResult.timeBetweenFormatted = hours > 0 ? `${hours}h ${mins}m` : `${mins} minutes`;
+      // Human-readable ticket issuance time
+      baseResult.ticketIssuanceTimeFormatted = ticketTime.toLocaleTimeString('en-US', {
+        timeZone: CHICAGO_TZ, hour: 'numeric', minute: '2-digit', hour12: true,
+      });
     }
   }
 
@@ -510,22 +558,11 @@ export async function verifySweeperVisit(
 
     // Add the critical time comparison
     if (baseResult.sweptBeforeTicket && baseResult.minutesBetweenSweepAndTicket != null) {
-      const hours = Math.floor(baseResult.minutesBetweenSweepAndTicket / 60);
-      const mins = baseResult.minutesBetweenSweepAndTicket % 60;
-      const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins} minutes`;
-      // Format ticket issuance time safely
-      let ticketTimeStr = 'unknown';
-      try {
-        const parsed = parseChicagoTime(ticketIssueTime!);
-        if (parsed) {
-          ticketTimeStr = parsed.toLocaleTimeString('en-US', { timeZone: CHICAGO_TZ, hour: 'numeric', minute: '2-digit', hour12: true });
-        }
-      } catch { /* use 'unknown' */ }
-      msg += `\n*** CRITICAL: The sweeper passed this block ${timeStr} BEFORE the ticket was issued. ` +
-        `First sweeper GPS: ${baseResult.firstSweeperPassTime}. Ticket issued: ${ticketTimeStr}. ` +
+      msg += `\n*** CRITICAL: The sweeper passed this block ${baseResult.timeBetweenFormatted} BEFORE the ticket was issued. ` +
+        `First sweeper GPS: ${baseResult.firstSweeperPassTime}. Ticket issued: ${baseResult.ticketIssuanceTimeFormatted || 'unknown'}. ` +
         `The street was already cleaned — the purpose of the parking restriction was already fulfilled when the ticket was written. ***`;
     } else if (baseResult.minutesBetweenSweepAndTicket != null && baseResult.minutesBetweenSweepAndTicket < 0) {
-      msg += `\nNote: Sweeper first GPS ping was AFTER the ticket was issued (ticket first, sweeper ${Math.abs(baseResult.minutesBetweenSweepAndTicket)} minutes later).`;
+      msg += `\nNote: Sweeper first GPS ping was AFTER the ticket was issued (ticket first, sweeper ${baseResult.timeBetweenFormatted} later).`;
     } else if (!ticketIssueTime) {
       msg += `\nNote: Ticket issuance time not available — cannot determine if sweeper passed before or after the ticket.`;
     }

@@ -1722,8 +1722,8 @@ Ticket Date: ${sweeperVerification.ticketDate}
 Sweeper Visited on Ticket Date: ${sweeperVerification.sweptOnDate ? 'YES' : 'NO'}
 ${sweeperVerification.firstSweeperPassTime ? `First Sweeper Pass: ${sweeperVerification.firstSweeperPassTime}` : ''}
 ${sweeperVerification.lastSweeperPassTime && sweeperVerification.lastSweeperPassTime !== sweeperVerification.firstSweeperPassTime ? `Last Sweeper Pass: ${sweeperVerification.lastSweeperPassTime}` : ''}
-${sweeperVerification.ticketIssuanceTime ? `Ticket Issued: ${sweeperVerification.ticketIssuanceTime}` : ''}
-${sweeperVerification.sweptBeforeTicket ? `*** SWEEPER PASSED BEFORE TICKET — ${sweeperVerification.minutesBetweenSweepAndTicket} minutes before ***` : ''}
+${sweeperVerification.ticketIssuanceTimeFormatted ? `Ticket Issued: ${sweeperVerification.ticketIssuanceTimeFormatted}` : sweeperVerification.ticketIssuanceTime ? `Ticket Issued: ${sweeperVerification.ticketIssuanceTime}` : ''}
+${sweeperVerification.sweptBeforeTicket ? `*** SWEEPER PASSED BEFORE TICKET — ${sweeperVerification.timeBetweenFormatted || sweeperVerification.minutesBetweenSweepAndTicket + ' minutes'} before ***` : ''}
 
 ${sweeperVerification.message}
 
@@ -1740,14 +1740,14 @@ INSTRUCTIONS FOR LETTER:
 6. Do NOT cite "SweepTracker" by name — instead say "the City's own street sweeper GPS tracking records"
 ` : ''}${sweeperVerification.sweptOnDate && sweeperVerification.sweptBeforeTicket ? `
 *** CRITICAL DEFENSE FINDING: STREET SWEEPER ALREADY PASSED BEFORE TICKET WAS ISSUED ***
-The City's own GPS records show the street sweeper completed its pass on this block at ${sweeperVerification.firstSweeperPassTime}, which is ${sweeperVerification.minutesBetweenSweepAndTicket} minutes BEFORE the ticket was written.
+The City's own GPS records show the street sweeper completed its pass on this block at ${sweeperVerification.firstSweeperPassTime}, which is ${sweeperVerification.timeBetweenFormatted || sweeperVerification.minutesBetweenSweepAndTicket + ' minutes'} BEFORE the ticket was written at ${sweeperVerification.ticketIssuanceTimeFormatted || 'unknown'}.
 
 This is an EXTREMELY STRONG defense argument. The entire purpose of the street cleaning parking restriction is to allow sweepers to access the curb. Once the sweeper has passed, the restriction's purpose has been fulfilled. Ticketing a vehicle AFTER the sweeper already cleaned the street is punitive, not functional.
 
 INSTRUCTIONS FOR LETTER:
 1. This is the STRONGEST possible sweeper-related defense — use it as a primary argument
 2. State that the City's own street sweeper GPS tracking records show the sweeper completed its pass at ${sweeperVerification.firstSweeperPassTime}
-3. State that the citation was not issued until ${sweeperVerification.minutesBetweenSweepAndTicket} minutes AFTER the sweeper had already passed
+3. State that the citation was not issued until ${sweeperVerification.timeBetweenFormatted || sweeperVerification.minutesBetweenSweepAndTicket + ' minutes'} AFTER the sweeper had already passed
 4. Argue that the parking restriction exists solely to facilitate street cleaning — once cleaning is complete, the restriction serves no further purpose
 5. The vehicle's presence did not impede or delay street cleaning in any way, as proven by the City's own records
 6. The citation is punitive, not functional — it penalizes the driver despite the purpose of the restriction having been fully satisfied

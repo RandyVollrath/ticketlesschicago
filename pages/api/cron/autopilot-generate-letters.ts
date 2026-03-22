@@ -798,7 +798,8 @@ async function gatherAllEvidence(
   }
 
   // 10b. Sweeper GPS Verification (for street_cleaning violations — must capture ASAP before rolling window expires)
-  if (ticket.violation_type === 'street_cleaning' && ticket.location && ticket.violation_date) {
+  // Check both violation_type AND violation_code 9-64-010 (some tickets may have code without type)
+  if ((ticket.violation_type === 'street_cleaning' || ticket.violation_code === '9-64-010') && ticket.location && ticket.violation_date) {
     promises.push((async () => {
       try {
         const sweeperResult = await verifySweeperVisit(ticket.location!, ticket.violation_date!, ticket.issue_datetime);
@@ -809,9 +810,16 @@ async function gatherAllEvidence(
           // Persist sweeper evidence immediately — the city's API has a rolling 7-30 day window
           // If we don't capture this now, the data may be gone by the time we need it
           try {
+            // Trim allRecentVisits to keep DB payload small (can be 50+ GPS pings)
+            // Keep only visits on the ticket date + a summary count of recent visits
+            const trimmedResult = {
+              ...sweeperResult,
+              allRecentVisits: [],  // Drop raw GPS pings — visitsOnDate has the relevant ones
+              _allRecentVisitsCount: sweeperResult.allRecentVisits.length,
+            };
             await supabaseAdmin
               .from('detected_tickets')
-              .update({ sweeper_verification: sweeperResult })
+              .update({ sweeper_verification: trimmedResult })
               .eq('id', ticket.id);
           } catch (saveErr) {
             // Column may not exist yet — log but don't fail
@@ -1761,8 +1769,8 @@ Ticket Date: ${sv.ticketDate}
 Sweeper Visited on Ticket Date: ${sv.sweptOnDate ? 'YES' : 'NO'}
 ${sv.firstSweeperPassTime ? `First Sweeper Pass: ${sv.firstSweeperPassTime}` : ''}
 ${sv.lastSweeperPassTime && sv.lastSweeperPassTime !== sv.firstSweeperPassTime ? `Last Sweeper Pass: ${sv.lastSweeperPassTime}` : ''}
-${sv.ticketIssuanceTime ? `Ticket Issued: ${sv.ticketIssuanceTime}` : ''}
-${sv.sweptBeforeTicket ? `*** SWEEPER PASSED BEFORE TICKET — ${sv.minutesBetweenSweepAndTicket} minutes before ***` : ''}
+${sv.ticketIssuanceTimeFormatted ? `Ticket Issued: ${sv.ticketIssuanceTimeFormatted}` : sv.ticketIssuanceTime ? `Ticket Issued: ${sv.ticketIssuanceTime}` : ''}
+${sv.sweptBeforeTicket ? `*** SWEEPER PASSED BEFORE TICKET — ${sv.timeBetweenFormatted || sv.minutesBetweenSweepAndTicket + ' minutes'} before ***` : ''}
 
 ${sv.message}`;
 
@@ -1785,14 +1793,14 @@ INSTRUCTIONS FOR LETTER:
       sweeperSection += `
 
 *** CRITICAL DEFENSE FINDING: STREET SWEEPER ALREADY PASSED BEFORE TICKET WAS ISSUED ***
-The City's own GPS records show the street sweeper completed its pass on this block at ${sv.firstSweeperPassTime}, which is ${sv.minutesBetweenSweepAndTicket} minutes BEFORE the ticket was written.
+The City's own GPS records show the street sweeper completed its pass on this block at ${sv.firstSweeperPassTime}, which is ${sv.timeBetweenFormatted || sv.minutesBetweenSweepAndTicket + ' minutes'} BEFORE the ticket was written at ${sv.ticketIssuanceTimeFormatted || 'unknown'}.
 
 This is an EXTREMELY STRONG defense argument. The entire purpose of the street cleaning parking restriction is to allow sweepers to access the curb. Once the sweeper has passed, the restriction's purpose has been fulfilled. Ticketing a vehicle AFTER the sweeper already cleaned the street is punitive, not functional.
 
 INSTRUCTIONS FOR LETTER:
 1. This is the STRONGEST possible sweeper-related defense — use it as a primary argument
 2. State that the City's own street sweeper GPS tracking records show the sweeper completed its pass at ${sv.firstSweeperPassTime}
-3. State that the citation was not issued until ${sv.minutesBetweenSweepAndTicket} minutes AFTER the sweeper had already passed
+3. State that the citation was not issued until ${sv.timeBetweenFormatted || sv.minutesBetweenSweepAndTicket + ' minutes'} AFTER the sweeper had already passed
 4. Argue that the parking restriction exists solely to facilitate street cleaning — once cleaning is complete, the restriction serves no further purpose
 5. The vehicle's presence did not impede or delay street cleaning in any way, as proven by the City's own records
 6. The citation is punitive, not functional — it penalizes the driver despite the purpose of the restriction having been fully satisfied
