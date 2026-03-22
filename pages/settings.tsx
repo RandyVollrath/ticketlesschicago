@@ -851,6 +851,7 @@ function SettingsPageInner() {
   const [vehicleMake, setVehicleMake] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleColor, setVehicleColor] = useState('');
+  const [vehicleYear, setVehicleYear] = useState('');
 
   // Home Address (for street cleaning)
   const [homeAddress, setHomeAddress] = useState('');
@@ -1089,6 +1090,7 @@ function SettingsPageInner() {
         setVehicleMake(profileData.vehicle_make || '');
         setVehicleModel(profileData.vehicle_model || '');
         setVehicleColor(profileData.vehicle_color || '');
+        setVehicleYear(profileData.vehicle_year ? String(profileData.vehicle_year) : '');
         setCityStickerExpiry(profileData.city_sticker_expiry || '');
         setLicensePlateExpiry(profileData.license_plate_expiry || '');
         setEmissionsDate(profileData.emissions_date || '');
@@ -1308,6 +1310,7 @@ function SettingsPageInner() {
         vehicle_make: vehicleMake || null,
         vehicle_model: vehicleModel || null,
         vehicle_color: vehicleColor || null,
+        vehicle_year: vehicleYear ? parseInt(vehicleYear, 10) || null : null,
         license_plate: plateUpper || null,
         license_state: plateState || 'IL',
         city_sticker_expiry: cityStickerExpiry || null,
@@ -2106,33 +2109,68 @@ function SettingsPageInner() {
                 />
               </div>
             </div>
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                marginBottom: 6,
-                textTransform: 'uppercase',
-              }}>
-                Color
-              </label>
-              <input
-                type="text"
-                value={vehicleColor}
-                onChange={(e) => setVehicleColor(e.target.value)}
-                placeholder="e.g. Silver"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  fontSize: 14,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                }}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: COLORS.textMuted,
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                }}>
+                  Color
+                </label>
+                <input
+                  type="text"
+                  value={vehicleColor}
+                  onChange={(e) => setVehicleColor(e.target.value)}
+                  placeholder="e.g. Silver"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                    fontSize: 14,
+                    color: COLORS.primary,
+                    backgroundColor: COLORS.bgLight,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: COLORS.textMuted,
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                }}>
+                  Year
+                </label>
+                <input
+                  type="text"
+                  value={vehicleYear}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    setVehicleYear(val);
+                  }}
+                  placeholder="e.g. 2020"
+                  inputMode="numeric"
+                  maxLength={4}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                    fontSize: 14,
+                    color: COLORS.primary,
+                    backgroundColor: COLORS.bgLight,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
             </div>
             {(!vehicleMake || !vehicleModel || !vehicleColor) && (
               <p style={{ margin: 0, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.4 }}>
