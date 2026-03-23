@@ -538,7 +538,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .from('user_profiles')
               .select('*')
               .eq('user_id', matchedUserId)
-              .single();
+              .maybeSingle();
 
             // Build evidence data
             const evidenceText = messageBody || 'See attached photos';
@@ -593,7 +593,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .from('autopilot_settings' as any)
               .select('require_approval, auto_mail_enabled')
               .eq('user_id', matchedUserId)
-              .single();
+              .maybeSingle();
 
             const requireApproval = (userSettings as any)?.require_approval ?? true;
             const autoMailEnabled = (userSettings as any)?.auto_mail_enabled ?? false;

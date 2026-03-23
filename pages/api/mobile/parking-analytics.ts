@@ -169,7 +169,7 @@ export default async function handler(
         .from('profiles')
         .select('created_at')
         .eq('id', user.id)
-        .single(),
+        .maybeSingle(),
     ]);
 
     // Calculate member duration
