@@ -316,7 +316,7 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
   console.log(`\nResults: ${successful} sent, ${failed} failed, ${processed} evaluated`);
 
   // Zero-notification admin alert: if we had users to process but sent nothing, something is wrong
-  if (successful === 0 && (users?.length || 0) > 3) {
+  if (successful === 0 && totalUsersQueried > 3) {
     console.warn('ALERT: Zero notifications sent despite having users to process!');
     try {
       await notificationService.sendEmail({
@@ -325,7 +325,7 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px;">
             <h2 style="color: red;">Zero Notification Alert</h2>
-            <p>The street cleaning notification pipeline processed <strong>${users?.length || 0} users</strong> but sent <strong>0 notifications</strong>.</p>
+            <p>The street cleaning notification pipeline processed <strong>${totalUsersQueried} users</strong> but sent <strong>0 notifications</strong>.</p>
             <h3>Details</h3>
             <ul>
               <li><strong>Type:</strong> ${type}</li>
@@ -343,7 +343,7 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
             <p>Check <a href="https://vercel.com/randy-vollrath/ticketless-chicago/logs">Vercel logs</a> for details.</p>
           </div>
         `,
-        text: `ZERO NOTIFICATION ALERT\n\nType: ${type}\nChicago Date: ${chicagoDateISO}\nUsers: ${users?.length || 0}\nProcessed: ${processed}\nFailed: ${failed}\nErrors: ${errors.join(', ') || 'None'}\n\nCheck Vercel logs for details.`
+        text: `ZERO NOTIFICATION ALERT\n\nType: ${type}\nChicago Date: ${chicagoDateISO}\nUsers: ${totalUsersQueried}\nProcessed: ${processed}\nFailed: ${failed}\nErrors: ${errors.join(', ') || 'None'}\n\nCheck Vercel logs for details.`
       });
     } catch (alertError) {
       console.error('Failed to send zero-notification admin alert:', alertError);
