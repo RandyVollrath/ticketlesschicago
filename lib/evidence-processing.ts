@@ -16,7 +16,12 @@ import {
 import type { TicketFacts, UserEvidence, ContestEvaluation } from './contest-kits/types';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.APPROVAL_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// SECURITY: Never fall back to SUPABASE_SERVICE_ROLE_KEY — it would expose the
+// service role key in JWTs sent via email links. Fail hard if not configured.
+const JWT_SECRET = process.env.APPROVAL_JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('APPROVAL_JWT_SECRET is not configured — approval tokens will fail');
+}
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://autopilotamerica.com';
 
 /**
@@ -480,6 +485,9 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
  * Generate a JWT token for one-click letter approval
  */
 export function generateApprovalToken(ticketId: string, userId: string, letterId: string): string {
+  if (!JWT_SECRET) {
+    throw new Error('APPROVAL_JWT_SECRET not configured — cannot generate approval tokens');
+  }
   return jwt.sign(
     { ticket_id: ticketId, user_id: userId, letter_id: letterId },
     JWT_SECRET,
