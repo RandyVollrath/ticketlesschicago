@@ -11,13 +11,8 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin, supabase } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const BUCKET_NAME = 'license-images-temp';
 
@@ -27,10 +22,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Authenticate user via JWT
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ') || !supabase) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+    const jwtToken = authHeader.substring(7);
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(jwtToken);
+    if (authError || !authUser) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
     const { userId, side } = req.query;
 
     if (!userId || typeof userId !== 'string') {
       return res.status(400).json({ error: 'User ID required' });
+    }
+
+    // IDOR protection: users can only view their own license
+    if (authUser.id !== userId) {
+      return res.status(403).json({ error: 'You can only view your own license' });
     }
 
     if (!side || (side !== 'front' && side !== 'back')) {
@@ -38,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get user profile to find license path
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin!
       .from('user_profiles')
       .select('license_image_path, license_image_path_back')
       .eq('user_id', userId)
@@ -58,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Generate signed URL for viewing (1-hour expiration)
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin!.storage
       .from(BUCKET_NAME)
       .createSignedUrl(imagePath, 3600); // 1 hour
 
