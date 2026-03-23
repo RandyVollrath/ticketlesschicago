@@ -293,14 +293,49 @@ export default async function handler(
       return true;
     });
 
-    results.vehiclesEligible = eligible.length;
-
-    if (eligible.length === 0) {
-      console.log('[sweeper-notify] All vehicles already notified or ineligible');
-      return res.status(200).json({ success: true, message: 'All already notified', results });
+    // ─── Check user preferences: filter out users who disabled sweeper alerts ───
+    // Batch-fetch push_alert_preferences for all eligible users in one query.
+    const uniqueUserIds = [...new Set(eligible.map(v => v.user_id))];
+    const optedOutUsers = new Set<string>();
+    try {
+      const { data: profiles } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, push_alert_preferences')
+        .in('id', uniqueUserIds);
+      if (profiles) {
+        for (const p of profiles) {
+          const prefs = p.push_alert_preferences as Record<string, boolean> | null;
+          if (prefs && prefs.sweeper_passed === false) {
+            optedOutUsers.add(p.id);
+          }
+        }
+      }
+    } catch {
+      // Column might not exist yet — treat as all opted-in (default ON)
     }
 
-    console.log(`[sweeper-notify] ${parkedVehicles.length} vehicles with cleaning today, ${eligible.length} eligible for check`);
+    const finalEligible = optedOutUsers.size > 0
+      ? eligible.filter(v => {
+          if (optedOutUsers.has(v.user_id)) {
+            results.notificationsSkipped++;
+            return false;
+          }
+          return true;
+        })
+      : eligible;
+
+    results.vehiclesEligible = finalEligible.length;
+
+    if (finalEligible.length === 0) {
+      console.log('[sweeper-notify] All vehicles already notified, ineligible, or opted out');
+      return res.status(200).json({ success: true, message: 'All already notified or opted out', results });
+    }
+
+    if (optedOutUsers.size > 0) {
+      console.log(`[sweeper-notify] ${optedOutUsers.size} user(s) opted out of sweeper alerts`);
+    }
+
+    console.log(`[sweeper-notify] ${parkedVehicles.length} vehicles with cleaning today, ${finalEligible.length} eligible for check`);
 
     // ─── Step 2: Resolve addresses → TransIDs (cached per unique address) ───
     const startTime = Date.now();
@@ -313,7 +348,7 @@ export default async function handler(
     // Vehicles that couldn't be resolved to a TransID
     let unresolvedCount = 0;
 
-    for (const vehicle of eligible) {
+    for (const vehicle of finalEligible) {
       if (Date.now() - startTime > MAX_RUNTIME_MS) {
         console.log('[sweeper-notify] Approaching timeout during TransID resolution');
         break;
@@ -353,7 +388,7 @@ export default async function handler(
     }
 
     results.uniqueSegments = segmentVehicles.size;
-    console.log(`[sweeper-notify] Resolved ${eligible.length} vehicles to ${segmentVehicles.size} unique segments (${unresolvedCount} unresolved, ${transIdCache.size} address lookups)`);
+    console.log(`[sweeper-notify] Resolved ${finalEligible.length} vehicles to ${segmentVehicles.size} unique segments (${unresolvedCount} unresolved, ${transIdCache.size} address lookups)`);
 
     // ─── Step 3: Check sweeper activity per unique TransID ───
     // Shuffle segment order to prevent timeout starvation: if cron times out,

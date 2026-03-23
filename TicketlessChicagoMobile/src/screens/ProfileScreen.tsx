@@ -219,6 +219,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [dotPermitAlerts, setDotPermitAlerts] = useState(true);
   const [towAlerts, setTowAlerts] = useState(true);
   const [allClearAlerts, setAllClearAlerts] = useState(true);
+  const [sweeperPassedAlerts, setSweeperPassedAlerts] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -356,6 +357,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         'pushAlert_dotPermit',
         'pushAlert_tow',
         StorageKeys.ALL_CLEAR_ALERTS_ENABLED,
+        'pushAlert_sweeperPassed',
       ];
       const values = await AsyncStorage.multiGet(keys);
       if (!isMountedRef.current) return;
@@ -368,6 +370,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setDotPermitAlerts(getBool(values[4][1]));
       setTowAlerts(getBool(values[5][1]));
       setAllClearAlerts(getBool(values[6][1]));
+      setSweeperPassedAlerts(getBool(values[7][1]));
     } catch (error) {
       log.error('Error loading parking alert settings', error);
     }
@@ -377,6 +380,24 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setter(value);
     await AsyncStorage.setItem(key, String(value));
     showFeedback(value ? `${label} enabled` : `${label} disabled`);
+  }, [showFeedback]);
+
+  // Sweeper alert is server-sent (cron), so we sync the preference to the server
+  // in addition to storing it locally. Fire-and-forget — local always wins.
+  const toggleSweeperPassedAlert = useCallback(async (value: boolean) => {
+    setSweeperPassedAlerts(value);
+    await AsyncStorage.setItem('pushAlert_sweeperPassed', String(value));
+    showFeedback(value ? 'Sweeper alerts enabled' : 'Sweeper alerts disabled');
+    // Sync to server so the cron respects the preference
+    if (AuthService.isAuthenticated()) {
+      try {
+        await ApiClient.authPost('/api/mobile/update-push-alert-settings', {
+          push_alert_preferences: { sweeper_passed: value },
+        }, { retries: 1, timeout: 10000, showErrorAlert: false });
+      } catch {
+        log.debug('Failed to sync sweeper alert pref to server (non-fatal)');
+      }
+    }
   }, [showFeedback]);
 
   const loadPhoneCallAlertSettings = useCallback(async () => {
@@ -931,6 +952,15 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             subtitle="Move your car before street cleaning starts"
             value={streetCleaningAlerts}
             onValueChange={v => toggleParkingAlert('pushAlert_streetCleaning', v, setStreetCleaningAlerts, 'Street cleaning alerts')}
+          />
+          <Divider />
+          <SettingRow
+            icon="truck-check-outline"
+            iconColor="#10B981"
+            title="Sweeper Passed"
+            subtitle="Know when the sweeper has passed so you can reclaim your spot"
+            value={sweeperPassedAlerts}
+            onValueChange={toggleSweeperPassedAlert}
           />
           <Divider />
           <SettingRow
