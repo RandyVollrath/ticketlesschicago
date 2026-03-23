@@ -194,15 +194,22 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, adminUser: 
         break;
     }
 
-    // Update the letter
+    // Optimistic lock: only update if letter is still in a reviewable state.
+    // Prevents race conditions where two admins act on the same letter simultaneously.
+    const REVIEWABLE_STATUSES = ['draft', 'needs_admin_review', 'pending_approval', 'awaiting_consent', 'approved', 'ready'];
     const { data: updatedLetter, error: updateError } = await supabase
       .from('contest_letters')
       .update(updateData)
       .eq('id', letterId)
+      .in('status', REVIEWABLE_STATUSES)
       .select()
       .single();
 
     if (updateError) {
+      // If .single() returns no rows, the letter status changed since fetch (race condition)
+      if (updateError.code === 'PGRST116') {
+        return res.status(409).json({ error: 'Letter status has changed. Please refresh and try again.' });
+      }
       console.error('Error updating letter:', updateError);
       return res.status(500).json({ error: sanitizeErrorMessage(updateError) });
     }

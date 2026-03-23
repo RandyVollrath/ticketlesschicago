@@ -18,12 +18,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       checks.checks.supabase = { status: 'unhealthy', error: 'Supabase admin client not configured' };
     }
 
-    // Check environment variables
+    // Check environment is configured (don't expose variable names)
+    const requiredEnvVars = [
+      'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET',
+      'SUPABASE_SERVICE_ROLE_KEY', 'NEXT_PUBLIC_SUPABASE_URL'
+    ];
+    const missingCount = requiredEnvVars.filter(k => !process.env[k]).length;
     checks.checks.env = {
-      STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
-      STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET,
-      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL
+      status: missingCount === 0 ? 'healthy' : 'unhealthy',
+      configured: requiredEnvVars.length - missingCount,
+      total: requiredEnvVars.length,
     };
 
     // Overall health status

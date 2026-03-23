@@ -23,14 +23,36 @@ export default async function handler(
   }
 
   try {
-    const { userId, newAddress } = req.body;
+    if (!supabaseAdmin) {
+      throw new Error('Database not available');
+    }
+
+    // Auth: either Bearer token (user) or CRON_SECRET (internal cron call)
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+    const isCronCall = cronSecret && authHeader === `Bearer ${cronSecret}`;
+
+    let userId: string;
+    const { newAddress } = req.body;
+
+    if (isCronCall) {
+      // Internal cron call — trust the userId from the body
+      userId = req.body.userId;
+    } else {
+      // User-facing call — authenticate via Bearer token
+      const token = authHeader?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+      if (authError || !authUser) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      userId = authUser.id;
+    }
 
     if (!userId || !newAddress) {
       return res.status(400).json({ error: 'Missing userId or newAddress' });
-    }
-
-    if (!supabaseAdmin) {
-      throw new Error('Database not available');
     }
 
     // Get current user profile

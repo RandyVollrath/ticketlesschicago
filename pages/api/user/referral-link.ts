@@ -15,11 +15,17 @@ export default async function handler(
   }
 
   try {
-    const { userId } = req.query;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
+    // Authenticate user via Bearer token
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
     }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !authData?.user) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    const userId = authData.user.id;
 
     // Get user profile
     const { data: profile, error: profileError } = await supabaseAdmin

@@ -65,8 +65,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const documentType = fields.documentType?.[0];
     const file = files.document?.[0];
 
-    if (!documentType) {
-      return res.status(400).json({ error: 'documentType is required' });
+    const ALLOWED_DOCUMENT_TYPES = ['utility_bill', 'lease', 'mortgage', 'property_tax'];
+    if (!documentType || !ALLOWED_DOCUMENT_TYPES.includes(documentType)) {
+      return res.status(400).json({ error: `documentType must be one of: ${ALLOWED_DOCUMENT_TYPES.join(', ')}` });
     }
 
     if (!file) {

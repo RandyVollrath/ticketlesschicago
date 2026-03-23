@@ -648,11 +648,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { userId, documentPath } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'userId required' });
+    // SECURITY: Authenticate the caller via Bearer token
+    const authToken = req.headers.authorization?.replace('Bearer ', '');
+    if (!authToken) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(authToken);
+    if (authError || !authUser) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    // Use authenticated user's ID — ignore any userId from request body to prevent IDOR
+    const userId = authUser.id;
+
+    const { documentPath } = req.body;
 
     // Get user profile
     const { data: profile, error: profileError } = await supabase

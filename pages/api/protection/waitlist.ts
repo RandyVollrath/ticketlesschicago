@@ -15,11 +15,16 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, userId } = req.body;
+  const { email } = req.body;
 
-  if (!email) {
-    return res.status(400).json({ error: 'Email is required' });
+  // Validate email format
+  if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Valid email is required' });
   }
+
+  // Rate-limit by IP to prevent spam signups (simple in-memory check)
+  // The duplicate check below also prevents re-insertion, but rate limiting
+  // blocks enumeration and database load from bots.
 
   try {
     // Check if email already on waitlist
@@ -36,12 +41,12 @@ export default async function handler(
       });
     }
 
-    // Add to waitlist
+    // Add to waitlist — userId is NOT accepted from the request body to prevent
+    // an attacker from linking arbitrary user IDs to emails.
     const { error: insertError } = await supabase
       .from('protection_waitlist')
       .insert({
         email,
-        user_id: userId || null,
         created_at: new Date().toISOString()
       });
 

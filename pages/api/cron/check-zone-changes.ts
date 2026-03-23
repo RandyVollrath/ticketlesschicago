@@ -95,7 +95,10 @@ export default async function handler(
           try {
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/user/update-address`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+              },
               body: JSON.stringify({
                 userId: user.user_id,
                 newAddress: user.mailing_address
