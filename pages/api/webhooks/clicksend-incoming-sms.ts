@@ -674,7 +674,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const userEmail = authUser?.user?.email;
                 if (userEmail) {
                   const violationTypeDisplay = ticket.violation_type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Parking';
-                  await sendApprovalEmailForEvidence(
+                  const approvalSent = await sendApprovalEmailForEvidence(
                     userEmail,
                     profile?.first_name || 'there',
                     ticket.ticket_number,
@@ -686,6 +686,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     ticket.violation_date || null,
                     ticket.amount || null,
                   );
+                  if (!approvalSent) {
+                    console.error(`❌ Failed to send approval email for ticket ${ticket.ticket_number} to ${userEmail} via SMS webhook — user will not receive approval prompt`);
+                  }
+                } else {
+                  console.error(`❌ No email found for user ${matchedUserId} — cannot send approval email for ticket ${ticket.ticket_number}`);
                 }
               } catch (approvalError) {
                 console.error('Approval email error (continuing):', approvalError);

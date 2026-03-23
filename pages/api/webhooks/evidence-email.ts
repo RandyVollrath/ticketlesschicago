@@ -695,7 +695,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // If approval is needed and we have a regenerated letter, send approval email immediately
     if (needsApproval && regeneratedLetterContent && currentLetterId) {
-      await sendApprovalEmailForEvidence(
+      const approvalSent = await sendApprovalEmailForEvidence(
         userEmail,
         profile?.first_name || 'there',
         ticket.ticket_number,
@@ -707,6 +707,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ticket.violation_date || ticket.issue_date || null,
         ticket.amount || ticket.total_amount || null,
       );
+      if (!approvalSent) {
+        console.error(`❌ Failed to send approval email for ticket ${ticket.ticket_number} to ${userEmail} — user will not receive approval prompt`);
+      }
     } else if (!needsApproval) {
       // Auto-mail user: send simple confirmation and trigger mailing
       await sendUserConfirmation(fromEmail, profile?.first_name || 'there', ticket.ticket_number);

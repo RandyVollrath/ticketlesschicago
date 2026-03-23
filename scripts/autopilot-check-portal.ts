@@ -1678,6 +1678,15 @@ function generateLetterContent(
       `demonstrating my ongoing good-faith effort to comply with all city regulations.`;
   }
 
+  // Add active alert subscriptions as additional good-faith evidence
+  if (automatedEvidence?.alertSubscriptions?.hasAlerts && automatedEvidence.alertSubscriptions.alertTypes.length > 0) {
+    const alertTypes = automatedEvidence.alertSubscriptions.alertTypes;
+    content += `\n\nFurthermore, I maintain active subscriptions to the following city compliance alert services: ` +
+      `${alertTypes.join(', ')}. ` +
+      `These subscriptions demonstrate my proactive effort to comply with Chicago parking regulations ` +
+      `and my good-faith intention to avoid violations.`;
+  }
+
   const fullLetter = `${today}
 
 ${fullName}
@@ -2174,7 +2183,7 @@ async function processFoundTicket(
     .from('detected_tickets')
     .select('id')
     .eq('ticket_number', ticket.ticket_number)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     console.log(`      Ticket ${ticket.ticket_number} already exists, skipping`);
@@ -2224,7 +2233,7 @@ async function processFoundTicket(
     .from('user_profiles')
     .select('*')
     .eq('user_id', user_id)
-    .single();
+    .maybeSingle();
 
   // Get user email
   const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user_id);
