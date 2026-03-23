@@ -379,6 +379,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`Found pending ticket: ${ticket.ticket_number}`);
 
+    // IDEMPOTENCY: If evidence was already uploaded (webhook re-delivery), skip processing.
+    // This prevents duplicate attachments, duplicate Claude Vision calls, and duplicate emails.
+    if (ticket.user_evidence_uploaded_at) {
+      console.log(`Evidence already processed for ticket ${ticket.id} at ${ticket.user_evidence_uploaded_at} — skipping (idempotent)`);
+      return res.status(200).json({
+        success: true,
+        message: 'Evidence already processed (idempotent)',
+        ticket_id: ticket.id,
+      });
+    }
+
     // Get user profile for letter regeneration
     const { data: profile } = await supabaseAdmin
       .from('user_profiles')
@@ -531,8 +542,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       evidenceData.attachment_urls = [...existingAttachmentUrls, ...attachmentUrls];
       console.log(`Total attachments: ${evidenceData.attachment_urls.length} (${existingAttachmentUrls.length} existing + ${attachmentUrls.length} new)`);
 
-      // Run Claude Vision analysis on uploaded photos
-      const photoUrls = attachmentUrls.filter((u: string) => /\.(jpg|jpeg|png|gif|heic|webp)/i.test(u));
+      // Run Claude Vision analysis on uploaded photos (limit to 10 to prevent cost escalation)
+      const MAX_PHOTOS_TO_ANALYZE = 10;
+      const allPhotoUrls = attachmentUrls.filter((u: string) => /\.(jpg|jpeg|png|gif|heic|webp)/i.test(u));
+      if (allPhotoUrls.length > MAX_PHOTOS_TO_ANALYZE) {
+        console.log(`⚠️ Limiting photo analysis to first ${MAX_PHOTOS_TO_ANALYZE} of ${allPhotoUrls.length} photos`);
+      }
+      const photoUrls = allPhotoUrls.slice(0, MAX_PHOTOS_TO_ANALYZE);
       if (photoUrls.length > 0) {
         const photoAnalysisResults = await analyzeEvidencePhotos(photoUrls, ticket);
         if (photoAnalysisResults.length > 0) {

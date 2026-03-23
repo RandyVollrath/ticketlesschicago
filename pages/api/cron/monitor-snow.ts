@@ -23,6 +23,18 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Verify authorization (header only — never accept secrets in query params which get logged)
+  const authHeader = req.headers.authorization;
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const secret = process.env.CRON_SECRET;
+  const isAuthorized = secret
+    ? (authHeader === `Bearer ${secret}`)
+    : false;
+
+  if (!isVercelCron && !isAuthorized) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const startTime = Date.now();
 
   try {
