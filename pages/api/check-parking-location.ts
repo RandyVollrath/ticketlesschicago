@@ -72,7 +72,7 @@ export default async function handler(
       const { data: statusData } = await supabase
         .from('snow_route_status')
         .select('is_active, activation_date')
-        .single();
+        .maybeSingle();
 
       if (statusData?.is_active) {
         rules.push({

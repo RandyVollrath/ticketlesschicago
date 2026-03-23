@@ -94,7 +94,7 @@ async function getCourtDataForViolation(
       .select('*')
       .eq('stat_type', 'violation_code')
       .eq('stat_key', violationCode)
-      .single();
+      .maybeSingle();
 
     // Get ALL successful cases for this violation
     const { data: allSuccessfulCases } = await supabase
@@ -315,7 +315,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('first_name, last_name, address, email, phone, mailing_city, mailing_state, mailing_address, vehicle_make, vehicle_model, vehicle_color, vehicle_year, license_plate')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     // Look up ordinance info
     const ordinanceInfo = contest.violation_code ? getOrdinanceByCode(contest.violation_code) : null;

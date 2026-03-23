@@ -160,7 +160,7 @@ export default async function handler(
           .from('user_profiles')
           .select('user_id')
           .eq('email', email)
-          .single();
+          .maybeSingle();
           
         if (existingMSC) {
           // Update existing MSC profile

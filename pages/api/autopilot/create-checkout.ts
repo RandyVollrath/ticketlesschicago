@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('autopilot_subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     let customerId = existingSub?.stripe_customer_id;
 

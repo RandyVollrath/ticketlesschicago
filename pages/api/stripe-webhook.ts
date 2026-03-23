@@ -227,7 +227,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('property_tax_appeals')
             .select('id, status, stripe_payment_intent_id')
             .eq('id', appealId)
-            .single();
+            .maybeSingle();
 
           if (existingAppeal?.stripe_payment_intent_id === session.payment_intent) {
             console.log('⏭️ Property Tax Appeal payment already processed (idempotent skip)');

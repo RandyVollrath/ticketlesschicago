@@ -35,14 +35,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('stripe_customer_id, has_contesting')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     // Also check autopilot_subscriptions for customer ID
     const { data: subscription } = await supabaseAdmin
       .from('autopilot_subscriptions')
       .select('stripe_customer_id, stripe_subscription_id, status')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     // If already marked as paid, return success
     if (profile?.has_contesting === true) {
