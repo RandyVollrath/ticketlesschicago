@@ -277,13 +277,13 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
 
         // Send notifications
         console.log(`Sending ${type} to ${user.email} for cleaning ${cleaningDateStr} (${daysUntil}d)`);
-        const notificationSent = await sendNotification(user, type, cleaningDateForDisplay, daysUntil);
+        const result = await sendNotification(user, type, cleaningDateForDisplay, daysUntil);
 
-        if (notificationSent) {
+        if (result.sent) {
           successful++;
           // BUG FIX: Use supabaseAdmin for logging (bypasses RLS).
           // BUG FIX: Store cleaning_date as date string, not ISO datetime.
-          await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section);
+          await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.channels);
         } else {
           failed++;
         }
@@ -326,11 +326,13 @@ function shouldSendNotification(user: any, type: string, daysUntil: number): boo
   }
 }
 
-async function sendNotification(user: any, type: string, cleaningDate: Date, daysUntil: number): Promise<boolean> {
+async function sendNotification(user: any, type: string, cleaningDate: Date, daysUntil: number): Promise<{ sent: boolean; channels: string[] }> {
+  const channelsSent: string[] = [];
+
   // Validate date to prevent "Invalid Date" in messages
   if (!cleaningDate || isNaN(cleaningDate.getTime())) {
     console.error('Invalid cleaning date provided:', cleaningDate);
-    return false;
+    return { sent: false, channels: [] };
   }
 
   const formattedDate = cleaningDate.toLocaleDateString('en-US', {
@@ -375,8 +377,6 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
       break;
   }
 
-  let anySent = false;
-
   try {
     // Send email if enabled (most users have email enabled)
     if (user.email && user.notify_email !== false) {
@@ -399,7 +399,7 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
         `,
         text: `${subject}\n\n${message}\n\nYour Address:\n${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://autopilotamerica.com/settings`
       });
-      anySent = true;
+      channelsSent.push('email');
     }
 
     // Send SMS if user has SMS enabled and phone number
@@ -410,7 +410,7 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
         to: phoneNumber,
         message: message
       });
-      anySent = true;
+      channelsSent.push('sms');
     }
 
     // Send voice call if enabled (morning reminders only)
@@ -423,13 +423,12 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
         const voiceMessage = message.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
         const voiceResult = await sendClickSendVoiceCall(phoneNumber, voiceMessage);
         if (voiceResult.success) {
-          anySent = true;
+          channelsSent.push('voice');
         } else {
           console.error(`  Voice call failed for ${phoneNumber}:`, voiceResult.error);
         }
       } catch (voiceError) {
         console.error(`  Voice call error for ${phoneNumber}:`, voiceError);
-        // Don't fail the whole notification if just voice call fails
       }
     }
 
@@ -446,26 +445,34 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
         });
         if (pushSent) {
           console.log(`  Push -> ${user.push_token.substring(0, 20)}...`);
-          anySent = true;
+          channelsSent.push('push');
         }
       } catch (pushError) {
         console.error(`  Push failed for ${user.email}:`, pushError);
       }
     }
 
-    if (!anySent) {
+    if (channelsSent.length === 0) {
       console.log(`  No channels available for ${user.email} (email: ${user.notify_email}, sms: ${user.notify_sms}, phone: ${phoneNumber})`);
     }
 
-    return anySent;
+    return { sent: channelsSent.length > 0, channels: channelsSent };
   } catch (error) {
     console.error(`Failed to send notification to ${user.email}:`, error);
-    return false;
+    return { sent: false, channels: [] };
   }
 }
 
 
-async function logNotification(userId: string, type: string, cleaningDateStr: string, ward: string, section: string) {
+async function logNotification(
+  userId: string,
+  type: string,
+  cleaningDateStr: string,
+  ward: string,
+  section: string,
+  daysUntil?: number,
+  channelsSent?: string[]
+) {
   try {
     // BUG FIX: Use supabaseAdmin to bypass RLS.
     // BUG FIX: Store cleaning_date as date string (matches column type).
@@ -474,14 +481,15 @@ async function logNotification(userId: string, type: string, cleaningDateStr: st
       .insert({
         user_id: userId,
         notification_type: 'street_cleaning',
-        scheduled_for: new Date().toISOString(),
         sent_at: new Date().toISOString(),
         status: 'sent',
         ward: ward,
         section: section,
         cleaning_date: cleaningDateStr,
-        metadata: { type, channels: ['email', 'sms'] }
-      });
+        days_before: daysUntil ?? null,
+        channels: channelsSent || ['email'],
+        metadata: { type }
+      } as any);
   } catch (error) {
     console.error('Failed to log notification:', error);
   }
