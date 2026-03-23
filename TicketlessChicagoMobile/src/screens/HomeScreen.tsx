@@ -25,6 +25,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+import { ParkingHistoryService } from './HistoryScreen';
 import { Button, Card, RuleCard, StatusBadge } from '../components';
 import LocationService, { ParkingCheckResult, ParkingRule, Coordinates } from '../services/LocationService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
@@ -796,6 +797,33 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           }
         } catch (e) {
           log.debug('Could not read last parking check coords', e);
+        }
+      }
+
+      // Third fallback: parking history (local + server merge).
+      // After a fresh install or data clear, AsyncStorage is empty but the server
+      // still has parking records. getHistory() fetches from server on first call.
+      // Use the most recent record that has no departure (car is still there).
+      if (!coords) {
+        try {
+          const history = await ParkingHistoryService.getHistory();
+          // Find the most recent un-departed parking record
+          const activePark = history.find(item =>
+            !item.departure &&
+            item.coords?.latitude &&
+            item.coords?.longitude
+          );
+          if (activePark) {
+            coords = {
+              latitude: activePark.coords.latitude,
+              longitude: activePark.coords.longitude,
+              accuracy: activePark.coords.accuracy,
+            };
+            const ageMin = Math.round((Date.now() - activePark.timestamp) / 60000);
+            log.info(`Using parking history location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} (${activePark.address || 'unknown'}, parked ${ageMin}min ago)`);
+          }
+        } catch (e) {
+          log.debug('Could not read parking history for coords', e);
         }
       }
 
