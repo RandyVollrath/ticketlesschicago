@@ -1670,6 +1670,30 @@ function generateLetterContent(
     defenseType = template.type;
   }
 
+  // Add GPS parking history as corroborating evidence (proves the app was monitoring the vehicle)
+  if (automatedEvidence?.parkingHistory?.matchFound && automatedEvidence.parkingHistory.address) {
+    const parkedTime = automatedEvidence.parkingHistory.parkedAt
+      ? new Date(automatedEvidence.parkingHistory.parkedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+      : 'the time indicated';
+    content += `\n\nAdditionally, GPS records from my vehicle monitoring application confirm that my vehicle ` +
+      `was located at ${automatedEvidence.parkingHistory.address} on ${parkedTime}. ` +
+      `This independently-recorded location data corroborates the circumstances of this citation.`;
+    if (automatedEvidence.parkingHistory.onSnowRoute) {
+      content += ` My records also indicate this location is on a designated snow route.`;
+    }
+    if (automatedEvidence.parkingHistory.permitZone) {
+      content += ` This location is within permit zone ${automatedEvidence.parkingHistory.permitZone}.`;
+    }
+  }
+
+  // Add street cleaning zone verification data (for street_cleaning violations only)
+  if (automatedEvidence?.streetCleaning?.checked && automatedEvidence.streetCleaning.relevant && automatedEvidence.streetCleaning.ward) {
+    content += `\n\nPer city records, the cited location falls within Ward ${automatedEvidence.streetCleaning.ward}, ` +
+      `Section ${automatedEvidence.streetCleaning.section}. ` +
+      `I request that the Department verify the street cleaning schedule for this specific ward and section ` +
+      `on the date of the citation, as scheduled cleaning may not have occurred or may have been cancelled.`;
+  }
+
   // Add notification history as good-faith compliance evidence (applies to all violation types)
   if (notificationHistory && notificationHistory.count > 0) {
     content += `\n\nI would also like to note that I am a conscientious vehicle owner who actively uses ` +
