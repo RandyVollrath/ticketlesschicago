@@ -226,9 +226,8 @@ export default function StreetCleaningSettings() {
           console.warn(`Ward ${ward}, Section ${section} not found in street cleaning data`);
           setNextCleaningDate(null);
           setCleaningStatus('no_upcoming_dates');
-
-          // More helpful message - no upcoming dates doesn't necessarily mean invalid
-          setError(`No more upcoming cleaning dates for the year.`);
+          setError('');
+          setMessage('No more upcoming cleaning dates for this year.');
         }
       } else {
         setNextCleaningDate(null);

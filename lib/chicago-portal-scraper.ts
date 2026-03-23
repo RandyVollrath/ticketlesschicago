@@ -61,7 +61,26 @@ export interface LookupResult {
   screenshot_path: string | null;
   captcha_cost: number; // always 0 now — no captcha needed
   lookup_duration_ms: number;
+  format_warnings: string[]; // Non-fatal warnings about unexpected API response format
 }
+
+// Expected field keys in the CHI PAY API itemRow format (2026).
+// Used to detect format drift — if any of these disappear, we alert.
+const EXPECTED_ITEM_FIELD_KEYS = [
+  'Ticket Number',
+  'Date Issued',
+  'Violation Description',
+  'amountDue',
+  'Notice Level',
+];
+
+// Additional known field keys (not required but tracked for completeness)
+const KNOWN_ITEM_FIELD_KEYS = new Set([
+  'Ticket Number', 'Date Issued', 'Violation Description', 'amountDue',
+  'Notice Level', 'Lic Plate Number', 'Lic Plate State', 'receivableType',
+  'receivableDescription', 'id', 'payable', 'Hearing Start Date',
+  'Hearing End Date', 'lastName',
+]);
 
 /**
  * Parse ticket data from the CHI PAY API response JSON.
@@ -69,24 +88,77 @@ export interface LookupResult {
  * The API returns structured data at POST /payments-web/api/searches.
  * On success (200), the response contains receivables (tickets).
  * On 422, the response contains an error message (usually "no open receivables").
+ *
+ * Returns { tickets, warnings } — warnings are non-fatal format issues that
+ * should be logged and alerted on to detect API format changes early.
  */
-function parseTicketsFromApiResponse(data: any): PortalTicket[] {
+function parseTicketsFromApiResponse(data: any): { tickets: PortalTicket[]; warnings: string[] } {
   const tickets: PortalTicket[] = [];
+  const warnings: string[] = [];
 
-  if (!data) return tickets;
+  if (!data) return { tickets, warnings };
+
+  // ── Schema validation: check top-level structure ──
+  if (typeof data !== 'object') {
+    warnings.push(`API response is ${typeof data}, expected object`);
+    return { tickets, warnings };
+  }
+
+  if (!data.searchResult) {
+    // Check for any known alternate top-level keys
+    const topKeys = Object.keys(data).join(', ');
+    warnings.push(`Missing searchResult in API response. Top-level keys: [${topKeys}]`);
+  }
 
   // The CHI PAY API returns tickets in data.searchResult.itemRows,
   // where each row has an itemFields array of {fieldKey, fieldValue} pairs.
   // This is the current (2026) API format.
   const itemRows = data?.searchResult?.itemRows;
   if (Array.isArray(itemRows) && itemRows.length > 0) {
+    // Validate field keys on the first row to detect format drift
+    const firstRow = itemRows[0];
+    if (firstRow?.itemFields && Array.isArray(firstRow.itemFields)) {
+      const presentKeys = new Set(firstRow.itemFields.map((f: any) => f?.fieldKey).filter(Boolean));
+
+      // Check required keys
+      for (const expectedKey of EXPECTED_ITEM_FIELD_KEYS) {
+        if (!presentKeys.has(expectedKey)) {
+          warnings.push(`Expected field key "${expectedKey}" missing from itemRow. Present keys: [${Array.from(presentKeys).join(', ')}]`);
+        }
+      }
+
+      // Check for unknown new keys (format expansion — not critical but worth logging)
+      for (const key of presentKeys) {
+        if (!KNOWN_ITEM_FIELD_KEYS.has(key as string)) {
+          warnings.push(`Unknown new field key "${key}" in itemRow — API may have added new fields`);
+        }
+      }
+    } else {
+      warnings.push(`First itemRow has no itemFields array — format changed`);
+    }
+
     for (const row of itemRows) {
       const ticket = parseItemRow(row, JSON.stringify(row));
       if (ticket) {
         tickets.push(ticket);
       }
     }
-    return tickets;
+
+    // If we had rows but parsed 0 tickets, that's a format problem
+    if (tickets.length === 0 && itemRows.length > 0) {
+      warnings.push(`${itemRows.length} itemRows found but 0 tickets parsed — parsing logic may be outdated`);
+    }
+
+    return { tickets, warnings };
+  }
+
+  // If searchResult exists but has no itemRows, check what it does have
+  if (data?.searchResult && !itemRows) {
+    const srKeys = Object.keys(data.searchResult).join(', ');
+    // Only warn if there's no error message (422 responses have errorMessage, not itemRows)
+    if (!data.searchResult.errorMessage && !data.searchResult.errorMessageDisplay) {
+      warnings.push(`searchResult has no itemRows. Keys: [${srKeys}]. Snapshot: ${JSON.stringify(data.searchResult).substring(0, 300)}`);
+    }
   }
 
   // Legacy fallback: older API format with flat receivable objects
@@ -99,9 +171,13 @@ function parseTicketsFromApiResponse(data: any): PortalTicket[] {
 
   if (!Array.isArray(receivables)) {
     if (typeof receivables === 'object' && receivables.ticketNumber) {
-      return [parseReceivable(receivables, JSON.stringify(data))];
+      return { tickets: [parseReceivable(receivables, JSON.stringify(data))], warnings };
     }
-    return tickets;
+    return { tickets, warnings };
+  }
+
+  if (receivables.length > 0) {
+    warnings.push(`Using legacy receivables format (${receivables.length} items) — API may have reverted from itemRows format`);
   }
 
   for (const recv of receivables) {
@@ -111,7 +187,7 @@ function parseTicketsFromApiResponse(data: any): PortalTicket[] {
     }
   }
 
-  return tickets;
+  return { tickets, warnings };
 }
 
 /**
@@ -508,6 +584,7 @@ export async function lookupPlateOnPortal(
     screenshot_path: null,
     captcha_cost: 0, // Always 0 — no captcha needed
     lookup_duration_ms: 0,
+    format_warnings: [],
   };
 
   try {
@@ -651,11 +728,22 @@ export async function lookupPlateOnPortal(
 
     // Parse the API response
     if (searchApiStatus === 200 && searchApiResponse) {
-      // Success - parse ticket data from JSON
-      result.tickets = parseTicketsFromApiResponse(searchApiResponse);
+      // Success - parse ticket data from JSON with format validation
+      const parsed = parseTicketsFromApiResponse(searchApiResponse);
+      result.tickets = parsed.tickets;
+      result.format_warnings = parsed.warnings;
+
+      // Log any format warnings — these indicate the API may have changed
+      if (parsed.warnings.length > 0) {
+        console.warn(`    ⚠ ${parsed.warnings.length} format warning(s) for plate ${plate}:`);
+        for (const w of parsed.warnings) {
+          console.warn(`      - ${w}`);
+        }
+      }
+
       console.log(`    Found ${result.tickets.length} ticket(s) in API response`);
 
-      // If we got a 200 but parseTicketsFromApiResponse returned 0 tickets,
+      // If we got a 200 but parsing returned 0 tickets,
       // the response structure might be different than expected.
       // Log it for debugging.
       if (result.tickets.length === 0) {
@@ -665,6 +753,7 @@ export async function lookupPlateOnPortal(
         const fallbackTickets = await parseResultsFromPage(page);
         if (fallbackTickets.length > 0) {
           result.tickets = fallbackTickets;
+          result.format_warnings.push(`Used HTML fallback parsing — API JSON yielded 0 tickets but HTML had ${fallbackTickets.length}`);
           console.log(`    Fallback HTML parsing found ${fallbackTickets.length} ticket(s)`);
         }
       }
@@ -888,11 +977,81 @@ export async function lookupMultiplePlates(
   const totalTickets = results.reduce((sum, r) => sum + r.tickets.length, 0);
   const failures = results.filter(r => r.error).length;
 
+  // Aggregate format warnings across all lookups
+  const allWarnings = results.flatMap(r => r.format_warnings);
+  const uniqueWarnings = [...new Set(allWarnings)];
+
   console.log(`\nLookup complete:`);
   console.log(`  Plates checked: ${results.length}`);
   console.log(`  Total tickets found: ${totalTickets}`);
   console.log(`  Failures: ${failures}`);
   console.log(`  Cost: $0.00 (no captcha needed)`);
 
+  if (uniqueWarnings.length > 0) {
+    console.warn(`\n  ⚠ FORMAT WARNINGS (${uniqueWarnings.length} unique):`);
+    for (const w of uniqueWarnings) {
+      console.warn(`    - ${w}`);
+    }
+    console.warn('  → The CHI PAY API format may have changed. Review scraper parsing logic.');
+
+    // Send admin email alert about format changes
+    try {
+      await sendFormatChangeAlert(uniqueWarnings, results.length, totalTickets, failures);
+    } catch (alertErr: any) {
+      console.error(`  Failed to send format alert email: ${alertErr.message}`);
+    }
+  }
+
   return results;
+}
+
+/**
+ * Send an admin email alert when the portal API response format appears to have changed.
+ * Uses Resend API directly (no import needed — this module runs outside Vercel).
+ */
+async function sendFormatChangeAlert(
+  warnings: string[],
+  platesChecked: number,
+  ticketsFound: number,
+  failures: number,
+): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('  RESEND_API_KEY not set — cannot send format alert email');
+    return;
+  }
+
+  const warningList = warnings.map(w => `• ${w}`).join('\n');
+  const subject = `⚠ Portal Scraper: API Format Change Detected (${warnings.length} warning${warnings.length === 1 ? '' : 's'})`;
+  const body = `The CHI PAY portal scraper detected unexpected changes in the API response format during the latest run.
+
+Run Summary:
+- Plates checked: ${platesChecked}
+- Tickets found: ${ticketsFound}
+- Failures: ${failures}
+- Format warnings: ${warnings.length}
+
+Warnings:
+${warningList}
+
+Action Required:
+Review lib/chicago-portal-scraper.ts — the parseTicketsFromApiResponse() function may need updating to match the new API format. If tickets are still being parsed correctly, these warnings may just indicate new optional fields (safe to add to KNOWN_ITEM_FIELD_KEYS).
+
+This is an automated alert from the autopilot portal scraper.`;
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Autopilot <alerts@autopilotamerica.com>',
+      to: ['randy@autopilotamerica.com'],
+      subject,
+      text: body,
+    }),
+  });
+
+  console.log('  Format alert email sent to admin');
 }
