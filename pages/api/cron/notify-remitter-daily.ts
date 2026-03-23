@@ -63,7 +63,8 @@ export default async function handler(
   // Verify cron authorization
   const authHeader = req.headers.authorization;
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
-  const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const secret = process.env.CRON_SECRET;
+  const isAuthorized = isVercelCron || (secret ? authHeader === `Bearer ${secret}` : false);
 
   if (!isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });

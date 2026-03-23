@@ -2,11 +2,17 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS, RedLightEvidenceExhibit } from '../../../lib/lob-service';
 import { computeEvidenceHash } from '../../../lib/red-light-evidence-report';
 import { analyzeRedLightDefense, type AnalysisInput } from '../../../lib/red-light-defense-analysis';
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 }) : null;
+const gemini = (process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY)
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY!)
+  : null;
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,10 +25,12 @@ interface LetterToMail {
   id: string;
   ticket_id: string;
   user_id: string;
+  updated_at: string;
   letter_content: string;
   letter_text: string;
   defense_type: string | null;
   status: string;
+  approved_via?: string | null;
   street_view_exhibit_urls: string[] | null;
   street_view_date: string | null;
   street_view_address: string | null;
@@ -46,6 +54,16 @@ interface UserProfile {
 interface Subscription {
   status: string;
   letters_included_remaining?: number | null;
+  letters_used_this_period?: number | null;
+  letters_included?: number | null;
+}
+
+interface AIReviewResult {
+  pass: boolean;
+  correctedLetter?: string;
+  issues: string[];
+  qualityScore: number;
+  provider: 'anthropic' | 'gemini' | 'openai' | 'heuristic';
 }
 
 function isAdminApprovedLetter(letter: { status: string; approved_via?: string | null }): boolean {
@@ -59,10 +77,15 @@ function isAdminApprovedLetter(letter: { status: string; approved_via?: string |
  * Check if kill switches are active
  */
 async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string }> {
-  const { data: settings } = await supabaseAdmin
+  const { data: settings, error: settingsError } = await supabaseAdmin
     .from('autopilot_admin_settings')
     .select('key, value')
     .in('key', ['pause_all_mail', 'pause_ticket_processing']);
+
+  if (settingsError) {
+    console.error('Failed to check kill switches:', settingsError.message);
+    return { proceed: false, message: 'Kill switch check failed — halting to be safe' };
+  }
 
   for (const setting of settings || []) {
     if (setting.key === 'pause_all_mail' && setting.value?.enabled) {
@@ -793,12 +816,9 @@ async function enqueueFoiaRequestForTicket(params: {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify cron secret
   const authHeader = req.headers.authorization;
-  const keyParam = req.query.key as string | undefined;
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const secret = process.env.CRON_SECRET;
-  const isAuthorized = secret
-    ? (authHeader === `Bearer ${secret}` || keyParam === secret)
-    : false;
+  const isAuthorized = isVercelCron || (secret ? authHeader === `Bearer ${secret}` : false);
 
   if (!isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
