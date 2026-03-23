@@ -379,13 +379,17 @@ async function queryTransLegend(
  * Query the sweeper tracker history for a given TransID.
  * Returns all sweeper visits recorded for that street segment,
  * with Chicago-timezone date/time added.
+ *
+ * Returns null on API errors (timeout, HTTP error, bad JSON) so callers can
+ * distinguish "API failed" from "no sweeper visits." Returns [] when the API
+ * responds successfully but has no location data for this transId.
  */
-async function getSweeperHistory(transId: number): Promise<SweeperVisit[]> {
+async function getSweeperHistory(transId: number): Promise<SweeperVisit[] | null> {
   try {
     const response = await fetchWithRetry(`${SWEEPER_HISTORY_URL}?transId=${transId}`);
     if (!response.ok) {
       console.error(`  Sweeper: History query failed with status ${response.status}`);
-      return [];
+      return null; // API error — caller should not treat as "no visits"
     }
 
     const text = await response.text();
@@ -395,12 +399,12 @@ async function getSweeperHistory(transId: number): Promise<SweeperVisit[]> {
       data = JSON.parse(text);
     } catch {
       console.error(`  Sweeper: History returned non-JSON (${text.substring(0, 100)}...)`);
-      return [];
+      return null; // Bad response — API error
     }
 
     const locationList = data?.trackingDataResponse?.locationList;
     if (!locationList || !Array.isArray(locationList) || locationList.length === 0) {
-      return [];
+      return []; // Valid response, no visits
     }
 
     return locationList.map((loc: any) => {
@@ -421,7 +425,7 @@ async function getSweeperHistory(transId: number): Promise<SweeperVisit[]> {
   } catch (err: any) {
     const isTimeout = err?.name === 'AbortError';
     console.error(`  Sweeper: History ${isTimeout ? 'timed out' : 'error'}:`, err?.message || err);
-    return [];
+    return null; // Network/timeout error
   }
 }
 
@@ -487,10 +491,10 @@ export async function verifySweeperVisit(
 
   // Step 2: Get sweeper visit history
   const visits = await getSweeperHistory(transResult.transId);
-  baseResult.allRecentVisits = visits;
+  baseResult.allRecentVisits = visits || [];
   baseResult.checked = true;
 
-  if (visits.length === 0) {
+  if (!visits || visits.length === 0) {
     baseResult.message = `No sweeper visit records found for ${transResult.segment}. The city's sweeper tracker has no data for this block in its current history window (~7-30 days). This may mean no sweeper visited this block recently.`;
     return baseResult;
   }
@@ -612,7 +616,7 @@ export async function checkSweeperPassedToday(
   if (!transResult) return null;
 
   const visits = await getSweeperHistory(transResult.transId);
-  if (visits.length === 0) {
+  if (!visits || visits.length === 0) {
     return {
       passed: false,
       transId: transResult.transId,
