@@ -140,6 +140,21 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
   // chicagoDateISO is the correct "today" in Chicago timezone.
   const todayStr = chicagoDateISO; // e.g. "2026-04-01"
 
+  // Convert Chicago midnight to UTC for dedup queries against the timestamptz sent_at column.
+  // Chicago is UTC-5 (CDT, Mar-Nov) or UTC-6 (CST, Nov-Mar). We compute this dynamically
+  // to avoid hardcoding a wrong offset across DST boundaries.
+  // Approach: guess noon UTC, read the Chicago hour at that instant, derive the UTC offset.
+  const chicagoMidnightUTC = (() => {
+    const noonUTC = new Date(`${todayStr}T12:00:00Z`);
+    const chicagoHourAtNoonUTC = parseInt(
+      new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(noonUTC)
+    );
+    // offset = 12 - chicagoHourAtNoonUTC (e.g. CDT: 12-7=5, CST: 12-6=6)
+    const utcOffsetHours = 12 - chicagoHourAtNoonUTC;
+    // Chicago midnight in UTC = 00:00 Chicago + offset hours
+    return new Date(`${todayStr}T${String(utcOffsetHours).padStart(2, '0')}:00:00Z`).toISOString();
+  })();
+
   let processed = 0;
   let successful = 0;
   let failed = 0;
@@ -282,7 +297,7 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
           .eq('notification_type', 'street_cleaning')
           .eq('cleaning_date', cleaningDateStr)
           .contains('metadata', { type })
-          .gte('sent_at', `${todayStr}T00:00:00`)
+          .gte('sent_at', chicagoMidnightUTC)
           .limit(1)
           .maybeSingle();
 
@@ -524,33 +539,59 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     }
 
     // Send push notification to all user's registered devices
+    // Uses firebase-admin SDK (FCM v1 HTTP API) — the legacy FCM API was shut down June 2024.
     // Respect push_alert_preferences.street_cleaning if user explicitly disabled it in mobile app
     const pushPrefs = user.push_alert_preferences as Record<string, boolean> | null;
     const pushStreetCleaningEnabled = pushPrefs?.street_cleaning !== false; // Default to true if not set
 
     if (pushStreetCleaningEnabled) {
       try {
-        const { pushService } = await import('../../../lib/push-service');
-        const pushResult = await pushService.sendToUser(user.user_id, {
-          title: subject,
-          body: message,
-          data: {
-            type: 'street_cleaning',
-            notificationType: type,
-            ward: user.home_address_ward || '',
-            section: user.home_address_section || '',
-          },
-          userId: user.user_id,
-          category: 'street_cleaning'
-        });
-        if (pushResult.success) {
-          console.log(`  Push -> ${pushResult.successCount} device(s)`);
-          channelsSent.push('push');
-        } else if (pushResult.failureCount > 0) {
-          channelsFailed.push('push');
-          channelErrors.push(`Push failed on ${pushResult.failureCount} device(s)`);
+        const { sendPushNotification, isFirebaseConfigured } = await import('../../../lib/firebase-admin');
+        if (!isFirebaseConfigured()) {
+          console.log(`  Push skipped: Firebase not configured`);
+        } else {
+          // Look up user's active push tokens
+          const { data: tokens, error: tokenError } = await supabaseAdmin.rpc('get_user_push_tokens', {
+            p_user_id: user.user_id
+          });
+
+          if (tokenError || !tokens || !Array.isArray(tokens) || tokens.length === 0) {
+            // No tokens registered — not an error, user may not have logged in on mobile
+            console.log(`  Push skipped: no tokens for ${user.email}`);
+          } else {
+            let pushSuccessCount = 0;
+            let pushFailCount = 0;
+            for (const tokenRecord of tokens) {
+              const pushResult = await sendPushNotification(tokenRecord.token, {
+                title: subject,
+                body: message,
+                data: {
+                  type: 'street_cleaning',
+                  notificationType: type,
+                  ward: user.home_address_ward || '',
+                  section: user.home_address_section || '',
+                },
+              });
+              if (pushResult.success) {
+                pushSuccessCount++;
+              } else {
+                pushFailCount++;
+                // Clean up invalid tokens
+                if (pushResult.invalidToken) {
+                  await supabaseAdmin.rpc('deactivate_push_token', { p_token: tokenRecord.token });
+                  console.log(`  Deactivated invalid push token for ${user.email}`);
+                }
+              }
+            }
+            if (pushSuccessCount > 0) {
+              console.log(`  Push -> ${pushSuccessCount} device(s)`);
+              channelsSent.push('push');
+            } else if (pushFailCount > 0) {
+              channelsFailed.push('push');
+              channelErrors.push(`Push failed on ${pushFailCount} device(s)`);
+            }
+          }
         }
-        // Note: pushResult.success=false with failureCount=0 means no tokens registered — not an error
       } catch (pushError: any) {
         channelsFailed.push('push');
         channelErrors.push(`Push error: ${sanitizeErrorMessage(pushError)}`);
