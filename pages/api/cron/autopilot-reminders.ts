@@ -527,12 +527,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
 
           autoSendTriggered++;
+        } else {
+          console.warn(`  Day ${daysElapsed}: No promotable letter found for ticket ${ticket.ticket_number} — may miss deadline`);
         }
         continue;
       }
 
       // ── Day 17 LAST CHANCE EMAIL + SMS ──
-      if (daysElapsed >= 17 && !ticket.last_chance_sent_at) {
+      // Skip if letter already approved/mailed — no need for last-chance nudge
+      if (daysElapsed >= 17 && !ticket.last_chance_sent_at && ticket.status !== 'approved' && ticket.status !== 'mailed') {
         console.log(`  Day ${daysElapsed}: Sending last-chance email for ticket ${ticket.ticket_number}`);
         const sent = await sendLastChanceEmail(email, name, ticket);
         if (sent) {

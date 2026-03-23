@@ -15,7 +15,12 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const JWT_SECRET = process.env.APPROVAL_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// SECURITY: Never fall back to SUPABASE_SERVICE_ROLE_KEY — it would expose the
+// service role key in JWTs sent via email links. Fail hard if not configured.
+const JWT_SECRET = process.env.APPROVAL_JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('APPROVAL_JWT_SECRET is not configured — approval links will fail');
+}
 
 export interface ApprovalToken {
   ticket_id: string;
@@ -25,6 +30,9 @@ export interface ApprovalToken {
 }
 
 export function generateApprovalToken(ticketId: string, userId: string, letterId: string): string {
+  if (!JWT_SECRET) {
+    throw new Error('APPROVAL_JWT_SECRET not configured — cannot generate approval tokens');
+  }
   return jwt.sign(
     {
       ticket_id: ticketId,
@@ -49,6 +57,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Verify token
+    if (!JWT_SECRET) {
+      console.error('APPROVAL_JWT_SECRET not configured — cannot verify approval tokens');
+      return res.redirect('/tickets?error=server_config');
+    }
     const decoded = jwt.verify(token, JWT_SECRET) as ApprovalToken;
     const { ticket_id, user_id, letter_id } = decoded;
 

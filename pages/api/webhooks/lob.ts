@@ -166,8 +166,8 @@ export default async function handler(
 
     if (letterError || !letter) {
       console.log(`  Letter not found for Lob ID: ${lobLetterId}`);
-      // Return 200 to prevent Lob from retrying
-      return res.status(200).json({ received: true, note: 'Letter not found' });
+      // Return 404 so Lob retries — the letter may not have been written to the DB yet
+      return res.status(404).json({ error: 'Letter not found' });
     }
 
     // Map event to status
@@ -211,13 +211,21 @@ export default async function handler(
       .eq('id', letter.id);
 
     // Also update ticket status for terminal letter events (delivered/returned)
+    // Guard: don't overwrite terminal outcome statuses (won/lost/dismissed/upheld/paid)
+    const TERMINAL_TICKET_STATUSES = ['dismissed', 'upheld', 'paid', 'won', 'lost', 'skipped'];
     if (newStatus === 'delivered' || newStatus === 'returned') {
       const ticketStatus = newStatus === 'returned' ? 'letter_returned' : 'mailed';
-      await supabaseAdmin
+      const { data: ticketUpdate } = await supabaseAdmin
         .from('detected_tickets')
         .update({ status: ticketStatus })
-        .eq('id', letter.ticket_id);
-      console.log(`  Updated ticket ${letter.ticket_id} status to "${ticketStatus}"`);
+        .eq('id', letter.ticket_id)
+        .not('status', 'in', `(${TERMINAL_TICKET_STATUSES.join(',')})`)
+        .select('id');
+      if (ticketUpdate && ticketUpdate.length > 0) {
+        console.log(`  Updated ticket ${letter.ticket_id} status to "${ticketStatus}"`);
+      } else {
+        console.log(`  Skipped ticket ${letter.ticket_id} status update — already in terminal state`);
+      }
     }
 
     if (updateError) {

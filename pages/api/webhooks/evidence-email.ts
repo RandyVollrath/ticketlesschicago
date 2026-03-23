@@ -550,7 +550,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`User settings: require_approval=${requireApproval}, auto_mail_enabled=${autoMailEnabled}, needsApproval=${needsApproval}`);
 
     // Determine new ticket status based on approval requirement
-    const newStatus = needsApproval ? 'needs_approval' : 'evidence_received';
+    // If auto-mail user, go straight to 'approved' so mail cron picks it up.
+    // 'evidence_received' is an orphan status — no cron advances it.
+    const newStatus = needsApproval ? 'needs_approval' : 'approved';
 
     // Update ticket with evidence
     await supabaseAdmin
@@ -606,7 +608,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let currentLetterId: string | null = letter?.id || null;
 
     // Guard: don't regenerate a letter that's already been mailed/sent/delivered/returned
-    const IMMUTABLE_LETTER_STATUSES = ['sent', 'mailed', 'delivered', 'returned', 'mailing'];
+    // Don't regenerate letters already sent/delivered/returned.
+    // 'mailing' excluded: brief mailing window (~seconds) shouldn't block evidence integration.
+    const IMMUTABLE_LETTER_STATUSES = ['sent', 'delivered', 'returned'];
     if (letter && IMMUTABLE_LETTER_STATUSES.includes(letter.status)) {
       console.log(`⚠️ Letter ${letter.id} is already "${letter.status}" — skipping regeneration to preserve mailed content`);
       // Store evidence on the ticket but don't touch the letter

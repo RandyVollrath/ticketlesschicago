@@ -24,11 +24,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID required' });
+    // SECURITY: Authenticate the caller and use their verified user ID
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
+    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !authUser) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const userId = authUser.id;
 
     // Get user's Stripe customer ID
     const { data: profile } = await supabaseAdmin

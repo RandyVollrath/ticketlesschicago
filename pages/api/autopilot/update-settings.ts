@@ -20,8 +20,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // SECURITY: Authenticate the caller and use their verified user ID
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !authUser) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const userId = authUser.id;
+
     const {
-      userId,
       allowed_ticket_types,
       email_on_ticket_found,
       email_on_letter_mailed,
@@ -32,10 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mailing_zip,
       home_address_full,
     } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID required' });
-    }
 
     // ── Update autopilot_settings (ticket types + notifications) ──
     const settingsUpdates: Record<string, any> = {};
