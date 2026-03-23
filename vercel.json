@@ -125,6 +125,9 @@
     },
     "pages/api/cron/notify-sweeper-passed.ts": {
       "maxDuration": 120
+    },
+    "pages/api/cron/check-schedule-changes.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -255,6 +258,10 @@
     {
       "path": "/api/cron/notify-sweeper-passed",
       "schedule": "*/15 14-21 * 4-11 1-5"
+    },
+    {
+      "path": "/api/cron/check-schedule-changes",
+      "schedule": "0 4 * * 3"
     }
   ],
   "headers": [
