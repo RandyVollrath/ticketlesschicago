@@ -138,7 +138,7 @@ export async function sendTicketHistoryFoiaEmail(params: {
       to: [CHICAGO_FOIA_EMAIL],
       subject,
       text: body,
-      reply_to: 'foia@autopilotamerica.com',
+      reply_to: ['foia@autopilotamerica.com', params.email],
       headers: {
         'X-Entity-Ref-ID': params.referenceId || `foia-history-${params.licenseState}-${params.licensePlate}-${Date.now()}`,
       },
@@ -284,6 +284,9 @@ export async function sendFoiaHistoryResultsEmail(params: {
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) return;
 
+  const potentialSavings = Math.round(params.totalFines * 0.685);
+  const avgPerTicket = params.ticketCount > 0 ? Math.round(params.totalFines / params.ticketCount) : 75;
+
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); color: white; padding: 32px; border-radius: 12px 12px 0 0;">
@@ -316,19 +319,58 @@ export async function sendFoiaHistoryResultsEmail(params: {
           </a>
         </div>
 
+        ${params.ticketCount > 0 ? `
+        <div style="background: #FEF2F2; border: 1px solid #FECACA; padding: 20px; border-radius: 8px; margin: 24px 0;">
+          <h3 style="margin: 0 0 8px; color: #991B1B; font-size: 16px;">You could have saved up to $${potentialSavings.toLocaleString()}</h3>
+          <p style="margin: 0; color: #7F1D1D; font-size: 14px; line-height: 1.6;">
+            City of Chicago data shows that <strong>68.5% of contested parking tickets are dismissed</strong>.
+            If every one of your ${params.ticketCount} ticket${params.ticketCount !== 1 ? 's' : ''} had been automatically
+            contested, you could have saved up to <strong>$${potentialSavings.toLocaleString()}</strong> in fines.
+          </p>
+        </div>
+        ` : ''}
+
         <div style="background: #F0FDF4; border: 1px solid #86EFAC; padding: 20px; border-radius: 8px; margin: 24px 0;">
-          <h3 style="margin: 0 0 8px; color: #166534; font-size: 16px;">Stop the cycle</h3>
-          <p style="margin: 0 0 12px; color: #15803D; font-size: 14px; line-height: 1.6;">
+          <h3 style="margin: 0 0 12px; color: #166534; font-size: 16px;">Never stress about a ticket again</h3>
+          <p style="margin: 0 0 16px; color: #15803D; font-size: 14px; line-height: 1.6;">
             ${params.ticketCount > 0
-              ? `You've already paid $${params.totalFines.toLocaleString()} in tickets. Our Autopilot system catches new tickets and contests them automatically — $49/year could save you hundreds.`
-              : `Even with a clean record, one surprise ticket can cost you $100+. Get protected for $49/year.`
+              ? `Tickets are unavoidable in Chicago &mdash; the average driver gets 3+ per year. But paying full price for every one isn't. Autopilot monitors your plate daily, catches new tickets the moment they're issued, and automatically contests them for you.`
+              : `Even with a clean record, Chicago drivers average 3+ tickets per year. When that first one lands, Autopilot catches it immediately and contests it for you automatically.`
             }
           </p>
-          <a href="https://autopilotamerica.com/get-started"
-             style="display: inline-block; background: #10B981; color: white; padding: 10px 24px;
-                    border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
-            Get Protected - $49/year
-          </a>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #BBF7D0; color: #166534; font-size: 13px;">
+                <strong style="color: #15803D;">Daily plate monitoring</strong><br>
+                <span style="color: #4ADE80;">We check for new tickets so you don't have to</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #BBF7D0; color: #166534; font-size: 13px;">
+                <strong style="color: #15803D;">Automatic contest letters</strong><br>
+                <span style="color: #4ADE80;">Custom defense letters mailed before the deadline</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #166534; font-size: 13px;">
+                <strong style="color: #15803D;">Real-time parking alerts</strong><br>
+                <span style="color: #4ADE80;">Street cleaning, tow zones, and permit warnings on your phone</span>
+              </td>
+            </tr>
+          </table>
+          <div style="text-align: center;">
+            <a href="https://autopilotamerica.com/get-started"
+               style="display: inline-block; background: #10B981; color: white; padding: 12px 28px;
+                      border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
+              Get Protected &mdash; $49/year
+            </a>
+            <p style="margin: 8px 0 0; color: #6EE7B7; font-size: 12px;">
+              ${params.ticketCount > 0
+                ? `That's less than the cost of a single $${avgPerTicket} ticket.`
+                : `Less than the cost of a single parking ticket.`
+              }
+            </p>
+          </div>
         </div>
 
         <p style="color: #6b7280; font-size: 12px; margin-top: 32px; text-align: center;">
