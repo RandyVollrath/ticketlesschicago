@@ -1592,7 +1592,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   subject: '🚨 CRITICAL: Upgrade email failed - user cannot login',
                   text: `Upgrade email failed after 3 attempts!\n\nEmail: ${email}\nUser ID: ${userId}\nSession: ${session.id}\nLast Error: ${lastErrorUpgrade}\n\nUser paid but cannot access their account!`
                 });
-                return res.status(500).json({ error: 'Upgrade email failed after 3 attempts', email });
+                return res.status(500).json({ error: 'Upgrade email failed after 3 attempts' });
               }
             }
           }

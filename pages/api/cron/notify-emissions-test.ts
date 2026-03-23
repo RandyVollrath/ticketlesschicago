@@ -119,7 +119,7 @@ export default async function handler(
     ? (authHeader === `Bearer ${secret}`)
     : false;
 
-  if (!isVercelCron && !isAuthorized) {
+  if (!isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

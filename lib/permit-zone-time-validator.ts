@@ -111,7 +111,8 @@ function parseDayRange(dayStr: string): number[] {
     const endDay = dayMap[end];
 
     if (startDay === undefined || endDay === undefined) {
-      return [1, 2, 3, 4, 5]; // Default to Mon-Fri
+      console.warn(`Unparseable day range: "${dayStr}"`);
+      return []; // Unknown — don't assume any days are restricted
     }
 
     const days: number[] = [];
@@ -129,7 +130,11 @@ function parseDayRange(dayStr: string): number[] {
 
   // Single day
   const day = dayMap[dayStr];
-  return day !== undefined ? [day] : [1, 2, 3, 4, 5]; // Default to Mon-Fri
+  if (day === undefined) {
+    console.warn(`Unparseable day: "${dayStr}"`);
+    return []; // Unknown — don't assume any days are restricted
+  }
+  return [day];
 }
 
 /**
