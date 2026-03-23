@@ -327,13 +327,13 @@ async function main() {
       console.log(`  ${result.plate}: ERROR - ${result.error}`);
       totalErrors++;
 
-      // Still mark as checked so we don't retry immediately
+      // Update last_outcome_check_at but NOT outcome_check_count — transient errors
+      // shouldn't count against the ticket's check budget
       for (const ticket of plateInfo.tickets) {
         await supabaseAdmin
           .from('detected_tickets')
           .update({
             last_outcome_check_at: new Date().toISOString(),
-            outcome_check_count: (ticket.outcome_check_count || 0) + 1,
           })
           .eq('id', ticket.id);
       }

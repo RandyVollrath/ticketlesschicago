@@ -198,13 +198,17 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
       }
 
       // Mark this user as notified for this tow
-      const updatedNotifiedUsers = [...(tow.notified_users || []), user.user_id];
-      await supabaseAdmin
-        .from('towed_vehicles')
-        .update({ notified_users: updatedNotifiedUsers })
-        .eq('id', tow.id);
+      try {
+        const updatedNotifiedUsers = [...(tow.notified_users || []), user.user_id];
+        await supabaseAdmin
+          .from('towed_vehicles')
+          .update({ notified_users: updatedNotifiedUsers })
+          .eq('id', tow.id);
 
-      notifiedUsers.push(user.user_id);
+        notifiedUsers.push(user.user_id);
+      } catch (notifyErr) {
+        console.error(`Failed to mark user ${user.user_id} as notified for tow ${tow.id}:`, notifyErr);
+      }
 
       // Rate limiting
       await new Promise(resolve => setTimeout(resolve, 1000));
