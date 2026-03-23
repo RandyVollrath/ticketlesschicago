@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabaseAdmin } from '../../../lib/supabase';
+import { supabaseAdmin, supabase } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 interface DocumentStatus {
@@ -19,10 +19,26 @@ export default async function handler(
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
+  // Authenticate user via JWT
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ success: false, error: 'Authorization required' });
+  }
+  const jwtToken = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(jwtToken);
+  if (authError || !authUser) {
+    return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+  }
+
   const userId = req.query.userId as string;
 
   if (!userId) {
     return res.status(400).json({ success: false, error: 'User ID is required' });
+  }
+
+  // IDOR protection: users can only check their own document status
+  if (authUser.id !== userId) {
+    return res.status(403).json({ success: false, error: 'You can only check your own document status' });
   }
 
   try {
@@ -37,10 +53,9 @@ export default async function handler(
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (dbError && dbError.code !== 'PGRST116') {
-      // PGRST116 is "not found" - that's okay, just means no document yet
+    if (dbError) {
       console.error('Database error:', dbError);
       throw new Error('Failed to query document status');
     }
