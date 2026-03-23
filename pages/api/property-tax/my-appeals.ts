@@ -184,7 +184,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         case 'bor_filed':
           nextAction = appeal.bor_hearing_date
-            ? `Hearing scheduled for ${new Date(appeal.bor_hearing_date).toLocaleDateString()}`
+            ? `Hearing scheduled for ${new Date(appeal.bor_hearing_date).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })}`
             : 'Waiting for hearing date notification';
           break;
         case 'bor_denied':

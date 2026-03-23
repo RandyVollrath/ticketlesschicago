@@ -173,11 +173,16 @@ export default async function handler(
     console.log('✅ user_profiles updated successfully');
 
     // Get the updated data to return
-    const { data: profileData } = await supabaseAdmin
+    const { data: profileData, error: fetchError } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
       .single();
+
+    if (fetchError) {
+      console.error('Error fetching updated profile:', fetchError);
+      return res.status(500).json({ error: 'Profile updated but failed to fetch updated data' });
+    }
 
     res.status(200).json({
       success: true,

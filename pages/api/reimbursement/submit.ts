@@ -114,7 +114,7 @@ export default async function handler(
           <h3>Ticket Details:</h3>
           <ul>
             <li><strong>Type:</strong> ${ticketType.replace('_', ' ')}</li>
-            <li><strong>Date:</strong> ${new Date(ticketDate).toLocaleDateString()}</li>
+            <li><strong>Date:</strong> ${new Date(ticketDate).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })}</li>
             <li><strong>Amount:</strong> $${parseFloat(ticketAmount).toFixed(2)}</li>
             <li><strong>Address:</strong> ${ticketAddress || 'Not provided'}</li>
             ${ticketNumber ? `<li><strong>Ticket #:</strong> ${ticketNumber}</li>` : ''}

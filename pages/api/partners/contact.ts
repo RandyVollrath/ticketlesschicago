@@ -77,7 +77,7 @@ Message:
 ${message || '(No message provided)'}
 
 ---
-Received: ${new Date().toLocaleString()}
+Received: ${new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })}
     `.trim();
 
     // Use Resend to send notification

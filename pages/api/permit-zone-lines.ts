@@ -46,6 +46,9 @@ export default async function handler(
         query = query.eq('zone', zoneFilter);
       }
 
+      // ORDER BY is required for stable pagination with .range()
+      query = query.order('id', { ascending: true });
+
       const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
       if (error) {
         console.error('[permit-zone-lines] DB error:', error.message);
