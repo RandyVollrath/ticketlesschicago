@@ -1676,10 +1676,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (updateError) {
               console.error('❌ Error updating Autopilot subscription:', updateError);
+              // Continue anyway — the profile update below is MORE critical than the subscription record
             } else {
               console.log('✅ Autopilot subscription activated for user:', supabaseUserId);
+            }
 
-              // CRITICAL: Set has_contesting to true in user_profiles so user is recognized as paid
+            // CRITICAL: Set has_contesting to true in user_profiles so user is recognized as paid
+            // This runs even if autopilot_subscriptions update failed — user paid, they must get protection
               // Also save license plate + state from checkout metadata
               const autopilotPlate = metadata.license_plate_number || null;
               const autopilotState = metadata.license_plate_state || 'IL';
@@ -1706,9 +1709,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .upsert(autopilotProfileData, { onConflict: 'user_id' });
 
               if (profileUpdateError) {
-                console.error('❌ Error setting has_contesting for Autopilot user:', profileUpdateError);
+                console.error('❌ CRITICAL: Error setting has_contesting for Autopilot user:', profileUpdateError);
+                // Send alert and return 500 so Stripe retries — user paid but has no protection
+                try {
+                  await resend.emails.send({
+                    from: 'Alerts <alerts@autopilotamerica.com>',
+                    to: 'randyvollrath@gmail.com',
+                    subject: '🚨 CRITICAL: Autopilot Signup - Profile Update Failed',
+                    text: `User paid for Autopilot but has_contesting was NOT set!\n\nUser ID: ${supabaseUserId}\nSession: ${session.id}\nError: ${profileUpdateError.message}\n\nManual fix needed: UPDATE user_profiles SET has_contesting=true, is_paid=true WHERE user_id='${supabaseUserId}';`
+                  });
+                } catch (e) {
+                  console.error('Failed to send alert email:', e);
+                }
+                return res.status(500).json({ error: 'Profile update failed', details: profileUpdateError.message });
               } else {
                 console.log('✅ Profile updated for Autopilot user:', supabaseUserId);
+              }
 
                 // Add plate to monitored_plates for portal checking
                 if (autopilotPlate) {
@@ -1733,7 +1749,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
 
                 await requestInitialPortalCheckForUser(supabaseUserId, 'autopilot_checkout');
-              }
 
               // Send comprehensive welcome email
               const userEmail = session.customer_details?.email || metadata.email;
@@ -1830,7 +1845,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   console.error('Failed to send welcome email:', emailErr);
                 }
               }
-            }
 
             // Exit - this was an autopilot subscription
             break;
@@ -2514,12 +2528,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Update subscription status in vehicle_reminders
       if (supabaseAdmin) {
-        await supabaseAdmin
+        const { error: vrUpdateError } = await supabaseAdmin
           .from('vehicle_reminders')
           .update({
             subscription_status: subscription.status
           })
           .eq('subscription_id', subscription.id);
+
+        if (vrUpdateError) {
+          console.error('Failed to update vehicle_reminders subscription status:', vrUpdateError);
+        }
 
         // Sync has_contesting based on subscription status
         // Check if this is an Autopilot subscription by looking at metadata or product
@@ -2534,24 +2552,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const customerId = subscription.customer as string;
 
           // Find user by stripe_customer_id
-          const { data: userProfile } = await supabaseAdmin
+          const { data: userProfile, error: profileLookupError } = await supabaseAdmin
             .from('user_profiles')
             .select('user_id')
             .eq('stripe_customer_id', customerId)
             .maybeSingle();
+
+          if (profileLookupError) {
+            console.error('Failed to find user profile for subscription sync:', profileLookupError);
+          }
 
           if (userProfile) {
             const isActive = subscription.status === 'active' || subscription.status === 'trialing';
 
             console.log(`📋 Syncing has_contesting for user ${userProfile.user_id}: ${isActive} (subscription status: ${subscription.status})`);
 
-            await supabaseAdmin
+            // CRITICAL: has_contesting sync — controls whether user gets protection
+            const { error: contestingError } = await supabaseAdmin
               .from('user_profiles')
               .update({
                 has_contesting: isActive,
                 updated_at: new Date().toISOString()
               })
               .eq('user_id', userProfile.user_id);
+
+            if (contestingError) {
+              console.error(`🚨 CRITICAL: Failed to sync has_contesting=${isActive} for user ${userProfile.user_id}:`, contestingError);
+              // Return 500 so Stripe retries — user's protection status is wrong
+              return res.status(500).json({ error: 'Failed to sync subscription status' });
+            }
 
             // Also update autopilot_subscriptions if it exists
             const mappedStatus =
@@ -2565,7 +2594,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               ? new Date(Date.now() + ACTIVE_AUTOPILOT_PLAN.gracePeriodDays * 24 * 60 * 60 * 1000).toISOString()
               : null;
 
-            await supabaseAdmin
+            const { error: subUpdateError } = await supabaseAdmin
               .from('autopilot_subscriptions')
               .update({
                 status: mappedStatus,
@@ -2577,16 +2606,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               })
               .eq('user_id', userProfile.user_id);
 
+            if (subUpdateError) {
+              console.error(`Failed to update autopilot_subscriptions for user ${userProfile.user_id}:`, subUpdateError);
+            }
+
             // If subscription is canceled/deleted, mark monitored plates as inactive
             if (!isActive) {
               console.log(`📋 Deactivating monitored plates for user ${userProfile.user_id}`);
-              await supabaseAdmin
+              const { error: plateDeactivateError } = await supabaseAdmin
                 .from('monitored_plates')
                 .update({
                   status: 'inactive',
                   updated_at: new Date().toISOString()
                 })
                 .eq('user_id', userProfile.user_id);
+
+              if (plateDeactivateError) {
+                console.error(`Failed to deactivate monitored plates for user ${userProfile.user_id}:`, plateDeactivateError);
+              }
             }
           }
         }
