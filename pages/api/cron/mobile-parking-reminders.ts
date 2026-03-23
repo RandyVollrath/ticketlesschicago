@@ -299,9 +299,16 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Verify cron secret or allow in development
-  const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
-  if (process.env.NODE_ENV === 'production' && cronSecret !== process.env.CRON_SECRET) {
+  // CRITICAL: Verify cron authorization before processing notifications
+  const authHeader = req.headers.authorization;
+  const keyParam = req.query.key as string | undefined;
+  const secret = process.env.CRON_SECRET;
+  // Guard: if CRON_SECRET is not set, reject all requests
+  const isAuthorized = secret
+    ? (authHeader === `Bearer ${secret}` || keyParam === secret)
+    : false;
+
+  if (!isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -316,7 +323,13 @@ export default async function handler(
 
   const chicagoTime = getChicagoTime();
   const chicagoHour = chicagoTime.getHours();
-  const today = chicagoTime.toISOString().split('T')[0]; // YYYY-MM-DD
+  // CRITICAL: Do NOT use toISOString() — it returns UTC, not Chicago time.
+  // At 11 PM CT (= 5 AM UTC next day), toISOString() returns tomorrow's date.
+  // Use Intl.DateTimeFormat to extract YYYY-MM-DD in Chicago timezone.
+  const chicagoYear = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric' }).format(chicagoTime);
+  const chicagoMonth = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: '2-digit' }).format(chicagoTime);
+  const chicagoDay = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', day: '2-digit' }).format(chicagoTime);
+  const today = `${chicagoYear}-${chicagoMonth}-${chicagoDay}`; // YYYY-MM-DD
 
   console.log(`Running mobile parking reminders at ${chicagoTime.toISOString()} (Chicago hour: ${chicagoHour})`);
 
@@ -456,9 +469,13 @@ export default async function handler(
 
         // Street cleaning reminder - NIGHT BEFORE (8pm check for tomorrow's cleaning)
         // This gives users time to move their car the evening before
-        const tomorrow = new Date(chicagoTime);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        // CRITICAL: Calculate tomorrow's date in Chicago timezone, not UTC
+        const tomorrowDate = new Date(chicagoTime);
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+        const tomorrowYear = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric' }).format(tomorrowDate);
+        const tomorrowMonth = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: '2-digit' }).format(tomorrowDate);
+        const tomorrowDay = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', day: '2-digit' }).format(tomorrowDate);
+        const tomorrowStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`;
 
         if (chicagoHour >= 19 && chicagoHour <= 21 && vehicle.street_cleaning_date === tomorrowStr && !vehicle.street_cleaning_notified_at) {
           const result = await sendPushNotification(vehicle.fcm_token, {

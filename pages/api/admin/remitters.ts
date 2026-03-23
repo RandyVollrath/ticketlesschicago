@@ -22,12 +22,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!admin) return;
 
   try {
-    // Get all remitters
+    // Get all remitters — exclude raw api_key, mask stripe account ID
     const { data: partners, error } = await supabase
       .from('renewal_partners')
       .select('id, name, email, status, is_default, stripe_connected_account_id, api_key')
       .order('is_default', { ascending: false })
       .order('name', { ascending: true });
+
+    // Strip sensitive fields before returning
+    const safePartners = (partners || []).map(({ api_key, stripe_connected_account_id, ...rest }) => ({
+      ...rest,
+      api_key_hint: api_key ? `...${api_key.slice(-6)}` : null,
+      has_stripe_account: !!stripe_connected_account_id,
+    }));
 
     if (error) {
       console.error('Error fetching remitters:', error);
@@ -35,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get order counts for each remitter
-    const remittersWithStats = await Promise.all((partners || []).map(async (partner) => {
+    const remittersWithStats = await Promise.all(safePartners.map(async (partner) => {
       const { count: pendingOrders } = await supabase
         .from('renewal_orders')
         .select('*', { count: 'exact', head: true })

@@ -197,13 +197,20 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
         console.error(`Failed to create tow alert for user ${user.user_id}:`, alertError);
       }
 
-      // Mark this user as notified for this tow
+      // Mark this user as notified for this tow (re-read to avoid overwriting concurrent updates)
       try {
-        const updatedNotifiedUsers = [...(tow.notified_users || []), user.user_id];
-        await supabaseAdmin
+        const { data: freshTow } = await supabaseAdmin
           .from('towed_vehicles')
-          .update({ notified_users: updatedNotifiedUsers })
-          .eq('id', tow.id);
+          .select('notified_users')
+          .eq('id', tow.id)
+          .single();
+        const currentNotified = (freshTow?.notified_users as string[]) || [];
+        if (!currentNotified.includes(user.user_id)) {
+          await supabaseAdmin
+            .from('towed_vehicles')
+            .update({ notified_users: [...currentNotified, user.user_id] })
+            .eq('id', tow.id);
+        }
 
         notifiedUsers.push(user.user_id);
       } catch (notifyErr) {

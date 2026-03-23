@@ -76,7 +76,7 @@ export class NotificationService {
         console.log('📧 MOCK: No valid Resend API key, would send email:', {
           to: notification.to,
           subject: notification.subject,
-          preview: notification.text.substring(0, 100) + '...'
+          preview: (notification.text || '').substring(0, 100) + '...'
         });
         return false; // Mock sends must not count as success
       }
