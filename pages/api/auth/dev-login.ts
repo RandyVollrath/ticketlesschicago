@@ -5,8 +5,8 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils'
 // DEV ONLY: Direct login endpoint for testing when email is not working
 // REMOVE THIS IN PRODUCTION!
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Only allow in development
-  if (process.env.NODE_ENV === 'production') {
+  // Fail-safe: only allow when NODE_ENV is explicitly 'development'
+  if (process.env.NODE_ENV !== 'development') {
     return res.status(404).json({ error: 'Not found' })
   }
 

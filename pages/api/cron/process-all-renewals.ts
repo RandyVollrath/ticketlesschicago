@@ -406,7 +406,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('*')
       .eq('has_contesting', true)
       .not('stripe_customer_id', 'is', null)
-      .not('city_sticker_expiry', 'is', null);
+      .not('city_sticker_expiry', 'is', null)
+      .limit(100);
 
     if (cityStickerError) {
       throw cityStickerError;
@@ -419,7 +420,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Calculate days until expiration
         const expiryDate = new Date(customer.city_sticker_expiry);
         const today = new Date();
-        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const daysUntilExpiry = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
         const notificationDays = customer.renewal_notification_days || 30;
 
@@ -965,7 +966,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('*')
       .eq('has_contesting', true)
       .not('license_plate_expiry', 'is', null)
-      .not('stripe_customer_id', 'is', null);
+      .not('stripe_customer_id', 'is', null)
+      .limit(100);
 
     if (plateError) {
       console.error('Error fetching license plate customers:', plateError);

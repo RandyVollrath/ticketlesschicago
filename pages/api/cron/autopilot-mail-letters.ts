@@ -729,7 +729,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         )
       `)
       .or(`status.eq.approved,status.eq.ready,status.eq.awaiting_consent,status.eq.admin_approved,status.eq.mailing`)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(50);
 
     if (!letters || letters.length === 0) {
       console.log('No letters to process');
