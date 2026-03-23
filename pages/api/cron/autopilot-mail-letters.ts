@@ -228,7 +228,7 @@ async function mailLetter(
       .from('contest_letters')
       .select('lob_letter_id')
       .eq('id', letter.id)
-      .single();
+      .maybeSingle();
 
     if (existingLetter?.lob_letter_id) {
       console.log(`    Already mailed (Lob ID: ${existingLetter.lob_letter_id}), skipping duplicate`);
@@ -575,7 +575,7 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
       .from('autopilot_subscriptions')
       .select('letters_used_this_period, letters_included')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (!sub) {
       return { exceeded: false, count: 0 };

@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('snow_route_status')
       .select('is_active, activation_date, snow_amount_inches')
       .limit(1)
-      .single();
+      .maybeSingle();
 
     const snowBanActive = banRow?.is_active ?? false;
 

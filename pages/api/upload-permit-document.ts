@@ -115,7 +115,7 @@ export default async function handler(
       .from('user_profiles')
       .select('drivers_license_url, proof_of_residency_url, permit_requested, permit_application_status')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     let newStatus = profile?.permit_application_status;
 

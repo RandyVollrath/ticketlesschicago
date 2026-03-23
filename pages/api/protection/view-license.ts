@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('license_image_path, license_image_path_back')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       return res.status(404).json({ error: 'User not found' });

@@ -128,7 +128,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       source: source === 'signup_auto' ? 'signup_auto' : source === 'dashboard' ? 'dashboard' : 'public_lookup',
     })
     .select('id')
-    .single();
+    .single(); // Safe: .single() after insert
 
   if (insertError) {
     console.error('Failed to create FOIA history request:', insertError);

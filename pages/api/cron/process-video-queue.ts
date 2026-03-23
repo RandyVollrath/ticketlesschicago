@@ -151,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('ticket_contests')
           .select('video_evidence')
           .eq('id', job.contest_id)
-          .single();
+          .maybeSingle();
 
         if (contest) {
           const currentVideoEvidence = (contest.video_evidence as any[]) || [];

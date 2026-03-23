@@ -386,7 +386,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('snow_route_status')
         .select('is_active')
         .eq('id', 1)
-        .single();
+        .maybeSingle();
       snowBanActive = snowStatus?.is_active || false;
     } catch { /* non-critical */ }
 

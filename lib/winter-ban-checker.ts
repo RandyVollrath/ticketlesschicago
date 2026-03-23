@@ -58,7 +58,7 @@ export async function checkSnowBanStatus(): Promise<SnowBanStatus> {
       .from('snow_route_status')
       .select('*')
       .eq('id', 1)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       console.warn('Could not fetch snow ban status:', error);

@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mailing_zip
       `)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       console.error('User not found:', userId);

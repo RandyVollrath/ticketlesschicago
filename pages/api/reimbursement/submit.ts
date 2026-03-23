@@ -43,7 +43,7 @@ export default async function handler(
       .from('user_profiles')
       .select('has_contesting, email, first_name, last_name, license_plate')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       return res.status(400).json({ error: 'User profile not found' });

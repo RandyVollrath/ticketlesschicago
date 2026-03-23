@@ -49,7 +49,7 @@ export async function checkTwoInchSnowBan(): Promise<TwoInchSnowBanStatus> {
       .from('snow_route_status')
       .select('*')
       .eq('id', 1)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       console.warn('Could not fetch snow ban status:', error);
@@ -72,7 +72,7 @@ export async function checkTwoInchSnowBan(): Promise<TwoInchSnowBanStatus> {
       .select('*')
       .eq('event_date', today)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (snowEvent) {
       // If two_inch_ban_triggered is true, it's confirmation (snow has accumulated)

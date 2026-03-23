@@ -528,7 +528,7 @@ export async function saveEvidenceAnalysis(
       analysis_summary: analysis.analysis_summary,
     })
     .select('id')
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Failed to save evidence analysis: ${error.message}`);

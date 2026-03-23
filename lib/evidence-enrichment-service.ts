@@ -207,7 +207,7 @@ export async function getCachedStreetView(
       .from('street_view_cache')
       .select('*')
       .eq('address_key', addressKey)
-      .single();
+      .maybeSingle();
 
     if (cached) {
       console.log(`    Street View CACHE HIT for "${addressKey}" (imagery from ${cached.image_date})`);

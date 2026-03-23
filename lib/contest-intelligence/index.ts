@@ -260,7 +260,7 @@ export async function quickContestCheck(
     .from('violation_win_rates')
     .select('*')
     .eq('violation_code', violationType)
-    .single();
+    .maybeSingle();
 
   let baseWinRate = 0.45; // Default if no data
   if (violationData && violationData.loss_rate_percent) {
@@ -273,7 +273,7 @@ export async function quickContestCheck(
       .from('ward_win_rates')
       .select('*')
       .eq('ward', ward)
-      .single();
+      .maybeSingle();
 
     if (wardData && wardData.loss_rate_percent) {
       const wardRate = wardData.loss_rate_percent / 100;

@@ -98,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('user_profiles')
           .select('phone_number, first_name')
           .eq('email', order.customer_email)
-          .single();
+          .maybeSingle();
 
         const phone = profile?.phone_number || order.customer_phone;
         if (!phone) {

@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_partners')
       .select('*')
       .eq('id', partnerId)
-      .single();
+      .maybeSingle();
 
     if (error || !partner) {
       return res.status(404).json({ error: 'Partner not found' });

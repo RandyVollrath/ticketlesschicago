@@ -120,7 +120,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('attorneys')
       .select('id')
       .eq('email', user.email)
-      .single();
+      .maybeSingle();
 
     if (attorneyError || !attorney) {
       return res.status(403).json({ error: 'Not registered as an attorney' });
@@ -166,7 +166,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .select('*')
         .eq('id', quoteId)
         .eq('attorney_id', attorney.id)
-        .single();
+        .maybeSingle();
 
       if (verifyError || !quote) {
         return res.status(404).json({ error: 'Quote not found' });
@@ -200,7 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('attorneys')
           .select('name, firm_name')
           .eq('id', attorney.id)
-          .single();
+          .maybeSingle();
 
         const attorneyName = attorneyData?.name || attorneyData?.firm_name || 'An attorney';
 

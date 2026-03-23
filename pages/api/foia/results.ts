@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('id, email, name, license_plate, license_state, status, created_at, foia_sent_at, response_received_at, response_data, ticket_count, total_fines')
       .eq('id', id)
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       return res.status(404).json({

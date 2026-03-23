@@ -27,7 +27,7 @@ export default async function handler(
       .from('protection_waitlist')
       .select('id')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       return res.status(200).json({

@@ -617,7 +617,7 @@ export async function saveLetterScore(
       percentile_rank: score.percentile_rank,
     })
     .select('id')
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Failed to save letter score: ${error.message}`);
@@ -637,7 +637,7 @@ export async function getLetterScore(
     .from('letter_quality_scores')
     .select('*')
     .eq('letter_id', letterId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return null;

@@ -192,7 +192,7 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
     .gte('snow_amount_inches', 2.0)
     .order('event_date', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!snowEvent) {
     return {

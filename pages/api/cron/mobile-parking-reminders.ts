@@ -164,7 +164,7 @@ async function sendCallAlertIfEnabled(
       .from('user_profiles')
       .select('phone_call_enabled, phone_number, call_alert_preferences')
       .eq('id', userId)
-      .single()).data;
+      .maybeSingle()).data;
 
     if (!profile?.phone_call_enabled || !profile?.phone_number) return false;
 

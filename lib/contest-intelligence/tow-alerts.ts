@@ -164,7 +164,7 @@ export async function getAlert(
     .from('tow_boot_alerts')
     .select('*')
     .eq('id', alertId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return null;

@@ -275,7 +275,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('autopilot_admin_settings')
       .select('setting_value')
       .eq('setting_key', 'kill_all_mailing')
-      .single();
+      .maybeSingle();
 
     const mailingDisabled = killSetting?.setting_value?.enabled === true;
 
@@ -298,7 +298,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('plate', ticketRow.plate.toUpperCase())
           .eq('state', ticketRow.state.toUpperCase())
           .eq('status', 'active')
-          .single();
+          .maybeSingle();
 
         if (!plate) {
           console.log(`  Skipping ${ticketRow.plate}: No active monitored plate found`);
@@ -311,7 +311,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('detected_tickets')
           .select('id')
           .eq('ticket_number', ticketRow.ticket_number)
-          .single();
+          .maybeSingle();
 
         if (existingTicket) {
           console.log(`  Skipping ${ticketRow.ticket_number}: Already exists`);
@@ -353,7 +353,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('user_profiles')
           .select('*')
           .eq('user_id', plate.user_id)
-          .single();
+          .maybeSingle();
 
         if (!profile || !profile.full_name || !profile.mailing_address) {
           await supabaseAdmin
@@ -369,7 +369,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('autopilot_settings')
           .select('*')
           .eq('user_id', plate.user_id)
-          .single();
+          .maybeSingle();
 
         const userSettings: UserSettings = settings || {
           auto_mail_enabled: true,

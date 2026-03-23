@@ -119,7 +119,7 @@ export async function getTodaysPlatformMetrics(
     .from('platform_metrics')
     .select('*')
     .eq('metric_date', today)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     // Generate metrics if not found
@@ -293,7 +293,7 @@ export async function getUserContestMetrics(
     .from('user_contest_metrics')
     .select('*')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   if (cachedData) {
     return mapToUserMetrics(cachedData);
