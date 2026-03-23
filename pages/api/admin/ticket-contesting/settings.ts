@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } catch (error: any) {
       console.error('Error fetching settings:', error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: 'Failed to fetch settings' });
     }
   }
 
@@ -72,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } catch (error: any) {
       console.error('Error updating settings:', error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: 'Failed to update settings' });
     }
   }
 

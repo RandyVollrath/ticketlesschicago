@@ -136,7 +136,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (err: any) {
     console.error('Learnings analysis failed:', err);
-    return res.status(500).json({ error: err.message, ...result });
+    return res.status(500).json({ error: 'Learnings analysis failed', ...result });
   }
 
   console.log('🧠 Learnings analysis complete:', result);

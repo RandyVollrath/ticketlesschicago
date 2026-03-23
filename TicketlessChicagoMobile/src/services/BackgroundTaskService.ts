@@ -48,6 +48,43 @@ const DEPARTURE_CONFIRMATION_DELAY_MS = 60 * 1000; // 60s after car starts — e
 const MIN_PARKING_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes - prevent duplicate checks
 const LOW_ACCURACY_RECOVERY_DELAY_MS = 25000; // 25s retry window for poor native GPS fixes
 const RECENT_DRIVING_WINDOW_MS = 20 * 60 * 1000; // treat onDrivingStarted as recent for 20 minutes
+
+/**
+ * Create a Date object for a specific time in the America/Chicago timezone.
+ * This is critical because street cleaning schedules are in Chicago local time,
+ * but the user's phone may be in a different timezone (e.g., Pacific Time).
+ * Without this, a user in LA would get their "7 AM" notification at 7 AM Pacific
+ * (= 9 AM Chicago), by which time street cleaning has already started.
+ *
+ * @param year  Full year (e.g. 2026)
+ * @param month 0-indexed month (0=Jan, 11=Dec) — same as JS Date constructor
+ * @param day   Day of month
+ * @param hour  Hour in Chicago local time (0-23)
+ * @param minute Minute (default 0)
+ * @returns Date object representing that Chicago local time as a UTC timestamp
+ */
+function createChicagoDate(year: number, month: number, day: number, hour: number, minute: number = 0): Date {
+  // Step 1: Find Chicago's UTC offset on this date using Intl.DateTimeFormat.
+  // We probe with UTC noon on the target date to determine if it's CST (-6) or CDT (-5).
+  const probeUtc = new Date(Date.UTC(year, month, day, 12, 0, 0));
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', hour12: false,
+  });
+  const parts = formatter.formatToParts(probeUtc);
+  const chicagoHourAtUtcNoon = parseInt(
+    parts.find(p => p.type === 'hour')?.value || '6', 10
+  );
+  // chicagoHourAtUtcNoon will be 6 during CST (UTC-6) or 7 during CDT (UTC-5)
+  const chicagoOffsetHours = chicagoHourAtUtcNoon - 12; // e.g., -6 for CST, -5 for CDT
+
+  // Step 2: Convert target Chicago local time to UTC.
+  // Chicago local = UTC + offset  →  UTC = Chicago local - offset
+  const utcHour = hour - chicagoOffsetHours; // e.g., 9am Chicago CDT: 9 - (-5) = 14 UTC
+  return new Date(Date.UTC(year, month, day, utcHour, minute, 0, 0));
+}
+
 const ADDRESS_BACKFILL_DELAY_MS = 60 * 1000; // 60s delay before retrying geocoding for failed addresses
 const ADDRESS_BACKFILL_MAX_RETRIES = 3; // Max retries for address backfill
 
@@ -2311,21 +2348,21 @@ class BackgroundTaskServiceClass {
       const schedule = result.streetCleaning.schedule || '9am–3pm (estimated)';
       const dateParts = result.streetCleaning.nextDate.split('-');
       if (dateParts.length === 3) {
-        const cleaningDate = new Date(
-          parseInt(dateParts[0], 10),
-          parseInt(dateParts[1], 10) - 1, // Month is 0-indexed
-          parseInt(dateParts[2], 10),
-          9, 0, 0, 0 // 9 AM local time
-        );
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1; // 0-indexed
+        const day = parseInt(dateParts[2], 10);
+
+        // Use Chicago timezone — street cleaning is always Chicago local time,
+        // even if the user's phone is set to a different timezone.
+        const cleaningDate = createChicagoDate(year, month, day, 9); // 9 AM Chicago
 
         if (!isNaN(cleaningDate.getTime()) && cleaningDate.getTime() > Date.now()) {
-          const dayName = cleaningDate.toLocaleDateString('en-US', { weekday: 'long' });
-          const monthDay = cleaningDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          // Format day/month in Chicago timezone for display (not device timezone)
+          const dayName = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'long' }).format(cleaningDate);
+          const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' }).format(cleaningDate);
 
-          // Notification 1: 9pm the night before cleaning
-          const nightBefore9pm = new Date(cleaningDate);
-          nightBefore9pm.setDate(nightBefore9pm.getDate() - 1);
-          nightBefore9pm.setHours(21, 0, 0, 0); // 9 PM
+          // Notification 1: 9pm Chicago time the night before cleaning
+          const nightBefore9pm = createChicagoDate(year, month, day - 1, 21); // Day arithmetic handled by Date.UTC
 
           if (nightBefore9pm.getTime() > Date.now()) {
             restrictions.push({
@@ -2338,9 +2375,8 @@ class BackgroundTaskServiceClass {
             });
           }
 
-          // Notification 2: 7am morning of cleaning
-          const morningOf7am = new Date(cleaningDate);
-          morningOf7am.setHours(7, 0, 0, 0); // 7 AM
+          // Notification 2: 7am Chicago time morning of cleaning
+          const morningOf7am = createChicagoDate(year, month, day, 7);
 
           if (morningOf7am.getTime() > Date.now()) {
             restrictions.push({
@@ -2750,13 +2786,15 @@ class BackgroundTaskServiceClass {
       try {
         const dateParts = nextDate.split('-');
         if (dateParts.length === 3) {
-          const d = new Date(
+          // Use Chicago timezone for display — cleaning dates are Chicago local
+          const d = createChicagoDate(
             parseInt(dateParts[0], 10),
             parseInt(dateParts[1], 10) - 1,
-            parseInt(dateParts[2], 10)
+            parseInt(dateParts[2], 10),
+            9 // 9 AM Chicago
           );
-          const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-          const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const dayName = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short' }).format(d);
+          const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' }).format(d);
           parts.push(`🧹 Street cleaning ${dayName} ${monthDay}, ${schedule} — $60 ticket`);
         } else {
           parts.push(`🧹 Street cleaning ${nextDate}, ${schedule} — $60 ticket`);

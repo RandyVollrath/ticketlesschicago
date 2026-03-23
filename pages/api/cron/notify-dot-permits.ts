@@ -155,7 +155,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (usersError) {
       console.error('[notify-dot-permits] Error fetching users:', usersError);
-      return res.status(500).json({ error: 'Failed to fetch users', details: usersError.message });
+      return res.status(500).json({ error: 'Failed to fetch users' });
     }
 
     if (!users || users.length === 0) {

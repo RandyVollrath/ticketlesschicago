@@ -99,7 +99,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (error) {
     console.error('Error updating FOIA integration:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to update FOIA integration' });
   }
 
   return res.status(200).json({ success: true, updated: update });

@@ -44,7 +44,7 @@ export default withAdminAuth(async (req, res) => {
     ]);
 
     if (error) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: 'Failed to fetch permit zone corrections' });
     }
 
     // Get unique user count

@@ -43,6 +43,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error: any) {
     console.error('Error fetching pending tickets:', error);
-    return res.status(500).json({ error: error.message || 'Failed to fetch pending tickets' });
+    return res.status(500).json({ error: 'Failed to fetch pending tickets' });
   }
 }
