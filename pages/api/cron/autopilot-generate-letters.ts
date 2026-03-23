@@ -47,7 +47,12 @@ const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 })
   : null;
 
-const JWT_SECRET = process.env.APPROVAL_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// SECURITY: Never fall back to SUPABASE_SERVICE_ROLE_KEY — it would expose the
+// service role key in JWTs sent via email links. Fail hard if not configured.
+const JWT_SECRET = process.env.APPROVAL_JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('APPROVAL_JWT_SECRET is not configured — approval tokens will fail');
+}
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://autopilotamerica.com';
 
 // Weather relevance by violation type — same map as user-facing system
@@ -268,6 +273,9 @@ function formatViolationDate(dateString: string | null): string {
 // ─── Approval Email ──────────────────────────────────────────
 
 function generateApprovalToken(ticketId: string, userId: string, letterId: string): string {
+  if (!JWT_SECRET) {
+    throw new Error('APPROVAL_JWT_SECRET not configured — cannot generate approval tokens');
+  }
   return jwt.sign(
     { ticket_id: ticketId, user_id: userId, letter_id: letterId },
     JWT_SECRET,
