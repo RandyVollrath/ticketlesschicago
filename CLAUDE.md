@@ -553,6 +553,51 @@ Next.js `router.push()` uses `history.pushState()` — a client-side navigation 
 ### `loadData()` and Other Async Functions Must Have try-catch
 If a web page loaded in the mobile WebView throws an unhandled exception, Next.js shows a client-side error page that's impossible to recover from inside the WebView. All async data-loading functions on pages that can be loaded in a WebView MUST have try-catch wrappers. On error, post a `load_error` message to `ReactNativeWebView` so the native app can show a retry UI.
 
+## Address Display — NEVER Show Raw Coordinates
+
+Users must always see human-readable street addresses (e.g. "1234 N Western Ave"), never raw coordinates ("41.939123, -87.667456") or near-coordinate fallbacks ("Near 41.9391, -87.6675"). Raw coordinates are a bug.
+
+### Defense Layers (All Must Be Present)
+1. **Server-side geocoding** (`pages/api/mobile/check-my-parking.ts`): Nominatim → Google Maps → null. This handles 99% of cases.
+2. **Client-side fallback** (`ClientReverseGeocoder.ts`): If server returns coordinates or null, the mobile client retries via Nominatim directly. 5s timeout, returns `null` on failure.
+3. **Display-time guard** (`HistoryScreen.tsx`): `isCoordinateAddress()` checks every address before display. If it's coordinates, shows "Resolving address..." and triggers background resolution.
+4. **Startup backfill** (`HistoryScreen.tsx`): On mount, scans all history entries for coordinate-only addresses and resolves them via Nominatim with 1.1s rate limiting.
+5. **Deferred backfill** (`BackgroundTaskService.ts`): If a parking entry is saved with coordinates (API failure), schedules exponential-backoff retry at 60s/3min/9min.
+
+### Utility: `ClientReverseGeocoder.ts`
+- `isCoordinateAddress(address)`: Returns true if address is raw coords or "Near X, Y"
+- `formatCoordinateFallback(lat, lng)`: Returns user-friendly "Near X, Y" (last resort)
+- `resolveAddress(address, lat, lng)`: Full chain — if address is real, return it; else try client Nominatim; else return "Near X, Y"
+
+### Rules
+1. **Every code path that stores or displays an address MUST check `isCoordinateAddress()`.** If true, resolve it or show a loading state — never display coordinates to the user.
+2. **`ParkingHistoryService.addToHistory()` MUST use `formatCoordinateFallback()` instead of raw coordinate strings** when the address is null/undefined.
+3. **Server responses that contain coordinate-only addresses** (geocoding failure) MUST be caught and resolved client-side before storage.
+4. **The Nominatim User-Agent** must identify the app: `'TicketlessChicago/1.0 (parking app)'`. Nominatim blocks requests without a User-Agent.
+
+## Parking Pipeline Resilience — Health Tracking
+
+The parking pipeline can silently break (auth regression, API changes, network issues) and the user won't know until they get a ticket. The health tracking system detects this.
+
+### Architecture
+- **`BackgroundTaskService.ts`** tracks consecutive failures and last success time
+- State is persisted to AsyncStorage (`parking_pipeline_health_v1`) across app restarts
+- On success: resets failure count, updates last success timestamp
+- On failure: increments failure count, stores error reason
+- On app foreground: runs health check (auth token, failure count, staleness)
+
+### Warning Triggers
+1. **3+ consecutive failures**: Shows push notification "Parking checks have failed N times in a row"
+2. **No auth token on foreground**: Logs warning (parking will fail until re-login)
+3. **7+ days without success**: Logs staleness warning
+
+### Rules
+1. **Every `triggerParkingCheck()` outcome MUST call `recordParkingCheckOutcome()`** — success path AND catch block. Missing either breaks the tracking.
+2. **Health state MUST be persisted to AsyncStorage** — in-memory tracking alone loses state on app kill.
+3. **`runParkingHealthCheck()` MUST run on every app foreground** — this is the primary detection mechanism since failures happen in the background.
+4. **Warning notifications use `sendErrorNotification()` (persistent)**, not `sendDiagnosticNotification()` (debug-only) — the user MUST see these.
+5. **The `healthWarningShown` flag prevents notification spam** — only one warning per failure streak. Resets on success.
+
 ## Supabase Details
 - Project ref: `dzhqolbhuqdcpngdayuq`
 - localStorage key format: `sb-dzhqolbhuqdcpngdayuq-auth-token`

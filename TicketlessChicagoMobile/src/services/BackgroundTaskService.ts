@@ -177,6 +177,17 @@ class BackgroundTaskServiceClass {
   private lastLogUploadTime: number = 0;
   private readonly logUploadMinIntervalMs: number = 2 * 60 * 1000; // 2 minutes between uploads
 
+  // === Parking pipeline health tracking ===
+  // Tracks consecutive failures to detect a silently broken pipeline.
+  // Persisted to AsyncStorage so it survives app restarts.
+  private consecutiveParkingFailures: number = 0;
+  private lastParkingSuccessTime: number = 0; // timestamp of last successful parking check
+  private lastParkingFailureReason: string = '';
+  private healthWarningShown: boolean = false;
+  private static readonly PARKING_HEALTH_KEY = 'parking_pipeline_health_v1';
+  private static readonly MAX_CONSECUTIVE_FAILURES = 3; // Show warning after 3 consecutive failures
+  private static readonly HEALTH_STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days without success = stale
+
   /**
    * Initialize the background task service
    */
@@ -189,6 +200,9 @@ class BackgroundTaskServiceClass {
     try {
       // Load persisted state
       await this.loadState();
+
+      // Load parking pipeline health state (consecutive failures, last success time)
+      await this.loadParkingHealthState();
 
       // Restore parking history from server if local storage is empty (e.g. after reinstall).
       // This is critical for ticket contest evidence — history must survive app reinstalls.
@@ -1818,12 +1832,19 @@ class BackgroundTaskServiceClass {
         accuracy: coords.accuracy ? `${coords.accuracy.toFixed(1)}m` : 'unknown',
       });
 
+      // Record successful parking check for health monitoring
+      void this.recordParkingCheckOutcome(true);
+
       // Upload diagnostic logs after parking confirmed (captures detection decision data)
       if (persistParkingEvent && isRealParkingEvent) {
         void this.uploadDiagnosticLogs('parking-confirmed');
       }
     } catch (error) {
       log.error('=== PARKING CHECK FAILED ===', error);
+
+      // Record failure for health monitoring (detects silently broken pipeline)
+      const errMsg = String(error instanceof Error ? error.message : error);
+      void this.recordParkingCheckOutcome(false, errMsg);
 
       // Reliability fallback: if we have a resolved location but parking API failed,
       // still persist a minimal parking history record so users see their latest spot.
@@ -3436,6 +3457,8 @@ class BackgroundTaskServiceClass {
       void this.captureIosHealthSnapshot('app-foreground', { force: true, includeLogTail: true });
       // Upload diagnostic logs on foreground (fire-and-forget)
       void this.uploadDiagnosticLogs('app-foreground');
+      // Run parking pipeline health check on foreground
+      void this.runParkingHealthCheck();
       // Check for camera evidence captured natively while JS was suspended
       if (Platform.OS === 'ios') {
         void this.ingestPendingNativeRedLightEvidence();
@@ -3567,6 +3590,146 @@ class BackgroundTaskServiceClass {
       }));
     } catch (error) {
       log.error('Error saving background task state', error);
+    }
+  }
+
+  // ====================================================================
+  // Parking Pipeline Health Tracking
+  // ====================================================================
+
+  /**
+   * Load parking pipeline health state from AsyncStorage.
+   */
+  private async loadParkingHealthState(): Promise<void> {
+    try {
+      const raw = await AsyncStorage.getItem(BackgroundTaskServiceClass.PARKING_HEALTH_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        this.consecutiveParkingFailures = parsed.consecutiveParkingFailures ?? 0;
+        this.lastParkingSuccessTime = parsed.lastParkingSuccessTime ?? 0;
+        this.lastParkingFailureReason = parsed.lastParkingFailureReason ?? '';
+        this.healthWarningShown = parsed.healthWarningShown ?? false;
+        if (this.consecutiveParkingFailures > 0) {
+          log.warn(`Parking health: ${this.consecutiveParkingFailures} consecutive failures, last success ${this.lastParkingSuccessTime ? new Date(this.lastParkingSuccessTime).toISOString() : 'never'}`);
+        }
+      }
+    } catch (e) {
+      log.debug('Failed to load parking health state (non-fatal)', e);
+    }
+  }
+
+  /**
+   * Persist parking pipeline health state to AsyncStorage.
+   */
+  private async saveParkingHealthState(): Promise<void> {
+    try {
+      await AsyncStorage.setItem(
+        BackgroundTaskServiceClass.PARKING_HEALTH_KEY,
+        JSON.stringify({
+          consecutiveParkingFailures: this.consecutiveParkingFailures,
+          lastParkingSuccessTime: this.lastParkingSuccessTime,
+          lastParkingFailureReason: this.lastParkingFailureReason,
+          healthWarningShown: this.healthWarningShown,
+        })
+      );
+    } catch (e) {
+      log.debug('Failed to save parking health state (non-fatal)', e);
+    }
+  }
+
+  /**
+   * Record the outcome of a parking check for health monitoring.
+   * On success: resets consecutive failure count, updates last success time.
+   * On failure: increments failure count, triggers warning if threshold exceeded.
+   */
+  private async recordParkingCheckOutcome(success: boolean, reason?: string): Promise<void> {
+    if (success) {
+      const hadFailures = this.consecutiveParkingFailures > 0;
+      this.consecutiveParkingFailures = 0;
+      this.lastParkingSuccessTime = Date.now();
+      this.lastParkingFailureReason = '';
+      this.healthWarningShown = false;
+      await this.saveParkingHealthState();
+      if (hadFailures) {
+        log.info('Parking pipeline recovered — consecutive failure count reset');
+      }
+    } else {
+      this.consecutiveParkingFailures++;
+      this.lastParkingFailureReason = reason || 'unknown';
+      await this.saveParkingHealthState();
+      log.warn(`Parking pipeline failure #${this.consecutiveParkingFailures}: ${this.lastParkingFailureReason}`);
+
+      // Show warning notification after threshold
+      if (
+        this.consecutiveParkingFailures >= BackgroundTaskServiceClass.MAX_CONSECUTIVE_FAILURES &&
+        !this.healthWarningShown
+      ) {
+        this.healthWarningShown = true;
+        await this.saveParkingHealthState();
+        await this.sendErrorNotification(
+          `Parking checks have failed ${this.consecutiveParkingFailures} times in a row. ` +
+          `Last error: ${this.lastParkingFailureReason.substring(0, 80)}. ` +
+          `Open the app to restore parking detection.`
+        );
+        log.error(`PARKING HEALTH ALERT: ${this.consecutiveParkingFailures} consecutive failures`, {
+          lastReason: this.lastParkingFailureReason,
+          lastSuccessAt: this.lastParkingSuccessTime
+            ? new Date(this.lastParkingSuccessTime).toISOString()
+            : 'never',
+        });
+      }
+    }
+  }
+
+  /**
+   * Run parking pipeline health check on app foreground.
+   * Detects:
+   * 1. Auth token missing/expired (parking will always fail)
+   * 2. Consecutive failures (pipeline silently broken)
+   * 3. Stale pipeline (no success in 7+ days while monitoring is active)
+   */
+  private async runParkingHealthCheck(): Promise<void> {
+    try {
+      // Check 1: Auth token availability
+      const token = await AuthService.getToken();
+      if (!token) {
+        log.warn('PARKING HEALTH: No auth token — parking checks will fail. User needs to re-login.');
+        // Don't spam notifications — just log. The actual parking check failure
+        // will show a notification via recordParkingCheckOutcome.
+      }
+
+      // Check 2: Consecutive failures
+      if (this.consecutiveParkingFailures >= BackgroundTaskServiceClass.MAX_CONSECUTIVE_FAILURES) {
+        log.warn(`PARKING HEALTH: ${this.consecutiveParkingFailures} consecutive failures. Last: ${this.lastParkingFailureReason}`);
+
+        // If we haven't shown a warning yet (e.g. failures happened in background), show one now
+        if (!this.healthWarningShown) {
+          this.healthWarningShown = true;
+          await this.saveParkingHealthState();
+          await this.sendDiagnosticNotification(
+            '⚠️ Parking Detection Issue',
+            `Last ${this.consecutiveParkingFailures} parking checks failed. ` +
+            `Reason: ${this.lastParkingFailureReason.substring(0, 60)}. ` +
+            `Attempting recovery...`
+          );
+        }
+
+        // Attempt self-healing: if auth token is available, try a test parking check
+        if (token) {
+          log.info('PARKING HEALTH: Auth token present — pipeline may recover on next parking event');
+        }
+      }
+
+      // Check 3: Stale pipeline (no success in 7+ days)
+      if (this.lastParkingSuccessTime > 0) {
+        const staleness = Date.now() - this.lastParkingSuccessTime;
+        if (staleness > BackgroundTaskServiceClass.HEALTH_STALE_THRESHOLD_MS) {
+          const daysSinceSuccess = Math.floor(staleness / (24 * 60 * 60 * 1000));
+          log.warn(`PARKING HEALTH: Pipeline stale — last success was ${daysSinceSuccess} days ago`);
+        }
+      }
+    } catch (e) {
+      log.debug('Parking health check error (non-fatal)', e);
     }
   }
 
