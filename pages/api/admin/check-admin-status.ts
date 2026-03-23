@@ -29,17 +29,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const adminEmails = ['randy.vollrath@gmail.com', 'randyvollrath@gmail.com', process.env.ADMIN_EMAIL].filter(Boolean);
     const isAdmin = adminEmails.includes(session.user.email || '');
 
+    // SECURITY: Never expose the admin email list — any authenticated user can call this endpoint.
     return res.status(200).json({
       isAdmin,
       isAuthenticated: true,
-      userEmail: session.user.email,
-      adminEmails,
       message: isAdmin
-        ? '✅ You are an admin - you should have access to /admin/message-audit'
-        : '❌ You are not an admin - access to /admin/message-audit is restricted',
-      nextSteps: isAdmin
-        ? 'Try visiting /admin/message-audit again'
-        : 'Contact support if you need admin access'
+        ? 'You have admin access'
+        : 'You do not have admin access',
     });
   } catch (error: any) {
     return res.status(500).json({
