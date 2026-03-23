@@ -31,8 +31,9 @@ const LICENSE_PLATE_SENDER = 'ecommerce@ilsos.gov';
 function isAllowedDownloadUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
+    // Only allow HTTPS from exact Resend domains (no wildcard subdomains)
     const allowedHosts = ['api.resend.com', 'attachments.resend.dev'];
-    return parsed.protocol === 'https:' && allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h));
+    return parsed.protocol === 'https:' && allowedHosts.includes(parsed.hostname);
   } catch {
     return false;
   }
@@ -323,12 +324,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      // Fallback: paginate through auth.users if not found in profiles
+      // Fallback: paginate through auth.users if not found in profiles (limit to 10 pages to prevent DOS)
       if (!foundUserId) {
         let page = 1;
         const perPage = 100;
+        const MAX_PAGES = 10;
         let found = false;
-        while (!found) {
+        while (!found && page <= MAX_PAGES) {
           const { data: authPage } = await supabase.auth.admin.listUsers({ page, perPage });
           if (!authPage?.users?.length) break;
           const authUser = authPage.users.find(
@@ -341,6 +343,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
           if (authPage.users.length < perPage) break;
           page++;
+        }
+        if (!found && page > MAX_PAGES) {
+          console.warn(`⚠️ User lookup stopped after ${MAX_PAGES} pages (${MAX_PAGES * perPage} users scanned)`);
         }
       }
 

@@ -39,9 +39,9 @@ const supabaseAdmin = createClient(
 function isAllowedAttachmentUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    // Only allow HTTPS from Resend/Cloudflare domains
+    // Only allow HTTPS from exact Resend domains (no wildcard subdomains)
     const allowedHosts = ['api.resend.com', 'attachments.resend.dev'];
-    return parsed.protocol === 'https:' && allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h));
+    return parsed.protocol === 'https:' && allowedHosts.includes(parsed.hostname);
   } catch {
     return false;
   }

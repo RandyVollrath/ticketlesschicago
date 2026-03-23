@@ -1,6 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
+
+/** Escape HTML special characters to prevent XSS in email bodies */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -87,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           from: 'Autopilot America <alerts@autopilotamerica.com>',
           to: [adminEmail],
           subject: `New Guarantee Review Request (${data.id})`,
-          html: `<p>New First Dismissal Guarantee claim submitted.</p><p><strong>Claim ID:</strong> ${data.id}</p><p><strong>Email:</strong> ${accountEmail}</p>`,
+          html: `<p>New First Dismissal Guarantee claim submitted.</p><p><strong>Claim ID:</strong> ${escapeHtml(String(data.id))}</p><p><strong>Email:</strong> ${escapeHtml(String(accountEmail || ''))}</p>`,
         }),
       }).catch((notifyError) => {
         console.error('Failed to notify admin about guarantee claim:', notifyError);
@@ -97,6 +108,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ success: true, claim: data });
   } catch (error: any) {
     console.error('Guarantee claim submit error:', error);
-    return res.status(500).json({ error: error.message || 'Unexpected server error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

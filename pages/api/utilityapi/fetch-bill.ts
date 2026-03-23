@@ -29,7 +29,8 @@ const BUCKET_NAME = 'residency-proofs-temps';
 function isAllowedUtilityApiUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'https:' && (parsed.hostname === 'utilityapi.com' || parsed.hostname.endsWith('.utilityapi.com'));
+    // Only allow HTTPS from exact UtilityAPI domains (no wildcard subdomains)
+    return parsed.protocol === 'https:' && (parsed.hostname === 'utilityapi.com' || parsed.hostname === 'api.utilityapi.com');
   } catch {
     return false;
   }
