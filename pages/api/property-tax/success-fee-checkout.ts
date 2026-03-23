@@ -83,7 +83,7 @@ export default async function handler(
       `)
       .eq('id', appealId)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (appealError || !appeal) {
       return res.status(404).json({ error: 'Appeal not found' });

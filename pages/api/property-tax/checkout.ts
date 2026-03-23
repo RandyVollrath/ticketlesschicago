@@ -92,7 +92,7 @@ export default async function handler(
       .from('property_tax_appeals')
       .select('id, user_id, status, stripe_payment_intent_id')
       .eq('id', appealId)
-      .single();
+      .maybeSingle();
 
     if (appealError || !appeal) {
       return res.status(404).json({ error: 'Appeal not found' });
