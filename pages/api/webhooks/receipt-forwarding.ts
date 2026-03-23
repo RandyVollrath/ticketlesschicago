@@ -28,6 +28,16 @@ const REGISTRATION_BUCKET_NAME = 'registration-evidence';
 const CITY_STICKER_SENDER = 'chicagovehiclestickers@sebis.com';
 const LICENSE_PLATE_SENDER = 'ecommerce@ilsos.gov';
 
+function isAllowedDownloadUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const allowedHosts = ['api.resend.com', 'attachments.resend.dev'];
+    return parsed.protocol === 'https:' && allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h));
+  } catch {
+    return false;
+  }
+}
+
 type EvidenceSourceType = 'city_sticker' | 'license_plate';
 type InboundInboxType = 'utility' | 'registration' | 'legacy';
 
@@ -462,6 +472,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const attachmentData = await attachmentResponse.json();
       console.log(`📎 Got attachment metadata, downloading from: ${attachmentData.download_url}`);
+
+      if (!isAllowedDownloadUrl(attachmentData.download_url)) {
+        console.error(`🚨 Blocked download from untrusted URL: ${attachmentData.download_url}`);
+        return res.status(400).json({ error: 'Invalid attachment download URL' });
+      }
 
       const downloadResponse = await fetch(attachmentData.download_url);
       if (!downloadResponse.ok) {
