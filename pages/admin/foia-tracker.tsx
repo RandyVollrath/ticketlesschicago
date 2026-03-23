@@ -109,6 +109,7 @@ const ADMIN_EMAILS = [
   'randy@autopilotamerica.com',
   'admin@autopilotamerica.com',
   'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
 ];
 
 const EVIDENCE_STATUSES = ['queued', 'drafting', 'sent', 'fulfilled_with_records', 'fulfilled_denial', 'fulfilled', 'failed', 'not_needed'];

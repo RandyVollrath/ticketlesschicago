@@ -10,8 +10,10 @@ import { supabaseAdmin } from '../../../lib/supabase';
  */
 
 const ADMIN_EMAILS = [
+  'randy@autopilotamerica.com',
+  'admin@autopilotamerica.com',
   'randyvollrath@gmail.com',
-  'hiautopilotamerica@gmail.com',
+  'carenvollrath@gmail.com',
 ];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

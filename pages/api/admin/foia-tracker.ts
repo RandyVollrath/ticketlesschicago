@@ -17,6 +17,7 @@ const ADMIN_EMAILS = [
   'randy@autopilotamerica.com',
   'admin@autopilotamerica.com',
   'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
 ];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

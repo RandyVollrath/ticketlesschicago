@@ -11,7 +11,12 @@ import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
-const ADMIN_EMAILS = ['randy.vollrath@gmail.com', 'randyvollrath@gmail.com'];
+const ADMIN_EMAILS = [
+  'randy@autopilotamerica.com',
+  'admin@autopilotamerica.com',
+  'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
+];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
