@@ -91,10 +91,11 @@ export default async function handler(
   const { userId, token, renewalYear } = parseResult.data;
 
   try {
-    let targetUserId = userId;
+    let targetUserId: string | undefined;
 
-    // If token provided, verify it and get userId
-    if (token && !userId) {
+    // Authentication: MUST have either a valid token OR be authenticated as the userId
+    if (token) {
+      // Path 1: Token-based auth (email link)
       const tokenResult = verifyConfirmationToken(token);
       if (!tokenResult.valid || !tokenResult.userId) {
         console.warn(`Invalid confirmation token: ${tokenResult.error}`);
@@ -102,6 +103,31 @@ export default async function handler(
       }
       targetUserId = tokenResult.userId;
       console.log(`✅ Token verified for user ${targetUserId}`);
+    } else if (userId) {
+      // Path 2: Direct userId call — MUST authenticate to prevent IDOR
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Authentication required when using userId' });
+      }
+      const authToken = authHeader.substring(7);
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(authToken);
+      if (authError || !authUser) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+      // Verify the authenticated user matches the userId being confirmed (IDOR protection)
+      if (authUser.id !== userId) {
+        console.warn(`IDOR attempt: User ${authUser.id} tried to confirm profile for ${userId}`);
+        return res.status(403).json({ error: 'You can only confirm your own profile' });
+      }
+      targetUserId = userId;
+      console.log(`✅ Authenticated user ${targetUserId} confirming own profile`);
+    } else {
+      // Neither token nor userId — should never happen due to zod validation
+      return res.status(400).json({ error: 'Either token or userId is required' });
+    }
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'Could not determine target user' });
     }
 
     // Build update object - always set current year if not explicitly provided
