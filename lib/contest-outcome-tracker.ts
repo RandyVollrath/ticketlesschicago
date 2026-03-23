@@ -103,14 +103,16 @@ export function detectOutcomeChange(
   }
 
   // Amount reduced without formal hearing
+  // Use stored amount if available, otherwise fall back to portal's original_amount
+  const referenceAmount = storedTicket.amount || portalData.original_amount;
   if (
     portalData.current_amount_due > 0 &&
-    storedTicket.amount &&
-    portalData.current_amount_due < storedTicket.amount * 0.95 // at least 5% reduction
+    referenceAmount > 0 &&
+    portalData.current_amount_due < referenceAmount * 0.95 // at least 5% reduction
   ) {
     return {
       outcome: 'reduced',
-      details: `Amount reduced from $${storedTicket.amount} to $${portalData.current_amount_due}`,
+      details: `Amount reduced from $${referenceAmount} to $${portalData.current_amount_due}`,
       finalAmount: portalData.current_amount_due,
     };
   }

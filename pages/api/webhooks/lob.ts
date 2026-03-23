@@ -220,16 +220,20 @@ export default async function handler(
       updateData.delivered_at = new Date().toISOString();
     }
 
-    // Mark as returned if that's the event
-    if (newStatus === 'returned') {
+    // Terminal letter statuses that should NOT be overwritten by delivery events
+    const TERMINAL_LETTER_STATUSES = ['won', 'lost', 'reduced', 'dismissed', 'upheld'];
+    const letterInTerminalState = TERMINAL_LETTER_STATUSES.includes(letter.status);
+
+    // Mark as returned if that's the event — but don't overwrite contest outcome statuses
+    if (newStatus === 'returned' && !letterInTerminalState) {
       updateData.returned_at = new Date().toISOString();
-      updateData.status = 'returned'; // Update main status too
+      updateData.status = 'returned';
     }
 
-    // Mark as failed if that's the event
-    if (newStatus === 'failed') {
+    // Mark as failed if that's the event — but don't overwrite contest outcome statuses
+    if (newStatus === 'failed' && !letterInTerminalState) {
       updateData.failed_at = new Date().toISOString();
-      updateData.status = 'failed'; // Update main status too
+      updateData.status = 'failed';
     }
 
     // Update the letter
@@ -237,6 +241,11 @@ export default async function handler(
       .from('contest_letters')
       .update(updateData)
       .eq('id', letter.id);
+
+    if (updateError) {
+      console.error('  Error updating letter:', updateError);
+      return res.status(500).json({ error: 'Failed to update letter' });
+    }
 
     // Also update ticket status for terminal letter events (delivered/returned/failed)
     // Guard: don't overwrite terminal outcome statuses (won/lost/dismissed/upheld/paid)
@@ -254,11 +263,6 @@ export default async function handler(
       } else {
         console.log(`  Skipped ticket ${letter.ticket_id} status update — already in terminal state`);
       }
-    }
-
-    if (updateError) {
-      console.error('  Error updating letter:', updateError);
-      return res.status(500).json({ error: 'Failed to update letter' });
     }
 
     // Log to audit
