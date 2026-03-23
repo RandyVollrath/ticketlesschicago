@@ -6,25 +6,17 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin } from '../../../lib/supabase';
+import { requireAdminAuth } from '../../../lib/auth-middleware';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Simple admin auth check
-  const authHeader = req.headers.authorization;
-  const adminToken = process.env.ADMIN_API_TOKEN || 'ticketless2025admin';
-
-  if (authHeader !== `Bearer ${adminToken}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Require admin authentication (JWT or session cookie)
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return; // requireAdminAuth already sent 401/403
 
   const { orderId, newPartnerId } = req.body;
 
@@ -34,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Get the order
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await supabaseAdmin!
       .from('renewal_orders')
       .select('id, order_number, partner_id, status, customer_email, original_partner_id')
       .eq('id', orderId)
@@ -45,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Verify new partner exists and is active with Stripe
-    const { data: newPartner, error: partnerError } = await supabase
+    const { data: newPartner, error: partnerError } = await supabaseAdmin!
       .from('renewal_partners')
       .select('id, name, status, stripe_connected_account_id')
       .eq('id', newPartnerId)
@@ -64,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get old partner name for logging
-    const { data: oldPartner } = await supabase
+    const { data: oldPartner } = await supabaseAdmin!
       .from('renewal_partners')
       .select('name')
       .eq('id', order.partner_id)
@@ -97,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       updateData.status = 'pending'; // Actually set to pending so new remitter sees it
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin!
       .from('renewal_orders')
       .update(updateData)
       .eq('id', orderId);
@@ -107,7 +99,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to transfer order' });
     }
 
-    console.log(`📦 Order ${order.order_number} transferred from "${oldPartner?.name}" to "${newPartner.name}" - PAYMENT RECONCILIATION NEEDED`);
+    console.log(`Order ${order.order_number} transferred from "${oldPartner?.name}" to "${newPartner.name}" - PAYMENT RECONCILIATION NEEDED`);
 
     return res.status(200).json({
       success: true,
