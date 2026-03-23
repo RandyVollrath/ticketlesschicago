@@ -2,6 +2,17 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
+/** Escape HTML special characters to prevent XSS */
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 /**
  * Remitter One-Click Confirmation
  *
@@ -37,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         <html>
           <body style="font-family: sans-serif; padding: 40px; text-align: center;">
             <h1>❌ Renewal Not Found</h1>
-            <p>ID: ${id}</p>
+            <p>ID: ${escapeHtml(id as string)}</p>
           </body>
         </html>
       `);
@@ -55,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         <html>
           <body style="font-family: sans-serif; padding: 40px; text-align: center;">
             <h1>❌ User Profile Not Found</h1>
-            <p>User ID: ${renewal.user_id}</p>
+            <p>User ID: ${escapeHtml(renewal.user_id)}</p>
           </body>
         </html>
       `);
@@ -72,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             <h1 style="color: #10b981;">✅ Already Confirmed</h1>
             <p>This renewal was already marked as submitted.</p>
             <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-top: 20px;">
-              <p><strong>Confirmation #:</strong> ${renewalWithProfile.metadata?.city_confirmation_number || 'N/A'}</p>
+              <p><strong>Confirmation #:</strong> ${escapeHtml(renewalWithProfile.metadata?.city_confirmation_number || 'N/A')}</p>
               <p><strong>Confirmed:</strong> ${new Date(renewal.updated_at).toLocaleString()}</p>
             </div>
           </body>
@@ -82,6 +93,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // If confirmation number provided, process it
     if (confirmation) {
+      // Sanitize confirmation number — alphanumeric, hyphens, spaces only
+      const cleanConfirmation = String(confirmation).replace(/[^a-zA-Z0-9\-\s]/g, '').slice(0, 50);
+      if (!cleanConfirmation) {
+        return res.status(400).send(`
+          <html>
+            <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+              <h1>❌ Invalid Confirmation Number</h1>
+              <p>Please enter a valid confirmation number.</p>
+            </body>
+          </html>
+        `);
+      }
+
       // Update status in metadata
       const { error: updateError } = await supabaseAdmin
         .from('renewal_charges')
@@ -89,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           metadata: {
             ...renewal.metadata,
             city_payment_status: 'paid',
-            city_confirmation_number: confirmation as string,
+            city_confirmation_number: cleanConfirmation,
             remitter_confirmed_at: new Date().toISOString(),
             remitter_confirmed_via: 'email_link'
           }
@@ -135,10 +159,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               ${renewalWithProfile.renewal_type === 'city_sticker' ? 'City Sticker' : 'License Plate'} renewal marked as submitted.
             </p>
             <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: left;">
-              <p><strong>User:</strong> ${renewalWithProfile.user_profiles.first_name} ${renewalWithProfile.user_profiles.last_name}</p>
-              <p><strong>Plate:</strong> ${renewalWithProfile.user_profiles.license_plate}</p>
-              <p><strong>Confirmation #:</strong> ${confirmation}</p>
-              <p><strong>Expiry Updated:</strong> ${renewalWithProfile.renewal_due_date} → ${nextYearDueDateStr}</p>
+              <p><strong>User:</strong> ${escapeHtml(renewalWithProfile.user_profiles.first_name)} ${escapeHtml(renewalWithProfile.user_profiles.last_name)}</p>
+              <p><strong>Plate:</strong> ${escapeHtml(renewalWithProfile.user_profiles.license_plate)}</p>
+              <p><strong>Confirmation #:</strong> ${escapeHtml(cleanConfirmation)}</p>
+              <p><strong>Expiry Updated:</strong> ${escapeHtml(renewalWithProfile.renewal_due_date)} → ${escapeHtml(nextYearDueDateStr)}</p>
             </div>
             <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
               You can close this window now.
@@ -167,15 +191,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             </h2>
 
             <div style="background: #f9fafb; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-              <p style="margin: 0 0 8px;"><strong>User:</strong> ${userProfile.first_name} ${userProfile.last_name}</p>
-              <p style="margin: 0 0 8px;"><strong>Email:</strong> ${userProfile.email}</p>
-              <p style="margin: 0 0 8px;"><strong>Plate:</strong> ${userProfile.license_plate}</p>
+              <p style="margin: 0 0 8px;"><strong>User:</strong> ${escapeHtml(userProfile.first_name)} ${escapeHtml(userProfile.last_name)}</p>
+              <p style="margin: 0 0 8px;"><strong>Email:</strong> ${escapeHtml(userProfile.email)}</p>
+              <p style="margin: 0 0 8px;"><strong>Plate:</strong> ${escapeHtml(userProfile.license_plate)}</p>
               <p style="margin: 0;"><strong>Due Date:</strong> ${new Date(renewalWithProfile.renewal_due_date).toLocaleDateString()}</p>
             </div>
 
             <form method="GET" style="margin-top: 30px;">
-              <input type="hidden" name="id" value="${id}">
-              <input type="hidden" name="type" value="${type}">
+              <input type="hidden" name="id" value="${escapeHtml(id as string)}">
+              <input type="hidden" name="type" value="${escapeHtml(type as string)}">
 
               <label for="confirmation" style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">
                 City Confirmation Number:

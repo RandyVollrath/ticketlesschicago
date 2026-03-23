@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const trendData = await getWinRateTrends(supabase, {
           category: category as 'violation' | 'defense' | 'ward' | undefined,
           subcategory: subcategory as string | undefined,
-          days: days ? parseInt(days as string, 10) : 30,
+          days: Math.min(Math.max(days ? parseInt(days as string, 10) || 30 : 30, 1), 365),
         });
         return res.status(200).json({
           success: true,
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const topDefenses = await getTopDefensesForViolation(
           supabase,
           top_defenses as string,
-          limit ? parseInt(limit as string, 10) : 5
+          Math.min(Math.max(limit ? parseInt(limit as string, 10) || 5 : 5, 1), 50)
         );
         return res.status(200).json({
           success: true,
@@ -132,8 +132,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Get user's outcomes
       if (user_id) {
         const outcomes = await getUserOutcomes(supabase, user_id as string, {
-          limit: limit ? parseInt(limit as string, 10) : 20,
-          offset: offset ? parseInt(offset as string, 10) : 0,
+          limit: Math.min(Math.max(limit ? parseInt(limit as string, 10) || 20 : 20, 1), 100),
+          offset: Math.max(offset ? parseInt(offset as string, 10) || 0 : 0, 0),
         });
         return res.status(200).json({
           success: true,
