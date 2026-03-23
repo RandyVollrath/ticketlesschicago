@@ -437,14 +437,17 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     if (user.push_token) {
       try {
         const { pushService } = await import('../../../lib/push-service');
-        await pushService.sendPush({
-          token: user.push_token,
+        const pushSent = await pushService.sendToToken(user.push_token, {
           title: subject,
           body: message,
-          data: { type: 'street_cleaning', notificationType: type }
+          data: { type: 'street_cleaning', notificationType: type },
+          userId: user.user_id,
+          category: 'street_cleaning'
         });
-        console.log(`  Push -> ${user.push_token.substring(0, 20)}...`);
-        anySent = true;
+        if (pushSent) {
+          console.log(`  Push -> ${user.push_token.substring(0, 20)}...`);
+          anySent = true;
+        }
       } catch (pushError) {
         console.error(`  Push failed for ${user.email}:`, pushError);
       }
