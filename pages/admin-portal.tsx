@@ -913,6 +913,20 @@ export default function AdminPortal() {
       if (activeSection === 'remitters') fetchRemitters();
       if (activeSection === 'transfer-requests') fetchTransferRequests();
       if (activeSection === 'ticket-contesting') fetchTicketContestingData();
+      if (activeSection === 'email-previews' && !emailPreviewHtml) {
+        (async () => {
+          try {
+            const headers = await getAdminAuthHeaders();
+            const resp = await fetch(`/api/admin/email-previews?template=${selectedEmailTemplate}`, { headers });
+            if (resp.ok) {
+              const html = await resp.text();
+              setEmailPreviewHtml(html);
+            }
+          } catch (e) {
+            console.error('Failed to load email preview:', e);
+          }
+        })();
+      }
       // Always fetch transfer request count for badge
       fetchTransferRequestsCount();
     }
@@ -3063,6 +3077,113 @@ export default function AdminPortal() {
               >
                 Transfer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ Email Previews Section ============ */}
+      {activeSection === 'email-previews' && (
+        <div>
+          <div style={{ marginBottom: '20px' }}>
+            <h2 style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: '700', color: '#1f2937' }}>Email Template Previews</h2>
+            <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Preview all outbound emails as they appear to users</p>
+          </div>
+
+          {/* Template Selector */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            {[
+              { key: 'drip-welcome', label: 'Drip: Welcome (Day 0)', color: '#7c3aed' },
+              { key: 'drip-proof', label: 'Drip: Proof (Day 3)', color: '#7c3aed' },
+              { key: 'drip-soft-sell', label: 'Drip: Soft-sell (Day 7)', color: '#7c3aed' },
+              { key: 'foia-confirmation', label: 'FOIA: Confirmation', color: '#2563eb' },
+              { key: 'foia-results', label: 'FOIA: Results', color: '#2563eb' },
+            ].map(t => (
+              <button
+                key={t.key}
+                onClick={async () => {
+                  setSelectedEmailTemplate(t.key);
+                  setEmailPreviewHtml('');
+                  try {
+                    const headers = await getAdminAuthHeaders();
+                    const resp = await fetch(`/api/admin/email-previews?template=${t.key}`, { headers });
+                    if (resp.ok) {
+                      const html = await resp.text();
+                      setEmailPreviewHtml(html);
+                    }
+                  } catch (e) {
+                    console.error('Failed to load email preview:', e);
+                  }
+                }}
+                style={{
+                  padding: '10px 16px',
+                  border: selectedEmailTemplate === t.key ? `2px solid ${t.color}` : '1px solid #e5e7eb',
+                  backgroundColor: selectedEmailTemplate === t.key ? `${t.color}10` : 'white',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: selectedEmailTemplate === t.key ? '600' : '400',
+                  color: selectedEmailTemplate === t.key ? t.color : '#4b5563',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Email Preview */}
+          <div style={{
+            backgroundColor: '#f3f4f6',
+            borderRadius: '12px',
+            padding: '24px',
+            minHeight: '600px',
+          }}>
+            {/* Email chrome */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              maxWidth: '700px',
+              margin: '0 auto',
+              overflow: 'hidden',
+            }}>
+              {/* Subject line bar */}
+              <div style={{
+                padding: '12px 16px',
+                borderBottom: '1px solid #e5e7eb',
+                backgroundColor: '#f9fafb',
+              }}>
+                <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>SUBJECT</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937' }}>
+                  {selectedEmailTemplate === 'drip-welcome' && 'Welcome to Autopilot America'}
+                  {selectedEmailTemplate === 'drip-proof' && 'The $264 million parking ticket machine'}
+                  {selectedEmailTemplate === 'drip-soft-sell' && 'Randy, your next ticket is already scheduled'}
+                  {selectedEmailTemplate === 'foia-confirmation' && 'FOIA filed on plate IL ABC1234 — the city has 5 days to respond'}
+                  {selectedEmailTemplate === 'foia-results' && "7 tickets. $825 in fines. Here's your FOIA report."}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                  From: Randy from Autopilot America &lt;randy@autopilotamerica.com&gt;
+                </div>
+              </div>
+
+              {/* Email body iframe */}
+              {emailPreviewHtml ? (
+                <iframe
+                  srcDoc={emailPreviewHtml}
+                  style={{
+                    width: '100%',
+                    border: 'none',
+                    minHeight: '800px',
+                  }}
+                  title="Email Preview"
+                />
+              ) : (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>
+                  <p style={{ fontSize: '14px' }}>Select a template above to preview</p>
+                  <p style={{ fontSize: '12px' }}>Loading preview...</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
