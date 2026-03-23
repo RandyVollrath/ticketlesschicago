@@ -319,7 +319,7 @@ export async function sendFoiaRequestEmail(params: {
         to: [CHICAGO_FINANCE_FOIA_EMAIL],
         subject,
         text: body,
-        reply_to: params.requesterEmail,
+        reply_to: 'foia@autopilotamerica.com',
         headers: {
           'X-Entity-Ref-ID': params.referenceId || `foia-${params.ticketNumber}`,
         },
@@ -450,7 +450,7 @@ export async function sendCdotFoiaRequestEmail(params: {
         to: [CHICAGO_CDOT_FOIA_EMAIL],
         subject,
         text: body,
-        reply_to: params.requesterEmail,
+        reply_to: 'foia@autopilotamerica.com',
         headers: {
           'X-Entity-Ref-ID': params.referenceId || `cdot-foia-${params.ticketNumber}`,
         },
