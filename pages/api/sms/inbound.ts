@@ -56,7 +56,7 @@ export default async function handler(
         .from('user_profiles')
         .select('user_id, first_name, email, emissions_date, emissions_completed, phone_number')
         .eq('phone_number', phoneE164)
-        .single();
+        .maybeSingle();
 
       if (userError || !user) {
         console.error('User not found for phone:', phoneE164);
@@ -128,7 +128,7 @@ export default async function handler(
         .from('user_profiles')
         .select('user_id, first_name, email, has_contesting')
         .eq('phone_number', phoneE164)
-        .single();
+        .maybeSingle();
 
       if (userError || !user) {
         console.error('User not found for phone:', phoneE164);
@@ -186,7 +186,7 @@ export default async function handler(
         .from('user_profiles')
         .select('user_id, first_name, email')
         .eq('phone_number', phoneE164)
-        .single();
+        .maybeSingle();
 
       if (userError || !user) {
         console.error('User not found for phone:', phoneE164);
@@ -201,8 +201,7 @@ export default async function handler(
         .eq('status', 'completed')
         .eq('sticker_applied', false)
         .order('completed_at', { ascending: false })
-        .limit(1)
-        .single();
+        .maybeSingle();
 
       if (orderError || !order) {
         // No pending sticker confirmation - maybe already confirmed or no recent order

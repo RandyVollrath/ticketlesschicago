@@ -322,13 +322,26 @@ async function reviewWithAnthropic(prompt: string): Promise<AIReviewResult> {
   return parseAIReviewResponse(responseText, 'anthropic');
 }
 
+/** Wrap a promise with a timeout. Rejects with TimeoutError if deadline exceeded. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+const AI_REVIEW_TIMEOUT_MS = 30_000; // 30s per provider (Anthropic has its own 60s client timeout)
+
 async function reviewWithGemini(prompt: string): Promise<AIReviewResult> {
   if (!gemini) {
     throw new Error('GEMINI_API_KEY not configured');
   }
 
   const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
-  const result = await model.generateContent(prompt);
+  const result = await withTimeout(model.generateContent(prompt), AI_REVIEW_TIMEOUT_MS, 'Gemini review');
   return parseAIReviewResponse(result.response.text(), 'gemini');
 }
 
@@ -337,11 +350,15 @@ async function reviewWithOpenAI(prompt: string): Promise<AIReviewResult> {
     throw new Error('OPENAI_API_KEY not configured');
   }
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    temperature: 0,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const completion = await withTimeout(
+    openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    AI_REVIEW_TIMEOUT_MS,
+    'OpenAI review',
+  );
 
   return parseAIReviewResponse(completion.choices[0]?.message?.content || '', 'openai');
 }
@@ -1094,8 +1111,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let lettersMailed = 0;
     let errors = 0;
+    const cronStartTime = Date.now();
+    const CRON_TIMEOUT_BUFFER_MS = 15_000; // Stop 15s before maxDuration to avoid mid-operation timeout
+    const CRON_MAX_MS = 120_000; // maxDuration from config
 
     for (const letter of readyLetters) {
+      // Elapsed time guard: stop processing before cron timeout kills us mid-operation
+      const elapsedMs = Date.now() - cronStartTime;
+      if (elapsedMs > CRON_MAX_MS - CRON_TIMEOUT_BUFFER_MS) {
+        console.warn(`  ⏱️ Approaching cron timeout (${Math.round(elapsedMs / 1000)}s elapsed), stopping with ${readyLetters.length - lettersMailed - errors} letters remaining`);
+        break;
+      }
+
       // Get user profile for mailing address
       const { data: profile } = await supabaseAdmin
         .from('user_profiles')
@@ -1189,7 +1216,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!validation.pass) {
           console.log(`    ⚠️ Letter quality issues found: ${validation.issues.join('; ')}`);
 
-          // Try AI auto-fix
+          // Skip AI review for unfixable issues — saves API tokens and cron time.
+          // Letters that are too short, contain AI self-references, or are too long
+          // need regeneration, not patching. Flag them directly for admin review.
+          const unfixableIssues = validation.issues.filter(i =>
+            i.includes('suspiciously short') ||
+            i.includes('suspiciously long') ||
+            i.includes('AI self-reference')
+          );
+          if (unfixableIssues.length > 0) {
+            console.log(`    ⏭️ Skipping AI review — unfixable issues: ${unfixableIssues.join('; ')}`);
+            await supabaseAdmin
+              .from('contest_letters')
+              .update({ status: 'needs_admin_review' })
+              .eq('id', letter.id);
+
+            await supabaseAdmin.from('ticket_audit_log').insert({
+              ticket_id: letter.ticket_id,
+              user_id: letter.user_id,
+              action: 'letter_quality_failed',
+              details: {
+                validation_issues: validation.issues,
+                unfixable: true,
+                ai_review_skipped: true,
+                performed_by_system: 'autopilot_cron',
+              },
+              performed_by: null,
+            });
+            continue;
+          }
+
+          // Try AI auto-fix for fixable issues (placeholders, date errors, etc.)
           const aiReview = await aiQualityReview(letterText, {
             ticket_number: ticketNumber,
             violation_date: ticket?.violation_date || '',
