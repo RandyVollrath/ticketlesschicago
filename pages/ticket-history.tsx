@@ -295,7 +295,7 @@ export default function TicketHistory() {
               }}>
                 {alreadyExists
                   ? 'We already have a pending FOIA request for this plate. You\'ll be notified by email when the city responds.'
-                  : `We'll send a FOIA request to the City of Chicago for plate ${licenseState} ${licensePlate.toUpperCase()}. You'll receive a confirmation email at ${email}, and we'll email you the full report when the city responds (typically 5 business days).`
+                  : `We're sending a FOIA request to the City of Chicago for plate ${licenseState} ${licensePlate.toUpperCase()}. Check your inbox at ${email} — we just sent you a confirmation, and we'll email you again with the full report when the city responds (typically 5 business days).`
                 }
               </p>
 
@@ -312,9 +312,10 @@ export default function TicketHistory() {
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {[
-                    { icon: '1', text: 'We send the FOIA request to the Chicago Department of Finance' },
-                    { icon: '2', text: 'The city has 5 business days to respond (Illinois law)' },
-                    { icon: '3', text: 'We email you the full report with every ticket on your record' },
+                    { icon: '1', text: `Check your email — we just sent a confirmation to ${email}` },
+                    { icon: '2', text: 'We send the official FOIA request to the Chicago Department of Finance' },
+                    { icon: '3', text: 'The city has 5 business days to respond (Illinois law)' },
+                    { icon: '4', text: 'We email you the full report with every ticket on your record' },
                   ].map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                       <div style={{
