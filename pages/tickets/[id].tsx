@@ -148,7 +148,7 @@ export default function TicketDetailPage() {
       .select('*')
       .eq('id', id)
       .eq('user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
     if (ticketError || !ticketData) {
       setError('Ticket not found');
@@ -163,7 +163,7 @@ export default function TicketDetailPage() {
       .from('contest_letters')
       .select('*')
       .eq('ticket_id', id)
-      .single();
+      .maybeSingle();
 
     if (letterData) {
       setLetter(letterData);

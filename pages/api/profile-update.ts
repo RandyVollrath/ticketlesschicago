@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
-import { supabaseAdmin } from '../../lib/supabase';
+import { supabaseAdmin, supabase } from '../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { maskEmail, maskUserId } from '../../lib/mask-pii';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
@@ -80,8 +80,26 @@ export default async function handler(
     });
   }
 
+  // SECURITY: Authenticate the request and verify the user owns this profile
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
+  const token = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
   try {
     const { userId, email, updates } = parseResult.data;
+
+    // SECURITY: Ensure the authenticated user matches the userId in the request
+    if (authUser.id !== userId) {
+      return res.status(403).json({ error: 'You can only update your own profile' });
+    }
 
     console.log(`Profile update for user ${maskUserId(userId)} (${maskEmail(email)})`);
 

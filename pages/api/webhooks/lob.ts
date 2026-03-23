@@ -84,10 +84,10 @@ interface LobWebhookEvent {
 function verifyLobSignature(payload: string, signature: string | undefined): boolean {
   const webhookSecret = process.env.LOB_WEBHOOK_SECRET;
 
-  // If no webhook secret configured, skip verification (not recommended for production)
+  // If no webhook secret configured, fail closed — reject all webhooks
   if (!webhookSecret) {
-    console.warn('LOB_WEBHOOK_SECRET not configured - skipping signature verification');
-    return true;
+    console.error('LOB_WEBHOOK_SECRET not configured - rejecting webhook (fail closed)');
+    return false;
   }
 
   if (!signature) {
@@ -162,7 +162,7 @@ export default async function handler(
       .from('contest_letters')
       .select('id, ticket_id, user_id, status, lob_letter_id')
       .eq('lob_letter_id', lobLetterId)
-      .single();
+      .maybeSingle();
 
     if (letterError || !letter) {
       console.log(`  Letter not found for Lob ID: ${lobLetterId}`);
