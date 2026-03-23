@@ -166,7 +166,7 @@ export default async function handler(
         .select('id')
         .eq('user_id', user.user_id)
         .eq('notification_year', notificationYear)
-        .single();
+        .maybeSingle();
 
       if (existingNotification) {
         stats.alreadyNotified++;

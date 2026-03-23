@@ -12,6 +12,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../lib/supabase';
 import { generateFoiaAuthorizationPdf } from '../../../lib/foia-authorization-pdf';
 
 const supabaseAdmin = createClient(
@@ -22,6 +23,19 @@ const supabaseAdmin = createClient(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Authenticate the request
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
+  const token = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
   const { id } = req.query;
@@ -35,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from('foia_history_requests')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (error || !request) {
     return res.status(404).json({ error: 'FOIA request not found' });
