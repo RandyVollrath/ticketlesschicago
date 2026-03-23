@@ -3,7 +3,12 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
 
-const ADMIN_EMAILS = ['randy@autopilotamerica.com', 'admin@autopilotamerica.com', 'randyvollrath@gmail.com', 'randy.vollrath@gmail.com'];
+const ADMIN_EMAILS = [
+  'randy@autopilotamerica.com',
+  'admin@autopilotamerica.com',
+  'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
+];
 
 const C = {
   bg: '#0B0F1A',

@@ -16,7 +16,12 @@ const COLORS = {
   warning: '#F59E0B',
 };
 
-const ADMIN_EMAILS = ['randy@autopilotamerica.com', 'admin@autopilotamerica.com', 'randyvollrath@gmail.com'];
+const ADMIN_EMAILS = [
+  'randy@autopilotamerica.com',
+  'admin@autopilotamerica.com',
+  'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
+];
 
 export default function AutopilotAdmin() {
   const router = useRouter();

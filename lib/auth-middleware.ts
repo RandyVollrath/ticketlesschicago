@@ -109,7 +109,8 @@ export function handleAuthError(res: NextApiResponse, error: Error) {
  * Also checks is_admin field in user_profiles
  */
 const ADMIN_EMAILS = [
-  'randy.vollrath@gmail.com',
+  'randy@autopilotamerica.com',
+  'admin@autopilotamerica.com',
   'randyvollrath@gmail.com',
   'carenvollrath@gmail.com',
   process.env.ADMIN_EMAIL,
