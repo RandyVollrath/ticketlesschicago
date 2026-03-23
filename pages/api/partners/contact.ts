@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
 // Input validation schema
 const partnerContactSchema = z.object({
@@ -20,6 +21,17 @@ export default async function handler(
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limit: sends notification email
+  const ip = getClientIP(req);
+  const rateResult = await checkRateLimit(ip, 'api');
+  if (!rateResult.allowed) {
+    res.setHeader('X-RateLimit-Limit', rateResult.limit);
+    res.setHeader('X-RateLimit-Remaining', rateResult.remaining);
+    res.setHeader('X-RateLimit-Reset', Math.ceil(Date.now() / 1000 + rateResult.resetIn / 1000));
+    return res.status(429).json({ error: 'Too many requests. Please try again later.', retryAfter: Math.ceil(rateResult.resetIn / 1000) });
+  }
+  await recordRateLimitAction(ip, 'api');
 
   // Validate request body
   const parseResult = partnerContactSchema.safeParse(req.body);
