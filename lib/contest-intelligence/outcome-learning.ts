@@ -84,7 +84,7 @@ export async function getOutcomeByTicketId(
     .from('contest_outcomes')
     .select('*')
     .eq('ticket_id', ticketId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return null;

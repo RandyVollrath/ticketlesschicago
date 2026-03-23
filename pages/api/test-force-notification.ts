@@ -91,7 +91,7 @@ export default async function handler(
         .from('vehicle_reminders')
         .select('*')
         .eq('email', email)
-        .single();
+        .maybeSingle();
 
       if (existingUser) {
         // Update existing user

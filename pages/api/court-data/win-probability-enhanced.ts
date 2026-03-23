@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .select('*')
         .eq('stat_type', 'violation_code')
         .eq('stat_key', violationCode)
-        .single();
+        .maybeSingle();
 
       if (winRateData && winRateData.sample_size_adequate) {
         baseProbability = winRateData.win_rate;
@@ -98,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .select('win_rate, sample_size_adequate')
           .eq('stat_type', 'contest_ground')
           .eq('stat_key', ground)
-          .single();
+          .maybeSingle();
 
         if (groundData && groundData.sample_size_adequate && groundData.win_rate > 60) {
           strongGroundBoost = Math.max(strongGroundBoost, 12);
@@ -151,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .select('win_rate, sample_size_adequate')
         .eq('stat_type', 'month')
         .eq('stat_key', `${violationCode}:${ticketMonth}`)
-        .single();
+        .maybeSingle();
 
       if (monthData && monthData.sample_size_adequate) {
         const seasonalModifier = Math.round(monthData.win_rate - baseProbability);

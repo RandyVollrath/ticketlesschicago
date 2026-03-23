@@ -74,7 +74,7 @@ async function wasNotificationSent(userId: string, messageKey: string): Promise<
       .select('id')
       .eq('user_id', userId)
       .eq('message_key', messageKey)
-      .single();
+      .maybeSingle();
     return !!data;
   } catch {
     return false; // Table might not exist yet

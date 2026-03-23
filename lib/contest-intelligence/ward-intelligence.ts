@@ -82,7 +82,7 @@ export async function getWardIntelligence(
     .from('ward_contest_intelligence')
     .select('*')
     .eq('ward', ward)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     // If no data exists, return null - caller can use FOIA fallback
@@ -119,7 +119,7 @@ export async function getWardFromFOIA(
     .from('ward_win_rates')
     .select('*')
     .eq('ward', ward.toString())
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return null;

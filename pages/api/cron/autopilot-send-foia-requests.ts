@@ -215,7 +215,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('detected_tickets')
         .select('*')
         .eq('id', ticketId)
-        .single();
+        .maybeSingle();
 
       if (ticketError || !ticket) {
         console.error(`    Ticket ${ticketId} not found: ${ticketError?.message}`);
@@ -229,7 +229,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('user_profiles')
         .select('first_name, last_name, mailing_address, mailing_city, mailing_state, mailing_zip, street_address, zip_code, email')
         .eq('user_id', request.user_id)
-        .single();
+        .maybeSingle();
 
       if (profileError || !profile) {
         console.error(`    User profile not found for ${request.user_id}: ${profileError?.message}`);

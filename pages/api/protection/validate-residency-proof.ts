@@ -659,7 +659,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('home_address_full, city_sticker_expiry, residency_proof_path')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       return res.status(404).json({ error: 'User not found' });

@@ -152,7 +152,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('user_passkeys')
         .select('user_id, credential_id, public_key, counter')
         .eq('credential_id', credentialId)
-        .single()
+        .maybeSingle()
       
       if (result.data) {
         passkeyRecord = result.data

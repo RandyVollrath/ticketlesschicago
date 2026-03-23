@@ -306,7 +306,7 @@ async function checkTowDataFreshness(): Promise<CheckResult> {
       .select('tow_date')
       .order('tow_date', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) return { name, category: 'Data Freshness', status: 'fail', detail: `Query error: ${error.message}`, severity: 'medium' };
 

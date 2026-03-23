@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('attorneys')
       .select('*')
       .eq('id', attorneyId)
-      .single();
+      .maybeSingle();
 
     if (attorneyError || !attorney) {
       return res.status(404).json({ error: 'Attorney not found' });
@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('first_name, last_name, email, phone')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     // Create quote request
     const { data: quoteRequest, error: insertError } = await supabase

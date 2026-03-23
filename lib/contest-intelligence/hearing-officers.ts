@@ -29,7 +29,7 @@ export async function getOfficerPatterns(
     .from('hearing_officer_patterns')
     .select('*')
     .eq('officer_id', officerId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return null;
@@ -66,7 +66,7 @@ export async function getOfficerFromFOIA(
     .from('officer_win_rates')
     .select('*')
     .eq('officer_badge', officerBadge)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return null;

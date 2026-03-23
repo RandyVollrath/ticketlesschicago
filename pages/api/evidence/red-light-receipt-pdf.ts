@@ -100,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('red_light_receipts')
         .select('*')
         .eq('id', req.body.receiptId)
-        .single();
+        .maybeSingle();
       if (error || !data) {
         return res.status(404).json({ error: 'Receipt not found' });
       }

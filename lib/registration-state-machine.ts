@@ -60,7 +60,7 @@ export async function transitionRegistrationState(
       .from('registrations')
       .select('state')
       .eq('id', registrationId)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !registration) {
       return {
@@ -126,7 +126,7 @@ export async function getRegistrationState(
       .from('registrations')
       .select('state')
       .eq('id', registrationId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       console.error('Error fetching registration state:', error);

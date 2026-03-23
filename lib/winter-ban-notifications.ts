@@ -151,7 +151,7 @@ export async function notifyNewUserAboutWinterBan(
     .select('id')
     .eq('user_id', userId)
     .eq('notification_year', notificationYear)
-    .single();
+    .maybeSingle();
 
   if (existingNotification) {
     return { sent: false, reason: 'Already notified this season' };

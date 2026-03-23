@@ -993,7 +993,7 @@ async function gatherAllEvidence(
         .select('status, sent_at, response_payload, notes, fulfilled_at')
         .eq('ticket_id', ticket.id)
         .eq('request_type', 'ticket_evidence_packet')
-        .single();
+        .maybeSingle();
 
       if (foiaReq && foiaReq.sent_at) {
         const sentDate = new Date(foiaReq.sent_at);
@@ -1022,7 +1022,7 @@ async function gatherAllEvidence(
         .select('status, sent_at, response_payload, notes, fulfilled_at')
         .eq('ticket_id', ticket.id)
         .eq('request_type', 'signal_timing')
-        .single();
+        .maybeSingle();
 
       if (cdotFoiaReq && cdotFoiaReq.sent_at) {
         const sentDate = new Date(cdotFoiaReq.sent_at);

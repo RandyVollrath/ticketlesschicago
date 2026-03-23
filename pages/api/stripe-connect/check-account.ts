@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_partners')
       .select('*')
       .eq('id', 'd78e9928-613f-4f1d-b63a-cda5cb20eef0')
-      .single();
+      .maybeSingle();
 
     if (!partner?.stripe_connected_account_id) {
       return res.status(404).json({
