@@ -41,7 +41,7 @@ export default async function handler(
 
     const { push_alert_preferences } = req.body;
 
-    if (!push_alert_preferences || typeof push_alert_preferences !== 'object') {
+    if (!push_alert_preferences || typeof push_alert_preferences !== 'object' || Array.isArray(push_alert_preferences)) {
       return res.status(400).json({ error: 'push_alert_preferences must be an object' });
     }
 
@@ -104,7 +104,18 @@ export default async function handler(
       const { error } = await supabaseAdmin
         .from('user_profiles')
         .insert({ id: user.id, push_alert_preferences: merged });
-      writeError = error;
+
+      // Handle race condition: two concurrent requests both found PGRST116 (no row),
+      // both try to insert → unique constraint violation (23505). Retry with update.
+      if (error?.code === '23505') {
+        const { error: retryError } = await supabaseAdmin
+          .from('user_profiles')
+          .update({ push_alert_preferences: merged })
+          .eq('id', user.id);
+        writeError = retryError;
+      } else {
+        writeError = error;
+      }
     }
 
     if (writeError) {
