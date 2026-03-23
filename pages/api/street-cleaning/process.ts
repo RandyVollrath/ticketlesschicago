@@ -249,7 +249,7 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
             .gte('cleaning_date', minDate)
             .order('cleaning_date', { ascending: true })
             .limit(1)
-            .single();
+            .maybeSingle();
 
           if (scheduleError || !schedule) {
             // No upcoming cleaning — skip silently (this is normal for most users on most days)
@@ -524,27 +524,38 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     }
 
     // Send push notification to all user's registered devices
-    try {
-      const { pushService } = await import('../../../lib/push-service');
-      const pushResult = await pushService.sendToUser(user.user_id, {
-        title: subject,
-        body: message,
-        data: { type: 'street_cleaning', notificationType: type },
-        userId: user.user_id,
-        category: 'street_cleaning'
-      });
-      if (pushResult.success) {
-        console.log(`  Push -> ${pushResult.successCount} device(s)`);
-        channelsSent.push('push');
-      } else if (pushResult.failureCount > 0) {
+    // Respect push_alert_preferences.street_cleaning if user explicitly disabled it in mobile app
+    const pushPrefs = user.push_alert_preferences as Record<string, boolean> | null;
+    const pushStreetCleaningEnabled = pushPrefs?.street_cleaning !== false; // Default to true if not set
+
+    if (pushStreetCleaningEnabled) {
+      try {
+        const { pushService } = await import('../../../lib/push-service');
+        const pushResult = await pushService.sendToUser(user.user_id, {
+          title: subject,
+          body: message,
+          data: {
+            type: 'street_cleaning',
+            notificationType: type,
+            ward: user.home_address_ward || '',
+            section: user.home_address_section || '',
+          },
+          userId: user.user_id,
+          category: 'street_cleaning'
+        });
+        if (pushResult.success) {
+          console.log(`  Push -> ${pushResult.successCount} device(s)`);
+          channelsSent.push('push');
+        } else if (pushResult.failureCount > 0) {
+          channelsFailed.push('push');
+          channelErrors.push(`Push failed on ${pushResult.failureCount} device(s)`);
+        }
+        // Note: pushResult.success=false with failureCount=0 means no tokens registered — not an error
+      } catch (pushError: any) {
         channelsFailed.push('push');
-        channelErrors.push(`Push failed on ${pushResult.failureCount} device(s)`);
+        channelErrors.push(`Push error: ${sanitizeErrorMessage(pushError)}`);
+        console.error(`  Push failed for ${user.email}:`, pushError);
       }
-      // Note: pushResult.success=false with failureCount=0 means no tokens registered — not an error
-    } catch (pushError: any) {
-      channelsFailed.push('push');
-      channelErrors.push(`Push error: ${sanitizeErrorMessage(pushError)}`);
-      console.error(`  Push failed for ${user.email}:`, pushError);
     }
 
     if (channelsSent.length === 0) {

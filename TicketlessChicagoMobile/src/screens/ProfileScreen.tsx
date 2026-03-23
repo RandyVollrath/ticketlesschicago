@@ -390,6 +390,24 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [showFeedback]);
 
+  // Street cleaning alert is server-sent (cron), so we sync the preference to the server
+  // in addition to storing it locally. Fire-and-forget — local always wins.
+  const toggleStreetCleaningAlert = useCallback(async (value: boolean) => {
+    setStreetCleaningAlerts(value);
+    await AsyncStorage.setItem('pushAlert_streetCleaning', String(value));
+    showFeedback(value ? 'Street cleaning alerts enabled' : 'Street cleaning alerts disabled');
+    // Sync to server so the cron respects the preference
+    if (AuthService.isAuthenticated()) {
+      try {
+        await ApiClient.authPost('/api/mobile/update-push-alert-settings', {
+          push_alert_preferences: { street_cleaning: value },
+        }, { retries: 1, timeout: 10000, showErrorAlert: false });
+      } catch {
+        log.debug('Failed to sync street cleaning alert pref to server (non-fatal)');
+      }
+    }
+  }, [showFeedback]);
+
   // Sweeper alert is server-sent (cron), so we sync the preference to the server
   // in addition to storing it locally. Fire-and-forget — local always wins.
   const toggleSweeperPassedAlert = useCallback(async (value: boolean) => {
@@ -959,7 +977,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             title="Street Cleaning"
             subtitle="Move your car before street cleaning starts"
             value={streetCleaningAlerts}
-            onValueChange={v => toggleParkingAlert('pushAlert_streetCleaning', v, setStreetCleaningAlerts, 'Street cleaning alerts')}
+            onValueChange={toggleStreetCleaningAlert}
           />
           <Divider />
           <SettingRow
