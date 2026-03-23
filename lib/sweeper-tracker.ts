@@ -660,4 +660,4 @@ export async function checkSweeperPassedToday(
 /**
  * Look up the TransID for an address. Exported for use by the real-time polling API.
  */
-export { lookupTransId };
+export { lookupTransId, getSweeperHistory };
