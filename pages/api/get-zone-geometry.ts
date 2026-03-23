@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 
 // Use MyStreetCleaning database for geometry data
 const MSC_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
@@ -68,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const geoData = geometryData[0];
           
           // Get next cleaning date for this zone
-          const todayStr = new Date().toISOString().split('T')[0];
+          const todayStr = getChicagoDateISO();
           const { data: nextCleaning } = await mscSupabase
             .from('street_cleaning_schedule')
             .select('cleaning_date')

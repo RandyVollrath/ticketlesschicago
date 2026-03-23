@@ -16,6 +16,7 @@
 
 import { SupabaseClient } from '@supabase/supabase-js';
 import { recordContestOutcome } from './contest-intelligence/outcome-learning';
+import { getChicagoDateISO } from './chicago-timezone-utils';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -194,7 +195,7 @@ export async function processOutcomeChange(
       letter_id: letter?.id || null,
       user_id: ticket.user_id,
       outcome: outcomeType,
-      outcome_date: new Date().toISOString().split('T')[0],
+      outcome_date: getChicagoDateISO(),
       original_amount: ticket.amount || undefined,
       final_amount: finalAmount,
       violation_type: ticket.violation_type,

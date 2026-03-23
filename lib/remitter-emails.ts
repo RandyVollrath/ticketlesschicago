@@ -1,5 +1,7 @@
 import { supabaseAdmin } from './supabase';
 import { Resend } from 'resend';
+import { getChicagoDateISO } from './chicago-timezone-utils';
+import { esc } from './email-template';
 
 /**
  * Remitter Email System
@@ -59,7 +61,7 @@ export async function sendRemitterDailyEmail(
       .select('*')
       .eq('status', 'succeeded') // User paid us
       .in('charge_type', ['sticker_renewal', 'license_plate_renewal']) // Only renewals
-      .gte('renewal_due_date', new Date().toISOString().split('T')[0]) // Only current/future
+      .gte('renewal_due_date', getChicagoDateISO()) // Only current/future
       .order('renewal_due_date', { ascending: true })
       .limit(100);
 
@@ -256,6 +258,7 @@ function generateRenewalHTML(renewal: PendingRenewal, index: number, baseUrl: st
       <h3 style="margin: 0; color: #1f2937; font-size: 18px;">
         #${index} - ${renewal.renewal_type === 'city_sticker' ? '🏙️ City Sticker' : '🚗 License Plate'}
       </h3>
+      <!-- User data is HTML-escaped below to prevent XSS -->
       <span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600;">
         Due: ${new Date(renewal.renewal_due_date).toLocaleDateString()}
       </span>
@@ -264,31 +267,31 @@ function generateRenewalHTML(renewal: PendingRenewal, index: number, baseUrl: st
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
       <tr style="border-bottom: 1px solid #f3f4f6;">
         <td style="padding: 8px 0; font-weight: 600; color: #6b7280; width: 140px;">Name:</td>
-        <td style="padding: 8px 0; color: #1f2937;">${fullName}</td>
+        <td style="padding: 8px 0; color: #1f2937;">${esc(fullName)}</td>
       </tr>
       <tr style="border-bottom: 1px solid #f3f4f6;">
         <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Email:</td>
-        <td style="padding: 8px 0; color: #1f2937;">${user.email}</td>
+        <td style="padding: 8px 0; color: #1f2937;">${esc(user.email || '')}</td>
       </tr>
       <tr style="border-bottom: 1px solid #f3f4f6;">
         <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Phone:</td>
-        <td style="padding: 8px 0; color: #1f2937;">${user.phone_number || 'N/A'}</td>
+        <td style="padding: 8px 0; color: #1f2937;">${esc(user.phone_number || 'N/A')}</td>
       </tr>
       <tr style="border-bottom: 1px solid #f3f4f6;">
         <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">License Plate:</td>
         <td style="padding: 8px 0; color: #1f2937; font-family: monospace; font-size: 16px;">
-          ${user.license_state || 'IL'} ${user.license_plate || 'N/A'}
+          ${esc(user.license_state || 'IL')} ${esc(user.license_plate || 'N/A')}
         </td>
       </tr>
       <tr style="border-bottom: 1px solid #f3f4f6;">
         <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">VIN:</td>
         <td style="padding: 8px 0; color: #1f2937; font-family: monospace;">
-          ${user.vin || 'N/A'}
+          ${esc(user.vin || 'N/A')}
         </td>
       </tr>
       <tr style="border-bottom: 1px solid #f3f4f6;">
         <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Address:</td>
-        <td style="padding: 8px 0; color: #1f2937;">${address || 'N/A'}</td>
+        <td style="padding: 8px 0; color: #1f2937;">${esc(address || 'N/A')}</td>
       </tr>
       <tr style="border-bottom: 1px solid #f3f4f6;">
         <td style="padding: 8px 0; font-weight: 600; color: #6b7280;">Amount:</td>

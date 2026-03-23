@@ -12,6 +12,7 @@ import {
   UserContestMetrics,
   Badge,
 } from './types';
+import { getChicagoDateISO } from '../chicago-timezone-utils';
 
 // Badge definitions
 const BADGE_DEFINITIONS: Record<string, Omit<Badge, 'earned_at'>> = {
@@ -113,7 +114,7 @@ const BADGE_DEFINITIONS: Record<string, Omit<Badge, 'earned_at'>> = {
 export async function getTodaysPlatformMetrics(
   supabase: ReturnType<typeof createClient>
 ): Promise<PlatformMetrics | null> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getChicagoDateISO();
 
   const { data, error } = await supabase
     .from('platform_metrics')

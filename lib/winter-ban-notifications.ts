@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabase';
 import { sendClickSendSMS } from './sms-service';
 import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, esc, detailTable, detailRow } from './email-template';
+import { getChicagoDateISO } from './chicago-timezone-utils';
 
 const BRAND = {
   name: 'Autopilot America',
@@ -190,7 +191,7 @@ export async function notifyNewUserAboutWinterBan(
       .insert({
         user_id: userId,
         notification_year: notificationYear,
-        notification_date: new Date().toISOString().split('T')[0],
+        notification_date: getChicagoDateISO(),
         channels,
         status: 'sent'
       });

@@ -826,6 +826,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!profile || !profile.mailing_address) {
         console.log(`  Skipping letter ${letter.id}: Missing profile/address info`);
+        // Update letter status so it's not retried every cron run
+        await supabaseAdmin
+          .from('contest_letters')
+          .update({ status: 'missing_address', updated_at: new Date().toISOString() })
+          .eq('id', letter.id);
+        errors++;
+        continue;
+      }
+
+      // Validate address completeness (street alone is not enough for Lob)
+      if (!profile.mailing_city || !profile.mailing_state || !profile.mailing_zip) {
+        console.log(`  Skipping letter ${letter.id}: Incomplete address (missing city/state/zip)`);
+        await supabaseAdmin
+          .from('contest_letters')
+          .update({ status: 'missing_address', updated_at: new Date().toISOString() })
+          .eq('id', letter.id);
         errors++;
         continue;
       }
@@ -853,6 +869,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!subscription || subscription.status !== 'active') {
         console.log(`  ⚠️ Skipping letter ${letter.id}: User ${letter.user_id} subscription is ${subscription?.status || 'missing'} (not active)`);
+        // Update letter status so it's not retried every cron run
+        await supabaseAdmin
+          .from('contest_letters')
+          .update({ status: 'subscription_required', updated_at: new Date().toISOString() })
+          .eq('id', letter.id);
+        // Update ticket status (guard: don't overwrite terminal statuses)
+        await supabaseAdmin
+          .from('detected_tickets')
+          .update({ status: 'subscription_required' })
+          .eq('id', letter.ticket_id)
+          .not('status', 'in', '(dismissed,upheld,paid,won,lost,skipped)');
+        errors++;
         continue;
       }
 
@@ -1368,6 +1396,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       } else {
         errors++;
+        // Update letter status so failures are visible (not silently retried)
+        await supabaseAdmin
+          .from('contest_letters')
+          .update({
+            status: 'failed',
+            failed_at: new Date().toISOString(),
+            failure_reason: result.error || 'Lob API call failed',
+          })
+          .eq('id', letter.id);
+        // Notify admin of the failure
+        if (process.env.RESEND_API_KEY) {
+          try {
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: 'Autopilot America <alerts@autopilotamerica.com>',
+                to: ['randyvollrath@gmail.com'],
+                subject: `Letter Mailing FAILED: ${ticketNumber} (Letter ${letter.id})`,
+                html: `<p>Letter ${letter.id} for ticket ${ticketNumber} failed to mail.</p><p>Error: ${result.error || 'Unknown'}</p><p>User: ${letter.user_id}</p>`,
+              }),
+            });
+          } catch (notifyErr: any) {
+            console.error(`    Admin failure notification failed: ${notifyErr.message}`);
+          }
+        }
       }
 
       // Rate limit: 1 second between API calls

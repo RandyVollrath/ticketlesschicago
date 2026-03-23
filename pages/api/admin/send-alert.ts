@@ -4,7 +4,7 @@ import { maskPhone, maskEmail } from '../../../lib/mask-pii';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-import { quickEmail, p, divider } from '../../../lib/email-template';
+import { quickEmail, p, divider, esc } from '../../../lib/email-template';
 
 // Send SMS via ClickSend
 const sendSMS = async (phone: string, message: string, dryRun: boolean): Promise<{ success: boolean; dryRun?: boolean; error?: string }> => {
@@ -49,7 +49,7 @@ const sendEmail = async (email: string, subject: string, message: string, dryRun
         subject: subject,
         html: quickEmail({
           headerTitle: 'Message from Autopilot America',
-          body: p(message.replace(/\n/g, '<br>')),
+          body: p(esc(message).replace(/\n/g, '<br>')),
         })
       })
     });
