@@ -490,11 +490,23 @@ export async function verifySweeperVisit(
   baseResult.streetSegment = transResult.segment;
 
   // Step 2: Get sweeper visit history
+  // null = API error (timeout, HTTP error, bad JSON); [] = valid empty response
   const visits = await getSweeperHistory(transResult.transId);
-  baseResult.allRecentVisits = visits || [];
+
+  if (visits === null) {
+    // API error — do NOT report as "no visits found" because that produces
+    // incorrect contest letter evidence ("sweeper never visited" when really
+    // we couldn't reach the city's API).
+    baseResult.checked = false;
+    baseResult.error = 'api_error';
+    baseResult.message = `Could not check sweeper history for ${transResult.segment} — the city's sweeper tracker API is unavailable. Try again later.`;
+    return baseResult;
+  }
+
+  baseResult.allRecentVisits = visits;
   baseResult.checked = true;
 
-  if (!visits || visits.length === 0) {
+  if (visits.length === 0) {
     baseResult.message = `No sweeper visit records found for ${transResult.segment}. The city's sweeper tracker has no data for this block in its current history window (~7-30 days). This may mean no sweeper visited this block recently.`;
     return baseResult;
   }

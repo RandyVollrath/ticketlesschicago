@@ -60,31 +60,55 @@ export default async function handler(
     // Fetch existing preferences so we MERGE (not replace) — prevents data loss
     // when the user toggles one alert type and we have other types stored.
     let existing: Record<string, boolean> = {};
-    try {
-      const { data: profile } = await supabaseAdmin
-        .from('user_profiles')
-        .select('push_alert_preferences')
-        .eq('id', user.id)
-        .single();
-      if (profile?.push_alert_preferences && typeof profile.push_alert_preferences === 'object') {
-        existing = profile.push_alert_preferences as Record<string, boolean>;
+    const { data: profile, error: readError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('push_alert_preferences')
+      .eq('id', user.id)
+      .single();
+
+    if (readError) {
+      if (readError.code === 'PGRST116') {
+        // No profile row — authenticated user without a profile is unusual but not fatal.
+        // We'll create the row below. Log it so we can investigate.
+        console.warn(`[update-push-alert] No profile row for user ${user.id}`);
+      } else {
+        // Real DB error (permission, network, column missing) — don't proceed
+        console.error('[update-push-alert] Error reading profile:', readError);
+        return res.status(500).json({ error: 'Failed to read preferences' });
       }
-    } catch {
-      // Profile might not exist yet — will be handled by upsert below
+    } else if (profile?.push_alert_preferences && typeof profile.push_alert_preferences === 'object') {
+      // Validate each stored value is actually a boolean before merging —
+      // prevents corruption from manual DB edits propagating
+      const raw = profile.push_alert_preferences as Record<string, unknown>;
+      for (const [key, value] of Object.entries(raw)) {
+        if (typeof value === 'boolean') {
+          existing[key] = value;
+        }
+      }
     }
 
     const merged = { ...existing, ...validated };
 
-    // Upsert: handles the case where user has no profile row yet
-    const { error: updateError } = await supabaseAdmin
-      .from('user_profiles')
-      .upsert(
-        { id: user.id, push_alert_preferences: merged },
-        { onConflict: 'id' }
-      );
+    // Use UPDATE (not upsert) when the profile exists — upsert with only 2 columns
+    // would create a skeletal row nulling out license_plate, phone, email, etc.
+    let writeError;
+    if (profile) {
+      const { error } = await supabaseAdmin
+        .from('user_profiles')
+        .update({ push_alert_preferences: merged })
+        .eq('id', user.id);
+      writeError = error;
+    } else {
+      // No profile row — create one. Only id + push_alert_preferences will be set;
+      // other columns remain at their DB defaults (not null-overwritten).
+      const { error } = await supabaseAdmin
+        .from('user_profiles')
+        .insert({ id: user.id, push_alert_preferences: merged });
+      writeError = error;
+    }
 
-    if (updateError) {
-      console.error('Error updating push alert settings:', updateError);
+    if (writeError) {
+      console.error('Error updating push alert settings:', writeError);
       return res.status(500).json({ error: 'Failed to update settings' });
     }
 
