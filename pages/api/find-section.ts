@@ -14,6 +14,25 @@ const mscSupabase = MSC_SUPABASE_URL && MSC_SUPABASE_ANON_KEY
   ? createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY)
   : null;
 
+// Validate our ward lookup against Chicago Data Portal official ward boundaries API
+// Fire-and-forget — logs mismatches but does not block or alter the response
+async function validateWardAgainstCityApi(lat: number, lng: number, ourWard: string): Promise<void> {
+  try {
+    const url = `https://data.cityofchicago.org/resource/p293-wvbd.json?$where=intersects(the_geom,'POINT(${lng} ${lat})')&$select=ward&$limit=1`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data && data.length > 0) {
+      const cityWard = String(data[0].ward);
+      if (cityWard !== ourWard) {
+        console.warn(`🚨 WARD MISMATCH: Our PostGIS says Ward ${ourWard}, City API says Ward ${cityWard} for (${lat}, ${lng})`);
+      }
+    }
+  } catch {
+    // Silently ignore — this is a non-critical validation check
+  }
+}
+
 // Enhanced geocoding function with retry logic and better error handling
 async function geocodeAddress(address: string, retryCount = 0): Promise<{ status: string; coordinates: { lat: number; lng: number }; retries?: number }> {
   const googleApiKey = process.env.GOOGLE_API_KEY;
@@ -258,6 +277,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Fire-and-forget: validate ward against Chicago Data Portal official API
+    if (foundWard && coordinates) {
+      validateWardAgainstCityApi(coordinates.lat, coordinates.lng, foundWard).catch(() => {});
+    }
+
     // If PostGIS function didn't find a match, the address is in a gap or boundary area
     if (!foundWard || !foundSection) {
       console.log('❌ No exact match found - address appears to be in a gap or boundary area');
@@ -322,32 +346,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('section', foundSection)
           .gte('cleaning_date', todayStr)
           .order('cleaning_date', { ascending: true })
-          .limit(10); // Get more to allow filtering
-          
-        const rawScheduleEntries = result.data;
+          .limit(1);
+
+        scheduleEntries = result.data;
         scheduleError = result.error;
-        
-        console.log(`🔍 DEBUG: Raw schedule entries for Ward ${foundWard}, Section ${foundSection}:`, rawScheduleEntries?.map(e => e.cleaning_date).slice(0, 5));
-        
-        // Filter out invalid Sunday dates and take the first valid one
-        if (!scheduleError && rawScheduleEntries) {
-          console.log(`🧪 DEBUG: Starting filtering process for ${rawScheduleEntries.length} entries`);
-          
-          scheduleEntries = rawScheduleEntries.filter(entry => {
-            // Parse date in UTC to avoid timezone conversion issues
-            const date = new Date(entry.cleaning_date + 'T12:00:00Z');
-            const dayOfWeek = date.getDay(); // 0 = Sunday
-            console.log(`🔍 DEBUG: Checking date ${entry.cleaning_date}, dayOfWeek=${dayOfWeek} (0=Sunday), UTC parsed`);
-            
-            if (dayOfWeek === 0) {
-              console.warn(`Filtering out invalid Sunday cleaning date: ${entry.cleaning_date} for Ward ${foundWard}, Section ${foundSection}`);
-              return false;
-            }
-            return true;
-          }).slice(0, 1); // Take only the first valid date
-          
-          console.log(`✅ DEBUG: After filtering, scheduleEntries:`, scheduleEntries?.map(e => e.cleaning_date));
-        }
+
+        console.log(`🔍 Schedule lookup for Ward ${foundWard}, Section ${foundSection}: next date =`, scheduleEntries?.[0]?.cleaning_date ?? 'none');
       }
       
       if (!scheduleError) {
