@@ -341,9 +341,13 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   const toggleMeterExpiryAlerts = useCallback(async (value: boolean) => {
-    setMeterExpiryAlertsEnabled(value);
-    await AsyncStorage.setItem('meterExpiryAlertsEnabled', value.toString());
-    showFeedback(value ? 'Meter alerts enabled' : 'Meter alerts disabled');
+    try {
+      setMeterExpiryAlertsEnabled(value);
+      await AsyncStorage.setItem('meterExpiryAlertsEnabled', value.toString());
+      showFeedback(value ? 'Meter alerts enabled' : 'Meter alerts disabled');
+    } catch (error) {
+      log.error('Error toggling meter expiry alerts', error);
+    }
   }, [showFeedback]);
 
   // Load parking push notification preferences from AsyncStorage
@@ -377,9 +381,13 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   const toggleParkingAlert = useCallback(async (key: string, value: boolean, setter: (v: boolean) => void, label: string) => {
-    setter(value);
-    await AsyncStorage.setItem(key, String(value));
-    showFeedback(value ? `${label} enabled` : `${label} disabled`);
+    try {
+      setter(value);
+      await AsyncStorage.setItem(key, String(value));
+      showFeedback(value ? `${label} enabled` : `${label} disabled`);
+    } catch (error) {
+      log.error(`Error toggling ${label}`, error);
+    }
   }, [showFeedback]);
 
   // Sweeper alert is server-sent (cron), so we sync the preference to the server

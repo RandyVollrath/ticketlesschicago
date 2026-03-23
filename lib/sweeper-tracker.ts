@@ -291,16 +291,19 @@ async function lookupTransId(
     return null;
   }
 
-  // Build WHERE clause — values are sanitized above to prevent injection
-  const where = `STREET_NAME='${parsed.name}' AND PRE_DIR='${parsed.dir}' AND ((L_F_ADD <= ${parsed.number} AND L_T_ADD >= ${parsed.number}) OR (R_F_ADD <= ${parsed.number} AND R_T_ADD >= ${parsed.number}))`;
+  // Build WHERE clause — values are sanitized to prevent injection.
+  // parsed.name is sanitized by sanitizeForQuery(); parsed.dir is constrained to
+  // [NSEW] by the regex, but we sanitize it too for defense-in-depth.
+  const safeDir = sanitizeForQuery(parsed.dir);
+  const where = `STREET_NAME='${parsed.name}' AND PRE_DIR='${safeDir}' AND ((L_F_ADD <= ${parsed.number} AND L_T_ADD >= ${parsed.number}) OR (R_F_ADD <= ${parsed.number} AND R_T_ADD >= ${parsed.number}))`;
 
   const result = await queryTransLegend(where);
   if (result) return result;
 
   // Fallback: address might fall in a gap between segments (e.g. 3100 when blocks
   // are 3000-3052 and 3116-3146). Find the nearest segment on the same street.
-  console.log(`  Sweeper: Exact match failed for ${parsed.number}, trying nearest segment on ${parsed.dir} ${parsed.name}...`);
-  const nearbyWhere = `STREET_NAME='${parsed.name}' AND PRE_DIR='${parsed.dir}' AND L_F_ADD >= ${parsed.number - 100} AND L_F_ADD <= ${parsed.number + 100}`;
+  console.log(`  Sweeper: Exact match failed for ${parsed.number}, trying nearest segment on ${safeDir} ${parsed.name}...`);
+  const nearbyWhere = `STREET_NAME='${parsed.name}' AND PRE_DIR='${safeDir}' AND L_F_ADD >= ${parsed.number - 100} AND L_F_ADD <= ${parsed.number + 100}`;
   const nearbyResult = await queryTransLegend(nearbyWhere, parsed.number);
   if (nearbyResult) {
     console.log(`  Sweeper: Fallback found nearby segment: ${nearbyResult.segment}`);
@@ -628,7 +631,22 @@ export async function checkSweeperPassedToday(
   if (!transResult) return null;
 
   const visits = await getSweeperHistory(transResult.transId);
-  if (!visits || visits.length === 0) {
+
+  // null = API error (timeout, HTTP error, bad JSON) — signal to caller to retry
+  if (visits === null) {
+    return {
+      passed: false,
+      transId: transResult.transId,
+      segment: transResult.segment,
+      passTime: null,
+      passTimeUtc: null,
+      vehicleId: null,
+      totalPingsToday: 0,
+      error: 'api_error',
+    };
+  }
+
+  if (visits.length === 0) {
     return {
       passed: false,
       transId: transResult.transId,

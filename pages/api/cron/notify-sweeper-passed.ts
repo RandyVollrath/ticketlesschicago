@@ -58,15 +58,15 @@ interface ParkedVehicle {
 async function getFreshFcmToken(userId: string, staleFallback: string): Promise<string> {
   if (!supabaseAdmin) return staleFallback;
   try {
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('push_tokens')
       .select('token')
       .eq('user_id', userId)
       .eq('is_active', true)
       .order('last_used_at', { ascending: false })
-      .limit(1)
-      .single();
-    return data?.token || staleFallback;
+      .limit(1);
+    if (error || !data || data.length === 0) return staleFallback;
+    return data[0].token || staleFallback;
   } catch {
     // Table might not exist yet or be empty — use the vehicle's token
     return staleFallback;
@@ -180,9 +180,12 @@ export default async function handler(
   const authHeader = req.headers.authorization;
   const keyParam = req.query.key as string | undefined;
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
-  const isAuthorized =
-    authHeader === `Bearer ${process.env.CRON_SECRET}` ||
-    keyParam === process.env.CRON_SECRET;
+  const secret = process.env.CRON_SECRET;
+  // Guard: if CRON_SECRET is not set, only allow Vercel's cron header.
+  // Without this, undefined === undefined would bypass auth.
+  const isAuthorized = secret
+    ? (authHeader === `Bearer ${secret}` || keyParam === secret)
+    : false;
 
   if (!isVercelCron && !isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -482,29 +485,36 @@ export default async function handler(
 
             // Mark as notified (column-based dedup for next run)
             if (hasDedupColumn) {
-              await supabaseAdmin
+              const { error: dedupErr } = await supabaseAdmin
                 .from('user_parked_vehicles')
                 .update({ sweeper_passed_notified_at: new Date().toISOString() } as any)
                 .eq('id', vehicle.id);
+              if (dedupErr) console.error(`[sweeper-notify] Failed to set dedup flag on ${vehicle.id}:`, dedupErr.message);
             }
 
             // Log to notification_logs (definitive dedup + audit trail)
             await logNotification(vehicle.user_id, vehicle.id, vehicle.address, sweeperResult.passTime, 'sent');
 
           } else if (notifResult.invalidToken) {
-            // Deactivate vehicle with invalid token
-            await supabaseAdmin
-              .from('user_parked_vehicles')
-              .update({ is_active: false })
-              .eq('id', vehicle.id);
-            // Also deactivate the stale token in push_tokens so other crons don't retry it
+            // Deactivate the invalid FCM token in push_tokens so other crons don't retry it
             try {
-              await supabaseAdmin
+              const { error: tokenErr } = await supabaseAdmin
                 .from('push_tokens')
                 .update({ is_active: false })
                 .eq('token', freshToken);
+              if (tokenErr) console.error(`[sweeper-notify] Failed to deactivate token:`, tokenErr.message);
             } catch { /* push_tokens table might not exist yet */ }
-            console.log(`[sweeper-notify] Deactivated vehicle ${vehicle.id} — invalid FCM token`);
+            // Only deactivate the vehicle if the fresh token IS the vehicle's token.
+            // If getFreshFcmToken returned a different (fresher) token that's also invalid,
+            // the vehicle itself isn't the problem — just the token table entry.
+            if (freshToken === vehicle.fcm_token) {
+              const { error: vehErr } = await supabaseAdmin
+                .from('user_parked_vehicles')
+                .update({ is_active: false })
+                .eq('id', vehicle.id);
+              if (vehErr) console.error(`[sweeper-notify] Failed to deactivate vehicle ${vehicle.id}:`, vehErr.message);
+            }
+            console.log(`[sweeper-notify] Invalid FCM token for vehicle ${vehicle.id} — deactivated token${freshToken === vehicle.fcm_token ? ' and vehicle' : ''}`);
             results.notificationsFailed++;
           } else {
             results.notificationsFailed++;

@@ -87,6 +87,17 @@ export function getMessaging(): admin.messaging.Messaging | null {
 }
 
 /**
+ * FCM error codes that definitively indicate the token is invalid/expired.
+ * Shared between single-send and multicast to avoid duplication.
+ * 'messaging/invalid-argument' is intentionally excluded — it fires on payload
+ * validation errors (empty title, bad data), not just invalid tokens.
+ */
+const INVALID_TOKEN_CODES = [
+  'messaging/invalid-registration-token',
+  'messaging/registration-token-not-registered',
+];
+
+/**
  * Send a push notification to a single device
  */
 export async function sendPushNotification(
@@ -132,14 +143,12 @@ export async function sendPushNotification(
     await messaging.send(message);
     return { success: true };
   } catch (error: any) {
-    // Handle invalid token errors - these tokens should be cleaned up
-    const invalidTokenCodes = [
-      'messaging/invalid-registration-token',
-      'messaging/registration-token-not-registered',
-      'messaging/invalid-argument',
-    ];
-
-    if (invalidTokenCodes.includes(error?.code)) {
+    // Handle invalid token errors — these tokens should be cleaned up.
+    // NOTE: 'messaging/invalid-argument' is intentionally excluded. It fires on ANY
+    // payload validation failure (empty title, missing data, etc.) — not just bad tokens.
+    // Including it would incorrectly deactivate valid tokens when the real problem
+    // is a malformed notification payload.
+    if (INVALID_TOKEN_CODES.includes(error?.code)) {
       console.warn(`Invalid FCM token detected: ${fcmToken.substring(0, 20)}...`);
       return { success: false, error: error.message, invalidToken: true };
     }
@@ -206,12 +215,7 @@ export async function sendMulticastNotification(
     const invalidTokens: string[] = [];
     response.responses.forEach((resp, idx) => {
       if (!resp.success && resp.error) {
-        const invalidTokenCodes = [
-          'messaging/invalid-registration-token',
-          'messaging/registration-token-not-registered',
-          'messaging/invalid-argument',
-        ];
-        if (invalidTokenCodes.includes(resp.error.code)) {
+        if (INVALID_TOKEN_CODES.includes(resp.error.code)) {
           invalidTokens.push(fcmTokens[idx]);
         }
       }
