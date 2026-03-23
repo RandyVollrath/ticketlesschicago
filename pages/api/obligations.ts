@@ -199,7 +199,7 @@ export default async function handler(
         .from('obligations')
         .select('user_id')
         .eq('id', obligationId)
-        .single();
+        .maybeSingle();
 
       if (fetchError || !existing) {
         return res.status(404).json({ error: 'Obligation not found' });
@@ -276,7 +276,7 @@ export default async function handler(
         .from('obligations')
         .select('user_id')
         .eq('id', obligationId)
-        .single();
+        .maybeSingle();
 
       if (fetchError || !existing) {
         return res.status(404).json({ error: 'Obligation not found' });

@@ -23,8 +23,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
-        
+        .maybeSingle();
+
       if (userError) {
         console.error('Error fetching user profile:', userError);
         return res.status(404).json({ error: 'User profile not found' });

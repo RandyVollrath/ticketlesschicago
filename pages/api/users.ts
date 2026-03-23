@@ -98,7 +98,7 @@ export default async function handler(
         query = query.eq('email', email);
       }
 
-      const { data: profile, error } = await query.single();
+      const { data: profile, error } = await query.maybeSingle();
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -176,7 +176,7 @@ export default async function handler(
         .from('user_profiles')
         .select('user_id')
         .eq('user_id', authUser.id)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         return res.status(409).json({ error: 'User profile already exists' });

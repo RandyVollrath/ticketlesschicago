@@ -1,10 +1,23 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { supabaseAdmin } from '../../lib/supabase';
+import { supabaseAdmin, supabase } from '../../lib/supabase';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Authenticate the request
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
+  const token = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
   const { userId, formData } = req.body;
@@ -13,8 +26,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Missing userId or formData' });
   }
 
-  console.log('💾 Saving user profile data for user:', userId);
-  console.log('Form data:', JSON.stringify(formData, null, 2));
+  // SECURITY: Ensure the authenticated user matches the userId in the request
+  if (authUser.id !== userId) {
+    return res.status(403).json({ error: 'You can only update your own profile' });
+  }
+
+  console.log('Saving user profile data for user:', userId);
 
   try {
     // Get user info

@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('status')
       .eq('id', ticket_id)
       .eq('user_id', user_id)
-      .single();
+      .maybeSingle();
 
     if (ticketError || !ticket) {
       return res.redirect('/tickets?error=ticket_not_found');

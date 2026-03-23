@@ -62,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('first_name, last_name')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     const userName = profile?.first_name && profile?.last_name
       ? `${profile.first_name} ${profile.last_name}`

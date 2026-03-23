@@ -4,6 +4,16 @@ import { verifyWebhook } from '../../../lib/webhook-verification';
 import { maskPhone, maskEmail } from '../../../lib/mask-pii';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
+/** Escape HTML special characters to prevent XSS/injection in email templates */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * ClickSend Incoming SMS Webhook
  *
@@ -799,10 +809,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ` : ''}
 
           <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p style="margin: 0;"><strong>From:</strong> ${fromNumber}</p>
+            <p style="margin: 0;"><strong>From:</strong> ${escapeHtml(fromNumber)}</p>
             <p style="margin: 8px 0 0;"><strong>Message:</strong></p>
             <p style="background: white; padding: 12px; border-radius: 4px; margin: 8px 0 0;">
-              ${messageBody || '(MMS with no text)'}
+              ${escapeHtml(messageBody || '(MMS with no text)')}
             </p>
             ${mediaFiles.length > 0 ? `
               <p style="margin: 12px 0 0;"><strong>Media Files:</strong> ${mediaFiles.length}</p>
@@ -812,11 +822,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ${matchedUser ? `
             <div style="background: #eff6ff; padding: 16px; border-radius: 8px; margin: 16px 0;">
               <h3 style="margin: 0 0 12px; color: #1e40af;">User Profile</h3>
-              <p style="margin: 4px 0;"><strong>Email:</strong> ${matchedUser.email}</p>
-              <p style="margin: 4px 0;"><strong>Phone:</strong> ${matchedUser.phone || matchedUser.phone_number}</p>
-              <p style="margin: 4px 0;"><strong>Address:</strong> ${matchedUser.home_address_full || 'Not set'}</p>
-              <p style="margin: 4px 0;"><strong>License Plate:</strong> ${matchedUser.license_plate || 'Not set'}</p>
-              <p style="margin: 4px 0;"><strong>VIN:</strong> ${matchedUser.vin || 'Not set'}</p>
+              <p style="margin: 4px 0;"><strong>Email:</strong> ${escapeHtml(matchedUser.email || '')}</p>
+              <p style="margin: 4px 0;"><strong>Phone:</strong> ${escapeHtml(matchedUser.phone || matchedUser.phone_number || '')}</p>
+              <p style="margin: 4px 0;"><strong>Address:</strong> ${escapeHtml(matchedUser.home_address_full || 'Not set')}</p>
+              <p style="margin: 4px 0;"><strong>License Plate:</strong> ${escapeHtml(matchedUser.license_plate || 'Not set')}</p>
+              <p style="margin: 4px 0;"><strong>VIN:</strong> ${escapeHtml(matchedUser.vin || 'Not set')}</p>
             </div>
 
             <div style="text-align: center; margin: 24px 0;">

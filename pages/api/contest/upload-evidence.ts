@@ -95,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('id, user_id, evidence_photos, supporting_documents')
       .eq('id', contestId)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (contestError || !contest) {
       return res.status(404).json({ error: 'Contest not found' });
@@ -197,7 +197,7 @@ async function updateEvidenceQuality(contestId: string) {
       .from('ticket_contests')
       .select('evidence_photos, supporting_documents, evidence_checklist, written_statement')
       .eq('id', contestId)
-      .single();
+      .maybeSingle();
 
     if (!contest) return;
 
