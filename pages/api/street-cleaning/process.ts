@@ -14,8 +14,12 @@ interface ProcessResult {
   type: string;
 }
 
-// Get Chicago time for scheduling
-function getChicagoTime(): { hour: number; chicagoTime: string } {
+/**
+ * Get Chicago time for scheduling.
+ * Uses Intl.DateTimeFormat to correctly extract Chicago hour and date
+ * regardless of server timezone (Vercel runs in UTC).
+ */
+function getChicagoTime(): { hour: number; chicagoTime: string; chicagoDateISO: string } {
   const now = new Date();
   const chicagoTime = now.toLocaleString("en-US", { timeZone: "America/Chicago" });
 
@@ -29,7 +33,13 @@ function getChicagoTime(): { hour: number; chicagoTime: string } {
     }).format(now)
   );
 
-  return { hour, chicagoTime };
+  // Get Chicago date as ISO string (YYYY-MM-DD)
+  const chicagoYear = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric' }).format(now);
+  const chicagoMonth = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: '2-digit' }).format(now);
+  const chicagoDay = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', day: '2-digit' }).format(now);
+  const chicagoDateISO = `${chicagoYear}-${chicagoMonth}-${chicagoDay}`;
+
+  return { hour, chicagoTime, chicagoDateISO };
 }
 
 export default async function handler(
@@ -42,33 +52,33 @@ export default async function handler(
   }
 
   const now = new Date();
-  const { hour, chicagoTime } = getChicagoTime();
+  const { hour, chicagoTime, chicagoDateISO } = getChicagoTime();
 
   // Enhanced logging to debug cron execution
   console.log('========================================');
-  console.log('🧹 STREET CLEANING CRON EXECUTION');
+  console.log('STREET CLEANING CRON EXECUTION');
   console.log('========================================');
   console.log('UTC Time:', now.toISOString());
   console.log('Chicago Time:', chicagoTime);
   console.log('Chicago Hour:', hour);
+  console.log('Chicago Date:', chicagoDateISO);
   console.log('Request Method:', req.method);
   console.log('User-Agent:', req.headers['user-agent']);
-  console.log('Is Vercel Cron?:', req.headers['user-agent']?.includes('vercel-cron') || req.headers['user-agent']?.includes('Vercel'));
   console.log('========================================');
 
   // Determine notification type based on Chicago time
   let notificationType = 'unknown';
   if (hour === 7) {
     notificationType = 'morning_reminder';
-    console.log('✅ Matched: morning_reminder (7am)');
+    console.log('Matched: morning_reminder (7am CDT)');
   } else if (hour === 15) {
     notificationType = 'follow_up';
-    console.log('✅ Matched: follow_up (3pm)');
+    console.log('Matched: follow_up (3pm CDT)');
   } else if (hour === 19) {
     notificationType = 'evening_reminder';
-    console.log('✅ Matched: evening_reminder (7pm)');
+    console.log('Matched: evening_reminder (7pm CDT)');
   } else {
-    console.log(`⏭️  Skipped: Current hour ${hour} doesn't match any notification schedule (7am, 3pm, 7pm)`);
+    console.log(`Skipped: Current hour ${hour} doesn't match any notification schedule (7am, 3pm, 7pm CDT)`);
     return res.status(200).json({
       success: true,
       processed: 0,
@@ -80,14 +90,15 @@ export default async function handler(
       debug: {
         chicagoHour: hour,
         chicagoTime,
+        chicagoDateISO,
         utcTime: now.toISOString()
       }
-    });
+    } as any);
   }
 
   try {
-    const results = await processStreetCleaningReminders(notificationType);
-    
+    const results = await processStreetCleaningReminders(notificationType, chicagoDateISO);
+
     res.status(200).json({
       success: true,
       processed: results.processed,
@@ -97,54 +108,41 @@ export default async function handler(
       timestamp: new Date().toISOString(),
       type: notificationType
     });
-    
+
   } catch (error) {
-    console.error('❌ Error processing street cleaning notifications:', error);
+    console.error('Error processing street cleaning notifications:', error);
     res.status(500).json({
       error: 'Failed to process street cleaning notifications'
     });
   }
 }
 
-async function processStreetCleaningReminders(type: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
+async function processStreetCleaningReminders(type: string, chicagoDateISO: string) {
+  // BUG FIX: Use Chicago date, not UTC date.
+  // When this runs at 7pm CDT (midnight UTC), UTC date is already tomorrow.
+  // chicagoDateISO is the correct "today" in Chicago timezone.
+  const todayStr = chicagoDateISO; // e.g. "2026-04-01"
+
   let processed = 0;
   let successful = 0;
   let failed = 0;
   const errors: string[] = [];
 
   try {
-    // Get users ready for notifications using appropriate report view
-    let query;
-    switch (type) {
-      case 'morning_reminder':
-        // For morning reminders at 7am, query all users with street cleaning enabled
-        // We'll check their notify_days_array to see if they want 0, 1, 2, 3 day advance alerts
-        query = supabase
-          .from('user_profiles')
-          .select('*')
-          .not('home_address_ward', 'is', null)
-          .not('home_address_section', 'is', null)
-          .eq('notify_sms', true)
-          .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
-        break;
-      case 'evening_reminder':
-        query = supabase.from('report_one_day').select('*');
-        break;
-      case 'follow_up':
-        query = supabase.from('report_follow_up').select('*');
-        break;
-      default:
-        // Fallback to manual query
-        query = supabase
-          .from('user_profiles')
-          .select('*')
-          .not('home_address_ward', 'is', null)
-          .not('home_address_section', 'is', null)
-          .or('snooze_until_date.is.null,snooze_until_date.lt.' + today.toISOString().split('T')[0]);
-    }
+    // BUG FIX: Query ALL users with ward/section assigned, regardless of notify_sms.
+    // The old code had .eq('notify_sms', true) which excluded 87% of users who only
+    // have email enabled. The sendNotification function already checks each channel
+    // individually (email, SMS, voice) so filtering here should be broad.
+    //
+    // For evening_reminder and follow_up, we still query all eligible users directly
+    // instead of relying on database views that use UTC CURRENT_DATE (which is wrong
+    // after 7pm CDT).
+    const query = supabaseAdmin
+      .from('user_profiles')
+      .select('*')
+      .not('home_address_ward', 'is', null)
+      .not('home_address_section', 'is', null)
+      .or(`snooze_until_date.is.null,snooze_until_date.lt.${todayStr}`);
 
     let { data: users, error: userError } = await query;
 
@@ -154,7 +152,7 @@ async function processStreetCleaningReminders(type: string) {
     }
 
     // Add canary users - they get notifications every day regardless of address
-    const { data: canaryUsers, error: canaryError } = await supabase
+    const { data: canaryUsers, error: canaryError } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
       .eq('is_canary', true);
@@ -164,134 +162,145 @@ async function processStreetCleaningReminders(type: string) {
       const existingUserIds = new Set((users || []).map(u => u.user_id));
       const newCanaryUsers = canaryUsers.filter(canary => !existingUserIds.has(canary.user_id));
       users = [...(users || []), ...newCanaryUsers];
-      console.log(`Added ${newCanaryUsers.length} new canary users to notification list (${canaryUsers.length - newCanaryUsers.length} already in list)`);
+      if (newCanaryUsers.length > 0) {
+        console.log(`Added ${newCanaryUsers.length} canary users to notification list`);
+      }
     }
 
     if (!users || users.length === 0) {
-      console.log('⚠️  No users found in view for notification type:', type);
+      console.log('No users found with ward/section for notification type:', type);
       return { processed, successful, failed, errors };
     }
 
-    console.log(`📋 Found ${users.length} user(s) to process for ${type}`);
+    console.log(`Found ${users.length} user(s) to evaluate for ${type}`);
 
     // Process each user
     for (const user of users) {
       try {
         processed++;
-        console.log(`\n👤 Processing user ${processed}/${users.length}: ${user.email}`);
 
-        let cleaningDate;
+        let cleaningDateStr: string; // YYYY-MM-DD format
         let daysUntil = 0;
 
         // Canary users always get notifications (simulate next weekday cleaning)
         if (user.is_canary) {
-          // Find next Monday-Friday from today
-          const dayOfWeek = today.getDay(); // 0=Sunday, 6=Saturday
+          // Parse Chicago date to get day of week
+          const [y, m, d] = todayStr.split('-').map(Number);
+          const chicagoToday = new Date(y, m - 1, d); // Local date object for day-of-week calc
+          const dayOfWeek = chicagoToday.getDay(); // 0=Sunday, 6=Saturday
           let daysToAdd = 0;
 
-          if (dayOfWeek === 0) { // Sunday
-            daysToAdd = 1; // Next Monday
-          } else if (dayOfWeek === 6) { // Saturday
-            daysToAdd = 2; // Next Monday
-          } else {
-            // Monday-Friday: use today for morning, tomorrow for evening
-            daysToAdd = 0;
-          }
+          if (dayOfWeek === 0) daysToAdd = 1; // Sunday -> Monday
+          else if (dayOfWeek === 6) daysToAdd = 2; // Saturday -> Monday
 
-          cleaningDate = new Date(today);
-          cleaningDate.setDate(today.getDate() + daysToAdd);
+          const simDate = new Date(chicagoToday);
+          simDate.setDate(simDate.getDate() + daysToAdd);
 
-          // Calculate daysUntil based on notification type
           if (type === 'morning_reminder') {
-            daysUntil = daysToAdd; // 0 for weekday, 1-2 for weekend
+            daysUntil = daysToAdd;
           } else if (type === 'evening_reminder') {
-            // Evening reminder is for next day, so add 1
-            cleaningDate.setDate(cleaningDate.getDate() + 1);
+            simDate.setDate(simDate.getDate() + 1);
             daysUntil = daysToAdd + 1;
           } else {
             daysUntil = daysToAdd;
           }
 
-          console.log(`🐦 Canary user ${user.email}: simulating cleaning on ${cleaningDate.toDateString()} (${daysUntil} days) for ${type}`);
+          cleaningDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
+          console.log(`Canary ${user.email}: simulating cleaning ${cleaningDateStr} (${daysUntil}d) for ${type}`);
         } else {
-          // Regular users: Get next cleaning date for user's address from local database
-          // For evening reminders (7pm), we want tomorrow or later, not today
-          // For morning reminders (7am), we want today or later
-          const minDate = type === 'evening_reminder'
-            ? new Date(today.getTime() + 24 * 60 * 60 * 1000) // Tomorrow
-            : today; // Today
+          // Regular users: Get next cleaning date from schedule
+          // For evening reminders (7pm), look for tomorrow or later
+          // For morning reminders (7am), look for today or later
+          let minDate = todayStr;
+          if (type === 'evening_reminder') {
+            // Calculate tomorrow's date string
+            const [y, m, d] = todayStr.split('-').map(Number);
+            const tomorrow = new Date(y, m - 1, d);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            minDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+          }
 
-          const { data: schedule, error: scheduleError } = await supabase
+          // BUG FIX: Compare date strings (YYYY-MM-DD) not ISO datetimes.
+          // The cleaning_date column stores date-only values like '2026-04-01'.
+          const { data: schedule, error: scheduleError } = await supabaseAdmin
             .from('street_cleaning_schedule')
             .select('cleaning_date')
             .eq('ward', user.home_address_ward)
             .eq('section', user.home_address_section)
-            .gte('cleaning_date', minDate.toISOString())
+            .gte('cleaning_date', minDate)
             .order('cleaning_date', { ascending: true })
             .limit(1)
             .single();
 
           if (scheduleError || !schedule) {
-            console.log(`No upcoming cleaning for ward ${user.home_address_ward}, section ${user.home_address_section}`);
+            // No upcoming cleaning — skip silently (this is normal for most users on most days)
             continue;
           }
 
-          cleaningDate = new Date(schedule.cleaning_date);
-          daysUntil = Math.floor((cleaningDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          cleaningDateStr = schedule.cleaning_date; // Already YYYY-MM-DD
+
+          // Calculate daysUntil using date strings to avoid timezone math
+          const [ty, tm, td] = todayStr.split('-').map(Number);
+          const [cy, cm, cd] = cleaningDateStr.split('-').map(Number);
+          const todayMs = new Date(ty, tm - 1, td).getTime();
+          const cleaningMs = new Date(cy, cm - 1, cd).getTime();
+          daysUntil = Math.round((cleaningMs - todayMs) / (1000 * 60 * 60 * 24));
         }
 
         // Check if we should send notification based on user preferences
         const shouldSend = user.is_canary || shouldSendNotification(user, type, daysUntil);
-        
+
         if (!shouldSend) {
           continue;
         }
 
-        // Deduplication: check if we already sent this exact notification today
-        // Prevents double-sends if the cron fires multiple times or retries
-        // Uses cleaning_date + metadata->type to allow morning + evening for same date
-        const todayStart = new Date(today);
-        todayStart.setHours(0, 0, 0, 0);
-        const { data: existingNotification } = await supabase
+        // BUG FIX: Use supabaseAdmin for dedup check (bypasses RLS).
+        // BUG FIX: Compare cleaning_date as date string, not ISO datetime.
+        const { data: existingNotification } = await supabaseAdmin
           .from('user_notifications')
           .select('id')
           .eq('user_id', user.user_id)
           .eq('notification_type', 'street_cleaning')
-          .eq('cleaning_date', cleaningDate.toISOString())
+          .eq('cleaning_date', cleaningDateStr)
           .contains('metadata', { type })
-          .gte('sent_at', todayStart.toISOString())
+          .gte('sent_at', `${todayStr}T00:00:00`)
           .limit(1)
           .maybeSingle();
 
         if (existingNotification) {
-          console.log(`⏭️  Skipping duplicate notification for ${user.email} (${type}, cleaning ${cleaningDate.toDateString()})`);
+          console.log(`Skipping duplicate for ${user.email} (${type}, cleaning ${cleaningDateStr})`);
           continue;
         }
 
+        // Build a Date object for display formatting (use noon to avoid timezone shifts)
+        const cleaningDateForDisplay = new Date(cleaningDateStr + 'T12:00:00');
+
         // Send notifications
-        const notificationSent = await sendNotification(user, type, cleaningDate, daysUntil);
+        console.log(`Sending ${type} to ${user.email} for cleaning ${cleaningDateStr} (${daysUntil}d)`);
+        const notificationSent = await sendNotification(user, type, cleaningDateForDisplay, daysUntil);
 
         if (notificationSent) {
           successful++;
-
-          // Log the notification
-          await logNotification(user.user_id, type, cleaningDate, user.home_address_ward, user.home_address_section);
+          // BUG FIX: Use supabaseAdmin for logging (bypasses RLS).
+          // BUG FIX: Store cleaning_date as date string, not ISO datetime.
+          await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section);
         } else {
           failed++;
         }
-        
+
       } catch (userError) {
         console.error(`Error processing user ${user.email}:`, userError);
         errors.push(`User ${user.email}: ${sanitizeErrorMessage(userError)}`);
         failed++;
       }
     }
-    
+
   } catch (error) {
     console.error('Error in processStreetCleaningReminders:', error);
     errors.push(`General error: ${sanitizeErrorMessage(error)}`);
   }
 
+  console.log(`\nResults: ${successful} sent, ${failed} failed, ${processed} evaluated`);
   return { processed, successful, failed, errors };
 }
 
@@ -309,7 +318,7 @@ function shouldSendNotification(user: any, type: string, daysUntil: number): boo
       return false;
 
     case 'follow_up':
-      // Send follow-up to users who have it enabled
+      // Send follow-up to users who have it enabled and cleaning was today
       return user.follow_up_sms && daysUntil === 0;
 
     default:
@@ -323,53 +332,55 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     console.error('Invalid cleaning date provided:', cleaningDate);
     return false;
   }
-  
-  const formattedDate = cleaningDate.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    month: 'short', 
-    day: 'numeric' 
+
+  const formattedDate = cleaningDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric'
   });
-  
+
   let message = '';
   let subject = '';
-  
-  // Get user's full address for messaging (use street_address, fall back to home_address_full for backwards compat)
+
+  // Get user's full address for messaging
   const addressText = user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`;
 
   switch (type) {
     case 'morning_reminder':
       if (daysUntil === 0) {
-        message = `🚗 Street cleaning TODAY at 9am at ${addressText}. Move your car NOW to avoid a ticket! - Autopilot America`;
-        subject = '🚗 Street Cleaning TODAY - Move Your Car!';
+        message = `Street cleaning TODAY at 9am at ${addressText}. Move your car NOW to avoid a ticket! - Autopilot America`;
+        subject = 'Street Cleaning TODAY - Move Your Car!';
       } else if (daysUntil === 1) {
-        message = `🗓️ Street cleaning TOMORROW (${formattedDate}) at 9am at ${addressText}. Don't forget to move your car! - Autopilot America`;
-        subject = '🗓️ Street Cleaning Tomorrow';
+        message = `Street cleaning TOMORROW (${formattedDate}) at 9am at ${addressText}. Don't forget to move your car! - Autopilot America`;
+        subject = 'Street Cleaning Tomorrow';
       } else {
-        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. Remember to move your car! - Autopilot America`;
-        subject = `📅 Street Cleaning in ${daysUntil} Days`;
+        message = `Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. Remember to move your car! - Autopilot America`;
+        subject = `Street Cleaning in ${daysUntil} Days`;
       }
       break;
 
     case 'evening_reminder':
       if (daysUntil === 1) {
-        message = `🌙 Street cleaning TOMORROW at 9am at ${addressText}. Don't forget to move your car! - Autopilot America`;
-        subject = '🌙 Street Cleaning Tomorrow Morning';
+        message = `Street cleaning TOMORROW at 9am at ${addressText}. Don't forget to move your car tonight! - Autopilot America`;
+        subject = 'Street Cleaning Tomorrow Morning';
       } else {
-        message = `📅 Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. - Autopilot America`;
-        subject = `📅 Street Cleaning in ${daysUntil} Days`;
+        message = `Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. - Autopilot America`;
+        subject = `Street Cleaning in ${daysUntil} Days`;
       }
       break;
 
     case 'follow_up':
-      message = `✅ Street cleaning completed in your area today. You can park normally now. Did you move your car and avoid a ticket? Reply and let us know! - Autopilot America`;
-      subject = '✅ Street Cleaning Complete';
+      message = `Street cleaning completed in your area today. You can park normally now. Did you move your car and avoid a ticket? Reply and let us know! - Autopilot America`;
+      subject = 'Street Cleaning Complete - Safe to Park';
       break;
   }
-  
+
+  let anySent = false;
+
   try {
-    // Send email if enabled
+    // Send email if enabled (most users have email enabled)
     if (user.email && user.notify_email !== false) {
-      console.log(`📧 Sending email to ${user.email} for ${type}`);
+      console.log(`  Email -> ${user.email}`);
       await notificationService.sendEmail({
         to: user.email,
         subject: subject,
@@ -388,58 +399,74 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
         `,
         text: `${subject}\n\n${message}\n\nYour Address:\n${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://autopilotamerica.com/settings`
       });
-      console.log(`✅ Email sent successfully to ${user.email}`);
-    } else {
-      console.log(`⏭️  Skipping email for ${user.email} (notify_email: ${user.notify_email})`);
+      anySent = true;
     }
 
     // Send SMS if user has SMS enabled and phone number
     const phoneNumber = user.phone_number || user.phone;
     if (phoneNumber && user.notify_sms !== false) {
-      console.log(`📱 Sending SMS to ${phoneNumber} for ${type}`);
+      console.log(`  SMS -> ${phoneNumber}`);
       await notificationService.sendSMS({
         to: phoneNumber,
         message: message
       });
-      console.log(`✅ SMS sent successfully to ${phoneNumber}`);
-    } else {
-      console.log(`⏭️  Skipping SMS for ${user.email} (notify_sms: ${user.notify_sms}, phone: ${phoneNumber})`);
+      anySent = true;
     }
 
     // Send voice call if enabled (morning reminders only)
-    // Check both master toggle AND per-type call_alert_preferences
     const callPrefs = (user.call_alert_preferences as Record<string, { enabled: boolean; hours_before?: number }>) || {};
     const streetCleaningCallEnabled = callPrefs.street_cleaning ? callPrefs.street_cleaning.enabled !== false : true;
     if (user.phone_call_enabled && streetCleaningCallEnabled && phoneNumber && type === 'morning_reminder') {
-      console.log(`📞 Sending voice call to ${phoneNumber} for ${type}`);
+      console.log(`  Voice -> ${phoneNumber}`);
       try {
         // Strip emojis for voice calls - they cause 500 errors in ClickSend
         const voiceMessage = message.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
         const voiceResult = await sendClickSendVoiceCall(phoneNumber, voiceMessage);
         if (voiceResult.success) {
-          console.log(`✅ Voice call sent successfully to ${phoneNumber}`);
+          anySent = true;
         } else {
-          console.error(`❌ Voice call failed for ${phoneNumber}:`, voiceResult.error);
+          console.error(`  Voice call failed for ${phoneNumber}:`, voiceResult.error);
         }
       } catch (voiceError) {
-        console.error(`❌ Voice call error for ${phoneNumber}:`, voiceError);
+        console.error(`  Voice call error for ${phoneNumber}:`, voiceError);
         // Don't fail the whole notification if just voice call fails
       }
-    } else {
-      console.log(`⏭️  Skipping voice call for ${user.email} (phone_call_enabled: ${user.phone_call_enabled}, street_cleaning_call: ${streetCleaningCallEnabled}, phone: ${phoneNumber}, type: ${type})`);
     }
 
-    return true;
+    // Send push notification if user has a push token
+    if (user.push_token) {
+      try {
+        const { pushService } = await import('../../../lib/push-service');
+        await pushService.sendPush({
+          token: user.push_token,
+          title: subject,
+          body: message,
+          data: { type: 'street_cleaning', notificationType: type }
+        });
+        console.log(`  Push -> ${user.push_token.substring(0, 20)}...`);
+        anySent = true;
+      } catch (pushError) {
+        console.error(`  Push failed for ${user.email}:`, pushError);
+      }
+    }
+
+    if (!anySent) {
+      console.log(`  No channels available for ${user.email} (email: ${user.notify_email}, sms: ${user.notify_sms}, phone: ${phoneNumber})`);
+    }
+
+    return anySent;
   } catch (error) {
-    console.error(`❌ Failed to send notification to ${user.email}:`, error);
+    console.error(`Failed to send notification to ${user.email}:`, error);
     return false;
   }
 }
 
 
-async function logNotification(userId: string, type: string, cleaningDate: Date, ward: string, section: string) {
+async function logNotification(userId: string, type: string, cleaningDateStr: string, ward: string, section: string) {
   try {
-    await supabase
+    // BUG FIX: Use supabaseAdmin to bypass RLS.
+    // BUG FIX: Store cleaning_date as date string (matches column type).
+    await supabaseAdmin
       .from('user_notifications')
       .insert({
         user_id: userId,
@@ -449,7 +476,7 @@ async function logNotification(userId: string, type: string, cleaningDate: Date,
         status: 'sent',
         ward: ward,
         section: section,
-        cleaning_date: cleaningDate.toISOString(),
+        cleaning_date: cleaningDateStr,
         metadata: { type, channels: ['email', 'sms'] }
       });
   } catch (error) {

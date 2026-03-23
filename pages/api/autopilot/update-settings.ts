@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -113,6 +114,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ success: true });
   } catch (error: any) {
     console.error('Update settings error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to update settings' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }

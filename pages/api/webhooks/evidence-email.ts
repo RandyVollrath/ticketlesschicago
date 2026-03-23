@@ -10,6 +10,7 @@ import {
   sendApprovalEmailForEvidence,
   analyzeEvidencePhotos,
 } from '../../../lib/evidence-processing';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 /**
  * Evidence Email Webhook
@@ -800,7 +801,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: any) {
     console.error('Error processing evidence email:', error);
     return res.status(500).json({
-      error: error.message || 'Failed to process evidence email'
+      error: sanitizeErrorMessage(error)
     });
   }
 }

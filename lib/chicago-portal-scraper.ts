@@ -673,7 +673,8 @@ export async function lookupPlateOnPortal(
       const errorMsg = searchApiResponse?.searchResult?.errorMessage || '';
       const errorDisplay = searchApiResponse?.searchResult?.errorMessageDisplay || '';
 
-      if (errorMsg.includes('No open receivables') || errorMsg.includes('not be found') || errorMsg.includes('already paid')) {
+      const lowerMsg = errorMsg.toLowerCase();
+      if (lowerMsg.includes('no open receivables') || lowerMsg.includes('not be found') || lowerMsg.includes('already paid')) {
         // No unpaid tickets - this is a successful lookup with 0 results
         console.log(`    No open tickets for plate ${plate}`);
         result.tickets = [];
