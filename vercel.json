@@ -137,7 +137,7 @@
     },
     {
       "path": "/api/street-cleaning/process",
-      "schedule": "0 12,13,20,21,0,1 * * *"
+      "schedule": "0 12,13,20,21,0 * * *"
     },
     {
       "path": "/api/cron/monitor-snow",
