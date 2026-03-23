@@ -1036,6 +1036,22 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     decision("module_initialized")
   }
 
+  deinit {
+    // Defense-in-depth: clean up observers and timers if module is deallocated.
+    // In practice this rarely fires (RN modules live for the bridge lifetime),
+    // but prevents leaks if the bridge is torn down.
+    NotificationCenter.default.removeObserver(self)
+    locationWatchdogTimer?.invalidate()
+    monitoringHeartbeatTimer?.invalidate()
+    bootstrapGpsTimer?.invalidate()
+    parkingConfirmationTimer?.invalidate()
+    speedZeroTimer?.invalidate()
+    parkingFinalizationTimer?.invalidate()
+    recoveryGpsTimer?.invalidate()
+    logFileHandle?.closeFile()
+    decisionLogFileHandle?.closeFile()
+  }
+
   // MARK: - Notification Category + Action Buttons
 
   /// Register "parking_detected" notification category with Correct/Wrong actions.

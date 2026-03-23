@@ -33,6 +33,10 @@ export async function getMessageStats(options?: {
   endDate?: Date;
   userId?: string;
 }): Promise<MessageStats> {
+  if (!supabaseAdmin) {
+    console.warn('supabaseAdmin not configured — skipping getMessageStats');
+    return getEmptyStats();
+  }
   try {
     const startDate = options?.startDate || new Date(Date.now() - 24 * 60 * 60 * 1000);
     const endDate = options?.endDate || new Date();
@@ -383,6 +387,7 @@ export interface AdminActionItems {
  * Replaces: /api/admin/notify-renewals
  */
 export async function getUpcomingRenewals(daysAhead: number = 30): Promise<UpcomingRenewal[]> {
+  if (!supabaseAdmin) { console.warn('supabaseAdmin not configured'); return []; }
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -454,6 +459,7 @@ export async function getUpcomingRenewals(daysAhead: number = 30): Promise<Upcom
  * Replaces: /api/cron/check-missing-permit-docs
  */
 export async function getMissingPermitDocs(): Promise<MissingPermitDoc[]> {
+  if (!supabaseAdmin) { console.warn('supabaseAdmin not configured'); return []; }
   try {
     const today = new Date();
     const thirtyDaysFromNow = new Date();
@@ -524,6 +530,7 @@ export async function getMissingPermitDocs(): Promise<MissingPermitDoc[]> {
  * Replaces: /api/cron/monitor-utility-bills-webhook
  */
 export async function getSystemHealth(): Promise<AdminActionItems['systemHealth']> {
+  if (!supabaseAdmin) { return { notificationsWorking: false, lastNotificationRun: null, webhooksHealthy: false, issues: ['supabaseAdmin not configured'] }; }
   const issues: string[] = [];
   let notificationsWorking = true;
   let lastNotificationRun: string | null = null;
@@ -596,6 +603,7 @@ export async function getSystemHealth(): Promise<AdminActionItems['systemHealth'
  * Get ticket contester statistics
  */
 export async function getTicketContesterStats(): Promise<TicketContesterStats> {
+  if (!supabaseAdmin) { console.warn('supabaseAdmin not configured'); return getEmptyContesterStats(); }
   try {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
