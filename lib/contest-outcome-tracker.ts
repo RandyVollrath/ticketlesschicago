@@ -130,25 +130,46 @@ export async function processOutcomeChange(
   const now = new Date().toISOString();
 
   if (outcome === 'hearing_scheduled') {
-    // Just update the ticket status — no contest_outcomes record yet
+    // Update the ticket status and set a follow-up check date
+    // Hearings are typically scheduled 2-4 weeks out; re-check weekly
+    const nextCheckDate = new Date();
+    nextCheckDate.setDate(nextCheckDate.getDate() + 7); // Check again in 7 days
+
     await supabase
       .from('detected_tickets')
       .update({
         status: 'hearing_scheduled',
         last_portal_status: 'hearing',
         last_portal_check: now,
+        next_portal_check: nextCheckDate.toISOString(),
       })
       .eq('id', ticket.id);
+
+    // Also update contest_letters so admin dashboard shows hearing status
+    const { data: hearingLetter } = await supabase
+      .from('contest_letters')
+      .select('id')
+      .eq('ticket_id', ticket.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (hearingLetter?.id) {
+      await supabase
+        .from('contest_letters')
+        .update({ status: 'hearing_scheduled' })
+        .eq('id', hearingLetter.id);
+    }
 
     // Audit log
     await supabase.from('ticket_audit_log').insert({
       ticket_id: ticket.id,
       action: 'hearing_scheduled',
-      details: { portal_status: details },
+      details: { portal_status: details, next_check: nextCheckDate.toISOString() },
       performed_by: null,
     });
 
-    console.log(`    📅 Hearing scheduled for ${ticket.ticket_number}`);
+    console.log(`    📅 Hearing scheduled for ${ticket.ticket_number} (next check: ${nextCheckDate.toISOString().split('T')[0]})`);
     return;
   }
 
@@ -208,6 +229,22 @@ export async function processOutcomeChange(
   if (ticketUpdateErr) {
     console.error(`    ❌ CRITICAL: Failed to update ticket ${ticket.ticket_number} status to '${ticketStatus}':`, ticketUpdateErr.message);
     console.error(`    Outcome '${outcomeType}' was recorded in contest_outcomes but ticket status is stale — manual fix needed`);
+  }
+
+  // Sync outcome to contest_letters table
+  if (letter?.id) {
+    const { error: letterUpdateErr } = await supabase
+      .from('contest_letters')
+      .update({
+        contest_outcome: outcomeType,
+        contest_outcome_at: now,
+        final_amount: finalAmount,
+        status: outcome === 'dismissed' ? 'won' : outcome === 'reduced' ? 'reduced' : 'lost',
+      })
+      .eq('id', letter.id);
+    if (letterUpdateErr) {
+      console.error(`    Failed to sync outcome to contest_letters ${letter.id}: ${letterUpdateErr.message}`);
+    }
   }
 
   // Audit log
