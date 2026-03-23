@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('id, ticket_number')
       .eq('id', contestId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (contestError || !contest) {
       return res.status(404).json({ error: 'Contest not found' });

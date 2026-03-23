@@ -309,7 +309,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
         .from('user_profiles')
         .select('email, first_name')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (userData?.email && process.env.RESEND_API_KEY) {
         try {
@@ -387,7 +387,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
         .from('user_profiles')
         .select('stripe_customer_id, email, first_name')
         .eq('user_id', charge.user_id)
-        .single();
+        .maybeSingle();
 
       if (profileError || !profile) {
         return res.status(404).json({ success: false, error: 'User profile not found' });
@@ -524,7 +524,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
         .from('user_profiles')
         .select('email, first_name')
         .eq('user_id', remindUserId)
-        .single();
+        .maybeSingle();
 
       if (!userData?.email) {
         return res.status(404).json({ success: false, error: 'User not found' });

@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .update(updateData)
       .eq('id', orderId)
       .select('order_number, payment_transfer_status')
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating payment transfer status:', error);
