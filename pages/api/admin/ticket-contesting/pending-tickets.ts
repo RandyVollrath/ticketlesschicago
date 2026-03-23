@@ -7,6 +7,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdminAuth } from '../../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,6 +18,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Auth: verify admin (Bearer token or session cookies)
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return;
 
   try {
     const { data: tickets, error, count } = await supabase

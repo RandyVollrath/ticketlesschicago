@@ -2,18 +2,12 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { normalizeAddressKey } from '../../../lib/evidence-enrichment-service';
+import { requireAdminAuth } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-const ADMIN_EMAILS = [
-  'randy@autopilotamerica.com',
-  'admin@autopilotamerica.com',
-  'randyvollrath@gmail.com',
-  'carenvollrath@gmail.com',
-];
 
 /**
  * Contest Pipeline API — Rich admin view
@@ -73,16 +67,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify admin auth
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing authorization' });
-  }
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
-    return res.status(403).json({ error: 'Not authorized' });
-  }
+  // Auth: verify admin (Bearer token or session cookies)
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return;
 
   try {
     const { limit = '100', stage, id } = req.query;

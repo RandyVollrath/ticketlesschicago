@@ -117,6 +117,83 @@ const ADMIN_EMAILS = [
 ].filter(Boolean) as string[];
 
 /**
+ * Verify admin access via Bearer token OR session cookies.
+ * Returns the authenticated admin user, or sends 401/403 and returns null.
+ *
+ * Checks in order:
+ * 1. Bearer token in Authorization header (for pages with Supabase session)
+ * 2. Session cookies (for browser-based admin pages)
+ *
+ * Admin is determined by email list OR is_admin field in user_profiles.
+ */
+export async function requireAdminAuth(
+  req: NextApiRequest,
+  res: NextApiResponse
+): Promise<{ id: string; email: string } | null> {
+  const authHeader = req.headers.authorization;
+
+  // Method 1: Bearer token
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (!error && user) {
+      const userEmail = user.email || '';
+      let isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+      if (!isAdmin) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        isAdmin = profile?.is_admin === true;
+      }
+
+      if (isAdmin) {
+        return { id: user.id, email: userEmail };
+      }
+
+      res.status(403).json({ error: 'Not authorized' });
+      return null;
+    }
+  }
+
+  // Method 2: Session cookies
+  try {
+    const supabaseServer = createPagesServerClient({ req, res });
+    const { data: { session }, error: sessionError } = await supabaseServer.auth.getSession();
+
+    if (!sessionError && session) {
+      const userEmail = session.user.email || '';
+      const userId = session.user.id;
+      let isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+      if (!isAdmin) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('user_id', userId)
+          .maybeSingle();
+        isAdmin = profile?.is_admin === true;
+      }
+
+      if (isAdmin) {
+        return { id: userId, email: userEmail };
+      }
+
+      res.status(403).json({ error: 'Not authorized' });
+      return null;
+    }
+  } catch {
+    // Session cookie check failed, fall through
+  }
+
+  res.status(401).json({ error: 'Missing authorization' });
+  return null;
+}
+
+/**
  * Higher-order function to wrap admin API routes with authentication
  * Uses session cookies for browser-based access
  *

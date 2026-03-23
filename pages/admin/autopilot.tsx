@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
@@ -27,6 +27,7 @@ export default function AutopilotAdmin() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const accessTokenRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState('portal');
   const [loading, setLoading] = useState(true);
 
@@ -103,6 +104,7 @@ export default function AutopilotAdmin() {
     }
 
     setUser(session.user);
+    accessTokenRef.current = session.access_token;
     const isAdminUser = ADMIN_EMAILS.includes(session.user.email || '');
     setIsAdmin(isAdminUser);
 
@@ -329,7 +331,9 @@ export default function AutopilotAdmin() {
   const loadPortalCheckData = async () => {
     setPortalCheckLoading(true);
     try {
-      const response = await fetch('/api/admin/autopilot/trigger-portal-check');
+      const response = await fetch('/api/admin/autopilot/trigger-portal-check', {
+        headers: accessTokenRef.current ? { 'Authorization': `Bearer ${accessTokenRef.current}` } : {},
+      });
       const data = await response.json();
       if (data.success) {
         setPortalCheckData(data);
@@ -346,7 +350,10 @@ export default function AutopilotAdmin() {
     try {
       const response = await fetch('/api/admin/autopilot/trigger-portal-check', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessTokenRef.current ? { 'Authorization': `Bearer ${accessTokenRef.current}` } : {}),
+        },
         body: JSON.stringify({ requestedBy: user?.email || 'admin' }),
       });
       const data = await response.json();

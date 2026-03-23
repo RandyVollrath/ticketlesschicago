@@ -1,10 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import PDFDocument from 'pdfkit';
+import { requireAdminAuth } from '../../../lib/auth-middleware';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Auth: verify admin (Bearer token or session cookies)
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return;
 
   const { letterContent, violationType, ticketNumber } = req.body;
 

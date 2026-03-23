@@ -13,30 +13,17 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdminAuth } from '../../../../lib/auth-middleware';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const ADMIN_EMAILS = [
-  'randy@autopilotamerica.com',
-  'admin@autopilotamerica.com',
-  'randyvollrath@gmail.com',
-  'carenvollrath@gmail.com',
-];
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Auth: verify admin
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing authorization' });
-  }
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-  if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
-    return res.status(403).json({ error: 'Not authorized' });
-  }
+  // Auth: verify admin (Bearer token or session cookies)
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return;
 
   if (req.method === 'GET') {
     return getPortalCheckStatus(req, res);
