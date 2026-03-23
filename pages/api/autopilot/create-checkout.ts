@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Create or retrieve Stripe customer
     if (!customerId) {
-      // Check if customer exists by email
+      // Check if customer already exists in Stripe by email (canonical check)
       const existingCustomers = await stripe.customers.list({
         email,
         limit: 1,
@@ -70,14 +70,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (existingCustomers.data.length > 0) {
         customerId = existingCustomers.data[0].id;
       } else {
-        const customer = await stripe.customers.create({
-          email,
-          metadata: {
-            supabase_user_id: userId,
+        // Use idempotency key tied to user ID to prevent duplicate customer creation
+        // from concurrent requests
+        const customer = await stripe.customers.create(
+          {
+            email,
+            metadata: {
+              supabase_user_id: userId,
+            },
           },
-        });
+          {
+            idempotencyKey: `create-customer-${userId}`,
+          }
+        );
         customerId = customer.id;
       }
+
+      // Persist customer ID immediately so concurrent requests find it
+      await supabaseAdmin
+        .from('autopilot_subscriptions')
+        .upsert({
+          user_id: userId,
+          stripe_customer_id: customerId,
+          status: 'trialing',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
     }
 
     // Create checkout session

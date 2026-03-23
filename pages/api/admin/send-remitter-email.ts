@@ -27,6 +27,11 @@ export default withCronOrAdminAuth(async (req, res, context) => {
     const { email } = req.query;
     const remitterEmail = (email as string) || process.env.REMITTER_EMAIL;
 
+    // Validate email format to prevent sending to arbitrary addresses
+    if (!remitterEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(remitterEmail)) {
+      return res.status(400).json({ error: 'Invalid or missing remitter email address' });
+    }
+
     console.log(`📧 Sending remitter email to: ${remitterEmail} (triggered by ${context.isCron ? 'cron' : context.user?.email})`);
 
     const result = await sendRemitterDailyEmail(remitterEmail);
