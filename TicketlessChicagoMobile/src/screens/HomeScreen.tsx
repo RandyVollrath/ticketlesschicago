@@ -759,9 +759,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             if (parked.lat && parked.lng) {
               // Use stored car location regardless of age — the car hasn't moved
               // since it was parked, so these coords are still accurate.
-              // Only skip if we've since departed (state machine is DRIVING).
+              // Only use when we're confident the car is still parked:
+              // - PARKED: confirmed parked
+              // - IDLE: no car paired, but stored coords still valid
+              // Skip when DRIVING/PARKING_PENDING (user departed) or
+              // INITIALIZING (BT check not done yet — state unknown).
               const smState = ParkingDetectionStateMachine.state;
-              if (smState !== 'DRIVING' && smState !== 'PARKING_PENDING') {
+              if (smState === 'PARKED' || smState === 'IDLE') {
                 coords = {
                   latitude: parked.lat,
                   longitude: parked.lng,
@@ -804,14 +808,25 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       // After a fresh install or data clear, AsyncStorage is empty but the server
       // still has parking records. getHistory() fetches from server on first call.
       // Use the most recent record that has no departure (car is still there).
+      // Timeout: getHistory() may do a network call on first invocation. Cap at 8s
+      // to avoid blocking the UI for too long inside the 30s overall timeout.
       if (!coords) {
         try {
-          const history = await ParkingHistoryService.getHistory();
-          // Find the most recent un-departed parking record
+          const historyPromise = ParkingHistoryService.getHistory();
+          const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
+          const historyResult = await Promise.race([historyPromise, timeoutPromise]);
+          const history = historyResult ?? [];
+
+          // Find the most recent un-departed parking record that's less than 48h old.
+          // Age limit prevents matching stale records from weeks/months ago where
+          // departure was never recorded (app uninstalled, departure tracking failed).
+          const MAX_HISTORY_AGE_MS = 48 * 60 * 60 * 1000; // 48 hours
+          const now = Date.now();
           const activePark = history.find(item =>
             !item.departure &&
             item.coords?.latitude &&
-            item.coords?.longitude
+            item.coords?.longitude &&
+            (now - item.timestamp) < MAX_HISTORY_AGE_MS
           );
           if (activePark) {
             coords = {
@@ -819,8 +834,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               longitude: activePark.coords.longitude,
               accuracy: activePark.coords.accuracy,
             };
-            const ageMin = Math.round((Date.now() - activePark.timestamp) / 60000);
+            const ageMin = Math.round((now - activePark.timestamp) / 60000);
             log.info(`Using parking history location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} (${activePark.address || 'unknown'}, parked ${ageMin}min ago)`);
+          } else if (history.length > 0) {
+            log.debug(`Parking history has ${history.length} items but none are active/recent enough`);
           }
         } catch (e) {
           log.debug('Could not read parking history for coords', e);
