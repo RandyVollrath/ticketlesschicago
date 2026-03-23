@@ -149,7 +149,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await requireAdmin(req);
   } catch (err: any) {
     const status = err.message?.includes('No authorization') ? 401 : 403;
-    return res.status(status).json({ error: err.message || 'Forbidden' });
+    return res.status(status).json({ error: status === 401 ? 'Unauthorized' : 'Forbidden' });
   }
 
   const { template } = req.query;

@@ -81,7 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!admin) return;
 
   try {
-    const { stage, limit = '50' } = req.query;
+    const { stage, limit: limitStr = '50' } = req.query;
+    const limit = Math.min(Math.max(parseInt(limitStr as string) || 50, 1), 200);
 
     // Query tickets with letter info
     const { data: tickets, error } = await supabase
@@ -99,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         evidence_deadline
       `)
       .order('created_at', { ascending: false })
-      .limit(parseInt(limit as string));
+      .limit(limit);
 
     if (error) {
       console.error('Ticket fetch error:', error);

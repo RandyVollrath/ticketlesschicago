@@ -12,7 +12,9 @@ export default withAdminAuth(async (req, res, adminUser) => {
   try {
     if (req.method === 'GET') {
       // List all contest letters
-      const { status, evidence_integrated, limit = '50', offset = '0' } = req.query;
+      const { status, evidence_integrated, limit: limitStr = '50', offset: offsetStr = '0' } = req.query;
+      const parsedLimit = Math.min(Math.max(parseInt(limitStr as string) || 50, 1), 200);
+      const parsedOffset = Math.max(parseInt(offsetStr as string) || 0, 0);
 
       let query = supabase
         .from('contest_letters')
@@ -34,7 +36,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
           updated_at
         `)
         .order('created_at', { ascending: false })
-        .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
+        .range(parsedOffset, parsedOffset + parsedLimit - 1);
 
       if (status) {
         query = query.eq('status', status);

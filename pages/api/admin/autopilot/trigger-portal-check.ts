@@ -48,7 +48,8 @@ async function getPortalCheckStatus(_req: NextApiRequest, res: NextApiResponse) 
       .limit(20);
 
     if (runsError) {
-      return res.status(500).json({ error: runsError.message });
+      console.error('Portal check runs fetch error:', runsError);
+      return res.status(500).json({ error: 'Failed to fetch portal check runs' });
     }
 
     // Get pending trigger requests
@@ -122,7 +123,8 @@ async function getPortalCheckStatus(_req: NextApiRequest, res: NextApiResponse) 
       recentTickets: recentTickets || [],
     });
   } catch (error: any) {
-    return res.status(500).json({ error: error.message });
+    console.error('Portal check status error:', error);
+    return res.status(500).json({ error: 'Failed to fetch portal check status' });
   }
 }
 
@@ -165,7 +167,8 @@ async function triggerPortalCheck(req: NextApiRequest, res: NextApiResponse) {
       }, { onConflict: 'key' });
 
     if (error) {
-      return res.status(500).json({ error: error.message });
+      console.error('Portal check trigger error:', error);
+      return res.status(500).json({ error: 'Failed to trigger portal check' });
     }
 
     // Also log the trigger request
@@ -189,6 +192,7 @@ async function triggerPortalCheck(req: NextApiRequest, res: NextApiResponse) {
       requestedAt: now,
     });
   } catch (error: any) {
-    return res.status(500).json({ error: error.message });
+    console.error('Portal check trigger error:', error);
+    return res.status(500).json({ error: 'Failed to trigger portal check' });
   }
 }
