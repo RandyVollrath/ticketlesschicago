@@ -22,6 +22,7 @@ interface LetterToMail {
   letter_content: string;
   letter_text: string;
   defense_type: string | null;
+  status: string;
   street_view_exhibit_urls: string[] | null;
   street_view_date: string | null;
   street_view_address: string | null;
@@ -136,8 +137,8 @@ async function aiQualityReview(
   userName: string
 ): Promise<{ pass: boolean; correctedLetter?: string; issues: string[]; qualityScore: number }> {
   if (!anthropic) {
-    console.log('    ⚠️ No ANTHROPIC_API_KEY — skipping AI quality review');
-    return { pass: true, issues: ['AI review skipped: no API key'], qualityScore: 0 };
+    console.log('    ⚠️ No ANTHROPIC_API_KEY — blocking letter (AI quality review required)');
+    return { pass: false, issues: ['AI review unavailable: no API key — letter cannot be mailed without quality check'], qualityScore: 0 };
   }
 
   try {
@@ -724,7 +725,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           created_at
         )
       `)
-      .or(`status.eq.approved,status.eq.pending_evidence,status.eq.draft,status.eq.ready,status.eq.awaiting_consent,status.eq.admin_approved,status.eq.needs_admin_review,status.eq.mailing`)
+      .or(`status.eq.approved,status.eq.ready,status.eq.awaiting_consent,status.eq.admin_approved,status.eq.mailing`)
       .order('created_at', { ascending: true });
 
     if (!letters || letters.length === 0) {

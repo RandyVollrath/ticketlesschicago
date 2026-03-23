@@ -210,6 +210,16 @@ export default async function handler(
       .update(updateData)
       .eq('id', letter.id);
 
+    // Also update ticket status for terminal letter events (delivered/returned)
+    if (newStatus === 'delivered' || newStatus === 'returned') {
+      const ticketStatus = newStatus === 'returned' ? 'letter_returned' : 'mailed';
+      await supabaseAdmin
+        .from('detected_tickets')
+        .update({ status: ticketStatus })
+        .eq('id', letter.ticket_id);
+      console.log(`  Updated ticket ${letter.ticket_id} status to "${ticketStatus}"`);
+    }
+
     if (updateError) {
       console.error('  Error updating letter:', updateError);
       return res.status(500).json({ error: 'Failed to update letter' });
