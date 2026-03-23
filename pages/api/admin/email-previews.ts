@@ -9,10 +9,10 @@ function getTemplates(): Record<string, { subject: string; html: string }> {
     'drip-welcome': {
       subject: 'Welcome to Autopilot America',
       html: quickEmail({
-        preheader: "Chicago writes $264M in parking tickets in a single year. Here's how to not be part of that.",
+        preheader: "Chicago writes $259M in parking tickets in a single year. Here's how to not be part of that.",
         headerTitle: 'You just dodged your first ticket, Randy.',
         body: [
-          p("Seriously. Chicago writes <strong>2.8 million parking tickets every year</strong>. That's $264 million pulled out of drivers' wallets — for street cleaning you didn't know about, snow bans nobody warned you about, and stickers you forgot to renew."),
+          p("Seriously. Chicago writes <strong>2.8 million parking tickets every year</strong>. That's $259 million pulled out of drivers' wallets — for street cleaning you didn't know about, snow bans nobody warned you about, and stickers you forgot to renew."),
           p("Starting right now, you'll get a heads-up before any of these hit you:"),
           bulletList([
             '<strong>Street cleaning</strong> — we tell you the day before the sweeper comes. One alert = one $75 ticket you don\'t pay.',
@@ -30,13 +30,13 @@ function getTemplates(): Record<string, { subject: string; html: string }> {
       }),
     },
     'drip-proof': {
-      subject: 'The $264 million parking ticket machine',
+      subject: 'The $259 million parking ticket machine',
       html: quickEmail({
         preheader: "Chicago's ticket revenue would make Fortune 500 CFOs jealous. Here's how to stop feeding it.",
-        headerTitle: "You're funding a $264 million machine.",
+        headerTitle: "You're funding a $259 million machine.",
         body: [
           greet('Randy'),
-          p("Let me give you a number: <strong>$264,000,000.</strong>"),
+          p("Let me give you a number: <strong>$259,000,000.</strong>"),
           p("That's how much Chicago collects in parking and camera ticket revenue in a single year. Street cleaning alone is over $20 million. And the city depends on that money — which means they are very, very good at writing tickets."),
           callout('danger', 'Here\'s the part nobody tells you', "68.5% of contested parking tickets in Chicago get dismissed. The city knows most people won't bother fighting a $75 ticket. They're counting on you to just pay it."),
           p("That's the game. They write the ticket. You're busy. You pay it. Multiply that by 2.8 million tickets a year and you get a quarter-billion-dollar revenue stream — funded by people who didn't know they could fight back."),
