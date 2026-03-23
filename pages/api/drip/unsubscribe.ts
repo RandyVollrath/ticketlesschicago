@@ -36,13 +36,19 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to unsubscribe' });
     }
 
-    // Also update user_profiles marketing_consent
-    await supabase
+    // Also update user_profiles marketing_consent — must succeed for full unsubscribe
+    const { error: profileError } = await supabase
       .from('user_profiles')
       .update({ marketing_consent: false })
       .eq('email', email.toLowerCase());
 
-    console.log(`✅ Unsubscribed: ${email}`);
+    if (profileError) {
+      console.error('Error updating marketing_consent (drip already unsubscribed):', profileError);
+      // Don't fail the request — drip_campaign_status was already updated
+      // The user won't get drip emails, but marketing_consent may be stale
+    }
+
+    console.log(`Unsubscribed: ${email}`);
 
     return res.status(200).json({
       success: true,

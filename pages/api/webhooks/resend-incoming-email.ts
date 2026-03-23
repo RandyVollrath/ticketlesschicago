@@ -139,7 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           supabaseAdmin,
           fromEmail,
           subject,
-          text,
+          enrichedBody, // Use enrichedBody (email text + extracted CSV/attachment text) not raw text
           foiaAttachmentsMeta,
           emailHeaders,
         );
