@@ -92,7 +92,7 @@ async function sendClickSendSMSOnce(to: string, message: string): Promise<{succe
       body: JSON.stringify({
         messages: [
           {
-            to: to.replace(/\D/g, ''), // Remove non-digits
+            to: `+${to.replace(/\D/g, '')}`, // E.164 format: +1XXXXXXXXXX
             body: message,
             from: 'TicketLess',
             source: 'nodejs'
@@ -217,7 +217,7 @@ async function sendClickSendVoiceCallOnce(to: string, message: string): Promise<
       body: JSON.stringify({
         messages: [
           {
-            to: to.replace(/\D/g, ''), // Remove non-digits
+            to: `+${to.replace(/\D/g, '')}`, // E.164 format: +1XXXXXXXXXX
             body: message,
             voice: 'female', // or 'male'
             custom_string: 'ticketless-reminder',
