@@ -208,7 +208,7 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
       callout('warning', 'What Happens Next',
         `The city is required by law to respond within <strong>5 business days</strong>. Once we receive your data, we'll email you a full report and make it available on your dashboard at <a href="https://autopilotamerica.com/my-tickets" style="color: #2563EB;">autopilotamerica.com/my-tickets</a>.`),
       section('Protect Yourself Going Forward',
-        p('Chicago drivers get an average of 3+ tickets per year. Our Autopilot system automatically detects new tickets and contests them for you.'),
+        p('Chicago issues nearly 3 million parking tickets every year. Autopilot monitors your plate daily, catches new tickets the moment they\'re issued, and automatically contests them for you.'),
         { bg: '#F0FDF4', borderColor: '#86EFAC' }),
       button('Get Protected — $49/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
     ].join(''),
@@ -271,8 +271,8 @@ export async function sendFoiaHistoryResultsEmail(params: {
         : '',
       section('Never stress about a ticket again',
         p(params.ticketCount > 0
-          ? 'Tickets are unavoidable in Chicago — the average driver gets 3+ per year. But paying full price for every one isn\'t. Autopilot monitors your plate daily, catches new tickets the moment they\'re issued, and automatically contests them for you.'
-          : 'Even with a clean record, Chicago drivers average 3+ tickets per year. When that first one lands, Autopilot catches it immediately and contests it for you automatically.'
+          ? 'Chicago issues nearly 3 million parking tickets every year — and paying full price for every one isn\'t inevitable. Autopilot monitors your plate daily, catches new tickets the moment they\'re issued, and automatically contests them for you.'
+          : 'Chicago issues nearly 3 million parking tickets every year. When your first one lands, Autopilot catches it immediately and contests it for you automatically.'
         ) + bulletList([
           '<strong>Daily plate monitoring</strong> — We check for new tickets so you don\'t have to',
           '<strong>Automatic contest letters</strong> — Custom defense letters mailed before the deadline',
