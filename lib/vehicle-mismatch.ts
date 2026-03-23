@@ -267,6 +267,9 @@ export function parseVehicleFromDescription(description: string): VehicleInfo | 
     'AUTOMATED SPEED', 'AUTOMATED RED', 'CAMERA VIOLATION',
     'TRAFFIC VIOLATION', 'PARKING VIOLATION', 'SCHOOL ZONE',
     'CHILDREN\'S SAFETY', 'SAFETY ZONE', 'GOLD COAST',
+    'RED ZONE', 'GREEN ZONE', 'YELLOW ZONE', 'BLUE ZONE',
+    'NO PARKING', 'NO STANDING', 'TOW ZONE', 'FIRE LANE',
+    'RUSH HOUR', 'SNOW ROUTE', 'STREET CLEANING',
   ];
   let sanitized = description.toUpperCase();
   for (const phrase of VIOLATION_PHRASES) {
@@ -363,6 +366,113 @@ export function parseVehicleFromDescription(description: string): VehicleInfo | 
       if (regex.test(upper)) {
         result.make = make;
         break;
+      }
+    }
+  }
+
+  // Model matching: common vehicle models that may appear in violation descriptions.
+  // Only match if we already identified the make (to avoid false positives — many model
+  // names are common words like "Focus", "Edge", "Pilot", "Explorer").
+  if (result.make) {
+    const modelsByMake: Record<string, Record<string, string>> = {
+      'Toyota': {
+        'CAMRY': 'Camry', 'COROLLA': 'Corolla', 'RAV4': 'RAV4', 'HIGHLANDER': 'Highlander',
+        'TACOMA': 'Tacoma', 'TUNDRA': 'Tundra', 'PRIUS': 'Prius', 'SIENNA': 'Sienna',
+        '4RUNNER': '4Runner', 'AVALON': 'Avalon', 'SUPRA': 'Supra', 'VENZA': 'Venza',
+      },
+      'Honda': {
+        'CIVIC': 'Civic', 'ACCORD': 'Accord', 'CRV': 'CR-V', 'CR-V': 'CR-V',
+        'PILOT': 'Pilot', 'ODYSSEY': 'Odyssey', 'HRV': 'HR-V', 'HR-V': 'HR-V',
+        'FIT': 'Fit', 'RIDGELINE': 'Ridgeline', 'PASSPORT': 'Passport',
+      },
+      'Chevrolet': {
+        'EQUINOX': 'Equinox', 'MALIBU': 'Malibu', 'SILVERADO': 'Silverado',
+        'TRAVERSE': 'Traverse', 'TAHOE': 'Tahoe', 'SUBURBAN': 'Suburban',
+        'IMPALA': 'Impala', 'CRUZE': 'Cruze', 'TRAX': 'Trax', 'BLAZER': 'Blazer',
+        'COLORADO': 'Colorado', 'CAMARO': 'Camaro', 'CORVETTE': 'Corvette',
+      },
+      'Ford': {
+        'F150': 'F-150', 'F-150': 'F-150', 'F250': 'F-250', 'F-250': 'F-250',
+        'ESCAPE': 'Escape', 'EXPLORER': 'Explorer', 'MUSTANG': 'Mustang',
+        'FUSION': 'Fusion', 'EDGE': 'Edge', 'BRONCO': 'Bronco',
+        'EXPEDITION': 'Expedition', 'RANGER': 'Ranger', 'MAVERICK': 'Maverick',
+      },
+      'Nissan': {
+        'ALTIMA': 'Altima', 'SENTRA': 'Sentra', 'ROGUE': 'Rogue', 'PATHFINDER': 'Pathfinder',
+        'MAXIMA': 'Maxima', 'MURANO': 'Murano', 'FRONTIER': 'Frontier', 'TITAN': 'Titan',
+        'KICKS': 'Kicks', 'VERSA': 'Versa', 'ARMADA': 'Armada',
+      },
+      'Hyundai': {
+        'ELANTRA': 'Elantra', 'SONATA': 'Sonata', 'TUCSON': 'Tucson', 'SANTA FE': 'Santa Fe',
+        'KONA': 'Kona', 'PALISADE': 'Palisade', 'VENUE': 'Venue', 'IONIQ': 'Ioniq',
+      },
+      'Kia': {
+        'OPTIMA': 'Optima', 'SORENTO': 'Sorento', 'SPORTAGE': 'Sportage',
+        'FORTE': 'Forte', 'SOUL': 'Soul', 'TELLURIDE': 'Telluride', 'SELTOS': 'Seltos',
+      },
+      'Jeep': {
+        'WRANGLER': 'Wrangler', 'CHEROKEE': 'Cherokee', 'GRAND CHEROKEE': 'Grand Cherokee',
+        'COMPASS': 'Compass', 'RENEGADE': 'Renegade', 'GLADIATOR': 'Gladiator',
+      },
+      'Dodge': {
+        'CHARGER': 'Charger', 'CHALLENGER': 'Challenger', 'DURANGO': 'Durango',
+        'JOURNEY': 'Journey', 'CARAVAN': 'Caravan',
+      },
+      'BMW': {
+        '3 SERIES': '3 Series', '5 SERIES': '5 Series', 'X3': 'X3', 'X5': 'X5',
+        'X1': 'X1', 'X7': 'X7', '328I': '328i', '530I': '530i',
+      },
+      'Mercedes-Benz': {
+        'C-CLASS': 'C-Class', 'E-CLASS': 'E-Class', 'GLC': 'GLC', 'GLE': 'GLE',
+        'S-CLASS': 'S-Class', 'CLA': 'CLA', 'GLA': 'GLA', 'A-CLASS': 'A-Class',
+      },
+      'Subaru': {
+        'OUTBACK': 'Outback', 'FORESTER': 'Forester', 'CROSSTREK': 'Crosstrek',
+        'IMPREZA': 'Impreza', 'LEGACY': 'Legacy', 'ASCENT': 'Ascent', 'WRX': 'WRX',
+      },
+      'Volkswagen': {
+        'JETTA': 'Jetta', 'PASSAT': 'Passat', 'TIGUAN': 'Tiguan', 'ATLAS': 'Atlas',
+        'GOLF': 'Golf', 'TAOS': 'Taos', 'ID4': 'ID.4', 'ID.4': 'ID.4',
+      },
+      'Tesla': {
+        'MODEL 3': 'Model 3', 'MODEL Y': 'Model Y', 'MODEL S': 'Model S', 'MODEL X': 'Model X',
+      },
+      'GMC': {
+        'SIERRA': 'Sierra', 'TERRAIN': 'Terrain', 'ACADIA': 'Acadia', 'YUKON': 'Yukon',
+        'CANYON': 'Canyon', 'DENALI': 'Denali',
+      },
+      'Ram': {
+        '1500': '1500', '2500': '2500', 'PROMASTER': 'ProMaster',
+      },
+      'Buick': {
+        'ENCORE': 'Encore', 'ENCLAVE': 'Enclave', 'ENVISION': 'Envision', 'REGAL': 'Regal',
+      },
+      'Cadillac': {
+        'ESCALADE': 'Escalade', 'XT5': 'XT5', 'XT4': 'XT4', 'CT5': 'CT5', 'CT4': 'CT4',
+      },
+      'Lexus': {
+        'RX': 'RX', 'ES': 'ES', 'NX': 'NX', 'IS': 'IS', 'GX': 'GX', 'UX': 'UX',
+      },
+      'Acura': {
+        'MDX': 'MDX', 'RDX': 'RDX', 'TLX': 'TLX', 'INTEGRA': 'Integra',
+      },
+      'Mazda': {
+        'CX5': 'CX-5', 'CX-5': 'CX-5', 'CX9': 'CX-9', 'CX-9': 'CX-9',
+        'MAZDA3': 'Mazda3', 'MAZDA6': 'Mazda6', 'CX30': 'CX-30', 'CX-30': 'CX-30',
+      },
+      'Volvo': {
+        'XC90': 'XC90', 'XC60': 'XC60', 'XC40': 'XC40', 'S60': 'S60', 'V60': 'V60',
+      },
+    };
+
+    const makeModels = modelsByMake[result.make];
+    if (makeModels) {
+      for (const [keyword, model] of Object.entries(makeModels)) {
+        const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+        if (regex.test(upper)) {
+          result.model = model;
+          break;
+        }
       }
     }
   }
