@@ -3785,8 +3785,8 @@ class BackgroundTaskServiceClass {
           confirmedAt: departureTime,
           distanceMeters: 0, // Unknown — we didn't wait for GPS
           isConclusive: true, // User clearly left (they parked somewhere new)
-          latitude: 0,
-          longitude: 0,
+          latitude: pending.parkedLocation?.latitude || 0,
+          longitude: pending.parkedLocation?.longitude || 0,
         },
       };
 

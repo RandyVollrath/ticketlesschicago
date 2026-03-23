@@ -1,11 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export const config = {
   api: {
@@ -21,6 +27,16 @@ export default async function handler(
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Authenticate the caller — this endpoint calls OpenAI Vision ($$$)
+  const authToken = req.headers.authorization?.replace('Bearer ', '');
+  if (!authToken) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(authToken);
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   // Rate limit expensive Vision API calls

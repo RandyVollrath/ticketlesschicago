@@ -14,9 +14,16 @@ const COLORS = {
   border: '#E2E8F0',
 };
 
+// Validate email format to prevent XSS via reflected query parameter
+function sanitizeEmail(raw: string | string[] | undefined): string {
+  if (!raw || Array.isArray(raw)) return '';
+  // Strict email regex — rejects anything with HTML/JS characters
+  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(raw) ? raw : '';
+}
+
 export default function Unsubscribe() {
   const router = useRouter();
-  const { email } = router.query;
+  const email = sanitizeEmail(router.query.email);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
