@@ -112,8 +112,8 @@ const ADMIN_EMAILS = [
   'carenvollrath@gmail.com',
 ];
 
-const EVIDENCE_STATUSES = ['queued', 'drafting', 'sent', 'fulfilled_with_records', 'fulfilled_denial', 'fulfilled', 'failed', 'not_needed'];
-const HISTORY_STATUSES = ['queued', 'drafting', 'sent', 'fulfilled', 'failed', 'cancelled'];
+const EVIDENCE_STATUSES = ['queued', 'drafting', 'sent', 'extension_requested', 'fulfilled_with_records', 'fulfilled_denial', 'fulfilled', 'failed', 'not_needed'];
+const HISTORY_STATUSES = ['queued', 'drafting', 'sent', 'extension_requested', 'fulfilled', 'failed', 'cancelled'];
 
 // ── Helpers ──
 
@@ -139,6 +139,8 @@ function statusColor(s: string): { bg: string; text: string; border: string } {
     case 'sent':
     case 'drafting':
       return { bg: C.blueLight, text: '#1E40AF', border: '#BFDBFE' };
+    case 'extension_requested':
+      return { bg: '#FFF7ED', text: '#9A3412', border: '#FDBA74' };
     case 'queued':
       return { bg: C.amberLight, text: '#92400E', border: '#FDE68A' };
     case 'failed':
@@ -236,7 +238,7 @@ export default function FoiaTracker() {
     if (filter !== 'evidence') items.push(...historyFoias);
 
     if (filter === 'action_needed') {
-      items = items.filter(f => ['queued', 'failed', 'sent'].includes(f.status));
+      items = items.filter(f => ['queued', 'failed', 'sent', 'extension_requested'].includes(f.status));
     }
 
     if (searchQuery.trim()) {
@@ -267,8 +269,8 @@ export default function FoiaTracker() {
     }
   }, [selectedFoia]);
 
-  const actionCount = useMemo(() => 
-    [...evidenceFoias, ...historyFoias].filter(f => ['queued', 'failed', 'sent'].includes(f.status)).length
+  const actionCount = useMemo(() =>
+    [...evidenceFoias, ...historyFoias].filter(f => ['queued', 'failed', 'sent', 'extension_requested'].includes(f.status)).length
   , [evidenceFoias, historyFoias]);
 
   if (loading || !isAdmin) {
@@ -316,6 +318,7 @@ export default function FoiaTracker() {
             <StatCard label="Evidence" value={stats.evidence} color={C.purple} />
             <StatCard label="History" value={stats.history} color={C.sky} />
             <StatCard label="Awaiting Response" value={stats.byStatus['sent'] || 0} color={C.blue} />
+            <StatCard label="Extensions" value={stats.byStatus['extension_requested'] || 0} color="#EA580C" />
             <StatCard label="Fulfilled" value={(stats.byStatus['fulfilled'] || 0) + (stats.byStatus['fulfilled_with_records'] || 0)} color={C.green} />
             <StatCard label="Needs Action" value={actionCount} color={C.amber} isAlert={actionCount > 0} />
             <StatCard label="Failed" value={stats.byStatus['failed'] || 0} color={C.red} isAlert={stats.byStatus['failed'] > 0} />
@@ -683,6 +686,9 @@ const DetailPanel = ({ foia, editStatus, editNotes, saving, onEditStatusChange, 
           <Section title="Timeline">
             <Row label="Created" value={fmtDateTime(foia.created_at)} />
             <Row label="Sent" value={fmtDateTime(foia.sent_at)} />
+            {foia.status === 'extension_requested' && (
+              <Row label="Extension Filed" value={fmtDateTime(foia.updated_at)} />
+            )}
             <Row label="Fulfilled" value={fmtDateTime(foia.fulfilled_at)} />
           </Section>
 
