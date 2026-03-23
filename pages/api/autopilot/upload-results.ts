@@ -286,7 +286,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from('autopilot_admin_settings')
     .select('setting_value')
     .eq('setting_key', 'kill_all_mailing')
-    .single();
+    .maybeSingle();
 
   const mailingDisabled = killSetting?.setting_value?.enabled === true;
 
@@ -338,7 +338,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('detected_tickets')
         .select('id')
         .eq('ticket_number', ticketRow.ticket_number)
-        .single();
+        .maybeSingle();
 
       if (existingTicket) {
         console.log(`  Skipping ${ticketRow.ticket_number}: Already exists`);
@@ -387,7 +387,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('user_profiles')
         .select('*')
         .eq('user_id', plate.user_id)
-        .single();
+        .maybeSingle();
 
       if (!profile || !profile.full_name || !profile.mailing_address) {
         // Mark as needs approval due to missing profile
