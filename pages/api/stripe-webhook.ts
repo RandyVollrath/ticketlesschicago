@@ -187,7 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('❌ Webhook signature verification failed:', err.message);
     console.error('Signature header:', sig ? 'Present' : 'Missing');
     console.error('Webhook secret configured:', webhookSecret ? 'Yes' : 'No');
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    return res.status(400).send('Webhook signature verification failed');
   }
 
   // Handle the events
@@ -736,7 +736,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   }
 
                   // Return error so Stripe will retry
-                  return res.status(500).json({ error: 'Profile creation failed', details: profileError.message });
+                  return res.status(500).json({ error: 'Profile creation failed' });
                 } else {
                   console.log('✅ Created user profile with Protection');
 
@@ -987,7 +987,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
 
                 // Return error so Stripe will retry
-                return res.status(500).json({ error: 'Profile creation failed', details: profileError.message });
+                return res.status(500).json({ error: 'Profile creation failed' });
               } else {
                 console.log('✅ Created user profile with Protection');
 
@@ -1755,7 +1755,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 } catch (e) {
                   console.error('Failed to send alert email:', e);
                 }
-                return res.status(500).json({ error: 'Profile update failed', details: profileUpdateError.message });
+                return res.status(500).json({ error: 'Profile update failed' });
               } else {
                 console.log('✅ Profile updated for Autopilot user:', supabaseUserId);
               }

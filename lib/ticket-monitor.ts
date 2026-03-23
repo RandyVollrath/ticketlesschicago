@@ -205,15 +205,15 @@ export async function checkUserTickets(user: UserToCheck): Promise<void> {
 
     let newTicketsCount = 0;
 
-    // Store new tickets
+    // Upsert tickets — avoids TOCTOU race if concurrent checks run for the same plate
     for (const ticket of tickets) {
       const isNew = !existingTicketNumbers.has(ticket.ticket_number);
 
       if (isNew) {
-        // Insert new ticket
-        const { error: insertError } = await supabaseAdmin
+        // Upsert to handle concurrent inserts safely
+        const { error: upsertError } = await supabaseAdmin
           .from('ticket_snapshots')
-          .insert({
+          .upsert({
             user_id,
             license_plate,
             license_state,
@@ -223,14 +223,11 @@ export async function checkUserTickets(user: UserToCheck): Promise<void> {
             amount: ticket.amount,
             status: ticket.status,
             raw_html: rawHtml
-          });
+          }, { onConflict: 'user_id,ticket_number', ignoreDuplicates: true });
 
-        if (!insertError) {
+        if (!upsertError) {
           newTicketsCount++;
           console.log(`  ⚠️  NEW TICKET: ${ticket.ticket_number} - $${ticket.amount}`);
-
-          // TODO: Send alert to user
-          // await sendTicketAlert(user_id, ticket);
         }
       } else {
         // Update last_checked_at

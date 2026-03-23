@@ -187,8 +187,9 @@ export default async function handler(
 
     if (letterError || !letter) {
       console.log(`  Letter not found for Lob ID: ${lobLetterId}`);
-      // Return 404 so Lob retries — the letter may not have been written to the DB yet
-      return res.status(404).json({ error: 'Letter not found' });
+      // Return 200 to acknowledge receipt — returning 4xx/5xx causes Lob to retry
+      // infinitely. If the letter doesn't exist, retrying won't help.
+      return res.status(200).json({ received: true, note: 'Letter not found in database' });
     }
 
     // Map event to status

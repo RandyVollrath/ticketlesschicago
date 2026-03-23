@@ -235,7 +235,7 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
     });
   } catch (err: any) {
     console.error('FOIA tracker error:', err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch FOIA data' });
   }
 }
 
@@ -268,11 +268,11 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
       .eq('id', id);
 
     if (error) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: 'Failed to update FOIA record' });
     }
 
     return res.status(200).json({ success: true });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

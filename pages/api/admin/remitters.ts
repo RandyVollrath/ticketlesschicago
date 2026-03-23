@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error) {
       console.error('Error fetching remitters:', error);
-      return res.status(500).json({ success: false, error: error.message });
+      return res.status(500).json({ success: false, error: 'Failed to fetch remitters' });
     }
 
     // Get order counts for each remitter
@@ -68,6 +68,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Remitters API error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
