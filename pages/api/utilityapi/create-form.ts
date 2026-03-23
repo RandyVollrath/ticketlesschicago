@@ -11,13 +11,8 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin, supabase } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const UTILITYAPI_TOKEN = process.env.UTILITYAPI_TOKEN;
 const UTILITYAPI_BASE_URL = 'https://utilityapi.com/api/v2';
@@ -27,11 +22,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Authenticate the caller
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+  const token = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
   try {
     const { userId, email, utility } = req.body;
 
     if (!userId || !email) {
       return res.status(400).json({ error: 'userId and email are required' });
+    }
+
+    // Users can only create forms for themselves
+    if (authUser.id !== userId) {
+      return res.status(403).json({ error: 'You can only create utility forms for your own account' });
     }
 
     console.log(`📋 Creating UtilityAPI form for user ${userId}`);
@@ -73,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('✅ UtilityAPI form created:', formResult.uid);
 
     // Store form UID in user profile for tracking
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin!
       .from('user_profiles')
       .update({
         utilityapi_form_uid: formResult.uid,

@@ -5,7 +5,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabaseAdmin } from '../../../lib/supabase';
+import { supabaseAdmin, supabase } from '../../../lib/supabase';
 
 interface DeactivateTokenRequest {
   token: string;
@@ -22,6 +22,17 @@ export default async function handler(
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  // Authenticate the caller
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ success: false, error: 'Authorization required' });
+  }
+  const jwtToken = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(jwtToken);
+  if (authError || !authUser) {
+    return res.status(401).json({ success: false, error: 'Invalid or expired token' });
   }
 
   const { token } = req.body as DeactivateTokenRequest;

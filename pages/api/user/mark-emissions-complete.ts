@@ -1,12 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin, supabase } from '../../../lib/supabase';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * API endpoint for marking emissions test as complete
@@ -24,6 +19,17 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Authenticate the caller
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+  const token = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
   try {
     const { userId, completed = true } = req.body;
 
@@ -31,8 +37,13 @@ export default async function handler(
       return res.status(400).json({ error: 'userId is required' });
     }
 
+    // Users can only update their own emissions status
+    if (authUser.id !== userId) {
+      return res.status(403).json({ error: 'You can only update your own emissions status' });
+    }
+
     // Get user data to verify they have emissions tracking
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabaseAdmin!
       .from('user_profiles')
       .select('user_id, first_name, email, phone_number, emissions_date, emissions_completed')
       .eq('user_id', userId)
@@ -66,7 +77,7 @@ export default async function handler(
       const emissionsTestYear = currentYear;
 
       // Update emissions_completed
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin!
         .from('user_profiles')
         .update({
           emissions_completed: true,
@@ -106,7 +117,7 @@ export default async function handler(
 
     } else {
       // Marking as NOT complete (user made a mistake or needs to redo)
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin!
         .from('user_profiles')
         .update({
           emissions_completed: false,
