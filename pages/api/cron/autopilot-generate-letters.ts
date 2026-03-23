@@ -2853,12 +2853,9 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify cron secret
   const authHeader = req.headers.authorization;
-  const keyParam = req.query.key as string | undefined;
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const secret = process.env.CRON_SECRET;
-  const isAuthorized = secret
-    ? (authHeader === `Bearer ${secret}` || keyParam === secret)
-    : false;
+  const isAuthorized = isVercelCron || (secret ? authHeader === `Bearer ${secret}` : false);
 
   if (!isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
