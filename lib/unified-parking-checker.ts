@@ -11,7 +11,7 @@ import { supabaseAdmin } from './supabase';
 import { reverseGeocode } from './reverse-geocoder';
 import { parseChicagoAddress, ParsedAddress } from './address-parser';
 import { validatePermitZone } from './permit-zone-time-validator';
-import { getChicagoTime } from './chicago-timezone-utils';
+import { getChicagoDateISO, getChicagoTime } from './chicago-timezone-utils';
 
 export interface UnifiedParkingResult {
   // Location info (from single geocode call)
@@ -291,18 +291,16 @@ export async function checkAllParkingRestrictions(
       result.streetCleaning.section = streetCleaningData.section;
       result.streetCleaning.nextCleaningDate = streetCleaningData.next_cleaning_date;
 
-      // Check if cleaning is today or active now
-      const now = getChicagoTime();
-      const cleaningDate = streetCleaningData.next_cleaning_date
-        ? new Date(streetCleaningData.next_cleaning_date)
-        : null;
+      // Compare YYYY-MM-DD strings in Chicago time to avoid UTC date drift.
+      const chicagoToday = getChicagoDateISO();
+      const cleaningDate = streetCleaningData.next_cleaning_date || null;
 
-      if (cleaningDate && cleaningDate.toDateString() === now.toDateString()) {
+      if (cleaningDate && cleaningDate === chicagoToday) {
         result.streetCleaning.severity = 'warning';
         result.streetCleaning.message = `Street cleaning scheduled today in Ward ${streetCleaningData.ward}, Section ${streetCleaningData.section}`;
       } else if (cleaningDate) {
         result.streetCleaning.severity = 'info';
-        result.streetCleaning.message = `Next street cleaning: ${cleaningDate.toLocaleDateString()}`;
+        result.streetCleaning.message = `Next street cleaning: ${cleaningDate}`;
       }
     }
 

@@ -181,8 +181,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             );
             console.log(`  History FOIA: ${historyResult.action} (${historyResult.parsedTicketCount} tickets parsed)`);
 
-            // Notify admin of history FOIA response
+            // Notify admin — different email for extensions vs actual responses
             if (process.env.RESEND_API_KEY) {
+              const isExt = historyResult.isExtension;
               await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: {
@@ -192,8 +193,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 body: JSON.stringify({
                   from: 'Autopilot America <alerts@autopilotamerica.com>',
                   to: ['randyvollrath@gmail.com'],
-                  subject: `FOIA History Response — ${historyResult.parsedTicketCount} tickets found`,
-                  html: `
+                  subject: isExt
+                    ? `FOIA Extension Notice — History Request ${foiaResult.requestId}`
+                    : `FOIA History Response — ${historyResult.parsedTicketCount} tickets found`,
+                  html: isExt
+                    ? `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <div style="background: #D97706; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0; font-size: 20px;">FOIA Extension Filed</h1>
+                        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">City invoked 5 ILCS 140/3(e) — additional 5 business days</p>
+                      </div>
+                      <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                        <p style="background: #FEF3C7; padding: 12px; border-radius: 8px; border-left: 4px solid #D97706;">
+                          <strong>Extension only — user was NOT notified.</strong> The city has an additional 5 business days to produce the records.
+                        </p>
+                        <p><strong>Request ID:</strong> ${foiaResult.requestId}</p>
+                        <p><strong>From:</strong> ${fromEmail}</p>
+                        <p><strong>Action:</strong> ${historyResult.action}</p>
+                        <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <p><strong>Body Preview:</strong></p>
+                        <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px;">${text.substring(0, 500)}</div>
+                      </div>
+                    </div>
+                  `
+                    : `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                       <div style="background: #0369A1; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
                         <h1 style="margin: 0; font-size: 20px;">FOIA History Response Received</h1>
@@ -224,6 +247,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // ── Handle evidence FOIA matches ──
         if (foiaResult.matched && foiaResult.foiaType === 'evidence' && foiaResult.ticketNumber) {
+
+          // ── Extension: admin-only notification, skip letter regen and user notification ──
+          if (foiaResult.isExtension) {
+            console.log(`  Evidence FOIA extension detected — skipping letter regen and user notification`);
+            try {
+              if (process.env.RESEND_API_KEY) {
+                await fetch('https://api.resend.com/emails', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    from: 'Autopilot America <alerts@autopilotamerica.com>',
+                    to: ['randyvollrath@gmail.com'],
+                    subject: `FOIA Extension Notice — Ticket ${foiaResult.ticketNumber}`,
+                    html: `
+                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <div style="background: #D97706; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                          <h1 style="margin: 0; font-size: 20px;">FOIA Extension Filed</h1>
+                          <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">City invoked 5 ILCS 140/3(e) — additional 5 business days</p>
+                        </div>
+                        <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                          <p style="background: #FEF3C7; padding: 12px; border-radius: 8px; border-left: 4px solid #D97706;">
+                            <strong>Extension only — user was NOT notified.</strong> The city has an additional 5 business days to produce enforcement records.
+                          </p>
+                          <p><strong>Ticket:</strong> ${foiaResult.ticketNumber}</p>
+                          <p><strong>From:</strong> ${fromEmail}</p>
+                          <p><strong>Subject:</strong> ${subject}</p>
+                          <p><strong>Attachments:</strong> ${attachments.length}</p>
+                          <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+                          <p><strong>Body Preview:</strong></p>
+                          <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px;">${text.substring(0, 500)}</div>
+                        </div>
+                      </div>
+                    `,
+                  }),
+                });
+                console.log('  Admin notified of FOIA extension');
+              }
+            } catch (extNotifErr: any) {
+              console.error('  Admin extension notification failed:', extNotifErr.message);
+            }
+
+            return res.status(200).json({
+              message: 'Evidence FOIA extension processed (admin-only notification)',
+              ...foiaResult,
+            });
+          }
+
           // Trigger letter re-generation if letter hasn't been mailed
           try {
             const { data: foiaReqData } = await supabaseAdmin

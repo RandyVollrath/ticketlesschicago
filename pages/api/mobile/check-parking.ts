@@ -12,6 +12,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { checkAllParkingRestrictions, UnifiedParkingResult } from '../../../lib/unified-parking-checker';
 import { checkMeteredParking, MeteredParkingStatus } from '../../../lib/metered-parking-checker';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
 import { supabaseAdmin } from '../../../lib/supabase';
 
 /** Enforcement risk data from FOIA ticket analysis */
@@ -440,6 +441,15 @@ export default async function handler(
     }
 
     // Transform to mobile API response format
+    const streetCleaningTiming: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE' =
+      result.streetCleaning.isActiveNow || result.streetCleaning.severity === 'critical'
+        ? 'NOW'
+        : result.streetCleaning.nextCleaningDate === getChicagoDateISO()
+          ? 'TODAY'
+          : result.streetCleaning.found
+            ? 'UPCOMING'
+            : 'NONE';
+
     const response: MobileCheckParkingResponse = {
       success: true,
       address: result.location.address,
@@ -448,8 +458,7 @@ export default async function handler(
       streetCleaning: {
         hasRestriction: result.streetCleaning.found,
         message: result.streetCleaning.message,
-        timing: result.streetCleaning.isActiveNow ? 'NOW' :
-                result.streetCleaning.found ? 'UPCOMING' : 'NONE',
+        timing: streetCleaningTiming,
         nextDate: result.streetCleaning.nextCleaningDate || undefined,
         schedule: result.streetCleaning.schedule || undefined,
         severity: result.streetCleaning.severity,

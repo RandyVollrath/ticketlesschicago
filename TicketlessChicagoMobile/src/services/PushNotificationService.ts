@@ -249,7 +249,7 @@ class PushNotificationServiceClass {
       let channelId = 'general';
       if (data.type === 'parking_alert' || data.type === 'sweeper_passed' || data.severity === 'critical') {
         channelId = 'parking-alerts';
-      } else if (data.type === 'reminder') {
+      } else if (data.type === 'reminder' || data.type?.endsWith('_reminder')) {
         channelId = 'reminders';
       }
 

@@ -48,6 +48,7 @@ interface SendLetterParams {
   letterContent: string; // HTML content of the letter
   description?: string;
   metadata?: Record<string, string>;
+  idempotencyKey?: string; // Lob-supported header to prevent duplicate mailings (expires after 24h)
 }
 
 interface LobMailResponse {
@@ -63,7 +64,7 @@ interface LobMailResponse {
  * to = City department (recipient)
  */
 export async function sendLetter(params: SendLetterParams): Promise<LobMailResponse> {
-  const { from, to, letterContent, description, metadata } = params;
+  const { from, to, letterContent, description, metadata, idempotencyKey } = params;
 
   if (!process.env.LOB_API_KEY) {
     throw new Error('LOB_API_KEY not configured');
@@ -87,12 +88,18 @@ export async function sendLetter(params: SendLetterParams): Promise<LobMailRespo
       }
 
       // Lob API expects letter content as HTML
+      const headers: Record<string, string> = {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      };
+      // Idempotency key prevents duplicate physical mailings if we retry after a crash.
+      // Lob deduplicates POST /v1/letters requests with the same key for 24 hours.
+      if (idempotencyKey) {
+        headers['Idempotency-Key'] = idempotencyKey;
+      }
       const response = await fetch('https://api.lob.com/v1/letters', {
         method: 'POST',
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({
           description: description || 'Contest letter mailing',
           to: {
