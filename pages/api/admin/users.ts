@@ -17,7 +17,8 @@ export default withAdminAuth(async (req, res, adminUser) => {
     const { data: vehicleReminders, error: vehicleError } = await supabaseAdmin
       .from('vehicle_reminders')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(1000);
 
     console.log('Vehicle reminders query:', { vehicleReminders, vehicleError });
 

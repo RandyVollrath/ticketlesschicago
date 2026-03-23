@@ -87,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`Linked ${ids.length} orphaned FOIA request(s) to user ${userId} (${cleanEmail})`);
 
     // Also update user_profiles foia_history_consent if not already set
-    await supabaseAdmin
+    const { error: consentError } = await supabaseAdmin
       .from('user_profiles')
       .update({
         foia_history_consent: true,
@@ -95,6 +95,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       .eq('user_id', userId)
       .eq('foia_history_consent', false);
+
+    if (consentError) {
+      console.error('Failed to update foia_history_consent (non-fatal):', consentError.message);
+    }
 
     return res.status(200).json({ linked: ids.length });
   } catch (err: any) {

@@ -486,7 +486,8 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
     .from('detected_tickets')
     .select('id, ticket_number, status')
     .eq('user_id', plate.user_id)
-    .eq('plate', plate.plate);
+    .eq('plate', plate.plate)
+    .limit(500);
 
   const existingByNumber = new Map((existingTickets || []).map((t: any) => [t.ticket_number, t]));
 
@@ -838,7 +839,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get all active plates for these users (bounded to prevent runaway queries)
     const { data: plates } = await supabaseAdmin
       .from('monitored_plates')
-      .select('id, user_id, plate_number, plate_state, last_name, status, last_checked_at, created_at')
+      .select('id, user_id, plate, state, status, last_checked_at, created_at')
       .in('user_id', activeUserIds)
       .eq('status', 'active')
       .limit(500);

@@ -98,7 +98,8 @@ export default withAdminAuth(async (req, res, adminUser) => {
           .from('red_light_receipts')
           .select('id, user_id, device_timestamp, camera_address, full_stop_detected, full_stop_duration_sec, approach_speed_mph, min_speed_mph, speed_delta_mph, evidence_hash')
           .in('user_id', userIds)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(500);
 
         if (receipts) {
           // Group by user_id, keep latest per user
@@ -144,8 +145,8 @@ export default withAdminAuth(async (req, res, adminUser) => {
         success: true,
         letters: enrichedLetters || [],
         pagination: {
-          limit: parseInt(limit as string),
-          offset: parseInt(offset as string),
+          limit: parsedLimit,
+          offset: parsedOffset,
           total: totalCount || 0
         }
       });
