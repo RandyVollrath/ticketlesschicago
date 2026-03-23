@@ -73,7 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Vercel cron jobs include a special header, or we check our CRON_SECRET
   const authHeader = req.headers.authorization;
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
-  const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const secret = process.env.CRON_SECRET;
+  const isAuthorized = isVercelCron || (secret ? (authHeader === `Bearer ${secret}`) : false);
 
   if (!isAuthorized) {
     console.log('Unauthorized attempt. Headers:', {
