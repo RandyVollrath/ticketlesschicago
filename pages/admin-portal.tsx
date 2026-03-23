@@ -830,7 +830,9 @@ export default function AdminPortal() {
   const [message, setMessage] = useState('');
 
   // Active section
-  const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals' | 'upcoming-renewals' | 'remitters' | 'ticket-contesting'>('ticket-contesting');
+  const [activeSection, setActiveSection] = useState<'documents' | 'missing-docs' | 'property-tax' | 'renewals' | 'upcoming-renewals' | 'remitters' | 'ticket-contesting' | 'transfer-requests' | 'email-previews'>('ticket-contesting');
+  const [selectedEmailTemplate, setSelectedEmailTemplate] = useState<string>('drip-welcome');
+  const [emailPreviewHtml, setEmailPreviewHtml] = useState<string>('');
 
   // Ticket contesting state (uses autopilot tables - monitored_plates, autopilot_subscriptions, etc.)
   const [autopilotStats, setAutopilotStats] = useState({
@@ -1558,7 +1560,7 @@ export default function AdminPortal() {
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Admin Portal</h1>
           <button
-            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'missing-docs') fetchMissingDocs(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals(); if (activeSection === 'transfer-requests') fetchTransferRequests(); if (activeSection === 'remitters') fetchRemitters(); if (activeSection === 'ticket-contesting') fetchTicketContestingData(); }, 0); }}
+            onClick={() => { setLoading(true); setTimeout(() => { if (activeSection === 'documents') fetchDocuments(); if (activeSection === 'missing-docs') fetchMissingDocs(); if (activeSection === 'property-tax') fetchPropertyTaxQueue(); if (activeSection === 'upcoming-renewals') fetchUpcomingRenewals(); if (activeSection === 'transfer-requests') fetchTransferRequests(); if (activeSection === 'remitters') fetchRemitters(); if (activeSection === 'ticket-contesting') fetchTicketContestingData(); if (activeSection === 'email-previews') { setEmailPreviewHtml(''); (async () => { try { const headers = await getAdminAuthHeaders(); const resp = await fetch(`/api/admin/email-previews?template=${selectedEmailTemplate}`, { headers }); if (resp.ok) setEmailPreviewHtml(await resp.text()); } catch (e) {} setLoading(false); })(); return; } }, 0); }}
             style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
           >
             Refresh
