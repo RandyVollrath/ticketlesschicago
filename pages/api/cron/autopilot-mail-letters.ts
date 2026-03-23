@@ -60,6 +60,9 @@ async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string
     if (setting.key === 'pause_all_mail' && setting.value?.enabled) {
       return { proceed: false, message: 'Kill switch active: mailing disabled' };
     }
+    if (setting.key === 'pause_ticket_processing' && setting.value?.enabled) {
+      return { proceed: false, message: 'Kill switch active: ticket processing paused' };
+    }
   }
 
   return { proceed: true };
@@ -76,7 +79,7 @@ async function isTestModeEnabled(): Promise<boolean> {
     .from('autopilot_admin_settings')
     .select('value')
     .eq('key', 'lob_test_mode')
-    .single();
+    .maybeSingle();
   return !!data?.value?.enabled;
 }
 
@@ -416,7 +419,7 @@ async function sendLetterMailedNotification(
     .from('autopilot_settings')
     .select('email_on_letter_sent')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   // Default to true if setting doesn't exist
   if (settings && settings.email_on_letter_sent === false) {
@@ -435,7 +438,7 @@ async function sendLetterMailedNotification(
     .from('user_profiles')
     .select('first_name')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   const firstName = profile?.first_name || 'there';
   const email = userData.user.email;
@@ -782,7 +785,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('user_profiles')
         .select('*')
         .eq('user_id', letter.user_id)
-        .single();
+        .maybeSingle();
 
       if (!profile || !profile.mailing_address) {
         console.log(`  Skipping letter ${letter.id}: Missing profile/address info`);
@@ -809,7 +812,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('autopilot_subscriptions')
         .select('status, letters_used_this_period, letters_included')
         .eq('user_id', letter.user_id)
-        .single();
+        .maybeSingle();
 
       if (!subscription || subscription.status !== 'active') {
         console.log(`  ⚠️ Skipping letter ${letter.id}: User ${letter.user_id} subscription is ${subscription?.status || 'missing'} (not active)`);
