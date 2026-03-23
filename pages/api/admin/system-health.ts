@@ -38,15 +38,16 @@ async function verifyAdmin(req: NextApiRequest): Promise<{ authorized: boolean; 
  * PATCH: Toggle kill switches or Lob test mode. (Requires admin auth)
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // All endpoints require admin auth
+  const auth = await verifyAdmin(req);
+  if (!auth.authorized) {
+    return res.status(auth.error === 'Missing authorization' ? 401 : 403).json({ error: auth.error });
+  }
+
   if (req.method === 'GET') {
     return handleGet(req, res);
   }
   if (req.method === 'PATCH') {
-    // PATCH modifies system settings — requires admin auth
-    const auth = await verifyAdmin(req);
-    if (!auth.authorized) {
-      return res.status(auth.error === 'Missing authorization' ? 401 : 403).json({ error: auth.error });
-    }
     return handlePatch(req, res);
   }
   return res.status(405).json({ error: 'Method not allowed' });
@@ -58,7 +59,7 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: 'Missing key or enabled (boolean)' });
   }
 
-  const allowedKeys = ['pause_all_mail', 'pause_ticket_processing', 'require_approval_all', 'lob_test_mode'];
+  const allowedKeys = ['pause_all_mail', 'pause_ticket_processing', 'lob_test_mode'];
   if (!allowedKeys.includes(key)) {
     return res.status(400).json({ error: `Invalid key. Allowed: ${allowedKeys.join(', ')}` });
   }
@@ -101,7 +102,7 @@ async function handleGet(_req: NextApiRequest, res: NextApiResponse) {
       supabase
         .from('autopilot_admin_settings')
         .select('key, value')
-        .in('key', ['pause_all_mail', 'pause_ticket_processing', 'require_approval_all', 'lob_test_mode']),
+        .in('key', ['pause_all_mail', 'pause_ticket_processing', 'lob_test_mode']),
 
       // Letters needing admin review
       supabase
@@ -149,22 +150,24 @@ async function handleGet(_req: NextApiRequest, res: NextApiResponse) {
     const killSwitches: Record<string, boolean> = {
       pause_all_mail: false,
       pause_ticket_processing: false,
-      require_approval_all: false,
     };
 
     let lobTestModeDb = false;
+    let lobHasDbRow = false;
     for (const setting of killSwitchResult.data || []) {
       const key = setting.key;
       const value = setting.value;
       if (key === 'lob_test_mode') {
+        lobHasDbRow = true;
         lobTestModeDb = !!value?.enabled;
       } else if (key && key in killSwitches) {
         killSwitches[key] = !!value?.enabled;
       }
     }
 
-    // Lob test mode: DB setting OR env var
-    const lobTestMode = lobTestModeDb || process.env.LOB_TEST_MODE === 'true';
+    // Lob test mode: DB takes priority, then env var fallback
+    const lobEnvVar = process.env.LOB_TEST_MODE === 'true';
+    const lobTestMode = lobTestModeDb || (!lobHasDbRow && lobEnvVar);
 
     // Compute urgent deadlines (tickets where mail_by_deadline is within 5 days)
     const now = new Date();
@@ -195,10 +198,6 @@ async function handleGet(_req: NextApiRequest, res: NextApiResponse) {
     if (killSwitches.pause_ticket_processing) {
       blockingIssues.push({ severity: 'critical', message: 'TICKET PROCESSING PAUSED — no new letters will be generated' });
     }
-    if (killSwitches.require_approval_all) {
-      blockingIssues.push({ severity: 'info', message: 'Admin approval required for ALL letters before mailing' });
-    }
-
     const pendingReviewCount = pendingReviewResult.data?.length || 0;
     if (pendingReviewCount > 0) {
       blockingIssues.push({ severity: 'warning', message: `${pendingReviewCount} letter(s) awaiting admin review`, count: pendingReviewCount });
@@ -242,7 +241,8 @@ async function handleGet(_req: NextApiRequest, res: NextApiResponse) {
       success: true,
       lob: {
         mode: lobTestMode ? 'test' : 'live',
-        test_mode_source: lobTestModeDb ? 'database' : (process.env.LOB_TEST_MODE === 'true' ? 'env_var' : 'none'),
+        test_mode_source: lobHasDbRow ? 'database' : (lobEnvVar ? 'env_var' : 'none'),
+        env_var_set: lobEnvVar,
         api_key_present: !!process.env.LOB_API_KEY,
       },
       kill_switches: killSwitches,

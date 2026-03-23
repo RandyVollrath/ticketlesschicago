@@ -89,7 +89,7 @@ interface PipelineStats {
 }
 
 interface SystemHealth {
-  lob: { mode: string; api_key_present: boolean; test_mode_source: string };
+  lob: { mode: string; api_key_present: boolean; test_mode_source: string; env_var_set: boolean };
   kill_switches: Record<string, boolean>;
   blocking_issues: Array<{ severity: 'critical' | 'warning' | 'info'; message: string; count?: number }>;
   counts: {
@@ -467,7 +467,16 @@ function FoiaTab() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/foia-tracker');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/admin/foia-tracker', { headers });
+      if (!res.ok) {
+        console.error('FOIA fetch failed:', res.status);
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         setItems([...(data.evidence || []).map((e: any) => ({ ...e, foia_type: 'evidence' as const })),
@@ -510,12 +519,27 @@ function FoiaTab() {
     if (!selected) return;
     setSaving(true);
     try {
-      await fetch('/api/admin/foia-tracker', {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        alert('Session expired. Please refresh the page.');
+        setSaving(false);
+        return;
+      }
+      const res = await fetch('/api/admin/foia-tracker', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ id: selected.id, type: selected.foia_type, status: editStatus, notes: editNotes }),
       });
-      fetchData();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        alert(`Failed to save: ${errData.error || res.statusText}`);
+      } else {
+        fetchData();
+      }
     } catch (e) { console.error('Save error:', e); }
     setSaving(false);
   };
@@ -721,7 +745,6 @@ function FoiaTab() {
 const KILL_SWITCH_META: Record<string, { label: string; description: string; danger: boolean }> = {
   pause_all_mail: { label: 'Pause All Mail', description: 'Stops all Lob letter sends immediately.', danger: true },
   pause_ticket_processing: { label: 'Pause Ticket Processing', description: 'Tickets accepted but no new letters generated.', danger: true },
-  require_approval_all: { label: 'Require Approval for All', description: 'Admin must approve every letter before mailing. (Currently always-on in cron)', danger: false },
 };
 
 function SystemTab({ health, onToggle, toggling }: {
@@ -787,6 +810,9 @@ function SystemTab({ health, onToggle, toggling }: {
           API Key: {health.lob.api_key_present ? 'Present' : 'MISSING'}
           {health.lob.test_mode_source && health.lob.test_mode_source !== 'none' && (
             <span> &middot; Source: {health.lob.test_mode_source === 'database' ? 'Admin toggle' : 'Environment variable'}</span>
+          )}
+          {health.lob.env_var_set && health.lob.test_mode_source === 'database' && !lobIsTest && (
+            <span style={{ color: C.amber }}> &middot; Note: LOB_TEST_MODE env var is set to true but overridden by admin toggle</span>
           )}
         </div>
       </div>
@@ -984,7 +1010,13 @@ export default function AdminDashboard() {
   // Fetch system health
   const fetchHealth = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/system-health');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const res = await fetch('/api/admin/system-health', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) { console.error('Health fetch failed:', res.status); return; }
       const data = await res.json();
       if (data.success) setHealth(data);
     } catch (e) { console.error('Health fetch error:', e); }

@@ -69,18 +69,22 @@ async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string
 }
 
 /**
- * Check if test mode is enabled (env var OR database setting)
- * Test mode sends letters to user's address instead of city hall
+ * Check if test mode is enabled.
+ * Priority: DB setting (admin toggle) > env var.
+ * If admin explicitly set lob_test_mode in the DB, that takes priority.
+ * Otherwise falls back to LOB_TEST_MODE env var.
  */
 async function isTestModeEnabled(): Promise<boolean> {
-  if (process.env.LOB_TEST_MODE === 'true') return true;
-  // Also check database setting (toggled from admin dashboard)
+  // Check database setting first (admin dashboard toggle takes priority)
   const { data } = await supabaseAdmin
     .from('autopilot_admin_settings')
     .select('value')
     .eq('key', 'lob_test_mode')
     .maybeSingle();
-  return !!data?.value?.enabled;
+  // If DB row exists, it's the authoritative source (admin explicitly set it)
+  if (data) return !!data.value?.enabled;
+  // No DB row — fall back to env var
+  return process.env.LOB_TEST_MODE === 'true';
 }
 
 /**
