@@ -222,22 +222,12 @@ function validateLetterContent(
   return { pass: issues.length === 0, issues };
 }
 
-/**
- * AI quality review: Uses Claude to check letter for coherence, professionalism,
- * defense appropriateness, and completeness. Returns corrected letter if fixable.
- */
-async function aiQualityReview(
+function buildAIReviewPrompt(
   letterContent: string,
   ticketData: { ticket_number: string; violation_date: string; violation_description: string; violation_type: string; amount: number; location: string },
   userName: string
-): Promise<{ pass: boolean; correctedLetter?: string; issues: string[]; qualityScore: number }> {
-  if (!anthropic) {
-    console.log('    ⚠️ No ANTHROPIC_API_KEY — blocking letter (AI quality review required)');
-    return { pass: false, issues: ['AI review unavailable: no API key — letter cannot be mailed without quality check'], qualityScore: 0 };
-  }
-
-  try {
-    const reviewPrompt = `You are a legal quality assurance reviewer for parking ticket contest letters sent to the City of Chicago Department of Finance. These letters are printed and mailed to a government agency on behalf of real people — quality matters.
+): string {
+  return `You are a legal quality assurance reviewer for parking ticket contest letters sent to the City of Chicago Department of Finance. These letters are printed and mailed to a government agency on behalf of real people — quality matters.
 
 Review the following letter and return a JSON response (no markdown, just raw JSON):
 
@@ -293,37 +283,118 @@ RESPOND WITH THIS JSON FORMAT ONLY:
   "canAutoFix": true/false,
   "correctedLetter": "<if canAutoFix is true, provide the COMPLETE corrected letter text here. Remove ALL placeholders — if data is missing, write around it naturally without brackets. Fix ALL date errors, malformed sentences, and defense mismatches. Keep the same general structure and evidence. Do NOT add made-up facts. Ensure the ticket number ${ticketData.ticket_number} appears in the RE: line.>"
 }`;
+}
 
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: reviewPrompt }],
-    });
-
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
-
-    // Parse JSON from response (handle potential markdown wrapping)
-    let jsonStr = responseText;
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) jsonStr = jsonMatch[0];
-
-    const review = JSON.parse(jsonStr);
-
-    console.log(`    AI Quality Score: ${review.qualityScore}/100`);
-    if (review.issues?.length > 0) {
-      console.log(`    AI Issues: ${review.issues.join('; ')}`);
-    }
-
-    return {
-      pass: review.qualityScore >= 70 && (!review.issues || review.issues.length === 0),
-      correctedLetter: review.canAutoFix ? review.correctedLetter : undefined,
-      issues: review.issues || [],
-      qualityScore: review.qualityScore || 0,
-    };
-  } catch (error) {
-    console.error('    AI quality review failed:', error);
-    return { pass: false, issues: ['AI review failed: ' + (error instanceof Error ? error.message : 'Unknown error')], qualityScore: 0 };
+function parseAIReviewResponse(responseText: string, provider: AIReviewResult['provider']): AIReviewResult {
+  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error(`${provider} response did not contain JSON`);
   }
+
+  const review = JSON.parse(jsonMatch[0]);
+  const qualityScore = typeof review.qualityScore === 'number' ? review.qualityScore : 0;
+  const issues = Array.isArray(review.issues) ? review.issues.map((issue: unknown) => String(issue)) : [];
+  const correctedLetter = review.canAutoFix && typeof review.correctedLetter === 'string'
+    ? review.correctedLetter
+    : undefined;
+
+  return {
+    pass: qualityScore >= 70 && issues.length === 0,
+    correctedLetter,
+    issues,
+    qualityScore,
+    provider,
+  };
+}
+
+async function reviewWithAnthropic(prompt: string): Promise<AIReviewResult> {
+  if (!anthropic) {
+    throw new Error('ANTHROPIC_API_KEY not configured');
+  }
+
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const responseText = message.content[0]?.type === 'text' ? message.content[0].text : '';
+  return parseAIReviewResponse(responseText, 'anthropic');
+}
+
+async function reviewWithGemini(prompt: string): Promise<AIReviewResult> {
+  if (!gemini) {
+    throw new Error('GEMINI_API_KEY not configured');
+  }
+
+  const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const result = await model.generateContent(prompt);
+  return parseAIReviewResponse(result.response.text(), 'gemini');
+}
+
+async function reviewWithOpenAI(prompt: string): Promise<AIReviewResult> {
+  if (!openai) {
+    throw new Error('OPENAI_API_KEY not configured');
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    temperature: 0,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  return parseAIReviewResponse(completion.choices[0]?.message?.content || '', 'openai');
+}
+
+/**
+ * AI quality review: prefers Claude, falls back to Gemini Flash, then OpenAI,
+ * and finally a deterministic heuristic pass when explicitly allowed.
+ */
+async function aiQualityReview(
+  letterContent: string,
+  ticketData: { ticket_number: string; violation_date: string; violation_description: string; violation_type: string; amount: number; location: string },
+  userName: string,
+  options?: { allowHeuristicPass?: boolean }
+): Promise<AIReviewResult> {
+  const reviewPrompt = buildAIReviewPrompt(letterContent, ticketData, userName);
+  const providerErrors: string[] = [];
+  const providers: Array<{ name: AIReviewResult['provider']; run: () => Promise<AIReviewResult> }> = [
+    { name: 'anthropic', run: () => reviewWithAnthropic(reviewPrompt) },
+    { name: 'gemini', run: () => reviewWithGemini(reviewPrompt) },
+    { name: 'openai', run: () => reviewWithOpenAI(reviewPrompt) },
+  ];
+
+  for (const provider of providers) {
+    try {
+      const result = await provider.run();
+      console.log(`    AI Quality Score (${provider.name}): ${result.qualityScore}/100`);
+      if (result.issues.length > 0) {
+        console.log(`    AI Issues (${provider.name}): ${result.issues.join('; ')}`);
+      }
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      providerErrors.push(`${provider.name}: ${message}`);
+      console.error(`    AI quality review failed via ${provider.name}:`, error);
+    }
+  }
+
+  if (options?.allowHeuristicPass) {
+    console.log('    ⚠️ All AI reviewers unavailable; deterministic validation passed, deferring final judgment to admin review');
+    return {
+      pass: true,
+      issues: providerErrors.length > 0 ? [`AI review unavailable; deterministic validation passed. ${providerErrors.join(' | ')}`] : ['AI review unavailable; deterministic validation passed'],
+      qualityScore: 70,
+      provider: 'heuristic',
+    };
+  }
+
+  return {
+    pass: false,
+    issues: providerErrors.length > 0 ? [`AI review unavailable: ${providerErrors.join(' | ')}`] : ['AI review unavailable'],
+    qualityScore: 0,
+    provider: 'heuristic',
+  };
 }
 
 /**
@@ -703,12 +774,45 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
     console.warn(`  RPC increment_letters_used failed (${error.message}), using fallback`);
     const { data: sub } = await supabaseAdmin
       .from('autopilot_subscriptions')
-      .select('letters_used_this_period, letters_included')
+      .select('letters_included_remaining, letters_used_this_period, letters_included')
       .eq('user_id', userId)
+      .eq('status', 'active')
       .maybeSingle();
 
     if (!sub) {
       return { exceeded: false, count: 0 };
+    }
+
+    if (typeof sub.letters_included_remaining === 'number') {
+      const currentRemaining = sub.letters_included_remaining;
+      const nextRemaining = currentRemaining > 0 ? currentRemaining - 1 : 0;
+
+      const { data: updatedRemaining, error: updateRemainingError } = await supabaseAdmin
+        .from('autopilot_subscriptions')
+        .update({ letters_included_remaining: nextRemaining })
+        .eq('user_id', userId)
+        .eq('letters_included_remaining', currentRemaining)
+        .select('letters_included_remaining, letters_used_this_period, letters_included')
+        .maybeSingle();
+
+      if (updateRemainingError) {
+        console.error(`  incrementLetterCount remaining fallback: update failed for user ${userId}: ${updateRemainingError.message}`);
+      }
+
+      const effectiveSub = updatedRemaining || sub;
+      const included = typeof effectiveSub.letters_included === 'number' ? effectiveSub.letters_included : null;
+      const count = included !== null
+        ? Math.max(0, included - (effectiveSub.letters_included_remaining || 0))
+        : Math.max(0, effectiveSub.letters_used_this_period || 0);
+
+      if (!updatedRemaining) {
+        console.warn(`  incrementLetterCount remaining fallback: concurrent update for user ${userId}, count may be stale`);
+      }
+
+      return {
+        exceeded: currentRemaining <= 0,
+        count,
+      };
     }
 
     const currentCount = sub.letters_used_this_period || 0;
@@ -733,6 +837,7 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
         .from('autopilot_subscriptions')
         .select('letters_used_this_period, letters_included')
         .eq('user_id', userId)
+        .eq('status', 'active')
         .maybeSingle();
       if (!sub2) return { exceeded: false, count: 0 };
       const retryCurrentCount = sub2.letters_used_this_period || 0;
@@ -1080,7 +1185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             violation_type: ticket?.violation_type || '',
             amount: ticket?.amount || 0,
             location: ticket?.location || '',
-          }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim());
+          }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(), { allowHeuristicPass: false });
 
           if (aiReview.correctedLetter && aiReview.correctedLetter.length > 200) {
             // AI was able to fix the letter — save corrected version
@@ -1143,7 +1248,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             violation_type: ticket?.violation_type || '',
             amount: ticket?.amount || 0,
             location: ticket?.location || '',
-          }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim());
+          }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(), { allowHeuristicPass: true });
 
           if (!aiReview.pass && aiReview.qualityScore < 70) {
             console.log(`    ⚠️ AI review flagged issues (score: ${aiReview.qualityScore}/100): ${aiReview.issues.join('; ')}`);

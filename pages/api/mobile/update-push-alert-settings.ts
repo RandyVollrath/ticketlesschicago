@@ -12,7 +12,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 
 // Alert types that can be toggled from the mobile app
-const VALID_ALERT_TYPES = ['sweeper_passed'];
+const VALID_ALERT_TYPES = [
+  'sweeper_passed',
+  'street_cleaning',
+  'winter_ban',
+  'snow_route',
+  'permit_zone',
+  'dot_permit',
+];
 
 export default async function handler(
   req: NextApiRequest,
@@ -63,8 +70,8 @@ export default async function handler(
     const { data: profile, error: readError } = await supabaseAdmin
       .from('user_profiles')
       .select('push_alert_preferences')
-      .eq('id', user.id)
-      .single();
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     if (readError) {
       if (readError.code === 'PGRST116') {
@@ -96,14 +103,14 @@ export default async function handler(
       const { error } = await supabaseAdmin
         .from('user_profiles')
         .update({ push_alert_preferences: merged })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
       writeError = error;
     } else {
-      // No profile row — create one. Only id + push_alert_preferences will be set;
+      // No profile row — create one. Only user_id + push_alert_preferences will be set;
       // other columns remain at their DB defaults (not null-overwritten).
       const { error } = await supabaseAdmin
         .from('user_profiles')
-        .insert({ id: user.id, push_alert_preferences: merged });
+        .insert({ user_id: user.id, push_alert_preferences: merged });
 
       // Handle race condition: two concurrent requests both found PGRST116 (no row),
       // both try to insert → unique constraint violation (23505). Retry with update.
@@ -111,7 +118,7 @@ export default async function handler(
         const { error: retryError } = await supabaseAdmin
           .from('user_profiles')
           .update({ push_alert_preferences: merged })
-          .eq('id', user.id);
+          .eq('user_id', user.id);
         writeError = retryError;
       } else {
         writeError = error;
