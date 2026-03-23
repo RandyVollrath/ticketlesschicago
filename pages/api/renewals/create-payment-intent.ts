@@ -45,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('email, first_name, last_name')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (userError || !user) {
       return res.status(404).json({ error: 'User not found' });

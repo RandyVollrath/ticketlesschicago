@@ -81,7 +81,7 @@ export async function checkSnowBanStatus(): Promise<SnowBanStatus> {
         .select('*')
         .eq('event_date', today)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (snowEvent) {
         // If two_inch_ban_triggered is true, it's confirmation (snow has accumulated)

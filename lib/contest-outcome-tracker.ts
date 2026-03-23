@@ -164,7 +164,7 @@ export async function processOutcomeChange(
     .eq('ticket_id', ticket.id)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   // Record the outcome using existing learning infrastructure
   try {
@@ -359,7 +359,7 @@ export async function getOfficerIntelligence(
     .from('hearing_officer_patterns')
     .select('*')
     .eq('officer_id', officerBadge)
-    .single();
+    .maybeSingle();
 
   if (pattern && pattern.total_cases >= 5) {
     const tendency = pattern.overall_dismissal_rate > 0.55 ? 'lenient'
@@ -391,7 +391,7 @@ export async function getOfficerIntelligence(
       .from('officer_win_rates')
       .select('*')
       .eq('officer_badge', officerBadge)
-      .single();
+      .maybeSingle();
 
     if (foiaData && foiaData.total_contests >= 5) {
       const dismissalRate = (foiaData.loss_rate_percent || 0) / 100; // "loss" from city's POV = dismissal
@@ -527,7 +527,7 @@ export async function processFoiaResponse(
         .from('ticket_foia_requests')
         .select('*, detected_tickets!inner(ticket_number, user_id)')
         .eq('reference_id', referenceId)
-        .single();
+        .maybeSingle();
 
       if (match) {
         console.log(`  Layer 1 match (evidence ref): ${referenceId}`);
@@ -538,7 +538,7 @@ export async function processFoiaResponse(
         .from('foia_history_requests')
         .select('*')
         .eq('reference_id', referenceId)
-        .single();
+        .maybeSingle();
 
       if (match) {
         console.log(`  Layer 1 match (history ref): ${referenceId}`);
@@ -568,7 +568,7 @@ export async function processFoiaResponse(
         .from('ticket_foia_requests')
         .select('*, detected_tickets!inner(ticket_number, user_id)')
         .eq('resend_message_id', msgId)
-        .single();
+        .maybeSingle();
 
       if (evidenceMatch) {
         console.log(`  Layer 2 match (evidence In-Reply-To): ${msgId}`);
@@ -580,7 +580,7 @@ export async function processFoiaResponse(
         .from('foia_history_requests')
         .select('*')
         .eq('resend_message_id', msgId)
-        .single();
+        .maybeSingle();
 
       if (historyMatch) {
         console.log(`  Layer 2 match (history In-Reply-To): ${msgId}`);
@@ -779,7 +779,7 @@ export async function processHistoryFoiaResponse(
     .from('foia_history_requests')
     .select('*')
     .eq('id', requestId)
-    .single();
+    .maybeSingle();
 
   if (error || !historyRequest) {
     console.error(`  History request ${requestId} not found`);

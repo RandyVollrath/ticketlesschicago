@@ -52,7 +52,7 @@ export async function requireAdmin(req: NextApiRequest): Promise<AuthenticatedUs
     .from('user_profiles')
     .select('is_admin')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (error || !profile?.is_admin) {
     throw new Error('Admin access required');
@@ -79,7 +79,7 @@ export async function verifyOwnership(
       .from('user_profiles')
       .select('is_admin')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile?.is_admin) {
       throw new Error('Forbidden - not authorized to access this resource');
@@ -162,7 +162,7 @@ export function withAdminAuth(
           .from('user_profiles')
           .select('is_admin')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
 
         isAdmin = profile?.is_admin === true;
       }
@@ -242,7 +242,7 @@ export function withCronOrAdminAuth(
           .from('user_profiles')
           .select('is_admin')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
 
         isAdmin = profile?.is_admin === true;
       }

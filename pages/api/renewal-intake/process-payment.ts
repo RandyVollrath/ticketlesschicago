@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_orders')
       .select('*, renewal_partners(*)')
       .eq('id', orderId)
-      .single();
+      .maybeSingle();
 
     if (orderError || !order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -386,7 +386,7 @@ async function updatePartnerStats(partnerId: string, orderAmount: number) {
     .from('renewal_partner_stats')
     .select('*')
     .eq('partner_id', partnerId)
-    .single();
+    .maybeSingle();
 
   if (stats) {
     await supabase
