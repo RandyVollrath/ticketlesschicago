@@ -154,9 +154,9 @@ Only return the JSON object, no other text.`
         status: 'draft'
       })
       .select()
-      .single();
+      .maybeSingle();
 
-    if (insertError) {
+    if (insertError || !contest) {
       console.error('Insert error:', insertError);
       return res.status(500).json({ error: 'Failed to create contest record' });
     }
