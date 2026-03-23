@@ -247,12 +247,33 @@ async function processStreetCleaningReminders(type: string) {
           continue;
         }
 
+        // Deduplication: check if we already sent this exact notification today
+        // Prevents double-sends if the cron fires multiple times or retries
+        // Uses cleaning_date + metadata->type to allow morning + evening for same date
+        const todayStart = new Date(today);
+        todayStart.setHours(0, 0, 0, 0);
+        const { data: existingNotification } = await supabase
+          .from('user_notifications')
+          .select('id')
+          .eq('user_id', user.user_id)
+          .eq('notification_type', 'street_cleaning')
+          .eq('cleaning_date', cleaningDate.toISOString())
+          .contains('metadata', { type })
+          .gte('sent_at', todayStart.toISOString())
+          .limit(1)
+          .maybeSingle();
+
+        if (existingNotification) {
+          console.log(`⏭️  Skipping duplicate notification for ${user.email} (${type}, cleaning ${cleaningDate.toDateString()})`);
+          continue;
+        }
+
         // Send notifications
         const notificationSent = await sendNotification(user, type, cleaningDate, daysUntil);
-        
+
         if (notificationSent) {
           successful++;
-          
+
           // Log the notification
           await logNotification(user.user_id, type, cleaningDate, user.home_address_ward, user.home_address_section);
         } else {
@@ -361,11 +382,11 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
               ${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}
             </p>
             <p style="margin-top: 20px; font-size: 12px; color: #666;">
-              Manage your preferences at <a href="https://ticketlessamerica.com/settings">ticketlessamerica.com/settings</a>
+              Manage your preferences at <a href="https://autopilotamerica.com/settings">autopilotamerica.com/settings</a>
             </p>
           </div>
         `,
-        text: `${subject}\n\n${message}\n\nYour Address:\n${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://ticketlessamerica.com/settings`
+        text: `${subject}\n\n${message}\n\nYour Address:\n${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://autopilotamerica.com/settings`
       });
       console.log(`✅ Email sent successfully to ${user.email}`);
     } else {

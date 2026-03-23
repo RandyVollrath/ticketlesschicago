@@ -1,10 +1,12 @@
 /**
  * Street Cleaning Schedule Matcher
  *
- * Matches GPS coordinates to street cleaning ward/section and determines timing
+ * Matches GPS coordinates to street cleaning ward/section and determines timing.
+ * Uses the main Supabase database which contains both the PostGIS ward/section
+ * geometry data and the 2026 street cleaning schedule.
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 import {
   getChicagoDateISO,
   isToday,
@@ -13,16 +15,6 @@ import {
   hoursUntil,
   formatRelativeTime,
 } from './chicago-timezone-utils';
-
-// MyStreetCleaning database connection
-const MSC_URL = process.env.MSC_SUPABASE_URL;
-const MSC_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
-
-let mscSupabase: ReturnType<typeof createClient> | null = null;
-
-if (MSC_URL && MSC_KEY) {
-  mscSupabase = createClient(MSC_URL, MSC_KEY);
-}
 
 export interface StreetCleaningMatch {
   found: boolean;
@@ -67,21 +59,15 @@ export async function matchStreetCleaningSchedule(
     message: 'No street cleaning restrictions found',
   };
 
-  if (!mscSupabase) {
-    console.warn('MyStreetCleaning database not configured');
-    return defaultResponse;
-  }
-
   try {
-    // Find nearest street cleaning zone using PostGIS
-    const { data: zoneData, error: zoneError } = await mscSupabase.rpc(
-      'get_nearest_street_cleaning_zone',
+    // Find ward/section using PostGIS point-in-polygon lookup
+    const { data: zoneData, error: zoneError } = await supabase.rpc(
+      'find_section_for_point' as any,
       {
-        user_lat: latitude,
-        user_lng: longitude,
-        max_distance_meters: 50, // Search within 50 meters
+        lon: longitude,
+        lat: latitude,
       }
-    );
+    ) as { data: { ward: string; section: string }[] | null; error: any };
 
     if (zoneError || !zoneData || zoneData.length === 0) {
       console.log('No street cleaning zone found at location:', { latitude, longitude });
@@ -98,7 +84,7 @@ export async function matchStreetCleaningSchedule(
     // Get next cleaning date for this ward/section
     const todayISO = getChicagoDateISO();
 
-    const { data: scheduleData, error: scheduleError } = await mscSupabase
+    const { data: scheduleData, error: scheduleError } = await supabase
       .from('street_cleaning_schedule')
       .select('cleaning_date')
       .eq('ward', ward)
@@ -198,14 +184,10 @@ export async function getStreetCleaningByWardSection(
     message: 'No street cleaning restrictions found',
   };
 
-  if (!mscSupabase) {
-    return defaultResponse;
-  }
-
   try {
     const todayISO = getChicagoDateISO();
 
-    const { data: scheduleData, error } = await mscSupabase
+    const { data: scheduleData, error } = await supabase
       .from('street_cleaning_schedule')
       .select('cleaning_date')
       .eq('ward', ward)
