@@ -122,6 +122,9 @@
     },
     "pages/api/cron/admin-pending-letters-digest.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/notify-sweeper-passed.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -248,6 +251,10 @@
     {
       "path": "/api/cron/admin-pending-letters-digest",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/notify-sweeper-passed",
+      "schedule": "*/15 14-21 * 4-11 1-5"
     }
   ],
   "headers": [
