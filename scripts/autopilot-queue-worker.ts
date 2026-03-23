@@ -709,6 +709,26 @@ async function processFoundTicket(
     return { created: false, error: ticketError?.message || 'insert failed' };
   }
 
+  // Race condition guard: No unique constraint on ticket_number, so concurrent processes
+  // can both pass the duplicate check above and insert. Detect and clean up duplicates.
+  const { data: dupeCheck } = await supabaseAdmin
+    .from('detected_tickets')
+    .select('id, created_at')
+    .eq('ticket_number', ticket.ticket_number)
+    .order('created_at', { ascending: true })
+    .limit(2);
+
+  if (dupeCheck && dupeCheck.length > 1) {
+    // Another process created the same ticket — keep the earliest, delete ours if it's newer
+    const earliestId = dupeCheck[0].id;
+    if (newTicket.id !== earliestId) {
+      console.warn(`      Race condition: duplicate ticket ${ticket.ticket_number} detected, removing our insert (${newTicket.id})`);
+      await supabaseAdmin.from('detected_tickets').delete().eq('id', newTicket.id);
+      return { created: false, error: 'duplicate_race' };
+    }
+    // We won the race — the other process will clean up its row when it does this same check
+  }
+
   console.log(`      ✓ Created ticket ${ticket.ticket_number} (${violationType}, $${amount || 0})`);
 
   // Generate contest letter
