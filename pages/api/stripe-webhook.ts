@@ -632,7 +632,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .from('user_profiles')
                 .select('user_id')
                 .eq('user_id', existingUser.id)
-                .single();
+                .maybeSingle();
 
               if (!existingProfile) {
                 console.log('⚠️ Auth user exists but no profile found - creating profile now');
@@ -1325,7 +1325,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .from('user_profiles')
               .select('license_plate')
               .eq('user_id', userId)
-              .single();
+              .maybeSingle();
 
             const plateToMonitor = profileForPlate?.license_plate;
             if (plateToMonitor) {
@@ -1644,7 +1644,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('autopilot_subscriptions')
             .select('id')
             .eq('user_id', supabaseUserId)
-            .single();
+            .maybeSingle();
 
           if (existingSub) {
             console.log('🤖 Found Autopilot subscription, updating to active');
@@ -2035,7 +2035,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('users')
             .select('*')
             .eq('id', authData.user.id)
-            .single();
+            .maybeSingle();
             
           if (!existingProfile) {
             // Create user record with only the fields that exist in the users table
@@ -2538,7 +2538,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('user_profiles')
             .select('user_id')
             .eq('stripe_customer_id', customerId)
-            .single();
+            .maybeSingle();
 
           if (userProfile) {
             const isActive = subscription.status === 'active' || subscription.status === 'trialing';
@@ -2610,7 +2610,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('ticket_contests')
             .select('contest_letter, mailing_address, extracted_data, street_view_exhibit_urls, street_view_date, street_view_address')
             .eq('id', contestId)
-            .single();
+            .maybeSingle();
 
           if (contestError || !contest) {
             console.error('Contest not found:', contestId);

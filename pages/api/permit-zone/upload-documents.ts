@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { put } from '@vercel/blob';
-import { supabaseAdmin } from '../../../lib/supabase';
+import { supabaseAdmin, supabase } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
@@ -102,6 +102,17 @@ export default async function handler(
   }
   await recordRateLimitAction(clientIp, 'upload');
 
+  // Authenticate the caller
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ success: false, error: 'Authorization required' });
+  }
+  const token = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !authUser) {
+    return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+  }
+
   try {
     // Parse the multipart form data
     const { fields, files } = await parseMultipartForm(req);
@@ -111,6 +122,11 @@ export default async function handler(
 
     if (!userId) {
       return res.status(400).json({ success: false, error: 'User ID is required' });
+    }
+
+    // Users can only upload documents for themselves
+    if (authUser.id !== userId) {
+      return res.status(403).json({ success: false, error: 'You can only upload documents for your own account' });
     }
 
     if (!address) {

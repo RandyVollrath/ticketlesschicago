@@ -1,10 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin, supabase } from '../../../lib/supabase';
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,15 +9,31 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Authenticate the caller
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+  const token = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
   const { userId } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: 'User ID required' });
   }
 
+  // Users can only mark their own email as verified
+  if (authUser.id !== userId) {
+    return res.status(403).json({ error: 'You can only verify your own email' });
+  }
+
   try {
     // Mark email as verified in users table
-    const { error } = await supabase
+    const { error } = await supabaseAdmin!
       .from('users')
       .update({ email_verified: true })
       .eq('id', userId);
