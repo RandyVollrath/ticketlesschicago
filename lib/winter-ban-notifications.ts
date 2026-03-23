@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './supabase';
 import { sendClickSendSMS } from './sms-service';
+import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, esc, detailTable, detailRow } from './email-template';
 
 const BRAND = {
   name: 'Autopilot America',
@@ -89,39 +90,29 @@ async function sendEmail(to: string, subject: string, html: string) {
 // SMS via centralized service with retry (lib/sms-service.ts)
 
 function getEmailHtml(firstName: string | null, streetName: string): string {
-  const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
-
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">❄️ Important: Winter Overnight Parking Ban</h2>
-      <p>${greeting}</p>
-      <p>Welcome to ${BRAND.name}! We noticed you're registered at an address on <strong>${streetName}</strong>, which is subject to Chicago's Winter Overnight Parking Ban.</p>
-
-      <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px;margin:20px 0">
-        <strong>📍 Active Ban Details:</strong>
-        <ul style="margin:8px 0">
-          <li><strong>When:</strong> 3:00 AM - 7:00 AM, every night</li>
-          <li><strong>Duration:</strong> December 1 - April 1</li>
-          <li><strong>Penalty:</strong> $150+ towing fee + $60 ticket + $25/day storage</li>
-        </ul>
-      </div>
-
-      <p><strong>⚠️ This ban is currently in effect!</strong></p>
-      <p>You must move your car off ${streetName} between 3 AM - 7 AM every night to avoid being towed.</p>
-
-      <p><strong>Why this ban exists:</strong> The Winter Overnight Parking Ban ensures emergency vehicles and snowplows can move freely during winter months.</p>
-
-      <p style="font-size:14px;color:#6b7280;margin-top:24px">
-        Look for permanent signage posted on your street for official notification.
-      </p>
-
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="font-size:12px;color:#6b7280">
-        You're receiving this because you registered with ${BRAND.name} at an address on a Winter Overnight Parking Ban street.
-        <a href="${BRAND.dashboardUrl}" style="color:#2563eb">Manage preferences</a>
-      </p>
-    </div>
-  `;
+  const safeStreet = esc(streetName);
+  return quickEmail({
+    preheader: `Winter parking ban is active on ${streetName} — move your car 3-7 AM nightly`,
+    headerTitle: 'Winter Overnight Parking Ban',
+    headerSubtitle: `Active now on ${safeStreet}`,
+    body: [
+      greet(firstName || undefined),
+      p(`Welcome to ${BRAND.name}! We noticed you're registered at an address on <strong>${safeStreet}</strong>, which is subject to Chicago's Winter Overnight Parking Ban.`),
+      callout('danger', 'This ban is currently in effect!',
+        `You must move your car off ${safeStreet} between <strong>3 AM - 7 AM every night</strong> to avoid being towed.`),
+      detailTable(
+        detailRow('Hours', '3:00 AM - 7:00 AM nightly') +
+        detailRow('Season', 'December 1 - April 1') +
+        detailRow('Tow Fee', '$150+') +
+        detailRow('Ticket', '$60') +
+        detailRow('Storage', '$25/day')
+      ),
+      section('Why This Ban Exists',
+        'The Winter Overnight Parking Ban ensures emergency vehicles and snowplows can move freely during winter months. Look for permanent signage posted on your street.'),
+      divider(),
+      p(`You're receiving this because you registered with ${BRAND.name} at an address on a Winter Overnight Parking Ban street.`, { size: '12px', color: '#6B7280' }),
+    ].join(''),
+  });
 }
 
 function getSMSText(streetName: string): string {

@@ -6,6 +6,13 @@
  */
 
 import { EMAIL, URLS, BRAND, FEATURES } from './config';
+import {
+  quickEmail,
+  emailLayout, emailHeader, emailBody, emailFooter,
+  callout as dsCallout,
+  button as dsButton,
+  section as dsSection,
+} from './email-template';
 
 // =============================================================================
 // TYPES
@@ -251,7 +258,7 @@ export const sms = {
 };
 
 // =============================================================================
-// EMAIL COMPONENTS (Reusable HTML builders)
+// EMAIL COMPONENTS (Delegates to shared design system in lib/email-template.ts)
 // =============================================================================
 
 const COLORS = {
@@ -266,92 +273,40 @@ const COLORS = {
 };
 
 export const emailComponents = {
-  /**
-   * Email wrapper with consistent styling
-   */
+  /** Email wrapper — delegates to shared design system layout */
   wrapper(content: string): string {
-    return `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
-        ${content}
-      </div>
-    `;
+    return emailLayout(content);
   },
 
-  /**
-   * Blue gradient header
-   */
+  /** Navy gradient header — delegates to shared design system header */
   header(title?: string, subtitle?: string): string {
-    return `
-      <div style="background: ${COLORS.primary}; color: white; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0; font-size: 24px; font-weight: 600;">${BRAND.NAME}</h1>
-        <p style="margin: 8px 0 0; font-size: 16px; opacity: 0.9;">${subtitle || BRAND.TAGLINE}</p>
-      </div>
-    `;
+    return emailHeader({ title: title || BRAND.NAME, subtitle: subtitle || BRAND.TAGLINE });
   },
 
-  /**
-   * Alert/info box with colored left border
-   */
+  /** Alert/info box — delegates to shared design system callout */
   alertBox(type: 'info' | 'success' | 'warning' | 'danger', title: string, content: string): string {
-    const colors = {
-      info: { bg: '#eff6ff', border: COLORS.primary, text: '#1e40af' },
-      success: { bg: '#d1fae5', border: COLORS.success, text: '#065f46' },
-      warning: { bg: '#fef3c7', border: COLORS.warning, text: '#92400e' },
-      danger: { bg: '#fef2f2', border: COLORS.danger, text: '#991b1b' }
-    };
-    const c = colors[type];
-
-    return `
-      <div style="background: ${c.bg}; border-left: 4px solid ${c.border}; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
-        <h2 style="margin: 0 0 12px; color: ${c.text}; font-size: 20px;">${title}</h2>
-        <div style="color: ${c.text}; font-size: 16px; line-height: 1.5;">${content}</div>
-      </div>
-    `;
+    return dsCallout(type, title, content);
   },
 
-  /**
-   * CTA Button
-   */
+  /** CTA Button — delegates to shared design system button */
   button(text: string, url: string, color: ButtonColor = 'primary'): string {
     const bgColor = COLORS[color] || COLORS.primary;
-    return `
-      <a href="${url}" style="background: ${bgColor}; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
-        ${text}
-      </a>
-    `;
+    return dsButton(text, url, { color: bgColor });
   },
 
-  /**
-   * Section with background
-   */
+  /** Section with background — delegates to shared design system section */
   section(content: string, bgColor: string = '#f0f9ff', borderColor: string = '#0ea5e9'): string {
-    return `
-      <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 20px; margin: 24px 0;">
-        ${content}
-      </div>
-    `;
+    return dsSection('', content, { bg: bgColor, borderColor });
   },
 
-  /**
-   * Standard footer
-   */
+  /** Standard footer — delegates to shared design system footer */
   footer(): string {
-    return `
-      <div style="padding: 20px; background: ${COLORS.background}; text-align: center; color: ${COLORS.textLight}; font-size: 14px; border-radius: 0 0 8px 8px;">
-        <div style="margin-bottom: 12px;">
-          <strong style="color: ${COLORS.text};">${BRAND.NAME}</strong><br>
-          ${BRAND.TRUSTED_TAGLINE}
-        </div>
-        <p style="margin: 0;">Questions? Contact us at ${EMAIL.SUPPORT}</p>
-      </div>
-    `;
+    return emailFooter();
   },
 
-  /**
-   * Body wrapper with padding
-   */
+  /** Body wrapper with padding — delegates to shared design system body */
   body(content: string): string {
-    return `<div style="padding: 32px 24px; background: #ffffff;">${content}</div>`;
+    return emailBody(content);
   }
 };
 

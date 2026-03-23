@@ -3,11 +3,12 @@ import { supabaseAdmin } from '../../lib/supabase';
 import { getUsersOnSnowRoutes } from '../../lib/snow-route-matcher';
 import { sendClickSendSMS } from '../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, steps, esc } from '../../lib/email-template';
 
 const BRAND = {
   name: 'Autopilot America',
-  dashboardUrl: 'https://ticketlessamerica.com/dashboard',
-  emailFrom: process.env.RESEND_FROM || 'Autopilot America <noreply@ticketlessamerica.com>',
+  dashboardUrl: 'https://autopilotamerica.com/dashboard',
+  emailFrom: process.env.RESEND_FROM || 'Autopilot America <noreply@autopilotamerica.com>',
 };
 
 async function sendEmail(to: string, subject: string, html: string) {
@@ -35,117 +36,72 @@ async function sendEmail(to: string, subject: string, html: string) {
 // SMS via centralized service with retry (lib/sms-service.ts)
 
 function getForecastEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string, userAddress: string, moveByTime?: string): string {
-  const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
   const safeParkingUrl = `https://autopilotamerica.com/check-your-street?address=${encodeURIComponent(userAddress)}&mode=snow`;
   const deadlineText = moveByTime || 'as soon as possible';
-  const deadlineUpper = moveByTime ? moveByTime.toUpperCase() : 'AS SOON AS POSSIBLE';
+  const safeStreet = esc(streetInfo);
 
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">❄️ ${snowAmount}" Snow Coming - Move Your Car ${deadlineText}</h2>
-      <p>${greeting}</p>
-      <p><strong>Chicago is forecasted to receive ${snowAmount}" of snow, which may trigger the 2-inch parking ban on your street. Move your car ${deadlineText}.</strong></p>
-
-      <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px;margin:20px 0">
-        <strong>⚠️ MOVE YOUR CAR ${deadlineUpper}</strong>
-        <ul style="margin:8px 0">
-          <li><strong>Your Street:</strong> ${streetInfo}</li>
-          <li><strong>Move By:</strong> ${deadlineText}</li>
-          <li><strong>Forecasted Amount:</strong> ${snowAmount} inches</li>
-          <li><strong>When Ban Activates:</strong> Once 2+ inches has actually fallen</li>
-          <li><strong>Penalty if Violated:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong></li>
-        </ul>
-      </div>
-
-      <div style="text-align:center;margin:24px 0">
-        <a href="${safeParkingUrl}" style="display:inline-block;background:#ec4899;color:white;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">
-          🅿️ Find Safe Parking Near You
-        </a>
-        <p style="font-size:13px;color:#6b7280;margin-top:8px">See which streets near you are NOT affected by the snow ban</p>
-      </div>
-
-      <p><strong>📋 Two-Inch Snow Ban Rules:</strong></p>
-      <ul>
-        <li>Applies to 500 miles of main streets in Chicago</li>
-        <li>Activates when 2+ inches of snow has actually fallen (any time, any day)</li>
-        <li>Remains in effect until snow removal is complete (24-48 hours typically)</li>
-        <li>Cars parked on affected streets may be ticketed and relocated</li>
-      </ul>
-
-      <p><strong>🚗 What to do:</strong></p>
-      <ol>
-        <li>Monitor weather conditions closely</li>
-        <li>Be prepared to move your car off ${streetInfo}</li>
-        <li><strong>We'll send you a confirmation alert when 2+ inches has actually fallen</strong></li>
-        <li>When confirmed, move to a side street (not a main arterial)</li>
-      </ol>
-
-      <p style="font-size:14px;color:#6b7280;margin-top:24px">
-        <strong>Important:</strong> The 2-inch snow ban is not yet in effect. This is a forecast alert to help you prepare. We will notify you again when the snow has actually fallen and the ban becomes active.
-      </p>
-
-      <p style="font-size:14px;color:#6b7280;">
-        <strong>Official info:</strong> <a href="https://www.chicago.gov/city/en/depts/streets/provdrs/traffic/svcs/winter-snow-parking-restrictions.html">Chicago.gov Winter Parking</a>
-      </p>
-
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="font-size:12px;color:#6b7280">
-        You're receiving this because you're registered with ${BRAND.name} at an address on a 2-inch snow ban street.
-        <a href="${BRAND.dashboardUrl}" style="color:#2563eb">Manage preferences</a>
-      </p>
-    </div>
-  `;
+  return quickEmail({
+    preheader: `${snowAmount}" snow forecast — move your car off ${streetInfo} ${deadlineText}`,
+    headerTitle: `${snowAmount}" Snow Coming`,
+    headerSubtitle: `Move your car ${deadlineText}`,
+    body: [
+      greet(firstName || undefined),
+      p(`<strong>Chicago is forecasted to receive ${snowAmount}" of snow, which may trigger the 2-inch parking ban on your street. Move your car ${deadlineText}.</strong>`),
+      callout('warning', `Move Your Car ${deadlineText.charAt(0).toUpperCase() + deadlineText.slice(1)}`, bulletList([
+        `<strong>Your Street:</strong> ${safeStreet}`,
+        `<strong>Move By:</strong> ${deadlineText}`,
+        `<strong>Forecast:</strong> ${snowAmount} inches`,
+        '<strong>Ban Activates:</strong> Once 2+ inches has actually fallen',
+        '<strong>Penalty:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong>',
+      ])),
+      button('Find Safe Parking Near You', safeParkingUrl, { color: '#EC4899' }),
+      p('See which streets near you are NOT affected by the snow ban', { size: '13px', color: '#6B7280', center: true }),
+      section('2-Inch Snow Ban Rules', bulletList([
+        'Applies to 500 miles of main streets in Chicago',
+        'Activates when 2+ inches of snow has actually fallen (any time, any day)',
+        'Remains in effect until snow removal is complete (24-48 hours typically)',
+        'Cars parked on affected streets may be ticketed and relocated',
+      ])),
+      section('What To Do', steps([
+        'Monitor weather conditions closely',
+        `Be prepared to move your car off ${safeStreet}`,
+        '<strong>We\'ll send you a confirmation alert when 2+ inches has actually fallen</strong>',
+        'When confirmed, move to a side street (not a main arterial)',
+      ])),
+      divider(),
+      p('<strong>Important:</strong> The 2-inch snow ban is not yet in effect. This is a forecast alert to help you prepare.', { size: '13px', color: '#6B7280' }),
+    ].join(''),
+  });
 }
 
 function getConfirmationEmailHtml(firstName: string | null, snowAmount: number, streetInfo: string, userAddress: string): string {
-  const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
   const safeParkingUrl = `https://autopilotamerica.com/check-your-street?address=${encodeURIComponent(userAddress)}&mode=snow`;
+  const safeStreet = esc(streetInfo);
 
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">🚨 2+ Inches of Snow Has Fallen - Ban May Be Active</h2>
-      <p>${greeting}</p>
-      <p><strong>Chicago has received ${snowAmount}" of snow. The city may activate the 2-inch parking ban on ${streetInfo} at any time.</strong></p>
-
-      <div style="background:#fee2e2;border-left:4px solid #dc2626;padding:16px;margin:20px 0">
-        <strong>⚠️ MOVE YOUR CAR TO BE SAFE</strong>
-        <ul style="margin:8px 0">
-          <li><strong>Snow Threshold Met:</strong> ${snowAmount}" has fallen (2"+ triggers eligibility)</li>
-          <li><strong>Ban Status:</strong> May be activated by the city at any time</li>
-          <li><strong>Your Street:</strong> ${streetInfo}</li>
-          <li><strong>Penalty if Enforced:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong></li>
-        </ul>
-      </div>
-
-      <div style="text-align:center;margin:24px 0">
-        <a href="${safeParkingUrl}" style="display:inline-block;background:#ec4899;color:white;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">
-          🅿️ Find Safe Parking Near You
-        </a>
-        <p style="font-size:13px;color:#6b7280;margin-top:8px">See which streets near you are NOT affected by the snow ban</p>
-      </div>
-
-      <p><strong>🚗 Recommended Steps:</strong></p>
-      <ol>
-        <li>Move your car off ${streetInfo} to be safe</li>
-        <li>Park on a side street (not a main arterial street)</li>
-        <li>Monitor @ChicagoDOT on X/Twitter for official ban activation announcements</li>
-      </ol>
-
-      <p style="font-size:14px;color:#6b7280;margin-top:24px">
-        <strong>Note:</strong> The city decides when to activate the ban based on conditions - it's not automatic. However, once 2+ inches has fallen, the ban can be activated at any time without additional notice. Moving your car now is the safest option.
-      </p>
-
-      <p style="font-size:14px;color:#6b7280;">
-        <strong>Official info:</strong> <a href="https://www.chicago.gov/city/en/depts/streets/provdrs/traffic/svcs/winter-snow-parking-restrictions.html">Chicago.gov Winter Parking</a>
-      </p>
-
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="font-size:12px;color:#6b7280">
-        You're receiving this because you're registered with ${BRAND.name} at an address on a 2-inch snow ban street.
-        <a href="${BRAND.dashboardUrl}" style="color:#2563eb">Manage preferences</a>
-      </p>
-    </div>
-  `;
+  return quickEmail({
+    preheader: `${snowAmount}" snow has fallen — move your car off ${streetInfo} now`,
+    headerTitle: '2+ Inches of Snow Has Fallen',
+    headerSubtitle: 'Ban may be activated at any time',
+    body: [
+      greet(firstName || undefined),
+      p(`<strong>Chicago has received ${snowAmount}" of snow. The city may activate the 2-inch parking ban on ${safeStreet} at any time.</strong>`),
+      callout('danger', 'Move Your Car To Be Safe', bulletList([
+        `<strong>Snow Threshold Met:</strong> ${snowAmount}" has fallen (2"+ triggers eligibility)`,
+        '<strong>Ban Status:</strong> May be activated by the city at any time',
+        `<strong>Your Street:</strong> ${safeStreet}`,
+        '<strong>Penalty:</strong> $150 towing + $60 ticket + $25/day storage = <strong>$235+ total</strong>',
+      ])),
+      button('Find Safe Parking Near You', safeParkingUrl, { color: '#EC4899' }),
+      p('See which streets near you are NOT affected by the snow ban', { size: '13px', color: '#6B7280', center: true }),
+      section('Recommended Steps', steps([
+        `Move your car off ${safeStreet} to be safe`,
+        'Park on a side street (not a main arterial street)',
+        'Monitor @ChicagoDOT on X/Twitter for official ban activation announcements',
+      ])),
+      divider(),
+      p('<strong>Note:</strong> The city decides when to activate the ban based on conditions. Once 2+ inches has fallen, the ban can be activated at any time without additional notice.', { size: '13px', color: '#6B7280' }),
+    ].join(''),
+  });
 }
 
 function getForecastSMSText(snowAmount: number, streetInfo: string, userAddress: string, moveByTime?: string): string {
@@ -161,72 +117,48 @@ function getConfirmationSMSText(snowAmount: number, streetInfo: string, userAddr
 
 // Templates for users NOT on snow routes (awareness alerts)
 function getAwarenessForecastEmailHtml(firstName: string | null, snowAmount: number, moveByTime?: string): string {
-  const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
   const deadlineText = moveByTime || 'as soon as possible';
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">❄️ ${snowAmount}" Snow Coming - 2-Inch Ban Alert</h2>
-      <p>${greeting}</p>
-      <p><strong>Chicago is forecasted to receive ${snowAmount}" of snow, which may trigger the 2-inch parking ban on main streets. If parked on an arterial, move ${deadlineText}.</strong></p>
-
-      <div style="background:#dbeafe;border-left:4px solid #3b82f6;padding:16px;margin:20px 0">
-        <strong>ℹ️ FOR YOUR AWARENESS</strong>
-        <p style="margin:8px 0 0">Your registered address is <strong>not</strong> on a 2-inch snow ban route. However, if you park on any main arterial streets in Chicago, you should be prepared to move your car.</p>
-      </div>
-
-      <p><strong>📋 Two-Inch Snow Ban Rules:</strong></p>
-      <ul>
-        <li>Applies to 500 miles of main streets in Chicago</li>
-        <li>Activates when 2+ inches of snow has actually fallen</li>
-        <li>Cars parked on affected streets may be ticketed ($60) and towed ($150+)</li>
-        <li>Look for "2-inch snow" parking signs on streets you use</li>
-      </ul>
-
-      <p style="font-size:14px;color:#6b7280;margin-top:24px">
-        <strong>Tip:</strong> Read street parking signs carefully before leaving your car, especially on major streets during winter.
-      </p>
-
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="font-size:12px;color:#6b7280">
-        You requested snow ban awareness alerts from ${BRAND.name}.
-        <a href="${BRAND.dashboardUrl}" style="color:#2563eb">Manage preferences</a>
-      </p>
-    </div>
-  `;
+  return quickEmail({
+    preheader: `${snowAmount}" snow forecast — 2-inch parking ban may activate on main streets`,
+    headerTitle: `${snowAmount}" Snow Coming`,
+    headerSubtitle: '2-inch ban alert for your awareness',
+    body: [
+      greet(firstName || undefined),
+      p(`<strong>Chicago is forecasted to receive ${snowAmount}" of snow, which may trigger the 2-inch parking ban on main streets. If parked on an arterial, move ${deadlineText}.</strong>`),
+      callout('info', 'For Your Awareness',
+        'Your registered address is <strong>not</strong> on a 2-inch snow ban route. However, if you park on any main arterial streets in Chicago, you should be prepared to move your car.'),
+      section('2-Inch Snow Ban Rules', bulletList([
+        'Applies to 500 miles of main streets in Chicago',
+        'Activates when 2+ inches of snow has actually fallen',
+        'Cars parked on affected streets may be ticketed ($60) and towed ($150+)',
+        'Look for "2-inch snow" parking signs on streets you use',
+      ])),
+      divider(),
+      p('<strong>Tip:</strong> Read street parking signs carefully before leaving your car, especially on major streets during winter.', { size: '13px', color: '#6B7280' }),
+    ].join(''),
+  });
 }
 
 function getAwarenessConfirmationEmailHtml(firstName: string | null, snowAmount: number): string {
-  const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">🚨 2+ Inches of Snow Has Fallen - Ban May Be Active</h2>
-      <p>${greeting}</p>
-      <p><strong>Chicago has received ${snowAmount}" of snow. The city may activate the 2-inch parking ban on main arterial streets at any time.</strong></p>
-
-      <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px;margin:20px 0">
-        <strong>⚠️ CHECK WHERE YOU'RE PARKED</strong>
-        <p style="margin:8px 0 0">Your registered address is <strong>not</strong> on a 2-inch snow ban route. However, if you've parked on any main arterial street, you should consider moving your car to avoid a potential $60 ticket and $150+ towing fee.</p>
-      </div>
-
-      <p><strong>🚗 What to check:</strong></p>
-      <ul>
-        <li>Look at the parking signs where your car is currently parked</li>
-        <li>If you see "2-inch snow" restrictions, consider moving your car</li>
-        <li>Park on side streets (not main arterials) to be safe</li>
-        <li>Monitor @ChicagoDOT on X/Twitter for official ban announcements</li>
-      </ul>
-
-      <p style="font-size:14px;color:#6b7280;margin-top:24px">
-        <strong>Note:</strong> The city decides when to activate the ban - it's not automatic when 2" falls. However, once activated, the ban typically lasts 24-48 hours until snow removal is complete.
-      </p>
-
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="font-size:12px;color:#6b7280">
-        You requested snow ban awareness alerts from ${BRAND.name}.
-        <a href="${BRAND.dashboardUrl}" style="color:#2563eb">Manage preferences</a>
-      </p>
-    </div>
-  `;
+  return quickEmail({
+    preheader: `${snowAmount}" snow has fallen — 2-inch parking ban may be active on main streets`,
+    headerTitle: '2+ Inches of Snow Has Fallen',
+    headerSubtitle: 'Ban may be active — check where you\'re parked',
+    body: [
+      greet(firstName || undefined),
+      p(`<strong>Chicago has received ${snowAmount}" of snow. The city may activate the 2-inch parking ban on main arterial streets at any time.</strong>`),
+      callout('warning', 'Check Where You\'re Parked',
+        'Your registered address is <strong>not</strong> on a 2-inch snow ban route. However, if you\'ve parked on any main arterial street, you should consider moving your car to avoid a potential $60 ticket and $150+ towing fee.'),
+      section('What To Check', bulletList([
+        'Look at the parking signs where your car is currently parked',
+        'If you see "2-inch snow" restrictions, consider moving your car',
+        'Park on side streets (not main arterials) to be safe',
+        'Monitor @ChicagoDOT on X/Twitter for official ban announcements',
+      ])),
+      divider(),
+      p('<strong>Note:</strong> The city decides when to activate the ban — it\'s not automatic. Once activated, the ban typically lasts 24-48 hours until snow removal is complete.', { size: '13px', color: '#6B7280' }),
+    ].join(''),
+  });
 }
 
 function getAwarenessForecastSMSText(snowAmount: number, moveByTime?: string): string {

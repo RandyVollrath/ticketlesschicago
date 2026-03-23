@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, signature } from '../../../lib/email-template';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -233,44 +234,25 @@ async function sendWelcomeEmail(email: string, firstName?: string) {
       from: 'Randy from Autopilot America <randy@autopilotamerica.com>',
       to: email,
       subject: 'Welcome to Autopilot America',
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #111827; font-size: 24px; margin-bottom: 16px;">Welcome to Autopilot America, ${name}!</h2>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Thanks for signing up. You're now protected from Chicago's most common parking tickets.
-          </p>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            You'll get alerts before:
-          </p>
-
-          <ul style="color: #374151; font-size: 16px; line-height: 1.8; margin-bottom: 24px;">
-            <li><strong>Street cleaning</strong> sweeps through your neighborhood</li>
-            <li><strong>Winter overnight parking bans</strong> (Dec 1 - Apr 1, nightly 3am-7am)</li>
-            <li><strong>2-inch snow removal</strong> — forecast alerts when snow is predicted, plus confirmed alerts when 2+ inches falls on your street</li>
-            <li><strong>City sticker and license plate renewal</strong> deadlines approach</li>
-            <li><strong>Emissions testing</strong> deadlines (if applicable to your vehicle)</li>
-          </ul>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            <strong>Keep your inbox open</strong> — I'll also send updates about new features and ways to make your life easier in Chicago.
-          </p>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 8px;">
-            Talk soon,<br>
-            Randy
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-
-          <p style="color: #9ca3af; font-size: 13px; line-height: 1.6;">
-            Autopilot America<br>
-            Peace of Mind Parking<br>
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}" style="color: #9ca3af;">Unsubscribe</a>
-          </p>
-        </div>
-      `
+      html: quickEmail({
+        preheader: "You're now protected from Chicago's most common parking tickets",
+        headerTitle: `Welcome to Autopilot America, ${name}!`,
+        body: [
+          p("Thanks for signing up. You're now protected from Chicago's most common parking tickets."),
+          p("You'll get alerts before:"),
+          bulletList([
+            '<strong>Street cleaning</strong> sweeps through your neighborhood',
+            '<strong>Winter overnight parking bans</strong> (Dec 1 - Apr 1, nightly 3am-7am)',
+            '<strong>2-inch snow removal</strong> — forecast alerts when snow is predicted, plus confirmed alerts when 2+ inches falls on your street',
+            '<strong>City sticker and license plate renewal</strong> deadlines approach',
+            '<strong>Emissions testing</strong> deadlines (if applicable to your vehicle)',
+          ]),
+          p("<strong>Keep your inbox open</strong> — I'll also send updates about new features and ways to make your life easier in Chicago."),
+          signature('Randy'),
+          divider(),
+          p(`<a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}" style="color:#9CA3AF;">Unsubscribe</a>`, { size: '13px', color: '#9CA3AF', center: true }),
+        ].join(''),
+      }),
     })
   });
 
@@ -296,54 +278,22 @@ async function sendProofEmail(email: string, firstName?: string) {
       from: 'Randy from Autopilot America <randy@autopilotamerica.com>',
       to: email,
       subject: '$20 million in street cleaning tickets last year',
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #111827; font-size: 24px; margin-bottom: 16px;">The real cost of parking in Chicago</h2>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Hey ${name},
-          </p>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Quick question: Have you ever gotten a parking ticket in Chicago?
-          </p>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            If so, you're not alone. <strong>Chicago wrote over $20 million in street cleaning tickets last year.</strong> That's just street cleaning — not snow bans, expired stickers, or meter violations.
-          </p>
-
-          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin-bottom: 24px;">
-            <p style="color: #92400e; font-size: 16px; line-height: 1.6; margin: 0;">
-              <strong>Every alert you get from us is a $75 ticket you don't pay.</strong>
-            </p>
-          </div>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            That's why I built Autopilot America. I was tired of seeing friends get hit with surprise tickets for things they could've easily avoided — if they'd just known about them.
-          </p>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            Your alerts are keeping you covered. Here's what else Autopilot America does for you:
-          </p>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            <strong>Full Ticket Protection</strong> — We'll handle your city sticker and license plate renewals automatically. No lines at the currency exchange, no remembering deadlines, no late fees. It's in the works, and I'll let you know when it's ready.
-          </p>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 8px;">
-            Stay tuned,<br>
-            Randy
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-
-          <p style="color: #9ca3af; font-size: 13px; line-height: 1.6;">
-            Autopilot America<br>
-            Peace of Mind Parking<br>
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}" style="color: #9ca3af;">Unsubscribe</a>
-          </p>
-        </div>
-      `
+      html: quickEmail({
+        preheader: 'Every alert you get from us is a $75 ticket you don\'t pay',
+        headerTitle: 'The real cost of parking in Chicago',
+        body: [
+          greet(name),
+          p('Quick question: Have you ever gotten a parking ticket in Chicago?'),
+          p("If so, you're not alone. <strong>Chicago wrote over $20 million in street cleaning tickets last year.</strong> That's just street cleaning — not snow bans, expired stickers, or meter violations."),
+          callout('warning', '', "<strong>Every alert you get from us is a $75 ticket you don't pay.</strong>"),
+          p("That's why I built Autopilot America. I was tired of seeing friends get hit with surprise tickets for things they could've easily avoided — if they'd just known about them."),
+          p("Your alerts are keeping you covered. Here's what else Autopilot America does for you:"),
+          p("<strong>Full Ticket Protection</strong> — We'll handle your city sticker and license plate renewals automatically. No lines at the currency exchange, no remembering deadlines, no late fees. It's in the works, and I'll let you know when it's ready."),
+          signature('Randy'),
+          divider(),
+          p(`<a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}" style="color:#9CA3AF;">Unsubscribe</a>`, { size: '13px', color: '#9CA3AF', center: true }),
+        ].join(''),
+      }),
     })
   });
 
@@ -369,64 +319,27 @@ async function sendSoftSellEmail(email: string, firstName?: string) {
       from: 'Randy from Autopilot America <randy@autopilotamerica.com>',
       to: email,
       subject: 'No more lines at the currency exchange',
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #111827; font-size: 24px; margin-bottom: 16px;">We can handle your stickers for you now</h2>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Hey ${name},
-          </p>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Remember that "Full Protection" feature I mentioned? It's live.
-          </p>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            <strong>Autopilot Protection</strong> handles your city sticker and license plate renewals automatically — before they expire. No lines, no stress, no late fees.
-          </p>
-
-          <div style="background-color: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-            <h3 style="color: #111827; font-size: 18px; margin-bottom: 12px;">Here's how it works:</h3>
-            <ul style="color: #374151; font-size: 15px; line-height: 1.8; margin: 0; padding-left: 20px;">
-              <li>We track your deadlines</li>
-              <li>We charge your card when renewals are due</li>
-              <li>We file everything with the city on your behalf</li>
-              <li>You never think about it again</li>
-            </ul>
-          </div>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            Plus, you still get all your alerts — street cleaning, snow bans, and more.
-          </p>
-
-          <div style="text-align: center; margin: 32px 0;">
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/protection"
-               style="display: inline-block;
-                      background-color: #0052cc;
-                      color: white;
-                      padding: 16px 32px;
-                      text-decoration: none;
-                      border-radius: 8px;
-                      font-weight: 600;
-                      font-size: 16px;">
-              Get Ticket Protection →
-            </a>
-          </div>
-
-          <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 8px;">
-            Let me know if you have questions,<br>
-            Randy
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-
-          <p style="color: #9ca3af; font-size: 13px; line-height: 1.6;">
-            Autopilot America<br>
-            Peace of Mind Parking<br>
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}" style="color: #9ca3af;">Unsubscribe</a>
-          </p>
-        </div>
-      `
+      html: quickEmail({
+        preheader: 'Autopilot Protection handles your sticker renewals automatically',
+        headerTitle: 'We can handle your stickers for you now',
+        body: [
+          greet(name),
+          p('Remember that "Full Protection" feature I mentioned? It\'s live.'),
+          p('<strong>Autopilot Protection</strong> handles your city sticker and license plate renewals automatically — before they expire. No lines, no stress, no late fees.'),
+          section("Here's how it works:", bulletList([
+            'We track your deadlines',
+            'We charge your card when renewals are due',
+            'We file everything with the city on your behalf',
+            'You never think about it again',
+          ])),
+          p('Plus, you still get all your alerts — street cleaning, snow bans, and more.'),
+          button('Get Ticket Protection', `${process.env.NEXT_PUBLIC_SITE_URL}/protection`),
+          p('Let me know if you have questions,'),
+          signature('Randy'),
+          divider(),
+          p(`<a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}" style="color:#9CA3AF;">Unsubscribe</a>`, { size: '13px', color: '#9CA3AF', center: true }),
+        ].join(''),
+      }),
     })
   });
 

@@ -4,6 +4,7 @@ import { maskPhone, maskEmail } from '../../../lib/mask-pii';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { quickEmail, p, divider } from '../../../lib/email-template';
 
 // Send SMS via ClickSend
 const sendSMS = async (phone: string, message: string, dryRun: boolean): Promise<{ success: boolean; dryRun?: boolean; error?: string }> => {
@@ -46,16 +47,10 @@ const sendEmail = async (email: string, subject: string, message: string, dryRun
         from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: email,
         subject: subject,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #1a1a1a; margin-bottom: 20px;">Message from Autopilot America</h2>
-            <div style="color: #374151; font-size: 16px; line-height: 1.6; white-space: pre-wrap;">${message}</div>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-            <p style="color: #9ca3af; font-size: 12px;">
-              Autopilot America • <a href="https://autopilotamerica.com" style="color: #3b82f6;">autopilotamerica.com</a>
-            </p>
-          </div>
-        `
+        html: quickEmail({
+          headerTitle: 'Message from Autopilot America',
+          body: p(message.replace(/\n/g, '<br>')),
+        })
       })
     });
 
