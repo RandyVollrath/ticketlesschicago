@@ -15,10 +15,16 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Verify cron secret for security (header only — never accept secrets in query params which get logged)
-  const cronSecret = req.headers['x-cron-secret'] || req.headers.authorization?.replace('Bearer ', '');
-  const isVercelCron = req.headers['x-vercel-cron'] === '1';
-  if (!isVercelCron && cronSecret !== process.env.CRON_SECRET && process.env.NODE_ENV === 'production') {
+  // CRITICAL: Verify cron authorization before processing notifications
+  const authHeader = req.headers.authorization;
+  const keyParam = req.query.key as string | undefined;
+  const secret = process.env.CRON_SECRET;
+  // Guard: if CRON_SECRET is not set, reject all requests
+  const isAuthorized = secret
+    ? (authHeader === `Bearer ${secret}` || keyParam === secret)
+    : false;
+
+  if (!isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -42,6 +48,15 @@ export default async function handler(
       results.processed++;
 
       try {
+        // Dedup check: skip if this notification was already successfully sent
+        // (e.g., original send succeeded after being logged as failed, or a previous retry succeeded)
+        const currentStatus = await notificationLogger.getStatus(notification.id);
+        if (currentStatus === 'sent' || currentStatus === 'delivered') {
+          console.log(`⏭️ Skipping ${notification.id} — already ${currentStatus}`);
+          results.successful++;
+          continue;
+        }
+
         // Increment attempt count
         await notificationLogger.incrementRetryAttempt(notification.id);
 

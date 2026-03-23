@@ -134,6 +134,29 @@ export class NotificationLogger {
   }
 
   /**
+   * Get current status of a notification by ID
+   */
+  async getStatus(id: string): Promise<string | null> {
+    if (!supabaseAdmin) return null;
+    try {
+      // @ts-expect-error - notification_logs table not in generated types
+      const { data, error } = await supabaseAdmin
+        .from('notification_logs')
+        .select('status')
+        .eq('id', id)
+        .maybeSingle() as { data: { status: string } | null; error: any };
+      if (error) {
+        console.error('Error getting notification status:', error);
+        return null;
+      }
+      return data?.status || null;
+    } catch (err) {
+      console.error('Exception getting notification status:', err);
+      return null;
+    }
+  }
+
+  /**
    * Increment retry attempt count
    */
   async incrementRetryAttempt(id: string): Promise<boolean> {

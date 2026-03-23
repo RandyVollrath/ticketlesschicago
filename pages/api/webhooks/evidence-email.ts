@@ -451,6 +451,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!buffer && emailId && attachment.id) {
             console.log(`  Fetching attachment from Resend API: email=${emailId}, attachment=${attachment.id}`);
             try {
+              const MAX_ATTACHMENT_SIZE = 50 * 1024 * 1024; // 50MB limit
               const attachMetaRes = await fetch(
                 `https://api.resend.com/emails/receiving/${emailId}/attachments/${attachment.id}`,
                 { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } }
@@ -459,9 +460,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const attachMeta = await attachMetaRes.json();
                 if (attachMeta.download_url) {
                   console.log(`  Downloading from: ${attachMeta.download_url}`);
-                  const downloadRes = await fetch(attachMeta.download_url);
+                  // SECURITY: Validate download URL is from trusted Resend domain
+                  if (!isAllowedAttachmentUrl(attachMeta.download_url)) {
+                    console.error(`  Blocked untrusted download URL: ${attachMeta.download_url}`);
+                    continue;
+                  }
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 30000);
+                  const downloadRes = await fetch(attachMeta.download_url, { signal: controller.signal });
+                  clearTimeout(timeoutId);
                   if (downloadRes.ok) {
+                    const contentLength = downloadRes.headers.get('content-length');
+                    if (contentLength && parseInt(contentLength, 10) > MAX_ATTACHMENT_SIZE) {
+                      console.error(`  Attachment too large: ${contentLength} bytes (max ${MAX_ATTACHMENT_SIZE})`);
+                      continue;
+                    }
                     const arrayBuffer = await downloadRes.arrayBuffer();
+                    if (arrayBuffer.byteLength > MAX_ATTACHMENT_SIZE) {
+                      console.error(`  Attachment exceeds size limit: ${arrayBuffer.byteLength} bytes`);
+                      continue;
+                    }
                     buffer = Buffer.from(arrayBuffer);
                     console.log(`  Downloaded ${buffer.length} bytes from Resend`);
                   } else {
@@ -469,7 +487,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   }
                 } else if (attachMeta.content) {
                   // Some versions return base64 content directly
-                  buffer = Buffer.from(attachMeta.content, 'base64');
+                  const decoded = Buffer.from(attachMeta.content, 'base64');
+                  if (decoded.length > MAX_ATTACHMENT_SIZE) {
+                    console.error(`  Base64 content exceeds limit: ${decoded.length} bytes`);
+                    continue;
+                  }
+                  buffer = decoded;
                   console.log(`  Got ${buffer.length} bytes from Resend content field`);
                 }
               } else {
@@ -483,14 +506,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Method 2: If attachment has a direct URL (Cloudflare worker format)
           if (!buffer && attachment.url) {
             console.log(`  Fetching attachment from URL: ${attachment.url}`);
+            // SECURITY: Validate URL before fetching to prevent SSRF attacks
             if (!isAllowedAttachmentUrl(attachment.url)) {
               console.error(`⚠️ Blocked fetch to untrusted URL: ${attachment.url}`);
               continue; // Skip this attachment
             }
             try {
-              const response = await fetch(attachment.url);
+              const MAX_ATTACHMENT_SIZE = 50 * 1024 * 1024;
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 30000);
+              const response = await fetch(attachment.url, { signal: controller.signal });
+              clearTimeout(timeoutId);
               if (response.ok) {
+                const contentLength = response.headers.get('content-length');
+                if (contentLength && parseInt(contentLength, 10) > MAX_ATTACHMENT_SIZE) {
+                  console.error(`  Attachment too large: ${contentLength} bytes`);
+                  continue;
+                }
                 const arrayBuffer = await response.arrayBuffer();
+                if (arrayBuffer.byteLength > MAX_ATTACHMENT_SIZE) {
+                  console.error(`  Attachment exceeds size limit: ${arrayBuffer.byteLength} bytes`);
+                  continue;
+                }
                 buffer = Buffer.from(arrayBuffer);
                 console.log(`  Fetched ${buffer.length} bytes from URL`);
               } else {

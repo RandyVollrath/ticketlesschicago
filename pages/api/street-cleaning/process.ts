@@ -51,6 +51,19 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // CRITICAL: Verify cron authorization before processing notifications
+  const authHeader = req.headers.authorization;
+  const keyParam = req.query.key as string | undefined;
+  const secret = process.env.CRON_SECRET;
+  // Guard: if CRON_SECRET is not set, reject all requests
+  const isAuthorized = secret
+    ? (authHeader === `Bearer ${secret}` || keyParam === secret)
+    : false;
+
+  if (!isAuthorized) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const now = new Date();
   const { hour, chicagoTime, chicagoDateISO } = getChicagoTime();
 
