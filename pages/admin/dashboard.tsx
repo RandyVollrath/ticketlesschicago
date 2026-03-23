@@ -604,7 +604,7 @@ function FoiaTab() {
                     padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 600,
                     background: item.foia_type === 'evidence' ? C.accent + '22' : C.purple + '22',
                     color: item.foia_type === 'evidence' ? C.accent : C.purple,
-                  }}>{item.foia_type === 'evidence' ? 'EVD' : 'HST'}</span>
+                  }}>{item.foia_type === 'evidence' ? 'Evidence' : 'History'}</span>
                   <span style={{ fontWeight: 600, color: C.text, fontSize: '14px' }}>
                     {item.ticket?.ticket_number || item.reference_id || item.license_plate || 'Unknown'}
                   </span>
