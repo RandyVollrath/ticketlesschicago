@@ -721,7 +721,7 @@ function FoiaTab() {
 const KILL_SWITCH_META: Record<string, { label: string; description: string; danger: boolean }> = {
   pause_all_mail: { label: 'Pause All Mail', description: 'Stops all Lob letter sends immediately.', danger: true },
   pause_ticket_processing: { label: 'Pause Ticket Processing', description: 'Tickets accepted but no new letters generated.', danger: true },
-  require_approval_all: { label: 'Require Approval for All', description: 'Admin must approve every letter before mailing.', danger: false },
+  require_approval_all: { label: 'Require Approval for All', description: 'Admin must approve every letter before mailing. (Currently always-on in cron)', danger: false },
 };
 
 function SystemTab({ health, onToggle, toggling }: {
@@ -990,13 +990,28 @@ export default function AdminDashboard() {
     } catch (e) { console.error('Health fetch error:', e); }
   }, []);
 
+  // Get auth token for admin API calls
+  const getAuthToken = useCallback(async (): Promise<string | null> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  }, []);
+
   // Toggle kill switches / lob test mode
   const handleToggle = useCallback(async (key: string, enabled: boolean) => {
     setToggling(key);
     try {
+      const token = await getAuthToken();
+      if (!token) {
+        alert('Session expired. Please refresh the page.');
+        setToggling(null);
+        return;
+      }
       const res = await fetch('/api/admin/system-health', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ key, enabled }),
       });
       const data = await res.json();
@@ -1010,7 +1025,7 @@ export default function AdminDashboard() {
       alert(`Failed to toggle ${key}`);
     }
     setToggling(null);
-  }, [fetchHealth]);
+  }, [fetchHealth, getAuthToken]);
 
   useEffect(() => {
     if (authorized) {

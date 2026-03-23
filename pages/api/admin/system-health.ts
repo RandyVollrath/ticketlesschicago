@@ -7,17 +7,46 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const ADMIN_EMAILS = [
+  'randy@autopilotamerica.com',
+  'admin@autopilotamerica.com',
+  'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
+];
+
+/**
+ * Verify the caller is an authenticated admin.
+ * Expects Authorization: Bearer <supabase_access_token>
+ */
+async function verifyAdmin(req: NextApiRequest): Promise<{ authorized: boolean; error?: string }> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { authorized: false, error: 'Missing authorization' };
+  }
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
+    return { authorized: false, error: 'Not authorized' };
+  }
+  return { authorized: true };
+}
+
 /**
  * System Health API — Admin overview of system status
  *
  * GET: Returns Lob mode, kill switches, blocking issues, letter stats, env vars.
- * PATCH: Toggle kill switches or Lob test mode.
+ * PATCH: Toggle kill switches or Lob test mode. (Requires admin auth)
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     return handleGet(req, res);
   }
   if (req.method === 'PATCH') {
+    // PATCH modifies system settings — requires admin auth
+    const auth = await verifyAdmin(req);
+    if (!auth.authorized) {
+      return res.status(auth.error === 'Missing authorization' ? 401 : 403).json({ error: auth.error });
+    }
     return handlePatch(req, res);
   }
   return res.status(405).json({ error: 'Method not allowed' });
