@@ -113,6 +113,23 @@ interface CallAlertPref {
   hours_before: number;
 }
 
+interface ReminderUserProfile {
+  user_id: string;
+  permit_zone_number: string | null;
+  vehicle_zone: string | null;
+  push_alert_preferences: Record<string, boolean> | null;
+  phone_call_enabled: boolean;
+  phone_number: string | null;
+  call_alert_preferences: Record<string, CallAlertPref> | null;
+}
+
+function isPushAlertEnabled(
+  prefs: Record<string, boolean> | null | undefined,
+  key: 'street_cleaning' | 'winter_ban' | 'snow_route' | 'permit_zone' | 'dot_permit'
+): boolean {
+  return prefs?.[key] !== false;
+}
+
 /**
  * Check if now is the right time to place a call for this alert type,
  * given the user's hours_before preference and the enforcement start time.
