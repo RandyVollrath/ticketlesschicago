@@ -989,6 +989,13 @@ export async function processHistoryFoiaResponse(
     return { action: 'history_foia_extension_requested', parsedTicketCount: 0, isExtension: true };
   }
 
+  // Guard: If the request is already in a terminal status, don't reprocess.
+  // This prevents late/duplicate emails from overwriting existing fulfillment data.
+  if (historyTerminalStatuses.includes(historyRequest.status)) {
+    console.log(`  Skipping history FOIA ${requestId} — already in terminal status '${historyRequest.status}'`);
+    return { action: `already_${historyRequest.status}`, parsedTicketCount: 0, isExtension: false };
+  }
+
   // Parse the response with Gemini Flash
   let parsedResult = null;
   try {
