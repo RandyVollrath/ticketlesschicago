@@ -21,6 +21,14 @@
  * Deduplication (belt-and-suspenders):
  *   - Column-based: sweeper_passed_notified_at on user_parked_vehicles (fast DB filter)
  *   - Log-based: notification_logs with category='sweeper_passed' (definitive check)
+ *
+ * Reliability features:
+ *   - FCM token freshness: looks up latest token from push_tokens table (not just
+ *     the snapshot stored at parking time, which can go stale after hours)
+ *   - Timeout starvation prevention: segments are shuffled each run so different
+ *     blocks get checked if the cron times out partway through
+ *   - Invalid token cleanup: deactivates stale tokens in both user_parked_vehicles
+ *     and push_tokens when Firebase reports them as unregistered
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -39,6 +47,43 @@ interface ParkedVehicle {
   address: string;
   street_cleaning_date: string | null;
   sweeper_passed_notified_at?: string | null;
+}
+
+/**
+ * Look up the freshest active FCM token for a user from the push_tokens table.
+ * The token stored on user_parked_vehicles is a snapshot from parking time and
+ * can go stale if Firebase rotates it hours later before the sweeper cron runs.
+ * Falls back to the stale vehicle token if push_tokens has nothing.
+ */
+async function getFreshFcmToken(userId: string, staleFallback: string): Promise<string> {
+  if (!supabaseAdmin) return staleFallback;
+  try {
+    const { data } = await supabaseAdmin
+      .from('push_tokens')
+      .select('token')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('last_used_at', { ascending: false })
+      .limit(1)
+      .single();
+    return data?.token || staleFallback;
+  } catch {
+    // Table might not exist yet or be empty — use the vehicle's token
+    return staleFallback;
+  }
+}
+
+/**
+ * Fisher-Yates shuffle — randomize array in-place.
+ * Used to prevent timeout starvation: if the cron times out partway through,
+ * different segments get checked on each run instead of always the same ones.
+ */
+function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 /** Sweeper check result for a street segment */
@@ -290,9 +335,12 @@ export default async function handler(
     console.log(`[sweeper-notify] Resolved ${eligible.length} vehicles to ${segmentVehicles.size} unique segments (${unresolvedCount} unresolved, ${transIdCache.size} address lookups)`);
 
     // ─── Step 3: Check sweeper activity per unique TransID ───
+    // Shuffle segment order to prevent timeout starvation: if cron times out,
+    // different segments get checked next run instead of always the same ones first.
     const todayChicago = new Date().toLocaleDateString('en-CA', { timeZone: CHICAGO_TZ });
+    const shuffledSegments = shuffle([...segmentVehicles.entries()]);
 
-    for (const [transId, group] of segmentVehicles) {
+    for (const [transId, group] of shuffledSegments) {
       if (Date.now() - startTime > MAX_RUNTIME_MS) {
         console.log(`[sweeper-notify] Approaching timeout after ${results.segmentsSwept} segments checked. Will continue next run.`);
         break;
@@ -346,7 +394,11 @@ export default async function handler(
 
           const friendlyAddr = formatAddressForNotification(vehicle.address);
 
-          const notifResult = await sendPushNotification(vehicle.fcm_token, {
+          // Use freshest FCM token — the one on user_parked_vehicles may be stale
+          // if Firebase rotated it between parking time and sweeper cron execution.
+          const freshToken = await getFreshFcmToken(vehicle.user_id, vehicle.fcm_token);
+
+          const notifResult = await sendPushNotification(freshToken, {
             title: 'Street Sweeper Passed!',
             body: `The sweeper passed ${friendlyAddr} at ${passTimeStr}. You can move your car back now.`,
             data: {
@@ -380,6 +432,13 @@ export default async function handler(
               .from('user_parked_vehicles')
               .update({ is_active: false })
               .eq('id', vehicle.id);
+            // Also deactivate the stale token in push_tokens so other crons don't retry it
+            try {
+              await supabaseAdmin
+                .from('push_tokens')
+                .update({ is_active: false })
+                .eq('token', freshToken);
+            } catch { /* push_tokens table might not exist yet */ }
             console.log(`[sweeper-notify] Deactivated vehicle ${vehicle.id} — invalid FCM token`);
             results.notificationsFailed++;
           } else {
