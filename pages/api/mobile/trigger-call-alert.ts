@@ -63,7 +63,7 @@ export default async function handler(
     const { data: profile } = await supabaseAdmin
       .from('user_profiles')
       .select('phone_call_enabled, phone_number, call_alert_preferences')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .single();
 
     if (!profile?.phone_call_enabled || !profile?.phone_number) {

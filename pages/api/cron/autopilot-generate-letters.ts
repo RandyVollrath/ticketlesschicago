@@ -2715,13 +2715,20 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
     ticketUpdate.street_view_url = evidence.streetViewEvidence.imageUrl;
     ticketUpdate.street_view_date = evidence.streetViewEvidence.imageDate;
   }
-  const { count: claimCount } = await supabaseAdmin
+  const { data: claimedTicket, error: claimError } = await supabaseAdmin
     .from('detected_tickets')
     .update(ticketUpdate)
     .eq('id', ticket.id)
-    .eq('status', 'found'); // Optimistic lock — only claim if still in 'found'
+    .eq('status', 'found') // Optimistic lock — only claim if still in 'found'
+    .select('id')
+    .maybeSingle();
 
-  if (!claimCount || claimCount === 0) {
+  if (claimError) {
+    console.error(`    Failed to claim ticket ${ticket.id}: ${claimError.message}`);
+    return { success: false, status: 'claim_error', error: claimError.message };
+  }
+
+  if (!claimedTicket?.id) {
     console.log(`    Ticket ${ticket.id} already claimed by another run — skipping`);
     return { success: true, status: 'already_claimed' };
   }

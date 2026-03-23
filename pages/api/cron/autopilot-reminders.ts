@@ -496,15 +496,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
-        // Force-promote the letter to admin_approved regardless of ticket status.
+        // Force-promote the letter to approved regardless of ticket status.
+        // Use approved_via to preserve that this was an admin-equivalent safety-net approval.
         // This catches the case where ticket is already 'approved' (e.g. from a
         // previous test-mode send) but the letter is still in draft/needs_admin_review.
         const { data: letterUpdate } = await supabaseAdmin
           .from('contest_letters')
           .update({
-            status: 'admin_approved',
+            status: 'approved',
+            approved_via: 'auto_deadline_safety_net',
             approved_at: new Date().toISOString(),
-            approved_by: 'auto_deadline_safety_net',
           })
           .eq('ticket_id', ticket.id)
           .in('status', ['pending_evidence', 'pending_approval', 'draft', 'needs_admin_review', 'awaiting_consent'])

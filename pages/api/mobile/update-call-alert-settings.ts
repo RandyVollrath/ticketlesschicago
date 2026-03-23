@@ -76,12 +76,32 @@ export default async function handler(
     };
     if (validatedPrefs) {
       updateData.call_alert_preferences = validatedPrefs;
+    } else if (phone_call_enabled) {
+      // When enabling calls without explicit per-type prefs, check if current DB prefs
+      // have all types disabled (the old broken default). If so, set sensible defaults.
+      const { data: currentProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('call_alert_preferences')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const currentPrefs = (currentProfile?.call_alert_preferences as Record<string, { enabled: boolean }>) || {};
+      const anyEnabled = Object.values(currentPrefs).some(p => p?.enabled);
+      if (!anyEnabled) {
+        updateData.call_alert_preferences = {
+          street_cleaning: { enabled: true, hours_before: 2 },
+          winter_ban: { enabled: true, hours_before: 6 },
+          permit_zone: { enabled: true, hours_before: 0 },
+          snow_route: { enabled: true, hours_before: 0 },
+          dot_permit: { enabled: false, hours_before: 0 },
+        };
+      }
     }
 
     const { error: updateError } = await supabaseAdmin
       .from('user_profiles')
       .update(updateData)
-      .eq('id', user.id);
+      .eq('user_id', user.id);
 
     if (updateError) {
       console.error('Error updating call alert settings:', updateError);
