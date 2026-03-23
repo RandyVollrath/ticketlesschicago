@@ -2358,7 +2358,8 @@ async function processFoundTicket(
     console.log(`      Generated contest letter (${defenseType})`);
   }
 
-  // Update ticket with vehicle mismatch results if detected
+  // Update ticket with vehicle mismatch results
+  const isCameraTicket = ['red_light', 'speed_camera'].includes(violationType);
   if (vehicleMismatch?.hasMismatch) {
     await supabaseAdmin
       .from('detected_tickets')
@@ -2372,6 +2373,16 @@ async function processFoundTicket(
       })
       .eq('id', newTicket.id);
     console.log(`      Updated ticket with vehicle mismatch (confidence: ${vehicleMismatch.confidence})`);
+  } else if (isCameraTicket && vehicleMismatch !== undefined && vehicleMismatch !== null) {
+    // Camera ticket was checked for mismatch but no mismatch found —
+    // record explicitly so we can distinguish "checked, no mismatch" from "never checked"
+    await supabaseAdmin
+      .from('detected_tickets')
+      .update({
+        vehicle_mismatch_detected: false,
+      })
+      .eq('id', newTicket.id);
+    console.log(`      Vehicle matches registered vehicle — no mismatch`);
   }
 
   // Store evidence findings in the audit log for reference

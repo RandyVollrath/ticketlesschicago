@@ -101,6 +101,13 @@ export async function reEvaluateWithKit(
   const kit = getContestKit(violationCode);
   if (!kit) return null;
 
+  // Determine if this is a camera ticket (red light or speed camera)
+  const isCameraTicket = ['red_light', 'speed_camera'].includes(violationType);
+
+  // Check if user's evidence mentions vehicle identification issues (plate mismatch, wrong car, etc.)
+  const evidenceText = (ticket.user_evidence_text || '').toLowerCase();
+  const hasIdentificationEvidence = /wrong (car|vehicle)|not my (car|vehicle)|different (car|vehicle)|plate.*(clone|mismatch|wrong|error)|clone.*plate|misread|wrong plate/i.test(evidenceText);
+
   const ticketFacts: TicketFacts = {
     ticketNumber: ticket.ticket_number || '',
     violationCode,
@@ -115,6 +122,9 @@ export async function reEvaluateWithKit(
     meterWasBroken: userEvidence.photoTypes.includes('meter_photo') || userEvidence.hasMeterIssue || false,
     permitWasDisplayed: userEvidence.photoTypes.includes('permit_photo'),
     hasEmergency: userEvidence.hasMedicalDocs,
+    // Camera ticket fields — enable factually_inconsistent and vehicle_identification arguments
+    hasFootageIssue: isCameraTicket || undefined,
+    hasIdentificationIssue: (isCameraTicket && (ticket.vehicle_mismatch_detected || hasIdentificationEvidence)) || undefined,
   };
 
   try {
