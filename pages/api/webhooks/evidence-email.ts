@@ -829,6 +829,18 @@ async function sendAdminNotification(
 ): Promise<void> {
   if (!process.env.RESEND_API_KEY) return;
 
+  // Escape user-supplied text to prevent XSS in admin email HTML
+  const escapeHtml = (s: string) => s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  const safeBody = escapeHtml(body);
+  const safeFromEmail = escapeHtml(fromEmail);
+  const safeStatus = escapeHtml(status);
+
   // Build attachment links HTML
   let attachmentLinksHtml = '';
   if (extras?.attachmentUrls && extras.attachmentUrls.length > 0) {
@@ -890,17 +902,17 @@ async function sendAdminNotification(
           <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
             <div style="background: #059669; color: white; padding: 20px 24px; border-radius: 8px 8px 0 0;">
               <h1 style="margin: 0; font-size: 22px;">User Submitted Evidence</h1>
-              <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 14px;">${status}</p>
+              <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 14px;">${safeStatus}</p>
             </div>
 
             <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none;">
               <p style="margin: 0 0 4px 0; color: #6b7280; font-size: 13px;">From</p>
-              <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">${fromEmail}</p>
+              <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">${safeFromEmail}</p>
 
               ${ticketDetailsHtml}
 
               <h3 style="color: #374151; margin: 20px 0 8px 0;">User's Evidence Message</h3>
-              <pre style="background: #f3f4f6; padding: 16px; border-radius: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.5; margin: 0;">${body}</pre>
+              <pre style="background: #f3f4f6; padding: 16px; border-radius: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.5; margin: 0;">${safeBody}</pre>
 
               ${attachmentLinksHtml}
 

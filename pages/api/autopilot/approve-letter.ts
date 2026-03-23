@@ -32,7 +32,7 @@ export function generateApprovalToken(ticketId: string, userId: string, letterId
       letter_id: letterId,
     },
     JWT_SECRET,
-    { expiresIn: '7d' } // Token valid for 7 days
+    { expiresIn: '30d' } // Token valid for 30 days (consistent across all token generators)
   );
 }
 
