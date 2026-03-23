@@ -235,7 +235,7 @@ async function sendWelcomeEmail(email: string, firstName?: string) {
       to: email,
       subject: 'Welcome to Autopilot America',
       html: quickEmail({
-        preheader: "Chicago wrote $264M in parking tickets last year. Here's how to not be part of that.",
+        preheader: "Chicago writes $264M in parking tickets in a single year. Here's how to not be part of that.",
         headerTitle: `You just dodged your first ticket, ${name}.`,
         body: [
           p("Seriously. Chicago writes <strong>2.8 million parking tickets every year</strong>. That's $264 million pulled out of drivers' wallets — for street cleaning you didn't know about, snow bans nobody warned you about, and stickers you forgot to renew."),
@@ -285,7 +285,7 @@ async function sendProofEmail(email: string, firstName?: string) {
         body: [
           greet(name),
           p("Let me give you a number: <strong>$264,000,000.</strong>"),
-          p("That's how much Chicago collected in parking and camera ticket revenue last year. Street cleaning alone was over $20 million. And the city depends on that money — which means they are very, very good at writing tickets."),
+          p("That's how much Chicago collects in parking and camera ticket revenue in a single year. Street cleaning alone is over $20 million. And the city depends on that money — which means they are very, very good at writing tickets."),
           callout('danger', 'Here\'s the part nobody tells you', "68.5% of contested parking tickets in Chicago get dismissed. The city knows most people won't bother fighting a $75 ticket. They're counting on you to just pay it."),
           p("That's the game. They write the ticket. You're busy. You pay it. Multiply that by 2.8 million tickets a year and you get a quarter-billion-dollar revenue stream — funded by people who didn't know they could fight back."),
           p("<strong>You already have the alerts.</strong> That alone saves you from the most common tickets (street cleaning, snow bans, expired stickers)."),
