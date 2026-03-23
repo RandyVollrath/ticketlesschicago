@@ -82,7 +82,7 @@ export async function checkRateLimit(
         .gte('created_at', windowStart)
         .order('created_at', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (oldestEntry) {
         const oldestTime = new Date((oldestEntry as { created_at: string }).created_at).getTime();
