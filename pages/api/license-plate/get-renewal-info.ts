@@ -11,13 +11,8 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -25,6 +20,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Authenticate remitter via API key
+    const apiKey = req.headers['x-api-key'] as string;
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Missing API key' });
+    }
+
+    const { data: partner, error: partnerError } = await supabaseAdmin!
+      .from('renewal_partners')
+      .select('id, name')
+      .eq('api_key', apiKey)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (partnerError || !partner) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+
     const { userId } = req.query;
 
     if (!userId || typeof userId !== 'string') {
@@ -32,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get user profile with license plate renewal details
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin!
       .from('user_profiles')
       .select(`
         license_plate,
@@ -101,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ⚠️ IMPORTANT: Update last accessed timestamp
     // This can trigger 48h deletion countdown for sensitive data
-    await supabase
+    await supabaseAdmin!
       .from('user_profiles')
       .update({
         license_plate_last_accessed_at: new Date().toISOString(),

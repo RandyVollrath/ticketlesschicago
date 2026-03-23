@@ -8,13 +8,8 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const BUCKET_NAME = 'residency-proofs-temps';
 
@@ -24,11 +19,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Authenticate remitter via API key
+    const apiKey = req.headers['x-api-key'] as string;
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Missing API key' });
+    }
+
+    const { data: partner, error: partnerError } = await supabaseAdmin!
+      .from('renewal_partners')
+      .select('id, name')
+      .eq('api_key', apiKey)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (partnerError || !partner) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+
     let { userId, email } = req.query;
 
     // Allow lookup by email (for remitter portal)
     if (email && typeof email === 'string' && !userId) {
-      const { data: user } = await supabase
+      const { data: user } = await supabaseAdmin!
         .from('user_profiles')
         .select('user_id')
         .eq('email', email)
@@ -44,11 +56,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get user profile to find residency proof path
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin!
       .from('user_profiles')
       .select('residency_proof_path, residency_proof_uploaded_at, residency_proof_verified, has_permit_zone')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       console.error('User not found:', userId);
@@ -75,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const isVerified = profile.residency_proof_verified;
 
     // Generate signed URL for secure download (24-hour expiration)
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin!.storage
       .from(BUCKET_NAME)
       .createSignedUrl(profile.residency_proof_path, 86400); // 24 hours
 
