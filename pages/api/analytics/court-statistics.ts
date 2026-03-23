@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let query = supabase
       .from('court_case_outcomes')
       .select('*')
-      .gte('decision_date', startDate.toISOString().split('T')[0]);
+      .gte('decision_date', new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(startDate));
 
     // Apply filters
     if (violationCode) {

@@ -2689,6 +2689,19 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
     return { success: false, status: 'error', error: 'Empty or malformed letter content' };
   }
 
+  // ── Belt-and-suspenders: check if a letter already exists for this ticket ──
+  const { data: existingLetter } = await supabaseAdmin
+    .from('contest_letters')
+    .select('id')
+    .eq('ticket_id', ticket.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingLetter) {
+    console.log(`    Letter already exists for ticket ${ticket.id} (letter ${existingLetter.id}) — skipping`);
+    return { success: true, status: 'already_exists' };
+  }
+
   // ── Optimistic claim: atomically move ticket out of 'found' BEFORE inserting letter ──
   // This prevents duplicate letters if the cron crashes between insert and status update.
   // If another cron run already claimed this ticket, the update returns count=0 and we skip.

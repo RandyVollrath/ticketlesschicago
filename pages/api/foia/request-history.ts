@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Check for duplicate recent requests (same plate + email in last 7 days)
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: existing } = await supabaseAdmin
+  const { data: existing, error: dedupError } = await supabaseAdmin
     .from('foia_history_requests')
     .select('id, status, created_at')
     .eq('license_plate', cleanPlate)
@@ -81,6 +81,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .gte('created_at', sevenDaysAgo)
     .order('created_at', { ascending: false })
     .limit(1);
+
+  if (dedupError) {
+    console.error('FOIA dedup check failed:', dedupError.message);
+    // Continue — better to risk a duplicate than block the request entirely
+  }
 
   if (existing && existing.length > 0) {
     const recent = existing[0];

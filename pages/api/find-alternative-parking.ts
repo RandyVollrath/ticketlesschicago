@@ -91,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const todayStr = getChicagoDateISO();
     const threeDaysFromNow = new Date();
     threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-    const threeDaysStr = threeDaysFromNow.toISOString().split('T')[0];
+    const threeDaysStr = getChicagoDateISO(threeDaysFromNow);
 
     console.log('📅 Finding user\'s cleaning schedule...');
     const { data: userCleaningSchedule } = await mscSupabase
@@ -407,7 +407,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .filter(alt => {
         // CRITICAL: Exclude zones with cleaning TODAY
         if (alt.next_cleaning_date) {
-          const cleaningDate = new Date(alt.next_cleaning_date).toISOString().split('T')[0];
+          const cleaningDate = getChicagoDateISO(new Date(alt.next_cleaning_date));
           if (cleaningDate === todayStr) {
             console.log(`❌ Excluding Ward ${alt.ward} Section ${alt.section} - has cleaning TODAY`);
             return false;

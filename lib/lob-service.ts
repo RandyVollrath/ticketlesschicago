@@ -3,6 +3,17 @@
  * Handles automated letter mailing for contest submissions
  */
 
+/** Escape HTML special characters to prevent XSS in rendered templates */
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 interface MailingAddress {
   name: string;
   address: string;
@@ -507,7 +518,7 @@ export function formatLetterAsHTML(
 
         <table style="border-collapse: collapse; width: 100%; font-size: 10pt; margin-bottom: 15px;">
           <tr><td colspan="2" style="padding: 8px 0 4px; font-weight: bold; font-size: 11pt;">Evidence Summary</td></tr>
-          <tr><td style="padding: 3px 0; color: #555; width: 200px;">Camera Location:</td><td style="padding: 3px 0;">${redLightEvidence.cameraAddress}</td></tr>
+          <tr><td style="padding: 3px 0; color: #555; width: 200px;">Camera Location:</td><td style="padding: 3px 0;">${escapeHtml(redLightEvidence.cameraAddress)}</td></tr>
           <tr><td style="padding: 3px 0; color: #555;">Date &amp; Time:</td><td style="padding: 3px 0;">${formatTs(redLightEvidence.deviceTimestamp)}</td></tr>
           <tr><td style="padding: 3px 0; color: #555;">GPS Accuracy:</td><td style="padding: 3px 0;">${redLightEvidence.gpsAccuracyMeters != null ? `${redLightEvidence.gpsAccuracyMeters.toFixed(1)} meters` : 'N/A'}</td></tr>
           <tr><td style="padding: 3px 0; color: #555;">Approach Speed:</td><td style="padding: 3px 0;">${redLightEvidence.approachSpeedMph != null ? `${redLightEvidence.approachSpeedMph.toFixed(1)} mph` : 'N/A'}</td></tr>
@@ -543,7 +554,7 @@ export function formatLetterAsHTML(
               <tr><td style="padding: 2px 0; color: #bf360c;">Shortfall:</td><td style="padding: 2px 0; font-weight: bold; color: #d32f2f;">${redLightEvidence.yellowLight.shortfallSec.toFixed(1)} seconds below standard</td></tr>
             </table>
             <p style="font-size: 8pt; color: #795548; margin: 6px 0 0;">
-              Standard: ${redLightEvidence.yellowLight.standardCitation}
+              Standard: ${escapeHtml(redLightEvidence.yellowLight.standardCitation)}
             </p>
           </div>
         ` : ''}
@@ -567,14 +578,14 @@ export function formatLetterAsHTML(
           <div style="margin-top: 15px; padding: 12px; background: #e3f2fd; border: 1px solid #2196f3; font-size: 10pt;">
             <strong style="color: #0d47a1;">Weather Conditions at Time of Violation</strong><br>
             <table style="border-collapse: collapse; font-size: 9pt; margin-top: 6px; width: 100%;">
-              <tr><td style="padding: 2px 0; color: #1565c0; width: 180px;">Conditions:</td><td style="padding: 2px 0;">${redLightEvidence.weather.description}</td></tr>
+              <tr><td style="padding: 2px 0; color: #1565c0; width: 180px;">Conditions:</td><td style="padding: 2px 0;">${escapeHtml(redLightEvidence.weather.description)}</td></tr>
               ${redLightEvidence.weather.temperatureF != null ? `<tr><td style="padding: 2px 0; color: #1565c0;">Temperature:</td><td style="padding: 2px 0;">${Math.round(redLightEvidence.weather.temperatureF)}&deg;F</td></tr>` : ''}
               ${redLightEvidence.weather.visibilityMiles != null ? `<tr><td style="padding: 2px 0; color: #1565c0;">Visibility:</td><td style="padding: 2px 0; ${redLightEvidence.weather.impairedVisibility ? 'font-weight: bold; color: #d32f2f;' : ''}">${redLightEvidence.weather.visibilityMiles.toFixed(1)} miles${redLightEvidence.weather.impairedVisibility ? ' (IMPAIRED)' : ''}</td></tr>` : ''}
-              ${redLightEvidence.weather.roadCondition ? `<tr><td style="padding: 2px 0; color: #1565c0;">Road Conditions:</td><td style="padding: 2px 0; font-weight: bold;">${redLightEvidence.weather.roadCondition}</td></tr>` : ''}
-              ${redLightEvidence.weather.sunPosition ? `<tr><td style="padding: 2px 0; color: #1565c0;">Time of Day:</td><td style="padding: 2px 0;">${redLightEvidence.weather.sunPosition.charAt(0).toUpperCase() + redLightEvidence.weather.sunPosition.slice(1)}</td></tr>` : ''}
+              ${redLightEvidence.weather.roadCondition ? `<tr><td style="padding: 2px 0; color: #1565c0;">Road Conditions:</td><td style="padding: 2px 0; font-weight: bold;">${escapeHtml(redLightEvidence.weather.roadCondition)}</td></tr>` : ''}
+              ${redLightEvidence.weather.sunPosition ? `<tr><td style="padding: 2px 0; color: #1565c0;">Time of Day:</td><td style="padding: 2px 0;">${escapeHtml(redLightEvidence.weather.sunPosition.charAt(0).toUpperCase() + redLightEvidence.weather.sunPosition.slice(1))}</td></tr>` : ''}
             </table>
             <p style="font-size: 8pt; color: #1565c0; margin: 6px 0 0;">
-              Source: ${redLightEvidence.weather.source}
+              Source: ${escapeHtml(redLightEvidence.weather.source)}
             </p>
           </div>
         ` : ''}
@@ -599,7 +610,7 @@ export function formatLetterAsHTML(
             ${redLightEvidence.defenseArguments && redLightEvidence.defenseArguments.length > 0 ? `
               <ul style="margin: 6px 0 0; padding-left: 16px; font-size: 8pt;">
                 ${redLightEvidence.defenseArguments.slice(0, 6).map(a =>
-                  `<li style="margin-bottom: 3px;"><strong>[${a.strength.toUpperCase()}]</strong> ${a.title}: ${a.summary.substring(0, 200)}</li>`
+                  `<li style="margin-bottom: 3px;"><strong>[${escapeHtml(a.strength.toUpperCase())}]</strong> ${escapeHtml(a.title)}: ${escapeHtml(a.summary.substring(0, 200))}</li>`
                 ).join('')}
               </ul>
             ` : ''}
@@ -607,8 +618,8 @@ export function formatLetterAsHTML(
         ` : ''}
 
         <div style="margin-top: 20px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; font-size: 8pt;">
-          <strong>Data Integrity:</strong> SHA-256 hash: <code style="font-size: 7pt; word-break: break-all;">${redLightEvidence.evidenceHash}</code><br>
-          Evidence ID: ${redLightEvidence.receiptId} — Data stored at autopilotamerica.com and independently verifiable.
+          <strong>Data Integrity:</strong> SHA-256 hash: <code style="font-size: 7pt; word-break: break-all;">${escapeHtml(redLightEvidence.evidenceHash)}</code><br>
+          Evidence ID: ${escapeHtml(redLightEvidence.receiptId)} — Data stored at autopilotamerica.com and independently verifiable.
         </div>
 
         <p style="font-size: 7pt; color: #999; margin-top: 10px;">
