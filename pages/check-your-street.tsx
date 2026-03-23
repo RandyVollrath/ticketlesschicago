@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { getHighRiskWardData } from '../lib/high-risk-wards'
 import Footer from '../components/Footer'
 import MobileNav from '../components/MobileNav'
+
+const GEOAPIFY_KEY = process.env.NEXT_PUBLIC_GEOAPIFY_KEY || ''
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -49,6 +51,91 @@ export default function CheckYourStreet() {
   const [nearbyMeters, setNearbyMeters] = useState<any[] | null>(null)
   const [statsExpanded, setStatsExpanded] = useState(false)
   const [tripExpanded, setTripExpanded] = useState(false)
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const suggestionsRef = useRef<HTMLDivElement>(null)
+
+  // Geoapify autocomplete fetcher
+  const fetchSuggestions = useCallback(async (text: string) => {
+    if (!GEOAPIFY_KEY || text.length < 3) {
+      setSuggestions([])
+      return
+    }
+    try {
+      const params = new URLSearchParams({
+        text,
+        apiKey: GEOAPIFY_KEY,
+        filter: 'circle:-87.6298,41.8781,40000', // 40km radius around Chicago
+        bias: 'proximity:-87.6298,41.8781',
+        limit: '5',
+        type: 'street',
+        format: 'json',
+        lang: 'en',
+      })
+      const res = await fetch(`https://api.geoapify.com/v1/geocode/autocomplete?${params}`)
+      if (!res.ok) return
+      const data = await res.json()
+      setSuggestions(data.results || [])
+      setShowSuggestions((data.results || []).length > 0)
+      setSelectedIndex(-1)
+    } catch {
+      // Non-critical — user can still type manually
+    }
+  }, [])
+
+  const handleAddressInput = useCallback((value: string) => {
+    setAddress(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (value.length >= 3) {
+      debounceRef.current = setTimeout(() => fetchSuggestions(value), 250)
+    } else {
+      setSuggestions([])
+      setShowSuggestions(false)
+    }
+  }, [fetchSuggestions])
+
+  const handleSuggestionSelect = useCallback((suggestion: any) => {
+    const formatted = suggestion.formatted || suggestion.address_line1 || ''
+    // Strip country suffix for cleaner display
+    const cleaned = formatted.replace(/,\s*United States of America$/i, '').replace(/,\s*USA$/i, '')
+    setAddress(cleaned)
+    setSuggestions([])
+    setShowSuggestions(false)
+    // Auto-submit after selecting
+    setTimeout(() => formRef.current?.requestSubmit(), 50)
+  }, [])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedIndex(i => Math.min(i + 1, suggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedIndex(i => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && selectedIndex >= 0) {
+      e.preventDefault()
+      handleSuggestionSelect(suggestions[selectedIndex])
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false)
+    }
+  }, [showSuggestions, suggestions, selectedIndex, handleSuggestionSelect])
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+          inputRef.current && !inputRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Check URL parameters
   useEffect(() => {
@@ -58,8 +145,7 @@ export default function CheckYourStreet() {
     if (urlAddress) {
       setAddress(urlAddress)
       setTimeout(() => {
-        const form = document.querySelector('form')
-        if (form) form.requestSubmit()
+        formRef.current?.requestSubmit()
       }, 100)
     }
 
@@ -75,6 +161,8 @@ export default function CheckYourStreet() {
     setIsSearching(true)
     setError(null)
     setSearchResult(null)
+    setShowSuggestions(false)
+    setSuggestions([])
     setPermitZoneResult(null)
     setSnowForecast(null)
     setBlockStats(null)
@@ -370,24 +458,70 @@ export default function CheckYourStreet() {
           </p>
 
           {/* Search Form */}
-          <form onSubmit={handleSearch} style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <form ref={formRef} onSubmit={handleSearch} style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div className="search-form" style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="123 N State St, Chicago"
-                style={{
-                  flex: 1,
-                  padding: '16px 20px',
-                  fontSize: '16px',
-                  border: 'none',
-                  borderRadius: '12px',
-                  outline: 'none',
-                  backgroundColor: 'white',
-                  color: COLORS.graphite
-                }}
-              />
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={address}
+                  onChange={(e) => handleAddressInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
+                  placeholder="Start typing an address..."
+                  autoComplete="off"
+                  style={{
+                    width: '100%',
+                    padding: '16px 20px',
+                    fontSize: '16px',
+                    border: 'none',
+                    borderRadius: showSuggestions ? '12px 12px 0 0' : '12px',
+                    outline: 'none',
+                    backgroundColor: 'white',
+                    color: COLORS.graphite,
+                    boxSizing: 'border-box',
+                  }}
+                />
+                {/* Autocomplete dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div
+                    ref={suggestionsRef}
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: 'white',
+                      borderRadius: '0 0 12px 12px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                      zIndex: 100,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {suggestions.map((s: any, i: number) => {
+                      const line1 = s.address_line1 || s.formatted?.split(',')[0] || ''
+                      const line2 = [s.city, s.state, s.postcode].filter(Boolean).join(', ')
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => handleSuggestionSelect(s)}
+                          onMouseEnter={() => setSelectedIndex(i)}
+                          style={{
+                            padding: '10px 16px',
+                            cursor: 'pointer',
+                            backgroundColor: selectedIndex === i ? '#F1F5F9' : 'white',
+                            borderTop: i > 0 ? '1px solid #F1F5F9' : 'none',
+                            transition: 'background-color 0.1s',
+                          }}
+                        >
+                          <div style={{ fontSize: '14px', fontWeight: '500', color: COLORS.graphite }}>{line1}</div>
+                          {line2 && <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '1px' }}>{line2}</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
               <button
                 type="submit"
                 disabled={isSearching}
