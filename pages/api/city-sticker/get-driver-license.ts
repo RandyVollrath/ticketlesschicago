@@ -17,13 +17,8 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const BUCKET_NAME = 'license-images-temp';
 
@@ -33,11 +28,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Authenticate remitter via API key
+    const apiKey = req.headers['x-api-key'] as string;
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Missing API key' });
+    }
+
+    const { data: partner, error: partnerError } = await supabaseAdmin!
+      .from('renewal_partners')
+      .select('id, name')
+      .eq('api_key', apiKey)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (partnerError || !partner) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+
     let { userId, email, side = 'both' } = req.query;
 
     // Allow lookup by email (for remitter portal)
     if (email && typeof email === 'string' && !userId) {
-      const { data: user } = await supabase
+      const { data: user } = await supabaseAdmin!
         .from('user_profiles')
         .select('user_id')
         .eq('email', email)
@@ -57,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get user profile to find license paths
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin!
       .from('user_profiles')
       .select(`
         license_image_path,
@@ -69,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         license_reuse_consent_given
       `)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       console.error('User not found:', userId);
@@ -116,7 +128,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Generate signed URL for FRONT
     if (fetchFront && profile.license_image_path) {
-      const { data: frontSignedUrl, error: frontError } = await supabase.storage
+      const { data: frontSignedUrl, error: frontError } = await supabaseAdmin!.storage
         .from(BUCKET_NAME)
         .createSignedUrl(profile.license_image_path, 172800); // 48 hours
 
@@ -139,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Generate signed URL for BACK
     if (fetchBack && profile.license_image_path_back) {
-      const { data: backSignedUrl, error: backError } = await supabase.storage
+      const { data: backSignedUrl, error: backError } = await supabaseAdmin!.storage
         .from(BUCKET_NAME)
         .createSignedUrl(profile.license_image_path_back, 172800); // 48 hours
 
@@ -163,14 +175,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ⚠️ IMPORTANT: Update last accessed timestamps
     // This triggers 48h deletion countdown for users who opted OUT of multi-year storage
     if (Object.keys(updateData).length > 0) {
-      await supabase
+      await supabaseAdmin!
         .from('user_profiles')
         .update(updateData)
         .eq('user_id', userId);
     }
 
     // 🔍 AUDIT LOG: Record this access for transparency and security monitoring
-    await supabase
+    await (supabaseAdmin as any)
       .from('license_access_log')
       .insert({
         user_id: userId,
