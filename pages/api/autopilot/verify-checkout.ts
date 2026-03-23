@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -139,7 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Verify checkout error:', error);
-    return res.status(500).json({ error: error.message || 'Verification failed' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
 

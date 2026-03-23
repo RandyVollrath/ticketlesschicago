@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { ACTIVE_AUTOPILOT_PLAN, AUTOPILOT_PRICE_ID } from '../../../lib/autopilot-plans';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -143,6 +144,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ url: session.url });
   } catch (error: any) {
     console.error('Checkout error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to create checkout session' });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
