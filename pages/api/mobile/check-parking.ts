@@ -153,7 +153,7 @@ export default async function handler(
   const latitude = parseFloat(lat as string);
   const longitude = parseFloat(lng as string);
 
-  if (isNaN(latitude) || isNaN(longitude)) {
+  if (isNaN(latitude) || isNaN(longitude) || !isFinite(latitude) || !isFinite(longitude)) {
     return res.status(400).json({ error: 'Valid latitude and longitude are required' });
   }
 

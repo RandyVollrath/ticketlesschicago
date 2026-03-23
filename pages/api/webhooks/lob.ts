@@ -265,14 +265,14 @@ async function sendDeliveryNotification(
     .from('detected_tickets')
     .select('ticket_number')
     .eq('id', ticketId)
-    .single();
+    .maybeSingle();
 
   // Get user profile
   const { data: profile } = await supabaseAdmin
     .from('user_profiles')
     .select('first_name')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   const firstName = profile?.first_name || 'there';
   const ticketNumber = ticket?.ticket_number || 'Unknown';

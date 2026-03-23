@@ -120,7 +120,7 @@ export default async function handler(
         .not('address', 'ilike', '%1019 W%Fullerton%')
         .order('parked_at', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
       if (firstRecord) {
         firstParkedAt = firstRecord.parked_at;
       }

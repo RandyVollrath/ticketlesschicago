@@ -147,6 +147,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Payment not successful' });
     }
 
+    // First, fetch the existing payment record to preserve its metadata
+    const { data: existingRecord, error: fetchError } = await supabase
+      .from('renewal_payments')
+      .select('metadata')
+      .eq('stripe_payment_intent_id', paymentIntentId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Error fetching existing payment record:', fetchError);
+      // Continue without existing metadata — better than failing the whole flow
+    }
+
     // Update payment record in database
     const { data: paymentRecord, error: updateError } = await supabase
       .from('renewal_payments')
@@ -154,14 +166,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         payment_status: 'paid',
         paid_at: new Date().toISOString(),
         metadata: {
-          ...paymentRecord?.metadata,
+          ...(existingRecord?.metadata || {}),
           stripe_payment_method: paymentIntent.payment_method,
           stripe_receipt_url: paymentIntent.charges?.data[0]?.receipt_url
         }
       })
       .eq('stripe_payment_intent_id', paymentIntentId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (updateError) {
       console.error('Database update error:', updateError);
@@ -173,7 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('email, first_name, last_name, phone_number')
       .eq('user_id', paymentRecord.user_id)
-      .single();
+      .maybeSingle();
 
     if (!userError && user?.email) {
       // Send confirmation email to customer
