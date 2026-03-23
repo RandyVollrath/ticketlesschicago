@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, Component, ErrorInfo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Component, ErrorInfo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -229,26 +229,16 @@ function TabNavigation({ activeTab, onTabChange }: { activeTab: 'dashboard' | 's
   );
 }
 
-function StatCard({ label, value, subtext, color }: { label: string; value: string | number; subtext?: string; color?: string }) {
+const STAT_CARD_STYLES = {
+  container: { backgroundColor: COLORS.white, borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20, flex: '1 1 150px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
+  label: { fontSize: 12, fontWeight: 600, color: COLORS.textMuted, margin: '0 0 8px 0', textTransform: 'uppercase' as const, letterSpacing: '0.5px' },
+  subtext: { fontSize: 12, color: COLORS.textMuted, margin: '6px 0 0 0' },
+};
+
+const StatCard = React.memo(function StatCard({ label, value, subtext, color }: { label: string; value: string | number; subtext?: string; color?: string }) {
   return (
-    <div style={{
-      backgroundColor: COLORS.white,
-      borderRadius: 12,
-      border: `1px solid ${COLORS.border}`,
-      padding: 20,
-      flex: '1 1 150px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-    }}>
-      <p style={{
-        fontSize: 12,
-        fontWeight: 600,
-        color: COLORS.textMuted,
-        margin: '0 0 8px 0',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px'
-      }}>
-        {label}
-      </p>
+    <div style={STAT_CARD_STYLES.container}>
+      <p style={STAT_CARD_STYLES.label}>{label}</p>
       <p style={{
         fontSize: 32,
         fontWeight: 700,
@@ -258,16 +248,12 @@ function StatCard({ label, value, subtext, color }: { label: string; value: stri
       }}>
         {value}
       </p>
-      {subtext && (
-        <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '6px 0 0 0' }}>
-          {subtext}
-        </p>
-      )}
+      {subtext && <p style={STAT_CARD_STYLES.subtext}>{subtext}</p>}
     </div>
   );
-}
+});
 
-function DashboardContent({
+const DashboardContent = React.memo(function DashboardContent({
   tickets,
   platesMonitored,
   nextCheckDate,
@@ -735,7 +721,7 @@ function DashboardContent({
       )}
     </>
   );
-}
+});
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
   return (
@@ -772,37 +758,37 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   );
 }
 
-function Card({ title, children, badge, greyed, upgradeContent }: { title: string; children: React.ReactNode; badge?: React.ReactNode; greyed?: boolean; upgradeContent?: React.ReactNode }) {
+const CARD_STYLES = {
+  container: { backgroundColor: COLORS.white, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: `1px solid ${COLORS.border}`, marginBottom: 20, overflow: 'hidden' as const },
+  header: { padding: '16px 24px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const },
+  title: { margin: 0, fontFamily: FONTS.heading, fontSize: 18, color: COLORS.primary, fontWeight: 600 },
+  upgradeWrap: { padding: '24px 24px 0' },
+};
+
+const FORM_STYLES = {
+  label: { display: 'block' as const, fontSize: 12, fontWeight: 600, color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase' as const } as React.CSSProperties,
+  labelRequired: (hasValue: boolean): React.CSSProperties => ({ display: 'block', fontSize: 12, fontWeight: 600, color: hasValue ? COLORS.textMuted : COLORS.danger, marginBottom: 6, textTransform: 'uppercase' }),
+  input: { width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${COLORS.border}`, fontSize: 15, color: COLORS.primary, backgroundColor: COLORS.bgLight, boxSizing: 'border-box' as const } as React.CSSProperties,
+  inputDisabled: { width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${COLORS.border}`, fontSize: 15, color: COLORS.textMuted, backgroundColor: COLORS.bgSection, boxSizing: 'border-box' as const } as React.CSSProperties,
+  select: { width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${COLORS.border}`, fontSize: 15, color: COLORS.primary, backgroundColor: COLORS.bgLight, boxSizing: 'border-box' as const, cursor: 'pointer' as const } as React.CSSProperties,
+  fieldGroup: { marginBottom: 16 },
+  row2: { display: 'grid' as const, gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 } as React.CSSProperties,
+  row3: { display: 'grid' as const, gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 } as React.CSSProperties,
+  toggleRow: { display: 'flex' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, padding: '14px 0' } as React.CSSProperties,
+};
+
+const Card = React.memo(function Card({ title, children, badge, greyed, upgradeContent }: { title: string; children: React.ReactNode; badge?: React.ReactNode; greyed?: boolean; upgradeContent?: React.ReactNode }) {
   return (
-    <div style={{
-      backgroundColor: COLORS.white,
-      borderRadius: 12,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-      border: `1px solid ${COLORS.border}`,
-      marginBottom: 20,
-      overflow: 'hidden',
-    }}>
-      <div style={{
-        padding: '16px 24px',
-        borderBottom: `1px solid ${COLORS.border}`,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-        <h3 style={{
-          margin: 0,
-          fontFamily: FONTS.heading,
-          fontSize: 18,
-          color: COLORS.primary,
-          fontWeight: 600,
-        }}>
+    <div style={CARD_STYLES.container}>
+      <div style={CARD_STYLES.header}>
+        <h3 style={CARD_STYLES.title}>
           {title}
         </h3>
         {badge}
       </div>
       {/* Upgrade content is always clickable */}
       {upgradeContent && (
-        <div style={{ padding: '24px 24px 0' }}>
+        <div style={CARD_STYLES.upgradeWrap}>
           {upgradeContent}
         </div>
       )}
@@ -815,7 +801,7 @@ function Card({ title, children, badge, greyed, upgradeContent }: { title: strin
       </div>
     </div>
   );
-}
+});
 
 export default function SettingsPage() {
   return (
@@ -946,6 +932,37 @@ function SettingsPageInner() {
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).has('mobile_access_token')
   );
+
+  // Ref mirror of all form state — lets autoSave read current values with zero deps
+  const formStateRef = useRef({
+    userId: null as string | null, email: '', firstName: '', lastName: '', phone: '',
+    plateNumber: '', plateState: 'IL', isLeased: false,
+    homeAddress: '', ward: null as number | null, section: '', homeCity: 'Chicago', homeState: 'IL', homeZip: '',
+    mailingAddress1: '', mailingAddress2: '', mailingCity: 'Chicago', mailingState: 'IL', mailingZip: '',
+    vin: '', vehicleMake: '', vehicleModel: '', vehicleColor: '', vehicleYear: '',
+    cityStickerExpiry: '', licensePlateExpiry: '', emissionsDate: '',
+    emailNotifications: true, smsNotifications: false, phoneCallNotifications: false,
+    streetCleaningAlerts: true, snowBanAlerts: true, renewalReminders: true,
+    towAlerts: true, dotPermitAlerts: true, allClearAlerts: true, notificationDays: [30, 7, 1] as number[],
+    autoMailEnabled: true, requireApproval: false, allowedTicketTypes: [] as string[],
+    emailOnTicketFound: true, emailOnLetterMailed: true, emailOnApprovalNeeded: true,
+    foiaWaitPreference: 'wait_for_foia' as string, isPaidUser: false,
+  });
+  // Keep ref in sync every render (assignment, not a hook)
+  formStateRef.current = {
+    userId, email, firstName, lastName, phone,
+    plateNumber, plateState, isLeased,
+    homeAddress, ward, section, homeCity, homeState, homeZip,
+    mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip,
+    vin, vehicleMake, vehicleModel, vehicleColor, vehicleYear,
+    cityStickerExpiry, licensePlateExpiry, emissionsDate,
+    emailNotifications, smsNotifications, phoneCallNotifications,
+    streetCleaningAlerts, snowBanAlerts, renewalReminders,
+    towAlerts, dotPermitAlerts, allClearAlerts, notificationDays,
+    autoMailEnabled, requireApproval, allowedTicketTypes,
+    emailOnTicketFound, emailOnLetterMailed, emailOnApprovalNeeded,
+    foiaWaitPreference, isPaidUser,
+  };
 
   useEffect(() => {
     // Check for mobile app auth tokens in query params.
@@ -1236,73 +1253,75 @@ function SettingsPageInner() {
     }
   };
 
+  // autoSave reads from formStateRef — zero deps, never recreated on keystroke
   const autoSave = useCallback(async () => {
-    if (!userId || initialLoadRef.current) return;
+    const s = formStateRef.current;
+    if (!s.userId || initialLoadRef.current) return;
 
     setSaveStatus('saving');
 
-    const plateUpper = plateNumber.toUpperCase().trim();
+    const plateUpper = s.plateNumber.toUpperCase().trim();
 
     // Save to user_profiles - single source of truth
     await supabase
       .from('user_profiles')
       .upsert({
-        user_id: userId,
-        email: email,
-        first_name: firstName || null,
-        last_name: lastName || null,
-        phone: phone || null,
-        phone_number: phone || null, // Legacy field
-        street_address: homeAddress || null,
-        home_address_full: homeAddress || null,
-        home_address_ward: ward ? String(ward) : null,
-        home_address_section: section || null,
-        city: homeCity || 'Chicago',
-        zip_code: homeZip || null,
-        mailing_address: mailingAddress1 || null,
-        mailing_address_2: mailingAddress2 || null,
-        mailing_city: mailingCity || null,
-        mailing_state: mailingState || 'IL',
-        mailing_zip: mailingZip || null,
-        vin: vin || null,
-        vehicle_make: vehicleMake || null,
-        vehicle_model: vehicleModel || null,
-        vehicle_color: vehicleColor || null,
-        vehicle_year: vehicleYear ? parseInt(vehicleYear, 10) || null : null,
+        user_id: s.userId,
+        email: s.email,
+        first_name: s.firstName || null,
+        last_name: s.lastName || null,
+        phone: s.phone || null,
+        phone_number: s.phone || null, // Legacy field
+        street_address: s.homeAddress || null,
+        home_address_full: s.homeAddress || null,
+        home_address_ward: s.ward ? String(s.ward) : null,
+        home_address_section: s.section || null,
+        city: s.homeCity || 'Chicago',
+        zip_code: s.homeZip || null,
+        mailing_address: s.mailingAddress1 || null,
+        mailing_address_2: s.mailingAddress2 || null,
+        mailing_city: s.mailingCity || null,
+        mailing_state: s.mailingState || 'IL',
+        mailing_zip: s.mailingZip || null,
+        vin: s.vin || null,
+        vehicle_make: s.vehicleMake || null,
+        vehicle_model: s.vehicleModel || null,
+        vehicle_color: s.vehicleColor || null,
+        vehicle_year: s.vehicleYear ? parseInt(s.vehicleYear, 10) || null : null,
         license_plate: plateUpper || null,
-        license_state: plateState || 'IL',
-        city_sticker_expiry: cityStickerExpiry || null,
-        license_plate_expiry: licensePlateExpiry || null,
-        emissions_date: emissionsDate || null,
-        notify_email: emailNotifications,
-        notify_sms: smsNotifications,
-        phone_call_enabled: phoneCallNotifications,
-        notify_snow_ban: snowBanAlerts,
-        notify_tow: towAlerts,
-        notify_dot_permits: dotPermitAlerts,
-        notify_days_array: notificationDays,
+        license_state: s.plateState || 'IL',
+        city_sticker_expiry: s.cityStickerExpiry || null,
+        license_plate_expiry: s.licensePlateExpiry || null,
+        emissions_date: s.emissionsDate || null,
+        notify_email: s.emailNotifications,
+        notify_sms: s.smsNotifications,
+        phone_call_enabled: s.phoneCallNotifications,
+        notify_snow_ban: s.snowBanAlerts,
+        notify_tow: s.towAlerts,
+        notify_dot_permits: s.dotPermitAlerts,
+        notify_days_array: s.notificationDays,
         notification_preferences: {
-          email: emailNotifications,
-          sms: smsNotifications,
-          phone_call: phoneCallNotifications,
-          street_cleaning: streetCleaningAlerts,
-          snow_ban: snowBanAlerts,
-          renewals: renewalReminders,
-          tow: towAlerts,
-          dot_permits: dotPermitAlerts,
-          all_clear: allClearAlerts,
-          days_before: notificationDays,
+          email: s.emailNotifications,
+          sms: s.smsNotifications,
+          phone_call: s.phoneCallNotifications,
+          street_cleaning: s.streetCleaningAlerts,
+          snow_ban: s.snowBanAlerts,
+          renewals: s.renewalReminders,
+          tow: s.towAlerts,
+          dot_permits: s.dotPermitAlerts,
+          all_clear: s.allClearAlerts,
+          days_before: s.notificationDays,
         },
-        foia_wait_preference: foiaWaitPreference,
+        foia_wait_preference: s.foiaWaitPreference,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
     // For paid users, also update monitored_plates for ticket checking
-    if (isPaidUser && plateUpper.length >= 2) {
+    if (s.isPaidUser && plateUpper.length >= 2) {
       const { data: existingPlate } = await supabase
         .from('monitored_plates')
         .select('id')
-        .eq('user_id', userId)
+        .eq('user_id', s.userId)
         .maybeSingle();
 
       if (existingPlate) {
@@ -1310,8 +1329,8 @@ function SettingsPageInner() {
           .from('monitored_plates')
           .update({
             plate: plateUpper,
-            state: plateState,
-            is_leased_or_company: isLeased,
+            state: s.plateState,
+            is_leased_or_company: s.isLeased,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existingPlate.id);
@@ -1319,27 +1338,27 @@ function SettingsPageInner() {
         await supabase
           .from('monitored_plates')
           .insert({
-            user_id: userId,
+            user_id: s.userId,
             plate: plateUpper,
-            state: plateState,
-            is_leased_or_company: isLeased,
+            state: s.plateState,
+            is_leased_or_company: s.isLeased,
             status: 'active',
           });
       }
     }
 
     // Save autopilot settings (for ticket type preferences)
-    if (isPaidUser) {
+    if (s.isPaidUser) {
       await supabase
         .from('autopilot_settings')
         .upsert({
-          user_id: userId,
-          auto_mail_enabled: autoMailEnabled,
-          require_approval: requireApproval,
-          allowed_ticket_types: allowedTicketTypes,
-          email_on_ticket_found: emailOnTicketFound,
-          email_on_letter_mailed: emailOnLetterMailed,
-          email_on_approval_needed: emailOnApprovalNeeded,
+          user_id: s.userId,
+          auto_mail_enabled: s.autoMailEnabled,
+          require_approval: s.requireApproval,
+          allowed_ticket_types: s.allowedTicketTypes,
+          email_on_ticket_found: s.emailOnTicketFound,
+          email_on_letter_mailed: s.emailOnLetterMailed,
+          email_on_approval_needed: s.emailOnApprovalNeeded,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
     }
@@ -1351,30 +1370,31 @@ function SettingsPageInner() {
     try {
       (window as any).ReactNativeWebView?.postMessage(JSON.stringify({
         type: 'settings_saved',
-        all_clear: allClearAlerts,
+        all_clear: s.allClearAlerts,
       }));
     } catch (_) {}
-  }, [userId, email, firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
-      mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
-      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, renewalReminders, dotPermitAlerts, allClearAlerts, notificationDays,
-      autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
-      emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference, isPaidUser]);
+  }, []); // Zero deps — reads from formStateRef
 
-  useEffect(() => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      autoSave();
-    }, 1500);
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
+  // Generation counter: increments whenever any form field changes
+  const saveGenRef = useRef(0);
+  const prevSaveGenRef = useRef(0);
+  useEffect(() => { saveGenRef.current += 1; }, [firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
       cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
       streetCleaningAlerts, snowBanAlerts, renewalReminders, dotPermitAlerts, allClearAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
-      emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference, autoSave]);
+      emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference]);
+
+  // Debounced save: polls generation counter every 1.5s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (saveGenRef.current !== prevSaveGenRef.current) {
+        prevSaveGenRef.current = saveGenRef.current;
+        autoSave();
+      }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [autoSave]);
 
   // Auto-enable SMS when phone number is first entered
   useEffect(() => {
@@ -1942,96 +1962,25 @@ function SettingsPageInner() {
               }}
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div style={FORM_STYLES.row2}>
             <div>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                marginBottom: 6,
-                textTransform: 'uppercase',
-              }}>
-                First Name
-              </label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="John"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                }}
-              />
+              <label style={FORM_STYLES.label}>First Name</label>
+              <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" style={FORM_STYLES.input} />
             </div>
             <div>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: !lastName.trim() ? COLORS.danger : COLORS.textMuted,
-                marginBottom: 6,
-                textTransform: 'uppercase',
-              }}>
+              <label style={FORM_STYLES.labelRequired(!!lastName.trim())}>
                 Last Name <span style={{ color: COLORS.danger, fontSize: 10 }}>*REQUIRED</span>
               </label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Doe"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${!lastName.trim() ? COLORS.danger : COLORS.border}`,
-                  fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                }}
-              />
+              <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe"
+                style={{ ...FORM_STYLES.input, border: `1px solid ${!lastName.trim() ? COLORS.danger : COLORS.border}` }} />
               {!lastName.trim() && (
-                <p style={{ margin: '6px 0 0', fontSize: 12, color: COLORS.danger }}>
-                  Required for ticket searches
-                </p>
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: COLORS.danger }}>Required for ticket searches</p>
               )}
             </div>
           </div>
           <div>
-            <label style={{
-              display: 'block',
-              fontSize: 12,
-              fontWeight: 600,
-              color: COLORS.textMuted,
-              marginBottom: 6,
-              textTransform: 'uppercase',
-            }}>
-              Phone Number (for SMS alerts)
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+1 (555) 123-4567"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 8,
-                border: `1px solid ${COLORS.border}`,
-                fontSize: 15,
-                color: COLORS.primary,
-                backgroundColor: COLORS.bgLight,
-                boxSizing: 'border-box',
-              }}
-            />
+            <label style={FORM_STYLES.label}>Phone Number (for SMS alerts)</label>
+            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 123-4567" style={FORM_STYLES.input} />
           </div>
         </Card>
 
@@ -2106,123 +2055,23 @@ function SettingsPageInner() {
             {/* Vehicle Make / Model / Color — used for camera ticket vehicle mismatch detection */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: COLORS.textMuted,
-                  marginBottom: 6,
-                  textTransform: 'uppercase',
-                }}>
-                  Make
-                </label>
-                <input
-                  type="text"
-                  value={vehicleMake}
-                  onChange={(e) => setVehicleMake(e.target.value)}
-                  placeholder="e.g. Toyota"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`,
-                    fontSize: 14,
-                    color: COLORS.primary,
-                    backgroundColor: COLORS.bgLight,
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <label style={FORM_STYLES.label}>Make</label>
+                <input type="text" value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} placeholder="e.g. Toyota" style={FORM_STYLES.input} />
               </div>
               <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: COLORS.textMuted,
-                  marginBottom: 6,
-                  textTransform: 'uppercase',
-                }}>
-                  Model
-                </label>
-                <input
-                  type="text"
-                  value={vehicleModel}
-                  onChange={(e) => setVehicleModel(e.target.value)}
-                  placeholder="e.g. Corolla"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`,
-                    fontSize: 14,
-                    color: COLORS.primary,
-                    backgroundColor: COLORS.bgLight,
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <label style={FORM_STYLES.label}>Model</label>
+                <input type="text" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} placeholder="e.g. Corolla" style={FORM_STYLES.input} />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: COLORS.textMuted,
-                  marginBottom: 6,
-                  textTransform: 'uppercase',
-                }}>
-                  Color
-                </label>
-                <input
-                  type="text"
-                  value={vehicleColor}
-                  onChange={(e) => setVehicleColor(e.target.value)}
-                  placeholder="e.g. Silver"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`,
-                    fontSize: 14,
-                    color: COLORS.primary,
-                    backgroundColor: COLORS.bgLight,
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <label style={FORM_STYLES.label}>Color</label>
+                <input type="text" value={vehicleColor} onChange={(e) => setVehicleColor(e.target.value)} placeholder="e.g. Silver" style={FORM_STYLES.input} />
               </div>
               <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: COLORS.textMuted,
-                  marginBottom: 6,
-                  textTransform: 'uppercase',
-                }}>
-                  Year
-                </label>
-                <input
-                  type="text"
-                  value={vehicleYear}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                    setVehicleYear(val);
-                  }}
-                  placeholder="e.g. 2020"
-                  inputMode="numeric"
-                  maxLength={4}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`,
-                    fontSize: 14,
-                    color: COLORS.primary,
-                    backgroundColor: COLORS.bgLight,
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <label style={FORM_STYLES.label}>Year</label>
+                <input type="text" value={vehicleYear} onChange={(e) => { const val = e.target.value.replace(/\D/g, '').slice(0, 4); setVehicleYear(val); }}
+                  placeholder="e.g. 2020" inputMode="numeric" maxLength={4} style={FORM_STYLES.input} />
               </div>
             </div>
             {(!vehicleMake || !vehicleModel || !vehicleColor) && (
@@ -2233,34 +2082,9 @@ function SettingsPageInner() {
 
             {/* VIN */}
             <div>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                marginBottom: 8,
-                textTransform: 'uppercase',
-              }}>
-                VIN (optional)
-              </label>
-              <input
-                type="text"
-                value={vin}
-                onChange={(e) => setVin(e.target.value.toUpperCase())}
-                placeholder="1HGBH41JXMN109186"
-                maxLength={17}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  fontSize: 14,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                  fontFamily: 'monospace',
-                }}
-              />
+              <label style={FORM_STYLES.label}>VIN (optional)</label>
+              <input type="text" value={vin} onChange={(e) => setVin(e.target.value.toUpperCase())} placeholder="1HGBH41JXMN109186"
+                maxLength={17} style={{ ...FORM_STYLES.input, fontFamily: 'monospace' }} />
             </div>
           </div>
         </Card>
