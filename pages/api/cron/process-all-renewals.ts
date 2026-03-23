@@ -441,7 +441,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('charge_type', 'sticker_renewal')
           .eq('renewal_due_date', customer.city_sticker_expiry)
           .eq('status', 'succeeded')
-          .single();
+          .maybeSingle();
 
         if (existingCharge) {
           console.log(`Already processed renewal for customer ${customer.user_id}`);
@@ -470,7 +470,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('failure_code', 'profile_not_confirmed')
             .eq('renewal_due_date', customer.city_sticker_expiry)
             .gte('failed_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
-            .single();
+            .maybeSingle();
 
           if (!recentReminder) {
             // Log the waiting status
@@ -1108,7 +1108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('charge_type', 'license_plate_renewal')
           .eq('renewal_due_date', customer.license_plate_expiry)
           .eq('status', 'succeeded')
-          .single();
+          .maybeSingle();
 
         if (existingCharge) {
           console.log(`Already processed license plate renewal for customer ${customer.user_id}`);
@@ -1131,7 +1131,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('failure_code', 'profile_not_confirmed')
             .eq('renewal_due_date', customer.license_plate_expiry)
             .gte('failed_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
-            .single();
+            .maybeSingle();
 
           if (!recentPlateReminder) {
             await supabase.from('renewal_charges').insert({

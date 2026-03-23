@@ -423,7 +423,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
     .from('autopilot_settings')
     .select('email_on_ticket_found')
     .eq('user_id', plate.user_id)
-    .single();
+    .maybeSingle();
 
   const emailEnabled = settings?.email_on_ticket_found !== false;
 
@@ -434,7 +434,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
     .from('user_profiles')
     .select('first_name, last_name, mailing_address, mailing_city, mailing_state, mailing_zip')
     .eq('user_id', plate.user_id)
-    .single();
+    .maybeSingle();
 
   const userProfile: UserProfile = {
     full_name: `${profileData?.first_name || ''} ${profileData?.last_name || ''}`.trim() || 'Vehicle Owner',

@@ -57,7 +57,7 @@ export default async function handler(
         .eq('user_id', user.user_id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       const hasApprovedDocs = permitDoc &&
         permitDoc.verification_status === 'approved' &&

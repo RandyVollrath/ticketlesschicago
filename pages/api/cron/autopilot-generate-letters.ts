@@ -2234,7 +2234,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
     .from('user_profiles')
     .select('*')
     .eq('user_id', ticket.user_id)
-    .single();
+    .maybeSingle();
 
   // Get user email
   const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(ticket.user_id);
@@ -2257,7 +2257,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
     .from('autopilot_settings')
     .select('*')
     .eq('user_id', ticket.user_id)
-    .single();
+    .maybeSingle();
 
   const userSettings: UserSettings = {
     auto_mail_enabled: settings?.auto_mail_enabled ?? false,

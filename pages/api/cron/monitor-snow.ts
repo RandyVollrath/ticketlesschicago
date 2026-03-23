@@ -70,7 +70,7 @@ export default async function handler(
       .select('*')
       .eq('is_active', true)
       .gte('event_date', today)
-      .single();
+      .maybeSingle();
 
     // If no active event, skip full check (except on hourly runs at :00 or :30)
     const currentMinute = new Date().getMinutes();
@@ -126,7 +126,7 @@ export default async function handler(
         .from('snow_events')
         .select('*')
         .eq('event_date', today)
-        .single();
+        .maybeSingle();
 
       // Also check for recent active events from yesterday that may be the same storm
       // This prevents duplicate notifications when a storm spans midnight
@@ -140,7 +140,7 @@ export default async function handler(
         .eq('event_date', yesterdayStr)
         .eq('is_active', true)
         .eq('forecast_sent', true)
-        .single();
+        .maybeSingle();
 
       // If there's a recent event from yesterday with the same forecast period,
       // don't create a new one - it's the same storm
@@ -233,7 +233,7 @@ export default async function handler(
         .from('snow_events')
         .select('*')
         .eq('id', event?.id)
-        .single();
+        .maybeSingle();
 
       const alreadySentForecast = eventCheck?.forecast_sent;
       const alreadySentConfirmation = eventCheck?.two_inch_ban_triggered;

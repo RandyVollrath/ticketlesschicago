@@ -167,7 +167,7 @@ export default async function handler(
       .select('source_updated_at')
       .order('source_updated_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     const lastUpdated = latestRecord?.source_updated_at || 'unknown';
     const daysSinceUpdate = lastUpdated !== 'unknown'
