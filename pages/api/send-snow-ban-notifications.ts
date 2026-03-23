@@ -4,6 +4,7 @@ import { getUsersOnSnowRoutes } from '../../lib/snow-route-matcher';
 import { sendClickSendSMS } from '../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, steps, esc } from '../../lib/email-template';
+import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 
 const BRAND = {
   name: 'Autopilot America',
@@ -305,7 +306,7 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
         .insert({
           user_id: userId,
           snow_event_id: snowEvent.id,
-          notification_date: new Date().toISOString().split('T')[0],
+          notification_date: getChicagoDateISO(),
           notification_type: notificationType,
           channels,
           status: 'sent'

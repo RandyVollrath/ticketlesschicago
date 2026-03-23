@@ -244,11 +244,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // Log the request for debugging
+  // Log the request for debugging (metadata only — never log full body/email content)
   console.log('🔔 Webhook received:', {
     method: req.method,
     url: req.url,
-    body: req.body,
+    type: req.body?.type,
+    from: req.body?.data?.from,
+    to: req.body?.data?.to,
+    subject: req.body?.data?.subject,
+    attachments: req.body?.data?.attachments?.length || 0,
   });
 
   if (req.method !== 'POST') {
@@ -266,7 +270,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const payload: ResendInboundPayload = req.body;
 
-    console.log('📦 Received payload:', JSON.stringify(payload, null, 2));
+    console.log('📦 Received payload:', { type: payload.type, email_id: payload.data?.email_id, from: payload.data?.from, to: payload.data?.to, subject: payload.data?.subject });
 
     // Verify it's an email.received event
     if (payload.type !== 'email.received') {
@@ -549,6 +553,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (isRegistrationEvidenceReceipt) {
+      // Idempotency: skip if this email was already processed (webhook retry protection)
+      const { count: existingCount } = await supabase
+        .from('registration_evidence_receipts' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('email_subject', email.subject || '')
+        .eq('forwarded_at', payload.created_at || new Date().toISOString());
+
+      if (existingCount && existingCount > 0) {
+        console.log(`⏭️ Duplicate receipt forwarding detected for user ${userId} — skipping`);
+        return res.status(200).json({ success: true, message: 'Already processed (duplicate)', userId });
+      }
+
       const parsed = parseReceiptMetadata(email.subject || '', email.text || null, evidenceSource);
       let screenshotPath: string | null = null;
       try {

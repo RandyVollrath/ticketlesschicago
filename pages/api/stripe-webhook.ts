@@ -1669,6 +1669,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .maybeSingle();
 
           if (existingSub) {
+            // Idempotency: check if already activated by a previous webhook delivery
+            const { data: currentSub } = await supabaseAdmin
+              .from('autopilot_subscriptions')
+              .select('status, stripe_subscription_id')
+              .eq('user_id', supabaseUserId)
+              .maybeSingle();
+
+            if (currentSub?.status === 'active' && currentSub?.stripe_subscription_id === subscriptionId) {
+              console.log('🤖 Autopilot subscription already active (idempotent), skipping');
+              break;
+            }
+
             console.log('🤖 Found Autopilot subscription, updating to active');
 
             // Get subscription details from Stripe
@@ -2581,7 +2593,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .maybeSingle();
 
           if (profileLookupError) {
-            console.error('Failed to find user profile for subscription sync:', profileLookupError);
+            console.error('🚨 CRITICAL: Failed to find user profile for subscription sync:', profileLookupError);
+            // Return 500 so Stripe retries — without this, is_paid stays stale forever
+            return res.status(500).json({ error: 'Failed to look up user profile for subscription sync' });
           }
 
           if (userProfile) {

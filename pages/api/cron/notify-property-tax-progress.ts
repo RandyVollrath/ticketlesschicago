@@ -15,6 +15,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendResendEmail } from '../../../lib/fetch-with-timeout';
 import { formatPin } from '../../../lib/cook-county-api';
+import { getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         appeal_strategy, estimated_tax_savings
       `)
       .eq('stage', 'bor_filed')
-      .gte('bor_hearing_date', new Date().toISOString().split('T')[0])
+      .gte('bor_hearing_date', getChicagoDateISO())
       .lte('bor_hearing_date', threeDaysStr);
 
     if (upcomingHearings && upcomingHearings.length > 0) {

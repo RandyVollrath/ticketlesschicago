@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { isAddressOnSnowRoute } from '../../lib/snow-route-matcher';
 import { isAddressOnWinterBan } from '../../lib/winter-ban-matcher';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 
 // MyStreetCleaning database for PostGIS queries (has the geospatial data)
 // Uses environment variables - set MSC_SUPABASE_URL and MSC_SUPABASE_ANON_KEY in .env
@@ -314,7 +315,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`✅ Successfully found Ward ${foundWard}, Section ${foundSection} (${matchType} match)`);
 
     // Get cleaning dates (single or range based on parameters)
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getChicagoDateISO();
     let scheduleEntries = null;
     let scheduleError = null;
     let datesInRange = null;
