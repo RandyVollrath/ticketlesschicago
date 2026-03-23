@@ -53,10 +53,35 @@ export default async function handler(
       validated[key] = value;
     }
 
+    if (Object.keys(validated).length === 0) {
+      return res.status(400).json({ error: 'No valid alert preferences provided' });
+    }
+
+    // Fetch existing preferences so we MERGE (not replace) — prevents data loss
+    // when the user toggles one alert type and we have other types stored.
+    let existing: Record<string, boolean> = {};
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('push_alert_preferences')
+        .eq('id', user.id)
+        .single();
+      if (profile?.push_alert_preferences && typeof profile.push_alert_preferences === 'object') {
+        existing = profile.push_alert_preferences as Record<string, boolean>;
+      }
+    } catch {
+      // Profile might not exist yet — will be handled by upsert below
+    }
+
+    const merged = { ...existing, ...validated };
+
+    // Upsert: handles the case where user has no profile row yet
     const { error: updateError } = await supabaseAdmin
       .from('user_profiles')
-      .update({ push_alert_preferences: validated })
-      .eq('id', user.id);
+      .upsert(
+        { id: user.id, push_alert_preferences: merged },
+        { onConflict: 'id' }
+      );
 
     if (updateError) {
       console.error('Error updating push alert settings:', updateError);
