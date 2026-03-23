@@ -15,9 +15,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Verify cron secret for security
-  const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
-  if (cronSecret !== process.env.CRON_SECRET && process.env.NODE_ENV === 'production') {
+  // Verify cron secret for security (header only — never accept secrets in query params which get logged)
+  const cronSecret = req.headers['x-cron-secret'] || req.headers.authorization?.replace('Bearer ', '');
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  if (!isVercelCron && cronSecret !== process.env.CRON_SECRET && process.env.NODE_ENV === 'production') {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

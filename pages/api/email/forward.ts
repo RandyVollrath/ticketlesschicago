@@ -1,6 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { notificationService } from '../../../lib/notifications';
 import { supabaseAdmin } from '../../../lib/supabase';
+import crypto from 'crypto';
+
+/** Escape HTML special characters to prevent XSS in email bodies */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 interface ParsedEmailData {
   name: string;
@@ -186,15 +197,10 @@ async function generateSignupToken(data: ParsedEmailData): Promise<string> {
 }
 
 /**
- * Generate random token
+ * Generate cryptographically secure random token
  */
 function generateRandomToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return crypto.randomBytes(24).toString('hex'); // 48 chars, 192 bits entropy
 }
 
 /**
@@ -219,9 +225,9 @@ async function sendSignupEmail(data: ParsedEmailData, token: string) {
         </p>
 
         <div style="background: #f0f9ff; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
-          <strong style="color: #1e40af;">Vehicle:</strong> ${data.make} ${data.model}<br>
-          <strong style="color: #1e40af;">Plate:</strong> ${data.plate}<br>
-          <strong style="color: #1e40af;">VIN:</strong> ${data.vin}<br>
+          <strong style="color: #1e40af;">Vehicle:</strong> ${escapeHtml(data.make)} ${escapeHtml(data.model)}<br>
+          <strong style="color: #1e40af;">Plate:</strong> ${escapeHtml(data.plate)}<br>
+          <strong style="color: #1e40af;">VIN:</strong> ${escapeHtml(data.vin)}<br>
           <strong style="color: #1e40af;">City Sticker Renewal:</strong> ${new Date(data.renewalDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
 
@@ -311,9 +317,9 @@ async function sendVehicleAddLink(data: ParsedEmailData) {
         </p>
 
         <div style="background: #f0f9ff; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
-          <strong style="color: #1e40af;">Vehicle:</strong> ${data.make} ${data.model}<br>
-          <strong style="color: #1e40af;">Plate:</strong> ${data.plate}<br>
-          <strong style="color: #1e40af;">VIN:</strong> ${data.vin}<br>
+          <strong style="color: #1e40af;">Vehicle:</strong> ${escapeHtml(data.make)} ${escapeHtml(data.model)}<br>
+          <strong style="color: #1e40af;">Plate:</strong> ${escapeHtml(data.plate)}<br>
+          <strong style="color: #1e40af;">VIN:</strong> ${escapeHtml(data.vin)}<br>
           <strong style="color: #1e40af;">City Sticker Renewal:</strong> ${new Date(data.renewalDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
 
