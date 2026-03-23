@@ -12,9 +12,27 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const ADMIN_EMAILS = [
+  'randy@autopilotamerica.com',
+  'admin@autopilotamerica.com',
+  'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
+];
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Auth: verify admin
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing authorization' });
+  }
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+  if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
+    return res.status(403).json({ error: 'Not authorized' });
   }
 
   try {

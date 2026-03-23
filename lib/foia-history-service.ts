@@ -138,7 +138,7 @@ export async function sendTicketHistoryFoiaEmail(params: {
       to: [CHICAGO_FOIA_EMAIL],
       subject,
       text: body,
-      reply_to: params.email,
+      reply_to: 'foia@autopilotamerica.com',
       headers: {
         'X-Entity-Ref-ID': params.referenceId || `foia-history-${params.licenseState}-${params.licensePlate}-${Date.now()}`,
       },
