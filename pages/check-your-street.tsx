@@ -254,6 +254,9 @@ export default function CheckYourStreet() {
             .nav-mobile { display: flex !important; }
             .search-form { flex-direction: column !important; }
             .date-grid { grid-template-columns: 1fr !important; }
+            .stat-grid-3 { grid-template-columns: 1fr !important; }
+            .block-headline { font-size: 28px !important; }
+            .savings-cta-row { flex-direction: column !important; text-align: center !important; }
           }
           .nav-mobile { display: none; }
         `}</style>
@@ -301,7 +304,6 @@ export default function CheckYourStreet() {
         </div>
 
         <div className="nav-desktop" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-          <a href="/start" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Get Started</a>
           <button onClick={() => router.push('/login')} style={{
             backgroundColor: COLORS.regulatory,
             color: 'white',
@@ -354,9 +356,17 @@ export default function CheckYourStreet() {
             fontSize: '20px',
             color: COLORS.slate,
             lineHeight: '1.6',
-            margin: '0 0 40px 0'
+            margin: '0 0 12px 0'
           }}>
             Find out when your street will be cleaned next — instantly.
+          </p>
+          <p style={{
+            fontSize: '14px',
+            color: 'rgba(148,163,184,0.7)',
+            lineHeight: '1.5',
+            margin: '0 0 40px 0'
+          }}>
+            Powered by 26.8 million Chicago ticket records (FOIA 2019-2024)
           </p>
 
           {/* Search Form */}
@@ -562,17 +572,6 @@ export default function CheckYourStreet() {
 
             {/* === ACTION ROW === */}
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
-              <button
-                onClick={() => router.push(`/start`)}
-                style={{
-                  backgroundColor: COLORS.regulatory, color: 'white', border: 'none', borderRadius: '10px',
-                  padding: '10px 18px', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: '6px'
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                Get Started
-              </button>
               {searchResult.nextCleaningDate && (
                 <button
                   onClick={() => handleDownloadCalendar(searchResult.ward, searchResult.section)}
@@ -639,139 +638,207 @@ export default function CheckYourStreet() {
               </div>
             )}
 
-            {/* === BLOCK STATS (compact, expandable) === */}
-            {blockStats && (
-              <div style={{
-                backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px',
-                marginBottom: '16px', overflow: 'hidden',
-              }}>
-                {/* Stats header — always visible */}
-                <div
-                  onClick={() => setStatsExpanded(!statsExpanded)}
-                  style={{
-                    padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ display: 'flex', gap: '20px' }}>
-                      <div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                          {blockStats.total_tickets?.toLocaleString() || '0'}
-                        </div>
-                        <div style={{ fontSize: '11px', color: COLORS.slate }}>tickets</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: COLORS.danger, fontFamily: '"Space Grotesk", sans-serif' }}>
-                          ${blockStats.total_fines ? Math.round(blockStats.total_fines).toLocaleString() : '0'}
-                        </div>
-                        <div style={{ fontSize: '11px', color: COLORS.slate }}>in fines</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                          ~{blockStats.avg_tickets_per_year?.toLocaleString() || '0'}/yr
-                        </div>
-                        <div style={{ fontSize: '11px', color: COLORS.slate }}>on this block</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '12px', color: COLORS.slate }}>FOIA 2019-24</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="2" style={{ transform: statsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-                      <path d="M6 9l6 6 6-6"/>
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Expanded details */}
-                {statsExpanded && (
-                  <div style={{ padding: '0 20px 20px', borderTop: `1px solid ${COLORS.border}` }}>
-                    {/* Insight */}
-                    {blockStats.insight && (
-                      <div style={{
-                        padding: '10px 14px', marginTop: '16px',
-                        backgroundColor: (blockStats.avg_tickets_per_year || 0) > 200 ? 'rgba(239,68,68,0.05)' : 'rgba(37,99,235,0.05)',
-                        borderRadius: '8px', fontSize: '14px', lineHeight: '1.5', color: COLORS.graphite, fontWeight: '500',
-                      }}>
-                        {blockStats.insight}
-                      </div>
-                    )}
-
-                    {/* Top violations */}
-                    {blockStats.by_category?.length > 0 && (
-                      <div style={{ marginTop: '14px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Top Violations</div>
-                        {blockStats.by_category.slice(0, 4).map((cat: any, i: number) => {
-                          const pct = Math.round((cat.tickets / blockStats.total_tickets) * 100);
-                          return (
-                            <div key={i} style={{ marginBottom: '6px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '3px' }}>
-                                <span style={{ color: COLORS.graphite, fontWeight: '500' }}>{cat.label}</span>
-                                <span style={{ color: COLORS.slate }}>{pct}%</span>
-                              </div>
-                              <div style={{ height: '4px', backgroundColor: COLORS.concrete, borderRadius: '2px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: i === 0 ? COLORS.danger : i === 1 ? COLORS.warning : COLORS.regulatory, borderRadius: '2px' }} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Peak hours */}
-                    {blockStats.peak_hours?.length > 0 && (
-                      <div style={{ marginTop: '14px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Peak Enforcement</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {blockStats.peak_hours.slice(0, 4).map((ph: any, i: number) => {
-                            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                            const h = ph.hour; const ampm = h < 12 ? 'AM' : 'PM'; const dh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-                            return (<span key={i} style={{ padding: '3px 8px', backgroundColor: COLORS.concrete, borderRadius: '4px', fontSize: '12px', color: COLORS.graphite, fontWeight: '500' }}>{dayNames[ph.day_of_week]} {dh}{ampm}</span>);
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Alerts note */}
-                    {blockStats.alertable_tickets > 0 && (
-                      <div style={{ marginTop: '14px', fontSize: '13px', color: COLORS.slate }}>
-                        Autopilot America could have prevented{' '}
-                        {blockStats.alertable_tickets >= blockStats.total_tickets
-                          ? 'all of them'
-                          : `${blockStats.alertable_tickets.toLocaleString()} of these tickets`}.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* === PROTECTION CTA (compact) === */}
-            {blockStats?.avg_fines_per_year > 0 && (() => {
-              const avgFines = Math.round(blockStats.avg_fines_per_year);
+            {/* === BLOCK STATS — Full Ticket Intelligence === */}
+            {blockStats && (() => {
+              // Parse block_id into human-readable range (e.g., "2100 N SHEFFIELD" → "2100-2199 N Sheffield")
+              const blockId = blockStats.block_id || '';
+              const blockMatch = blockId.match(/^(\d+)\s+(.+)$/);
+              const blockNum = blockMatch ? parseInt(blockMatch[1], 10) : 0;
+              const blockStreet = blockMatch ? blockMatch[2] : blockId;
+              const blockRangeLabel = blockNum > 0
+                ? `${blockNum}-${blockNum + 99} ${blockStreet.split(' ').map((w: string) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')}`
+                : blockId;
+              const yearsLabel = blockStats.by_year?.length > 0
+                ? `${Math.min(...blockStats.by_year.map((y: any) => y.year))}-${Math.max(...blockStats.by_year.map((y: any) => y.year))}`
+                : '2019-2024';
+              const avgFines = blockStats.avg_fines_per_year ? Math.round(blockStats.avg_fines_per_year) : 0;
               const potentialSavings = Math.round(avgFines * 0.685);
+
               return (
-                <div style={{
-                  background: 'linear-gradient(135deg, #0F172A 0%, #1a2744 100%)',
-                  borderRadius: '12px', padding: '20px', marginBottom: '16px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  flexWrap: 'wrap', gap: '12px',
-                }}>
-                  <div>
-                    <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', fontWeight: '500', marginBottom: '4px' }}>
-                      {avgFines >= 100
-                        ? <><span style={{ color: '#FCA5A5', fontWeight: '700' }}>${avgFines.toLocaleString()}/yr</span> in fines here — save up to <span style={{ color: '#6EE7B7', fontWeight: '700' }}>${potentialSavings.toLocaleString()}</span></>
-                        : <>68.5% of tickets get dismissed when contested. One win pays for a year.</>
-                      }
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>We auto-contest every ticket on your plate. $49/yr.</div>
-                  </div>
-                  <button onClick={() => router.push('/get-started')} style={{
-                    backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '8px',
-                    padding: '10px 20px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+                <>
+                  {/* Hero stat card */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+                    borderRadius: '16px', padding: '28px 24px', marginBottom: '16px',
+                    position: 'relative', overflow: 'hidden',
                   }}>
-                    Start Auto-Contesting
-                  </button>
-                </div>
+                    {/* Subtle grid background */}
+                    <div style={{
+                      position: 'absolute', inset: 0, opacity: 0.06, pointerEvents: 'none',
+                      backgroundImage: 'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
+                      backgroundSize: '40px 40px',
+                    }} />
+
+                    <div style={{ position: 'relative' }}>
+                      {/* Block label */}
+                      <div style={{
+                        display: 'inline-block', padding: '4px 10px', borderRadius: '6px',
+                        backgroundColor: 'rgba(37,99,235,0.15)', fontSize: '12px', fontWeight: '600',
+                        color: '#93C5FD', letterSpacing: '0.03em', marginBottom: '16px',
+                      }}>
+                        BLOCK REPORT: {blockRangeLabel.toUpperCase()}
+                      </div>
+
+                      {/* Big headline number */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <div className="block-headline" style={{
+                          fontSize: '42px', fontWeight: '800', color: 'white',
+                          fontFamily: '"Space Grotesk", sans-serif', letterSpacing: '-2px', lineHeight: '1',
+                        }}>
+                          {blockStats.total_tickets?.toLocaleString() || '0'} tickets
+                        </div>
+                        <div style={{
+                          fontSize: '16px', color: 'rgba(255,255,255,0.6)', marginTop: '6px', lineHeight: '1.4',
+                        }}>
+                          <span style={{ color: '#FCA5A5', fontWeight: '700' }}>${blockStats.total_fines ? Math.round(blockStats.total_fines).toLocaleString() : '0'}</span> in fines issued on this block from {yearsLabel}
+                        </div>
+                      </div>
+
+                      {/* Three stat boxes */}
+                      <div className="stat-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                        <div style={{
+                          backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#FCA5A5', fontFamily: '"Space Grotesk", sans-serif' }}>
+                            ~${avgFines > 0 ? avgFines.toLocaleString() : '0'}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>fines per year</div>
+                        </div>
+                        <div style={{
+                          backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: 'white', fontFamily: '"Space Grotesk", sans-serif' }}>
+                            ~{blockStats.avg_tickets_per_year?.toLocaleString() || '0'}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>tickets per year</div>
+                        </div>
+                        <div style={{
+                          backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#6EE7B7', fontFamily: '"Space Grotesk", sans-serif' }}>
+                            {potentialSavings > 0 ? `$${potentialSavings.toLocaleString()}` : '--'}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>potential savings</div>
+                        </div>
+                      </div>
+
+                      {/* Savings CTA — only if meaningful fines */}
+                      {avgFines >= 50 && (
+                        <div className="savings-cta-row" style={{
+                          backgroundColor: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',
+                          borderRadius: '10px', padding: '14px 18px', marginBottom: '16px',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          flexWrap: 'wrap', gap: '12px',
+                        }}>
+                          <div>
+                            <div style={{ fontSize: '15px', color: 'white', fontWeight: '600', lineHeight: '1.4' }}>
+                              {avgFines >= 200
+                                ? <>This block averages <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines. We could save you up to <span style={{ color: '#6EE7B7' }}>${potentialSavings.toLocaleString()}/yr</span>.</>
+                                : <>68.5% of contested tickets get dismissed. At <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines, one win pays for itself.</>
+                              }
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
+                              We automatically contest every ticket on your plate. $49/yr.
+                            </div>
+                          </div>
+                          <button onClick={() => router.push('/get-started')} style={{
+                            backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '8px',
+                            padding: '12px 24px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+                          }}>
+                            Start Auto-Contesting
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Data source badge */}
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        fontSize: '11px', color: 'rgba(255,255,255,0.35)',
+                      }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Source: City of Chicago FOIA F118906-110325 &middot; 26.8M tickets ({yearsLabel})
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detailed breakdown — expandable */}
+                  <div style={{
+                    backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px',
+                    marginBottom: '16px', overflow: 'hidden',
+                  }}>
+                    <div
+                      onClick={() => setStatsExpanded(!statsExpanded)}
+                      style={{
+                        padding: '14px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      }}
+                    >
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: COLORS.graphite }}>Violation Breakdown &amp; Enforcement Patterns</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.slate} strokeWidth="2" style={{ transform: statsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                        <path d="M6 9l6 6 6-6"/>
+                      </svg>
+                    </div>
+
+                    {statsExpanded && (
+                      <div style={{ padding: '0 20px 20px', borderTop: `1px solid ${COLORS.border}` }}>
+                        {/* Insight */}
+                        {blockStats.insight && (
+                          <div style={{
+                            padding: '10px 14px', marginTop: '16px',
+                            backgroundColor: (blockStats.avg_tickets_per_year || 0) > 200 ? 'rgba(239,68,68,0.05)' : 'rgba(37,99,235,0.05)',
+                            borderRadius: '8px', fontSize: '14px', lineHeight: '1.5', color: COLORS.graphite, fontWeight: '500',
+                          }}>
+                            {blockStats.insight}
+                          </div>
+                        )}
+
+                        {/* Top violations */}
+                        {blockStats.by_category?.length > 0 && (
+                          <div style={{ marginTop: '14px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Top Violations</div>
+                            {blockStats.by_category.slice(0, 4).map((cat: any, i: number) => {
+                              const pct = Math.round((cat.tickets / blockStats.total_tickets) * 100);
+                              return (
+                                <div key={i} style={{ marginBottom: '6px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '3px' }}>
+                                    <span style={{ color: COLORS.graphite, fontWeight: '500' }}>{cat.label}</span>
+                                    <span style={{ color: COLORS.slate }}>{pct}%</span>
+                                  </div>
+                                  <div style={{ height: '4px', backgroundColor: COLORS.concrete, borderRadius: '2px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${pct}%`, backgroundColor: i === 0 ? COLORS.danger : i === 1 ? COLORS.warning : COLORS.regulatory, borderRadius: '2px' }} />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Peak hours */}
+                        {blockStats.peak_hours?.length > 0 && (
+                          <div style={{ marginTop: '14px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Peak Enforcement</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {blockStats.peak_hours.slice(0, 4).map((ph: any, i: number) => {
+                                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                                const h = ph.hour; const ampm = h < 12 ? 'AM' : 'PM'; const dh = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                                return (<span key={i} style={{ padding: '3px 8px', backgroundColor: COLORS.concrete, borderRadius: '4px', fontSize: '12px', color: COLORS.graphite, fontWeight: '500' }}>{dayNames[ph.day_of_week]} {dh}{ampm}</span>);
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Alertable note */}
+                        {blockStats.alertable_tickets > 0 && (
+                          <div style={{ marginTop: '14px', fontSize: '13px', color: COLORS.slate }}>
+                            Autopilot America could have prevented{' '}
+                            {blockStats.alertable_tickets >= blockStats.total_tickets
+                              ? 'all of them'
+                              : `${blockStats.alertable_tickets.toLocaleString()} of these tickets`}.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
               );
             })()}
           </div>
@@ -814,14 +881,14 @@ export default function CheckYourStreet() {
           borderRadius: '12px', textAlign: 'center',
         }}>
           <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', margin: '0 0 8px', fontFamily: '"Space Grotesk", sans-serif' }}>
-            Never worry about street cleaning again
+            Never worry about parking tickets again
           </h3>
-          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>Alerts by text, email, or phone call — plus automatic ticket contesting.</p>
-          <button onClick={() => router.push('/start')} style={{
-            backgroundColor: COLORS.regulatory, color: 'white', border: 'none', borderRadius: '10px',
-            padding: '12px 24px', fontSize: '15px', fontWeight: '600', cursor: 'pointer',
+          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 68.5% get dismissed. $49/yr.</p>
+          <button onClick={() => router.push('/get-started')} style={{
+            backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '10px',
+            padding: '12px 24px', fontSize: '15px', fontWeight: '700', cursor: 'pointer',
           }}>
-            Get Started
+            Start Auto-Contesting
           </button>
         </div>
       </section>
