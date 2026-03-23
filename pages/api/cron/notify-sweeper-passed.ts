@@ -297,21 +297,24 @@ export default async function handler(
     // Batch-fetch push_alert_preferences for all eligible users in one query.
     const uniqueUserIds = [...new Set(eligible.map(v => v.user_id))];
     const optedOutUsers = new Set<string>();
-    try {
-      const { data: profiles } = await supabaseAdmin
-        .from('user_profiles')
-        .select('id, push_alert_preferences')
-        .in('id', uniqueUserIds);
-      if (profiles) {
-        for (const p of profiles) {
-          const prefs = p.push_alert_preferences as Record<string, boolean> | null;
-          if (prefs && prefs.sweeper_passed === false) {
-            optedOutUsers.add(p.id);
+    // Guard: .in() with an empty array can error on some Supabase client versions
+    if (uniqueUserIds.length > 0) {
+      try {
+        const { data: profiles } = await supabaseAdmin
+          .from('user_profiles')
+          .select('id, push_alert_preferences')
+          .in('id', uniqueUserIds);
+        if (profiles) {
+          for (const p of profiles) {
+            const prefs = p.push_alert_preferences as Record<string, boolean> | null;
+            if (prefs && prefs.sweeper_passed === false) {
+              optedOutUsers.add(p.id);
+            }
           }
         }
+      } catch {
+        // Column might not exist yet — treat as all opted-in (default ON)
       }
-    } catch {
-      // Column might not exist yet — treat as all opted-in (default ON)
     }
 
     // Always filter — no-op when optedOutUsers is empty, avoids two code paths
