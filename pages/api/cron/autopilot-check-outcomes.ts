@@ -143,10 +143,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           );
 
           // If outcome detected, also check officer intelligence
-          if (ticket.officer_badge && (change.outcome === 'dismissed' || change.outcome === 'upheld')) {
+          if (ticket.officer_badge && (change.outcome === 'dismissed' || change.outcome === 'upheld' || change.outcome === 'reduced')) {
             try {
               await updateOfficerStats(ticket.officer_badge, change.outcome);
-            } catch { /* non-critical */ }
+            } catch (err: any) {
+              console.warn(`  Officer stats update failed for ${ticket.officer_badge}: ${err.message}`);
+            }
           }
         } else {
           // No change — just update the check timestamp
@@ -180,39 +182,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
  * Update hearing_officer_patterns with new outcome data.
  */
 async function updateOfficerStats(officerBadge: string, outcome: 'dismissed' | 'upheld' | 'reduced'): Promise<void> {
-  // Upsert into hearing_officer_patterns
+  // Validate officerBadge to prevent empty/null inserts
+  if (!officerBadge || typeof officerBadge !== 'string' || officerBadge.trim().length === 0) {
+    console.warn('  updateOfficerStats: invalid officerBadge, skipping');
+    return;
+  }
+  const badge = officerBadge.trim();
+
+  // Read-modify-write with retry on concurrent update
   const { data: existing } = await supabaseAdmin
     .from('hearing_officer_patterns')
     .select('*')
-    .eq('officer_id', officerBadge)
+    .eq('officer_id', badge)
     .maybeSingle();
 
   if (existing) {
     const totalCases = (existing.total_cases || 0) + 1;
     const totalDismissals = (existing.total_dismissals || 0) + (outcome === 'dismissed' ? 1 : 0);
     const totalUpheld = (existing.total_upheld || 0) + (outcome === 'upheld' ? 1 : 0);
+    const totalReduced = (existing.total_reduced || 0) + (outcome === 'reduced' ? 1 : 0);
 
-    await supabaseAdmin
+    const { count: updatedRows } = await supabaseAdmin
       .from('hearing_officer_patterns')
       .update({
         total_cases: totalCases,
         total_dismissals: totalDismissals,
         total_upheld: totalUpheld,
+        total_reduced: totalReduced,
         overall_dismissal_rate: totalCases > 0 ? totalDismissals / totalCases : 0,
         tends_toward: totalCases > 0 && totalDismissals / totalCases > 0.55 ? 'lenient'
           : totalCases > 0 && totalDismissals / totalCases < 0.35 ? 'strict'
           : 'neutral',
         last_updated: new Date().toISOString(),
       })
-      .eq('officer_id', officerBadge);
+      .eq('officer_id', badge)
+      .eq('total_cases', existing.total_cases || 0); // optimistic lock
+
+    if (updatedRows === 0) {
+      console.warn(`  updateOfficerStats: concurrent update for officer ${badge}, skipping (will catch next run)`);
+    }
   } else {
     await supabaseAdmin
       .from('hearing_officer_patterns')
       .insert({
-        officer_id: officerBadge,
+        officer_id: badge,
         total_cases: 1,
         total_dismissals: outcome === 'dismissed' ? 1 : 0,
         total_upheld: outcome === 'upheld' ? 1 : 0,
+        total_reduced: outcome === 'reduced' ? 1 : 0,
         overall_dismissal_rate: outcome === 'dismissed' ? 1.0 : 0,
         tends_toward: 'neutral',
         last_updated: new Date().toISOString(),
@@ -235,9 +252,10 @@ async function runLocationPatternUpdate(): Promise<void> {
       }
 
       // Store hotspots for letter generation use
+      let patternErrors = 0;
       for (const hotspot of hotspots) {
         try {
-          await supabaseAdmin
+          const { error: upsertErr } = await supabaseAdmin
             .from('ticket_location_patterns')
             .upsert({
               normalized_address: hotspot.normalizedAddress,
@@ -251,9 +269,23 @@ async function runLocationPatternUpdate(): Promise<void> {
               is_hotspot: hotspot.isHotspot,
               defense_recommendation: hotspot.defenseRecommendation,
               last_updated: new Date().toISOString(),
-            }, { onConflict: 'normalized_address' })
-            .then(() => {}, () => {}); // Table may not exist yet
-        } catch { /* non-critical */ }
+            }, { onConflict: 'normalized_address' });
+          if (upsertErr) {
+            // Log actual errors but continue — table may not exist yet
+            if (patternErrors === 0) {
+              console.warn(`  Location pattern upsert failed: ${upsertErr.message}`);
+            }
+            patternErrors++;
+          }
+        } catch (err: any) {
+          if (patternErrors === 0) {
+            console.warn(`  Location pattern upsert exception: ${err.message}`);
+          }
+          patternErrors++;
+        }
+      }
+      if (patternErrors > 0) {
+        console.warn(`  ${patternErrors}/${hotspots.length} location pattern upserts failed`);
       }
     }
   } catch (err) {
