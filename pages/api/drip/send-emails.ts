@@ -57,14 +57,18 @@ export default async function handler(
         try {
           await sendWelcomeEmail(user.email, user.user_profiles?.first_name);
 
-          // Mark as sent
-          await supabase
+          // Mark as sent — check for errors to prevent duplicate sends on retry
+          const { error: updateErr } = await supabase
             .from('drip_campaign_status')
             .update({
               welcome_sent: true,
               welcome_sent_at: now.toISOString()
             })
             .eq('id', user.id);
+
+          if (updateErr) {
+            console.error(`❌ Failed to mark welcome as sent for ${user.email} — may cause duplicate on next run:`, updateErr.message);
+          }
 
           results.welcomeEmails++;
           console.log(`✅ Sent welcome email to ${user.email}`);
@@ -100,14 +104,18 @@ export default async function handler(
         try {
           await sendProofEmail(user.email, user.user_profiles?.first_name);
 
-          // Mark as sent
-          await supabase
+          // Mark as sent — check for errors to prevent duplicate sends on retry
+          const { error: proofUpdateErr } = await supabase
             .from('drip_campaign_status')
             .update({
               proof_sent: true,
               proof_sent_at: now.toISOString()
             })
             .eq('id', user.id);
+
+          if (proofUpdateErr) {
+            console.error(`❌ Failed to mark proof as sent for ${user.email} — may cause duplicate on next run:`, proofUpdateErr.message);
+          }
 
           results.proofEmails++;
           console.log(`✅ Sent proof email to ${user.email}`);
@@ -161,14 +169,18 @@ export default async function handler(
         try {
           await sendSoftSellEmail(user.email, user.user_profiles?.first_name);
 
-          // Mark as sent
-          await supabase
+          // Mark as sent — check for errors to prevent duplicate sends on retry
+          const { error: softSellUpdateErr } = await supabase
             .from('drip_campaign_status')
             .update({
               soft_sell_sent: true,
               soft_sell_sent_at: now.toISOString()
             })
             .eq('id', user.id);
+
+          if (softSellUpdateErr) {
+            console.error(`❌ Failed to mark soft-sell as sent for ${user.email} — may cause duplicate on next run:`, softSellUpdateErr.message);
+          }
 
           results.softSellEmails++;
           console.log(`✅ Sent soft-sell email to ${user.email}`);

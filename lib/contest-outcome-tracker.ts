@@ -193,7 +193,7 @@ export async function processOutcomeChange(
     : outcome === 'reduced' ? 'reduced'
     : 'lost';
 
-  await supabase
+  const { error: ticketUpdateErr } = await supabase
     .from('detected_tickets')
     .update({
       status: ticketStatus,
@@ -204,6 +204,11 @@ export async function processOutcomeChange(
       final_amount: finalAmount,
     })
     .eq('id', ticket.id);
+
+  if (ticketUpdateErr) {
+    console.error(`    ❌ CRITICAL: Failed to update ticket ${ticket.ticket_number} status to '${ticketStatus}':`, ticketUpdateErr.message);
+    console.error(`    Outcome '${outcomeType}' was recorded in contest_outcomes but ticket status is stale — manual fix needed`);
+  }
 
   // Audit log
   await supabase.from('ticket_audit_log').insert({
