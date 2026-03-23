@@ -168,6 +168,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('❌ Schedule change check error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Schedule change check failed' });
   }
 }

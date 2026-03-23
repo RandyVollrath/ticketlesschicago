@@ -182,7 +182,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (fetchError) {
     console.error('Failed to fetch queued FOIA requests:', fetchError.message);
-    return res.status(500).json({ error: fetchError.message });
+    return res.status(500).json({ error: 'Failed to fetch queued FOIA requests' });
   }
 
   if (!queuedRequests || queuedRequests.length === 0) {

@@ -201,7 +201,7 @@ Generate the letter:`
         results.push({ ticketId: ticket.id, ticketNumber: ticket.ticket_number, success: true });
       } catch (error: any) {
         console.error(`Error processing ticket ${ticket.id}:`, error);
-        results.push({ ticketId: ticket.id, ticketNumber: ticket.ticket_number, success: false, error: error.message });
+        results.push({ ticketId: ticket.id, ticketNumber: ticket.ticket_number, success: false, error: 'Letter generation failed' });
       }
     }
 
@@ -230,6 +230,6 @@ Generate the letter:`
     });
   } catch (error: any) {
     console.error('Generate letters error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to generate letters' });
+    return res.status(500).json({ error: 'Failed to generate letters' });
   }
 }

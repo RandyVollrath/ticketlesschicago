@@ -99,6 +99,6 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
   } catch (error: any) {
     console.error('Export plates error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to export plates' });
+    return res.status(500).json({ error: 'Failed to export plates' });
   }
 });

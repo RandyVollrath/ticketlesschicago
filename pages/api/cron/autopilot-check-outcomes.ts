@@ -72,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error) {
       console.error('Failed to fetch tracked tickets:', error.message);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: 'Failed to fetch tracked tickets' });
     }
 
     if (!trackedTickets || trackedTickets.length === 0) {
@@ -169,7 +169,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (err: any) {
     console.error('Outcome check failed:', err);
-    return res.status(500).json({ error: err.message, ...result });
+    return res.status(500).json({ error: 'Outcome check failed', ...result });
   }
 
   console.log('📊 Outcome check complete:', result);
