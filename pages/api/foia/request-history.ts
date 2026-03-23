@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (existing && existing.length > 0) {
     const recent = existing[0];
-    if (recent.status === 'queued' || recent.status === 'sent') {
+    if (recent.status === 'queued' || recent.status === 'drafting' || recent.status === 'sent') {
       return res.status(200).json({
         success: true,
         message: 'We already have a pending FOIA request for this plate. You\'ll be notified when results arrive.',

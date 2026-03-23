@@ -32,6 +32,7 @@ import AnalyticsService from './AnalyticsService';
 import ApiClient from '../utils/ApiClient';
 import Config from '../config/config';
 import { distanceMeters as haversineDistance } from '../utils/geo';
+import { isCoordinateAddress, resolveAddress, formatCoordinateFallback } from '../utils/ClientReverseGeocoder';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
 
@@ -1826,22 +1827,28 @@ class BackgroundTaskServiceClass {
 
       // Reliability fallback: if we have a resolved location but parking API failed,
       // still persist a minimal parking history record so users see their latest spot.
+      // Attempt client-side reverse geocoding so the user sees a real address, not coordinates.
       if (persistParkingEvent && isRealParkingEvent && resolvedCoords) {
         try {
+          const fallbackAddress = await resolveAddress(
+            null,
+            resolvedCoords.latitude,
+            resolvedCoords.longitude
+          );
           await ParkingHistoryService.addToHistory(
             resolvedCoords,
             [],
-            `${resolvedCoords.latitude.toFixed(6)}, ${resolvedCoords.longitude.toFixed(6)}`,
+            fallbackAddress,
             nativeTimestamp,
             detectionMeta
           );
           AppEvents.emit('parking-history-updated');
           await this.saveParkedCoords(
             resolvedCoords,
-            `${resolvedCoords.latitude.toFixed(6)}, ${resolvedCoords.longitude.toFixed(6)}`,
+            fallbackAddress,
             undefined
           );
-          log.warn('Saved fallback parking history entry after API failure');
+          log.warn(`Saved fallback parking history entry after API failure (address: "${fallbackAddress}")`);
 
           // Schedule deferred backfill for the coordinate-only address
           const fallbackItem = await ParkingHistoryService.getMostRecent();
@@ -1898,13 +1905,12 @@ class BackgroundTaskServiceClass {
 
   /**
    * Check if an address looks like raw coordinates (geocoding failed).
-   * Addresses like "41.939123, -87.667456" indicate the reverse geocoder
-   * returned null and the fallback coordinate string was used instead.
+   * Addresses like "41.939123, -87.667456" or "Near 41.9391, -87.6675"
+   * indicate the reverse geocoder returned null and a fallback was used.
    */
   private isCoordinateAddress(address: string): boolean {
-    // Coordinate addresses look like "41.939123, -87.667456"
-    // Real addresses contain letters (street names, city, state)
-    return /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(address.trim());
+    // Use the shared utility — also catches "Near X, Y" fallback format
+    return isCoordinateAddress(address);
   }
 
   /**

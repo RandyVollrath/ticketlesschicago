@@ -7,6 +7,7 @@ import { distanceMeters } from '../utils/geo';
 import Logger from '../utils/Logger';
 import { validateChicagoCoordinates, validateParkingApiResponse } from '../utils/validation';
 import { RateLimiter } from '../utils/RateLimiter';
+import { isCoordinateAddress, resolveAddress } from '../utils/ClientReverseGeocoder';
 import { StorageKeys } from '../constants';
 
 const log = Logger.createLogger('LocationService');
@@ -973,9 +974,17 @@ class LocationServiceClass {
     const severityOrder = { critical: 0, warning: 1, info: 2 };
     rules.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
+    // Resolve address: if the server returned raw coordinates (geocoding failed),
+    // attempt client-side reverse geocoding as a fallback before saving.
+    let address = data?.address || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+    if (isCoordinateAddress(address)) {
+      log.warn(`Server returned coordinate address "${address}", attempting client-side geocode`);
+      address = await resolveAddress(address, coords.latitude, coords.longitude);
+    }
+
     return {
       coords,
-      address: data?.address || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
+      address,
       rules,
       timestamp: Date.now(),
       rawApiData: data, // Preserve for BackgroundTaskService advance reminder scheduling

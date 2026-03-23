@@ -994,11 +994,11 @@ async function runWorker(): Promise<void> {
                 }
 
                 // Persist portal check result for outcome tracking
-                // (autopilot-check-outcomes.ts reads from this table to detect dismissals/reductions)
+                // (autopilot-check-outcomes.ts reads latest row by checked_at to detect dismissals/reductions)
                 try {
                   await supabaseAdmin
                     .from('portal_check_results')
-                    .upsert({
+                    .insert({
                       ticket_number: ticket.ticket_number,
                       plate: plateInfo.plate,
                       state: plateInfo.state || 'IL',
@@ -1010,9 +1010,9 @@ async function runWorker(): Promise<void> {
                       issue_date: ticket.issue_date || null,
                       raw_response: ticket.raw_text || null,
                       checked_at: new Date().toISOString(),
-                    }, { onConflict: 'ticket_number' });
+                    });
                 } catch (portalInsertErr: any) {
-                  console.warn(`    portal_check_results upsert failed for ${ticket.ticket_number}: ${portalInsertErr.message}`);
+                  console.warn(`    portal_check_results insert failed for ${ticket.ticket_number}: ${portalInsertErr.message}`);
                 }
               }
             } else {

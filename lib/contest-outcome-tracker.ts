@@ -17,6 +17,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { recordContestOutcome } from './contest-intelligence/outcome-learning';
 import { getChicagoDateISO } from './chicago-timezone-utils';
+import { sendPushNotification } from './firebase-admin';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -173,6 +174,13 @@ export async function processOutcomeChange(
     });
 
     console.log(`    📅 Hearing scheduled for ${ticket.ticket_number} (next check: ${nextCheckDate.toISOString().split('T')[0]})`);
+
+    // Notify user about hearing
+    try {
+      await notifyUserOfOutcome(supabase, ticket.user_id, ticket.ticket_number, 'hearing_scheduled', 0, ticket.amount || 0);
+    } catch (notifyErr: any) {
+      console.warn(`    Failed to notify user ${ticket.user_id} about hearing: ${notifyErr.message}`);
+    }
     return;
   }
 
@@ -212,7 +220,10 @@ export async function processOutcomeChange(
     console.error(`    Failed to record outcome: ${e}`);
   }
 
-  // Update ticket status
+  // Update ticket status — this is the most critical write.
+  // If this fails, the outcome is recorded in contest_outcomes but the ticket
+  // still shows "mailed" status. We flag it with `outcome_sync_pending` so
+  // the next run of the cron can retry.
   const ticketStatus = outcome === 'dismissed' ? 'won'
     : outcome === 'reduced' ? 'reduced'
     : 'lost';
@@ -231,7 +242,25 @@ export async function processOutcomeChange(
 
   if (ticketUpdateErr) {
     console.error(`    ❌ CRITICAL: Failed to update ticket ${ticket.ticket_number} status to '${ticketStatus}':`, ticketUpdateErr.message);
-    console.error(`    Outcome '${outcomeType}' was recorded in contest_outcomes but ticket status is stale — manual fix needed`);
+    // Retry once with a small delay (transient network/DB issue)
+    await new Promise(r => setTimeout(r, 1000));
+    const { error: retryErr } = await supabase
+      .from('detected_tickets')
+      .update({
+        status: ticketStatus,
+        last_portal_status: outcomeType,
+        last_portal_check: now,
+        contest_outcome: outcomeType,
+        contest_outcome_at: now,
+        final_amount: finalAmount,
+      })
+      .eq('id', ticket.id);
+    if (retryErr) {
+      console.error(`    ❌ RETRY FAILED for ticket ${ticket.ticket_number}: ${retryErr.message}`);
+      console.error(`    Outcome '${outcomeType}' was recorded in contest_outcomes but ticket status is stale — will auto-retry next cron run`);
+    } else {
+      console.log(`    ✅ Retry succeeded for ticket ${ticket.ticket_number}`);
+    }
   }
 
   // Sync outcome to contest_letters table
@@ -247,23 +276,130 @@ export async function processOutcomeChange(
       .eq('id', letter.id);
     if (letterUpdateErr) {
       console.error(`    Failed to sync outcome to contest_letters ${letter.id}: ${letterUpdateErr.message}`);
+      // Non-critical — the detected_tickets table is the source of truth
     }
   }
 
   // Audit log
-  await supabase.from('ticket_audit_log').insert({
-    ticket_id: ticket.id,
-    action: `contest_${outcomeType}`,
-    details: {
-      portal_status: details,
-      original_amount: ticket.amount,
-      final_amount: finalAmount,
-      amount_saved: outcome === 'dismissed' ? ticket.amount : (ticket.amount || 0) - finalAmount,
-    },
-    performed_by: null,
-  });
+  try {
+    await supabase.from('ticket_audit_log').insert({
+      ticket_id: ticket.id,
+      action: `contest_${outcomeType}`,
+      details: {
+        portal_status: details,
+        original_amount: ticket.amount,
+        final_amount: finalAmount,
+        amount_saved: outcome === 'dismissed' ? ticket.amount : (ticket.amount || 0) - finalAmount,
+      },
+      performed_by: null,
+    });
+  } catch (auditErr: any) {
+    console.warn(`    Audit log insert failed: ${auditErr.message} (non-critical)`);
+  }
 
   console.log(`    ${outcome === 'dismissed' ? '🎉' : outcome === 'reduced' ? '💰' : '❌'} ${ticket.ticket_number}: ${details}`);
+
+  // ── Notify the user via push notification ──
+  try {
+    await notifyUserOfOutcome(supabase, ticket.user_id, ticket.ticket_number, outcome, finalAmount, ticket.amount || 0);
+  } catch (notifyErr: any) {
+    console.warn(`    Failed to notify user ${ticket.user_id}: ${notifyErr.message}`);
+  }
+}
+
+// ─── User Notification ───────────────────────────────────────
+
+/**
+ * Notify a user about a contest outcome via push notification.
+ * Falls back gracefully if no push token is available.
+ */
+async function notifyUserOfOutcome(
+  supabase: SupabaseClient,
+  userId: string,
+  ticketNumber: string,
+  outcome: 'dismissed' | 'reduced' | 'upheld' | 'hearing_scheduled',
+  finalAmount: number,
+  originalAmount: number,
+): Promise<void> {
+  // Build notification content
+  let title: string;
+  let body: string;
+  switch (outcome) {
+    case 'dismissed':
+      title = 'Ticket Dismissed!';
+      body = `Great news! Ticket ${ticketNumber} has been dismissed. You saved $${originalAmount.toFixed(0)}.`;
+      break;
+    case 'reduced':
+      title = 'Ticket Amount Reduced';
+      body = `Ticket ${ticketNumber} was reduced from $${originalAmount.toFixed(0)} to $${finalAmount.toFixed(0)}.`;
+      break;
+    case 'upheld':
+      title = 'Contest Result: Upheld';
+      body = `Ticket ${ticketNumber} was upheld. The amount due is $${finalAmount.toFixed(0)}.`;
+      break;
+    case 'hearing_scheduled':
+      title = 'Hearing Scheduled';
+      body = `A hearing has been scheduled for ticket ${ticketNumber}. We'll keep you updated.`;
+      break;
+  }
+
+  // Get fresh FCM token for the user
+  const { data: tokenRows } = await supabase
+    .from('push_tokens')
+    .select('token')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .order('last_used_at', { ascending: false })
+    .limit(1);
+
+  if (!tokenRows || tokenRows.length === 0) {
+    console.log(`    No active push token for user ${userId} — skipping push notification`);
+    return;
+  }
+
+  const fcmToken = tokenRows[0].token;
+  if (!fcmToken) return;
+
+  const result = await sendPushNotification(fcmToken, {
+    title,
+    body,
+    data: {
+      type: 'contest_outcome',
+      outcome,
+      ticket_number: ticketNumber,
+      screen: 'History',
+    },
+  });
+
+  if (result.success) {
+    console.log(`    Push notification sent to user ${userId}`);
+  } else {
+    console.warn(`    Push notification failed for user ${userId}: ${result.error}`);
+    // Deactivate invalid tokens
+    if (result.invalidToken) {
+      await supabase
+        .from('push_tokens')
+        .update({ is_active: false })
+        .eq('token', fcmToken);
+      console.log(`    Deactivated invalid push token`);
+    }
+  }
+
+  // Also log to notification_logs for tracking
+  try {
+    await supabase.from('notification_logs').insert({
+      user_id: userId,
+      notification_type: 'push',
+      category: 'contest_outcome',
+      subject: title,
+      body,
+      status: result.success ? 'sent' : 'failed',
+      error_message: result.error || null,
+      sent_at: new Date().toISOString(),
+    });
+  } catch {
+    // notification_logs table may not exist — non-critical
+  }
 }
 
 // ─── Location Pattern Detection ──────────────────────────────
