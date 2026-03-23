@@ -240,6 +240,21 @@ async function mailLetter(
       return { success: true, lobId: existingLetter.lob_letter_id };
     }
 
+    // Atomically claim this letter for mailing — prevents duplicate sends if cron
+    // crashes between Lob API call and the DB update that sets lob_letter_id.
+    // The .eq('status', letter.status) acts as optimistic locking: if another cron
+    // run already changed the status, this update returns count=0 and we skip.
+    const { count: claimCount } = await supabaseAdmin
+      .from('contest_letters')
+      .update({ status: 'mailing' })
+      .eq('id', letter.id)
+      .eq('status', letter.status);
+
+    if (!claimCount || claimCount === 0) {
+      console.log(`    Letter ${letter.id} status changed since query — another run may be mailing it, skipping`);
+      return { success: true };
+    }
+
     // Build sender name
     const senderName = profile.full_name ||
       `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
@@ -682,6 +697,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         letter_text,
         defense_type,
         status,
+        updated_at,
         street_view_exhibit_urls,
         street_view_date,
         street_view_address,
@@ -708,7 +724,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           created_at
         )
       `)
-      .or(`status.eq.approved,status.eq.pending_evidence,status.eq.draft,status.eq.ready,status.eq.awaiting_consent,status.eq.admin_approved,status.eq.needs_admin_review`)
+      .or(`status.eq.approved,status.eq.pending_evidence,status.eq.draft,status.eq.ready,status.eq.awaiting_consent,status.eq.admin_approved,status.eq.needs_admin_review,status.eq.mailing`)
       .order('created_at', { ascending: true });
 
     if (!letters || letters.length === 0) {
@@ -728,6 +744,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Skip test tickets
       if (ticket.is_test) {
         console.log(`  Skipping test ticket ${ticket.ticket_number}`);
+        return false;
+      }
+
+      // Case -1: Letter stuck in 'mailing' from a crashed run — retry after 30 min
+      if (l.status === 'mailing') {
+        const updatedAt = l.updated_at ? new Date(l.updated_at).getTime() : 0;
+        const stuckMinutes = (Date.now() - updatedAt) / (1000 * 60);
+        if (stuckMinutes >= 30) {
+          console.log(`  Letter ${l.id} stuck in 'mailing' for ${Math.round(stuckMinutes)} min — retrying`);
+          return true;
+        }
+        console.log(`  Letter ${l.id} is 'mailing' (${Math.round(stuckMinutes)} min ago) — waiting for previous run`);
         return false;
       }
 
@@ -1009,6 +1037,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
           if (evidenceImages.length > 0) {
             console.log(`    Found ${evidenceImages.length} evidence image(s) to include (source: ${userEvidence?.received_via || 'email'})`);
+          } else {
+            console.warn(`    ⚠️ User evidence exists but no images extracted (tried attachment_urls, photo_analyses, sms_attachments)`);
           }
         } catch (parseError) {
           console.error('    Failed to parse user_evidence JSON:', parseError);
