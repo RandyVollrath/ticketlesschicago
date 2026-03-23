@@ -17,6 +17,7 @@ import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { verifyWebhook } from '../../../lib/webhook-verification';
+import { maskEmail } from '../../../lib/mask-pii';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -249,8 +250,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     method: req.method,
     url: req.url,
     type: req.body?.type,
-    from: req.body?.data?.from,
-    to: req.body?.data?.to,
+    from: maskEmail(req.body?.data?.from),
+    to: maskEmail(req.body?.data?.to),
     subject: req.body?.data?.subject,
     attachments: req.body?.data?.attachments?.length || 0,
   });
@@ -270,7 +271,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const payload: ResendInboundPayload = req.body;
 
-    console.log('📦 Received payload:', { type: payload.type, email_id: payload.data?.email_id, from: payload.data?.from, to: payload.data?.to, subject: payload.data?.subject });
+    console.log('📦 Received payload:', { type: payload.type, email_id: payload.data?.email_id, from: maskEmail(payload.data?.from), to: maskEmail(payload.data?.to), subject: payload.data?.subject });
 
     // Verify it's an email.received event
     if (payload.type !== 'email.received') {
@@ -280,8 +281,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const email = payload.data;
     console.log('✉️ Processing email:', {
-      from: email.from,
-      to: email.to,
+      from: maskEmail(email.from),
+      to: maskEmail(email.to),
       subject: email.subject,
       attachments: email.attachments?.length || 0,
     });
@@ -292,13 +293,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Shared address: receipts@autopilotamerica.com (user identified by sender email)
     // Legacy UUID addresses: {uuid}@bills.autopilotamerica.com, {uuid}@autopilotamerica.com, {uuid}@linguistic-louse.resend.app
     const toAddress = email.to[0]; // Primary recipient
-    console.log(`🔍 Parsing email address: ${toAddress}`);
+    console.log(`🔍 Parsing email address: ${maskEmail(toAddress)}`);
 
     const recipient = parseRecipient(toAddress);
     if (!recipient) {
-      console.error('❌ Invalid email format:', toAddress);
+      console.error('❌ Invalid email format:', maskEmail(toAddress));
       console.error('Expected: receipts@autopilotamerica.com or {uuid}@autopilotamerica.com');
-      return res.status(400).json({ error: 'Invalid email format', toAddress });
+      return res.status(400).json({ error: 'Invalid email format', toAddress: maskEmail(toAddress) });
     }
 
     // Resolve userId: from address UUID or by looking up sender email
@@ -307,7 +308,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!userId) {
       // Shared address — look up user by sender email
       const senderLookupEmail = (email.from || '').toLowerCase();
-      console.log(`🔍 Shared address — looking up user by sender: ${senderLookupEmail}`);
+      console.log(`🔍 Shared address — looking up user by sender: ${maskEmail(senderLookupEmail)}`);
 
       // Also search the forwarded email body for the original sender (e.g. chicagovehiclestickers@sebis.com)
       const emailBody = email.text || email.html || '';
@@ -323,7 +324,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .limit(1);
         if (profiles?.[0]) {
           foundUserId = profiles[0].user_id;
-          console.log(`✅ Matched user via user_profiles: ${lookupEmail} → ${foundUserId}`);
+          console.log(`✅ Matched user via user_profiles: ${maskEmail(lookupEmail)} → ${foundUserId}`);
           break;
         }
       }
@@ -342,7 +343,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           );
           if (authUser) {
             foundUserId = authUser.id;
-            console.log(`✅ Matched user via auth.users page ${page}: ${senderLookupEmail} → ${foundUserId}`);
+            console.log(`✅ Matched user via auth.users page ${page}: ${maskEmail(senderLookupEmail)} → ${foundUserId}`);
             found = true;
           }
           if (authPage.users.length < perPage) break;
@@ -354,10 +355,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       if (!foundUserId) {
-        console.error('❌ No account found for sender email:', senderLookupEmail);
+        console.error('❌ No account found for sender email:', maskEmail(senderLookupEmail));
         return res.status(404).json({
           error: 'No account found for sender email',
-          sender: senderLookupEmail,
+          sender: maskEmail(senderLookupEmail),
           hint: 'Forward from the email address associated with your Autopilot account',
         });
       }
@@ -366,7 +367,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log(`📨 Received receipt forwarding email for user ${userId}`);
-    console.log(`  - From: ${email.from}`);
+    console.log(`  - From: ${maskEmail(email.from)}`);
     console.log(`  - Subject: ${email.subject}`);
     console.log(`  - Attachments: ${email.attachments?.length || 0}`);
 

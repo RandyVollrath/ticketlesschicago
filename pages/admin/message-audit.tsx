@@ -87,7 +87,12 @@ export default function MessageAuditPage({ initialLogs, stats, health }: PagePro
       }
 
       if (filterSearch) {
-        query = query.or(`message_key.ilike.%${filterSearch}%,user_email.ilike.%${filterSearch}%,user_phone.ilike.%${filterSearch}%`);
+        // Sanitize search input to prevent PostgREST filter injection via .or()
+        // Remove characters that could alter the filter expression (commas, dots in filter context, parens)
+        const sanitizedSearch = filterSearch.replace(/[,()]/g, '').substring(0, 100);
+        if (sanitizedSearch) {
+          query = query.or(`message_key.ilike.%${sanitizedSearch}%,user_email.ilike.%${sanitizedSearch}%,user_phone.ilike.%${sanitizedSearch}%`);
+        }
       }
 
       if (filterDate) {

@@ -485,6 +485,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             break;
           }
 
+          // IDEMPOTENCY CHECK: Skip if this payment intent was already processed
+          const { data: existingAppeal } = await supabaseAdmin
+            .from('property_tax_appeals')
+            .select('id, success_fee_paid, success_fee_payment_intent_id')
+            .eq('id', appealId)
+            .maybeSingle();
+
+          if (existingAppeal?.success_fee_payment_intent_id === session.payment_intent) {
+            console.log('⏭️ Success Fee payment already processed (idempotent skip)');
+            break;
+          }
+
           // Update appeal with success fee payment (optimistic lock: only if not already paid)
           const { data: feeUpdated, error: updateError } = await supabaseAdmin
             .from('property_tax_appeals')
@@ -1661,22 +1673,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           console.log('🤖 Checking for Autopilot subscription:', { supabaseUserId, subscriptionId });
 
+          // IDEMPOTENCY: Check if this session was already processed by checking user_profiles
+          const { data: existingProfile } = await supabaseAdmin
+            .from('user_profiles')
+            .select('has_contesting, is_paid, stripe_session_id')
+            .eq('user_id', supabaseUserId)
+            .maybeSingle();
+
+          if (existingProfile?.stripe_session_id === session.id) {
+            console.log('🤖 Autopilot checkout already processed for this session (idempotent skip)');
+            break;
+          }
+
           // Update autopilot_subscriptions to active
           const { data: existingSub, error: subCheckError } = await supabaseAdmin
             .from('autopilot_subscriptions')
-            .select('id')
+            .select('id, status, stripe_subscription_id')
             .eq('user_id', supabaseUserId)
             .maybeSingle();
 
           if (existingSub) {
-            // Idempotency: check if already activated by a previous webhook delivery
-            const { data: currentSub } = await supabaseAdmin
-              .from('autopilot_subscriptions')
-              .select('status, stripe_subscription_id')
-              .eq('user_id', supabaseUserId)
-              .maybeSingle();
-
-            if (currentSub?.status === 'active' && currentSub?.stripe_subscription_id === subscriptionId) {
+            // Additional idempotency: check if already activated by a previous webhook delivery
+            if (existingSub.status === 'active' && existingSub.stripe_subscription_id === subscriptionId) {
               console.log('🤖 Autopilot subscription already active (idempotent), skipping');
               break;
             }
@@ -1729,6 +1747,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 user_id: supabaseUserId,
                 has_contesting: true,
                 is_paid: true,
+                stripe_session_id: session.id, // IDEMPOTENCY: Track which session activated this user
                 updated_at: new Date().toISOString(),
               };
               if (autopilotPlate) autopilotProfileData.license_plate = autopilotPlate;
@@ -2758,6 +2777,73 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         } catch (error) {
           console.error('Error processing mail service payment:', error);
+        }
+      }
+      break;
+
+    case 'charge.refunded':
+      const refundedCharge = event.data.object as Stripe.Charge;
+      console.log('💸 Charge refunded:', refundedCharge.id);
+
+      // Check if this was a property tax appeal payment
+      if (refundedCharge.metadata?.product === 'property_tax_appeal') {
+        const appealId = refundedCharge.metadata.appealId;
+        if (appealId && supabaseAdmin) {
+          console.log('🏠 Processing Property Tax Appeal refund');
+
+          // IDEMPOTENCY: Check if refund already processed
+          const { data: appeal } = await supabaseAdmin
+            .from('property_tax_appeals')
+            .select('status, refunded_at')
+            .eq('id', appealId)
+            .maybeSingle();
+
+          if (appeal?.refunded_at) {
+            console.log('⏭️ Property Tax Appeal refund already processed (idempotent skip)');
+            break;
+          }
+
+          // Mark appeal as refunded
+          const { error: refundError } = await supabaseAdmin
+            .from('property_tax_appeals')
+            .update({
+              status: 'refunded',
+              refunded_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', appealId);
+
+          if (refundError) {
+            console.error('❌ Error updating appeal refund status:', refundError);
+            return res.status(500).json({ error: 'Failed to process refund' });
+          }
+
+          console.log('✅ Property Tax Appeal marked as refunded');
+        }
+      }
+
+      // Check if this was a success fee payment
+      if (refundedCharge.metadata?.product === 'property_tax_success_fee') {
+        const appealId = refundedCharge.metadata.appealId;
+        if (appealId && supabaseAdmin) {
+          console.log('💰 Processing Property Tax Success Fee refund');
+
+          // Mark success fee as not paid
+          const { error: refundError } = await supabaseAdmin
+            .from('property_tax_appeals')
+            .update({
+              success_fee_paid: false,
+              success_fee_refunded_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', appealId);
+
+          if (refundError) {
+            console.error('❌ Error updating success fee refund status:', refundError);
+            return res.status(500).json({ error: 'Failed to process success fee refund' });
+          }
+
+          console.log('✅ Success Fee marked as refunded');
         }
       }
       break;

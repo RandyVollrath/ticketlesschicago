@@ -15,6 +15,15 @@ function escapeHtml(str: string): string {
 }
 
 /**
+ * Sanitize a phone number for safe use in PostgREST .or() filter strings.
+ * Only allows digits and leading '+'. Prevents PostgREST filter injection
+ * (e.g. injecting commas or dots to alter the filter expression).
+ */
+function sanitizePhoneForFilter(phone: string): string {
+  return phone.replace(/[^\d+]/g, '');
+}
+
+/**
  * ClickSend Incoming SMS Webhook
  *
  * This endpoint receives incoming SMS messages from ClickSend when users reply to our texts.
@@ -97,7 +106,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `+${normalizedPhone}`,
       `+1${normalizedPhone.replace(/^\+?1/, '')}`,
       normalizedPhone.replace(/^\+?1/, '')
-    ];
+    ].map(sanitizePhoneForFilter) // Prevent PostgREST filter injection via .or()
+     .filter(p => p.length > 0 && p.length <= 20);
 
     console.log('Searching for user with phone variations:', phoneVariations.map(p => maskPhone(p)));
 

@@ -147,12 +147,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 async function activateUser(userId: string, customerId: string, subscriptionId: string | null) {
   console.log(`🎯 Activating user ${userId} immediately after checkout`);
 
+  // IDEMPOTENCY: Check if already activated
+  const { data: existingProfile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('has_contesting, is_paid')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingProfile?.has_contesting === true && existingProfile?.is_paid === true) {
+    console.log(`⏭️ User ${userId} already activated (idempotent skip)`);
+    return;
+  }
+
   // Update user_profiles
   await supabaseAdmin
     .from('user_profiles')
     .upsert({
       user_id: userId,
       has_contesting: true,
+      is_paid: true, // CRITICAL: Mark as paid (not just has_contesting)
       stripe_customer_id: customerId,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
