@@ -732,9 +732,12 @@ export default function CheckYourStreet() {
                     )}
 
                     {/* Alerts note */}
-                    {blockStats.total_tickets > 0 && (
+                    {blockStats.alertable_tickets > 0 && (
                       <div style={{ marginTop: '14px', fontSize: '13px', color: COLORS.slate }}>
-                        Autopilot America could have prevented all of them.
+                        Autopilot America could have prevented{' '}
+                        {blockStats.alertable_tickets >= blockStats.total_tickets
+                          ? 'all of them'
+                          : `${blockStats.alertable_tickets.toLocaleString()} of these tickets`}.
                       </div>
                     )}
                   </div>
