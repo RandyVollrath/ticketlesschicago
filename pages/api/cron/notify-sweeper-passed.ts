@@ -5,28 +5,30 @@
  * with active street cleaning restrictions TODAY. If the sweeper has passed,
  * sends a push notification: "Sweeper passed your block — you can move your car back."
  *
- * Runs every 15 minutes during sweeper operating hours (9am-3pm, April-November).
- * Street sweepers operate roughly 9am-2pm on weekdays during sweeping season.
- *
- * Data flow:
+ * Architecture (batched for scale):
  *   1. Query user_parked_vehicles for cars with street_cleaning_date = today
- *   2. For each vehicle, call checkSweeperPassedToday(address)
- *   3. If sweeper has passed, send push notification via FCM
- *   4. Mark as notified (dedup via notification_logs + sweeper_passed_notified_at column)
+ *   2. Resolve each unique address → TransID (city street segment ID), with caching
+ *   3. Check each unique TransID for sweeper activity — ONE API call per segment
+ *   4. Fan out results: send push notification to every vehicle on swept segments
  *
- * Rate limiting:
- *   - Only runs during sweeper season (April-November)
- *   - Only runs 9am-3pm Chicago time (sweeper operating window)
- *   - Only checks vehicles with street_cleaning_date = today
- *   - Each vehicle only notified once per parking session (dedup)
- *   - City API calls are throttled (1 per vehicle, ~2-3 seconds each due to fetch+retry)
+ * Scale characteristics:
+ *   With 1000 vehicles on 200 unique blocks, this makes ~200 TransLegend + ~200 SweepTracker
+ *   calls instead of 2000-3000 (the old per-vehicle approach). Vehicles on the same block
+ *   share a single set of API calls.
+ *
+ * Cron schedule: every 15 min, 9am-3pm CT, Apr-Nov, weekdays (via vercel.json)
+ *
+ * Deduplication (belt-and-suspenders):
+ *   - Column-based: sweeper_passed_notified_at on user_parked_vehicles (fast DB filter)
+ *   - Log-based: notification_logs with category='sweeper_passed' (definitive check)
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { getChicagoTime } from '../../../lib/chicago-timezone-utils';
 import { sendPushNotification, isFirebaseConfigured } from '../../../lib/firebase-admin';
-import { checkSweeperPassedToday } from '../../../lib/sweeper-tracker';
+import { lookupTransId, getSweeperHistory } from '../../../lib/sweeper-tracker';
+import type { SweeperVisit } from '../../../lib/sweeper-tracker';
 
 interface ParkedVehicle {
   id: string;
@@ -39,6 +41,17 @@ interface ParkedVehicle {
   sweeper_passed_notified_at?: string | null;
 }
 
+/** Sweeper check result for a street segment */
+interface SegmentSweeperResult {
+  passed: boolean;
+  passTime: string | null;     // Chicago local time (e.g. "10:28 AM")
+  segment: string | null;      // e.g. "N SHEFFIELD AVE (2300-2358)"
+  vehicleId: string | null;    // City sweeper truck ID
+}
+
+/** Chicago timezone for date comparisons */
+const CHICAGO_TZ = 'America/Chicago';
+
 /**
  * Check notification_logs to see if we already sent a sweeper_passed notification
  * for this parking session (vehicle.id).
@@ -46,13 +59,12 @@ interface ParkedVehicle {
 async function alreadyNotified(vehicleId: string): Promise<boolean> {
   if (!supabaseAdmin) return false;
   try {
-    const { data } = await supabaseAdmin
+    const { count } = await supabaseAdmin
       .from('notification_logs')
-      .select('id')
+      .select('id', { count: 'exact', head: true })
       .eq('category', 'sweeper_passed')
-      .eq('external_id', vehicleId)
-      .limit(1);
-    return !!(data && data.length > 0);
+      .eq('external_id', vehicleId);
+    return (count ?? 0) > 0;
   } catch {
     return false;
   }
@@ -85,6 +97,17 @@ async function logNotification(
   } catch (err) {
     console.error('Failed to log sweeper notification:', err);
   }
+}
+
+/**
+ * Format an address for a user-facing push notification.
+ * "2317 N Sheffield Ave, Chicago, IL 60614" → "2317 N Sheffield Ave"
+ * Strips city/state/zip but keeps the street address readable.
+ */
+function formatAddressForNotification(address: string): string {
+  // Strip everything after the first comma (city, state, zip)
+  const streetPart = address.split(',')[0].trim();
+  return streetPart || address;
 }
 
 export default async function handler(
@@ -139,8 +162,10 @@ export default async function handler(
   }
 
   const results = {
-    vehiclesChecked: 0,
-    sweeperPassed: 0,
+    vehiclesTotal: 0,
+    vehiclesEligible: 0,
+    uniqueSegments: 0,
+    segmentsSwept: 0,
     notificationsSent: 0,
     notificationsSkipped: 0,
     notificationsFailed: 0,
@@ -148,8 +173,7 @@ export default async function handler(
   };
 
   try {
-    // Get all active parked vehicles with street cleaning TODAY
-    // Try to select sweeper_passed_notified_at — it may not exist yet (column migration pending)
+    // ─── Step 1: Get all active parked vehicles with street cleaning TODAY ───
     let parkedVehicles: ParkedVehicle[] | null = null;
     let hasDedupColumn = true;
 
@@ -183,117 +207,190 @@ export default async function handler(
       parkedVehicles = (data || []) as ParkedVehicle[];
     }
 
+    results.vehiclesTotal = parkedVehicles?.length || 0;
+
     if (!parkedVehicles || parkedVehicles.length === 0) {
       console.log('[sweeper-notify] No vehicles parked with street cleaning today');
       return res.status(200).json({ success: true, message: 'No vehicles to check', results });
     }
 
-    // Filter out already-notified vehicles
-    const toCheck = parkedVehicles.filter(v => {
-      // Column-based dedup (fast, if column exists)
+    // Filter out already-notified vehicles (column-based, fast)
+    const eligible = parkedVehicles.filter(v => {
       if (hasDedupColumn && v.sweeper_passed_notified_at) {
+        results.notificationsSkipped++;
+        return false;
+      }
+      if (!v.fcm_token || !v.address) {
         results.notificationsSkipped++;
         return false;
       }
       return true;
     });
 
-    console.log(`[sweeper-notify] ${parkedVehicles.length} vehicles with cleaning today, ${toCheck.length} need sweeper check`);
+    results.vehiclesEligible = eligible.length;
 
-    // Time budget: stop 10s before the 120s Vercel function limit to ensure we return results
+    if (eligible.length === 0) {
+      console.log('[sweeper-notify] All vehicles already notified or ineligible');
+      return res.status(200).json({ success: true, message: 'All already notified', results });
+    }
+
+    console.log(`[sweeper-notify] ${parkedVehicles.length} vehicles with cleaning today, ${eligible.length} eligible for check`);
+
+    // ─── Step 2: Resolve addresses → TransIDs (cached per unique address) ───
     const startTime = Date.now();
-    const MAX_RUNTIME_MS = 110_000; // 110 seconds (10s buffer before 120s limit)
+    const MAX_RUNTIME_MS = 110_000; // 110s budget (10s buffer before 120s limit)
 
-    // Check each vehicle's block for sweeper activity
-    for (const vehicle of toCheck) {
-      // Safety: stop if approaching function timeout
+    // Cache: address string → TransID result (null = unparseable/not found)
+    const transIdCache = new Map<string, { transId: number; segment: string } | null>();
+    // Group: TransID → list of vehicles on that segment
+    const segmentVehicles = new Map<number, { vehicles: ParkedVehicle[]; segment: string }>();
+    // Vehicles that couldn't be resolved to a TransID
+    let unresolvedCount = 0;
+
+    for (const vehicle of eligible) {
       if (Date.now() - startTime > MAX_RUNTIME_MS) {
-        console.log(`[sweeper-notify] Approaching timeout after ${results.vehiclesChecked} vehicles checked. Will continue next run.`);
+        console.log('[sweeper-notify] Approaching timeout during TransID resolution');
         break;
       }
-      try {
-        // Notification log dedup — always check as belt-and-suspenders
-        // (column-based filter above may miss if the column update failed on a prior run)
-        const wasNotified = await alreadyNotified(vehicle.id);
-        if (wasNotified) {
-          results.notificationsSkipped++;
-          continue;
+
+      // Normalize address for cache (strip city/state/zip, uppercase)
+      const cacheKey = vehicle.address.toUpperCase().replace(/,.*$/, '').trim();
+
+      let transResult: { transId: number; segment: string } | null | undefined = transIdCache.get(cacheKey);
+      if (transResult === undefined) {
+        // Cache miss — call city API
+        try {
+          transResult = await lookupTransId(vehicle.address);
+        } catch (err) {
+          console.error(`[sweeper-notify] TransID lookup failed for "${vehicle.address}":`, err);
+          results.apiErrors++;
+          transResult = null;
         }
+        transIdCache.set(cacheKey, transResult);
+      }
 
-        if (!vehicle.fcm_token) {
-          results.notificationsSkipped++;
-          continue;
-        }
+      if (!transResult) {
+        unresolvedCount++;
+        continue;
+      }
 
-        if (!vehicle.address) {
-          results.notificationsSkipped++;
-          continue;
-        }
-
-        results.vehiclesChecked++;
-
-        // Call the sweeper tracker API
-        const sweeperResult = await checkSweeperPassedToday(vehicle.address);
-
-        if (!sweeperResult) {
-          // Address not found in city street network — skip silently
-          continue;
-        }
-
-        if (!sweeperResult.passed) {
-          // Sweeper hasn't passed yet — we'll check again next cron run
-          continue;
-        }
-
-        // Sweeper HAS passed! Send the notification.
-        results.sweeperPassed++;
-
-        const passTimeStr = sweeperResult.passTime || 'earlier today';
-        const segmentStr = sweeperResult.segment || vehicle.address;
-
-        const notifResult = await sendPushNotification(vehicle.fcm_token, {
-          title: 'Street Sweeper Passed!',
-          body: `The sweeper passed ${segmentStr} at ${passTimeStr}. You can move your car back now.`,
-          data: {
-            type: 'sweeper_passed',
-            lat: vehicle.latitude?.toString() || '',
-            lng: vehicle.longitude?.toString() || '',
-            passTime: sweeperResult.passTime || '',
-            vehicleId: sweeperResult.vehicleId || '',
-          },
+      // Group this vehicle under its TransID
+      const existing = segmentVehicles.get(transResult.transId);
+      if (existing) {
+        existing.vehicles.push(vehicle);
+      } else {
+        segmentVehicles.set(transResult.transId, {
+          vehicles: [vehicle],
+          segment: transResult.segment,
         });
+      }
+    }
 
-        if (notifResult.success) {
-          results.notificationsSent++;
-          console.log(`[sweeper-notify] Sent sweeper-passed notification to ${vehicle.user_id} at ${vehicle.address} (passed at ${passTimeStr})`);
+    results.uniqueSegments = segmentVehicles.size;
+    console.log(`[sweeper-notify] Resolved ${eligible.length} vehicles to ${segmentVehicles.size} unique segments (${unresolvedCount} unresolved, ${transIdCache.size} address lookups)`);
 
-          // Mark as notified (column-based dedup)
-          if (hasDedupColumn) {
-            await supabaseAdmin
-              .from('user_parked_vehicles')
-              .update({ sweeper_passed_notified_at: new Date().toISOString() } as any)
-              .eq('id', vehicle.id);
+    // ─── Step 3: Check sweeper activity per unique TransID ───
+    const todayChicago = new Date().toLocaleDateString('en-CA', { timeZone: CHICAGO_TZ });
+
+    for (const [transId, group] of segmentVehicles) {
+      if (Date.now() - startTime > MAX_RUNTIME_MS) {
+        console.log(`[sweeper-notify] Approaching timeout after ${results.segmentsSwept} segments checked. Will continue next run.`);
+        break;
+      }
+
+      let sweeperResult: SegmentSweeperResult;
+
+      try {
+        const visits = await getSweeperHistory(transId);
+
+        // Filter to today's visits
+        const todayVisits = visits.filter((v: SweeperVisit) => v.chicagoDate === todayChicago);
+
+        if (todayVisits.length === 0) {
+          // Sweeper hasn't passed this segment today
+          continue;
+        }
+
+        // Find the first pass today
+        const sorted = [...todayVisits].sort(
+          (a: SweeperVisit, b: SweeperVisit) => new Date(a.postingTime).getTime() - new Date(b.postingTime).getTime()
+        );
+        const first = sorted[0];
+
+        sweeperResult = {
+          passed: true,
+          passTime: first.chicagoTime,
+          segment: group.segment,
+          vehicleId: first.vehicleId,
+        };
+      } catch (err) {
+        console.error(`[sweeper-notify] Sweeper history check failed for transId=${transId}:`, err);
+        results.apiErrors++;
+        continue;
+      }
+
+      if (!sweeperResult.passed) continue;
+
+      results.segmentsSwept++;
+      const passTimeStr = sweeperResult.passTime || 'earlier today';
+
+      // ─── Step 4: Notify all vehicles on this swept segment ───
+      for (const vehicle of group.vehicles) {
+        try {
+          // Definitive dedup check via notification_logs
+          const wasNotified = await alreadyNotified(vehicle.id);
+          if (wasNotified) {
+            results.notificationsSkipped++;
+            continue;
           }
 
-          // Log to notification_logs (fallback dedup + audit trail)
-          await logNotification(vehicle.user_id, vehicle.id, vehicle.address, sweeperResult.passTime, 'sent');
+          const friendlyAddr = formatAddressForNotification(vehicle.address);
 
-        } else if (notifResult.invalidToken) {
-          // Deactivate vehicle with invalid token
-          await supabaseAdmin
-            .from('user_parked_vehicles')
-            .update({ is_active: false })
-            .eq('id', vehicle.id);
-          console.log(`[sweeper-notify] Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+          const notifResult = await sendPushNotification(vehicle.fcm_token, {
+            title: 'Street Sweeper Passed!',
+            body: `The sweeper passed ${friendlyAddr} at ${passTimeStr}. You can move your car back now.`,
+            data: {
+              type: 'sweeper_passed',
+              lat: vehicle.latitude?.toString() || '',
+              lng: vehicle.longitude?.toString() || '',
+              passTime: sweeperResult.passTime || '',
+              sweeperVehicleId: sweeperResult.vehicleId || '',
+              segment: sweeperResult.segment || '',
+            },
+          });
+
+          if (notifResult.success) {
+            results.notificationsSent++;
+            console.log(`[sweeper-notify] ✓ Notified ${vehicle.user_id} — ${friendlyAddr} (sweeper at ${passTimeStr})`);
+
+            // Mark as notified (column-based dedup for next run)
+            if (hasDedupColumn) {
+              await supabaseAdmin
+                .from('user_parked_vehicles')
+                .update({ sweeper_passed_notified_at: new Date().toISOString() } as any)
+                .eq('id', vehicle.id);
+            }
+
+            // Log to notification_logs (definitive dedup + audit trail)
+            await logNotification(vehicle.user_id, vehicle.id, vehicle.address, sweeperResult.passTime, 'sent');
+
+          } else if (notifResult.invalidToken) {
+            // Deactivate vehicle with invalid token
+            await supabaseAdmin
+              .from('user_parked_vehicles')
+              .update({ is_active: false })
+              .eq('id', vehicle.id);
+            console.log(`[sweeper-notify] Deactivated vehicle ${vehicle.id} — invalid FCM token`);
+            results.notificationsFailed++;
+          } else {
+            results.notificationsFailed++;
+            await logNotification(vehicle.user_id, vehicle.id, vehicle.address, sweeperResult.passTime, 'failed');
+          }
+
+        } catch (err) {
+          console.error(`[sweeper-notify] Error notifying vehicle ${vehicle.id}:`, err);
           results.notificationsFailed++;
-        } else {
-          results.notificationsFailed++;
-          await logNotification(vehicle.user_id, vehicle.id, vehicle.address, sweeperResult.passTime, 'failed');
         }
-
-      } catch (err) {
-        console.error(`[sweeper-notify] Error checking vehicle ${vehicle.id}:`, err);
-        results.apiErrors++;
       }
     }
 
