@@ -2,11 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 import { sendClickSendSMS } from '../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, esc } from '../../lib/email-template';
 
 const BRAND = {
   name: 'Autopilot America',
-  dashboardUrl: 'https://ticketlessamerica.com/dashboard',
-  emailFrom: process.env.RESEND_FROM || 'Autopilot America <noreply@ticketlessamerica.com>',
+  dashboardUrl: 'https://autopilotamerica.com/dashboard',
+  emailFrom: process.env.RESEND_FROM || 'Autopilot America <noreply@autopilotamerica.com>',
 };
 
 interface User {
@@ -50,45 +51,33 @@ function getNotificationYear(): number {
 }
 
 function getEmailHtml(firstName: string | null, streetName: string | null): string {
-  const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
-  const streetInfo = streetName
-    ? `Our records show you park on ${streetName}, which is subject to this ban.`
+  const safeStreet = streetName ? esc(streetName) : null;
+  const streetInfo = safeStreet
+    ? `Our records show you park on <strong>${safeStreet}</strong>, which is subject to this ban.`
     : 'Our records indicate you may be affected by this ban.';
 
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
-      <h2 style="margin:0 0 12px">❄️ Winter Overnight Parking Ban Starts Tomorrow</h2>
-      <p>${greeting}</p>
-      <p><strong>Chicago's Winter Overnight Parking Ban begins December 1st and runs through April 1st.</strong></p>
-      <p>${streetInfo}</p>
-
-      <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:16px;margin:20px 0">
-        <strong>📍 Ban Details:</strong>
-        <ul style="margin:8px 0">
-          <li><strong>When:</strong> 3:00 AM - 7:00 AM, every night</li>
-          <li><strong>Duration:</strong> December 1 - April 1</li>
-          <li><strong>Penalty:</strong> $150+ towing fee + $60 ticket + $25/day storage</li>
-        </ul>
-      </div>
-
-      <p><strong>What to do:</strong></p>
-      <ul>
-        <li>Move your car off this street between 3 AM - 7 AM every night</li>
-        <li>Or find alternative parking during these hours</li>
-        <li>Look for permanent signage on your street</li>
-      </ul>
-
-      <p style="font-size:14px;color:#6b7280;margin-top:24px">
-        This is a one-time reminder for the 2025-2026 winter season. The ban helps ensure emergency vehicles and plows can move freely during winter.
-      </p>
-
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="font-size:12px;color:#6b7280">
-        You're receiving this because you're registered with ${BRAND.name} at an address on a Winter Overnight Parking Ban street.
-        <a href="${BRAND.dashboardUrl}" style="color:#2563eb">Manage preferences</a>
-      </p>
-    </div>
-  `;
+  return quickEmail({
+    preheader: 'Winter overnight parking ban begins December 1 — move your car 3-7 AM nightly',
+    headerTitle: 'Winter Parking Ban Starts Tomorrow',
+    headerSubtitle: 'December 1 through April 1',
+    body: [
+      greet(firstName || undefined),
+      p(`<strong>Chicago's Winter Overnight Parking Ban begins December 1st and runs through April 1st.</strong>`),
+      p(streetInfo),
+      callout('warning', 'Ban Details', bulletList([
+        '<strong>When:</strong> 3:00 AM - 7:00 AM, every night',
+        '<strong>Duration:</strong> December 1 - April 1',
+        '<strong>Penalty:</strong> $150+ towing fee + $60 ticket + $25/day storage',
+      ])),
+      section('What To Do', bulletList([
+        'Move your car off this street between 3 AM - 7 AM every night',
+        'Or find alternative parking during these hours',
+        'Look for permanent signage on your street',
+      ])),
+      divider(),
+      p('This is a one-time reminder. The ban helps ensure emergency vehicles and plows can move freely during winter.', { size: '13px', color: '#6B7280' }),
+    ].join(''),
+  });
 }
 
 function getSMSText(streetName: string | null): string {

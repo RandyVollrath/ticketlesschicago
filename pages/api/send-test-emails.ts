@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 import { notificationService } from '../../lib/notifications';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { quickEmail, p, section, button, bulletList } from '../../lib/email-template';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -34,64 +35,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const emailContent = {
           to: user.email,
-          subject: '🎉 Welcome to TicketLess Chicago - Your Account is Ready!',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: #0066cc; color: white; padding: 20px; text-align: center;">
-                <h1 style="margin: 0; font-size: 24px;">🎉 Welcome to TicketLess Chicago!</h1>
-              </div>
-              
-              <div style="padding: 20px; background: #f9f9f9;">
-                <h2 style="color: #333;">Your account is confirmed and ready!</h2>
-                <p style="font-size: 16px; color: #666;">
-                  Thank you for joining TicketLess Chicago. We'll help you stay on top of your vehicle renewals — Peace of Mind Parking, always.
-                </p>
-                
-                <div style="background: #e3f2fd; border-left: 4px solid #0066cc; padding: 15px; margin: 15px 0;">
-                  <h3 style="color: #0066cc; margin-top: 0;">What's Next?</h3>
-                  <ul style="color: #333;">
-                    <li>We'll monitor your renewal dates automatically</li>
-                    <li>You'll receive timely reminders before each deadline</li>
-                    <li>Access your dashboard anytime to update preferences</li>
-                  </ul>
-                </div>
-                
-                <p><strong>Email:</strong> ${user.email}<br>
-                <strong>Account Created:</strong> ${new Date(user.created_at).toLocaleDateString()}<br>
-                <strong>Status:</strong> ✅ Verified & Active</p>
-                
-                <div style="text-align: center; margin: 20px 0;">
-                  <a href="https://ticketlessamerica.com/dashboard" 
-                     style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                    View Your Dashboard
-                  </a>
-                </div>
-              </div>
-              
-              <div style="padding: 15px; background: #eee; text-align: center; color: #666; font-size: 12px;">
-                TicketLess Chicago - Keeping Chicago drivers compliant<br>
-                Need help? Reply to this email or visit our dashboard.
-              </div>
-            </div>
-          `,
-          text: `Welcome to TicketLess Chicago!
+          subject: 'Welcome to Autopilot America — Your Account is Ready!',
+          html: quickEmail({
+            preheader: 'Your account is confirmed and ready — Peace of Mind Parking, always.',
+            headerTitle: 'Welcome to Autopilot America!',
+            headerSubtitle: 'Your account is confirmed and ready',
+            body: [
+              p('Thank you for joining Autopilot America. We\'ll help you stay on top of your vehicle renewals — <strong>Peace of Mind Parking, always.</strong>'),
+              section('What\'s Next?', bulletList([
+                'We\'ll monitor your renewal dates automatically',
+                'You\'ll receive timely reminders before each deadline',
+                'Access your dashboard anytime to update preferences',
+              ])),
+              p(`<strong>Email:</strong> ${user.email}<br><strong>Account Created:</strong> ${new Date(user.created_at).toLocaleDateString()}<br><strong>Status:</strong> Verified &amp; Active`),
+              button('View Your Dashboard', 'https://autopilotamerica.com/dashboard'),
+            ].join(''),
+          }),
+          text: `Welcome to Autopilot America!
 
 Your account is confirmed and ready!
 
-Thank you for joining TicketLess Chicago. We'll help you stay on top of your vehicle renewals — Peace of Mind Parking, always.
+Thank you for joining Autopilot America. We'll help you stay on top of your vehicle renewals — Peace of Mind Parking, always.
 
 What's Next?
 - We'll monitor your renewal dates automatically
-- You'll receive timely reminders before each deadline  
+- You'll receive timely reminders before each deadline
 - Access your dashboard anytime to update preferences
 
 Email: ${user.email}
 Account Created: ${new Date(user.created_at).toLocaleDateString()}
-Status: ✅ Verified & Active
+Status: Verified & Active
 
-View your dashboard: https://ticketlessamerica.com/dashboard
+View your dashboard: https://autopilotamerica.com/dashboard
 
-TicketLess Chicago - Keeping Chicago drivers compliant`
+Autopilot America - Peace of Mind Parking`
         };
 
         const success = await notificationService.sendEmail(emailContent);

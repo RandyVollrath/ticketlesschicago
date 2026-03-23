@@ -9,6 +9,7 @@ import {
 } from '../../../lib/rate-limiter';
 import { maskEmail } from '../../../lib/mask-pii';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
+import { quickEmail, p, button, divider } from '../../../lib/email-template';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -104,45 +105,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             from: 'Autopilot America <hello@autopilotamerica.com>',
             to: email,
             subject: 'Sign in to Autopilot America',
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #1a1a1a; margin-bottom: 16px;">Sign in to Autopilot America</h2>
-
-                <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                  Click the button below to securely sign in to your account:
-                </p>
-
-                <div style="margin: 32px 0; text-align: center;">
-                  <a href="${linkData.properties.action_link}"
-                     style="background-color: #0052cc;
-                            color: white;
-                            padding: 14px 32px;
-                            text-decoration: none;
-                            border-radius: 8px;
-                            font-weight: 600;
-                            font-size: 16px;
-                            display: inline-block;">
-                    Sign In Now
-                  </a>
-                </div>
-
-                <p style="color: #666; font-size: 14px;">This link will expire in 60 minutes for security reasons.</p>
-
-                <p style="color: #666; font-size: 14px; margin-top: 24px;">
-                  If you didn't request this email, you can safely ignore it.
-                </p>
-
-                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-
-                <p style="color: #9ca3af; font-size: 13px;">
-                  Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
-                </p>
-
-                <p style="color: #9ca3af; font-size: 12px;">
-                  Autopilot America • Peace of Mind Parking
-                </p>
-              </div>
-            `
+            html: quickEmail({
+              preheader: 'Click to securely sign in to your Autopilot America account',
+              headerTitle: 'Sign in to Autopilot America',
+              body: [
+                p('Click the button below to securely sign in to your account:'),
+                button('Sign In Now', linkData.properties.action_link),
+                p('This link will expire in 60 minutes for security reasons.', { size: '14px', color: '#666666' }),
+                p("If you didn't request this email, you can safely ignore it.", { size: '14px', color: '#666666' }),
+                divider(),
+                p('Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color:#2563EB;">support@autopilotamerica.com</a>', { size: '13px', color: '#9CA3AF' }),
+              ].join(''),
+            })
           })
         });
 

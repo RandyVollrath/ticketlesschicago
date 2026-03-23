@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { notificationService } from '../../../lib/notifications';
 import { withAdminAuth } from '../../../lib/auth-middleware';
+import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, steps, esc } from '../../../lib/email-template';
 
 interface UserNotification {
   user_id: string;
@@ -50,71 +51,30 @@ export default withAdminAuth(async (req, res, adminUser) => {
           : `${stickerList.slice(0, -1).join(', ')} and ${stickerList[stickerList.length - 1]}`;
 
         // Email notification
-        const emailHtml = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white;">
-            <!-- Header -->
-            <div style="background: #10b981; color: white; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-              <h1 style="margin: 0; font-size: 28px; font-weight: 600;">📬 Stickers On The Way!</h1>
-            </div>
-
-            <!-- Main Content -->
-            <div style="padding: 32px 24px; background: #ffffff;">
-              <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 20px; margin-bottom: 24px; border-radius: 4px;">
-                <h2 style="margin: 0 0 12px; color: #065f46; font-size: 20px;">Good News, ${user.first_name}!</h2>
-                <p style="color: #065f46; font-size: 16px; line-height: 1.6; margin: 0;">
-                  We've purchased your <strong>${stickerText}</strong> for vehicle <strong>${user.license_plate}</strong> and they're in the mail!
-                </p>
-              </div>
-
-              <!-- What to Expect -->
-              <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                <h3 style="color: #0c4a6e; margin: 0 0 16px; font-size: 18px;">What to Expect:</h3>
-                <ul style="color: #0369a1; margin: 0; padding-left: 20px; line-height: 1.8;">
-                  <li>Your stickers will arrive at your registered address within 7-10 business days</li>
-                  <li>They'll come in a standard envelope from the City of Chicago</li>
-                  <li>Installation instructions will be included</li>
-                </ul>
-              </div>
-
-              <!-- Next Steps -->
-              <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 20px; margin: 24px 0;">
-                <h3 style="color: #92400e; margin: 0 0 12px; font-size: 18px;">📋 When Your Stickers Arrive:</h3>
-                <ol style="color: #92400e; margin: 0; padding-left: 20px; line-height: 1.8;">
-                  <li>Clean the windshield area where you'll place the sticker</li>
-                  <li>Carefully peel and apply the sticker</li>
-                  <li>Press firmly to ensure proper adhesion</li>
-                  <li>You're all set - stay compliant and ticket-free!</li>
-                </ol>
-              </div>
-
-              <!-- Dashboard Link -->
-              <div style="text-align: center; margin: 32px 0;">
-                <a href="https://ticketlessamerica.com/dashboard"
-                   style="background: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
-                  View Your Dashboard
-                </a>
-              </div>
-
-              <!-- Support Message -->
-              <div style="text-align: center; color: #6b7280; margin: 24px 0; padding-top: 24px; border-top: 1px solid #e5e7eb;">
-                <p style="margin: 0 0 8px;">Questions or concerns?</p>
-                <p style="margin: 0;">Contact us at <a href="mailto:support@ticketlessamerica.com" style="color: #2563eb; text-decoration: none;">support@ticketlessamerica.com</a></p>
-              </div>
-            </div>
-
-            <!-- Footer -->
-            <div style="padding: 20px; background: #f3f4f6; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px;">
-              <div style="margin-bottom: 12px;">
-                <strong style="color: #374151;">Autopilot America</strong><br>
-                Your trusted vehicle compliance partner
-              </div>
-              <div>
-                <a href="https://ticketlessamerica.com/dashboard" style="color: #6b7280; margin: 0 8px; text-decoration: none;">Dashboard</a> |
-                <a href="https://ticketlessamerica.com/support" style="color: #6b7280; margin: 0 8px; text-decoration: none;">Support</a>
-              </div>
-            </div>
-          </div>
-        `;
+        const safeName = esc(user.first_name || 'there');
+        const safePlate = esc(user.license_plate);
+        const safeStickerText = esc(stickerText);
+        const emailHtml = quickEmail({
+          preheader: `Your ${stickerText} for ${user.license_plate} is in the mail!`,
+          headerTitle: 'Stickers On The Way!',
+          headerSubtitle: `For vehicle ${safePlate}`,
+          body: [
+            callout('success', `Good news, ${safeName}!`,
+              `We've purchased your <strong>${safeStickerText}</strong> for vehicle <strong>${safePlate}</strong> and they're in the mail!`),
+            section('What to Expect', bulletList([
+              'Your stickers will arrive at your registered address within 7-10 business days',
+              'They\'ll come in a standard envelope from the City of Chicago',
+              'Installation instructions will be included',
+            ]), { bg: '#EFF6FF', borderColor: '#BFDBFE' }),
+            section('When Your Stickers Arrive', steps([
+              'Clean the windshield area where you\'ll place the sticker',
+              'Carefully peel and apply the sticker',
+              'Press firmly to ensure proper adhesion',
+              'You\'re all set — stay compliant and ticket-free!',
+            ])),
+            button('View Your Dashboard', 'https://autopilotamerica.com/dashboard'),
+          ].join(''),
+        });
 
         const emailText = `
 Good News, ${user.first_name}!
@@ -132,16 +92,16 @@ When Your Stickers Arrive:
 3. Press firmly to ensure proper adhesion
 4. You're all set - stay compliant and ticket-free!
 
-View your dashboard: https://ticketlessamerica.com/dashboard
+View your dashboard: https://autopilotamerica.com/dashboard
 
-Questions or concerns? Contact us at support@ticketlessamerica.com
+Questions or concerns? Contact us at support@autopilotamerica.com
 
 Best regards,
 Autopilot America Team
         `;
 
         // SMS notification
-        const smsMessage = `Ticketless: Good news! Your ${stickerText} for plate ${user.license_plate} has been purchased and is in the mail. Expect delivery in 7-10 business days. Questions? Reply or email support@ticketlessamerica.com - Autopilot America`;
+        const smsMessage = `Autopilot America: Good news! Your ${stickerText} for plate ${user.license_plate} has been purchased and is in the mail. Expect delivery in 7-10 business days. Questions? Reply or email support@autopilotamerica.com`;
 
         // Send email
         try {
