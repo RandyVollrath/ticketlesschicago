@@ -863,6 +863,16 @@ function SettingsPageInner() {
   const [wardLookupStatus, setWardLookupStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [wardLookupMessage, setWardLookupMessage] = useState('');
 
+  // Address autocomplete (Radar.io)
+  const [homeAddressSuggestions, setHomeAddressSuggestions] = useState<any[]>([]);
+  const [showHomeSuggestions, setShowHomeSuggestions] = useState(false);
+  const [mailingAddressSuggestions, setMailingAddressSuggestions] = useState<any[]>([]);
+  const [showMailingSuggestions, setShowMailingSuggestions] = useState(false);
+  const homeAutocompleteRef = useRef<NodeJS.Timeout | null>(null);
+  const mailingAutocompleteRef = useRef<NodeJS.Timeout | null>(null);
+  const homeDropdownRef = useRef<HTMLDivElement>(null);
+  const mailingDropdownRef = useRef<HTMLDivElement>(null);
+
   // Mailing Address
   const [sameAsHomeAddress, setSameAsHomeAddress] = useState(false);
   const [mailingAddress1, setMailingAddress1] = useState('');
@@ -1050,14 +1060,28 @@ function SettingsPageInner() {
       setUserId(session.user.id);
       setEmail(session.user.email || '');
 
-      // Load profile from user_profiles - single source of truth
-      const { data: profileData } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+      // ── Parallel fetch: run all independent queries at once ──
+      // Profile, plates, autopilot settings, FOIA history, and receipt count
+      // are all independent — fetch them in parallel instead of sequentially.
+      const uid = session.user.id;
+      const [profileResult, plateResult, settingsResult, foiaResult, receiptResult] = await Promise.all([
+        supabase.from('user_profiles').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('monitored_plates').select('*').eq('user_id', uid).eq('status', 'active'),
+        supabase.from('autopilot_settings').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('foia_history_requests')
+          .select('id, license_plate, license_state, status, created_at, ticket_count, total_fines, response_received_at')
+          .eq('user_id', uid).order('created_at', { ascending: false }).limit(10)
+          .then(r => r).catch(() => ({ data: null })),
+        supabase.from('registration_evidence_receipts' as any)
+          .select('id', { count: 'exact', head: true }).eq('user_id', uid)
+          .then(r => r).catch(() => ({ count: 0 })),
+      ]);
 
-      // Check if user has paid for ticket contesting
+      const profileData = profileResult.data;
+      const plateData = plateResult.data;
+      const settingsData = settingsResult.data;
+
+      // ── Apply profile data ──
       setIsPaidUser(profileData?.has_contesting === true);
 
       if (profileData) {
@@ -1065,22 +1089,19 @@ function SettingsPageInner() {
         setLastName(profileData.last_name || '');
         const loadedPhone = profileData.phone || profileData.phone_number || '';
         setPhone(loadedPhone);
-        prevPhoneRef.current = loadedPhone; // Track initial phone for auto-enable SMS
+        prevPhoneRef.current = loadedPhone;
         setHomeAddress(profileData.street_address || profileData.home_address_full || '');
-        // Parse ward from home_address_ward if available
         if (profileData.home_address_ward) {
           const wardNum = parseInt(profileData.home_address_ward);
           if (!isNaN(wardNum)) setWard(wardNum);
         }
         setSection(profileData.home_address_section || '');
-        // Always capitalize city name properly
         const city = profileData.city || 'Chicago';
         setHomeCity(city.charAt(0).toUpperCase() + city.slice(1).toLowerCase());
-        setHomeState('IL'); // Chicago is in IL
+        setHomeState('IL');
         setHomeZip(profileData.zip_code || '');
         setMailingAddress1(profileData.mailing_address || '');
         setMailingAddress2(profileData.mailing_address_2 || '');
-        // Capitalize mailing city properly
         const mailingCityVal = profileData.mailing_city || 'Chicago';
         setMailingCity(mailingCityVal.charAt(0).toUpperCase() + mailingCityVal.slice(1).toLowerCase());
         setMailingState(profileData.mailing_state || 'IL');
@@ -1095,7 +1116,6 @@ function SettingsPageInner() {
         setLicensePlateExpiry(profileData.license_plate_expiry || '');
         setEmissionsDate(profileData.emissions_date || '');
 
-        // Load plate from user_profiles
         if (profileData.license_plate) {
           setPlateNumber(profileData.license_plate);
           setPlateState(profileData.license_state || 'IL');
@@ -1117,7 +1137,6 @@ function SettingsPageInner() {
           setAllClearAlerts(prefs.all_clear ?? true);
           setNotificationDays(prefs.days_before || profileData.notify_days_array || [30, 7, 1]);
         } else {
-          // Fallback to individual columns
           setEmailNotifications(profileData.notify_email ?? true);
           setSmsNotifications(profileData.notify_sms ?? false);
           setPhoneCallNotifications(profileData.phone_call_enabled ?? false);
@@ -1126,34 +1145,23 @@ function SettingsPageInner() {
           setDotPermitAlerts(profileData.notify_dot_permits ?? true);
           setNotificationDays(profileData.notify_days_array || [30, 7, 1]);
         }
+        if (profileData.foia_wait_preference) {
+          setFoiaWaitPreference(profileData.foia_wait_preference);
+        }
       }
 
-      // Also check monitored_plates for paid users (may have different plate)
-      const { data: plateData } = await supabase
-        .from('monitored_plates')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('status', 'active');
-
-      // Check if user has any active plates (check both monitored_plates AND user_profiles.license_plate)
+      // ── Apply plate data ──
       const hasPlateInMonitored = plateData && plateData.length > 0;
       const hasPlateInProfile = !!profileData?.license_plate?.trim();
       setHasActivePlates(hasPlateInMonitored || hasPlateInProfile);
 
       if (plateData && plateData.length > 0) {
-        // Use first active plate
         setPlateNumber(plateData[0].plate);
         setPlateState(plateData[0].state);
         setIsLeased(plateData[0].is_leased_or_company || false);
       }
 
-      // Load autopilot settings (may not exist for new users)
-      const { data: settingsData } = await supabase
-        .from('autopilot_settings')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-
+      // ── Apply autopilot settings ──
       if (settingsData) {
         setAutoMailEnabled(settingsData.auto_mail_enabled);
         setRequireApproval(settingsData.require_approval);
@@ -1163,37 +1171,26 @@ function SettingsPageInner() {
         setEmailOnApprovalNeeded(settingsData.email_on_approval_needed);
       }
 
-      // Load FOIA wait preference from user_profiles
-      if (profileData?.foia_wait_preference) {
-        setFoiaWaitPreference(profileData.foia_wait_preference);
+      // ── Apply FOIA history + receipts ──
+      if (foiaResult && (foiaResult as any).data) {
+        setFoiaHistoryRequests((foiaResult as any).data);
       }
+      setReceiptCount((receiptResult as any)?.count ?? 0);
 
-      // Load dashboard data for ticket display
+      // ── Second parallel batch: tickets + subscription (depend on plates) ──
       if (plateData && plateData.length > 0) {
         setPlatesMonitored(plateData.length);
 
-        // Fetch detected tickets for this user
-        const { data: ticketData } = await supabase
-          .from('detected_tickets')
-          .select(`
-            id,
-            ticket_number,
-            violation_type,
-            violation_code,
-            violation_date,
-            amount,
-            location,
-            status,
-            skip_reason,
-            created_at,
-            user_id
-          `)
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false })
-          .limit(20);
+        const [ticketResult, subResult] = await Promise.all([
+          supabase.from('detected_tickets')
+            .select('id, ticket_number, violation_type, violation_code, violation_date, amount, location, status, skip_reason, created_at, user_id')
+            .eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
+          supabase.from('subscriptions')
+            .select('status, current_period_end').eq('user_id', uid).maybeSingle(),
+        ]);
 
-        if (ticketData) {
-          const formattedTickets: DashboardTicket[] = ticketData.map(t => ({
+        if (ticketResult.data) {
+          const formattedTickets: DashboardTicket[] = ticketResult.data.map(t => ({
             id: t.id,
             plate: plateData[0]?.plate || '',
             state: plateData[0]?.state || 'IL',
@@ -1212,56 +1209,17 @@ function SettingsPageInner() {
         // Set next check date (daily at 9 AM Central / 14:00 UTC)
         const now = new Date();
         const nextCheck = new Date(now);
-        // If today's check hasn't run yet (before 14:00 UTC), next check is today
-        // Otherwise, next check is tomorrow
-        if (now.getUTCHours() < 14) {
-          // Today
-        } else {
+        if (now.getUTCHours() >= 14) {
           nextCheck.setDate(now.getDate() + 1);
         }
         setNextCheckDate(nextCheck.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
 
-        // Load subscription info (may not exist for new users)
-        const { data: subData } = await supabase
-          .from('subscriptions')
-          .select('status, current_period_end')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (subData) {
+        if (subResult.data) {
           setAutopilotSubscription({
-            status: subData.status,
-            current_period_end: subData.current_period_end,
+            status: subResult.data.status,
+            current_period_end: subResult.data.current_period_end,
           });
         }
-      }
-
-      // Load FOIA ticket history requests
-      try {
-        const { data: foiaData } = await supabase
-          .from('foia_history_requests')
-          .select('id, license_plate, license_state, status, created_at, ticket_count, total_fines, response_received_at')
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false })
-          .limit(10);
-        if (foiaData) {
-          setFoiaHistoryRequests(foiaData);
-        }
-      } catch (foiaErr) {
-        // Non-critical — don't fail page load if table doesn't exist yet
-        console.error('FOIA history fetch error (non-critical):', foiaErr);
-      }
-
-      // Check if user has any forwarded sticker receipts on file
-      try {
-        const { count } = await supabase
-          .from('registration_evidence_receipts' as any)
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', session.user.id);
-        setReceiptCount(count ?? 0);
-      } catch {
-        // Non-critical — table may not exist in dev
-        setReceiptCount(0);
       }
 
       setLoading(false);
@@ -1517,19 +1475,114 @@ function SettingsPageInner() {
   };
 
   // Debounced address lookup
+  // ── Address autocomplete via Radar.io ──
+  const RADAR_KEY = process.env.NEXT_PUBLIC_RADAR_KEY || '';
+
+  const fetchAddressSuggestions = useCallback(async (
+    query: string,
+    setSuggestions: (s: any[]) => void,
+    setShow: (b: boolean) => void,
+  ) => {
+    if (!RADAR_KEY || query.length < 4) {
+      setSuggestions([]);
+      setShow(false);
+      return;
+    }
+    try {
+      const params = new URLSearchParams({
+        query,
+        layers: 'address',
+        countryCode: 'US',
+        limit: '5',
+        // Bias toward Chicago
+        near: '41.8781,-87.6298',
+      });
+      const res = await fetch(`https://api.radar.io/v1/search/autocomplete?${params}`, {
+        headers: { Authorization: RADAR_KEY },
+      });
+      if (!res.ok) { setSuggestions([]); setShow(false); return; }
+      const data = await res.json();
+      if (data.addresses && data.addresses.length > 0) {
+        setSuggestions(data.addresses);
+        setShow(true);
+      } else {
+        setSuggestions([]);
+        setShow(false);
+      }
+    } catch {
+      setSuggestions([]);
+      setShow(false);
+    }
+  }, [RADAR_KEY]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (homeDropdownRef.current && !homeDropdownRef.current.contains(e.target as Node)) {
+        setShowHomeSuggestions(false);
+      }
+      if (mailingDropdownRef.current && !mailingDropdownRef.current.contains(e.target as Node)) {
+        setShowMailingSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const addressLookupRef = useRef<NodeJS.Timeout | null>(null);
   const handleAddressChange = (newAddress: string) => {
     setHomeAddress(newAddress);
 
-    // Clear previous timeout
+    // Debounce autocomplete suggestions
+    if (homeAutocompleteRef.current) clearTimeout(homeAutocompleteRef.current);
+    homeAutocompleteRef.current = setTimeout(() => {
+      fetchAddressSuggestions(newAddress, setHomeAddressSuggestions, setShowHomeSuggestions);
+    }, 300);
+
+    // Clear previous ward lookup timeout
     if (addressLookupRef.current) {
       clearTimeout(addressLookupRef.current);
     }
 
-    // Debounce the lookup
+    // Debounce the ward/section lookup
     addressLookupRef.current = setTimeout(() => {
       lookupWardSection(newAddress);
     }, 1000);
+  };
+
+  const selectHomeAddress = (addr: any) => {
+    const street = addr.addressLabel || addr.formattedAddress || '';
+    setHomeAddress(street);
+    if (addr.city) setHomeCity(addr.city);
+    if (addr.stateCode) setHomeState(addr.stateCode);
+    if (addr.postalCode) setHomeZip(addr.postalCode);
+    setShowHomeSuggestions(false);
+    setHomeAddressSuggestions([]);
+    // Trigger ward lookup with the selected address
+    if (addressLookupRef.current) clearTimeout(addressLookupRef.current);
+    lookupWardSection(street);
+  };
+
+  const handleMailingAddressChange = (newAddress: string) => {
+    setMailingAddress1(newAddress);
+    if (sameAsHomeAddress) setSameAsHomeAddress(false);
+
+    // Debounce autocomplete suggestions
+    if (mailingAutocompleteRef.current) clearTimeout(mailingAutocompleteRef.current);
+    mailingAutocompleteRef.current = setTimeout(() => {
+      fetchAddressSuggestions(newAddress, setMailingAddressSuggestions, setShowMailingSuggestions);
+    }, 300);
+  };
+
+  const selectMailingAddress = (addr: any) => {
+    const street = addr.addressLabel || addr.formattedAddress || '';
+    setMailingAddress1(street);
+    if (addr.city) setMailingCity(addr.city);
+    if (addr.stateCode) setMailingState(addr.stateCode);
+    if (addr.postalCode) setMailingZip(addr.postalCode);
+    setShowMailingSuggestions(false);
+    setMailingAddressSuggestions([]);
+    if (sameAsHomeAddress) setSameAsHomeAddress(false);
   };
 
   if (loading) {
@@ -2227,22 +2280,65 @@ function SettingsPageInner() {
             }}>
               Street Address
             </label>
-            <input
-              type="text"
-              value={homeAddress}
-              onChange={(e) => handleAddressChange(e.target.value)}
-              placeholder="123 Main Street, Chicago IL"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 8,
-                border: `1px solid ${wardLookupStatus === 'error' ? COLORS.highlight : COLORS.border}`,
-                fontSize: 15,
-                color: COLORS.primary,
-                backgroundColor: COLORS.bgLight,
-                boxSizing: 'border-box',
-              }}
-            />
+            <div ref={homeDropdownRef} style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={homeAddress}
+                onChange={(e) => handleAddressChange(e.target.value)}
+                onFocus={() => { if (homeAddressSuggestions.length > 0) setShowHomeSuggestions(true); }}
+                placeholder="Start typing your address..."
+                autoComplete="off"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: `1px solid ${wardLookupStatus === 'error' ? COLORS.highlight : COLORS.border}`,
+                  fontSize: 15,
+                  color: COLORS.primary,
+                  backgroundColor: COLORS.bgLight,
+                  boxSizing: 'border-box',
+                }}
+              />
+              {showHomeSuggestions && homeAddressSuggestions.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  zIndex: 50,
+                  backgroundColor: '#fff',
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 8,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                  marginTop: 4,
+                  maxHeight: 220,
+                  overflowY: 'auto',
+                }}>
+                  {homeAddressSuggestions.map((addr, i) => (
+                    <div
+                      key={i}
+                      onClick={() => selectHomeAddress(addr)}
+                      style={{
+                        padding: '10px 14px',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        color: COLORS.primary,
+                        borderBottom: i < homeAddressSuggestions.length - 1 ? `1px solid ${COLORS.bgSection}` : 'none',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = COLORS.bgSection)}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
+                    >
+                      <div style={{ fontWeight: 500 }}>{addr.addressLabel || addr.formattedAddress}</div>
+                      {addr.city && (
+                        <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>
+                          {addr.city}{addr.stateCode ? `, ${addr.stateCode}` : ''} {addr.postalCode || ''}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             {wardLookupMessage && (
               <div style={{
                 marginTop: 6,
@@ -2469,26 +2565,66 @@ function SettingsPageInner() {
             }}>
               Street Address
             </label>
-            <input
-              type="text"
-              value={mailingAddress1}
-              onChange={(e) => {
-                setMailingAddress1(e.target.value);
-                if (sameAsHomeAddress) setSameAsHomeAddress(false);
-              }}
-              placeholder="123 Main Street"
-              disabled={sameAsHomeAddress}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 8,
-                border: `1px solid ${COLORS.border}`,
-                fontSize: 15,
-                color: COLORS.primary,
-                backgroundColor: COLORS.bgLight,
-                boxSizing: 'border-box',
-              }}
-            />
+            <div ref={mailingDropdownRef} style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={mailingAddress1}
+                onChange={(e) => handleMailingAddressChange(e.target.value)}
+                onFocus={() => { if (mailingAddressSuggestions.length > 0) setShowMailingSuggestions(true); }}
+                placeholder="Start typing your address..."
+                autoComplete="off"
+                disabled={sameAsHomeAddress}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  fontSize: 15,
+                  color: COLORS.primary,
+                  backgroundColor: COLORS.bgLight,
+                  boxSizing: 'border-box',
+                }}
+              />
+              {showMailingSuggestions && mailingAddressSuggestions.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  zIndex: 50,
+                  backgroundColor: '#fff',
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 8,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                  marginTop: 4,
+                  maxHeight: 220,
+                  overflowY: 'auto',
+                }}>
+                  {mailingAddressSuggestions.map((addr, i) => (
+                    <div
+                      key={i}
+                      onClick={() => selectMailingAddress(addr)}
+                      style={{
+                        padding: '10px 14px',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        color: COLORS.primary,
+                        borderBottom: i < mailingAddressSuggestions.length - 1 ? `1px solid ${COLORS.bgSection}` : 'none',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = COLORS.bgSection)}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
+                    >
+                      <div style={{ fontWeight: 500 }}>{addr.addressLabel || addr.formattedAddress}</div>
+                      {addr.city && (
+                        <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>
+                          {addr.city}{addr.stateCode ? `, ${addr.stateCode}` : ''} {addr.postalCode || ''}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
