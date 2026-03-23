@@ -105,7 +105,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Step 4: For each violation type with 3+ outcomes, run Claude analysis
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!, timeout: 60000 });
 
     for (const [violationCode, violationOutcomes] of Object.entries(byViolation)) {
       if (violationOutcomes.length < 3) {

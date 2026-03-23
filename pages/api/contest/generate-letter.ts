@@ -54,13 +54,46 @@ const generateLetterSchema = z.object({
   additionalContext: z.string().max(5000).optional(),
 });
 
+/**
+ * Sanitize user-provided text before interpolation into LLM prompts.
+ * Strips patterns that look like prompt injection attempts:
+ * - "Ignore previous instructions" / "disregard" / "forget"
+ * - System/assistant role markers
+ * - XML-like tags that mimic prompt structure
+ * - Markdown code fences that could wrap injected prompts
+ */
+function sanitizePromptInput(input: string): string {
+  if (!input) return input;
+  let sanitized = input;
+  // Strip common prompt injection patterns (case-insensitive)
+  const injectionPatterns = [
+    /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?|directions?)/gi,
+    /disregard\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?|directions?)/gi,
+    /forget\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?|directions?)/gi,
+    /you\s+are\s+now\s+/gi,
+    /new\s+instructions?:/gi,
+    /system\s*:\s*/gi,
+    /assistant\s*:\s*/gi,
+    /\buser\s*:\s*/gi,
+    /\bhuman\s*:\s*/gi,
+    /<\/?system>/gi,
+    /<\/?instructions?>/gi,
+    /<\/?prompt>/gi,
+    /```[\s\S]*?```/g,
+  ];
+  for (const pattern of injectionPatterns) {
+    sanitized = sanitized.replace(pattern, '[removed]');
+  }
+  return sanitized.trim();
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 const anthropic = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 })
   : null;
 
 /**
@@ -1419,11 +1452,11 @@ Ticket Information:
 - Location: ${contest.ticket_location || 'N/A'}
 - Amount: $${contest.ticket_amount || 'N/A'}
 
-Contest Grounds: ${contestGrounds?.join(', ') || 'To be determined'}
+Contest Grounds: ${contestGrounds?.map(g => sanitizePromptInput(g)).join(', ') || 'To be determined'}
 
 Ordinance Info: ${ordinanceInfo ? JSON.stringify(ordinanceInfo) : 'Not available'}
 
-Additional Context: ${additionalContext || 'None provided'}
+Additional Context: ${additionalContext ? sanitizePromptInput(additionalContext) : 'None provided'}
 
 ${kitEvaluation ? `
 === CONTEST KIT GUIDANCE (USE THIS AS PRIMARY STRUCTURE) ===

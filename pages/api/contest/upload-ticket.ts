@@ -11,7 +11,7 @@ const supabase = createClient(
 
 // Initialize Anthropic client
 const anthropic = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 })
   : null;
 
 export const config = {

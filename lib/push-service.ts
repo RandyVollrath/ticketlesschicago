@@ -42,15 +42,28 @@ export class PushService {
   }
 
   /**
-   * Send push notification to a single token
+   * FCM error codes that indicate an invalid/expired token.
+   * Only these should trigger token deactivation.
+   * All other errors (network, server 5xx, rate limit) are transient.
    */
-  async sendToToken(token: string, notification: PushNotification): Promise<boolean> {
+  private static INVALID_TOKEN_ERRORS = new Set([
+    'InvalidRegistration',
+    'NotRegistered',
+    'MismatchSenderId',
+    'InvalidApnsCredential',
+  ]);
+
+  /**
+   * Send push notification to a single token.
+   * Returns: 'success' | 'invalid_token' | 'transient_error'
+   */
+  async sendToToken(token: string, notification: PushNotification): Promise<'success' | 'invalid_token' | 'transient_error'> {
     if (!this.fcmServerKey) {
-      console.log('📱 MOCK: FCM not configured, would send push:', {
+      console.log('MOCK: FCM not configured, would send push:', {
         token: token.substring(0, 20) + '...',
         title: notification.title
       });
-      return true;
+      return 'transient_error';
     }
 
     try {
@@ -74,18 +87,32 @@ export class PushService {
         })
       });
 
+      if (!response.ok) {
+        // HTTP-level error (5xx, 401, 429) — always transient, never deactivate token
+        console.error(`FCM HTTP error ${response.status}`);
+        return 'transient_error';
+      }
+
       const result = await response.json();
 
       if (result.success === 1) {
-        console.log('✅ Push notification sent successfully');
-        return true;
-      } else {
-        console.error('❌ FCM error:', result);
-        return false;
+        return 'success';
       }
+
+      // Check if the error indicates an invalid token
+      const errorCode = result.results?.[0]?.error || '';
+      if (PushService.INVALID_TOKEN_ERRORS.has(errorCode)) {
+        console.warn(`FCM invalid token (${errorCode}):`, token.substring(0, 20) + '...');
+        return 'invalid_token';
+      }
+
+      // All other FCM errors (DeviceMessageRateExceeded, InternalServerError, etc.) are transient
+      console.error('FCM error (transient):', errorCode || result);
+      return 'transient_error';
     } catch (error) {
-      console.error('❌ Push notification error:', error);
-      return false;
+      // Network error — always transient
+      console.error('Push notification network error:', error);
+      return 'transient_error';
     }
   }
 
