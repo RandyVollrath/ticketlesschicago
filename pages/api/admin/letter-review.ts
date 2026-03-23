@@ -1,43 +1,23 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { requireAdminAuth } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const ADMIN_EMAILS = [
-  'randy@autopilotamerica.com',
-  'admin@autopilotamerica.com',
-  'randyvollrath@gmail.com',
-  'carenvollrath@gmail.com',
-];
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Verify admin authentication
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-  if (authError || !user) {
-    return res.status(401).json({ error: 'Invalid authentication token' });
-  }
-
-  // Check admin access
-  if (!ADMIN_EMAILS.includes(user.email || '')) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
+  // Auth: verify admin (Bearer token or session cookies)
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return;
 
   switch (req.method) {
     case 'GET':
       return handleGet(req, res);
     case 'POST':
-      return handlePost(req, res, user);
+      return handlePost(req, res, admin);
     default:
       return res.status(405).json({ error: 'Method not allowed' });
   }

@@ -12,6 +12,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
+/** Get auth headers for admin API calls (Supabase session Bearer token) */
+const getAdminAuthHeaders = async (): Promise<Record<string, string>> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    return { 'Authorization': `Bearer ${session.access_token}` };
+  }
+  return {};
+};
+
 // ============ Types ============
 
 interface ResidencyProofDoc {
@@ -461,9 +470,10 @@ ${addressLines.join('\n')}`;
       const letterContent = generateFullLetter(selected.template);
 
       // Call the PDF generation API
+      const authHeaders = await getAdminAuthHeaders();
       const response = await fetch('/api/admin/generate-sample-letter-pdf', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           letterContent,
           violationType: selectedTemplate,
@@ -1310,8 +1320,11 @@ export default function AdminPortal() {
   const fetchTicketContestingData = async () => {
     setLoading(true);
     try {
+      const authHeaders = await getAdminAuthHeaders();
       // Use the API endpoint which has service role access (bypasses RLS)
-      const response = await fetch('/api/admin/autopilot/stats');
+      const response = await fetch('/api/admin/autopilot/stats', {
+        headers: authHeaders,
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -1338,7 +1351,7 @@ export default function AdminPortal() {
 
   const fetchPipelineData = async (stage?: string) => {
     try {
-      const adminToken = localStorage.getItem('adminToken');
+      const authHeaders = await getAdminAuthHeaders();
       const url = new URL('/api/admin/ticket-pipeline', window.location.origin);
       if (stage && stage !== 'all') {
         url.searchParams.append('stage', stage);
@@ -1346,9 +1359,7 @@ export default function AdminPortal() {
       url.searchParams.append('limit', '100');
 
       const response = await fetch(url.toString(), {
-        headers: {
-          'x-admin-token': adminToken || ''
-        }
+        headers: authHeaders,
       });
       const data = await response.json();
 
@@ -1374,9 +1385,10 @@ export default function AdminPortal() {
         body.batch_id = batchId;
       }
 
+      const authHeaders = await getAdminAuthHeaders();
       const response = await fetch('/api/admin/ticket-contesting/generate-letters', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(body)
       });
 

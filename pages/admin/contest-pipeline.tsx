@@ -3,6 +3,16 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
 
+/** Module-level auth token cache — set during checkAuth, used by all sub-components */
+let _cachedAccessToken: string | null = null;
+
+/** Get auth headers for admin API calls (Supabase session Bearer token) */
+const getAuthHeaders = (): Record<string, string> => {
+  return _cachedAccessToken
+    ? { 'Authorization': `Bearer ${_cachedAccessToken}` }
+    : {};
+};
+
 const ADMIN_EMAILS = [
   'randy@autopilotamerica.com',
   'admin@autopilotamerica.com',
@@ -235,6 +245,7 @@ export default function ContestPipelineAdmin() {
       router.push('/');
       return;
     }
+    _cachedAccessToken = session.access_token;
     setAuthed(true);
   };
 
@@ -338,7 +349,9 @@ function PipelineTab() {
   const loadPipelineData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/contest-pipeline?limit=200');
+      const res = await fetch('/api/admin/contest-pipeline?limit=200', {
+        headers: getAuthHeaders(),
+      });
       const data = await res.json();
       if (data.success) {
         setTickets(data.tickets);
@@ -356,7 +369,9 @@ function PipelineTab() {
     setSelectedTicket(ticket);
     setDetailLoading(true);
     try {
-      const res = await fetch(`/api/admin/contest-pipeline?id=${ticket.id}`);
+      const res = await fetch(`/api/admin/contest-pipeline?id=${ticket.id}`, {
+        headers: getAuthHeaders(),
+      });
       const data = await res.json();
       if (data.success) {
         setTicketDetail(data);
@@ -1129,7 +1144,9 @@ function LifecycleTab() {
       const params = new URLSearchParams();
       if (stageFilter !== 'all') params.set('stage', stageFilter);
       if (searchQuery.trim()) params.set('search', searchQuery.trim());
-      const res = await fetch(`/api/admin/ticket-lifecycle?${params}`);
+      const res = await fetch(`/api/admin/ticket-lifecycle?${params}`, {
+        headers: getAuthHeaders(),
+      });
       const data = await res.json();
       if (data.success) {
         setUsers(data.users);
@@ -1927,7 +1944,9 @@ function LettersTab() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/letter-review');
+      const res = await fetch('/api/admin/letter-review', {
+        headers: getAuthHeaders(),
+      });
       const data = await res.json();
       if (data.success) {
         setLetters(data.letters || []);
@@ -1959,7 +1978,7 @@ function LettersTab() {
 
       const res = await fetch('/api/admin/letter-review', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(body),
       });
 
@@ -1982,7 +2001,7 @@ function LettersTab() {
     try {
       const res = await fetch('/api/admin/letter-review', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ letterId, action: 'edit', editedContent }),
       });
 

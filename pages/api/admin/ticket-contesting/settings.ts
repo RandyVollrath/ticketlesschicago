@@ -7,6 +7,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdminAuth } from '../../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,6 +15,10 @@ const supabase = createClient(
 );
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Auth: verify admin (Bearer token or session cookies)
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return;
+
   if (req.method === 'GET') {
     try {
       const { data: settings, error } = await supabase
