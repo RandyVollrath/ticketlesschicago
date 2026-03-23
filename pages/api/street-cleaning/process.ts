@@ -131,6 +131,7 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
   let successful = 0;
   let failed = 0;
   const errors: string[] = [];
+  let totalUsersQueried = 0;
 
   try {
     // BUG FIX: Query ALL users with ward/section assigned, regardless of notify_sms.
@@ -176,6 +177,7 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
       return { processed, successful, failed, errors };
     }
 
+    totalUsersQueried = users.length;
     console.log(`Found ${users.length} user(s) to evaluate for ${type}`);
 
     // Process each user
@@ -287,9 +289,16 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
           successful++;
           // BUG FIX: Use supabaseAdmin for logging (bypasses RLS).
           // BUG FIX: Store cleaning_date as date string, not ISO datetime.
-          await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.channels);
+          await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.channels, 'sent');
+
+          // Also log any partial failures (some channels succeeded, some failed)
+          if (result.failedChannels.length > 0) {
+            await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.failedChannels, 'partial_failure', result.errors.join('; '));
+          }
         } else {
           failed++;
+          // Log complete failure with error details
+          await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.failedChannels, 'failed', result.errors.join('; '));
         }
 
       } catch (userError) {
@@ -305,6 +314,42 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
   }
 
   console.log(`\nResults: ${successful} sent, ${failed} failed, ${processed} evaluated`);
+
+  // Zero-notification admin alert: if we had users to process but sent nothing, something is wrong
+  if (successful === 0 && (users?.length || 0) > 3) {
+    console.warn('ALERT: Zero notifications sent despite having users to process!');
+    try {
+      await notificationService.sendEmail({
+        to: 'randy@autopilotamerica.com',
+        subject: `Street Cleaning Alert: ZERO notifications sent (${type})`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px;">
+            <h2 style="color: red;">Zero Notification Alert</h2>
+            <p>The street cleaning notification pipeline processed <strong>${users?.length || 0} users</strong> but sent <strong>0 notifications</strong>.</p>
+            <h3>Details</h3>
+            <ul>
+              <li><strong>Type:</strong> ${type}</li>
+              <li><strong>Chicago Date:</strong> ${chicagoDateISO}</li>
+              <li><strong>Users Evaluated:</strong> ${processed}</li>
+              <li><strong>Failed:</strong> ${failed}</li>
+              <li><strong>Errors:</strong> ${errors.length > 0 ? errors.join('<br>') : 'None captured'}</li>
+            </ul>
+            <p>This likely means:</p>
+            <ol>
+              <li>No users had cleaning dates matching today's schedule</li>
+              <li>All notifications were deduplicated (already sent)</li>
+              <li>A bug is silently filtering everyone out</li>
+            </ol>
+            <p>Check <a href="https://vercel.com/randy-vollrath/ticketless-chicago/logs">Vercel logs</a> for details.</p>
+          </div>
+        `,
+        text: `ZERO NOTIFICATION ALERT\n\nType: ${type}\nChicago Date: ${chicagoDateISO}\nUsers: ${users?.length || 0}\nProcessed: ${processed}\nFailed: ${failed}\nErrors: ${errors.join(', ') || 'None'}\n\nCheck Vercel logs for details.`
+      });
+    } catch (alertError) {
+      console.error('Failed to send zero-notification admin alert:', alertError);
+    }
+  }
+
   return { processed, successful, failed, errors };
 }
 
@@ -330,13 +375,15 @@ function shouldSendNotification(user: any, type: string, daysUntil: number): boo
   }
 }
 
-async function sendNotification(user: any, type: string, cleaningDate: Date, daysUntil: number): Promise<{ sent: boolean; channels: string[] }> {
+async function sendNotification(user: any, type: string, cleaningDate: Date, daysUntil: number): Promise<{ sent: boolean; channels: string[]; failedChannels: string[]; errors: string[] }> {
   const channelsSent: string[] = [];
+  const channelsFailed: string[] = [];
+  const channelErrors: string[] = [];
 
   // Validate date to prevent "Invalid Date" in messages
   if (!cleaningDate || isNaN(cleaningDate.getTime())) {
     console.error('Invalid cleaning date provided:', cleaningDate);
-    return { sent: false, channels: [] };
+    return { sent: false, channels: [], failedChannels: ['validation'], errors: ['Invalid cleaning date'] };
   }
 
   const formattedDate = cleaningDate.toLocaleDateString('en-US', {
@@ -385,36 +432,59 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     // Send email if enabled (most users have email enabled)
     if (user.email && user.notify_email !== false) {
       console.log(`  Email -> ${user.email}`);
-      await notificationService.sendEmail({
-        to: user.email,
-        subject: subject,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>${subject}</h2>
-            <p>${message}</p>
-            <p style="margin-top: 20px;">
-              <strong>Your Address:</strong><br>
-              ${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}
-            </p>
-            <p style="margin-top: 20px; font-size: 12px; color: #666;">
-              Manage your preferences at <a href="https://autopilotamerica.com/settings">autopilotamerica.com/settings</a>
-            </p>
-          </div>
-        `,
-        text: `${subject}\n\n${message}\n\nYour Address:\n${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://autopilotamerica.com/settings`
-      });
-      channelsSent.push('email');
+      try {
+        const emailResult = await notificationService.sendEmail({
+          to: user.email,
+          subject: subject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>${subject}</h2>
+              <p>${message}</p>
+              <p style="margin-top: 20px;">
+                <strong>Your Address:</strong><br>
+                ${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}
+              </p>
+              <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                Manage your preferences at <a href="https://autopilotamerica.com/settings">autopilotamerica.com/settings</a>
+              </p>
+            </div>
+          `,
+          text: `${subject}\n\n${message}\n\nYour Address:\n${user.street_address || user.home_address_full || `Ward ${user.home_address_ward}, Section ${user.home_address_section}`}\n\nManage your preferences at https://autopilotamerica.com/settings`
+        });
+        if (emailResult) {
+          channelsSent.push('email');
+        } else {
+          channelsFailed.push('email');
+          channelErrors.push(`Email send returned false for ${user.email}`);
+        }
+      } catch (emailError: any) {
+        channelsFailed.push('email');
+        channelErrors.push(`Email error: ${sanitizeErrorMessage(emailError)}`);
+        console.error(`  Email error for ${user.email}:`, emailError);
+      }
     }
 
-    // Send SMS if user has SMS enabled and phone number
+    // Send SMS if user explicitly opted in and has phone number
+    // BUG FIX: Use === true (explicit opt-in) instead of !== false.
+    // notify_sms defaults to false for most users; sending without consent is a TCPA violation.
     const phoneNumber = user.phone_number || user.phone;
-    if (phoneNumber && user.notify_sms !== false) {
+    if (phoneNumber && user.notify_sms === true) {
       console.log(`  SMS -> ${phoneNumber}`);
-      await notificationService.sendSMS({
-        to: phoneNumber,
-        message: message
-      });
-      channelsSent.push('sms');
+      try {
+        const smsResult = await notificationService.sendSMS({
+          to: phoneNumber,
+          message: message
+        });
+        if (smsResult) {
+          channelsSent.push('sms');
+        } else {
+          channelsFailed.push('sms');
+          console.error(`  SMS send returned false for ${phoneNumber}`);
+        }
+      } catch (smsError) {
+        channelsFailed.push('sms');
+        console.error(`  SMS error for ${phoneNumber}:`, smsError);
+      }
     }
 
     // Send voice call if enabled (morning reminders only)
@@ -429,9 +499,13 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
         if (voiceResult.success) {
           channelsSent.push('voice');
         } else {
+          channelsFailed.push('voice');
+          channelErrors.push(`Voice failed: ${voiceResult.error}`);
           console.error(`  Voice call failed for ${phoneNumber}:`, voiceResult.error);
         }
-      } catch (voiceError) {
+      } catch (voiceError: any) {
+        channelsFailed.push('voice');
+        channelErrors.push(`Voice error: ${sanitizeErrorMessage(voiceError)}`);
         console.error(`  Voice call error for ${phoneNumber}:`, voiceError);
       }
     }
@@ -440,18 +514,20 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     if (user.push_token) {
       try {
         const { pushService } = await import('../../../lib/push-service');
-        const pushSent = await pushService.sendToToken(user.push_token, {
+        const pushResult = await pushService.sendToToken(user.push_token, {
           title: subject,
           body: message,
           data: { type: 'street_cleaning', notificationType: type },
           userId: user.user_id,
           category: 'street_cleaning'
         });
-        if (pushSent) {
+        if (pushResult === 'success') {
           console.log(`  Push -> ${user.push_token.substring(0, 20)}...`);
           channelsSent.push('push');
         }
-      } catch (pushError) {
+      } catch (pushError: any) {
+        channelsFailed.push('push');
+        channelErrors.push(`Push error: ${sanitizeErrorMessage(pushError)}`);
         console.error(`  Push failed for ${user.email}:`, pushError);
       }
     }
@@ -460,10 +536,14 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
       console.log(`  No channels available for ${user.email} (email: ${user.notify_email}, sms: ${user.notify_sms}, phone: ${phoneNumber})`);
     }
 
-    return { sent: channelsSent.length > 0, channels: channelsSent };
-  } catch (error) {
+    if (channelsFailed.length > 0) {
+      console.log(`  Failed channels for ${user.email}: ${channelsFailed.join(', ')}`);
+    }
+
+    return { sent: channelsSent.length > 0, channels: channelsSent, failedChannels: channelsFailed, errors: channelErrors };
+  } catch (error: any) {
     console.error(`Failed to send notification to ${user.email}:`, error);
-    return { sent: false, channels: [] };
+    return { sent: false, channels: [], failedChannels: ['all'], errors: [sanitizeErrorMessage(error)] };
   }
 }
 
@@ -475,7 +555,9 @@ async function logNotification(
   ward: string,
   section: string,
   daysUntil?: number,
-  channelsSent?: string[]
+  channels?: string[],
+  status: string = 'sent',
+  errorMessage?: string
 ) {
   try {
     // BUG FIX: Use supabaseAdmin to bypass RLS.
@@ -486,13 +568,14 @@ async function logNotification(
         user_id: userId,
         notification_type: 'street_cleaning',
         sent_at: new Date().toISOString(),
-        status: 'sent',
+        status,
         ward: ward,
         section: section,
         cleaning_date: cleaningDateStr,
         days_before: daysUntil ?? null,
-        channels: channelsSent || ['email'],
-        metadata: { type }
+        channels: channels || ['email'],
+        error_message: errorMessage || null,
+        metadata: { type, ...(status !== 'sent' ? { failed_channels: channels } : {}) }
       } as any);
   } catch (error) {
     console.error('Failed to log notification:', error);

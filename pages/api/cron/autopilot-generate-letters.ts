@@ -2681,7 +2681,31 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
     return { success: false, status: 'error', error: 'Empty or malformed letter content' };
   }
 
-  // ── Save letter ──
+  // ── Optimistic claim: atomically move ticket out of 'found' BEFORE inserting letter ──
+  // This prevents duplicate letters if the cron crashes between insert and status update.
+  // If another cron run already claimed this ticket, the update returns count=0 and we skip.
+  const newStatus = needsApproval ? 'needs_approval' : 'letter_generated';
+  const ticketUpdate: Record<string, any> = {
+    status: newStatus,
+    skip_reason: needsApproval ? skipReason : null,
+  };
+  // Store Street View URL/date on the ticket for later reference
+  if (evidence.streetViewEvidence?.hasImagery) {
+    ticketUpdate.street_view_url = evidence.streetViewEvidence.imageUrl;
+    ticketUpdate.street_view_date = evidence.streetViewEvidence.imageDate;
+  }
+  const { count: claimCount } = await supabaseAdmin
+    .from('detected_tickets')
+    .update(ticketUpdate)
+    .eq('id', ticket.id)
+    .eq('status', 'found'); // Optimistic lock — only claim if still in 'found'
+
+  if (!claimCount || claimCount === 0) {
+    console.log(`    Ticket ${ticket.id} already claimed by another run — skipping`);
+    return { success: true, status: 'already_claimed' };
+  }
+
+  // ── Save letter (ticket is now claimed, safe from duplicates) ──
   const { data: letter, error: letterError } = await supabaseAdmin
     .from('contest_letters')
     .insert({
@@ -2702,24 +2726,13 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
 
   if (letterError) {
     console.log(`    Error creating letter: ${letterError.message}`);
+    // Revert ticket status since letter insert failed
+    await supabaseAdmin
+      .from('detected_tickets')
+      .update({ status: 'found', skip_reason: null })
+      .eq('id', ticket.id);
     return { success: false, status: 'error', error: letterError.message };
   }
-
-  // ── Update ticket status ──
-  const newStatus = needsApproval ? 'needs_approval' : 'letter_generated';
-  const ticketUpdate: Record<string, any> = {
-    status: newStatus,
-    skip_reason: needsApproval ? skipReason : null,
-  };
-  // Store Street View URL/date on the ticket for later reference
-  if (evidence.streetViewEvidence?.hasImagery) {
-    ticketUpdate.street_view_url = evidence.streetViewEvidence.imageUrl;
-    ticketUpdate.street_view_date = evidence.streetViewEvidence.imageDate;
-  }
-  await supabaseAdmin
-    .from('detected_tickets')
-    .update(ticketUpdate)
-    .eq('id', ticket.id);
 
   // ── Audit log with full evidence details ──
   await supabaseAdmin
