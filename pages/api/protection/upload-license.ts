@@ -12,7 +12,6 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
 import formidable from 'formidable';
 import fs from 'fs';
 // DISABLED: Sharp has compatibility issues with Vercel's serverless runtime
@@ -21,11 +20,7 @@ import vision from '@google-cloud/vision';
 import { logAuditEvent, getIpAddress, getUserAgent } from '@/lib/audit-logger';
 import { sanitizeErrorMessage } from '@/lib/error-utils';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '@/lib/rate-limiter';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin, supabase } from '@/lib/supabase';
 
 // Configure formidable to NOT parse by default
 export const config = {
@@ -293,6 +288,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   await recordRateLimitAction(clientIp, 'upload');
 
+  // Require authentication
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+  const jwtToken = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(jwtToken);
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
   try {
     // Parse form data
     const form = formidable({
@@ -314,6 +320,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID required' });
+    }
+
+    // Verify user can only upload to their own profile
+    if (authUser.id !== userId) {
+      return res.status(403).json({ error: 'You can only upload documents for your own account' });
     }
 
     if (!file) {
@@ -376,7 +387,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const fileBuffer = fs.readFileSync(file.filepath);
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabaseAdmin!.storage
       .from(BUCKET_NAME)
       .upload(filePath, fileBuffer, {
         contentType: file.mimetype || 'image/jpeg',
@@ -389,7 +400,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Generate signed URL (24-hour expiration)
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin!.storage
       .from(BUCKET_NAME)
       .createSignedUrl(filePath, 86400); // 24 hours
 
@@ -411,7 +422,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           license_image_back_verified: false,
         };
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin!
       .from('user_profiles')
       .update(updateData)
       .eq('user_id', userId);

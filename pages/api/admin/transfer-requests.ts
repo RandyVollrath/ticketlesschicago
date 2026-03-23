@@ -10,32 +10,24 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin } from '../../../lib/supabase';
+import { requireAdminAuth } from '../../../lib/auth-middleware';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Simple admin auth check
-  const authHeader = req.headers.authorization;
-  const adminToken = process.env.ADMIN_API_TOKEN || 'ticketless2025admin';
-
-  if (authHeader !== `Bearer ${adminToken}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Require admin authentication (JWT or session cookie)
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return; // requireAdminAuth already sent 401/403
 
   const { countOnly } = req.query;
 
   try {
     if (countOnly === 'true') {
       // Just get the count for the badge
-      const { count, error } = await supabase
+      const { count, error } = await supabaseAdmin!
         .from('renewal_orders')
         .select('id', { count: 'exact', head: true })
         .or('status.eq.transfer_requested,and(payment_transfer_status.eq.pending,status.neq.transfer_requested)');
@@ -49,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get full list of transfer requests
-    const { data: orders, error } = await supabase
+    const { data: orders, error } = await supabaseAdmin!
       .from('renewal_orders')
       .select(`
         id,
@@ -86,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get partner names for all orders
     const partnerIds = [...new Set(orders?.map(o => o.partner_id) || [])];
-    const { data: partners } = await supabase
+    const { data: partners } = await supabaseAdmin!
       .from('renewal_partners')
       .select('id, name')
       .in('id', partnerIds);
