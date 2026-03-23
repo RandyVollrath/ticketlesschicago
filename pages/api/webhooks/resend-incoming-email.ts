@@ -79,12 +79,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Upload FOIA attachments to Vercel Blob (PDFs, CSVs, XLSX files from city)
       const foiaAttachmentsMeta: { filename: string; content_type: string; url?: string }[] = [];
       let foiaAttachmentTextContent = ''; // Extracted text from CSV/text attachments for AI parsing
+      // Whitelist of content types allowed for FOIA attachments
+      const ALLOWED_FOIA_CONTENT_TYPES = [
+        'application/pdf',
+        'text/csv',
+        'text/plain',
+        'text/tab-separated-values',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'image/png',
+        'image/jpeg',
+        'image/tiff',
+      ];
+
       if (attachments.length > 0) {
         try {
           const { put } = await import('@vercel/blob');
           for (const attachment of attachments) {
-            const filename = attachment.filename || `foia-doc-${Date.now()}`;
             const contentType = attachment.content_type || 'application/octet-stream';
+
+            // Validate content type to prevent malicious file uploads (e.g. text/html → XSS)
+            if (!ALLOWED_FOIA_CONTENT_TYPES.includes(contentType)) {
+              console.warn(`  ⚠️ Rejected FOIA attachment with disallowed content type: ${contentType} (${attachment.filename})`);
+              continue;
+            }
+
+            // Sanitize filename to prevent path traversal and special characters
+            const rawFilename = attachment.filename || `foia-doc-${Date.now()}`;
+            const filename = rawFilename.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/^\.+/, '') || 'attachment';
             const buffer = Buffer.from(attachment.content, 'base64');
 
             const blobPath = `foia-responses/${Date.now()}-${filename}`;

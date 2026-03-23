@@ -78,6 +78,18 @@ interface LobWebhookEvent {
 }
 
 /**
+ * Read raw request body when bodyParser is disabled.
+ * Required for HMAC signature verification (must use original bytes).
+ */
+async function getRawBody(req: NextApiRequest): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req as any) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
  * Verify Lob webhook signature
  * Lob uses a simple signature header for verification
  */
@@ -137,8 +149,9 @@ export default async function handler(
   console.log('📬 Received Lob webhook');
 
   try {
-    // Get raw body for signature verification
-    const rawBody = JSON.stringify(req.body);
+    // Read raw body for HMAC signature verification (bodyParser is disabled)
+    const rawBodyBuf = await getRawBody(req);
+    const rawBody = rawBodyBuf.toString('utf8');
     const signature = req.headers['lob-signature'] as string | undefined;
 
     // Verify signature
@@ -147,7 +160,14 @@ export default async function handler(
       return res.status(401).json({ error: 'Invalid signature' });
     }
 
-    const event = req.body as LobWebhookEvent;
+    // Parse JSON from raw body (since bodyParser is disabled)
+    let event: LobWebhookEvent;
+    try {
+      event = JSON.parse(rawBody) as LobWebhookEvent;
+    } catch {
+      console.error('Invalid JSON in Lob webhook body');
+      return res.status(400).json({ error: 'Invalid JSON' });
+    }
     const eventType = event.event_type?.id;
     const lobLetterId = event.body?.id;
 
@@ -397,9 +417,11 @@ async function sendDeliveryNotification(
   }
 }
 
-// Disable body parser to get raw body for signature verification
+// Disable body parser to get raw body for HMAC signature verification.
+// JSON.stringify(req.body) produces different bytes than the original payload,
+// so HMAC verification fails silently when bodyParser is true.
 export const config = {
   api: {
-    bodyParser: true, // Lob sends JSON, so we can use default parser
+    bodyParser: false,
   },
 };

@@ -79,9 +79,9 @@ export function verifyClickSendWebhook(
   secret?: string
 ): boolean {
   try {
-    // Option 1: Secret token in query parameter or header
+    // Verify secret token via header only (never query params — they get logged)
     if (secret) {
-      const token = req.query.token || req.headers['x-clicksend-token'];
+      const token = req.headers['x-clicksend-token'] || req.headers.authorization?.replace('Bearer ', '');
 
       if (token !== secret) {
         console.error('ClickSend webhook secret token mismatch');
