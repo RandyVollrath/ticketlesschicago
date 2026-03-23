@@ -91,9 +91,15 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Verify cron secret or allow in development
-  const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
-  if (process.env.NODE_ENV === 'production' && cronSecret !== process.env.CRON_SECRET) {
+  // Auth: Vercel cron header OR CRON_SECRET (Bearer or query param)
+  const authHeader = req.headers.authorization;
+  const keyParam = req.query.key as string | undefined;
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isAuthorized =
+    authHeader === `Bearer ${process.env.CRON_SECRET}` ||
+    keyParam === process.env.CRON_SECRET;
+
+  if (!isVercelCron && !isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -194,16 +200,24 @@ export default async function handler(
 
     console.log(`[sweeper-notify] ${parkedVehicles.length} vehicles with cleaning today, ${toCheck.length} need sweeper check`);
 
+    // Time budget: stop 10s before the 120s Vercel function limit to ensure we return results
+    const startTime = Date.now();
+    const MAX_RUNTIME_MS = 110_000; // 110 seconds (10s buffer before 120s limit)
+
     // Check each vehicle's block for sweeper activity
     for (const vehicle of toCheck) {
+      // Safety: stop if approaching function timeout
+      if (Date.now() - startTime > MAX_RUNTIME_MS) {
+        console.log(`[sweeper-notify] Approaching timeout after ${results.vehiclesChecked} vehicles checked. Will continue next run.`);
+        break;
+      }
       try {
-        // Notification log dedup (fallback if column doesn't exist)
-        if (!hasDedupColumn) {
-          const wasNotified = await alreadyNotified(vehicle.id);
-          if (wasNotified) {
-            results.notificationsSkipped++;
-            continue;
-          }
+        // Notification log dedup — always check as belt-and-suspenders
+        // (column-based filter above may miss if the column update failed on a prior run)
+        const wasNotified = await alreadyNotified(vehicle.id);
+        if (wasNotified) {
+          results.notificationsSkipped++;
+          continue;
         }
 
         if (!vehicle.fcm_token) {
