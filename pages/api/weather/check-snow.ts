@@ -30,7 +30,7 @@ export default async function handler(
         .from('snow_events')
         .select('*')
         .eq('event_date', today)
-        .single();
+        .maybeSingle();
 
       if (!existingEvent) {
         // Create new snow event

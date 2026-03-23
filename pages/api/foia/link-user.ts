@@ -14,6 +14,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../lib/supabase';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,6 +26,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // SECURITY: Authenticate the request
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ') || !supabase) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
+  const token = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
   const { userId, email } = req.body;
 
   if (!userId || typeof userId !== 'string') {
@@ -32,6 +46,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     return res.status(400).json({ error: 'Valid email is required' });
+  }
+
+  // SECURITY: Ensure the authenticated user matches the userId in the request
+  if (authUser.id !== userId) {
+    return res.status(403).json({ error: 'You can only link your own FOIA requests' });
   }
 
   const cleanEmail = email.toLowerCase().trim();

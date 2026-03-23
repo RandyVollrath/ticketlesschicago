@@ -5,6 +5,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdminAuth } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,13 +17,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Simple admin auth check
-  const authHeader = req.headers.authorization;
-  const adminToken = process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'ticketless2025admin';
-
-  if (authHeader !== `Bearer ${adminToken}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Authenticate admin via JWT or session cookie
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return;
 
   const { remitterId } = req.query;
 

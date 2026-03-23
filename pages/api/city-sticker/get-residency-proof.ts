@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('user_profiles')
         .select('user_id')
         .eq('email', email)
-        .single();
+        .maybeSingle();
 
       if (user) {
         userId = user.user_id;

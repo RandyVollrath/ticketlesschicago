@@ -333,7 +333,7 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
       .eq('user_id', userId)
       .eq('snow_event_id', snowEvent.id)
       .eq('notification_type', notificationType)
-      .single();
+      .maybeSingle();
 
     if (existingNotification) {
       stats.alreadyNotified++;
