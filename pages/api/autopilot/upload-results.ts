@@ -404,7 +404,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('autopilot_settings')
         .select('*')
         .eq('user_id', plate.user_id)
-        .single();
+        .maybeSingle();
 
       const userSettings: UserSettings = settings || {
         auto_mail_enabled: true,

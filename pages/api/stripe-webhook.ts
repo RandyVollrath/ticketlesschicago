@@ -306,7 +306,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   v2_analysis
                 `)
                 .eq('id', appealId)
-                .single();
+                .maybeSingle();
 
               // Get deadline info for the township
               const currentYear = new Date().getFullYear();
@@ -315,7 +315,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .select('bor_open_date, bor_close_date')
                 .eq('township', metadata.township)
                 .eq('year', currentYear)
-                .single();
+                .maybeSingle();
 
               // Format strategy label
               const strategyLabels: Record<string, string> = {
