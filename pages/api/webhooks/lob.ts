@@ -132,6 +132,7 @@ function mapEventToStatus(eventType: string): string | null {
     'letter.re-routed': 're_routed',
     'letter.returned_to_sender': 'returned',
     'letter.delivered': 'delivered',
+    'letter.failed': 'failed',
   };
 
   return statusMap[eventType] || null;
@@ -224,17 +225,23 @@ export default async function handler(
       updateData.status = 'returned'; // Update main status too
     }
 
+    // Mark as failed if that's the event
+    if (newStatus === 'failed') {
+      updateData.failed_at = new Date().toISOString();
+      updateData.status = 'failed'; // Update main status too
+    }
+
     // Update the letter
     const { error: updateError } = await supabaseAdmin
       .from('contest_letters')
       .update(updateData)
       .eq('id', letter.id);
 
-    // Also update ticket status for terminal letter events (delivered/returned)
+    // Also update ticket status for terminal letter events (delivered/returned/failed)
     // Guard: don't overwrite terminal outcome statuses (won/lost/dismissed/upheld/paid)
     const TERMINAL_TICKET_STATUSES = ['dismissed', 'upheld', 'paid', 'won', 'lost', 'skipped'];
-    if (newStatus === 'delivered' || newStatus === 'returned') {
-      const ticketStatus = newStatus === 'returned' ? 'letter_returned' : 'mailed';
+    if (newStatus === 'delivered' || newStatus === 'returned' || newStatus === 'failed') {
+      const ticketStatus = newStatus === 'returned' ? 'letter_returned' : newStatus === 'failed' ? 'letter_failed' : 'mailed';
       const { data: ticketUpdate } = await supabaseAdmin
         .from('detected_tickets')
         .update({ status: ticketStatus })
@@ -270,7 +277,7 @@ export default async function handler(
       });
 
     // Send notification for important events
-    if (newStatus === 'delivered' || newStatus === 'returned') {
+    if (newStatus === 'delivered' || newStatus === 'returned' || newStatus === 'failed') {
       await sendDeliveryNotification(letter.user_id, letter.ticket_id, newStatus);
     }
 
@@ -290,7 +297,7 @@ export default async function handler(
 async function sendDeliveryNotification(
   userId: string,
   ticketId: string,
-  status: 'delivered' | 'returned'
+  status: 'delivered' | 'returned' | 'failed'
 ): Promise<void> {
   // Get user email
   const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
@@ -399,6 +406,43 @@ async function sendDeliveryNotification(
                    style="display: inline-block; background: #0F172A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">
                   Check Your Settings
                 </a>
+              </div>
+
+              <p style="margin: 0; font-size: 13px; color: #9CA3AF; text-align: center;">
+                Questions? Reply to this email or contact support@autopilotamerica.com
+              </p>
+            </div>
+          </div>
+        `,
+      });
+    } else if (status === 'failed') {
+      await resend.emails.send({
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        to: [email],
+        subject: `Action Required: Contest Letter Failed - Ticket #${ticketNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">Contest Letter Could Not Be Sent</h1>
+              <p style="margin: 8px 0 0; opacity: 0.9;">Ticket #${ticketNumber}</p>
+            </div>
+
+            <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+              <p style="margin: 0 0 20px; font-size: 16px; color: #374151;">
+                Hi ${firstName},
+              </p>
+
+              <p style="margin: 0 0 20px; font-size: 15px; color: #4b5563;">
+                We were unable to process your contest letter for ticket #${ticketNumber}. Our team has been notified and will investigate.
+              </p>
+
+              <div style="background: #FEF2F2; border: 1px solid #FECACA; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0; font-size: 16px; color: #991B1B; font-weight: bold;">
+                  We're working on it.
+                </p>
+                <p style="margin: 8px 0 0; font-size: 14px; color: #991B1B;">
+                  Our team will attempt to resend your letter. If additional information is needed, we'll reach out to you directly.
+                </p>
               </div>
 
               <p style="margin: 0; font-size: 13px; color: #9CA3AF; text-align: center;">

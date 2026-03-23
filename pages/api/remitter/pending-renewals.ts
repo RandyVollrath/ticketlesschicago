@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { validatePagination, sanitizeErrorMessage } from '../../../lib/error-utils';
+import { getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
 
 /**
  * Remitter API Endpoint - Get Pending Renewals
@@ -65,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `)
       .eq('payment_status', 'paid') // User paid us
       .eq('city_payment_status', 'pending') // We haven't paid city yet
-      .gte('due_date', new Date().toISOString().split('T')[0]) // Only current/future
+      .gte('due_date', getChicagoDateISO()) // Only current/future
       .order('due_date', { ascending: true })
       .limit(validatedLimit);
 

@@ -299,6 +299,18 @@ const DIRECTION_LABELS: Record<number, string> = {
 };
 
 /**
+ * Sanitize image URLs before injecting into HTML.
+ * Blocks javascript:, data:, and non-HTTPS URLs to prevent injection attacks.
+ */
+function sanitizeImageUrl(url: string): string {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed.startsWith('https://')) return '';
+  if (/['"<>]/.test(trimmed)) return '';
+  return trimmed.replace(/&/g, '&amp;');
+}
+
+/**
  * Convert plain text letter to HTML format for Lob.
  * Optionally includes signature image, user evidence images, Street View images,
  * and red-light camera evidence exhibit.
@@ -343,11 +355,12 @@ export function formatLetterAsHTML(
   // Convert line breaks to <br> and wrap in basic HTML structure
   const withBreaks = escaped.replace(/\n/g, '<br>');
 
-  // Add signature if provided
-  const signatureHTML = signatureImage
+  // Add signature if provided (sanitize URL to block injection)
+  const sanitizedSignature = signatureImage ? sanitizeImageUrl(signatureImage) : '';
+  const signatureHTML = sanitizedSignature
     ? `<div style="margin-top: 30px;">
         <p style="margin-bottom: 10px;">Signature:</p>
-        <img src="${signatureImage}" alt="Signature" style="max-width: 300px; height: auto; border-bottom: 1px solid #000;" />
+        <img src="${sanitizedSignature}" alt="Signature" style="max-width: 300px; height: auto; border-bottom: 1px solid #000;" />
       </div>`
     : '';
 
@@ -371,14 +384,17 @@ export function formatLetterAsHTML(
           from each cardinal direction, as captured by Google Street View.
           These images are publicly available and can be independently verified.
         </p>
-        ${streetViewImages.map((url, index) => `
+        ${streetViewImages.map((url, index) => {
+          const safeUrl = sanitizeImageUrl(url);
+          if (!safeUrl) return '';
+          return `
           <div style="margin-bottom: 15px; ${index === 2 ? 'page-break-before: always;' : ''}">
             <p style="font-size: 10pt; font-weight: bold; margin-bottom: 5px;">
               Exhibit ${exhibitNumber++}: ${DIRECTION_LABELS[index] || `Direction ${index + 1}`}-Facing View
             </p>
-            <img src="${url}" alt="Street View - ${DIRECTION_LABELS[index] || `Direction ${index + 1}`}" style="max-width: 100%; max-height: 350px; border: 1px solid #999;" />
-          </div>
-        `).join('')}
+            <img src="${safeUrl}" alt="Street View - ${DIRECTION_LABELS[index] || `Direction ${index + 1}`}" style="max-width: 100%; max-height: 350px; border: 1px solid #999;" />
+          </div>`;
+        }).join('')}
       </div>
     `;
   }
@@ -393,12 +409,15 @@ export function formatLetterAsHTML(
         <h3 style="font-size: 14pt; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 8px;">
           ${streetViewImages && streetViewImages.length > 0 ? 'Exhibit B: ' : ''}Additional Supporting Evidence
         </h3>
-        ${imagesToInclude.map((url, index) => `
+        ${imagesToInclude.map((url, index) => {
+          const safeUrl = sanitizeImageUrl(url);
+          if (!safeUrl) return '';
+          return `
           <div style="margin-bottom: 20px; ${index > 0 && index % 2 === 0 ? 'page-break-before: always;' : ''}">
             <p style="font-size: 10pt; font-weight: bold; margin-bottom: 5px;">Exhibit ${exhibitNumber++}</p>
-            <img src="${url}" alt="Evidence ${index + 1}" style="max-width: 100%; max-height: 400px; border: 1px solid #ccc;" />
-          </div>
-        `).join('')}
+            <img src="${safeUrl}" alt="Evidence ${index + 1}" style="max-width: 100%; max-height: 400px; border: 1px solid #ccc;" />
+          </div>`;
+        }).join('')}
       </div>
     `;
   }
