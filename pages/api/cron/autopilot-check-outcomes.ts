@@ -106,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('ticket_number', ticket.ticket_number)
           .order('checked_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (!latestPortal) {
           // No portal data yet — update last_portal_check to avoid rechecking
@@ -182,7 +182,7 @@ async function updateOfficerStats(officerBadge: string, outcome: 'dismissed' | '
     .from('hearing_officer_patterns')
     .select('*')
     .eq('officer_id', officerBadge)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     const totalCases = (existing.total_cases || 0) + 1;
@@ -196,8 +196,8 @@ async function updateOfficerStats(officerBadge: string, outcome: 'dismissed' | '
         total_dismissals: totalDismissals,
         total_upheld: totalUpheld,
         overall_dismissal_rate: totalCases > 0 ? totalDismissals / totalCases : 0,
-        tends_toward: totalDismissals / totalCases > 0.55 ? 'lenient'
-          : totalDismissals / totalCases < 0.35 ? 'strict'
+        tends_toward: totalCases > 0 && totalDismissals / totalCases > 0.55 ? 'lenient'
+          : totalCases > 0 && totalDismissals / totalCases < 0.35 ? 'strict'
           : 'neutral',
         last_updated: new Date().toISOString(),
       })
