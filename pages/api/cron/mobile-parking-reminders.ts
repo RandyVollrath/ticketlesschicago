@@ -439,7 +439,7 @@ export default async function handler(
         // Wide window catches users who park late at night on winter ban streets.
         // Only send once per parking session (tracked by winter_ban_notified_at).
         const isWinterBanWindow = isWinterSeason && (chicagoHour >= 20 || chicagoHour <= 2);
-        if (isWinterBanWindow && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at) {
+        if (isWinterBanWindow && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'winter_ban')) {
           const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Winter Parking Ban Reminder',
             body: `Your car at ${vehicle.address} is on a winter ban street. Move before 3am to avoid towing ($150+).`,
@@ -469,7 +469,7 @@ export default async function handler(
         // (which is triggered by monitor-snow.ts on weather changes). This cron catches
         // users who PARK on a snow route AFTER the snow event was already detected.
         // Also sends call alerts for snow routes.
-        if (vehicle.on_snow_route && !vehicle.snow_ban_notified_at) {
+        if (vehicle.on_snow_route && !vehicle.snow_ban_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'snow_route')) {
           // Use pre-fetched snow event (queried once before the loop)
           if (activeSnowEvent) {
             const snowAmount = activeSnowEvent.snow_amount_inches || 2;
@@ -512,7 +512,13 @@ export default async function handler(
           : null;
         const sentStreetCleaningTonight = lastStreetCleaningNotificationDate === today;
 
-        if (chicagoHour >= 19 && chicagoHour <= 21 && vehicle.street_cleaning_date === tomorrowStr && !vehicle.street_cleaning_notified_at) {
+        if (
+          chicagoHour >= 19 &&
+          chicagoHour <= 21 &&
+          vehicle.street_cleaning_date === tomorrowStr &&
+          !sentStreetCleaningTonight &&
+          isPushAlertEnabled(userProfile?.push_alert_preferences, 'street_cleaning')
+        ) {
           const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Street Cleaning Tomorrow!',
             body: `Street cleaning scheduled tomorrow at ${vehicle.address}. Consider moving your car tonight to avoid a $60 ticket.`,
@@ -542,7 +548,8 @@ export default async function handler(
           chicagoHour >= 6 &&
           chicagoHour <= 8 &&
           vehicle.street_cleaning_date === today &&
-          !sentStreetCleaningTonight
+          !sentStreetCleaningTonight &&
+          isPushAlertEnabled(userProfile?.push_alert_preferences, 'street_cleaning')
         ) {
           const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Street Cleaning Today - Move Now!',
@@ -571,13 +578,12 @@ export default async function handler(
         // Uses the real schedule (e.g., "Mon-Fri 6pm-9:30am") instead of hardcoded 7am/8am
         // Only send once per parking session
         // Skip if user is parked in their own permit zone
-        if (vehicle.permit_zone && !vehicle.permit_zone_notified_at) {
+        if (vehicle.permit_zone && !vehicle.permit_zone_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'permit_zone')) {
           const enforcement = getEnforcementStartingSoon(vehicle.permit_restriction_schedule, chicagoTime);
 
           if (enforcement) {
             // Check if user has a permit for this zone (using pre-fetched profiles)
             let isOwnZone = false;
-            const userProfile = permitZoneProfiles.get(vehicle.user_id);
             if (userProfile) {
               const homeZone = (userProfile.permit_zone_number || userProfile.vehicle_zone || '').toString().trim().toLowerCase().replace(/^zone\s*/i, '');
               const parkedZone = (vehicle.permit_zone || '').trim().toLowerCase().replace(/^zone\s*/i, '');
@@ -616,7 +622,7 @@ export default async function handler(
 
         // DOT permit reminder — night before (8-9pm) and morning of (6-8am)
         // Only send once per parking session
-        if (vehicle.dot_permit_active && !vehicle.dot_permit_notified_at) {
+        if (vehicle.dot_permit_active && !vehicle.dot_permit_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'dot_permit')) {
           const permitStartDate = vehicle.dot_permit_start_date;
           const permitType = vehicle.dot_permit_type || 'Street permit';
 
@@ -696,7 +702,12 @@ export default async function handler(
             `Your car at ${vehicle.address} is on a winter ban street. Move before 3 AM to avoid towing.`,
             vehicle.address,
             winterEnforcement,
-            chicagoTime
+            chicagoTime,
+            userProfile ? {
+              phone_call_enabled: userProfile.phone_call_enabled,
+              phone_number: userProfile.phone_number,
+              call_alert_preferences: userProfile.call_alert_preferences,
+            } : undefined
           );
           if (callSent) results.callAlertsSent++;
         }
@@ -721,7 +732,12 @@ export default async function handler(
                 : `Street cleaning is scheduled tomorrow at ${vehicle.address}. Move your car to avoid a 65 dollar ticket.`,
               vehicle.address,
               cleaningEnforcement,
-              chicagoTime
+              chicagoTime,
+              userProfile ? {
+                phone_call_enabled: userProfile.phone_call_enabled,
+                phone_number: userProfile.phone_number,
+                call_alert_preferences: userProfile.call_alert_preferences,
+              } : undefined
             );
             if (callSent) results.callAlertsSent++;
           }
@@ -736,7 +752,12 @@ export default async function handler(
               `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit rules are about to start. Check posted signs to avoid a 75 dollar ticket.`,
               vehicle.address,
               enforcement.enforcementStart,
-              chicagoTime
+              chicagoTime,
+              userProfile ? {
+                phone_call_enabled: userProfile.phone_call_enabled,
+                phone_number: userProfile.phone_number,
+                call_alert_preferences: userProfile.call_alert_preferences,
+              } : undefined
             );
             if (callSent) results.callAlertsSent++;
           }
