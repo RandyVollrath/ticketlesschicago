@@ -483,7 +483,7 @@ export async function getMissingPermitDocs(): Promise<MissingPermitDoc[]> {
         .eq('user_id', user.user_id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       const hasApprovedDocs = permitDoc &&
         permitDoc.verification_status === 'approved' &&
@@ -536,7 +536,7 @@ export async function getSystemHealth(): Promise<AdminActionItems['systemHealth'
       .select('timestamp')
       .order('timestamp', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (lastAudit) {
       lastNotificationRun = lastAudit.timestamp;
@@ -558,7 +558,7 @@ export async function getSystemHealth(): Promise<AdminActionItems['systemHealth'
       .eq('webhook_name', 'utility-bills')
       .order('check_time', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (webhookHealth) {
       if (webhookHealth.overall_status !== 'healthy') {

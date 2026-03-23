@@ -1,18 +1,21 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Allow CORS for callback page
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Restrict CORS to same-origin only (no wildcard)
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    process.env.NEXT_PUBLIC_BASE_URL || 'https://autopilotamerica.com',
+    'https://www.autopilotamerica.com',
+    'http://localhost:3000',
+  ];
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
   if (req.method === 'OPTIONS') {
@@ -23,30 +26,33 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email } = req.query;
+  const { email, token } = req.query;
 
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email is required' });
   }
 
-  try {
-    console.log('[Pending Signup] Looking up data for:', email);
+  // Require a matching token to prevent email enumeration / PII scraping
+  if (!token || typeof token !== 'string') {
+    return res.status(401).json({ error: 'Token is required' });
+  }
 
-    const { data, error } = await supabase
+  try {
+    const { data, error } = await supabaseAdmin!
       .from('pending_signups')
       .select('*')
       .eq('email', email)
-      .single();
+      .eq('token', token)
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // No rows found
-        return res.status(404).json({ error: 'No pending signup found' });
-      }
       throw error;
     }
 
-    console.log('[Pending Signup] ✅ Found pending signup');
+    if (!data) {
+      // Return generic error to prevent email enumeration
+      return res.status(404).json({ error: 'No pending signup found' });
+    }
 
     return res.status(200).json({
       success: true,

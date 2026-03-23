@@ -1,18 +1,21 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Allow CORS for signup page
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Restrict CORS to same-origin only (no wildcard)
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    process.env.NEXT_PUBLIC_BASE_URL || 'https://autopilotamerica.com',
+    'https://www.autopilotamerica.com',
+    'http://localhost:3000',
+  ];
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -47,7 +50,7 @@ export default async function handler(
     console.log('[Pending Signup] Saving form data for:', email);
 
     // Upsert pending signup data (update if exists, create if not)
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin!
       .from('pending_signups')
       .upsert({
         email,
@@ -74,7 +77,7 @@ export default async function handler(
       throw error;
     }
 
-    console.log('[Pending Signup] ✅ Saved successfully');
+    console.log('[Pending Signup] Saved successfully');
 
     return res.status(200).json({
       success: true,
