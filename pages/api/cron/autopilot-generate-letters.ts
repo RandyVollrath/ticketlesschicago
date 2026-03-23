@@ -397,15 +397,15 @@ async function sendApprovalEmail(
 async function checkKillSwitches(): Promise<{ proceed: boolean; message?: string }> {
   const { data: settings } = await supabaseAdmin
     .from('autopilot_admin_settings')
-    .select('setting_key, setting_value')
-    .in('setting_key', ['kill_all_mailing', 'maintenance_mode']);
+    .select('key, value')
+    .in('key', ['pause_all_mail', 'pause_ticket_processing']);
 
   for (const setting of settings || []) {
-    if (setting.setting_key === 'kill_all_mailing' && setting.setting_value?.enabled) {
+    if (setting.key === 'pause_all_mail' && setting.value?.enabled) {
       return { proceed: false, message: 'Kill switch active: letter generation disabled' };
     }
-    if (setting.setting_key === 'maintenance_mode' && setting.setting_value?.enabled) {
-      return { proceed: false, message: `Maintenance mode: ${setting.setting_value.message}` };
+    if (setting.key === 'pause_ticket_processing' && setting.value?.enabled) {
+      return { proceed: false, message: 'Kill switch active: ticket processing paused' };
     }
   }
 

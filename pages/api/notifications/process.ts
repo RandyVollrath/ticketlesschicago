@@ -27,6 +27,18 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Verify cron authorization
+  const authHeader = req.headers.authorization;
+  const keyParam = req.query.key as string | undefined;
+  const secret = process.env.CRON_SECRET;
+  const isAuthorized = secret
+    ? (authHeader === `Bearer ${secret}` || keyParam === secret)
+    : false;
+
+  if (!isAuthorized) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     console.log('🔄 Starting notification processing...');
 

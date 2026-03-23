@@ -207,11 +207,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`\n  Processing FOIA request for ticket ${ticketNumber} (${request.id})`);
 
     try {
-      // Mark as drafting
-      await supabaseAdmin
+      // Mark as drafting — use optimistic lock to prevent duplicate sends
+      const { data: lockResult, error: lockError } = await supabaseAdmin
         .from('ticket_foia_requests' as any)
         .update({ status: 'drafting', updated_at: new Date().toISOString() })
-        .eq('id', request.id);
+        .eq('id', request.id)
+        .eq('status', 'queued')
+        .select('id');
+
+      if (lockError || !lockResult?.length) {
+        console.log(`    Skipping ${ticketNumber} — already claimed by another run`);
+        skipped++;
+        continue;
+      }
 
       // Fetch the detected ticket details
       const { data: ticket, error: ticketError } = await supabaseAdmin

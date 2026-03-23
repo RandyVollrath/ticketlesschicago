@@ -84,6 +84,13 @@ function parseDayRange(dayStr: string): number[] {
   return single !== undefined ? [single] : [1, 2, 3, 4, 5];
 }
 
+function getChicagoDateString(date: Date): string {
+  const year = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric' }).format(date);
+  const month = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: '2-digit' }).format(date);
+  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', day: '2-digit' }).format(date);
+  return `${year}-${month}-${day}`;
+}
+
 const ADVANCE_WARNING_MINUTES = 30;
 
 /** Map rule type aliases to the 5 canonical call alert preference keys. */
@@ -163,7 +170,7 @@ async function sendCallAlertIfEnabled(
     const profile = cachedProfile ?? (await supabaseAdmin
       .from('user_profiles')
       .select('phone_call_enabled, phone_number, call_alert_preferences')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .maybeSingle()).data;
 
     if (!profile?.phone_call_enabled || !profile?.phone_number) return false;
@@ -477,6 +484,11 @@ export default async function handler(
         const tomorrowDay = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', day: '2-digit' }).format(tomorrowDate);
         const tomorrowStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`;
 
+        const lastStreetCleaningNotificationDate = vehicle.street_cleaning_notified_at
+          ? getChicagoDateString(new Date(vehicle.street_cleaning_notified_at))
+          : null;
+        const sentStreetCleaningTonight = lastStreetCleaningNotificationDate === today;
+
         if (chicagoHour >= 19 && chicagoHour <= 21 && vehicle.street_cleaning_date === tomorrowStr && !vehicle.street_cleaning_notified_at) {
           const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Street Cleaning Tomorrow!',
@@ -503,7 +515,12 @@ export default async function handler(
 
         // Street cleaning reminder - MORNING OF (7am check, cleaning at 9am)
         // Backup reminder for those who didn't move the night before
-        if (chicagoHour >= 6 && chicagoHour <= 8 && vehicle.street_cleaning_date === today && !vehicle.street_cleaning_notified_at) {
+        if (
+          chicagoHour >= 6 &&
+          chicagoHour <= 8 &&
+          vehicle.street_cleaning_date === today &&
+          !sentStreetCleaningTonight
+        ) {
           const result = await sendPushNotification(vehicle.fcm_token, {
             title: 'Street Cleaning Today - Move Now!',
             body: `Street cleaning starts at 9am at ${vehicle.address}. Move your car NOW to avoid a $60 ticket.`,
@@ -665,7 +682,7 @@ export default async function handler(
         if (vehicle.street_cleaning_date) {
           const cleaningDate = vehicle.street_cleaning_date; // YYYY-MM-DD
           const isCleaningToday = cleaningDate === today;
-          const isCleaningTomorrow = cleaningDate === (tomorrow ? tomorrowStr : '');
+          const isCleaningTomorrow = cleaningDate === tomorrowStr;
 
           if (isCleaningToday || isCleaningTomorrow) {
             const cleaningEnforcement = new Date(chicagoTime);

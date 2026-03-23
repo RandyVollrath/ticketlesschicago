@@ -73,7 +73,7 @@ export default function ReportZoneHoursScreen({ navigation, route }: any) {
 
     setIsSubmitting(true);
     try {
-      const response = await ApiClient.post('/api/mobile/report-zone-hours', {
+      const response = await ApiClient.authPost('/api/mobile/report-zone-hours', {
         zone: params.zone || '',
         schedule: schedule.trim(),
         currentSchedule: params.currentSchedule || '',
