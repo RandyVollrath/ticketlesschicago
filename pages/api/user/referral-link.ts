@@ -26,7 +26,7 @@ export default async function handler(
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       console.error('User profile not found:', {

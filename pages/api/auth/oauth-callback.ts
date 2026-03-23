@@ -86,8 +86,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('✅ Updated user metadata in Autopilot America');
     }
 
-    // Determine redirect URL based on whether this is a full signup or just OAuth
-    const redirectUrl = req.query.redirect || '/auth/callback';
+    // Validate redirect URL - only allow safe relative paths
+    let redirectUrl = '/auth/callback'; // Safe default
+    const requestedRedirect = req.query.redirect;
+    if (typeof requestedRedirect === 'string') {
+      // Only allow relative paths starting with /
+      // Block protocol-relative URLs (//evil.com) and absolute URLs
+      if (requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//')) {
+        redirectUrl = requestedRedirect;
+      }
+    }
 
     if (req.method === 'GET') {
       // GET request - redirect to frontend

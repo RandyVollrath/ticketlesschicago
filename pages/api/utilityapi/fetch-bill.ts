@@ -26,6 +26,15 @@ const UTILITYAPI_TOKEN = process.env.UTILITYAPI_TOKEN;
 const UTILITYAPI_BASE_URL = 'https://utilityapi.com/api/v2';
 const BUCKET_NAME = 'residency-proofs-temps';
 
+function isAllowedUtilityApiUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && (parsed.hostname === 'utilityapi.com' || parsed.hostname.endsWith('.utilityapi.com'));
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -145,6 +154,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log(`📎 Downloading PDF from: ${pdfSource.raw_url}`);
+
+    if (!isAllowedUtilityApiUrl(pdfSource.raw_url)) {
+      console.error(`🚨 Blocked fetch to untrusted UtilityAPI URL: ${pdfSource.raw_url}`);
+      return res.status(400).json({ error: 'Invalid PDF source URL' });
+    }
 
     // Download the PDF
     const pdfResponse = await fetch(pdfSource.raw_url, {

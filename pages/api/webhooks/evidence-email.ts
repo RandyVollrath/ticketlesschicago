@@ -36,6 +36,17 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function isAllowedAttachmentUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Only allow HTTPS from Resend/Cloudflare domains
+    const allowedHosts = ['api.resend.com', 'attachments.resend.dev'];
+    return parsed.protocol === 'https:' && allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h));
+  } catch {
+    return false;
+  }
+}
+
 export const config = {
   api: {
     bodyParser: {
@@ -460,6 +471,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Method 2: If attachment has a direct URL (Cloudflare worker format)
           if (!buffer && attachment.url) {
             console.log(`  Fetching attachment from URL: ${attachment.url}`);
+            if (!isAllowedAttachmentUrl(attachment.url)) {
+              console.error(`⚠️ Blocked fetch to untrusted URL: ${attachment.url}`);
+              continue; // Skip this attachment
+            }
             try {
               const response = await fetch(attachment.url);
               if (response.ok) {
