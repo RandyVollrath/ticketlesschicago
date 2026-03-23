@@ -235,13 +235,23 @@ export default async function handler(
       .maybeSingle();
 
     if (matchingSavedLocation) {
-      await supabaseAdmin
-        .from('saved_parking_locations')
-        .update({
-          times_parked: (matchingSavedLocation.times_parked || 0) + 1,
-          last_parked_at: parkedAt,
-        })
-        .eq('id', matchingSavedLocation.id);
+      // Use atomic increment to avoid race condition on concurrent saves
+      await supabaseAdmin.rpc('increment_saved_location_parked', {
+        location_id: matchingSavedLocation.id,
+        parked_at: parkedAt,
+      }).then(({ error: rpcError }) => {
+        if (rpcError) {
+          // Fallback to non-atomic update if RPC doesn't exist
+          console.warn('RPC increment_saved_location_parked failed, using fallback:', rpcError.message);
+          return supabaseAdmin
+            .from('saved_parking_locations')
+            .update({
+              times_parked: (matchingSavedLocation.times_parked || 0) + 1,
+              last_parked_at: parkedAt,
+            })
+            .eq('id', matchingSavedLocation.id);
+        }
+      });
     }
 
     console.log(`Saved parked location for user ${userId}:`, {

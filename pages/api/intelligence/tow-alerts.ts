@@ -78,8 +78,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (all === 'true') {
           const alerts = await getUserAlerts(supabase, user_id as string, {
             status: status as TowAlertStatus | undefined,
-            limit: limit ? parseInt(limit as string, 10) : 20,
-            offset: offset ? parseInt(offset as string, 10) : 0,
+            limit: Math.min(Math.max(limit ? parseInt(limit as string, 10) || 20 : 20, 1), 100),
+            offset: Math.max(offset ? parseInt(offset as string, 10) || 0 : 0, 0),
           });
           return res.status(200).json({
             success: true,
