@@ -392,11 +392,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get user profile for letter regeneration
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      console.error('Failed to load user profile:', profileError?.message);
+      return res.status(500).json({ error: 'Failed to load user profile' });
+    }
 
     // Store evidence — merge with any existing evidence (e.g. from prior SMS submission)
     const evidenceText = textBody || 'See attachments';

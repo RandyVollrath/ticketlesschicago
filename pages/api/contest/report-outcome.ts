@@ -96,9 +96,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         notes: additionalNotes
       })
       .select()
-      .single();
+      .maybeSingle();
 
-    if (outcomeError) {
+    if (outcomeError || !courtOutcome) {
       console.error('Error inserting court outcome:', outcomeError);
       return res.status(500).json({ error: 'Failed to save outcome' });
     }
