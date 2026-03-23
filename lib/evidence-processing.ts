@@ -501,8 +501,11 @@ export async function sendApprovalEmailForEvidence(
   violationDescription: string,
   violationDate: string | null,
   amount: number | string | null,
-): Promise<void> {
-  if (!process.env.RESEND_API_KEY) return;
+): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY not configured — cannot send approval email');
+    return false;
+  }
 
   const token = generateApprovalToken(ticketId, userId, letterId);
   const approveUrl = `${BASE_URL}/api/autopilot/approve-letter?token=${token}&action=approve`;
@@ -591,9 +594,18 @@ export async function sendApprovalEmailForEvidence(
         `,
       }),
     });
-    console.log(`    Sent approval email to ${userEmail}`);
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => 'unknown');
+      console.error(`    ❌ Approval email API error (${response.status}): ${errorBody}`);
+      return false;
+    }
+
+    console.log(`    ✅ Sent approval email to ${userEmail}`);
+    return true;
   } catch (err) {
-    console.error('Failed to send approval email:', err);
+    console.error('❌ Failed to send approval email:', err);
+    return false;
   }
 }
 

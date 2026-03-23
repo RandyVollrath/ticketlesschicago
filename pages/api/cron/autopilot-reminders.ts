@@ -72,7 +72,7 @@ async function getUserEmail(userId: string): Promise<{ email: string | null; fir
     .from('user_profiles')
     .select('first_name')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   return { email, firstName: profile?.first_name || null };
 }
@@ -82,7 +82,7 @@ async function getUserPhone(userId: string): Promise<string | null> {
     .from('user_profiles')
     .select('phone_number, notify_sms')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   // Respect TCPA consent — only return phone if user opted in to SMS
   if (!profile?.phone_number || profile.notify_sms === false) return null;
@@ -592,6 +592,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 details: { days_elapsed: daysElapsed, days_remaining: daysRemaining },
                 performed_by: 'autopilot_cron',
               });
+          } else {
+            // SMS failed — fall back to an extra email nudge (last-chance was already sent above)
+            console.log(`  Day-17 SMS failed for ticket ${ticket.ticket_number}, sending extra email nudge`);
+            const emailFallback = await sendReminderEmail(email, name, ticket, daysElapsed);
+            if (emailFallback) {
+              remindersSent++;
+              console.log(`  Day-17 email fallback sent for ticket ${ticket.ticket_number}`);
+            } else {
+              console.error(`  ❌ Day-17 SMS and email fallback both failed for ticket ${ticket.ticket_number} (user ${ticket.user_id})`);
+            }
           }
         }
         continue; // Don't also send a regular reminder
@@ -656,6 +666,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 details: { days_elapsed: daysElapsed, days_remaining: 21 - daysElapsed },
                 performed_by: 'autopilot_cron',
               });
+          } else {
+            // SMS failed (no phone number or API error) — fall back to an extra email reminder
+            console.log(`  SMS failed for day-10 reminder, falling back to email for ticket ${ticket.ticket_number}`);
+            const emailFallback = await sendReminderEmail(email, name, ticket, daysElapsed);
+            if (emailFallback) {
+              remindersSent++;
+              console.log(`  Day-10 email fallback sent for ticket ${ticket.ticket_number}`);
+            } else {
+              console.error(`  ❌ Day-10 SMS and email both failed for ticket ${ticket.ticket_number} (user ${ticket.user_id})`);
+            }
           }
         }
         continue;
@@ -697,7 +717,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('user_profiles')
             .select('first_name, contest_consent, consent_reminder_sent_at')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
           // Skip if user has since provided consent
           if (profile?.contest_consent) {
