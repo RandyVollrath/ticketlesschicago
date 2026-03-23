@@ -7,6 +7,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { requireAdminAuth } from '../../../lib/auth-middleware';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -18,13 +19,17 @@ const supabase = createClient(
 );
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Admin-only: creates real Stripe charges
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return;
+
   try {
     // Get test partner
     const { data: partner } = await supabase
       .from('renewal_partners')
       .select('*')
       .eq('id', 'd78e9928-613f-4f1d-b63a-cda5cb20eef0')
-      .single();
+      .maybeSingle();
 
     if (!partner || !partner.stripe_connected_account_id) {
       return res.status(400).json({

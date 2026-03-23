@@ -43,7 +43,7 @@ export default function SubmitTicket() {
         .from('user_profiles')
         .select('has_contesting')
         .eq('user_id', currentUser.id)
-        .single();
+        .maybeSingle();
 
       if (!profile?.has_contesting) {
         router.push('/protection');

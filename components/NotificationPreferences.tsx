@@ -125,7 +125,7 @@ export default function NotificationPreferences({ userId, onSave }: Notification
         .from('user_profiles')
         .select('notify_days_array, notify_evening_before, phone_call_enabled, notify_sms, notify_email, marketing_consent')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 

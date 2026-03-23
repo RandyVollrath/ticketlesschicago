@@ -10,6 +10,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdminAuth } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,13 +22,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Simple admin auth check
-  const authHeader = req.headers.authorization;
-  const adminToken = process.env.ADMIN_API_TOKEN || 'ticketless2025admin';
-
-  if (authHeader !== `Bearer ${adminToken}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Authenticate admin via JWT or session cookie
+  const admin = await requireAdminAuth(req, res);
+  if (!admin) return; // requireAdminAuth already sent 401/403
 
   const { orderId, notes } = req.body;
 
@@ -41,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_orders')
       .select('id, order_number, partner_id, payment_transfer_status, original_partner_name')
       .eq('id', orderId)
-      .single();
+      .maybeSingle();
 
     if (orderError || !order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -58,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_partners')
       .select('name')
       .eq('id', order.partner_id)
-      .single();
+      .maybeSingle();
 
     // Update the order
     const confirmationNote = `Payment transfer confirmed by admin on ${new Date().toLocaleString()}. Original remitter (${order.original_partner_name}) sent funds to ${newPartner?.name || 'new remitter'}.${notes ? ` Notes: ${notes}` : ''}`;
