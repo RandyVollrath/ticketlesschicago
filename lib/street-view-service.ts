@@ -825,7 +825,7 @@ async function analyzeStreetViewImages(
   violationType?: string | null,
   violationDescription?: string | null,
 ): Promise<SignageAnalysis[]> {
-  const anthropic = new Anthropic({ apiKey });
+  const anthropic = new Anthropic({ apiKey, timeout: 60000 });
 
   // Download images and convert to base64 for Claude Vision
   const imageContents: Array<{

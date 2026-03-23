@@ -6,7 +6,7 @@ import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS, RedLig
 import { computeEvidenceHash } from '../../../lib/red-light-evidence-report';
 import { analyzeRedLightDefense, type AnalysisInput } from '../../../lib/red-light-defense-analysis';
 
-const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
+const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 }) : null;
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

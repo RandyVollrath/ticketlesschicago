@@ -20,7 +20,7 @@ const supabase = createClient(
 );
 
 const anthropic = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 })
   : null;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

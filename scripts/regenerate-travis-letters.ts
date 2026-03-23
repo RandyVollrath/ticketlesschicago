@@ -22,7 +22,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY, timeout: 60000 });
 
 const TRAVIS_USER_ID = '3e67b2b1-5836-4d9d-b79e-a3a2d83e1da4';
 const TICKET_1_ID = '95f2407f-f282-415a-9b6d-af5cc3dbb35a'; // #9204909636

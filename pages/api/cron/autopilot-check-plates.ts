@@ -4,6 +4,7 @@ import { Resend } from 'resend';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../../../lib/contest-kits/evidence-guidance';
 import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 import { pushService } from '../../../lib/push-service';
+import { logMessageSent, logMessageError } from '../../../lib/message-audit-logger';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -286,16 +287,34 @@ async function sendEvidenceRequestEmail(
   `;
 
   try {
-    await resend.emails.send({
+    const emailResult = await resend.emails.send({
       from: 'Autopilot America <alerts@autopilotamerica.com>',
       to: [userEmail],
       subject: `${guidance.emailSubject} (${daysRemaining} days to contest)`,
       html,
       replyTo: `evidence+${ticketId}@autopilotamerica.com`,
     });
+    await logMessageSent({
+      userId: userId,
+      userEmail,
+      messageKey: 'autopilot_evidence_request',
+      messageChannel: 'email',
+      contextData: { ticket_number: ticketNumber, plate, ticket_id: ticketId },
+      messagePreview: `Evidence request for ticket ${ticketNumber} (${daysRemaining} days remaining)`,
+      externalMessageId: emailResult?.data?.id,
+    });
     return true;
   } catch (error) {
     console.error(`  Failed evidence request email to ${userEmail}:`, error);
+    await logMessageError({
+      userId: userId,
+      userEmail,
+      messageKey: 'autopilot_evidence_request',
+      messageChannel: 'email',
+      contextData: { ticket_number: ticketNumber, plate, ticket_id: ticketId },
+      reason: 'api_error',
+      errorDetails: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }
@@ -327,15 +346,31 @@ async function sendDismissalNotificationEmail(
   `;
 
   try {
-    await resend.emails.send({
+    const emailResult = await resend.emails.send({
       from: 'Autopilot America <alerts@autopilotamerica.com>',
       to: [userEmail],
       subject: `Dismissed: Ticket ${ticketNumber}`,
       html,
     });
+    await logMessageSent({
+      userEmail,
+      messageKey: 'autopilot_dismissal_notification',
+      messageChannel: 'email',
+      contextData: { ticket_number: ticketNumber },
+      messagePreview: `Dismissal notification for ticket ${ticketNumber}`,
+      externalMessageId: emailResult?.data?.id,
+    });
     return true;
   } catch (error) {
     console.error(`  Failed dismissal email to ${userEmail}:`, error);
+    await logMessageError({
+      userEmail,
+      messageKey: 'autopilot_dismissal_notification',
+      messageChannel: 'email',
+      contextData: { ticket_number: ticketNumber },
+      reason: 'api_error',
+      errorDetails: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }

@@ -66,19 +66,23 @@ export default async function handler(
   console.log('User-Agent:', req.headers['user-agent']);
   console.log('========================================');
 
-  // Determine notification type based on Chicago time
+  // Determine notification type based on Chicago time.
+  // Use ranges to handle CST/CDT transitions:
+  //   CDT (UTC-5, Apr-Oct): 12 UTC=7am, 20 UTC=3pm, 0 UTC=7pm
+  //   CST (UTC-6, Nov-Mar): 13 UTC=7am, 21 UTC=3pm, 1 UTC=7pm
+  // The cron fires at 0,12,13,20,21 UTC, so we accept ranges.
   let notificationType = 'unknown';
-  if (hour === 7) {
+  if (hour >= 6 && hour <= 8) {
     notificationType = 'morning_reminder';
-    console.log('Matched: morning_reminder (7am CDT)');
-  } else if (hour === 15) {
+    console.log(`Matched: morning_reminder (Chicago hour ${hour})`);
+  } else if (hour >= 14 && hour <= 16) {
     notificationType = 'follow_up';
-    console.log('Matched: follow_up (3pm CDT)');
-  } else if (hour === 19) {
+    console.log(`Matched: follow_up (Chicago hour ${hour})`);
+  } else if (hour >= 18 && hour <= 20) {
     notificationType = 'evening_reminder';
-    console.log('Matched: evening_reminder (7pm CDT)');
+    console.log(`Matched: evening_reminder (Chicago hour ${hour})`);
   } else {
-    console.log(`Skipped: Current hour ${hour} doesn't match any notification schedule (7am, 3pm, 7pm CDT)`);
+    console.log(`Skipped: Chicago hour ${hour} doesn't match any notification window (6-8, 14-16, 18-20)`);
     return res.status(200).json({
       success: true,
       processed: 0,

@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
+import Footer from '../components/Footer';
 
 const COLORS = {
   primary: '#0F172A',
@@ -21,39 +23,11 @@ const FONTS = {
   body: '"Inter", sans-serif',
 };
 
-const ShieldIcon = () => (
-  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-  </svg>
-);
-
-const CheckIcon = ({ size = 20 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
-const BellIcon = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={COLORS.highlight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </svg>
-);
-
-const CarIcon = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
-    <circle cx="6.5" cy="16.5" r="2.5"/>
-    <circle cx="16.5" cy="16.5" r="2.5"/>
-  </svg>
-);
-
-const MailIcon = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#818CF8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="4" width="20" height="16" rx="2"/>
-    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-  </svg>
-);
+// Icons (matching index.tsx patterns)
+const ArrowRight = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>;
+const MenuIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>;
+const CloseIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>;
+const CheckIcon = ({ size = 20 }: { size?: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>;
 
 export default function EarlyAccessPage() {
   const router = useRouter();
@@ -63,6 +37,7 @@ export default function EarlyAccessPage() {
   const [phone, setPhone] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,146 +72,223 @@ export default function EarlyAccessPage() {
   };
 
   return (
-    <>
+    <div style={{
+      fontFamily: FONTS.body,
+      color: COLORS.textDark,
+      backgroundColor: COLORS.bgLight,
+      margin: 0,
+      padding: 0,
+      overflowX: 'hidden',
+    }}>
       <Head>
-        <title>Autopilot - Never Pay an Unfair Chicago Parking Ticket Again</title>
-        <meta name="description" content="Join the waitlist for the Autopilot app. We auto-detect parking tickets and contest them for you. Free street cleaning alerts included." />
+        <title>Early Access - Autopilot | Auto-Contest Chicago Parking Tickets</title>
+        <meta name="description" content="Join the early access list for the Autopilot app. We auto-detect parking tickets and contest them for you. Free street cleaning alerts included." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
         {/* Open Graph */}
-        <meta property="og:title" content="Autopilot - Auto-Contest Chicago Parking Tickets" />
+        <meta property="og:title" content="Early Access - Autopilot | Auto-Contest Chicago Parking Tickets" />
         <meta property="og:description" content="Get notified before street sweepers arrive. Auto-contest unfair tickets. Join the early access list." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://autopilotamerica.com/early-access" />
       </Head>
 
-      <style jsx global>{`
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
-        body { font-family: ${FONTS.body}; background: ${COLORS.bgDark}; color: ${COLORS.textLight}; overflow-x: hidden; }
-        input::placeholder { color: ${COLORS.textMuted}; }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
+      {/* Navigation - matching index.tsx exactly */}
+      <nav style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '20px 5%',
+        backgroundColor: COLORS.bgDark,
+        color: COLORS.textLight,
+        position: 'relative',
+      }}>
+        <Link href="/" style={{
+          fontFamily: FONTS.heading,
+          fontSize: '24px',
+          fontWeight: 800,
+          letterSpacing: '-0.5px',
+          textDecoration: 'none',
+          color: COLORS.textLight,
+        }}>
+          AUTOPILOT<span style={{ color: COLORS.accent }}>.</span>
+        </Link>
+
+        {/* Desktop Nav */}
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }} className="desktop-nav">
+          <Link href="/check-your-street" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>Check Your Street</Link>
+          <Link href="/protection" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>Protection</Link>
+          <Link href="/ticket-history" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>FOIA Lookup</Link>
+          <Link href="/start" style={{
+            padding: '10px 20px',
+            borderRadius: '8px',
+            backgroundColor: COLORS.accent,
+            color: COLORS.primary,
+            fontFamily: FONTS.body,
+            fontWeight: 700,
+            fontSize: '14px',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}>
+            Get Started
+          </Link>
+        </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="mobile-menu-btn"
+          style={{
+            display: 'none',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: COLORS.textLight,
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
+          }}
+        >
+          {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
+        </button>
+      </nav>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div style={{
+          backgroundColor: COLORS.bgDark,
+          padding: '20px 5%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+        }}>
+          <Link href="/check-your-street" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Check Your Street</Link>
+          <Link href="/protection" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Protection</Link>
+          <Link href="/ticket-history" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>FOIA Lookup</Link>
+          <Link href="/start" style={{
+            padding: '14px 24px',
+            borderRadius: '8px',
+            backgroundColor: COLORS.accent,
+            color: COLORS.primary,
+            fontFamily: FONTS.body,
+            fontWeight: 700,
+            fontSize: '16px',
+            textDecoration: 'none',
+            textAlign: 'center',
+            marginTop: '8px',
+          }}>
+            Get Started
+          </Link>
+        </div>
+      )}
 
       {/* Hero Section */}
-      <section style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '40px 20px',
-        background: `linear-gradient(135deg, ${COLORS.bgDark} 0%, #0F172A 50%, #1E293B 100%)`,
+      <header style={{
+        backgroundColor: COLORS.bgDark,
+        color: COLORS.textLight,
+        padding: '80px 5% 100px',
+        textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Background decoration */}
+        {/* Background glow effects - same as index.tsx */}
         <div style={{
           position: 'absolute',
-          top: '-50%',
-          right: '-20%',
-          width: '600px',
-          height: '600px',
+          top: '20%',
+          left: '10%',
+          width: '300px',
+          height: '300px',
+          background: COLORS.accent,
           borderRadius: '50%',
-          background: `radial-gradient(circle, ${COLORS.accent}15 0%, transparent 70%)`,
+          filter: 'blur(120px)',
+          opacity: '0.15',
           pointerEvents: 'none',
         }} />
         <div style={{
           position: 'absolute',
-          bottom: '-30%',
-          left: '-10%',
-          width: '400px',
-          height: '400px',
+          bottom: '10%',
+          right: '15%',
+          width: '200px',
+          height: '200px',
+          background: COLORS.highlight,
           borderRadius: '50%',
-          background: `radial-gradient(circle, ${COLORS.highlight}10 0%, transparent 70%)`,
+          filter: 'blur(100px)',
+          opacity: '0.1',
           pointerEvents: 'none',
         }} />
 
+        {/* Badge */}
         <div style={{
+          display: 'inline-block',
+          padding: '8px 16px',
+          backgroundColor: 'rgba(255,255,255,0.1)',
+          borderRadius: '50px',
+          marginBottom: '30px',
+          fontSize: '14px',
+          fontWeight: 600,
+          border: '1px solid rgba(255,255,255,0.2)',
+        }}>
+          <span style={{ color: COLORS.accent }}>●</span> Coming Soon to iOS & Android
+        </div>
+
+        <h1 style={{
+          fontFamily: FONTS.heading,
+          fontSize: 'clamp(32px, 6vw, 60px)',
+          lineHeight: 1.1,
+          fontWeight: 800,
+          marginBottom: '24px',
+          maxWidth: '800px',
+          margin: '0 auto 24px',
+          position: 'relative',
+        }}>
+          Never Pay an Unfair Chicago Parking Ticket Again
+        </h1>
+
+        <p style={{
+          fontSize: 'clamp(16px, 3vw, 20px)',
+          color: '#94A3B8',
           maxWidth: '600px',
-          width: '100%',
-          textAlign: 'center',
+          margin: '0 auto 40px',
+          lineHeight: 1.6,
+        }}>
+          The app that auto-detects your parking tickets and contests them for you.
+          Plus free street cleaning alerts so you never get ticketed in the first place.
+        </p>
+
+        {/* Signup Form */}
+        <div style={{
+          maxWidth: '460px',
+          margin: '0 auto',
           position: 'relative',
           zIndex: 1,
-          animation: 'fadeInUp 0.6s ease-out',
         }}>
-          {/* Logo / Brand */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            marginBottom: '32px',
-          }}>
-            <ShieldIcon />
-            <span style={{
-              fontFamily: FONTS.heading,
-              fontSize: '28px',
-              fontWeight: 700,
-              color: COLORS.textLight,
-              letterSpacing: '-0.5px',
-            }}>
-              Autopilot
-            </span>
-          </div>
-
-          {/* Headline */}
-          <h1 style={{
-            fontFamily: FONTS.heading,
-            fontSize: 'clamp(28px, 6vw, 48px)',
-            fontWeight: 700,
-            lineHeight: 1.15,
-            marginBottom: '20px',
-            color: COLORS.textLight,
-          }}>
-            Never Pay an Unfair{' '}
-            <span style={{ color: COLORS.accent }}>Chicago Parking Ticket</span>{' '}
-            Again
-          </h1>
-
-          {/* Subheadline */}
-          <p style={{
-            fontFamily: FONTS.body,
-            fontSize: 'clamp(16px, 3.5vw, 20px)',
-            color: COLORS.textMuted,
-            lineHeight: 1.6,
-            marginBottom: '40px',
-            maxWidth: '500px',
-            margin: '0 auto 40px',
-          }}>
-            The app that auto-detects your parking tickets and contests them for you.
-            Plus free street cleaning alerts so you never get ticketed in the first place.
-          </p>
-
-          {/* Signup Form */}
           {status === 'success' ? (
             <div style={{
-              background: `${COLORS.accent}15`,
-              border: `2px solid ${COLORS.accent}`,
-              borderRadius: '16px',
+              backgroundColor: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.5)',
+              borderRadius: '14px',
               padding: '32px 24px',
-              animation: 'fadeInUp 0.4s ease-out',
+              textAlign: 'center',
             }}>
               <div style={{
-                width: '64px',
-                height: '64px',
+                width: '56px',
+                height: '56px',
                 borderRadius: '50%',
-                background: `${COLORS.accent}20`,
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 16px',
               }}>
-                <CheckIcon size={32} />
+                <CheckIcon size={28} />
               </div>
               <h2 style={{
                 fontFamily: FONTS.heading,
-                fontSize: '24px',
+                fontSize: '22px',
                 fontWeight: 700,
                 marginBottom: '8px',
                 color: COLORS.textLight,
@@ -245,9 +297,10 @@ export default function EarlyAccessPage() {
               </h2>
               <p style={{
                 fontFamily: FONTS.body,
-                fontSize: '16px',
-                color: COLORS.textMuted,
+                fontSize: '15px',
+                color: '#94A3B8',
                 lineHeight: 1.5,
+                margin: 0,
               }}>
                 {message}
               </p>
@@ -260,8 +313,6 @@ export default function EarlyAccessPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px',
-                maxWidth: '440px',
-                margin: '0 auto',
               }}
             >
               <input
@@ -272,9 +323,9 @@ export default function EarlyAccessPage() {
                 required
                 style={{
                   padding: '16px 20px',
-                  borderRadius: '12px',
-                  border: `2px solid ${COLORS.border}20`,
-                  background: 'rgba(255,255,255,0.08)',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  background: 'rgba(255,255,255,0.06)',
                   color: COLORS.textLight,
                   fontFamily: FONTS.body,
                   fontSize: '16px',
@@ -283,18 +334,18 @@ export default function EarlyAccessPage() {
                   width: '100%',
                 }}
                 onFocus={(e) => e.target.style.borderColor = COLORS.accent}
-                onBlur={(e) => e.target.style.borderColor = `${COLORS.border}20`}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
               />
               <input
                 type="tel"
-                placeholder="Phone number (optional — for SMS alerts)"
+                placeholder="Phone number (optional)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 style={{
                   padding: '16px 20px',
-                  borderRadius: '12px',
-                  border: `2px solid ${COLORS.border}20`,
-                  background: 'rgba(255,255,255,0.08)',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  background: 'rgba(255,255,255,0.06)',
                   color: COLORS.textLight,
                   fontFamily: FONTS.body,
                   fontSize: '16px',
@@ -303,31 +354,32 @@ export default function EarlyAccessPage() {
                   width: '100%',
                 }}
                 onFocus={(e) => e.target.style.borderColor = COLORS.accent}
-                onBlur={(e) => e.target.style.borderColor = `${COLORS.border}20`}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
               />
               <button
                 type="submit"
                 disabled={status === 'loading'}
                 style={{
                   padding: '16px 32px',
-                  borderRadius: '12px',
+                  borderRadius: '8px',
                   border: 'none',
-                  background: status === 'loading'
-                    ? COLORS.textMuted
-                    : `linear-gradient(135deg, ${COLORS.accent}, #059669)`,
+                  backgroundColor: status === 'loading' ? COLORS.textMuted : COLORS.accent,
                   color: COLORS.primary,
                   fontFamily: FONTS.body,
                   fontWeight: 700,
-                  fontSize: '18px',
+                  fontSize: '16px',
                   cursor: status === 'loading' ? 'wait' : 'pointer',
                   transition: 'transform 0.2s, box-shadow 0.2s',
                   width: '100%',
-                  letterSpacing: '-0.3px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
                 }}
                 onMouseEnter={(e) => {
                   if (status !== 'loading') {
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(16, 185, 129, 0.4)';
+                    e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(16, 185, 129, 0.4)';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -336,6 +388,7 @@ export default function EarlyAccessPage() {
                 }}
               >
                 {status === 'loading' ? 'Joining...' : 'Get Early Access'}
+                {status !== 'loading' && <ArrowRight />}
               </button>
 
               {status === 'error' && (
@@ -344,6 +397,7 @@ export default function EarlyAccessPage() {
                   fontSize: '14px',
                   fontFamily: FONTS.body,
                   textAlign: 'center',
+                  margin: 0,
                 }}>
                   {message}
                 </p>
@@ -351,7 +405,7 @@ export default function EarlyAccessPage() {
 
               <p style={{
                 fontSize: '13px',
-                color: COLORS.textMuted,
+                color: '#64748B',
                 textAlign: 'center',
                 marginTop: '4px',
               }}>
@@ -360,224 +414,255 @@ export default function EarlyAccessPage() {
             </form>
           )}
         </div>
+      </header>
+
+      {/* Stats Section - floating card overlapping hero, same pattern as index.tsx */}
+      <section style={{
+        background: 'linear-gradient(145deg, #0F172A 0%, #111827 55%, #0B1220 100%)',
+        color: COLORS.textLight,
+        margin: '-44px 5% 0',
+        borderRadius: '24px',
+        maxWidth: '900px',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        padding: '48px 5%',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 24px 60px -30px rgba(2, 6, 23, 0.7)',
+        position: 'relative',
+        zIndex: 3,
+      }}>
+        <p style={{
+          margin: '0 0 18px',
+          color: '#94A3B8',
+          fontSize: '13px',
+          fontWeight: 700,
+          letterSpacing: '1px',
+          textTransform: 'uppercase',
+        }}>
+          Chicago FOIA Data, 2021-2024
+        </p>
+        <div style={{
+          fontFamily: FONTS.heading,
+          fontSize: 'clamp(28px, 5vw, 52px)',
+          lineHeight: 1.15,
+          fontWeight: 800,
+          letterSpacing: '-0.5px',
+        }}>
+          <div>Chicago writes $259M in parking tickets every year.</div>
+          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>55% of contested tickets win.</div>
+        </div>
+        <p style={{
+          margin: '24px 0 0',
+          color: '#64748B',
+          fontSize: '14px',
+          lineHeight: 1.6,
+          maxWidth: '540px',
+        }}>
+          Most people never fight back. The ones who do win more than half the time. We make contesting automatic.
+        </p>
       </section>
 
-      {/* Features Section */}
+      {/* How It Works - white card grid, matching index.tsx */}
       <section style={{
-        padding: '80px 20px',
-        background: COLORS.primary,
+        padding: '80px 5%',
+        maxWidth: '1000px',
+        margin: '24px auto 0',
       }}>
-        <div style={{
-          maxWidth: '800px',
-          margin: '0 auto',
+        <h2 style={{
+          fontFamily: FONTS.heading,
+          fontSize: 'clamp(24px, 5vw, 36px)',
+          fontWeight: 800,
+          textAlign: 'center',
+          marginBottom: '12px',
+          color: COLORS.primary,
         }}>
-          <h2 style={{
-            fontFamily: FONTS.heading,
-            fontSize: 'clamp(24px, 5vw, 36px)',
-            fontWeight: 700,
-            textAlign: 'center',
-            marginBottom: '16px',
-            color: COLORS.textLight,
-          }}>
-            What You Get
-          </h2>
-          <p style={{
-            fontFamily: FONTS.body,
-            fontSize: '16px',
-            color: COLORS.textMuted,
-            textAlign: 'center',
-            marginBottom: '48px',
-            maxWidth: '500px',
-            margin: '0 auto 48px',
-          }}>
-            Everything runs on autopilot. Park your car and forget about it.
-          </p>
+          What you get
+        </h2>
+        <p style={{
+          fontSize: '16px',
+          color: COLORS.textMuted,
+          textAlign: 'center',
+          marginBottom: '48px',
+          maxWidth: '480px',
+          margin: '0 auto 48px',
+          lineHeight: 1.6,
+        }}>
+          Everything runs on autopilot. Park your car and forget about it.
+        </p>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '24px',
-          }}>
-            {/* Feature 1 */}
-            <div style={{
-              background: 'rgba(255,255,255,0.04)',
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '24px',
+          justifyContent: 'center',
+        }}>
+          {[
+            {
+              title: 'Street Cleaning Alerts',
+              text: 'Get notified before the sweeper arrives at your block. Never get a $60 street cleaning ticket again.',
+              icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={COLORS.highlight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>),
+              badge: 'Free',
+              badgeColor: COLORS.accent,
+            },
+            {
+              title: 'Auto-Detect Tickets',
+              text: 'We scan city records for your plate. When a ticket appears, you know instantly — not weeks later.',
+              icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>),
+            },
+            {
+              title: 'Auto-Contest Letters',
+              text: 'We generate and mail contest letters backed by FOIA data. 55% of contested tickets get dismissed.',
+              icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#818CF8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>),
+            },
+          ].map((feature, i) => (
+            <div key={i} style={{
+              flex: '1 1 260px',
+              backgroundColor: '#fff',
+              padding: '32px',
               borderRadius: '16px',
-              padding: '28px 24px',
-              border: `1px solid rgba(255,255,255,0.08)`,
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: `1px solid ${COLORS.border}`,
             }}>
-              <div style={{ marginBottom: '16px' }}><BellIcon /></div>
+              <div style={{
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}>
+                {feature.icon}
+                {feature.badge && (
+                  <span style={{
+                    padding: '3px 10px',
+                    borderRadius: '50px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: feature.badgeColor,
+                    backgroundColor: `${feature.badgeColor}12`,
+                    border: `1px solid ${feature.badgeColor}30`,
+                  }}>
+                    {feature.badge}
+                  </span>
+                )}
+              </div>
               <h3 style={{
                 fontFamily: FONTS.heading,
-                fontSize: '18px',
+                fontSize: '20px',
                 fontWeight: 600,
-                marginBottom: '8px',
-                color: COLORS.textLight,
+                marginBottom: '10px',
+                color: COLORS.primary,
               }}>
-                Street Cleaning Alerts
+                {feature.title}
               </h3>
               <p style={{
-                fontFamily: FONTS.body,
-                fontSize: '14px',
                 color: COLORS.textMuted,
-                lineHeight: 1.5,
+                lineHeight: 1.6,
+                margin: 0,
+                fontSize: '15px',
               }}>
-                Get notified before the sweeper arrives at your block. Never get a $60 street cleaning ticket again.
+                {feature.text}
               </p>
             </div>
-
-            {/* Feature 2 */}
-            <div style={{
-              background: 'rgba(255,255,255,0.04)',
-              borderRadius: '16px',
-              padding: '28px 24px',
-              border: `1px solid rgba(255,255,255,0.08)`,
-            }}>
-              <div style={{ marginBottom: '16px' }}><CarIcon /></div>
-              <h3 style={{
-                fontFamily: FONTS.heading,
-                fontSize: '18px',
-                fontWeight: 600,
-                marginBottom: '8px',
-                color: COLORS.textLight,
-              }}>
-                Auto-Detect Tickets
-              </h3>
-              <p style={{
-                fontFamily: FONTS.body,
-                fontSize: '14px',
-                color: COLORS.textMuted,
-                lineHeight: 1.5,
-              }}>
-                We scan city records for your plate. When a ticket appears, you know instantly — not weeks later.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div style={{
-              background: 'rgba(255,255,255,0.04)',
-              borderRadius: '16px',
-              padding: '28px 24px',
-              border: `1px solid rgba(255,255,255,0.08)`,
-            }}>
-              <div style={{ marginBottom: '16px' }}><MailIcon /></div>
-              <h3 style={{
-                fontFamily: FONTS.heading,
-                fontSize: '18px',
-                fontWeight: 600,
-                marginBottom: '8px',
-                color: COLORS.textLight,
-              }}>
-                Auto-Contest Letters
-              </h3>
-              <p style={{
-                fontFamily: FONTS.body,
-                fontSize: '14px',
-                color: COLORS.textMuted,
-                lineHeight: 1.5,
-              }}>
-                We generate and mail contest letters backed by FOIA data. Chicago dismisses 34-76% of contested tickets.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* Stats / Social Proof */}
+      {/* How the app works - process steps */}
       <section style={{
-        padding: '60px 20px',
-        background: COLORS.bgDark,
-        borderTop: `1px solid rgba(255,255,255,0.06)`,
-        borderBottom: `1px solid rgba(255,255,255,0.06)`,
+        padding: '0 5% 80px',
+        maxWidth: '1000px',
+        margin: '0 auto',
       }}>
         <div style={{
-          maxWidth: '700px',
-          margin: '0 auto',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '24px',
-          textAlign: 'center',
+          backgroundColor: '#fff',
+          borderRadius: '16px',
+          border: `1px solid ${COLORS.border}`,
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          padding: '48px 40px',
         }}>
-          <div>
-            <div style={{
-              fontFamily: FONTS.heading,
-              fontSize: 'clamp(28px, 5vw, 40px)',
-              fontWeight: 700,
-              color: COLORS.accent,
-            }}>
-              34-76%
-            </div>
-            <div style={{
-              fontFamily: FONTS.body,
-              fontSize: '14px',
-              color: COLORS.textMuted,
-              marginTop: '4px',
-            }}>
-              Dismissal rate when contested
-            </div>
-          </div>
-          <div>
-            <div style={{
-              fontFamily: FONTS.heading,
-              fontSize: 'clamp(28px, 5vw, 40px)',
-              fontWeight: 700,
-              color: COLORS.highlight,
-            }}>
-              $300M+
-            </div>
-            <div style={{
-              fontFamily: FONTS.body,
-              fontSize: '14px',
-              color: COLORS.textMuted,
-              marginTop: '4px',
-            }}>
-              Chicago collects in tickets/year
-            </div>
-          </div>
-          <div>
-            <div style={{
-              fontFamily: FONTS.heading,
-              fontSize: 'clamp(28px, 5vw, 40px)',
-              fontWeight: 700,
-              color: COLORS.textLight,
-            }}>
-              $0
-            </div>
-            <div style={{
-              fontFamily: FONTS.body,
-              fontSize: '14px',
-              color: COLORS.textMuted,
-              marginTop: '4px',
-            }}>
-              Alerts are free forever
-            </div>
+          <h2 style={{
+            fontFamily: FONTS.heading,
+            fontSize: 'clamp(20px, 4vw, 28px)',
+            fontWeight: 700,
+            marginBottom: '36px',
+            color: COLORS.primary,
+          }}>
+            How it works
+          </h2>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '32px',
+          }}>
+            {[
+              { step: '1', title: 'Add your plate', desc: 'Enter your license plate number once. Takes 30 seconds.' },
+              { step: '2', title: 'We monitor', desc: 'Our system checks Chicago\'s database for new violations twice a week.' },
+              { step: '3', title: 'We contest', desc: 'When we find a ticket, we build a code-specific defense and mail it for you.' },
+              { step: '4', title: 'You save money', desc: 'Track results and outcomes. 55% of contested tickets get dismissed.' },
+            ].map((item, i) => (
+              <div key={i}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  backgroundColor: `${COLORS.accent}12`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: FONTS.heading,
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: COLORS.accent,
+                  marginBottom: '14px',
+                }}>
+                  {item.step}
+                </div>
+                <h3 style={{
+                  fontFamily: FONTS.heading,
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  marginBottom: '6px',
+                  color: COLORS.primary,
+                }}>
+                  {item.title}
+                </h3>
+                <p style={{
+                  color: COLORS.textMuted,
+                  fontSize: '14px',
+                  lineHeight: 1.5,
+                  margin: 0,
+                }}>
+                  {item.desc}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Bottom CTA */}
       <section style={{
-        padding: '80px 20px',
-        background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.bgDark} 100%)`,
+        backgroundColor: COLORS.bgDark,
+        color: COLORS.textLight,
+        padding: '80px 5%',
         textAlign: 'center',
       }}>
         <div style={{ maxWidth: '500px', margin: '0 auto' }}>
           <h2 style={{
             fontFamily: FONTS.heading,
             fontSize: 'clamp(24px, 5vw, 36px)',
-            fontWeight: 700,
+            fontWeight: 800,
             marginBottom: '16px',
-            color: COLORS.textLight,
           }}>
-            Be First in Line
+            Be first in line
           </h2>
           <p style={{
-            fontFamily: FONTS.body,
             fontSize: '16px',
-            color: COLORS.textMuted,
+            color: '#94A3B8',
             lineHeight: 1.6,
             marginBottom: '32px',
           }}>
-            The app launches soon on iOS and Android. Early access members get priority onboarding.
+            The app launches soon on iOS and Android. Early access members get priority onboarding and founding member pricing.
           </p>
 
           {status === 'success' ? (
@@ -598,7 +683,6 @@ export default function EarlyAccessPage() {
             <button
               onClick={() => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-                // Focus email input after scroll
                 setTimeout(() => {
                   const emailInput = formRef.current?.querySelector('input[type="email"]') as HTMLInputElement;
                   emailInput?.focus();
@@ -606,52 +690,44 @@ export default function EarlyAccessPage() {
               }}
               style={{
                 padding: '16px 40px',
-                borderRadius: '12px',
+                borderRadius: '8px',
                 border: 'none',
-                background: `linear-gradient(135deg, ${COLORS.accent}, #059669)`,
+                backgroundColor: COLORS.accent,
                 color: COLORS.primary,
                 fontFamily: FONTS.body,
                 fontWeight: 700,
-                fontSize: '18px',
+                fontSize: '16px',
                 cursor: 'pointer',
                 transition: 'transform 0.2s, box-shadow 0.2s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(16, 185, 129, 0.4)';
+                e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(16, 185, 129, 0.4)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              Join the Waitlist
+              Join the Waitlist <ArrowRight />
             </button>
           )}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{
-        padding: '24px 20px',
-        background: COLORS.bgDark,
-        textAlign: 'center',
-        borderTop: `1px solid rgba(255,255,255,0.06)`,
-      }}>
-        <p style={{
-          fontFamily: FONTS.body,
-          fontSize: '13px',
-          color: COLORS.textMuted,
-        }}>
-          Autopilot America &middot; Chicago, IL &middot;{' '}
-          <a
-            href="https://autopilotamerica.com"
-            style={{ color: COLORS.accent, textDecoration: 'none' }}
-          >
-            autopilotamerica.com
-          </a>
-        </p>
-      </footer>
-    </>
+      {/* Footer - shared component */}
+      <Footer />
+
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          .desktop-nav { display: none !important; }
+          .mobile-menu-btn { display: block !important; }
+        }
+        input::placeholder { color: ${COLORS.textMuted}; }
+      `}</style>
+    </div>
   );
 }

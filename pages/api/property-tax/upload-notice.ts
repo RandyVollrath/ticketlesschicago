@@ -157,6 +157,7 @@ async function extractAssessmentData(
 ): Promise<AssessmentNoticeData> {
   const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
+    timeout: 60000,
   });
 
   const prompt = `You are analyzing a Cook County, Illinois property tax assessment notice.

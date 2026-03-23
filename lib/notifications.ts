@@ -78,7 +78,7 @@ export class NotificationService {
           subject: notification.subject,
           preview: notification.text.substring(0, 100) + '...'
         });
-        return true;
+        return false; // Mock sends must not count as success
       }
 
       const fromAddress = EMAIL.FROM_DEFAULT;
