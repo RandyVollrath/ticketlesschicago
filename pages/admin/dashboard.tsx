@@ -89,7 +89,7 @@ interface PipelineStats {
 }
 
 interface SystemHealth {
-  lob: { mode: string; api_key_present: boolean };
+  lob: { mode: string; api_key_present: boolean; test_mode_source: string };
   kill_switches: Record<string, boolean>;
   blocking_issues: Array<{ severity: 'critical' | 'warning' | 'info'; message: string; count?: number }>;
   counts: {
@@ -718,8 +718,20 @@ function FoiaTab() {
 //  SYSTEM TAB
 // ══════════════════════════════════════
 
-function SystemTab({ health }: { health: SystemHealth | null }) {
+const KILL_SWITCH_META: Record<string, { label: string; description: string; danger: boolean }> = {
+  pause_all_mail: { label: 'Pause All Mail', description: 'Stops all Lob letter sends immediately.', danger: true },
+  pause_ticket_processing: { label: 'Pause Ticket Processing', description: 'Tickets accepted but no new letters generated.', danger: true },
+  require_approval_all: { label: 'Require Approval for All', description: 'Admin must approve every letter before mailing.', danger: false },
+};
+
+function SystemTab({ health, onToggle, toggling }: {
+  health: SystemHealth | null;
+  onToggle: (key: string, enabled: boolean) => void;
+  toggling: string | null;
+}) {
   if (!health) return <LoadingSpinner />;
+
+  const lobIsTest = health.lob.mode === 'test';
 
   return (
     <div style={{ maxWidth: '900px' }}>
@@ -734,53 +746,98 @@ function SystemTab({ health }: { health: SystemHealth | null }) {
         <StatCard label="Returned Mail" value={health.counts.returned_mail} alert={health.counts.returned_mail > 0} color={health.counts.returned_mail > 0 ? C.red : C.text} />
       </div>
 
-      {/* Lob Status */}
+      {/* Lob Status — with toggle */}
       <div style={{
         padding: '20px', borderRadius: C.radiusLg, marginBottom: '20px',
-        background: health.lob.mode === 'test' ? C.amberBg : C.greenBg,
-        border: `1px solid ${health.lob.mode === 'test' ? C.amberBorder : C.greenBorder}`,
+        background: lobIsTest ? C.amberBg : C.greenBg,
+        border: `1px solid ${lobIsTest ? C.amberBorder : C.greenBorder}`,
       }}>
         <SectionHeader title="Lob Mailing Service" />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{
-            padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: 700,
-            background: health.lob.mode === 'test' ? C.amber : C.green,
-            color: '#fff',
-          }}>{health.lob.mode === 'test' ? 'TEST MODE' : 'LIVE'}</span>
-          <span style={{ fontSize: '13px', color: C.textSecondary }}>
-            {health.lob.mode === 'test'
-              ? 'Letters are sent to user address, NOT city hall'
-              : 'Letters are sent to Chicago City Hall'}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{
+              padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: 700,
+              background: lobIsTest ? C.amber : C.green, color: '#fff',
+            }}>{lobIsTest ? 'TEST MODE' : 'LIVE'}</span>
+            <span style={{ fontSize: '13px', color: C.textSecondary }}>
+              {lobIsTest
+                ? 'Letters sent to user address, NOT city hall'
+                : 'Letters sent to City of Chicago - Dept of Finance, PO Box 88292'}
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              const action = lobIsTest ? 'switch to LIVE mode (letters will go to City Hall)' : 'switch to TEST mode (letters will go to user address)';
+              if (confirm(`Are you sure you want to ${action}? This affects all users.`)) {
+                onToggle('lob_test_mode', !lobIsTest);
+              }
+            }}
+            disabled={toggling === 'lob_test_mode'}
+            style={{
+              padding: '8px 20px', borderRadius: C.radius, fontSize: '13px', fontWeight: 600,
+              background: lobIsTest ? C.green : C.amber, color: '#fff',
+              border: 'none', cursor: toggling === 'lob_test_mode' ? 'wait' : 'pointer',
+              opacity: toggling === 'lob_test_mode' ? 0.6 : 1,
+            }}
+          >
+            {toggling === 'lob_test_mode' ? 'Switching...' : lobIsTest ? 'Switch to LIVE' : 'Switch to TEST'}
+          </button>
         </div>
         <div style={{ marginTop: '8px', fontSize: '12px', color: C.textMuted }}>
           API Key: {health.lob.api_key_present ? 'Present' : 'MISSING'}
+          {health.lob.test_mode_source && health.lob.test_mode_source !== 'none' && (
+            <span> &middot; Source: {health.lob.test_mode_source === 'database' ? 'Admin toggle' : 'Environment variable'}</span>
+          )}
         </div>
       </div>
 
-      {/* Kill Switches */}
+      {/* Kill Switches — functional toggles */}
       <div style={{
         padding: '20px', borderRadius: C.radiusLg, background: C.surface,
         border: `1px solid ${C.border}`, marginBottom: '20px',
       }}>
         <SectionHeader title="Kill Switches" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {Object.entries(health.kill_switches).map(([key, active]) => (
-            <div key={key} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '10px 14px', borderRadius: C.radius,
-              background: active ? C.redBg : C.surfaceActive,
-              border: `1px solid ${active ? C.redBorder : C.border}`,
-            }}>
-              <span style={{ fontSize: '13px', fontWeight: 500, color: active ? C.red : C.text }}>
-                {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-              </span>
-              <span style={{
-                padding: '3px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: 700,
-                background: active ? C.red : C.green, color: '#fff',
-              }}>{active ? 'ACTIVE' : 'OFF'}</span>
-            </div>
-          ))}
+          {Object.entries(KILL_SWITCH_META).map(([key, meta]) => {
+            const active = health.kill_switches[key] || false;
+            const isToggling = toggling === key;
+            return (
+              <div key={key} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 16px', borderRadius: C.radius,
+                background: active ? C.redBg : C.surfaceActive,
+                border: `1px solid ${active ? C.redBorder : C.border}`,
+              }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: active ? C.red : C.text }}>
+                    {meta.label}
+                  </div>
+                  <div style={{ fontSize: '12px', color: C.textMuted, marginTop: '2px' }}>
+                    {meta.description}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const action = active ? `turn OFF "${meta.label}"` : `turn ON "${meta.label}"`;
+                    if (confirm(`Are you sure you want to ${action}? This affects all users.`)) {
+                      onToggle(key, !active);
+                    }
+                  }}
+                  disabled={isToggling}
+                  style={{
+                    padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 700,
+                    background: active ? C.green : (meta.danger ? C.red : C.amber),
+                    color: '#fff', border: 'none',
+                    cursor: isToggling ? 'wait' : 'pointer',
+                    opacity: isToggling ? 0.6 : 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isToggling ? '...' : active ? 'Turn OFF' : 'Turn ON'}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -898,6 +955,7 @@ export default function AdminDashboard() {
 
   // System health state
   const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
 
   // Auth check
   useEffect(() => {
@@ -931,6 +989,28 @@ export default function AdminDashboard() {
       if (data.success) setHealth(data);
     } catch (e) { console.error('Health fetch error:', e); }
   }, []);
+
+  // Toggle kill switches / lob test mode
+  const handleToggle = useCallback(async (key: string, enabled: boolean) => {
+    setToggling(key);
+    try {
+      const res = await fetch('/api/admin/system-health', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, enabled }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchHealth(); // Refresh health data
+      } else {
+        alert(`Failed to toggle ${key}: ${data.error || 'Unknown error'}`);
+      }
+    } catch (e) {
+      console.error('Toggle error:', e);
+      alert(`Failed to toggle ${key}`);
+    }
+    setToggling(null);
+  }, [fetchHealth]);
 
   useEffect(() => {
     if (authorized) {
@@ -1166,11 +1246,34 @@ export default function AdminDashboard() {
                             {/* Lob */}
                             <td style={{ padding: '10px 12px' }}>
                               {item.lob_status ? (
-                                <span style={{
-                                  padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
-                                  background: item.lob_status === 'delivered' ? C.greenBg : item.lob_status === 'returned' ? C.redBg : C.blueBg,
-                                  color: item.lob_status === 'delivered' ? C.green : item.lob_status === 'returned' ? C.red : C.blue,
-                                }}>{item.lob_status}</span>
+                                <span
+                                  title={health?.lob.mode === 'test'
+                                    ? 'TEST MODE — Sent to user\'s own address'
+                                    : 'City of Chicago - Dept of Finance\nPO Box 88292\nChicago, IL 60680-1292'}
+                                  style={{
+                                    padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                                    background: item.lob_status === 'delivered' ? C.greenBg : item.lob_status === 'returned' ? C.redBg : C.blueBg,
+                                    color: item.lob_status === 'delivered' ? C.green : item.lob_status === 'returned' ? C.red : C.blue,
+                                    cursor: 'help',
+                                  }}>
+                                  {item.lob_status}
+                                  {item.mailed_at && (
+                                    <span style={{ marginLeft: '4px', opacity: 0.7 }}>
+                                      {new Date(item.mailed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : item.mailed_at ? (
+                                <span
+                                  title={health?.lob.mode === 'test'
+                                    ? 'TEST MODE — Sent to user\'s own address'
+                                    : 'City of Chicago - Dept of Finance\nPO Box 88292\nChicago, IL 60680-1292'}
+                                  style={{
+                                    padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+                                    background: C.blueBg, color: C.blue, cursor: 'help',
+                                  }}>
+                                  mailed {new Date(item.mailed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
                               ) : (
                                 <span style={{ color: C.textMuted, fontSize: '12px' }}>—</span>
                               )}
@@ -1195,7 +1298,7 @@ export default function AdminDashboard() {
         {activeTab === 'foia' && <FoiaTab />}
 
         {/* ── System Tab ── */}
-        {activeTab === 'system' && <SystemTab health={health} />}
+        {activeTab === 'system' && <SystemTab health={health} onToggle={handleToggle} toggling={toggling} />}
       </div>
     </>
   );

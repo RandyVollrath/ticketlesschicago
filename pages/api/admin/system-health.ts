@@ -10,13 +10,53 @@ const supabase = createClient(
 /**
  * System Health API — Admin overview of system status
  *
- * Returns: Lob mode, kill switches, blocking issues, letter stats, env vars.
+ * GET: Returns Lob mode, kill switches, blocking issues, letter stats, env vars.
+ * PATCH: Toggle kill switches or Lob test mode.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === 'GET') {
+    return handleGet(req, res);
+  }
+  if (req.method === 'PATCH') {
+    return handlePatch(req, res);
+  }
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
+async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
+  const { key, enabled } = req.body;
+  if (!key || typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'Missing key or enabled (boolean)' });
   }
 
+  const allowedKeys = ['pause_all_mail', 'pause_ticket_processing', 'require_approval_all', 'lob_test_mode'];
+  if (!allowedKeys.includes(key)) {
+    return res.status(400).json({ error: `Invalid key. Allowed: ${allowedKeys.join(', ')}` });
+  }
+
+  try {
+    // Upsert the setting (insert if doesn't exist, update if it does)
+    const { error } = await supabase
+      .from('autopilot_admin_settings')
+      .upsert({
+        key,
+        value: { enabled },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+
+    if (error) {
+      console.error('Kill switch toggle error:', error);
+      return res.status(500).json({ error: 'Failed to update setting' });
+    }
+
+    return res.status(200).json({ success: true, key, enabled });
+  } catch (error: any) {
+    console.error('System health PATCH error:', error);
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
+  }
+}
+
+async function handleGet(_req: NextApiRequest, res: NextApiResponse) {
   try {
     // Fetch all data in parallel
     const [
@@ -28,11 +68,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       webhookHealthResult,
       userStatsResult,
     ] = await Promise.all([
-      // Kill switches
+      // Kill switches (including lob_test_mode)
       supabase
         .from('autopilot_admin_settings')
-        .select('key, value, setting_key, setting_value')
-        .or('key.in.(pause_all_mail,pause_ticket_processing,require_approval_all),setting_key.in.(kill_all_mailing,maintenance_mode)'),
+        .select('key, value')
+        .in('key', ['pause_all_mail', 'pause_ticket_processing', 'require_approval_all', 'lob_test_mode']),
 
       // Letters needing admin review
       supabase
@@ -76,22 +116,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('status', 'active'),
     ]);
 
-    // Parse kill switches (handle both column name patterns)
+    // Parse kill switches
     const killSwitches: Record<string, boolean> = {
       pause_all_mail: false,
       pause_ticket_processing: false,
       require_approval_all: false,
-      kill_all_mailing: false,
-      maintenance_mode: false,
     };
 
+    let lobTestModeDb = false;
     for (const setting of killSwitchResult.data || []) {
-      const key = setting.key || setting.setting_key;
-      const value = setting.value || setting.setting_value;
-      if (key && key in killSwitches) {
+      const key = setting.key;
+      const value = setting.value;
+      if (key === 'lob_test_mode') {
+        lobTestModeDb = !!value?.enabled;
+      } else if (key && key in killSwitches) {
         killSwitches[key] = !!value?.enabled;
       }
     }
+
+    // Lob test mode: DB setting OR env var
+    const lobTestMode = lobTestModeDb || process.env.LOB_TEST_MODE === 'true';
 
     // Compute urgent deadlines (tickets where mail_by_deadline is within 5 days)
     const now = new Date();
@@ -112,61 +156,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Build blocking issues list
     const blockingIssues: Array<{ severity: 'critical' | 'warning' | 'info'; message: string; count?: number }> = [];
 
-    // Lob test mode
-    const lobTestMode = process.env.LOB_TEST_MODE === 'true';
     if (lobTestMode) {
       blockingIssues.push({ severity: 'warning', message: 'Lob is in TEST MODE — letters are sent to user address, not city hall' });
     }
 
-    // Kill switches
-    if (killSwitches.pause_all_mail || killSwitches.kill_all_mailing) {
+    if (killSwitches.pause_all_mail) {
       blockingIssues.push({ severity: 'critical', message: 'MAIL PAUSED — no letters will be sent via Lob' });
     }
     if (killSwitches.pause_ticket_processing) {
       blockingIssues.push({ severity: 'critical', message: 'TICKET PROCESSING PAUSED — no new letters will be generated' });
     }
-    if (killSwitches.maintenance_mode) {
-      blockingIssues.push({ severity: 'critical', message: 'MAINTENANCE MODE — all autopilot operations paused' });
-    }
     if (killSwitches.require_approval_all) {
       blockingIssues.push({ severity: 'info', message: 'Admin approval required for ALL letters before mailing' });
     }
 
-    // Pending reviews
     const pendingReviewCount = pendingReviewResult.data?.length || 0;
     if (pendingReviewCount > 0) {
       blockingIssues.push({ severity: 'warning', message: `${pendingReviewCount} letter(s) awaiting admin review`, count: pendingReviewCount });
     }
 
-    // Stuck letters
     const stuckCount = stuckLettersResult.data?.length || 0;
     if (stuckCount > 0) {
       blockingIssues.push({ severity: 'warning', message: `${stuckCount} approved letter(s) stuck — not mailed for 48+ hours`, count: stuckCount });
     }
 
-    // Returned mail
     const returnedCount = returnedMailResult.data?.length || 0;
     if (returnedCount > 0) {
       blockingIssues.push({ severity: 'critical', message: `${returnedCount} letter(s) returned by mail`, count: returnedCount });
     }
 
-    // Urgent deadlines
     if (urgentTickets.length > 0) {
       blockingIssues.push({ severity: 'critical', message: `${urgentTickets.length} ticket(s) have contest deadlines in ≤5 days`, count: urgentTickets.length });
     }
 
-    // Webhook health
-    const unhealthyWebhooks = (webhookHealthResult.data || []).filter(w => w.status === 'unhealthy');
+    const unhealthyWebhooks = (webhookHealthResult.data || []).filter((w: any) => w.status === 'unhealthy');
     if (unhealthyWebhooks.length > 0) {
       blockingIssues.push({ severity: 'warning', message: `${unhealthyWebhooks.length} webhook(s) reporting unhealthy` });
     }
 
-    // Missing critical env vars
+    // Check critical env vars (GOOGLE_API_KEY is the actual name in Vercel)
     const envChecks: Array<{ name: string; present: boolean }> = [
       { name: 'LOB_API_KEY', present: !!process.env.LOB_API_KEY },
       { name: 'RESEND_API_KEY', present: !!process.env.RESEND_API_KEY },
-      { name: 'OPENAI_API_KEY', present: !!(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY) },
-      { name: 'GOOGLE_MAPS_API_KEY', present: !!process.env.GOOGLE_MAPS_API_KEY },
+      { name: 'ANTHROPIC_API_KEY', present: !!process.env.ANTHROPIC_API_KEY },
+      { name: 'GOOGLE_API_KEY', present: !!(process.env.GOOGLE_API_KEY || process.env.GOOGLE_MAPS_API_KEY) },
     ];
     const missingEnv = envChecks.filter(e => !e.present);
     if (missingEnv.length > 0) {
@@ -180,6 +213,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success: true,
       lob: {
         mode: lobTestMode ? 'test' : 'live',
+        test_mode_source: lobTestModeDb ? 'database' : (process.env.LOB_TEST_MODE === 'true' ? 'env_var' : 'none'),
         api_key_present: !!process.env.LOB_API_KEY,
       },
       kill_switches: killSwitches,

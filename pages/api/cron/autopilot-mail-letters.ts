@@ -249,7 +249,7 @@ async function mailLetter(
 
     // Determine recipient address
     // In test mode, send to user's address instead of city hall
-    const testMode = isTestModeEnabled();
+    const testMode = await isTestModeEnabled();
     const toAddress = testMode ? fromAddress : CHICAGO_PARKING_CONTEST_ADDRESS;
 
     if (testMode) {
