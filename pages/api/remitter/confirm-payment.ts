@@ -121,11 +121,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       .eq('id', renewal.id)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (updateError) {
+    if (updateError || !updated) {
       console.error('Error updating renewal:', updateError);
-      return res.status(500).json({ error: sanitizeErrorMessage(updateError) });
+      return res.status(500).json({ error: sanitizeErrorMessage(updateError || new Error('Update returned no data')) });
     }
 
     // CRITICAL: Update user's profile expiry date to next year

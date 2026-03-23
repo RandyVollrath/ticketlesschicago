@@ -1,14 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '../../../lib/supabase';
 import Stripe from 'stripe';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-11-20.acacia'
@@ -84,11 +79,11 @@ export default async function handler(
     }
 
     // Get user's Stripe customer ID from user_profiles
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select('stripe_customer_id, email, first_name')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       console.error('Failed to get user profile:', profileError);
@@ -104,29 +99,58 @@ export default async function handler(
     const stripeFee = (amount * 0.029) + 0.30;
     const totalCharged = amount + stripeFee;
 
-    // Create pending charge record first
-    const { data: chargeRecord, error: chargeRecordError } = await supabase
+    // IDEMPOTENCY: Check if a charge already exists for this user/type/deadline
+    // This prevents duplicate charges if the cron job retries
+    const { data: existingCharge } = await supabaseAdmin
       .from('renewal_charges')
-      .insert({
-        user_id: userId,
-        charge_type: chargeType,
-        amount: amount,
-        stripe_fee: stripeFee,
-        total_charged: totalCharged,
-        vehicle_type: vehicleType || null,
-        license_plate: licensePlate,
-        renewal_deadline: renewalDeadline,
-        status: 'pending'
-      })
-      .select()
-      .single();
+      .select('id, status, stripe_payment_intent_id, retry_count')
+      .eq('user_id', userId)
+      .eq('charge_type', chargeType)
+      .eq('renewal_deadline', renewalDeadline)
+      .in('status', ['pending', 'charged'])
+      .maybeSingle();
 
-    if (chargeRecordError || !chargeRecord) {
-      console.error('Failed to create charge record:', chargeRecordError);
-      return res.status(500).json({ error: 'Failed to create charge record' });
+    if (existingCharge) {
+      if (existingCharge.status === 'charged') {
+        console.log(`⏭️ Charge already completed for user ${userId}, type ${chargeType}, deadline ${renewalDeadline}`);
+        return res.status(200).json({
+          success: true,
+          chargeId: existingCharge.id,
+          message: 'Already charged (idempotent skip)',
+          paymentIntentId: existingCharge.stripe_payment_intent_id
+        });
+      }
+      // If pending, use the existing record instead of creating a new one
+      console.log(`♻️ Reusing existing pending charge record ${existingCharge.id}`);
     }
 
-    console.log(`💳 Created pending charge record ${chargeRecord.id} for user ${userId}`);
+    // Create pending charge record (or reuse existing pending one)
+    let chargeRecord = existingCharge;
+    if (!chargeRecord) {
+      const { data: newCharge, error: chargeRecordError } = await supabaseAdmin
+        .from('renewal_charges')
+        .insert({
+          user_id: userId,
+          charge_type: chargeType,
+          amount: amount,
+          stripe_fee: stripeFee,
+          total_charged: totalCharged,
+          vehicle_type: vehicleType || null,
+          license_plate: licensePlate,
+          renewal_deadline: renewalDeadline,
+          status: 'pending'
+        })
+        .select()
+        .maybeSingle();
+
+      if (chargeRecordError || !newCharge) {
+        console.error('Failed to create charge record:', chargeRecordError);
+        return res.status(500).json({ error: 'Failed to create charge record' });
+      }
+      chargeRecord = newCharge;
+    }
+
+    console.log(`💳 Using charge record ${chargeRecord.id} for user ${userId}`);
 
     // Attempt to charge the card via Stripe
     try {
@@ -147,19 +171,40 @@ export default async function handler(
       });
 
       if (paymentIntent.status === 'succeeded') {
-        // Update charge record to 'charged'
-        const { error: updateError } = await supabase
-          .from('renewal_charges')
-          .update({
-            status: 'charged',
-            stripe_payment_intent_id: paymentIntent.id,
-            stripe_charge_id: paymentIntent.latest_charge as string,
-            charged_at: new Date().toISOString()
-          })
-          .eq('id', chargeRecord.id);
+        // CRITICAL: Update charge record to 'charged' — if this fails, retry before returning success
+        // Failure to update means record stays 'pending' and next cron run could duplicate the charge
+        let statusUpdated = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const { error: updateError } = await supabaseAdmin
+            .from('renewal_charges')
+            .update({
+              status: 'charged',
+              stripe_payment_intent_id: paymentIntent.id,
+              stripe_charge_id: paymentIntent.latest_charge as string,
+              charged_at: new Date().toISOString()
+            })
+            .eq('id', chargeRecord.id);
 
-        if (updateError) {
-          console.error('Failed to update charge record after success:', updateError);
+          if (!updateError) {
+            statusUpdated = true;
+            break;
+          }
+          console.error(`Failed to update charge record (attempt ${attempt + 1}/3):`, updateError);
+          // Brief delay before retry
+          if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+        }
+
+        if (!statusUpdated) {
+          // DB update failed after 3 retries — Stripe already charged the customer
+          // Return 500 so the caller knows something went wrong, even though payment succeeded
+          // Include payment intent ID so it can be reconciled manually
+          console.error(`🚨 CRITICAL: Stripe charged $${totalCharged.toFixed(2)} but DB update failed! PaymentIntent: ${paymentIntent.id}, ChargeRecord: ${chargeRecord.id}`);
+          return res.status(500).json({
+            error: 'Payment succeeded but record update failed — requires manual reconciliation',
+            paymentIntentId: paymentIntent.id,
+            chargeId: chargeRecord.id,
+            amountCharged: totalCharged
+          });
         }
 
         console.log(`✅ Successfully charged $${totalCharged.toFixed(2)} to user ${userId}`);
@@ -184,7 +229,7 @@ export default async function handler(
 
       } else {
         // Payment requires action (e.g., 3D Secure) - mark as failed for now
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from('renewal_charges')
           .update({
             status: 'failed',
@@ -203,7 +248,7 @@ export default async function handler(
 
     } catch (stripeError: any) {
       // Stripe charge failed - update record
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin
         .from('renewal_charges')
         .update({
           status: 'failed',
