@@ -234,13 +234,19 @@ class PushNotificationServiceClass {
       const data = remoteMessage?.data || {};
 
       // Respect user's per-type push alert preferences for server-sent notifications.
-      // The sweeper_passed cron does its own server-side preference check, but if the
-      // user toggles the pref off AFTER the cron queued the push, this client-side
-      // check is the last line of defense.
-      if (data.type === 'sweeper_passed') {
-        const pref = await AsyncStorage.getItem('pushAlert_sweeperPassed');
+      // The server-side cron does its own preference check, but if the user toggles
+      // the pref off AFTER the cron queued the push, this client-side check is the
+      // last line of defense.
+      const prefKeyByType: Record<string, string> = {
+        sweeper_passed: 'pushAlert_sweeperPassed',
+        street_cleaning: 'pushAlert_streetCleaning',
+        street_cleaning_reminder: 'pushAlert_streetCleaning',
+      };
+      const prefKey = prefKeyByType[data.type];
+      if (prefKey) {
+        const pref = await AsyncStorage.getItem(prefKey);
         if (pref === 'false') {
-          log.info('Suppressing sweeper_passed notification — user disabled in settings');
+          log.info(`Suppressing ${data.type} notification — user disabled in settings`);
           return;
         }
       }
