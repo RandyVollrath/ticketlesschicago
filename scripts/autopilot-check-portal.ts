@@ -1528,13 +1528,7 @@ function generateLetterContent(
       content += '\n\nWEATHER CONDITIONS:\n' + kitEval.weatherDefense.paragraph;
     }
 
-    // Add FOIA win rate data to strengthen the argument
-    if (automatedEvidence?.foiaWinRate.checked && automatedEvidence.foiaWinRate.notLiablePercent) {
-      content += `\n\nI would also note that according to City of Chicago administrative hearing records, ` +
-        `${automatedEvidence.foiaWinRate.notLiablePercent}% of contested ${automatedEvidence.foiaWinRate.violationDescription || 'similar'} tickets ` +
-        `resulted in a finding of Not Liable, out of ${automatedEvidence.foiaWinRate.totalContested?.toLocaleString() || 'thousands of'} decided cases. ` +
-        `This demonstrates that a significant proportion of these citations are issued in error or are successfully contested on their merits.`;
-    }
+    // NOTE: FOIA win rate is injected AFTER the if/else block so it applies to both kit and fallback paths
 
     // Add backup argument as an additional defense point
     if (backupArg && backupArg.id !== selectedArg.id && backupArg.id !== 'generic_contest') {
@@ -1668,6 +1662,21 @@ function generateLetterContent(
     }
 
     defenseType = template.type;
+  }
+
+  // ── Common evidence blocks (apply to BOTH kit and fallback paths) ──
+
+  // Add FOIA win rate data to strengthen the argument
+  if (automatedEvidence?.foiaWinRate.checked && automatedEvidence.foiaWinRate.notLiablePercent) {
+    content += `\n\nI would also note that according to City of Chicago administrative hearing records, ` +
+      `${automatedEvidence.foiaWinRate.notLiablePercent}% of contested ${automatedEvidence.foiaWinRate.violationDescription || 'similar'} tickets ` +
+      `resulted in a finding of Not Liable, out of ${automatedEvidence.foiaWinRate.totalContested?.toLocaleString() || 'thousands of'} decided cases. ` +
+      `This demonstrates that a significant proportion of these citations are issued in error or are successfully contested on their merits.`;
+  }
+
+  // Add yellow light IDOT minimum timing info for red light camera violations
+  if (automatedEvidence?.cameraCheck?.yellowLightCheck?.checked && automatedEvidence.cameraCheck.yellowLightCheck.message) {
+    content += `\n\nYELLOW LIGHT TIMING: ${automatedEvidence.cameraCheck.yellowLightCheck.message}`;
   }
 
   // Add GPS parking history as corroborating evidence (proves the app was monitoring the vehicle)
@@ -2419,7 +2428,7 @@ async function processFoundTicket(
   }
 
   // Store evidence findings in the audit log for reference
-  await supabaseAdmin
+  const { error: auditLogErr } = await supabaseAdmin
     .from('ticket_audit_log')
     .insert({
       ticket_id: newTicket.id,
@@ -2470,6 +2479,9 @@ async function processFoundTicket(
       },
       performed_by: 'portal_scraper',
     });
+  if (auditLogErr) {
+    console.error(`      ⚠️ Failed to write audit log for ticket ${newTicket.id}: ${auditLogErr.message}`);
+  }
 
   // Send evidence request email with full automated evidence bundle
   if (userEmail) {
@@ -2496,7 +2508,7 @@ async function processFoundTicket(
   const userPhone = profile?.phone || profile?.phone_number;
   if (userPhone) {
     const userName = profile?.first_name || profile?.full_name?.split(' ')[0] || 'there';
-    await sendEvidenceRequestSMS(
+    const smsSent = await sendEvidenceRequestSMS(
       userPhone,
       userName,
       ticket.ticket_number,
@@ -2506,6 +2518,11 @@ async function processFoundTicket(
       plate.toUpperCase(),
       evidenceDeadline,
     );
+    if (smsSent) {
+      console.log(`      Sent evidence request SMS to ${userPhone.substring(0, 3)}***`);
+    } else {
+      console.warn(`      ⚠️ SMS evidence request failed for ${userPhone.substring(0, 3)}*** — email was ${userEmail ? 'sent' : 'not available'}`);
+    }
   }
 
   // Audit log
