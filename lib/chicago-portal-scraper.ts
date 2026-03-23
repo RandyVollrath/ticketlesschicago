@@ -226,12 +226,12 @@ function parseReceivable(recv: any, rawJson: string): PortalTicket {
     issue_date: issueDate,
     issue_datetime: issueDatetimeLegacy,
     violation_description: recv.violationDescription || recv.violation_description || recv.description || '',
-    current_amount_due: parseFloat(recv.currentAmountDue || recv.current_amount_due || recv.amountDue || 0),
-    original_amount: parseFloat(recv.originalAmount || recv.original_amount || recv.fineAmount || 0),
+    current_amount_due: parseFloat(recv.currentAmountDue || recv.current_amount_due || recv.amountDue || '0') || 0,
+    original_amount: parseFloat(recv.originalAmount || recv.original_amount || recv.fineAmount || '0') || 0,
     ticket_queue: recv.ticketQueue || recv.ticket_queue || recv.status || '',
     hearing_disposition: recv.hearingDisposition || recv.hearing_disposition || null,
     notice_number: recv.noticeNumber || recv.notice_number || null,
-    balance_due: parseFloat(recv.balanceDue || recv.balance_due || recv.currentAmountDue || recv.amountDue || 0),
+    balance_due: parseFloat(recv.balanceDue || recv.balance_due || recv.currentAmountDue || recv.amountDue || '0') || 0,
     raw_text: rawJson.substring(0, 500),
     ticket_plate: recv.licPlateNumber || recv.lic_plate_number || recv.plateNumber || null,
     ticket_state: recv.licPlateState || recv.lic_plate_state || recv.plateState || null,
@@ -749,7 +749,7 @@ function parseTicketFromText(text: string): PortalTicket | null {
   const issueDate = dateMatch ? dateMatch[1] : '';
 
   const amountMatches = text.match(/\$[\d,]+\.?\d{0,2}/g) || [];
-  const amounts = amountMatches.map(a => parseFloat(a.replace(/[$,]/g, '')));
+  const amounts = amountMatches.map(a => parseFloat(a.replace(/[$,]/g, ''))).filter(n => !isNaN(n));
   const currentAmount = amounts.length > 0 ? amounts[amounts.length - 1] : 0;
   const originalAmount = amounts.length > 1 ? amounts[0] : currentAmount;
 

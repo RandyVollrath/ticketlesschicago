@@ -42,8 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const isAllowed = allowedPaths.some(path => redirect.startsWith(path));
   if (!isAllowed) {
-    console.warn('⚠️ Redirect to non-whitelisted path:', redirect);
-    // Allow it but log warning (be permissive for now)
+    console.warn('⚠️ Blocked redirect to non-whitelisted path:', redirect);
+    return res.status(400).json({ error: 'Redirect path not allowed' });
   }
 
   // Set HTTP-only cookie with redirect destination
