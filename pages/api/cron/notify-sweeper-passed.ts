@@ -33,7 +33,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
-import { getChicagoTime } from '../../../lib/chicago-timezone-utils';
+import { getChicagoTime, getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
 import { sendPushNotification, isFirebaseConfigured } from '../../../lib/firebase-admin';
 import { lookupTransId, getSweeperHistory } from '../../../lib/sweeper-tracker';
 import type { SweeperVisit } from '../../../lib/sweeper-tracker';
@@ -100,23 +100,34 @@ const CHICAGO_TZ = 'America/Chicago';
 /**
  * Check notification_logs to see if we already sent a sweeper_passed notification
  * for this parking session (vehicle.id).
+ *
+ * IMPORTANT: On query errors (table doesn't exist, DB timeout, etc.) returns true
+ * (assume notified) to prevent spamming users. This is the safe default — missing
+ * a notification is better than sending duplicates.
  */
 async function alreadyNotified(vehicleId: string): Promise<boolean> {
-  if (!supabaseAdmin) return false;
+  if (!supabaseAdmin) return true; // Can't check → assume notified (safe default)
   try {
-    const { count } = await supabaseAdmin
+    const { count, error } = await supabaseAdmin
       .from('notification_logs')
       .select('id', { count: 'exact', head: true })
       .eq('category', 'sweeper_passed')
       .eq('external_id', vehicleId);
+    if (error) {
+      // Table might not exist yet — log and fail safe (don't send duplicate)
+      console.error(`[sweeper-notify] alreadyNotified query error:`, error.message);
+      return true;
+    }
     return (count ?? 0) > 0;
-  } catch {
-    return false;
+  } catch (err) {
+    console.error(`[sweeper-notify] alreadyNotified exception:`, err);
+    return true; // Fail safe — assume notified
   }
 }
 
 /**
  * Log the notification to notification_logs for dedup and audit trail.
+ * Returns true if logged successfully, false if the log failed (e.g. table missing).
  */
 async function logNotification(
   userId: string,
@@ -124,10 +135,10 @@ async function logNotification(
   address: string,
   passTime: string | null,
   status: 'sent' | 'failed'
-): Promise<void> {
-  if (!supabaseAdmin) return;
+): Promise<boolean> {
+  if (!supabaseAdmin) return false;
   try {
-    await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from('notification_logs')
       .insert({
         user_id: userId,
@@ -139,8 +150,14 @@ async function logNotification(
         external_id: vehicleId,
         metadata: { address, passTime, vehicleId },
       });
+    if (error) {
+      console.error(`[sweeper-notify] logNotification error: ${error.message}`);
+      return false;
+    }
+    return true;
   } catch (err) {
-    console.error('Failed to log sweeper notification:', err);
+    console.error('[sweeper-notify] logNotification exception:', err);
+    return false;
   }
 }
 
@@ -179,7 +196,9 @@ export default async function handler(
   const chicagoHour = chicagoTime.getHours();
   const chicagoMonth = chicagoTime.getMonth() + 1; // 1-indexed
   const chicagoDay = chicagoTime.getDay(); // 0=Sun, 6=Sat
-  const today = chicagoTime.toISOString().split('T')[0]; // YYYY-MM-DD
+  // CRITICAL: Do NOT use chicagoTime.toISOString() — it returns UTC, not Chicago.
+  // At 11 PM CT (= 5 AM UTC next day), .toISOString() returns tomorrow's date.
+  const today = getChicagoDateISO(); // Correctly extracts YYYY-MM-DD from Chicago-adjusted Date
 
   console.log(`[sweeper-notify] Running at ${chicagoTime.toISOString()} (Chicago hour: ${chicagoHour}, month: ${chicagoMonth})`);
 
@@ -201,9 +220,11 @@ export default async function handler(
     return res.status(200).json({ success: true, message: 'Weekend', results: {} });
   }
 
-  // Check Firebase configuration
+  // Fail early if Firebase isn't configured — no point checking sweeper API
+  // for 200 segments if we can't send any notifications.
   if (!isFirebaseConfigured()) {
-    console.warn('[sweeper-notify] Firebase Admin not configured — push notifications will fail');
+    console.error('[sweeper-notify] Firebase Admin not configured — aborting');
+    return res.status(500).json({ error: 'Firebase not configured' });
   }
 
   const results = {
@@ -337,7 +358,7 @@ export default async function handler(
     // ─── Step 3: Check sweeper activity per unique TransID ───
     // Shuffle segment order to prevent timeout starvation: if cron times out,
     // different segments get checked next run instead of always the same ones first.
-    const todayChicago = new Date().toLocaleDateString('en-CA', { timeZone: CHICAGO_TZ });
+    // Reuse `today` (from getChicagoDateISO) — don't create a second date source.
     const shuffledSegments = shuffle([...segmentVehicles.entries()]);
 
     for (const [transId, group] of shuffledSegments) {
@@ -351,8 +372,15 @@ export default async function handler(
       try {
         const visits = await getSweeperHistory(transId);
 
+        // null = API error (timeout, HTTP error, bad JSON) — skip this segment, try next run
+        if (visits === null) {
+          results.apiErrors++;
+          console.warn(`[sweeper-notify] Sweeper API error for transId=${transId}, will retry next run`);
+          continue;
+        }
+
         // Filter to today's visits
-        const todayVisits = visits.filter((v: SweeperVisit) => v.chicagoDate === todayChicago);
+        const todayVisits = visits.filter((v: SweeperVisit) => v.chicagoDate === today);
 
         if (todayVisits.length === 0) {
           // Sweeper hasn't passed this segment today
@@ -458,7 +486,8 @@ export default async function handler(
     return res.status(200).json({
       success: true,
       results,
-      timestamp: chicagoTime.toISOString(),
+      chicagoDate: today,
+      timestamp: new Date().toISOString(), // Actual UTC timestamp for logging
     });
 
   } catch (error) {
