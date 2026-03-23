@@ -403,26 +403,34 @@ export default async function handler(
       activeSnowEvent = data;
     }
 
-    // Pre-fetch user profiles for permit zone checks (batch instead of per-vehicle)
-    const permitZoneUserIds = parkedVehicles
-      .filter((v: any) => v.permit_zone && !v.permit_zone_notified_at)
-      .map((v: any) => v.user_id);
-    const permitZoneProfiles = new Map<string, { permit_zone_number: string | null; vehicle_zone: string | null }>();
-    if (permitZoneUserIds.length > 0) {
-      const uniqueIds = Array.from(new Set(permitZoneUserIds));
+    // Pre-fetch user profiles once so push preferences, permit-zone ownership,
+    // and call-alert settings all use the same authoritative snapshot.
+    const uniqueUserIds = Array.from(new Set(parkedVehicles.map((v: any) => v.user_id)));
+    const userProfiles = new Map<string, ReminderUserProfile>();
+    if (uniqueUserIds.length > 0) {
       const { data: profiles } = await supabaseAdmin
         .from('user_profiles')
-        .select('user_id, permit_zone_number, vehicle_zone')
-        .in('user_id', uniqueIds);
+        .select('user_id, permit_zone_number, vehicle_zone, push_alert_preferences, phone_call_enabled, phone_number, call_alert_preferences')
+        .in('user_id', uniqueUserIds);
       if (profiles) {
-        for (const p of profiles) {
-          permitZoneProfiles.set(p.user_id, { permit_zone_number: p.permit_zone_number, vehicle_zone: p.vehicle_zone });
+        for (const profile of profiles) {
+          userProfiles.set(profile.user_id, {
+            user_id: profile.user_id,
+            permit_zone_number: profile.permit_zone_number,
+            vehicle_zone: profile.vehicle_zone,
+            push_alert_preferences: (profile.push_alert_preferences as Record<string, boolean> | null) || null,
+            phone_call_enabled: !!profile.phone_call_enabled,
+            phone_number: profile.phone_number,
+            call_alert_preferences: (profile.call_alert_preferences as Record<string, CallAlertPref> | null) || null,
+          });
         }
       }
     }
 
     for (const vehicle of parkedVehicles as ParkedVehicle[]) {
       try {
+        const userProfile = userProfiles.get(vehicle.user_id);
+
         // ——————————————————————————————————————————————
         // PUSH NOTIFICATIONS (unchanged timing windows)
         // ——————————————————————————————————————————————
