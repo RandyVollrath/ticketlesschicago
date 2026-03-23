@@ -239,8 +239,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             break;
           }
 
-          // Update appeal record with payment info
-          const { error: updateError } = await supabaseAdmin
+          // Update appeal record with payment info (optimistic lock: skip if already paid)
+          const { data: appealUpdated, error: updateError } = await supabaseAdmin
             .from('property_tax_appeals')
             .update({
               status: 'paid',
@@ -250,7 +250,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               updated_at: new Date().toISOString(),
             })
             .eq('id', appealId)
-            .eq('user_id', userId);
+            .eq('user_id', userId)
+            .not('status', 'in', '(paid,letter_generated)')
+            .select('id');
 
           if (updateError) {
             console.error('❌ Error updating Property Tax Appeal payment status:', updateError);
@@ -483,8 +485,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             break;
           }
 
-          // Update appeal with success fee payment
-          const { error: updateError } = await supabaseAdmin
+          // Update appeal with success fee payment (optimistic lock: only if not already paid)
+          const { data: feeUpdated, error: updateError } = await supabaseAdmin
             .from('property_tax_appeals')
             .update({
               success_fee_paid: true,
@@ -493,7 +495,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               updated_at: new Date().toISOString(),
             })
             .eq('id', appealId)
-            .eq('user_id', userId);
+            .eq('user_id', userId)
+            .eq('success_fee_paid', false)
+            .select('id');
 
           if (updateError) {
             console.error('❌ Error updating Success Fee payment:', updateError);
@@ -509,6 +513,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               console.error('Failed to send alert email:', e);
             }
             return res.status(500).json({ error: 'DB update failed', details: updateError.message });
+          }
+
+          // Idempotency: if no rows updated, another webhook already processed this
+          if (!feeUpdated || feeUpdated.length === 0) {
+            console.log('⏭️ Success Fee already processed (idempotent skip)');
+            break;
           }
 
           console.log('✅ Property Tax Success Fee recorded');
@@ -583,6 +593,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           if (!supabaseAdmin) {
             console.error('Supabase admin client not available');
+            break;
+          }
+
+          // IDEMPOTENCY CHECK: If this Stripe session was already processed, skip
+          const { data: existingBySession } = await supabaseAdmin
+            .from('user_profiles')
+            .select('user_id')
+            .eq('stripe_session_id', session.id)
+            .maybeSingle();
+
+          if (existingBySession) {
+            console.log('⏭️ Ticket Protection already processed for session', session.id, '(idempotent skip)');
             break;
           }
 
@@ -2565,13 +2587,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (userProfile) {
             const isActive = subscription.status === 'active' || subscription.status === 'trialing';
 
-            console.log(`📋 Syncing has_contesting for user ${userProfile.user_id}: ${isActive} (subscription status: ${subscription.status})`);
+            console.log(`📋 Syncing is_paid + has_contesting for user ${userProfile.user_id}: ${isActive} (subscription status: ${subscription.status})`);
 
-            // CRITICAL: has_contesting sync — controls whether user gets protection
+            // CRITICAL: Sync both is_paid and has_contesting with subscription state.
+            // When subscription is canceled/expired, is_paid must revert to false so the
+            // user loses paid features. Previously only has_contesting was synced, leaving
+            // is_paid=true permanently after cancellation.
             const { error: contestingError } = await supabaseAdmin
               .from('user_profiles')
               .update({
                 has_contesting: isActive,
+                is_paid: isActive,
                 updated_at: new Date().toISOString()
               })
               .eq('user_id', userProfile.user_id);

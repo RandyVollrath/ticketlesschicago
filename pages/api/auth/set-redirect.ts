@@ -18,10 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Redirect path required' });
   }
 
-  // Security: Validate redirect path to prevent open redirects
-  if (!redirect.startsWith('/')) {
-    console.error('⚠️ Invalid redirect attempt (not starting with /):', redirect);
-    return res.status(400).json({ error: 'Invalid redirect path - must start with /' });
+  // Security: Validate redirect path to prevent open redirects.
+  // Must start with exactly one slash. Protocol-relative URLs like "//evil.com"
+  // start with "/" but redirect to an external domain.
+  if (!redirect.startsWith('/') || redirect.startsWith('//')) {
+    console.error('⚠️ Invalid redirect attempt (open redirect blocked):', redirect);
+    return res.status(400).json({ error: 'Invalid redirect path - must be a relative path' });
   }
 
   // Optional: Whitelist specific paths for extra security

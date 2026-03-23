@@ -388,11 +388,31 @@ class AuthServiceClass {
     }
   }
 
+  // Mutex for token refresh — prevents concurrent 401 responses from each
+  // triggering independent refreshSession() calls that invalidate each other.
+  private refreshPromise: Promise<boolean> | null = null;
+
   /**
    * Attempt to refresh the authentication token
    * Returns true if refresh was successful, false otherwise
    */
   async refreshToken(): Promise<boolean> {
+    // If a refresh is already in flight, piggyback on it instead of starting
+    // a second concurrent refresh (which would invalidate the first).
+    if (this.refreshPromise) {
+      log.debug('Token refresh already in flight, waiting on existing attempt');
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this._doRefreshToken();
+    try {
+      return await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
+  private async _doRefreshToken(): Promise<boolean> {
     try {
       const { data, error } = await this.supabase.auth.refreshSession();
 
