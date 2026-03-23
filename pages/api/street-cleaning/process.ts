@@ -523,26 +523,28 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
       }
     }
 
-    // Send push notification if user has a push token
-    if (user.push_token) {
-      try {
-        const { pushService } = await import('../../../lib/push-service');
-        const pushResult = await pushService.sendToToken(user.push_token, {
-          title: subject,
-          body: message,
-          data: { type: 'street_cleaning', notificationType: type },
-          userId: user.user_id,
-          category: 'street_cleaning'
-        });
-        if (pushResult === 'success') {
-          console.log(`  Push -> ${user.push_token.substring(0, 20)}...`);
-          channelsSent.push('push');
-        }
-      } catch (pushError: any) {
+    // Send push notification to all user's registered devices
+    try {
+      const { pushService } = await import('../../../lib/push-service');
+      const pushResult = await pushService.sendToUser(user.user_id, {
+        title: subject,
+        body: message,
+        data: { type: 'street_cleaning', notificationType: type },
+        userId: user.user_id,
+        category: 'street_cleaning'
+      });
+      if (pushResult.success) {
+        console.log(`  Push -> ${pushResult.successCount} device(s)`);
+        channelsSent.push('push');
+      } else if (pushResult.failureCount > 0) {
         channelsFailed.push('push');
-        channelErrors.push(`Push error: ${sanitizeErrorMessage(pushError)}`);
-        console.error(`  Push failed for ${user.email}:`, pushError);
+        channelErrors.push(`Push failed on ${pushResult.failureCount} device(s)`);
       }
+      // Note: pushResult.success=false with failureCount=0 means no tokens registered — not an error
+    } catch (pushError: any) {
+      channelsFailed.push('push');
+      channelErrors.push(`Push error: ${sanitizeErrorMessage(pushError)}`);
+      console.error(`  Push failed for ${user.email}:`, pushError);
     }
 
     if (channelsSent.length === 0) {

@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error) {
       console.error('Error fetching orders:', error);
-      return res.status(500).json({ success: false, error: error.message });
+      return res.status(500).json({ success: false, error: 'Failed to fetch orders' });
     }
 
     return res.status(200).json({
@@ -47,6 +47,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error('Remitter orders API error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }

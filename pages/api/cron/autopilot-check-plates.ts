@@ -835,12 +835,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const activeUserIds = subscriptions.map(s => s.user_id);
 
-    // Get all active plates for these users
+    // Get all active plates for these users (bounded to prevent runaway queries)
     const { data: plates } = await supabaseAdmin
       .from('monitored_plates')
-      .select('*')
+      .select('id, user_id, plate_number, plate_state, last_name, status, last_checked_at, created_at')
       .in('user_id', activeUserIds)
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .limit(500);
 
     if (!plates || plates.length === 0) {
       console.log('No active plates to check');
