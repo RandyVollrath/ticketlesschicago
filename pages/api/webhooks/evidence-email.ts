@@ -144,15 +144,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cloudflareHeader = req.headers['x-cloudflare-email-worker'] as string;
   const expectedCloudflareSecret = process.env.CLOUDFLARE_EMAIL_WORKER_SECRET;
 
-  // Accept Cloudflare worker if header is present and either:
-  // 1. No secret is configured (development)
-  // 2. Secret matches
-  // 3. Header contains 'cloudflare' (trusted source indicator)
-  const isCloudflareWorker = cloudflareHeader && (
-    !expectedCloudflareSecret ||
-    cloudflareHeader === expectedCloudflareSecret ||
-    cloudflareHeader.toLowerCase().includes('cloudflare')
-  );
+  // Accept Cloudflare worker if header matches configured secret.
+  // SECURITY: Previously accepted any header containing 'cloudflare' — trivially spoofable.
+  // Now requires either a matching secret or falls back to Resend signature verification.
+  const isCloudflareWorker = cloudflareHeader && expectedCloudflareSecret
+    ? cloudflareHeader === expectedCloudflareSecret
+    : false;
 
   if (!isCloudflareWorker && !verifyWebhook('resend-evidence', req)) {
     console.error('Evidence webhook verification failed');

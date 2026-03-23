@@ -123,8 +123,11 @@ export function verifyWebhook(
     case 'resend': {
       const secret = process.env.RESEND_WEBHOOK_SECRET;
       if (!secret) {
-        console.warn('RESEND_WEBHOOK_SECRET not set - webhook verification disabled');
-        return true; // Allow in development, but log warning
+        // SECURITY: Fail closed. Previously returned true when secret was missing,
+        // meaning any unverified request would be accepted in production if the
+        // env var was accidentally removed.
+        console.error('RESEND_WEBHOOK_SECRET not set - rejecting webhook (fail closed)');
+        return false;
       }
       return verifyResendWebhook(req, secret);
     }
@@ -132,15 +135,18 @@ export function verifyWebhook(
     case 'resend-evidence': {
       const secret = process.env.RESEND_EVIDENCE_WEBHOOK_SECRET;
       if (!secret) {
-        console.warn('RESEND_EVIDENCE_WEBHOOK_SECRET not set - webhook verification disabled');
-        return true; // Allow in development, but log warning
+        console.error('RESEND_EVIDENCE_WEBHOOK_SECRET not set - rejecting webhook (fail closed)');
+        return false;
       }
       return verifyResendWebhook(req, secret);
     }
 
     case 'clicksend': {
       const secret = process.env.CLICKSEND_WEBHOOK_SECRET;
-      // ClickSend verification is optional (uses secret token)
+      if (!secret) {
+        console.error('CLICKSEND_WEBHOOK_SECRET not set - rejecting webhook (fail closed)');
+        return false;
+      }
       return verifyClickSendWebhook(req, secret);
     }
 

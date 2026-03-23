@@ -42,17 +42,25 @@ export default async function handler(
   }
 
   try {
-    // Deactivate the token
-    const { error } = await supabaseAdmin.rpc('deactivate_push_token', {
-      p_token: token
-    });
+    // Deactivate the token — only if it belongs to the authenticated user.
+    // Without the user_id check, any authenticated user could deactivate
+    // another user's push token if they knew/guessed the token string.
+    if (!supabaseAdmin) {
+      return res.status(500).json({ success: false, error: 'Database not configured' });
+    }
+
+    const { error, count } = await supabaseAdmin
+      .from('push_tokens')
+      .update({ is_active: false })
+      .eq('token', token)
+      .eq('user_id', authUser.id);
 
     if (error) {
       console.error('Error deactivating push token:', error);
       return res.status(500).json({ success: false, error: 'Failed to deactivate push token' });
     }
 
-    console.log('✅ Push token deactivated');
+    console.log(`✅ Push token deactivated for user ${authUser.id}`);
 
     return res.status(200).json({ success: true });
 

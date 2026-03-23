@@ -16,6 +16,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { verifyWebhook } from '../../../lib/webhook-verification';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -242,6 +243,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     console.log('❌ Method not allowed:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // SECURITY: Verify Resend webhook signature to prevent forged receipt submissions.
+  // Without this, attackers could inject fake city sticker receipts or utility bills.
+  if (!verifyWebhook('resend', req)) {
+    console.error('⚠️ Receipt forwarding webhook verification failed');
+    return res.status(401).json({ error: 'Unauthorized - invalid signature' });
   }
 
   try {

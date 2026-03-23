@@ -146,6 +146,22 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Authenticate the caller — this endpoint makes expensive external API calls
+  // (reverse geocoding, Gemini AI) and exposes detailed parking restriction data.
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing authorization token' });
+  }
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Database not configured' });
+  }
+  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
+    authHeader.substring(7)
+  );
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Invalid authorization token' });
+  }
+
   // Get coordinates from query params (GET) or body (POST)
   const lat = req.method === 'GET' ? req.query.lat : req.body.latitude;
   const lng = req.method === 'GET' ? req.query.lng : req.body.longitude;

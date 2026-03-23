@@ -436,6 +436,19 @@ class PushNotificationServiceClass {
    */
   async unregister(): Promise<void> {
     try {
+      const tokenToDeactivate = this.token || await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+
+      // Deactivate on backend first — prevents stale tokens from sending
+      // notifications to the wrong user if someone else logs in on this device.
+      if (tokenToDeactivate && AuthService.isAuthenticated()) {
+        try {
+          await ApiClient.authPost('/api/push/deactivate-token', { token: tokenToDeactivate });
+          log.info('Push token deactivated on backend');
+        } catch (err) {
+          log.warn('Failed to deactivate token on backend (continuing with local cleanup)', err);
+        }
+      }
+
       // Delete token from Firebase
       await messaging().deleteToken();
 
