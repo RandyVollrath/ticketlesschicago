@@ -159,14 +159,17 @@ export class PushService {
 
       // Send to each token
       for (const tokenRecord of tokens) {
-        const sent = await this.sendToToken(tokenRecord.token, notification);
+        const sendResult = await this.sendToToken(tokenRecord.token, notification);
 
-        if (sent) {
+        if (sendResult === 'success') {
           result.successCount++;
         } else {
           result.failureCount++;
-          // Mark potentially invalid tokens
-          result.invalidTokens.push(tokenRecord.token);
+          // Only mark tokens as invalid when FCM explicitly says so
+          // Network errors, server errors, rate limits should NOT deactivate tokens
+          if (sendResult === 'invalid_token') {
+            result.invalidTokens.push(tokenRecord.token);
+          }
         }
       }
 

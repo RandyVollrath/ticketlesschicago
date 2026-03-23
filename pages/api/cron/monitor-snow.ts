@@ -47,12 +47,16 @@ export default async function handler(
     cutoffDate.setHours(cutoffDate.getHours() - 48);
     const cutoffStr = cutoffDate.toISOString().split('T')[0];
 
-    const { data: deactivated } = await supabaseAdmin
+    const { data: deactivated, error: deactivateError } = await supabaseAdmin
       .from('snow_events')
       .update({ is_active: false })
       .eq('is_active', true)
       .lt('event_date', cutoffStr)
       .select('id, event_date');
+
+    if (deactivateError) {
+      console.error('Failed to deactivate stale snow events:', deactivateError.message);
+    }
 
     if (deactivated && deactivated.length > 0) {
       console.log(`Auto-deactivated ${deactivated.length} stale snow event(s):`, deactivated.map(e => e.event_date));

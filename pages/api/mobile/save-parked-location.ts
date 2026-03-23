@@ -75,11 +75,16 @@ export default async function handler(
     const input: SaveParkedLocationInput = parseResult.data;
 
     // Deactivate any existing parked location for this user
-    await supabaseAdmin
+    const { error: deactivateError } = await supabaseAdmin
       .from('user_parked_vehicles')
       .update({ is_active: false })
       .eq('user_id', userId)
       .eq('is_active', true);
+
+    if (deactivateError) {
+      console.error('Failed to deactivate previous parked location:', deactivateError.message);
+      // Continue — saving the new location is more important than cleaning up the old one
+    }
 
     // Parse street cleaning date if provided
     let streetCleaningDate: string | null = null;
@@ -186,7 +191,8 @@ export default async function handler(
           permit_zone: input.permit_zone || null,
           permit_restriction_schedule: input.permit_restriction_schedule || null,
         })
-        .eq('id', recentDuplicate.id);
+        .eq('id', recentDuplicate.id)
+        .is('cleared_at', null); // Optimistic lock: don't overwrite if already cleared by departure
 
       if (updateError) {
         console.error('Error updating existing parking history:', updateError);
