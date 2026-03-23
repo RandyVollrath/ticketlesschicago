@@ -177,8 +177,9 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, adminUser: 
     // Build update based on action
     switch (action) {
       case 'approve':
-        updateData.status = 'admin_approved';
-        updateData.approved_by = 'admin_review';
+        updateData.status = 'approved';
+        updateData.approved_via = 'admin_review';
+        updateData.approved_by = adminUser.id;
         updateData.approved_at = new Date().toISOString();
         break;
 
@@ -188,8 +189,9 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, adminUser: 
 
       case 'edit':
         updateData.letter_content = editedContent;
-        updateData.status = 'admin_approved';
-        updateData.approved_by = 'admin_review';
+        updateData.status = 'approved';
+        updateData.approved_via = 'admin_review';
+        updateData.approved_by = adminUser.id;
         updateData.approved_at = new Date().toISOString();
         break;
     }

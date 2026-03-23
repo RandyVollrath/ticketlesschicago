@@ -55,10 +55,10 @@ interface CallAlertPreferences {
 type CallAlertType = keyof CallAlertPreferences;
 
 const DEFAULT_CALL_ALERT_PREFS: CallAlertPreferences = {
-  street_cleaning: { enabled: false, hours_before: 2 },
-  winter_ban: { enabled: false, hours_before: 6 },
-  permit_zone: { enabled: false, hours_before: 0 },
-  snow_route: { enabled: false, hours_before: 0 },
+  street_cleaning: { enabled: true, hours_before: 2 },
+  winter_ban: { enabled: true, hours_before: 6 },
+  permit_zone: { enabled: true, hours_before: 0 },
+  snow_route: { enabled: true, hours_before: 0 },
   dot_permit: { enabled: false, hours_before: 0 },
 };
 
@@ -518,8 +518,10 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setPhoneCallAlertsEnabled(value);
     await AsyncStorage.setItem(StorageKeys.PHONE_CALL_ALERTS_ENABLED, value.toString());
     showFeedback(value ? 'Phone call alerts enabled' : 'Phone call alerts disabled');
-    syncPhoneCallSettingsToServer(value, phoneNumber);
-  }, [phoneNumber, showFeedback]);
+    // When enabling, always sync per-type preferences so the server has them.
+    // Without this, the server defaults all types to enabled:false and calls never trigger.
+    syncPhoneCallSettingsToServer(value, phoneNumber, value ? callAlertPrefs : undefined);
+  }, [phoneNumber, showFeedback, callAlertPrefs]);
 
   const syncPhoneCallSettingsToServer = useCallback(async (enabled: boolean, phone: string, prefs?: CallAlertPreferences) => {
     if (!AuthService.isAuthenticated()) return;

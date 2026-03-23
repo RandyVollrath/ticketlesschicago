@@ -703,7 +703,7 @@ export async function processFoiaResponse(
     const { data: pendingRequests } = await supabase
       .from('ticket_foia_requests')
       .select('*, detected_tickets!inner(ticket_number, user_id)')
-      .eq('status', 'sent')
+      .in('status', ['sent', 'extension_requested'])
       .order('sent_at', { ascending: true });
 
     if (pendingRequests && pendingRequests.length > 0) {
@@ -789,7 +789,10 @@ async function processEvidenceFoiaMatch(
   isExtension?: boolean;
 }> {
   // ── Extension check — must come BEFORE fulfillment/denial classification ──
-  if (isExtensionResponse(subject, body)) {
+  // Guard: Don't downgrade an already-fulfilled/denied request back to extension_requested.
+  // This handles the edge case where the city sends a late extension notice AFTER the real response.
+  const terminalStatuses = ['fulfilled', 'fulfilled_with_records', 'fulfilled_denial', 'no_records'];
+  if (isExtensionResponse(subject, body) && !terminalStatuses.includes(matchedRequest.status)) {
     console.log(`  Extension detected for evidence FOIA ${matchedRequest.id} — NOT marking as fulfilled`);
     const ticketNumber = matchedRequest.detected_tickets?.ticket_number || null;
 
@@ -836,6 +839,19 @@ async function processEvidenceFoiaMatch(
     };
   }
 
+  // Guard: If the request is already in a terminal status, don't reprocess.
+  // This prevents late/duplicate emails from overwriting existing fulfillment data.
+  if (terminalStatuses.includes(matchedRequest.status)) {
+    console.log(`  Skipping evidence FOIA ${matchedRequest.id} — already in terminal status '${matchedRequest.status}'`);
+    return {
+      matched: true,
+      requestId: matchedRequest.id,
+      ticketNumber: matchedRequest.detected_tickets?.ticket_number || null,
+      foiaType: 'evidence',
+      action: `already_${matchedRequest.status}`,
+    };
+  }
+
   // Determine if this is a fulfillment or denial
   const lowerBody = body.toLowerCase();
   const isDenial = lowerBody.includes('no responsive records') ||
@@ -861,6 +877,16 @@ async function processEvidenceFoiaMatch(
     : 'City responded but produced no records. Supports due process argument.';
 
   // Update the FOIA request
+  // Preserve extension metadata if this request previously received an extension
+  const previousExtension = matchedRequest.status === 'extension_requested'
+    ? {
+        extension_received_at: matchedRequest.response_payload?.received_at || matchedRequest.updated_at,
+        extension_from: matchedRequest.response_payload?.from,
+        extension_subject: matchedRequest.response_payload?.subject,
+        had_extension: true,
+      }
+    : undefined;
+
   await supabase
     .from('ticket_foia_requests')
     .update({
@@ -876,8 +902,11 @@ async function processEvidenceFoiaMatch(
         is_denial: isDenial,
         received_at: new Date().toISOString(),
         match_method: matchMethod,
+        ...(previousExtension || {}),
       },
-      notes,
+      notes: previousExtension
+        ? `[After 5 ILCS 140/3(e) extension] ${notes}`
+        : notes,
     })
     .eq('id', matchedRequest.id);
 
@@ -892,6 +921,7 @@ async function processEvidenceFoiaMatch(
       attachment_count: attachments.length,
       is_denial: isDenial,
       match_method: matchMethod,
+      ...(previousExtension ? { after_extension: true, extension_received_at: previousExtension.extension_received_at } : {}),
     },
     performed_by: null,
   });
@@ -935,7 +965,9 @@ export async function processHistoryFoiaResponse(
   }
 
   // ── Extension check — must come BEFORE any fulfillment/parsing logic ──
-  if (isExtensionResponse(subject, body)) {
+  // Guard: Don't downgrade an already-fulfilled request back to extension_requested.
+  const historyTerminalStatuses = ['fulfilled', 'fulfilled_with_records', 'fulfilled_denial'];
+  if (isExtensionResponse(subject, body) && !historyTerminalStatuses.includes(historyRequest.status)) {
     console.log(`  Extension detected for history FOIA ${requestId} — NOT marking as fulfilled`);
     await supabase
       .from('foia_history_requests')
@@ -976,6 +1008,17 @@ export async function processHistoryFoiaResponse(
   // and `response_data` (not `response_payload`)
   const ticketCount = parsedResult?.tickets?.length || 0;
   const totalFines = parsedResult?.total_fines || 0;
+
+  // Preserve extension metadata if this request previously received an extension
+  const previousExtension = historyRequest.status === 'extension_requested'
+    ? {
+        extension_received_at: historyRequest.response_data?.received_at || historyRequest.updated_at,
+        extension_from: historyRequest.response_data?.from,
+        extension_subject: historyRequest.response_data?.subject,
+        had_extension: true,
+      }
+    : undefined;
+
   const updatePayload: any = {
     status: 'fulfilled',
     response_received_at: new Date().toISOString(),
@@ -987,6 +1030,7 @@ export async function processHistoryFoiaResponse(
       attachment_count: attachments.length,
       attachments: attachments.map(a => ({ filename: a.filename, type: a.content_type, ...(a.url ? { url: a.url } : {}) })),
       received_at: new Date().toISOString(),
+      ...(previousExtension || {}),
     },
     ticket_count: ticketCount,
     total_fines: totalFines,
@@ -997,9 +1041,13 @@ export async function processHistoryFoiaResponse(
     updatePayload.ai_parse_model = parsedResult.model;
     updatePayload.ai_parse_raw = parsedResult.raw_response;
     updatePayload.ai_parsed_at = new Date().toISOString();
-    updatePayload.notes = parsedResult.summary;
+    updatePayload.notes = previousExtension
+      ? `[After 5 ILCS 140/3(e) extension] ${parsedResult.summary}`
+      : parsedResult.summary;
   } else {
-    updatePayload.notes = 'FOIA response received — AI parsing failed, manual review needed';
+    updatePayload.notes = previousExtension
+      ? '[After 5 ILCS 140/3(e) extension] FOIA response received — AI parsing failed, manual review needed'
+      : 'FOIA response received — AI parsing failed, manual review needed';
   }
 
   await supabase

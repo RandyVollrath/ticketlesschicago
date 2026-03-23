@@ -44,8 +44,15 @@ interface UserProfile {
 }
 
 interface Subscription {
-  letters_used_this_period: number;
-  letters_included: number;
+  status: string;
+  letters_included_remaining?: number | null;
+}
+
+function isAdminApprovedLetter(letter: { status: string; approved_via?: string | null }): boolean {
+  if (letter.status !== 'approved') return false;
+  return letter.approved_via === 'admin_review' ||
+    letter.approved_via === 'auto_deadline_safety_net' ||
+    letter.approved_via === 'smoke_test';
 }
 
 /**
@@ -329,15 +336,15 @@ async function mailLetter(
       return { success: true, lobId: existingLetter.lob_letter_id };
     }
 
-    // Atomically claim this letter for mailing — prevents duplicate sends if cron
-    // crashes between Lob API call and the DB update that sets lob_letter_id.
-    // The .eq('status', letter.status) acts as optimistic locking: if another cron
-    // run already changed the status, this update returns count=0 and we skip.
+    // Atomically claim this letter for mailing without changing status.
+    // We use updated_at as the optimistic-lock token because the DB constraint
+    // does not allow a transient "mailing" status.
     const { data: claimedLetter, error: claimError } = await supabaseAdmin
       .from('contest_letters')
-      .update({ status: 'mailing' })
+      .update({ updated_at: new Date().toISOString() })
       .eq('id', letter.id)
       .eq('status', letter.status)
+      .eq('updated_at', letter.updated_at)
       .select('id')
       .maybeSingle();
 
@@ -420,7 +427,7 @@ async function mailLetter(
     console.log(`    Mailed! Lob ID: ${result.id}`);
 
     // Update letter record
-    const { error: letterUpdateErr, count: letterUpdateCount } = await supabaseAdmin
+    const { error: letterUpdateErr } = await supabaseAdmin
       .from('contest_letters')
       .update({
         status: 'sent',
@@ -684,13 +691,19 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
     const currentCount = sub.letters_used_this_period || 0;
     const newCount = currentCount + 1;
 
-    const { count: updatedRows } = await supabaseAdmin
+    const { data: updatedRow, error: updateError } = await supabaseAdmin
       .from('autopilot_subscriptions')
       .update({ letters_used_this_period: newCount })
       .eq('user_id', userId)
-      .eq('letters_used_this_period', currentCount); // optimistic lock
+      .eq('letters_used_this_period', currentCount) // optimistic lock
+      .select('id')
+      .maybeSingle();
 
-    if (updatedRows === 0) {
+    if (updateError) {
+      console.error(`  incrementLetterCount fallback: update failed for user ${userId}: ${updateError.message}`);
+    }
+
+    if (!updatedRow?.id) {
       console.warn(`  incrementLetterCount fallback: concurrent update for user ${userId}, retrying`);
       // Re-read and retry once
       const { data: sub2 } = await supabaseAdmin
@@ -701,12 +714,17 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
       if (!sub2) return { exceeded: false, count: 0 };
       const retryCurrentCount = sub2.letters_used_this_period || 0;
       const retryCount = retryCurrentCount + 1;
-      const { count: retryUpdatedRows } = await supabaseAdmin
+      const { data: retryUpdatedRow, error: retryError } = await supabaseAdmin
         .from('autopilot_subscriptions')
         .update({ letters_used_this_period: retryCount })
         .eq('user_id', userId)
-        .eq('letters_used_this_period', retryCurrentCount); // optimistic lock on retry too
-      if (retryUpdatedRows === 0) {
+        .eq('letters_used_this_period', retryCurrentCount) // optimistic lock on retry too
+        .select('id')
+        .maybeSingle();
+      if (retryError) {
+        console.error(`  incrementLetterCount retry: update failed for user ${userId}: ${retryError.message}`);
+      }
+      if (!retryUpdatedRow?.id) {
         console.warn(`  incrementLetterCount: second concurrent update for user ${userId}, count may be stale`);
       }
       return { exceeded: retryCount > (sub2.letters_included || 1), count: retryCount };
@@ -824,6 +842,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         letter_text,
         defense_type,
         status,
+        approved_via,
         updated_at,
         street_view_exhibit_urls,
         street_view_date,
@@ -851,7 +870,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           created_at
         )
       `)
-      .or(`status.eq.approved,status.eq.ready,status.eq.awaiting_consent,status.eq.admin_approved,status.eq.mailing`)
+      .or(`status.eq.approved,status.eq.ready,status.eq.awaiting_consent,status.eq.mailing`)
       .order('created_at', { ascending: true })
       .limit(50);
 
@@ -888,7 +907,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Case 0: Letter admin-approved — ready to mail
-      if (l.status === 'admin_approved') {
+      if (isAdminApprovedLetter(l)) {
         return true;
       }
 
@@ -973,7 +992,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Exception: admin_approved letters bypass consent — the admin approval IS the authorization
       // (this is the Day-19 safety net: if the user never responded to consent emails,
       //  an admin can approve the letter directly)
-      if (!profile.contest_consent && letter.status !== 'admin_approved') {
+      if (!profile.contest_consent && !isAdminApprovedLetter(letter as any)) {
         console.log(`  ⚠️ Skipping letter ${letter.id}: User ${letter.user_id} has not provided contest authorization (no e-signature on file)`);
         // Update letter status so it's not retried every run
         await supabaseAdmin
@@ -986,7 +1005,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // SUBSCRIPTION GATE: Verify user has active subscription before mailing
       const { data: subscription } = await supabaseAdmin
         .from('autopilot_subscriptions')
-        .select('status, letters_used_this_period, letters_included')
+        .select('status, letters_included_remaining')
         .eq('user_id', letter.user_id)
         .maybeSingle();
 
@@ -1018,6 +1037,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const ticket = (letter as any).detected_tickets;
       const ticketNumber = ticket?.ticket_number || 'Unknown';
+      const adminApproved = isAdminApprovedLetter(letter as any);
 
       // ── QUALITY GATE: Validate letter before mailing ──
       const letterText = letter.letter_content || letter.letter_text;
@@ -1092,47 +1112,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
-        // Even if placeholder check passed, run AI review for defense coherence
-        const aiReview = await aiQualityReview(letterText, {
-          ticket_number: ticketNumber,
-          violation_date: ticket?.violation_date || '',
-          violation_description: ticket?.violation_description || '',
-          violation_type: ticket?.violation_type || '',
-          amount: ticket?.amount || 0,
-          location: ticket?.location || '',
-        }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim());
+        if (adminApproved) {
+          console.log(`    ✅ Skipping AI review for admin-approved letter ${letter.id}`);
+        } else {
+          // Even if placeholder check passed, run AI review for defense coherence
+          const aiReview = await aiQualityReview(letterText, {
+            ticket_number: ticketNumber,
+            violation_date: ticket?.violation_date || '',
+            violation_description: ticket?.violation_description || '',
+            violation_type: ticket?.violation_type || '',
+            amount: ticket?.amount || 0,
+            location: ticket?.location || '',
+          }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim());
 
-        if (!aiReview.pass && aiReview.qualityScore < 70) {
-          console.log(`    ⚠️ AI review flagged issues (score: ${aiReview.qualityScore}/100): ${aiReview.issues.join('; ')}`);
+          if (!aiReview.pass && aiReview.qualityScore < 70) {
+            console.log(`    ⚠️ AI review flagged issues (score: ${aiReview.qualityScore}/100): ${aiReview.issues.join('; ')}`);
 
-          if (aiReview.correctedLetter && aiReview.correctedLetter.length > 200) {
-            // Save corrected version, still require admin review
-            await supabaseAdmin.from('contest_letters')
-              .update({ letter_content: aiReview.correctedLetter, status: 'needs_admin_review' })
-              .eq('id', letter.id);
-          } else {
-            await supabaseAdmin.from('contest_letters')
-              .update({ status: 'needs_admin_review' })
-              .eq('id', letter.id);
+            if (aiReview.correctedLetter && aiReview.correctedLetter.length > 200) {
+              // Save corrected version, still require admin review
+              await supabaseAdmin.from('contest_letters')
+                .update({ letter_content: aiReview.correctedLetter, status: 'needs_admin_review' })
+                .eq('id', letter.id);
+            } else {
+              await supabaseAdmin.from('contest_letters')
+                .update({ status: 'needs_admin_review' })
+                .eq('id', letter.id);
+            }
+
+            await supabaseAdmin.from('ticket_audit_log').insert({
+              ticket_id: letter.ticket_id, user_id: letter.user_id,
+              action: 'letter_ai_review_flagged',
+              details: { ai_issues: aiReview.issues, ai_quality_score: aiReview.qualityScore, performed_by_system: 'autopilot_cron' },
+              performed_by: null,
+            });
+            continue;
           }
 
-          await supabaseAdmin.from('ticket_audit_log').insert({
-            ticket_id: letter.ticket_id, user_id: letter.user_id,
-            action: 'letter_ai_review_flagged',
-            details: { ai_issues: aiReview.issues, ai_quality_score: aiReview.qualityScore, performed_by_system: 'autopilot_cron' },
-            performed_by: null,
-          });
-          continue;
+          console.log(`    ✅ Quality check passed (AI score: ${aiReview.qualityScore}/100)`);
         }
-
-        console.log(`    ✅ Quality check passed (AI score: ${aiReview.qualityScore}/100)`);
       }
 
       // ── ADMIN REVIEW GATE: All letters must be admin-approved before mailing ──
       // Letters with status 'needs_admin_review' are caught above.
-      // Letters with status 'admin_approved' proceed to mailing.
+      // Letters explicitly admin-approved via approved_via proceed to mailing.
       // All other letters get flagged for admin review.
-      if (letter.status !== 'admin_approved') {
+      if (!adminApproved) {
         console.log(`    ⏸ Letter ${letter.id} requires admin review before mailing`);
         if (letter.status !== 'needs_admin_review') {
           await supabaseAdmin
