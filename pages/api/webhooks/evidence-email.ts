@@ -291,7 +291,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id,
             letter_content,
             letter_text,
-            defense_type
+            defense_type,
+            status
           )
         `)
         .eq('id', ticketIdFromAddress)
@@ -310,7 +311,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id,
             letter_content,
             letter_text,
-            defense_type
+            defense_type,
+            status
           )
         `)
         .eq('user_id', user.id)
@@ -330,7 +332,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id,
             letter_content,
             letter_text,
-            defense_type
+            defense_type,
+            status
           )
         `)
         .eq('user_id', user.id)
@@ -560,8 +563,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         user_evidence_uploaded_at: evidenceReceivedAt,
         evidence_received_at: evidenceReceivedAt,
         evidence_on_time: evidenceOnTime,
-        // Only set evidence_deadline to now for auto-mail users (legacy behavior)
-        ...(needsApproval ? {} : { evidence_deadline: evidenceReceivedAt }),
+        // Preserve original evidence_deadline (day 17 from ticket issue) — don't overwrite
+        // The auto-send logic in autopilot-mail-letters checks evidence_deadline + 1h buffer
         status: newStatus,
       })
       .eq('id', ticket.id);
@@ -605,7 +608,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let regeneratedLetterContent: string | null = null;
     let currentLetterId: string | null = letter?.id || null;
 
-    if (letter) {
+    // Guard: don't regenerate a letter that's already been mailed/sent/delivered/returned
+    const IMMUTABLE_LETTER_STATUSES = ['sent', 'mailed', 'delivered', 'returned', 'mailing'];
+    if (letter && IMMUTABLE_LETTER_STATUSES.includes(letter.status)) {
+      console.log(`⚠️ Letter ${letter.id} is already "${letter.status}" — skipping regeneration to preserve mailed content`);
+      // Store evidence on the ticket but don't touch the letter
+    } else if (letter) {
       const originalLetter = letter.letter_content || letter.letter_text || '';
 
       // Use AI to integrate ALL evidence (merged from SMS + email), guided by kit evaluation strategy

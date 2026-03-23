@@ -2293,7 +2293,8 @@ async function processFoundTicket(
       source: 'portal_scrape',
       evidence_requested_at: now,
       evidence_deadline: evidenceDeadline.toISOString(),
-      auto_send_deadline: evidenceDeadline.toISOString(),
+      // Auto-send 2 days after evidence deadline (day 19) — gives buffer for late evidence
+      auto_send_deadline: new Date(evidenceDeadline.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
       reminder_count: 0,
       // Store the plate/state from the ticket itself for clerical error detection
       ticket_plate: ticket.ticket_plate || null,
