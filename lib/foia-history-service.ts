@@ -193,24 +193,25 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
   const safeState = esc(params.licenseState);
 
   const html = quickEmail({
-    preheader: `Your FOIA request for plate ${params.licenseState} ${params.licensePlate} has been submitted`,
-    headerTitle: 'Your FOIA Request Has Been Submitted',
-    headerSubtitle: "We're pulling your complete ticket history from the City of Chicago",
+    preheader: `We just filed a FOIA on plate ${params.licenseState} ${params.licensePlate}. The city has 5 days to hand over every ticket on record.`,
+    headerTitle: 'We just pulled the trigger on your FOIA.',
+    headerSubtitle: `Plate ${safeState} ${safePlate} — full ticket history requested`,
     body: [
       greet(params.name || undefined),
-      p(`We just submitted an official <strong>Freedom of Information Act (FOIA) request</strong> to the Chicago Department of Finance requesting the complete ticket history for plate <strong>${safeState} ${safePlate}</strong>.`),
-      section('What We Requested', bulletList([
+      p(`We just filed an official <strong>Freedom of Information Act request</strong> with the Chicago Department of Finance demanding every parking ticket, citation, and violation ever written against plate <strong>${safeState} ${safePlate}</strong>.`),
+      p("This isn't a polite ask. It's a legal demand. Under Illinois law (5 ILCS 140), the city <strong>must</strong> respond within 5 business days — or explain in writing why they can't."),
+      section('What We Demanded', bulletList([
         'Every parking ticket and citation ever issued to your plate',
         'Violation types, dates, locations, and fine amounts',
-        'Payment status and hearing outcomes',
-        'Any contest or dismissal records',
+        'Current status — paid, unpaid, contested, dismissed',
+        'Hearing outcomes and contest records',
       ]), { bg: '#F0F9FF', borderColor: '#BAE6FD' }),
-      callout('warning', 'What Happens Next',
-        `The city is required by law to respond within <strong>5 business days</strong>. Once we receive your data, we'll email you a full report and make it available on your dashboard at <a href="https://autopilotamerica.com/my-tickets" style="color: #2563EB;">autopilotamerica.com/my-tickets</a>.`),
-      section('Protect Yourself Going Forward',
-        p('Chicago issues nearly 3 million parking tickets every year. Autopilot monitors your plate daily, catches new tickets the moment they\'re issued, and automatically contests them for you.'),
-        { bg: '#F0FDF4', borderColor: '#86EFAC' }),
+      callout('warning', 'The clock is ticking',
+        `The city has <strong>5 business days</strong> to respond. When they do, we'll email you the full breakdown — every ticket, every fine, every outcome — and post it to your dashboard at <a href="https://autopilotamerica.com/my-tickets" style="color: #2563EB;">autopilotamerica.com/my-tickets</a>.`),
+      callout('danger', 'Here\'s what most people find out',
+        'The average Chicago driver has tickets they forgot about, tickets they never knew existed, and fines that doubled while sitting in collections. <strong>68.5% of contested parking tickets in Chicago get dismissed.</strong> Many of yours could have been fought — and won.'),
       button('Get Protected — $49/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
+      p("One dismissed ticket pays for the entire year.", { size: '13px', color: '#6B7280', center: true }),
     ].join(''),
   });
 
@@ -224,7 +225,7 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
       body: JSON.stringify({
         from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: [params.email],
-        subject: `Your ticket history request is in - we'll have results in 5 business days`,
+        subject: `FOIA filed on plate ${params.licenseState} ${params.licensePlate} — the city has 5 days to respond`,
         html,
       }),
     });
@@ -254,35 +255,42 @@ export async function sendFoiaHistoryResultsEmail(params: {
   const safeState = esc(params.licenseState);
 
   const html = quickEmail({
-    preheader: `Your FOIA results: ${params.ticketCount} ticket${params.ticketCount !== 1 ? 's' : ''} found for plate ${params.licenseState} ${params.licensePlate}`,
-    headerTitle: 'Your Ticket History Is Ready',
+    preheader: params.ticketCount > 0
+      ? `${params.ticketCount} tickets. $${params.totalFines.toLocaleString()} in fines. Up to $${potentialSavings.toLocaleString()} you could have saved.`
+      : `Clean record for plate ${params.licenseState} ${params.licensePlate}. Let's keep it that way.`,
+    headerTitle: params.ticketCount > 0
+      ? `$${params.totalFines.toLocaleString()} in tickets. Here's the damage.`
+      : 'Clean record. Let\'s keep it that way.',
     headerSubtitle: `FOIA results for plate ${safeState} ${safePlate}`,
     body: [
       greet(params.name || undefined),
-      p('The City of Chicago responded to your FOIA request. Here\'s what we found:'),
+      p(params.ticketCount > 0
+        ? 'The city handed over your records. Let\'s look at what they\'ve been charging you:'
+        : 'Good news — the city came back with a clean slate. No tickets on record for your plate.'),
       statRow(
         stat(String(params.ticketCount), 'Total Tickets', { bg: '#FEF2F2', color: '#DC2626' }) +
         stat(`$${params.totalFines.toLocaleString()}`, 'Total Fines', { bg: '#FFF7ED', color: '#EA580C' })
       ),
       button('View Full Report', params.resultsUrl),
       params.ticketCount > 0
-        ? callout('danger', `You could have saved up to $${potentialSavings.toLocaleString()}`,
-            `City of Chicago data shows that <strong>68.5% of contested parking tickets are dismissed</strong>. If every one of your ${params.ticketCount} ticket${params.ticketCount !== 1 ? 's' : ''} had been automatically contested, you could have saved up to <strong>$${potentialSavings.toLocaleString()}</strong> in fines.`)
+        ? callout('danger', `You left $${potentialSavings.toLocaleString()} on the table`,
+            `<strong>68.5% of contested parking tickets in Chicago get dismissed.</strong> That's not a guess — it's city data. If every one of your ${params.ticketCount} ticket${params.ticketCount !== 1 ? 's' : ''} had been automatically contested, you could have kept up to <strong>$${potentialSavings.toLocaleString()}</strong> in your pocket instead of the city's.`)
         : '',
-      section('Never stress about a ticket again',
-        p(params.ticketCount > 0
-          ? 'Chicago issues nearly 3 million parking tickets every year — and paying full price for every one isn\'t inevitable. Autopilot monitors your plate daily, catches new tickets the moment they\'re issued, and automatically contests them for you.'
-          : 'Chicago issues nearly 3 million parking tickets every year. When your first one lands, Autopilot catches it immediately and contests it for you automatically.'
-        ) + bulletList([
-          '<strong>Daily plate monitoring</strong> — We check for new tickets so you don\'t have to',
-          '<strong>Automatic contest letters</strong> — Custom defense letters mailed before the deadline',
-          '<strong>Real-time parking alerts</strong> — Street cleaning, tow zones, and permit warnings on your phone',
-        ]),
-        { bg: '#F0FDF4', borderColor: '#86EFAC' }),
-      button('Get Protected — $49/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
+      params.ticketCount > 0
+        ? p("Most people don't contest because it's a hassle. You have to figure out the defense, write the letter, mail it before the deadline, and hope you got the legal language right. <strong>Nobody has time for that.</strong> So you pay. And the city counts on it.")
+        : p("But here's the reality: Chicago writes <strong>2.8 million tickets a year</strong>. It's not a matter of if — it's when. And when it happens, most people just pay because contesting feels like too much work."),
+      callout('success', params.ticketCount > 0 ? 'Never pay full price again' : 'Be ready when it happens',
+        "Autopilot monitors your plate twice a week. New ticket? We generate a custom contest letter with the specific legal defense for that violation and mail it before the deadline. <strong>68.5% get dismissed.</strong> You don't do anything."),
+      section('What $49/year gets you', bulletList([
+        '<strong>Twice-weekly plate monitoring</strong> — we catch tickets within days, not months',
+        '<strong>Automatic contest letters</strong> — custom legal defense for each violation, mailed for you',
+        '<strong>Street cleaning, snow ban, and sticker alerts</strong> — stop tickets before they happen',
+        '<strong>First Dismissal Guarantee</strong> — if your first contest isn\'t dismissed, full refund',
+      ])),
+      button('Start Autopilot Protection — $49/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
       p(params.ticketCount > 0
-        ? `That's less than the cost of a single $${avgPerTicket} ticket.`
-        : 'Less than the cost of a single parking ticket.',
+        ? `That's less than a single $${avgPerTicket} ticket. One dismissal pays for itself.`
+        : 'Less than the cost of a single parking ticket. One dismissal pays for itself.',
         { size: '13px', color: '#6B7280', center: true }),
     ].join(''),
   });
@@ -297,7 +305,9 @@ export async function sendFoiaHistoryResultsEmail(params: {
       body: JSON.stringify({
         from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: [params.email],
-        subject: `Your ticket history: ${params.ticketCount} ticket${params.ticketCount !== 1 ? 's' : ''} found for plate ${params.licenseState} ${params.licensePlate}`,
+        subject: params.ticketCount > 0
+          ? `${params.ticketCount} tickets. $${params.totalFines.toLocaleString()} in fines. Here's your FOIA report.`
+          : `Clean record for plate ${params.licenseState} ${params.licensePlate} — here's your FOIA report`,
         html,
       }),
     });
