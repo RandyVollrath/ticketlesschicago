@@ -839,7 +839,7 @@ class LocationServiceClass {
     const response = await RateLimiter.rateLimitedRequest(
       endpoint,
       async () => {
-        return ApiClient.get<any>(endpoint, {
+        return ApiClient.authGet<any>(endpoint, {
           retries: 3,
           timeout: 20000, // 20 second timeout for location checks
           showErrorAlert: false, // Handle errors ourselves
@@ -855,11 +855,22 @@ class LocationServiceClass {
       let errorMessage: string;
       if (response.error?.message === 'outside_chicago') {
         errorMessage = 'This app monitors Chicago parking restrictions. Your current location appears to be outside the Chicago area. Please use the app when parked in Chicago.';
+      } else if (response.error?.type === ApiErrorType.AUTH_ERROR) {
+        log.error('Parking check auth failure - user may need to re-login', {
+          statusCode: response.error.statusCode,
+          errorType: response.error.type,
+        });
+        errorMessage = 'Authentication expired. Please open the app and log in again.';
       } else if (response.error?.type === ApiErrorType.NETWORK_ERROR) {
         errorMessage = 'No internet connection. Please check your network and try again.';
       } else if (response.error?.type === ApiErrorType.TIMEOUT_ERROR) {
         errorMessage = 'Request timed out. The server may be busy. Please try again.';
       } else {
+        log.error('Parking check failed with unexpected error', {
+          errorType: response.error?.type,
+          statusCode: response.error?.statusCode,
+          message: response.error?.message,
+        });
         errorMessage = 'Failed to check parking rules. Please try again.';
       }
 
