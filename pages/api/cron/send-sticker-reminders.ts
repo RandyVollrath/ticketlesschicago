@@ -16,6 +16,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
 import { FEATURES } from '../../../lib/config';
 
 const supabase = createClient(
@@ -49,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log('📬 Starting sticker reminder cron...');
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getChicagoDateISO();
 
     // Find orders needing reminders:
     // - status = completed

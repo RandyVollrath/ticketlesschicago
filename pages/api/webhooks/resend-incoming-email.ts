@@ -45,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   console.log('📧 Incoming email webhook called (verified ✅)');
-  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('Event:', { type: req.body?.type, from: req.body?.data?.from, to: req.body?.data?.to, subject: req.body?.data?.subject, attachments: req.body?.data?.attachments?.length || 0 });
 
   try {
     const event = req.body;
@@ -731,6 +731,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const isPermitDocs = (bodyLower.includes('permit') || bodyLower.includes('document') ||
                          subjectLower.includes('permit') || subjectLower.includes('document')) &&
                         attachments.length > 0;
+
+    // Idempotency: check if this email was already stored (webhook retry protection)
+    const emailId = data.email_id || data.message_id || null;
+    if (emailId) {
+      const { count: existingEmailCount } = await supabaseAdmin
+        .from('incoming_emails')
+        .select('*', { count: 'exact', head: true })
+        .eq('from_email', fromEmail)
+        .eq('subject', subject)
+        .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // within last 5 minutes
+
+      if (existingEmailCount && existingEmailCount > 0) {
+        console.log(`⏭️ Duplicate incoming email detected from ${fromEmail} — skipping`);
+        return res.status(200).json({ success: true, message: 'Already processed (duplicate)' });
+      }
+    }
 
     // Store incoming email in database
     const { data: emailRecord, error: insertError } = await supabaseAdmin

@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../lib/supabase';
 import { sendClickSendSMS } from '../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, esc } from '../../lib/email-template';
+import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 
 const BRAND = {
   name: 'Autopilot America',
@@ -198,7 +199,7 @@ export default async function handler(
         .insert({
           user_id: user.user_id,
           notification_year: notificationYear,
-          notification_date: new Date().toISOString().split('T')[0],
+          notification_date: getChicagoDateISO(),
           channels,
           status: 'sent'
         });

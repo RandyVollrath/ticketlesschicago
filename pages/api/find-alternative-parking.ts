@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 
 // Use MyStreetCleaning database for street cleaning schedule data
 const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL || 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
@@ -87,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const errors: string[] = [];
 
     // Get the user's next cleaning date to find conflicts
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getChicagoDateISO();
     const threeDaysFromNow = new Date();
     threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
     const threeDaysStr = threeDaysFromNow.toISOString().split('T')[0];
@@ -352,7 +353,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       alternatives.map(async (alt) => {
         try {
           // Get next cleaning date
-          const todayStr = new Date().toISOString().split('T')[0];
+          const todayStr = getChicagoDateISO();
           const { data: scheduleData } = await mscSupabase
             .from('street_cleaning_schedule')
             .select('cleaning_date')

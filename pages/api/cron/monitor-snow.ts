@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { checkForSnow } from '../../../lib/weather-service';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
 
 /**
  * Cron job endpoint to monitor snow conditions
@@ -38,7 +39,7 @@ export default async function handler(
   const startTime = Date.now();
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getChicagoDateISO();
 
     // Auto-deactivate stale snow events older than 48 hours.
     // Without this, snow_route_status.is_active gets stuck true indefinitely

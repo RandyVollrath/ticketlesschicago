@@ -310,6 +310,8 @@ async function checkTowDataFreshness(): Promise<CheckResult> {
 
     if (error) return { name, category: 'Data Freshness', status: 'fail', detail: `Query error: ${error.message}`, severity: 'medium' };
 
+    if (!data) return { name, category: 'Data Freshness', status: 'warn', detail: 'No tow records found in database', severity: 'high' };
+
     const lastTow = new Date(data.tow_date);
     const hoursAgo = (Date.now() - lastTow.getTime()) / (60 * 60 * 1000);
 

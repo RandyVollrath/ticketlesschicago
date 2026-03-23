@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { checkForSnow } from '../../../lib/weather-service';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
 
 /**
  * API endpoint to check current snow conditions
@@ -23,7 +24,7 @@ export default async function handler(
 
     // If snow >= 2 inches, record it in the database
     if (snowData.snowAmountInches >= 2.0) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getChicagoDateISO();
 
       // Check if we already have a snow event for today
       const { data: existingEvent } = await supabaseAdmin
