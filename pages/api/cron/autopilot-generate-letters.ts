@@ -2819,7 +2819,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ? (authHeader === `Bearer ${secret}` || keyParam === secret)
     : false;
 
-  if (!isVercelCron && !isAuthorized) {
+  if (!isAuthorized) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

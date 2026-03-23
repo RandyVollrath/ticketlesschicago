@@ -75,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}`;
 
-  if (!isVercelCron && !isAuthorized) {
+  if (!isAuthorized) {
     console.log('Unauthorized attempt. Headers:', {
       auth: authHeader?.substring(0, 20) + '...',
       vercelCron: req.headers['x-vercel-cron'],

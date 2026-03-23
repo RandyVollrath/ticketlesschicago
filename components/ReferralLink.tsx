@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 interface ReferralLinkProps {
   userId: string;
@@ -28,7 +29,11 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`/api/user/referral-link?userId=${userId}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const response = await fetch('/api/user/referral-link', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+      });
 
       if (!response.ok) {
         let errorMessage = `Failed to load referral link (${response.status})`;
@@ -57,8 +62,11 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
     try {
       setRequesting(true);
       setError(null);
-      const response = await fetch(`/api/user/referral-link?userId=${userId}`, {
-        method: 'POST'
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const response = await fetch('/api/user/referral-link', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
       });
 
       if (!response.ok) {
