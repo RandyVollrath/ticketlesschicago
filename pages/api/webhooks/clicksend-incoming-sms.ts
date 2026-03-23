@@ -602,11 +602,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const newTicketStatus = needsApproval ? 'needs_approval' : 'evidence_received';
 
             // Update ticket with evidence
+            const evidenceReceivedAt = new Date().toISOString();
             await supabaseAdmin
               .from('detected_tickets' as any)
               .update({
                 user_evidence: updatedEvidence,
-                evidence_received_at: new Date().toISOString(),
+                evidence_received_at: evidenceReceivedAt,
+                user_evidence_uploaded_at: evidenceReceivedAt,
                 status: newTicketStatus,
               })
               .eq('id', ticket.id);

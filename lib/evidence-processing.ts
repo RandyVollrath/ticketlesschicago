@@ -483,7 +483,7 @@ export function generateApprovalToken(ticketId: string, userId: string, letterId
   return jwt.sign(
     { ticket_id: ticketId, user_id: userId, letter_id: letterId },
     JWT_SECRET,
-    { expiresIn: '21d' }
+    { expiresIn: '30d' }
   );
 }
 
@@ -516,7 +516,7 @@ export async function sendApprovalEmailForEvidence(
     : 'Unknown date';
 
   try {
-    await fetch('https://api.resend.com/emails', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
