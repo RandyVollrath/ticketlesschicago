@@ -381,15 +381,15 @@ async function sendDismissalNotificationEmail(
 async function checkKillSwitches(): Promise<{ checks: boolean; message?: string }> {
   const { data: settings } = await supabaseAdmin
     .from('autopilot_admin_settings')
-    .select('setting_key, setting_value')
-    .in('setting_key', ['kill_all_checks', 'maintenance_mode']);
+    .select('key, value')
+    .in('key', ['pause_ticket_processing', 'pause_all_mail']);
 
   for (const setting of settings || []) {
-    if (setting.setting_key === 'kill_all_checks' && setting.setting_value?.enabled) {
-      return { checks: false, message: 'Kill switch active: checks disabled' };
+    if (setting.key === 'pause_ticket_processing' && setting.value?.enabled) {
+      return { checks: false, message: 'Kill switch active: ticket processing paused' };
     }
-    if (setting.setting_key === 'maintenance_mode' && setting.setting_value?.enabled) {
-      return { checks: false, message: `Maintenance mode: ${setting.setting_value.message}` };
+    if (setting.key === 'pause_all_mail' && setting.value?.enabled) {
+      return { checks: false, message: 'Kill switch active: all mail paused' };
     }
   }
 
@@ -632,7 +632,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
       .single();
 
     if (insertError || !newTicket?.id) {
-      errors.push(`Failed to insert ticket ${ticket.ticket_number}: ${insertError.message}`);
+      errors.push(`Failed to insert ticket ${ticket.ticket_number}: ${insertError?.message || 'Unknown error'}`);
     } else {
       newTickets++;
       console.log(`    NEW: ${ticket.ticket_number} - ${ticket.violation_description} - $${amount}`);

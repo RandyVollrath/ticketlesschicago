@@ -10,7 +10,23 @@ const supabase = createClient(
 
 export default withAdminAuth(async (req, res, adminUser) => {
   try {
-    if (req.method === 'GET') {
+    if (req.method === 'GET' && req.query.id) {
+      // Get single letter with full text
+      const { id } = req.query;
+
+      const { data: letter, error } = await supabase
+        .from('contest_letters')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error || !letter) {
+        return res.status(404).json({ error: 'Letter not found' });
+      }
+
+      return res.status(200).json({ success: true, letter });
+
+    } else if (req.method === 'GET') {
       // List all contest letters
       const { status, evidence_integrated, limit: limitStr = '50', offset: offsetStr = '0' } = req.query;
       const parsedLimit = Math.min(Math.max(parseInt(limitStr as string) || 50, 1), 200);
@@ -136,10 +152,21 @@ export default withAdminAuth(async (req, res, adminUser) => {
         };
       });
 
-      // Get total count
-      const { count: totalCount } = await supabase
+      // Get total count (apply same filters as data query)
+      let countQuery = supabase
         .from('contest_letters')
         .select('*', { count: 'exact', head: true });
+
+      if (status) {
+        countQuery = countQuery.eq('status', status);
+      }
+      if (evidence_integrated === 'true') {
+        countQuery = countQuery.eq('evidence_integrated', true);
+      } else if (evidence_integrated === 'false') {
+        countQuery = countQuery.eq('evidence_integrated', false);
+      }
+
+      const { count: totalCount } = await countQuery;
 
       res.status(200).json({
         success: true,
@@ -150,22 +177,6 @@ export default withAdminAuth(async (req, res, adminUser) => {
           total: totalCount || 0
         }
       });
-
-    } else if (req.method === 'GET' && req.query.id) {
-      // Get single letter with full text
-      const { id } = req.query;
-
-      const { data: letter, error } = await supabase
-        .from('contest_letters')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        return res.status(404).json({ error: 'Letter not found' });
-      }
-
-      res.status(200).json({ success: true, letter });
 
     } else {
       return res.status(405).json({ error: 'Method not allowed' });

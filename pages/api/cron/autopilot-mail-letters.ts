@@ -333,13 +333,20 @@ async function mailLetter(
     // crashes between Lob API call and the DB update that sets lob_letter_id.
     // The .eq('status', letter.status) acts as optimistic locking: if another cron
     // run already changed the status, this update returns count=0 and we skip.
-    const { count: claimCount } = await supabaseAdmin
+    const { data: claimedLetter, error: claimError } = await supabaseAdmin
       .from('contest_letters')
       .update({ status: 'mailing' })
       .eq('id', letter.id)
-      .eq('status', letter.status);
+      .eq('status', letter.status)
+      .select('id')
+      .maybeSingle();
 
-    if (!claimCount || claimCount === 0) {
+    if (claimError) {
+      console.error(`    Failed to claim letter ${letter.id} for mailing: ${claimError.message}`);
+      return { success: false, error: claimError.message };
+    }
+
+    if (!claimedLetter?.id) {
       console.log(`    Letter ${letter.id} status changed since query — another run may be mailing it, skipping`);
       return { success: true };
     }

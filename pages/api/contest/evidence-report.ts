@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('*')
       .eq('id', receiptId)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !receipt) {
       return res.status(404).json({ error: 'Receipt not found' });

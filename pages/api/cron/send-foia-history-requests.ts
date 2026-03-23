@@ -15,7 +15,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import {
   sendTicketHistoryFoiaEmail,
-  sendFoiaHistoryConfirmationEmail,
   generateHistoryReferenceId,
 } from '../../../lib/foia-history-service';
 import { generateFoiaAuthorizationPdf } from '../../../lib/foia-authorization-pdf';
@@ -116,10 +115,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
       // Mark as drafting to prevent double-sends if cron runs overlap
-      await supabaseAdmin
+      const { data: claimedRequest, error: claimError } = await supabaseAdmin
         .from('foia_history_requests')
         .update({ status: 'drafting', updated_at: new Date().toISOString() } as any)
-        .eq('id', request.id);
+        .eq('id', request.id)
+        .eq('status', 'queued')
+        .select('id')
+        .maybeSingle();
+
+      if (claimError) {
+        throw new Error(`Failed to claim queued FOIA request: ${claimError.message}`);
+      }
+
+      if (!claimedRequest?.id) {
+        console.log(`    Skipping ${request.id} — another run already claimed it`);
+        continue;
+      }
 
       // Generate a signed authorization PDF to attach to the FOIA email
       let authorizationPdf: Buffer | undefined;
@@ -179,18 +190,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('id', request.id);
         } catch (dbErr: any) {
           console.error(`    ⚠️ CRITICAL: History FOIA email sent but DB update failed: ${dbErr.message}. Row ${request.id} may be stuck in 'drafting'. Will be recovered on next run.`);
-        }
-
-        // Send confirmation email to the user (non-blocking — must not mark FOIA as failed)
-        try {
-          await sendFoiaHistoryConfirmationEmail({
-            email: request.email,
-            name: request.name,
-            licensePlate: request.license_plate,
-            licenseState: request.license_state,
-          });
-        } catch (notifyErr: any) {
-          console.error(`    ⚠️ User confirmation email failed (non-blocking): ${notifyErr.message}`);
         }
 
         sent++;
