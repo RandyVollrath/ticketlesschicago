@@ -289,9 +289,10 @@ export function withCronOrAdminAuth(
     try {
       // First check for cron secret in Authorization header
       const authHeader = req.headers.authorization;
-      const cronSecret = process.env.CRON_SECRET || 'dev-secret';
+      const cronSecret = process.env.CRON_SECRET;
 
-      if (authHeader === `Bearer ${cronSecret}`) {
+      // If CRON_SECRET is configured and matches, allow cron access
+      if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
         // Valid cron call
         return handler(req, res, { isCron: true });
       }

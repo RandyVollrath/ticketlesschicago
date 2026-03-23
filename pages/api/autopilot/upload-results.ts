@@ -260,9 +260,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify admin token
+  // Verify admin token (fail closed if not configured)
   const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.ADMIN_API_TOKEN}`) {
+  const adminToken = process.env.ADMIN_API_TOKEN;
+
+  if (!adminToken) {
+    console.error('ADMIN_API_TOKEN not configured - rejecting request (fail closed)');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (authHeader !== `Bearer ${adminToken}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
