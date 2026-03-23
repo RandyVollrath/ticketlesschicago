@@ -91,11 +91,17 @@ async function isTestModeEnabled(): Promise<boolean> {
 /**
  * Validate letter has no unfilled placeholders or quality issues.
  * Returns { pass: true } or { pass: false, issues: string[] }
+ *
+ * This is the first-pass "cheap" validation (no AI call). It catches
+ * obvious structural problems before the more expensive AI review runs.
  */
-function validateLetterContent(letterContent: string, ticketData: { ticket_number: string; violation_date: string }): { pass: boolean; issues: string[] } {
+function validateLetterContent(
+  letterContent: string,
+  ticketData: { ticket_number: string; violation_date: string; violation_type?: string; violation_description?: string }
+): { pass: boolean; issues: string[] } {
   const issues: string[] = [];
 
-  // Check for unfilled [PLACEHOLDER] brackets
+  // ── 1. Unfilled placeholders ──
   const placeholderRegex = /\[([A-Z][A-Z0-9_]{2,})\]/g;
   const placeholders = letterContent.match(placeholderRegex);
   if (placeholders && placeholders.length > 0) {
@@ -103,25 +109,84 @@ function validateLetterContent(letterContent: string, ticketData: { ticket_numbe
     issues.push(`Unfilled placeholders found: ${unique.join(', ')}`);
   }
 
-  // Check for malformed sentences (common patterns)
+  // Also catch {{PLACEHOLDER}} and <PLACEHOLDER> patterns
+  const mustachePlaceholders = letterContent.match(/\{\{[A-Z][A-Z0-9_]+\}\}/g);
+  if (mustachePlaceholders && mustachePlaceholders.length > 0) {
+    issues.push(`Unfilled mustache placeholders: ${[...new Set(mustachePlaceholders)].join(', ')}`);
+  }
+  const anglePlaceholders = letterContent.match(/<([A-Z][A-Z0-9_]{2,})>/g);
+  if (anglePlaceholders && anglePlaceholders.length > 0) {
+    // Filter out actual HTML tags — these are ALL-CAPS which isn't valid HTML
+    issues.push(`Unfilled angle-bracket placeholders: ${[...new Set(anglePlaceholders)].join(', ')}`);
+  }
+
+  // ── 2. Malformed sentences (expanded duplicate word patterns) ──
   if (letterContent.includes('which was there is')) issues.push('Malformed sentence: "which was there is"');
   if (letterContent.includes('was was')) issues.push('Malformed sentence: duplicate "was was"');
   if (letterContent.includes('the the')) issues.push('Malformed sentence: duplicate "the the"');
   if (/\bI I\b/.test(letterContent)) issues.push('Malformed sentence: duplicate "I I"');
+  if (letterContent.includes('is is')) issues.push('Malformed sentence: duplicate "is is"');
+  if (letterContent.includes('that that')) issues.push('Malformed sentence: duplicate "that that"');
+  if (/\bin in\b/i.test(letterContent)) issues.push('Malformed sentence: duplicate "in in"');
+  if (/\bto to\b/i.test(letterContent)) issues.push('Malformed sentence: duplicate "to to"');
+  if (/\bfor for\b/i.test(letterContent)) issues.push('Malformed sentence: duplicate "for for"');
 
-  // Check letter is not too short (likely incomplete)
+  // ── 3. Letter length checks ──
   if (letterContent.length < 300) issues.push('Letter is suspiciously short (< 300 chars)');
+  if (letterContent.length > 15000) issues.push('Letter is suspiciously long (> 15000 chars) — may contain debug data');
 
-  // Check date consistency — the letter should reference the correct violation date
+  // ── 4. Ticket number presence ──
+  if (ticketData.ticket_number && !letterContent.includes(ticketData.ticket_number)) {
+    issues.push(`Letter does not contain ticket number "${ticketData.ticket_number}"`);
+  }
+
+  // ── 5. Required structural elements ──
+  // RE: line (standard contest letter format)
+  if (!/\bRE:/i.test(letterContent) && !/\bRe:/i.test(letterContent)) {
+    issues.push('Missing RE: line (required for contest letters)');
+  }
+
+  // Must have a closing (Sincerely, Respectfully, etc.)
+  if (!/\b(sincerely|respectfully|regards|thank you)/i.test(letterContent)) {
+    issues.push('Missing formal closing (Sincerely, Respectfully, etc.)');
+  }
+
+  // Must reference the city or department
+  if (!/\b(department of finance|city of chicago|hearing officer)/i.test(letterContent)) {
+    issues.push('Letter does not reference the Department of Finance or City of Chicago');
+  }
+
+  // ── 6. Date consistency ──
   if (ticketData.violation_date) {
     const vDate = new Date(ticketData.violation_date);
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const correctDateStr = `${monthNames[vDate.getUTCMonth()]} ${vDate.getUTCDate()}, ${vDate.getUTCFullYear()}`;
-    // Check if the letter mentions the violation date at all in the RE: line or body
     const dateInLetter = letterContent.match(/Violation Date:\s*(\w+ \d{1,2}, \d{4})/);
     if (dateInLetter && dateInLetter[1] !== correctDateStr) {
       issues.push(`Date mismatch: letter says "${dateInLetter[1]}" but ticket date is "${correctDateStr}"`);
     }
+  }
+
+  // ── 7. Defense-violation coherence (basic check) ──
+  const descLower = (ticketData.violation_description || '').toLowerCase();
+  const contentLower = letterContent.toLowerCase();
+
+  // If violation is "prohibited anytime" / "tow zone", arguments about "outside restricted hours" or "expired meter" are incoherent
+  if ((descLower.includes('prohibited') || descLower.includes('tow zone') || descLower.includes('no parking anytime')) &&
+      (contentLower.includes('outside restricted hours') || contentLower.includes('outside the posted hours') || contentLower.includes('meter had not expired'))) {
+    issues.push('Defense mismatch: "outside restricted hours" argument used for an anytime-prohibited violation');
+  }
+
+  // If violation is about expired meter, arguments about "no signs posted" are incoherent
+  if (descLower.includes('expired') && descLower.includes('meter') &&
+      contentLower.includes('no signs posted')) {
+    issues.push('Defense mismatch: "no signs posted" argument used for an expired meter violation');
+  }
+
+  // ── 8. Suspicious content ──
+  // AI sometimes outputs system-prompt-like text
+  if (contentLower.includes('as an ai') || contentLower.includes('language model') || contentLower.includes('i cannot')) {
+    issues.push('Letter contains AI self-reference ("as an AI", "language model", etc.)');
   }
 
   return { pass: issues.length === 0, issues };
@@ -142,7 +207,7 @@ async function aiQualityReview(
   }
 
   try {
-    const reviewPrompt = `You are a legal quality assurance reviewer for parking ticket contest letters sent to the City of Chicago Department of Finance.
+    const reviewPrompt = `You are a legal quality assurance reviewer for parking ticket contest letters sent to the City of Chicago Department of Finance. These letters are printed and mailed to a government agency on behalf of real people — quality matters.
 
 Review the following letter and return a JSON response (no markdown, just raw JSON):
 
@@ -151,7 +216,7 @@ LETTER TO REVIEW:
 ${letterContent}
 ---
 
-TICKET FACTS (ground truth):
+TICKET FACTS (ground truth — the letter MUST be consistent with these):
 - Ticket Number: ${ticketData.ticket_number}
 - Violation Date: ${ticketData.violation_date}
 - Violation: ${ticketData.violation_description} (${ticketData.violation_type})
@@ -159,21 +224,44 @@ TICKET FACTS (ground truth):
 - Location: ${ticketData.location || 'Unknown'}
 - Respondent: ${userName}
 
-CHECK FOR THESE ISSUES:
-1. PLACEHOLDERS: Any text like [PLACEHOLDER], [POSTED_HOURS], [TIME_EVIDENCE], etc. that should have been filled with real data
-2. DATE ACCURACY: Does the violation date in the letter match the ticket facts? Format should be "Month Day, Year"
-3. DEFENSE COHERENCE: Does the defense strategy make sense for this violation type? (e.g., "outside restricted hours" doesn't work for "PROHIBITED ANYTIME")
-4. MALFORMED SENTENCES: Any grammatically broken or incomplete sentences
-5. PROFESSIONALISM: Is the tone appropriate for a formal legal contest?
-6. COMPLETENESS: Does the letter have all required parts (date, addresses, RE line, salutation, arguments, closing, signature)?
-7. FACTUAL CONSISTENCY: Are ticket number, plate, amounts consistent throughout?
+SCORING CRITERIA (check each — deduct points for failures):
+
+1. PLACEHOLDERS (-30 pts each): Any unfilled text like [PLACEHOLDER], [POSTED_HOURS], {{VARIABLE}}, <FIELD_NAME>. These indicate the letter was not properly generated. This is the #1 most critical issue — a letter with placeholders MUST NOT be mailed.
+
+2. TICKET NUMBER (-25 pts): The letter MUST contain the exact ticket number "${ticketData.ticket_number}". Missing ticket number means the city cannot process the contest.
+
+3. DATE ACCURACY (-20 pts): The violation date in the letter must match "${ticketData.violation_date}". A wrong date makes the entire contest invalid.
+
+4. DEFENSE COHERENCE (-25 pts): The defense strategy MUST match the violation type:
+   - "PROHIBITED ANYTIME" / "TOW ZONE" → cannot argue "outside restricted hours"
+   - "EXPIRED METER/PLATES" → cannot argue "no signs posted" or "outside hours"
+   - "STREET CLEANING" → should reference signage, schedule accuracy, or compliance
+   - "RED LIGHT" / "SPEED CAMERA" → should reference proper calibration, notice requirements, right-on-red, or yellow light timing
+   An incoherent defense makes the letter useless and wastes the user's money.
+
+5. STRUCTURAL REQUIREMENTS (-10 pts each missing):
+   - Today's date at the top
+   - Addressee (City of Chicago Department of Finance or similar)
+   - RE: line with ticket number and violation date
+   - Formal salutation ("To Whom It May Concern" or "Dear Hearing Officer")
+   - Substantive defense arguments (not just "I disagree")
+   - Formal closing ("Sincerely," "Respectfully,")
+   - Respondent's printed name
+
+6. GRAMMAR & COHERENCE (-5 pts each): Broken sentences, duplicate words, incomplete thoughts, run-on sentences, subject-verb disagreement.
+
+7. PROFESSIONALISM (-15 pts): Must be formal legal tone. No slang, no emotional pleas, no threats. Must not contain AI self-references ("as an AI", "I'm a language model").
+
+8. FACTUAL CONSISTENCY (-10 pts): Ticket number, location, amounts, and dates must be consistent throughout the letter — no contradictions.
+
+9. LEGAL CITATIONS (bonus +5 pts): Correctly citing Chicago Municipal Code sections, Illinois Vehicle Code, or relevant ordinances adds credibility.
 
 RESPOND WITH THIS JSON FORMAT ONLY:
 {
   "qualityScore": <0-100>,
   "issues": ["issue 1", "issue 2"],
   "canAutoFix": true/false,
-  "correctedLetter": "<if canAutoFix is true, provide the COMPLETE corrected letter text here. Remove ALL placeholders — if data is missing, write around it naturally without brackets. Fix ALL date errors, malformed sentences, and defense mismatches. Keep the same general structure and evidence. Do NOT add made-up facts.>"
+  "correctedLetter": "<if canAutoFix is true, provide the COMPLETE corrected letter text here. Remove ALL placeholders — if data is missing, write around it naturally without brackets. Fix ALL date errors, malformed sentences, and defense mismatches. Keep the same general structure and evidence. Do NOT add made-up facts. Ensure the ticket number ${ticketData.ticket_number} appears in the RE: line.>"
 }`;
 
     const message = await anthropic.messages.create({
@@ -305,6 +393,9 @@ async function mailLetter(
     }
 
     // Send via Lob
+    // Idempotency key = letter.id ensures the same letter can never create two
+    // physical mailings, even if the cron crashes after the Lob API call but
+    // before the DB update. Lob deduplicates for 24 hours per key.
     const result = await sendLetter({
       from: fromAddress,
       to: toAddress,
@@ -316,6 +407,7 @@ async function mailLetter(
         user_id: letter.user_id,
         test_mode: testMode ? 'true' : 'false',
       },
+      idempotencyKey: `letter_${letter.id}`,
     });
 
     console.log(`    Mailed! Lob ID: ${result.id}`);
@@ -600,11 +692,16 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
         .eq('user_id', userId)
         .maybeSingle();
       if (!sub2) return { exceeded: false, count: 0 };
-      const retryCount = (sub2.letters_used_this_period || 0) + 1;
-      await supabaseAdmin
+      const retryCurrentCount = sub2.letters_used_this_period || 0;
+      const retryCount = retryCurrentCount + 1;
+      const { count: retryUpdatedRows } = await supabaseAdmin
         .from('autopilot_subscriptions')
         .update({ letters_used_this_period: retryCount })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('letters_used_this_period', retryCurrentCount); // optimistic lock on retry too
+      if (retryUpdatedRows === 0) {
+        console.warn(`  incrementLetterCount: second concurrent update for user ${userId}, count may be stale`);
+      }
       return { exceeded: retryCount > (sub2.letters_included || 1), count: retryCount };
     }
 
@@ -921,6 +1018,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const validation = validateLetterContent(letterText, {
           ticket_number: ticketNumber,
           violation_date: ticket?.violation_date || '',
+          violation_type: ticket?.violation_type || '',
+          violation_description: ticket?.violation_description || '',
         });
 
         if (!validation.pass) {
