@@ -81,7 +81,7 @@ export default function EvidenceGuidance({ violationCode, fineAmount, onEvidence
         .select('*')
         .eq('stat_type', 'violation_code')
         .eq('stat_key', violationCode)
-        .single() as { data: { win_rate: number; total_cases: number; dismissal_rate: number } | null };
+        .maybeSingle() as { data: { win_rate: number; total_cases: number; dismissal_rate: number } | null };
 
       if (!stats) {
         setLoading(false);

@@ -46,7 +46,7 @@ export default function PermitZoneDocuments() {
         .from('users')
         .select('*')
         .eq('email', user.email)
-        .single();
+        .maybeSingle();
 
       if (userProfile) {
         setUserData(userProfile);

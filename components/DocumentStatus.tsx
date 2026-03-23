@@ -33,7 +33,7 @@ export default function DocumentStatus({ userId, hasPermitZone }: DocumentStatus
             residency_proof_verified
           `)
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
 

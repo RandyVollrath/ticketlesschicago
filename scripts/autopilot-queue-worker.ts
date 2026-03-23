@@ -622,7 +622,7 @@ async function processFoundTicket(
     .from('detected_tickets')
     .select('id')
     .eq('ticket_number', ticket.ticket_number)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     return { created: false, error: 'duplicate' };
@@ -669,7 +669,7 @@ async function processFoundTicket(
     .from('user_profiles')
     .select('*')
     .eq('user_id', user_id)
-    .single();
+    .maybeSingle();
 
   // Get user email
   const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user_id);
