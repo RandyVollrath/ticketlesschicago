@@ -7,6 +7,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 // MyStreetCleaning database for PostGIS queries
 const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL || 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
@@ -202,6 +203,17 @@ export default async function handler(
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ valid: false, message: 'Method not allowed' });
   }
+
+  // Rate limit: Google Maps geocoding costs money
+  const ip = getClientIP(req);
+  const rateResult = await checkRateLimit(ip, 'geocoding');
+  if (!rateResult.allowed) {
+    res.setHeader('X-RateLimit-Limit', rateResult.limit);
+    res.setHeader('X-RateLimit-Remaining', rateResult.remaining);
+    res.setHeader('X-RateLimit-Reset', Math.ceil(Date.now() / 1000 + rateResult.resetIn / 1000));
+    return res.status(429).json({ valid: false, message: 'Too many requests. Please try again later.' });
+  }
+  await recordRateLimitAction(ip, 'geocoding');
 
   const address = req.method === 'GET'
     ? (req.query.address as string)

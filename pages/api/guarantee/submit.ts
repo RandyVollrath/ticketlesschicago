@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,6 +12,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limit: sends admin notification email
+  const ip = getClientIP(req);
+  const rateResult = await checkRateLimit(ip, 'api');
+  if (!rateResult.allowed) {
+    res.setHeader('X-RateLimit-Limit', rateResult.limit);
+    res.setHeader('X-RateLimit-Remaining', rateResult.remaining);
+    res.setHeader('X-RateLimit-Reset', Math.ceil(Date.now() / 1000 + rateResult.resetIn / 1000));
+    return res.status(429).json({ error: 'Too many requests. Please try again later.', retryAfter: Math.ceil(rateResult.resetIn / 1000) });
+  }
+  await recordRateLimitAction(ip, 'api');
 
   try {
     const authHeader = req.headers.authorization;

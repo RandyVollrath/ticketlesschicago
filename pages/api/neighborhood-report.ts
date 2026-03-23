@@ -14,6 +14,7 @@ import {
   generateNeighborhoodRealityReport,
   NeighborhoodRealityReport,
 } from '../../lib/neighborhood-reality-report';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 interface GeocodeResponse {
   results: Array<{
@@ -70,6 +71,17 @@ export default async function handler(
     res.setHeader('Allow', ['GET']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limit: Google Maps geocoding costs money
+  const ip = getClientIP(req);
+  const rateResult = await checkRateLimit(ip, 'geocoding');
+  if (!rateResult.allowed) {
+    res.setHeader('X-RateLimit-Limit', rateResult.limit);
+    res.setHeader('X-RateLimit-Remaining', rateResult.remaining);
+    res.setHeader('X-RateLimit-Reset', Math.ceil(Date.now() / 1000 + rateResult.resetIn / 1000));
+    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+  }
+  await recordRateLimitAction(ip, 'geocoding');
 
   try {
     let latitude: number | undefined;

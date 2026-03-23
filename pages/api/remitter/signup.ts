@@ -9,6 +9,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { fetchWithTimeout, DEFAULT_TIMEOUTS } from '../../../lib/fetch-with-timeout';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
 // Input validation schema
 const remitterSignupSchema = z.object({
@@ -29,6 +30,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limit: account creation generates API keys
+  const ip = getClientIP(req);
+  const rateResult = await checkRateLimit(ip, 'auth');
+  if (!rateResult.allowed) {
+    res.setHeader('X-RateLimit-Limit', rateResult.limit);
+    res.setHeader('X-RateLimit-Remaining', rateResult.remaining);
+    res.setHeader('X-RateLimit-Reset', Math.ceil(Date.now() / 1000 + rateResult.resetIn / 1000));
+    return res.status(429).json({ error: 'Too many signup attempts. Please try again later.', retryAfter: Math.ceil(rateResult.resetIn / 1000) });
+  }
+  await recordRateLimitAction(ip, 'auth');
 
   // Validate request body
   const parseResult = remitterSignupSchema.safeParse(req.body);
