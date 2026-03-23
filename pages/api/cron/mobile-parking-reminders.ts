@@ -787,7 +787,12 @@ export default async function handler(
               `A ${permitType.toLowerCase()} permit is active at ${vehicle.address}. Move your car to avoid towing.`,
               vehicle.address,
               dotEnforcement,
-              chicagoTime
+              chicagoTime,
+              userProfile ? {
+                phone_call_enabled: userProfile.phone_call_enabled,
+                phone_number: userProfile.phone_number,
+                call_alert_preferences: userProfile.call_alert_preferences,
+              } : undefined
             );
             if (callSent) results.callAlertsSent++;
           }
@@ -804,7 +809,12 @@ export default async function handler(
               `${snowAmt} inches of snow detected. Your car at ${vehicle.address} is on a snow route and may be towed. Move your car now.`,
               vehicle.address,
               null, // No fixed enforcement time for snow bans
-              chicagoTime
+              chicagoTime,
+              userProfile ? {
+                phone_call_enabled: userProfile.phone_call_enabled,
+                phone_number: userProfile.phone_number,
+                call_alert_preferences: userProfile.call_alert_preferences,
+              } : undefined
             );
             if (callSent) results.callAlertsSent++;
           }
