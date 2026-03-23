@@ -406,7 +406,7 @@ async function mailLetter(
   ticketNumber: string,
   evidenceImages?: string[],
   redLightEvidence?: RedLightEvidenceExhibit
-): Promise<{ success: boolean; lobId?: string; expectedDelivery?: string; pdfUrl?: string; error?: string }> {
+): Promise<{ success: boolean; lobId?: string; expectedDelivery?: string; pdfUrl?: string; error?: string; alreadyMailed?: boolean; skipped?: boolean }> {
   console.log(`  Mailing letter ${letter.id} for ticket ${ticketNumber}...`);
 
   try {
@@ -427,7 +427,7 @@ async function mailLetter(
         .from('contest_letters')
         .update({ status: 'sent', mailed_at: new Date().toISOString() })
         .eq('id', letter.id);
-      return { success: true, lobId: existingLetter.lob_letter_id };
+      return { success: true, lobId: existingLetter.lob_letter_id, alreadyMailed: true };
     }
 
     // Atomically claim this letter for mailing without changing status.
@@ -449,7 +449,7 @@ async function mailLetter(
 
     if (!claimedLetter?.id) {
       console.log(`    Letter ${letter.id} status changed since query — another run may be mailing it, skipping`);
-      return { success: true };
+      return { success: true, skipped: true };
     }
 
     // Build sender name
@@ -774,7 +774,7 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
     console.warn(`  RPC increment_letters_used failed (${error.message}), using fallback`);
     const { data: sub } = await supabaseAdmin
       .from('autopilot_subscriptions')
-      .select('letters_included_remaining, letters_used_this_period, letters_included')
+      .select('*')
       .eq('user_id', userId)
       .eq('status', 'active')
       .maybeSingle();
@@ -783,8 +783,19 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
       return { exceeded: false, count: 0 };
     }
 
-    if (typeof sub.letters_included_remaining === 'number') {
-      const currentRemaining = sub.letters_included_remaining;
+    const subRecord = sub as Record<string, unknown>;
+    const lettersIncludedRemaining = typeof subRecord.letters_included_remaining === 'number'
+      ? subRecord.letters_included_remaining
+      : null;
+    const lettersUsedThisPeriod = typeof subRecord.letters_used_this_period === 'number'
+      ? subRecord.letters_used_this_period
+      : null;
+    const lettersIncluded = typeof subRecord.letters_included === 'number'
+      ? subRecord.letters_included
+      : null;
+
+    if (typeof lettersIncludedRemaining === 'number') {
+      const currentRemaining = lettersIncludedRemaining;
       const nextRemaining = currentRemaining > 0 ? currentRemaining - 1 : 0;
 
       const { data: updatedRemaining, error: updateRemainingError } = await supabaseAdmin
@@ -792,18 +803,18 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
         .update({ letters_included_remaining: nextRemaining })
         .eq('user_id', userId)
         .eq('letters_included_remaining', currentRemaining)
-        .select('letters_included_remaining, letters_used_this_period, letters_included')
+        .select('*')
         .maybeSingle();
 
       if (updateRemainingError) {
         console.error(`  incrementLetterCount remaining fallback: update failed for user ${userId}: ${updateRemainingError.message}`);
       }
 
-      const effectiveSub = updatedRemaining || sub;
-      const included = typeof effectiveSub.letters_included === 'number' ? effectiveSub.letters_included : null;
+      const effectiveSub = (updatedRemaining || sub) as Record<string, unknown>;
+      const included = typeof effectiveSub.letters_included === 'number' ? effectiveSub.letters_included : lettersIncluded;
       const count = included !== null
-        ? Math.max(0, included - (effectiveSub.letters_included_remaining || 0))
-        : Math.max(0, effectiveSub.letters_used_this_period || 0);
+        ? Math.max(0, included - (typeof effectiveSub.letters_included_remaining === 'number' ? effectiveSub.letters_included_remaining : 0))
+        : Math.max(0, typeof effectiveSub.letters_used_this_period === 'number' ? effectiveSub.letters_used_this_period : (lettersUsedThisPeriod || 0));
 
       if (!updatedRemaining) {
         console.warn(`  incrementLetterCount remaining fallback: concurrent update for user ${userId}, count may be stale`);
@@ -815,7 +826,7 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
       };
     }
 
-    const currentCount = sub.letters_used_this_period || 0;
+    const currentCount = lettersUsedThisPeriod || 0;
     const newCount = currentCount + 1;
 
     const { data: updatedRow, error: updateError } = await supabaseAdmin
@@ -835,12 +846,13 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
       // Re-read and retry once
       const { data: sub2 } = await supabaseAdmin
         .from('autopilot_subscriptions')
-        .select('letters_used_this_period, letters_included')
+        .select('*')
         .eq('user_id', userId)
         .eq('status', 'active')
         .maybeSingle();
       if (!sub2) return { exceeded: false, count: 0 };
-      const retryCurrentCount = sub2.letters_used_this_period || 0;
+      const sub2Record = sub2 as Record<string, unknown>;
+      const retryCurrentCount = typeof sub2Record.letters_used_this_period === 'number' ? sub2Record.letters_used_this_period : 0;
       const retryCount = retryCurrentCount + 1;
       const { data: retryUpdatedRow, error: retryError } = await supabaseAdmin
         .from('autopilot_subscriptions')
@@ -855,11 +867,11 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
       if (!retryUpdatedRow?.id) {
         console.warn(`  incrementLetterCount: second concurrent update for user ${userId}, count may be stale`);
       }
-      return { exceeded: retryCount > (sub2.letters_included || 1), count: retryCount };
+      return { exceeded: retryCount > ((typeof sub2Record.letters_included === 'number' ? sub2Record.letters_included : lettersIncluded) || 1), count: retryCount };
     }
 
     return {
-      exceeded: newCount > (sub.letters_included || 1),
+      exceeded: newCount > ((lettersIncluded || 1)),
       count: newCount,
     };
   }
@@ -1566,22 +1578,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
 
       if (result.success) {
+        if (result.skipped) {
+          console.log(`    Skipped duplicate/contended mailing path for letter ${letter.id}`);
+          continue;
+        }
+
         lettersMailed++;
 
         // FOIA requests are now queued at ticket detection time (autopilot-check-plates)
         // so the 5-business-day deadline expires before the letter is even generated.
         // The upsert in detection uses onConflict, so no duplicate risk.
 
-        // Send email notification to user
-        await sendLetterMailedNotification(
-          letter.user_id,
-          ticketNumber,
-          result.expectedDelivery || null,
-          result.pdfUrl || null
-        );
+        if (!result.alreadyMailed) {
+          // Send email notification to user only on a real new mail event.
+          await sendLetterMailedNotification(
+            letter.user_id,
+            ticketNumber,
+            result.expectedDelivery || null,
+            result.pdfUrl || null
+          );
+        } else {
+          console.log(`    Not sending mailed notification for ${letter.id} because Lob already had the letter`);
+        }
 
-        // Send admin notification with full letter content
-        if (process.env.RESEND_API_KEY) {
+        // Send admin notification with full letter content only for a real new mail event.
+        if (!result.alreadyMailed && process.env.RESEND_API_KEY) {
           const letterText = (letter as any).letter_content || (letter as any).letter_text || 'No letter content available';
           const userName = profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown';
           const ticket = (letter as any).detected_tickets;
@@ -1666,11 +1687,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
-        // Increment letter count
-        const { exceeded, count } = await incrementLetterCount(letter.user_id);
-        if (exceeded) {
-          console.log(`    User has used ${count} letters (exceeded included amount)`);
-          // TODO: Charge for additional letter via Stripe
+        if (!result.alreadyMailed) {
+          // Increment letter count only for a real new mail event.
+          const { exceeded, count } = await incrementLetterCount(letter.user_id);
+          if (exceeded) {
+            console.log(`    User has used ${count} letters (exceeded included amount)`);
+            // TODO: Charge for additional letter via Stripe
+          }
+        } else {
+          console.log(`    Not incrementing letter count for ${letter.id} because the letter had already been mailed`);
         }
       } else {
         errors++;

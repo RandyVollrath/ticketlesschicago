@@ -53,7 +53,7 @@ export default async function handler(
       return res.status(401).json({ error: 'Invalid authorization token' });
     }
 
-    const { alert_type, message, address, parking_session_id } = req.body;
+    const { alert_type, message, address, parking_session_id, dry_run } = req.body;
 
     if (!alert_type || !message) {
       return res.status(400).json({ error: 'alert_type and message are required' });
@@ -118,6 +118,17 @@ export default async function handler(
       return res.status(200).json({
         success: false,
         reason: 'Already called within the last hour',
+      });
+    }
+
+    if (dry_run === true) {
+      return res.status(200).json({
+        success: true,
+        dry_run: true,
+        would_call: true,
+        alert_type,
+        phone_number: profile.phone_number,
+        parking_session_id: parking_session_id || null,
       });
     }
 

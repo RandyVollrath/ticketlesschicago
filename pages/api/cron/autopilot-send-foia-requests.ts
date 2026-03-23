@@ -100,16 +100,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
   // First: fix rows where email was sent but status stuck in 'drafting'
-  const { data: sentButStuck } = await supabaseAdmin
+  const { data: sentButStuck, error: sentButStuckError } = await supabaseAdmin
     .from('ticket_foia_requests' as any)
     .select('id, resend_message_id')
     .eq('status', 'drafting')
     .lt('updated_at', fiveMinutesAgo)
     .not('resend_message_id', 'is', null);
 
+  if (sentButStuckError) {
+    console.error('Failed to fetch sent-but-stuck FOIA requests:', sentButStuckError.message);
+  }
   if (sentButStuck && sentButStuck.length > 0) {
     for (const row of sentButStuck) {
-      await supabaseAdmin
+      const { error: fixError } = await supabaseAdmin
         .from('ticket_foia_requests' as any)
         .update({
           status: 'sent',
@@ -118,12 +121,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           notes: 'Recovered: email was sent (has resend_message_id) but status was stuck in drafting',
         })
         .eq('id', row.id);
+      if (fixError) {
+        console.error(`Failed to fix sent-but-stuck FOIA request ${row.id}: ${fixError.message}`);
+      }
     }
     console.log(`  ✅ Fixed ${sentButStuck.length} sent-but-stuck FOIA request(s) (marked as sent)`);
   }
 
   // Then: re-queue truly orphaned rows (no resend_message_id = email never sent)
-  const { data: orphanedDrafting } = await supabaseAdmin
+  const { data: orphanedDrafting, error: orphanRecoveryError } = await supabaseAdmin
     .from('ticket_foia_requests' as any)
     .update({
       status: 'queued',
@@ -134,6 +140,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .lt('updated_at', fiveMinutesAgo)
     .is('resend_message_id', null)
     .select('id');
+  if (orphanRecoveryError) {
+    console.error('Failed to recover orphaned drafting FOIA requests:', orphanRecoveryError.message);
+  }
   if (orphanedDrafting && orphanedDrafting.length > 0) {
     console.log(`  ♻️ Recovered ${orphanedDrafting.length} orphaned 'drafting' FOIA request(s)`);
   }
@@ -142,19 +151,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Transient Resend errors shouldn't permanently kill a FOIA. Re-queue failed
   // rows that haven't exceeded max retries, but only up to 10 per run so we
   // don't flood if there's a systemic issue.
-  const { data: failedRetries } = await supabaseAdmin
+  const { data: failedRetries, error: failedFetchError } = await supabaseAdmin
     .from('ticket_foia_requests' as any)
     .select('id, notes, request_payload')
     .eq('status', 'failed')
     .eq('request_type', 'ticket_evidence_packet')
     .order('updated_at', { ascending: true })
     .limit(10);
+  if (failedFetchError) {
+    console.error('Failed to fetch failed FOIA requests for retry:', failedFetchError.message);
+  }
   let retried = 0;
   if (failedRetries && failedRetries.length > 0) {
     for (const fr of failedRetries) {
       const attempts = fr.request_payload?.retry_count || 0;
       if (attempts >= 3) continue; // max 3 retries
-      await supabaseAdmin
+      const { error: retryUpdateError } = await supabaseAdmin
         .from('ticket_foia_requests' as any)
         .update({
           status: 'queued',
@@ -163,6 +175,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           notes: `Retry #${attempts + 1}: ${fr.notes || 'previous attempt failed'}`,
         })
         .eq('id', fr.id);
+      if (retryUpdateError) {
+        console.error(`Failed to re-queue FOIA request ${fr.id}: ${retryUpdateError.message}`);
+        continue;
+      }
       retried++;
     }
     if (retried > 0)

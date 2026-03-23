@@ -25,6 +25,7 @@ import RedLightReceiptService, { RedLightReceipt } from '../services/RedLightRec
 import AppEvents from '../services/AppEvents';
 import AnalyticsService from '../services/AnalyticsService';
 import Logger from '../utils/Logger';
+import { isCoordinateAddress, formatCoordinateFallback, resolveAddress } from '../utils/ClientReverseGeocoder';
 import Config from '../config/config';
 import { StorageKeys } from '../constants';
 
@@ -181,10 +182,18 @@ const serverRowToHistoryItem = (row: any): ParkingHistoryItem => {
     rules.push({ type: 'permit_zone', severity: 'info', zone: row.permit_zone, schedule: row.permit_restriction_schedule || '', description: `Permit zone ${row.permit_zone}` } as ParkingRule);
   }
 
+  const lat = parseFloat(row.latitude);
+  const lng = parseFloat(row.longitude);
+  // Never display raw coordinates — use a friendly fallback
+  let address: string | undefined = row.address || undefined;
+  if (!address || isCoordinateAddress(address)) {
+    address = formatCoordinateFallback(lat, lng);
+  }
+
   const item: ParkingHistoryItem = {
     id: new Date(row.parked_at).getTime().toString(),
-    coords: { latitude: parseFloat(row.latitude), longitude: parseFloat(row.longitude) },
-    address: row.address || undefined,
+    coords: { latitude: lat, longitude: lng },
+    address,
     rules,
     timestamp: new Date(row.parked_at).getTime(),
   };
@@ -309,10 +318,16 @@ export const ParkingHistoryService = {
         log.info(`Using native timestamp for parking time (${Math.round(delayMs / 1000)}s more accurate than Date.now())`);
       }
 
+      // Never store raw coordinates as the address — use a user-friendly fallback
+      let displayAddress = address;
+      if (!displayAddress || isCoordinateAddress(displayAddress)) {
+        displayAddress = formatCoordinateFallback(coords.latitude, coords.longitude);
+      }
+
       const newItem: ParkingHistoryItem = {
         id: Date.now().toString(),
         coords,
-        address: address || `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
+        address: displayAddress,
         rules,
         timestamp: parkTime,
         detectionMeta,
@@ -382,6 +397,58 @@ export const ParkingHistoryService = {
     } catch (error) {
       log.error('Error getting most recent history item', error);
       return null;
+    }
+  },
+
+  /**
+   * Backfill addresses for history entries that only have coordinates.
+   * Runs once per app session — resolves "Near X, Y" and raw coordinate
+   * entries by calling client-side reverse geocoding (Nominatim).
+   * This fixes existing entries from yesterday/today that were saved
+   * before the client-side geocoding fallback was added.
+   */
+  async backfillCoordinateAddresses(): Promise<void> {
+    try {
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      if (!stored) return;
+      const history: ParkingHistoryItem[] = JSON.parse(stored);
+
+      // Find entries that need backfill (coordinate-only addresses)
+      const needsBackfill = history.filter(item =>
+        !item.address || isCoordinateAddress(item.address)
+      );
+      if (needsBackfill.length === 0) return;
+
+      log.info(`Address backfill: ${needsBackfill.length} entries need resolution`);
+
+      let resolvedCount = 0;
+      for (const item of needsBackfill) {
+        try {
+          const resolved = await resolveAddress(
+            item.address,
+            item.coords.latitude,
+            item.coords.longitude
+          );
+          // Only update if we got a real address (not another "Near X, Y")
+          if (resolved && !isCoordinateAddress(resolved)) {
+            item.address = resolved;
+            resolvedCount++;
+            log.info(`Backfill resolved: "${resolved}" for ${item.coords.latitude.toFixed(4)}, ${item.coords.longitude.toFixed(4)}`);
+          }
+          // Rate limit: 1 request per second to be kind to Nominatim
+          await new Promise(resolve => setTimeout(resolve, 1100));
+        } catch (e) {
+          log.warn('Backfill failed for entry', e);
+        }
+      }
+
+      if (resolvedCount > 0) {
+        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        AppEvents.emit('parking-history-updated');
+        log.info(`Address backfill complete: ${resolvedCount}/${needsBackfill.length} resolved`);
+      }
+    } catch (error) {
+      log.error('Address backfill failed (non-fatal)', error);
     }
   },
 };
@@ -571,7 +638,9 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
         <View style={styles.timelineAddress}>
           <MaterialCommunityIcons name="map-marker" size={14} color={colors.textTertiary} />
           <Text style={styles.timelineAddressText} numberOfLines={isExpanded ? 3 : 1}>
-            {item.address || `${item.coords.latitude.toFixed(4)}, ${item.coords.longitude.toFixed(4)}`}
+            {item.address && !isCoordinateAddress(item.address)
+              ? item.address
+              : formatCoordinateFallback(item.coords.latitude, item.coords.longitude)}
           </Text>
         </View>
 
@@ -831,6 +900,9 @@ const HistoryScreen: React.FC = () => {
     const initLoad = async () => {
       await loadHistory();
       if (isMountedRef.current) setIsInitialLoading(false);
+      // Backfill coordinate-only addresses in the background (runs once per session).
+      // Non-blocking — will emit 'parking-history-updated' when done, which triggers loadHistory.
+      ParkingHistoryService.backfillCoordinateAddresses().catch(() => {});
     };
     initLoad();
   }, [loadHistory]);

@@ -8,6 +8,17 @@ async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function normalizePhoneForClickSend(to: string): string {
+  const digits = to.replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  }
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`;
+  }
+  return `+${digits}`;
+}
+
 // Direct ClickSend API implementation with retry logic and circuit breaker
 export async function sendClickSendSMS(
   to: string,
@@ -92,7 +103,7 @@ async function sendClickSendSMSOnce(to: string, message: string): Promise<{succe
       body: JSON.stringify({
         messages: [
           {
-            to: `+${to.replace(/\D/g, '')}`, // E.164 format: +1XXXXXXXXXX
+            to: normalizePhoneForClickSend(to),
             body: message,
             from: 'TicketLess',
             source: 'nodejs'
@@ -217,7 +228,7 @@ async function sendClickSendVoiceCallOnce(to: string, message: string): Promise<
       body: JSON.stringify({
         messages: [
           {
-            to: `+${to.replace(/\D/g, '')}`, // E.164 format: +1XXXXXXXXXX
+            to: normalizePhoneForClickSend(to),
             body: message,
             voice: 'female', // or 'male'
             custom_string: 'ticketless-reminder',

@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ── Recovery: Re-queue orphaned 'drafting' rows (cron crashed mid-send) ──
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const { data: orphanedDrafting } = await supabaseAdmin
+  const { data: orphanedDrafting, error: orphanRecoveryError } = await supabaseAdmin
     .from('foia_history_requests')
     .update({
       status: 'queued',
@@ -54,23 +54,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('status', 'drafting')
     .lt('updated_at', fiveMinutesAgo)
     .select('id');
+  if (orphanRecoveryError) {
+    console.error('Failed to recover orphaned drafting history FOIA requests:', orphanRecoveryError.message);
+  }
   if (orphanedDrafting && orphanedDrafting.length > 0) {
     console.log(`  ♻️ Recovered ${orphanedDrafting.length} orphaned 'drafting' history FOIA request(s)`);
   }
 
   // ── Recovery: Retry 'failed' rows (up to 3 attempts, oldest first) ──
-  const { data: failedRetries } = await supabaseAdmin
+  const { data: failedRetries, error: failedFetchError } = await supabaseAdmin
     .from('foia_history_requests')
     .select('id, notes, request_payload')
     .eq('status', 'failed')
     .order('updated_at', { ascending: true })
     .limit(10);
+  if (failedFetchError) {
+    console.error('Failed to fetch failed history FOIA requests for retry:', failedFetchError.message);
+  }
   let retried = 0;
   if (failedRetries && failedRetries.length > 0) {
     for (const fr of failedRetries as any[]) {
       const attempts = fr.request_payload?.retry_count || 0;
       if (attempts >= 3) continue; // max 3 retries
-      await supabaseAdmin
+      const { error: retryUpdateError } = await supabaseAdmin
         .from('foia_history_requests')
         .update({
           status: 'queued',
@@ -79,6 +85,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           notes: `Retry #${attempts + 1}: ${fr.notes || 'previous attempt failed'}`,
         } as any)
         .eq('id', fr.id);
+      if (retryUpdateError) {
+        console.error(`Failed to re-queue history FOIA request ${fr.id}: ${retryUpdateError.message}`);
+        continue;
+      }
       retried++;
     }
     if (retried > 0)
