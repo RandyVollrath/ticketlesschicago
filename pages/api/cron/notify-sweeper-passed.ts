@@ -314,15 +314,14 @@ export default async function handler(
       // Column might not exist yet — treat as all opted-in (default ON)
     }
 
-    const finalEligible = optedOutUsers.size > 0
-      ? eligible.filter(v => {
-          if (optedOutUsers.has(v.user_id)) {
-            results.notificationsSkipped++;
-            return false;
-          }
-          return true;
-        })
-      : eligible;
+    // Always filter — no-op when optedOutUsers is empty, avoids two code paths
+    const finalEligible = eligible.filter(v => {
+      if (optedOutUsers.has(v.user_id)) {
+        results.notificationsSkipped++;
+        return false;
+      }
+      return true;
+    });
 
     results.vehiclesEligible = finalEligible.length;
 

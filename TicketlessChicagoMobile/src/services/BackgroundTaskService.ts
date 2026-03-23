@@ -2869,6 +2869,7 @@ class BackgroundTaskServiceClass {
     permit_zone: 'pushAlert_permitZone',
     dot_permit: 'pushAlert_dotPermit',
     tow_zone: 'pushAlert_tow',
+    sweeper_passed: 'pushAlert_sweeperPassed',
   };
 
   /**
