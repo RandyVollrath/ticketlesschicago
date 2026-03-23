@@ -48,6 +48,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Search query must be at least 2 characters' });
     }
 
+    if (query.length > 200) {
+      return res.status(400).json({ error: 'Search query too long (max 200 characters)' });
+    }
+
     // Build search query - only search Protection users
     // Only select fields needed for the response — never use select('*') to avoid PII leakage
     let dbQuery = supabase

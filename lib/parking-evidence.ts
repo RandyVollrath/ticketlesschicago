@@ -227,12 +227,11 @@ export async function lookupParkingEvidence(
     if (ticketLatitude && ticketLongitude) {
       // Find records within 200m of the ticket location
       matchedRecords = records.filter((r) => {
-        const dist = calculateDistance(
-          Number(r.latitude),
-          Number(r.longitude),
-          ticketLatitude,
-          ticketLongitude
-        );
+        if (r.latitude == null || r.longitude == null) return false;
+        const lat = Number(r.latitude);
+        const lng = Number(r.longitude);
+        if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return false;
+        const dist = calculateDistance(lat, lng, ticketLatitude, ticketLongitude);
         return dist <= 200;
       });
     } else if (ticketLocation) {

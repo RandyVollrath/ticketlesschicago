@@ -149,7 +149,7 @@ export class PushService {
         p_user_id: userId
       });
 
-      if (error || !tokens?.length) {
+      if (error || !tokens || !Array.isArray(tokens) || tokens.length === 0) {
         console.log(`No push tokens found for user ${userId}`);
         if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, 'No push tokens registered');
         return result;

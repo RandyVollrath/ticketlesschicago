@@ -7,6 +7,36 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
+import crypto from 'crypto';
+
+/**
+ * Timing-safe string comparison to prevent timing attacks on secrets.
+ * Returns false if either value is empty/undefined.
+ */
+export function safeCompare(a: string | undefined | null, b: string | undefined | null): boolean {
+  if (!a || !b) return false;
+  try {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    // timingSafeEqual requires equal-length buffers; pad shorter one
+    if (bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify cron authorization using timing-safe comparison.
+ * Checks both Bearer header and query param key.
+ */
+export function verifyCronAuth(req: NextApiRequest): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  const authHeader = req.headers.authorization;
+  const keyParam = req.query.key as string | undefined;
+  return safeCompare(authHeader, `Bearer ${secret}`) || safeCompare(keyParam, secret);
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
