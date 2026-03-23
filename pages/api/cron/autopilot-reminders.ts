@@ -124,7 +124,7 @@ async function sendSmsReminder(
 
   let message: string;
   if (type === 'day10') {
-    message = `Autopilot America: ${daysRemaining} days left to contest ticket #${ticket.ticket_number} ($${ticket.amount?.toFixed(2) || '??'}). Reply to your email with evidence (photos, receipts) to strengthen your case. We'll handle the rest.`;
+    message = `Autopilot America: ${daysRemaining} days left to contest ticket #${ticket.ticket_number}${ticket.amount ? ` ($${ticket.amount.toFixed(2)})` : ''}. Reply to your email with evidence (photos, receipts) to strengthen your case. We'll handle the rest.`;
   } else {
     message = `URGENT - Autopilot America: Only ${daysRemaining} days left for ticket #${ticket.ticket_number}. Your contest letter will auto-send soon. Reply to your email with any evidence ASAP or we'll send with automated evidence only.`;
   }
@@ -483,13 +483,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // This bypasses the approval requirement
         if (ticket.status === 'pending_evidence' || ticket.status === 'needs_approval' || ticket.status === 'found' || ticket.status === 'letter_generated') {
           console.log(`  Day ${daysElapsed}: Auto-sending ticket ${ticket.ticket_number} (safety net - updating ticket to approved)`);
-          await supabaseAdmin
+          const { count: updatedCount } = await supabaseAdmin
             .from('detected_tickets')
             .update({
               status: 'approved', // bypass approval
               auto_send_deadline: new Date().toISOString(),
             })
-            .eq('id', ticket.id);
+            .eq('id', ticket.id)
+            .eq('status', ticket.status); // optimistic lock — prevent race with mail cron
+          if (updatedCount === 0) {
+            console.log(`  Day ${daysElapsed}: Ticket ${ticket.ticket_number} status changed concurrently, skipping auto-send`);
+          }
         }
 
         // Force-promote the letter to admin_approved regardless of ticket status.

@@ -582,12 +582,31 @@ async function incrementLetterCount(userId: string): Promise<{ exceeded: boolean
       return { exceeded: false, count: 0 };
     }
 
-    const newCount = (sub.letters_used_this_period || 0) + 1;
+    const currentCount = sub.letters_used_this_period || 0;
+    const newCount = currentCount + 1;
 
-    await supabaseAdmin
+    const { count: updatedRows } = await supabaseAdmin
       .from('autopilot_subscriptions')
       .update({ letters_used_this_period: newCount })
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('letters_used_this_period', currentCount); // optimistic lock
+
+    if (updatedRows === 0) {
+      console.warn(`  incrementLetterCount fallback: concurrent update for user ${userId}, retrying`);
+      // Re-read and retry once
+      const { data: sub2 } = await supabaseAdmin
+        .from('autopilot_subscriptions')
+        .select('letters_used_this_period, letters_included')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!sub2) return { exceeded: false, count: 0 };
+      const retryCount = (sub2.letters_used_this_period || 0) + 1;
+      await supabaseAdmin
+        .from('autopilot_subscriptions')
+        .update({ letters_used_this_period: retryCount })
+        .eq('user_id', userId);
+      return { exceeded: retryCount > (sub2.letters_included || 1), count: retryCount };
+    }
 
     return {
       exceeded: newCount > (sub.letters_included || 1),
@@ -887,6 +906,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Build full name if not present
       if (!profile.full_name) {
         profile.full_name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+      }
+      // Guard against empty name — Lob requires a non-empty name field
+      if (!profile.full_name) {
+        profile.full_name = 'Vehicle Owner';
       }
 
       const ticket = (letter as any).detected_tickets;
