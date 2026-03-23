@@ -478,7 +478,7 @@ function FoiaTab() {
         return;
       }
       const data = await res.json();
-      if (data.success) {
+      if (data.stats) {
         setItems([...(data.evidence || []).map((e: any) => ({ ...e, foia_type: 'evidence' as const })),
                   ...(data.history || []).map((h: any) => ({ ...h, foia_type: 'history' as const }))]);
         setStats(data.stats);
@@ -532,7 +532,7 @@ function FoiaTab() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ id: selected.id, type: selected.foia_type, status: editStatus, notes: editNotes }),
+        body: JSON.stringify({ id: selected.id, table: selected.foia_type, status: editStatus, notes: editNotes }),
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -963,7 +963,12 @@ function LoadingSpinner() {
 //  MAIN DASHBOARD PAGE
 // ══════════════════════════════════════
 
-const ADMIN_EMAILS = ['randyvollrath@gmail.com', 'carenvollrath@gmail.com'];
+const ADMIN_EMAILS = [
+  'randy@autopilotamerica.com',
+  'admin@autopilotamerica.com',
+  'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
+];
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -997,7 +1002,13 @@ export default function AdminDashboard() {
   // Fetch pipeline data
   const fetchPipeline = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/contest-pipeline');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const res = await fetch('/api/admin/contest-pipeline', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) { console.error('Pipeline fetch failed:', res.status); setPipelineLoading(false); return; }
       const data = await res.json();
       if (data.success) {
         setPipelineItems(data.tickets || []);
