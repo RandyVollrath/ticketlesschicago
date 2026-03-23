@@ -88,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get leaderboard
     if (leaderboard) {
-      const leaderboardLimit = limit ? parseInt(limit as string, 10) : 10;
+      const leaderboardLimit = Math.min(Math.max(limit ? parseInt(limit as string, 10) || 10 : 10, 1), 50);
 
       if (leaderboard === 'wins') {
         const winsLeaderboard = await getWinLeaderboard(supabase, leaderboardLimit);
@@ -111,8 +111,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Get user metrics
+    // Get user metrics — requires authentication to prevent IDOR
     if (user_id) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Authentication required for user metrics' });
+      }
+      const token = authHeader.substring(7);
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !authUser) {
+        return res.status(401).json({ error: 'Invalid authorization token' });
+      }
+      if (authUser.id !== user_id) {
+        return res.status(403).json({ error: 'Not authorized to view this user\'s metrics' });
+      }
+
       const userMetrics = await getUserContestMetrics(supabase, user_id as string);
 
       if (!userMetrics) {

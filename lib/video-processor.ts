@@ -9,6 +9,17 @@ import { createReadStream, createWriteStream, promises as fs } from 'fs';
 import path from 'path';
 import { differenceInSeconds, parseISO } from 'date-fns';
 
+/** Safely parse ffprobe frame rate strings like "30/1" or "30000/1001". Never use eval(). */
+function parseFrameRate(rateStr: string | number): number {
+  if (typeof rateStr === 'number') return rateStr;
+  const match = String(rateStr).match(/^(\d+)(?:\/(\d+))?$/);
+  if (!match) return 30; // fallback
+  const numerator = parseInt(match[1], 10);
+  const denominator = match[2] ? parseInt(match[2], 10) : 1;
+  if (!denominator || !isFinite(numerator / denominator)) return 30;
+  return Math.round((numerator / denominator) * 100) / 100;
+}
+
 export interface VideoMetadata {
   duration_seconds: number;
   resolution: string;
@@ -93,7 +104,7 @@ export async function extractVideoMetadata(videoPath: string): Promise<VideoMeta
           duration_seconds: Math.round(metadata.format.duration || 0),
           resolution: `${videoStream.width}x${videoStream.height}`,
           codec: videoStream.codec_name || 'unknown',
-          fps: eval(videoStream.r_frame_rate || '30/1'),
+          fps: parseFrameRate(videoStream.r_frame_rate || '30/1'),
           file_size: fileSize,
           mime_type: getMimeType(videoPath),
           has_gps: hasGps,

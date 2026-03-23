@@ -36,6 +36,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { vin, plateExpiry, vehicleType, userId } = req.body;
 
+    // If userId is provided (to update profile), require authentication
+    // and verify it matches the authenticated user to prevent IDOR
+    if (userId) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Authentication required to update profile' });
+      }
+      const token = authHeader.substring(7);
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !authUser) {
+        return res.status(401).json({ error: 'Invalid authorization token' });
+      }
+      if (authUser.id !== userId) {
+        return res.status(403).json({ error: 'Not authorized to update this user' });
+      }
+    }
+
     if (!vin) {
       return res.status(400).json({ error: 'VIN is required' });
     }
