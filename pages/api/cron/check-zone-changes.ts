@@ -29,7 +29,8 @@ export default async function handler(
       .from('user_profiles')
       .select('user_id, email, mailing_address, has_permit_zone, city_sticker_expiry')
       .eq('has_contesting', true)
-      .not('mailing_address', 'is', null);
+      .not('mailing_address', 'is', null)
+      .limit(500);
 
     if (usersError) {
       throw usersError;
@@ -41,8 +42,14 @@ export default async function handler(
     let movedIntoZone = 0;
     let movedOutOfZone = 0;
     const changes: any[] = [];
+    const startTime = Date.now();
+    const MAX_RUNTIME_MS = 50000; // 50s guard — Vercel functions timeout at 60s
 
     for (const user of users || []) {
+      if (Date.now() - startTime > MAX_RUNTIME_MS) {
+        console.log('⏰ Approaching timeout, stopping gracefully');
+        break;
+      }
       try {
         // Check if address is currently in a permit zone
         const zoneCheckResponse = await fetch(
