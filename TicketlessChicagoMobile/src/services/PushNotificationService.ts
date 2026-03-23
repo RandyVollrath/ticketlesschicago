@@ -24,6 +24,7 @@ export type NotificationType =
   | 'parking_alert'
   | 'street_cleaning_reminder'
   | 'snow_ban_alert'
+  | 'sweeper_passed'
   | 'permit_reminder'
   | 'general';
 
@@ -234,7 +235,7 @@ class PushNotificationServiceClass {
 
       // Determine channel based on notification type
       let channelId = 'general';
-      if (data.type === 'parking_alert' || data.severity === 'critical') {
+      if (data.type === 'parking_alert' || data.type === 'sweeper_passed' || data.severity === 'critical') {
         channelId = 'parking-alerts';
       } else if (data.type === 'reminder') {
         channelId = 'reminders';
@@ -324,6 +325,7 @@ class PushNotificationServiceClass {
       switch (data.type) {
         case 'parking_alert':
         case 'snow_ban_alert':
+        case 'sweeper_passed':
           // Navigate to Map screen to show the parking location
           const lat = this.parseCoordinate(data.lat);
           const lng = data.lng ? parseFloat(data.lng) : undefined;
