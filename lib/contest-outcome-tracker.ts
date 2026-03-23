@@ -458,6 +458,63 @@ export async function getOfficerIntelligence(
 // ─── FOIA Response Detection ─────────────────────────────────
 
 /**
+ * Detect if a FOIA response is actually an extension notice (not a substantive response).
+ *
+ * Under 5 ILCS 140/3(e), the city can extend the response deadline by 5 business days
+ * for specific reasons. Extension emails cite the statute and use language like
+ * "extension of the time for response" or "additional five (5) business days."
+ *
+ * This is NOT a fulfillment — the actual response comes later. We must:
+ * 1. NOT mark the FOIA as fulfilled
+ * 2. NOT notify the user (they don't need to know about procedural extensions)
+ * 3. DO track it as 'extension_requested' for admin visibility
+ */
+export function isExtensionResponse(subject: string, body: string): boolean {
+  const combined = `${subject} ${body}`.toLowerCase();
+
+  // Strong signals — statutory citation for FOIA extensions
+  const statutoryExtensionPatterns = [
+    '5 ilcs 140/3(e)',         // Exact statute citation for extensions
+    '5 ilcs 140/3 (e)',       // Alternate spacing
+    'section 3(e)',            // Short form of extension statute
+  ];
+  const hasStatutorySignal = statutoryExtensionPatterns.some(p => combined.includes(p));
+
+  // Extension-specific language
+  const extensionKeywords = [
+    'extension of the time for response',
+    'extension of time',
+    'additional five (5) business days',
+    'additional 5 business days',
+    'additional five business days',
+    'extending the time',
+    'extend the time',
+    'extension of the response',
+    'notify you of an extension',
+    'notifying you of an extension',
+    'hereby notif',   // "hereby notify" / "hereby notifying"
+  ];
+  const hasExtensionKeyword = extensionKeywords.some(k => combined.includes(k));
+
+  // Extension reasons the city commonly cites
+  const extensionReasons = [
+    'consultation with another public body',
+    'unduly burdensome',
+    'voluminous',
+    'categorical request',
+  ];
+  const hasExtensionReason = extensionReasons.some(r => combined.includes(r));
+
+  // Must have statutory signal OR (extension keyword + extension reason)
+  // This prevents false positives from casual mentions of "extension"
+  if (hasStatutorySignal) return true;
+  if (hasExtensionKeyword && hasExtensionReason) return true;
+  if (hasExtensionKeyword && combined.includes('extension')) return true;
+
+  return false;
+}
+
+/**
  * Check if an incoming email is a FOIA response from the City of Chicago.
  */
 export function isFoiaResponseEmail(
@@ -554,6 +611,7 @@ export async function processFoiaResponse(
   ticketNumber: string | null;
   foiaType: 'evidence' | 'history' | 'unknown';
   action: string;
+  isExtension?: boolean;
 }> {
   const foiaType = classifyFoiaResponseType(subject, body);
   const referenceId = extractReferenceId(subject, body);
@@ -728,7 +786,56 @@ async function processEvidenceFoiaMatch(
   ticketNumber: string | null;
   foiaType: 'evidence';
   action: string;
+  isExtension?: boolean;
 }> {
+  // ── Extension check — must come BEFORE fulfillment/denial classification ──
+  if (isExtensionResponse(subject, body)) {
+    console.log(`  Extension detected for evidence FOIA ${matchedRequest.id} — NOT marking as fulfilled`);
+    const ticketNumber = matchedRequest.detected_tickets?.ticket_number || null;
+
+    await supabase
+      .from('ticket_foia_requests')
+      .update({
+        status: 'extension_requested',
+        updated_at: new Date().toISOString(),
+        response_payload: {
+          from: fromEmail,
+          subject,
+          body_preview: body.substring(0, 500),
+          attachment_count: attachments.length,
+          received_at: new Date().toISOString(),
+          match_method: matchMethod,
+          extension_detected: true,
+        },
+        notes: `Extension filed under 5 ILCS 140/3(e). City has additional 5 business days to respond. Original email from ${fromEmail}.`,
+      })
+      .eq('id', matchedRequest.id);
+
+    // Audit log
+    if (matchedRequest.ticket_id) {
+      await supabase.from('ticket_audit_log').insert({
+        ticket_id: matchedRequest.ticket_id,
+        action: 'foia_extension_received',
+        details: {
+          from: fromEmail,
+          subject,
+          match_method: matchMethod,
+          note: 'City filed 5 ILCS 140/3(e) extension — additional 5 business days',
+        },
+        performed_by: null,
+      });
+    }
+
+    return {
+      matched: true,
+      requestId: matchedRequest.id,
+      ticketNumber,
+      foiaType: 'evidence',
+      action: 'foia_extension_requested',
+      isExtension: true,
+    };
+  }
+
   // Determine if this is a fulfillment or denial
   const lowerBody = body.toLowerCase();
   const isDenial = lowerBody.includes('no responsive records') ||
@@ -813,6 +920,7 @@ export async function processHistoryFoiaResponse(
 ): Promise<{
   action: string;
   parsedTicketCount: number;
+  isExtension: boolean;
 }> {
   // Fetch the history request
   const { data: historyRequest, error } = await supabase
@@ -823,7 +931,30 @@ export async function processHistoryFoiaResponse(
 
   if (error || !historyRequest) {
     console.error(`  History request ${requestId} not found`);
-    return { action: 'request_not_found', parsedTicketCount: 0 };
+    return { action: 'request_not_found', parsedTicketCount: 0, isExtension: false };
+  }
+
+  // ── Extension check — must come BEFORE any fulfillment/parsing logic ──
+  if (isExtensionResponse(subject, body)) {
+    console.log(`  Extension detected for history FOIA ${requestId} — NOT marking as fulfilled`);
+    await supabase
+      .from('foia_history_requests')
+      .update({
+        status: 'extension_requested',
+        updated_at: new Date().toISOString(),
+        response_data: {
+          from: fromEmail,
+          subject,
+          body_preview: body.substring(0, 500),
+          attachment_count: attachments.length,
+          received_at: new Date().toISOString(),
+          extension_detected: true,
+        },
+        notes: `Extension filed under 5 ILCS 140/3(e). City has additional 5 business days to respond. Original email from ${fromEmail}.`,
+      } as any)
+      .eq('id', requestId);
+
+    return { action: 'history_foia_extension_requested', parsedTicketCount: 0, isExtension: true };
   }
 
   // Parse the response with Gemini Flash
@@ -895,6 +1026,7 @@ export async function processHistoryFoiaResponse(
   return {
     action: `history_foia_processed_${ticketCount}_tickets`,
     parsedTicketCount: ticketCount,
+    isExtension: false,
   };
 }
 

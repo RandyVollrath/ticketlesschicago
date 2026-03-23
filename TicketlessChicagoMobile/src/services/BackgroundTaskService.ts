@@ -1574,6 +1574,14 @@ class BackgroundTaskServiceClass {
     try {
       log.info('=== TRIGGERING PARKING CHECK ===');
 
+      // Pre-flight auth check: fail fast with a clear message if no auth token.
+      // This prevents a doomed API call that would fail with 401 anyway, and gives
+      // the user actionable information (they need to re-login).
+      if (!AuthService.getToken()) {
+        log.error('No auth token available — parking check cannot proceed. User needs to re-login.');
+        throw new Error('Authentication required');
+      }
+
       let coords;
       let gpsSource = 'unknown';
 
@@ -1856,7 +1864,21 @@ class BackgroundTaskServiceClass {
           ? Date.now() - this.state.lastParkingCheckTime
           : Infinity;
         if (recentCheckAge > MIN_PARKING_CHECK_INTERVAL_MS) {
-          await this.sendErrorNotification();
+          // Extract a user-friendly reason from the error
+          const errMsg = String(error instanceof Error ? error.message : error);
+          let reason: string | undefined;
+          if (errMsg.includes('Authentication expired') || errMsg.includes('Authentication required')) {
+            reason = 'Session expired — please open the app and log in';
+          } else if (errMsg.includes('No internet') || errMsg.includes('Network request failed')) {
+            reason = 'No internet connection';
+          } else if (errMsg.includes('timed out')) {
+            reason = 'Server request timed out';
+          } else if (errMsg.includes('outside') && errMsg.includes('Chicago')) {
+            reason = 'Location appears to be outside Chicago';
+          } else if (errMsg.includes('Invalid coordinates') || errMsg.includes('coordinate')) {
+            reason = 'Could not get a valid GPS fix';
+          }
+          await this.sendErrorNotification(reason);
         } else {
           log.info('Suppressing error notification - successful check was recent');
         }
@@ -3102,12 +3124,15 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Send error notification
+   * Send error notification with specific reason for debugging
    */
-  private async sendErrorNotification(): Promise<void> {
+  private async sendErrorNotification(reason?: string): Promise<void> {
+    const body = reason
+      ? `${reason}. Please check manually.`
+      : 'Could not check parking rules. Please check manually.';
     await notifee.displayNotification({
       title: 'Parking Check Failed',
-      body: 'Could not check parking rules. Please check manually.',
+      body,
       android: {
         channelId: 'parking-monitoring',
         pressAction: { id: 'default' },
