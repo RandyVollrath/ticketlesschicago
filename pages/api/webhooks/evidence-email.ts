@@ -620,6 +620,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         photoAnalysesForPrompt
       );
 
+      // Validate AI output — must be non-empty and substantive
+      if (!regeneratedLetterContent || regeneratedLetterContent.trim().length < 50) {
+        console.error(`AI regeneration produced empty/malformed output (${regeneratedLetterContent?.length || 0} chars) — keeping original letter`);
+        regeneratedLetterContent = originalLetter; // Fall back to original
+      }
+
       // Update defense type if kit evaluation selected a different argument
       const newDefenseType = kitEval
         ? `kit_${kitEval.selectedArgument.id}`
@@ -638,7 +644,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           evidence_integrated: true,
           evidence_integrated_at: new Date().toISOString(),
         })
-        .eq('id', letter.id);
+        .eq('id', letter.id)
+        .eq('user_id', user.id); // Defense-in-depth: ensure letter belongs to this user
 
       console.log(`Regenerated contest letter with kit-guided AI integration (defense=${newDefenseType}, status=${letterStatus})`);
     } else {

@@ -70,13 +70,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (action === 'approve') {
-      // Approve the ticket and letter (user_id guard for defense-in-depth)
-      await supabaseAdmin
+      // Approve the ticket with optimistic lock — only update if still needs_approval
+      // This prevents a race where the mail cron picks up the ticket between our
+      // status check and this update, causing a duplicate mailing.
+      const { data: updatedTicket, error: updateTicketErr } = await supabaseAdmin
         .from('detected_tickets')
         .update({ status: 'approved' })
         .eq('id', ticket_id)
-        .eq('user_id', user_id);
+        .eq('user_id', user_id)
+        .eq('status', 'needs_approval')
+        .select('id')
+        .maybeSingle();
 
+      if (updateTicketErr || !updatedTicket) {
+        // Another process already changed the status — treat as already processed
+        return res.redirect(`/tickets/${ticket_id}?message=already_processed`);
+      }
+
+      // Optimistic lock on letter too — only update if still pending_approval
       await supabaseAdmin
         .from('contest_letters')
         .update({
@@ -85,7 +96,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           approved_by: 'email_link'
         })
         .eq('id', letter_id)
-        .eq('user_id', user_id);
+        .eq('user_id', user_id)
+        .in('status', ['pending_approval', 'draft', 'needs_admin_review']);
 
       // Log to audit
       await supabaseAdmin
@@ -100,18 +112,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return res.redirect(`/tickets/${ticket_id}?message=approved`);
     } else {
-      // Skip the ticket (user_id guard for defense-in-depth)
-      await supabaseAdmin
+      // Skip the ticket with optimistic lock — only update if still needs_approval
+      const { data: updatedTicket, error: updateTicketErr } = await supabaseAdmin
         .from('detected_tickets')
         .update({ status: 'skipped', skip_reason: 'User declined via email' })
         .eq('id', ticket_id)
-        .eq('user_id', user_id);
+        .eq('user_id', user_id)
+        .eq('status', 'needs_approval')
+        .select('id')
+        .maybeSingle();
+
+      if (updateTicketErr || !updatedTicket) {
+        return res.redirect(`/tickets/${ticket_id}?message=already_processed`);
+      }
 
       await supabaseAdmin
         .from('contest_letters')
         .update({ status: 'cancelled' })
         .eq('id', letter_id)
-        .eq('user_id', user_id);
+        .eq('user_id', user_id)
+        .in('status', ['pending_approval', 'draft', 'needs_admin_review']);
 
       // Log to audit
       await supabaseAdmin
