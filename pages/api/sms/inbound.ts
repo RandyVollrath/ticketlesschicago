@@ -22,6 +22,21 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // ── Webhook Authentication ──
+  // ClickSend doesn't support HMAC signatures, so we use a shared secret
+  // configured in the ClickSend inbound SMS rule URL:
+  // https://autopilotamerica.com/api/sms/inbound?secret=<CLICKSEND_WEBHOOK_SECRET>
+  const webhookSecret = process.env.CLICKSEND_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const providedSecret = req.query.secret;
+    if (providedSecret !== webhookSecret) {
+      console.warn('SMS webhook: invalid or missing secret');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  } else {
+    console.warn('SMS webhook: CLICKSEND_WEBHOOK_SECRET not configured — running without auth');
+  }
+
   try {
     console.log('📨 Inbound SMS webhook received:', JSON.stringify(req.body, null, 2));
 

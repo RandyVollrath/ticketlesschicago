@@ -327,12 +327,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (result.success) {
         console.log(`    ✅ Finance FOIA sent (Resend ID: ${result.emailId}, Ref: ${referenceId})`);
 
-        // Immediately persist the resend_message_id so the deduplication guard
-        // can detect this email was sent even if the full update below fails.
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // CRITICAL: Immediately persist the resend_message_id AND reference_id so the
+        // recovery code (lines 103-128) knows this email was sent even if we crash
+        // before the final status='sent' update. This prevents duplicate FOIA emails.
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         try {
           await supabaseAdmin
             .from('ticket_foia_requests' as any)
-            .update({ resend_message_id: result.emailId })
+            .update({
+              resend_message_id: result.emailId,
+              reference_id: referenceId,
+              updated_at: new Date().toISOString(),
+            })
             .eq('id', request.id);
         } catch (earlyIdErr: any) {
           console.warn(`    ⚠️ Early resend_message_id save failed (non-blocking): ${earlyIdErr.message}`);
@@ -437,7 +444,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // Update status to sent — store reference_id and resend_message_id for response matching.
+        // Update status to sent — reference_id and resend_message_id were already saved
+        // immediately after email send (lines 335-343) to prevent duplicate sends.
         // This is wrapped in try-catch because the email was ALREADY SENT at this point.
         // If the DB update fails, we must NOT let the outer catch call markFailed() which
         // would overwrite the status back to 'failed' even though the email went out.
@@ -445,8 +453,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: 'sent',
           sent_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          reference_id: referenceId,
-          resend_message_id: result.emailId,
           response_payload: {
             resend_email_id: result.emailId,
             ...(cdotEmailId ? { cdot_resend_email_id: cdotEmailId } : {}),
