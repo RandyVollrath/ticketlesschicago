@@ -233,6 +233,36 @@ export async function sendMulticastNotification(
 }
 
 /**
+ * Clean up invalid FCM tokens from the database.
+ * Call this after sendMulticastNotification when invalidTokens is non-empty.
+ * Accepts a Supabase client to avoid circular imports.
+ */
+export async function cleanupInvalidTokens(
+  supabase: { from: (table: string) => any },
+  invalidTokens: string[],
+): Promise<number> {
+  if (invalidTokens.length === 0) return 0;
+  let cleaned = 0;
+  // Process in batches of 50 to avoid overly long IN clauses
+  for (let i = 0; i < invalidTokens.length; i += 50) {
+    const batch = invalidTokens.slice(i, i + 50);
+    const { error } = await supabase
+      .from('push_tokens')
+      .update({ is_active: false, deactivated_at: new Date().toISOString(), deactivation_reason: 'fcm_invalid_token' })
+      .in('token', batch);
+    if (!error) {
+      cleaned += batch.length;
+    } else {
+      console.error(`Failed to deactivate ${batch.length} invalid tokens: ${error.message}`);
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`Deactivated ${cleaned} invalid FCM token(s)`);
+  }
+  return cleaned;
+}
+
+/**
  * Check if Firebase Admin is configured and available
  */
 export function isFirebaseConfigured(): boolean {
@@ -244,5 +274,6 @@ export default {
   getMessaging,
   sendPushNotification,
   sendMulticastNotification,
+  cleanupInvalidTokens,
   isFirebaseConfigured,
 };
