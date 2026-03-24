@@ -12,6 +12,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,11 +50,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Valid 5-digit ZIP code required' });
   }
 
+  // Rate limiting — 100 requests per minute per IP
+  const clientIp = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(clientIp, 'api');
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests. Please try again later.',
+      retryAfter: Math.ceil(rateLimitResult.resetIn / 1000),
+    });
+  }
+  await recordRateLimitAction(clientIp, 'api');
+
   try {
     const { data, error } = await supabaseAdmin
       .from('foia_zip_stats')
       .select('zip_code, violation_category, year, ticket_count, fines_base, paid_count, dismissed_count')
-      .eq('zip_code', zip);
+      .eq('zip_code', zip)
+      .limit(1000);
 
     if (error) {
       console.error('[zip-ticket-stats] Query error:', error.message);

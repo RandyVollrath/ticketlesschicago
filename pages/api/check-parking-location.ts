@@ -133,7 +133,7 @@ export default async function handler(
       success: true,
       rules,
       address,
-      coordinates: { latitude, longitude }
+      coordinates: { latitude: lat, longitude: lng }
     });
 
   } catch (error) {
