@@ -27,6 +27,13 @@ export default async function handler(
     return res.status(400).json({ error: 'Latitude and longitude are required' });
   }
 
+  // Validate lat/lng are finite numbers in valid ranges
+  const lat = typeof latitude === 'number' ? latitude : parseFloat(latitude);
+  const lng = typeof longitude === 'number' ? longitude : parseFloat(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return res.status(400).json({ error: 'Invalid latitude or longitude values' });
+  }
+
   try {
     const rules: ParkingRule[] = [];
 
@@ -35,8 +42,8 @@ export default async function handler(
     const { data: streetCleaningData, error: streetCleaningError } = await supabase.rpc(
       'get_street_cleaning_at_location',
       {
-        user_lat: latitude,
-        user_lng: longitude,
+        user_lat: lat,
+        user_lng: lng,
         distance_meters: 30
       }
     );
@@ -57,8 +64,8 @@ export default async function handler(
     const { data: snowRouteData, error: snowRouteError } = await supabase.rpc(
       'get_snow_route_at_location',
       {
-        user_lat: latitude,
-        user_lng: longitude,
+        user_lat: lat,
+        user_lng: lng,
         distance_meters: 30
       }
     );
@@ -88,8 +95,8 @@ export default async function handler(
     const { data: permitZoneData, error: permitZoneError } = await supabase.rpc(
       'get_permit_zone_at_location',
       {
-        user_lat: latitude,
-        user_lng: longitude,
+        user_lat: lat,
+        user_lng: lng,
         distance_meters: 30
       }
     );
@@ -111,7 +118,7 @@ export default async function handler(
     if (rules.length > 0) {
       try {
         const geocodeResponse = await fetch(
-          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.GOOGLE_MAPS_API_KEY}`
         );
         const geocodeData = await geocodeResponse.json();
         if (geocodeData.results && geocodeData.results[0]) {

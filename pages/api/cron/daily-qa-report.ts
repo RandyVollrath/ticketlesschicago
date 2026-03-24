@@ -192,9 +192,9 @@ async function checkRecentNotifications(): Promise<CheckResult> {
   try {
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     const { count, error } = await supabaseAdmin!
-      .from('notification_log' as any)
+      .from('message_audit_log')
       .select('*', { count: 'exact', head: true })
-      .gte('created_at', twoDaysAgo);
+      .gte('timestamp', twoDaysAgo);
 
     if (error) return { name, category: 'Notifications', status: 'fail', detail: `Query error: ${error.message}`, severity: 'medium' };
 
@@ -212,9 +212,9 @@ async function checkNotificationErrors(): Promise<CheckResult> {
   try {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count, error } = await supabaseAdmin!
-      .from('notification_log' as any)
+      .from('message_audit_log')
       .select('*', { count: 'exact', head: true })
-      .gte('created_at', oneDayAgo);
+      .gte('timestamp', oneDayAgo);
 
     if (error) return { name, category: 'Notifications', status: 'fail', detail: `Query error: ${error.message}`, severity: 'medium' };
     return { name, category: 'Notifications', status: 'pass', detail: `${count || 0} notification log entries in last 24h`, severity: 'medium' };
@@ -328,7 +328,7 @@ async function checkCameraDataFreshness(): Promise<CheckResult> {
   const name = 'Camera Data — Count';
   try {
     const { count, error } = await supabaseAdmin!
-      .from('cameras')
+      .from('camera_locations')
       .select('*', { count: 'exact', head: true });
 
     if (error) return { name, category: 'Data Freshness', status: 'fail', detail: `Query error: ${error.message}`, severity: 'medium' };

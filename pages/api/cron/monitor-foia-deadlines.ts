@@ -93,6 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('ticket_foia_requests')
             .update({
               notes: overdueNote,
+              status: 'overdue',
               updated_at: new Date().toISOString(),
             } as any)
             .eq('id', req.id);
@@ -139,6 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('foia_history_requests')
             .update({
               notes: overdueNote,
+              status: 'overdue',
               updated_at: new Date().toISOString(),
             } as any)
             .eq('id', req.id);

@@ -4,8 +4,12 @@ import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 
 // Use MyStreetCleaning database for geometry data
-const MSC_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
-const MSC_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxbGp4a3FkZ2ZpYmZ6ZGpmamlxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Mjk2NTAyNCwiZXhwIjoyMDU4NTQxMDI0fQ.5z8BVRn9Xku7ZwSSfZwQLYyfjzw-aqsYm1HmHlujJes';
+const MSC_URL = process.env.MSC_SUPABASE_URL || '';
+const MSC_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY || '';
+
+if (!MSC_URL || !MSC_KEY) {
+  console.error('MSC_SUPABASE_URL and MSC_SUPABASE_SERVICE_ROLE_KEY must be set');
+}
 
 const mscSupabase = createClient(MSC_URL, MSC_KEY);
 

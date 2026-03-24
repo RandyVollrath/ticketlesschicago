@@ -10,8 +10,12 @@ import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 // MyStreetCleaning database for PostGIS queries
-const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL || 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
+const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL || '';
 const MSC_SUPABASE_ANON_KEY = process.env.MSC_SUPABASE_ANON_KEY || '';
+
+if (!MSC_SUPABASE_URL || !MSC_SUPABASE_ANON_KEY) {
+  console.error('MSC_SUPABASE_URL and MSC_SUPABASE_ANON_KEY must be set');
+}
 
 const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY);
 
