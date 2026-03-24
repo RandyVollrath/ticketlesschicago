@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('autopilot_admin_settings')
         .select('value')
         .eq('key', 'va_email')
-        .single(),
+        .maybeSingle(),
 
       // Pending evidence tickets with profiles
       supabaseAdmin

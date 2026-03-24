@@ -30,9 +30,9 @@ export default async function handler(
       .from('violation_win_rates')
       .select('*')
       .eq('violation_code', violation_code)
-      .single();
+      .maybeSingle();
 
-    if (violationError && violationError.code !== 'PGRST116') {
+    if (violationError) {
       throw violationError;
     }
 

@@ -71,7 +71,7 @@ export default async function handler(
       .from('profiles')
       .select('id, email')
       .eq('email', parsed.email)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       // User exists - send them link to add vehicle to their account

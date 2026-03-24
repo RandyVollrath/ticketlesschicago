@@ -138,7 +138,7 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse, adminUser:
         .from('guarantee_claims' as any)
         .select('id, user_id')
         .eq('id', id)
-        .single();
+        .maybeSingle();
       const claim = claimRaw as any;
 
       if (claimError || !claim?.user_id) {
@@ -149,7 +149,7 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse, adminUser:
         .from('autopilot_subscriptions' as any)
         .select('stripe_subscription_id')
         .eq('user_id', claim.user_id)
-        .single();
+        .maybeSingle();
       const sub = subRaw as any;
 
       if (subError || !sub?.stripe_subscription_id) {

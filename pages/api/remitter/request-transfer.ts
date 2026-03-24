@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_partners')
       .select('id, name, status')
       .eq('api_key', apiKey)
-      .single();
+      .maybeSingle();
 
     if (partnerError || !partner) {
       return res.status(401).json({ error: 'Invalid API key' });
@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_orders')
       .select('id, order_number, partner_id, status, customer_name, license_plate')
       .eq('id', orderId)
-      .single();
+      .maybeSingle();
 
     if (orderError || !order) {
       return res.status(404).json({ error: 'Order not found' });

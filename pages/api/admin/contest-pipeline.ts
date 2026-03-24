@@ -386,7 +386,7 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
       .from('detected_tickets')
       .select('*')
       .eq('id', ticketId)
-      .single(),
+      .maybeSingle(),
     supabase
       .from('contest_letters')
       .select('*')
@@ -415,7 +415,7 @@ async function getTicketDetail(ticketId: string, res: NextApiResponse) {
       .from('user_profiles')
       .select('user_id, email, first_name, last_name, mailing_address, foia_wait_preference')
       .eq('user_id', ticket.user_id)
-      .single();
+      .maybeSingle();
     user = data;
   }
 

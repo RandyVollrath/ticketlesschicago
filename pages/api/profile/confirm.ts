@@ -143,11 +143,15 @@ export default async function handler(
       .update(updateData)
       .eq('user_id', targetUserId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error confirming profile:', error);
       return res.status(500).json({ error: 'Failed to confirm profile' });
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'User profile not found' });
     }
 
     // Log the confirmation event (don't fail if this errors)

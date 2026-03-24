@@ -96,9 +96,9 @@ export default async function handler(
       `)
       .eq('user_id', userId)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       console.error('Error fetching referral code:', error);
       return res.status(500).json({ error: 'Failed to fetch referral data' });
     }
@@ -111,7 +111,7 @@ export default async function handler(
         .eq('user_id', userId)
         .eq('status', 'letter_generated')
         .limit(1)
-        .single();
+        .maybeSingle();
 
       return res.status(200).json({
         hasReferralCode: false,
@@ -161,7 +161,7 @@ export default async function handler(
         .select('code')
         .eq('user_id', userId)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (existingCode) {
         return res.status(400).json({
@@ -177,7 +177,7 @@ export default async function handler(
         .eq('user_id', userId)
         .eq('status', 'letter_generated')
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (!successfulAppeal) {
         return res.status(403).json({
@@ -194,7 +194,7 @@ export default async function handler(
           .from('property_tax_referral_codes')
           .select('id')
           .eq('code', code)
-          .single();
+          .maybeSingle();
 
         if (!existsCheck) break;
         code = generateReferralCode();
@@ -242,7 +242,7 @@ export default async function handler(
         .select('id, user_id, reward_amount_cents')
         .eq('code', code.toUpperCase())
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (!referralCode) {
         return res.status(404).json({ error: 'Invalid referral code' });
@@ -283,7 +283,7 @@ export default async function handler(
           .select('id')
           .eq('referral_code_id', referralCode.id)
           .eq('referred_email', email)
-          .single();
+          .maybeSingle();
 
         if (existingReferral) {
           await supabaseAdmin
@@ -316,7 +316,7 @@ export default async function handler(
           .select('id')
           .eq('referral_code_id', referralCode.id)
           .eq('referred_user_id', userId)
-          .single();
+          .maybeSingle();
 
         if (existingReferral) {
           await supabaseAdmin

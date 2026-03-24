@@ -224,11 +224,15 @@ async function handlePut(
     .eq('id', id)
     .eq('user_id', userId)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error updating saved location:', error);
     return res.status(500).json({ error: 'Failed to update location' });
+  }
+
+  if (!data) {
+    return res.status(404).json({ error: 'Location not found after update' });
   }
 
   return res.status(200).json({

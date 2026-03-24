@@ -164,7 +164,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, adminUser: 
       .from('contest_letters')
       .select('id, ticket_id, status')
       .eq('id', letterId)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !letter) {
       return res.status(404).json({ error: 'Letter not found' });
@@ -205,15 +205,16 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, adminUser: 
       .eq('id', letterId)
       .in('status', REVIEWABLE_STATUSES)
       .select()
-      .single();
+      .maybeSingle();
 
     if (updateError) {
-      // If .single() returns no rows, the letter status changed since fetch (race condition)
-      if (updateError.code === 'PGRST116') {
-        return res.status(409).json({ error: 'Letter status has changed. Please refresh and try again.' });
-      }
       console.error('Error updating letter:', updateError);
       return res.status(500).json({ error: sanitizeErrorMessage(updateError) });
+    }
+
+    // If .maybeSingle() returns null, the letter status changed since fetch (race condition)
+    if (!updatedLetter) {
+      return res.status(409).json({ error: 'Letter status has changed. Please refresh and try again.' });
     }
 
     // If approved, also update the ticket status if it's still in a pre-approval state
@@ -222,7 +223,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, adminUser: 
         .from('detected_tickets')
         .select('id, status')
         .eq('id', letter.ticket_id)
-        .single();
+        .maybeSingle();
 
       if (ticket && ['needs_approval', 'letter_generated', 'pending_approval'].includes(ticket.status)) {
         await supabase

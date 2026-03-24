@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('pin', normalizedPin)
         .order('assessment_year', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       // If cached and less than 24 hours old, return cached
       if (cached && cached.last_synced_at) {

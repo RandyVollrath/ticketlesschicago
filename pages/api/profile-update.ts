@@ -117,10 +117,14 @@ export default async function handler(
       .update(updates)
       .eq('user_id', userId)
       .select()
-      .single();
-      
+      .maybeSingle();
+
     if (updateError) {
       throw updateError;
+    }
+
+    if (!profile) {
+      return res.status(404).json({ error: 'User profile not found' });
     }
     
     // CRITICAL: Sync to MyStreetCleaning whenever address/ward/section changes

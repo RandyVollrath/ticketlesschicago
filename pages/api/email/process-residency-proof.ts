@@ -477,7 +477,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       console.error('User not found for UUID:', userId);

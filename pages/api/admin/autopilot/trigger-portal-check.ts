@@ -57,7 +57,7 @@ async function getPortalCheckStatus(_req: NextApiRequest, res: NextApiResponse) 
       .from('autopilot_admin_settings')
       .select('value, updated_at')
       .eq('key', 'portal_check_trigger')
-      .single();
+      .maybeSingle();
 
     // Get total tickets found by portal scraper
     const { count: totalPortalTickets } = await supabaseAdmin
@@ -143,7 +143,7 @@ async function triggerPortalCheck(req: NextApiRequest, res: NextApiResponse) {
       .from('autopilot_admin_settings')
       .select('value')
       .eq('key', 'portal_check_trigger')
-      .single();
+      .maybeSingle();
 
     if (existing?.value?.status === 'pending') {
       return res.status(409).json({

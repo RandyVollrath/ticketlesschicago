@@ -274,14 +274,13 @@ export default async function handler(
         .update(updateData)
         .eq('user_id', userId)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return res.status(404).json({ error: 'User profile not found' });
-        }
+      if (error || !profile) {
         console.error('Error updating user profile:', error);
-        return res.status(500).json({ error: 'Failed to update user profile' });
+        return res.status(error ? 500 : 404).json({
+          error: error ? 'Failed to update user profile' : 'User profile not found'
+        });
       }
 
       console.log(`✅ Updated user profile for ${profile.email}`);

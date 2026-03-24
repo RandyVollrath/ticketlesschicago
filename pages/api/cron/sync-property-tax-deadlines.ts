@@ -55,48 +55,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Ensure each township has a deadline record for the current year
     // Status will be UNKNOWN until manually populated
     for (const township of TOWNSHIPS) {
-      try {
-        const { data: existing } = await supabase
-          .from('property_tax_deadlines')
-          .select('id, status')
-          .eq('township', township)
-          .eq('year', year)
-          .single();
+      const { data: existing } = await supabase
+        .from('property_tax_deadlines')
+        .select('id, status')
+        .eq('township', township)
+        .eq('year', year)
+        .maybeSingle();
 
-        if (existing) {
-          // Record exists, don't overwrite
-          stats.skipped++;
-          continue;
-        }
+      if (existing) {
+        // Record exists, don't overwrite
+        stats.skipped++;
+        continue;
+      }
 
-        // Create placeholder record with UNKNOWN status
-        const { error: insertError } = await supabase
-          .from('property_tax_deadlines')
-          .insert({
-            year,
-            township,
-            status: DEADLINE_STATUS.UNKNOWN,
-            source_url: null,
-            bor_open_date: null,
-            bor_close_date: null,
-            ccao_open_date: null,
-            ccao_close_date: null,
-            last_verified_at: null,
-            updated_at: new Date().toISOString()
-          });
+      // Create placeholder record with UNKNOWN status
+      const { error: insertError } = await supabase
+        .from('property_tax_deadlines')
+        .insert({
+          year,
+          township,
+          status: DEADLINE_STATUS.UNKNOWN,
+          source_url: null,
+          bor_open_date: null,
+          bor_close_date: null,
+          ccao_open_date: null,
+          ccao_close_date: null,
+          last_verified_at: null,
+          updated_at: new Date().toISOString()
+        });
 
-        if (insertError) {
-          console.error(`Error creating ${township}:`, insertError);
-          stats.errors++;
-        } else {
-          stats.created++;
-        }
-      } catch (error) {
-        // Single query error (no row found) is expected
-        if ((error as any)?.code !== 'PGRST116') {
-          console.error(`Error processing ${township}:`, error);
-          stats.errors++;
-        }
+      if (insertError) {
+        console.error(`Error creating ${township}:`, insertError);
+        stats.errors++;
+      } else {
+        stats.created++;
       }
     }
 

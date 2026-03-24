@@ -50,7 +50,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       return res.status(404).json({ success: false, error: 'User not found' });

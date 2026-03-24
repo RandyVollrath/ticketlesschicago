@@ -45,7 +45,7 @@ export default async function handler(
         .from('user_profiles')
         .select('*')
         .eq('email', 'randyvollrath@gmail.com')
-        .single();
+        .maybeSingle();
         
       if (randyDirect) {
         log('✅ Randy exists in database');

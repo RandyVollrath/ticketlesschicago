@@ -251,11 +251,15 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse, adminUser:
       .update(updateObj)
       .eq('id', appealId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Update error:', error);
       return res.status(500).json({ error: 'Failed to update appeal' });
+    }
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Appeal not found' });
     }
 
     return res.status(200).json({

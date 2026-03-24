@@ -24,7 +24,7 @@ export default async function handler(
       .select('*')
       .eq('token', token)
       .eq('used', false)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       console.error('Token not found:', error);
