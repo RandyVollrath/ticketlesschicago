@@ -122,7 +122,7 @@ export default async function handler(
       .from('users')
       .select('stripe_customer_id')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (userProfile?.stripe_customer_id) {
       // Use cached customer ID (most common case for returning users)

@@ -177,7 +177,7 @@ export default async function handler(
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (fetchError) {
       console.error('Error fetching updated profile:', fetchError);

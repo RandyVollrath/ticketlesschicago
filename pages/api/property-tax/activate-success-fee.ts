@@ -70,7 +70,7 @@ export default async function handler(
       .from('property_tax_appeals')
       .select('id, user_id, status, pricing_model, estimated_tax_savings')
       .eq('id', appealId)
-      .single();
+      .maybeSingle();
 
     if (appealError || !appeal) {
       return res.status(404).json({ error: 'Appeal not found' });

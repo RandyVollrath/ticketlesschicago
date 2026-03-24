@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_orders')
       .select('id, order_number, partner_id, status, customer_email, original_partner_id')
       .eq('id', orderId)
-      .single();
+      .maybeSingle();
 
     if (orderError || !order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_partners')
       .select('id, name, status, stripe_connected_account_id')
       .eq('id', newPartnerId)
-      .single();
+      .maybeSingle();
 
     if (partnerError || !newPartner) {
       return res.status(404).json({ error: 'Target remitter not found' });
@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_partners')
       .select('name')
       .eq('id', order.partner_id)
-      .single();
+      .maybeSingle();
 
     // Transfer the order - track original partner for payment reconciliation
     const transferNote = `Transferred from "${oldPartner?.name || 'Unknown'}" to "${newPartner.name}" by admin on ${new Date().toLocaleString()}. PAYMENT RECONCILIATION REQUIRED.`;

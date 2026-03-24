@@ -125,7 +125,7 @@ async function getDeadlinesForTownship(township: string) {
     .select('*')
     .eq('township', township)
     .eq('year', currentYear)
-    .single();
+    .maybeSingle();
 
   if (!deadline) {
     return null;

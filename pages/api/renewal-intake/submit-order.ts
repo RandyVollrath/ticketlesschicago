@@ -140,7 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('*')
       .eq('id', orderData.partnerId)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
     if (partnerError || !partner) {
       return res.status(404).json({ error: 'Partner not found or inactive' });

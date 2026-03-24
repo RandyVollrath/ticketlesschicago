@@ -40,6 +40,7 @@ interface TrackedTicket {
   amount: number | null;
   officer_badge: string | null;
   location: string | null;
+  status: string | null;
   plate: string | null;
   state: string | null;
   last_portal_status: string | null;
@@ -134,6 +135,15 @@ export async function processOutcomeChange(
   const now = new Date().toISOString();
 
   if (outcome === 'hearing_scheduled') {
+    // Guard: Don't overwrite terminal outcomes (won/lost/reduced) with hearing_scheduled.
+    // This can happen if the portal briefly shows "Hearing" queue after a disposition
+    // has already been recorded, or on a delayed re-check.
+    const terminalTicketStatuses = ['won', 'lost', 'reduced'];
+    if (ticket.status && terminalTicketStatuses.includes(ticket.status)) {
+      console.log(`    ⚠️ Skipping hearing_scheduled for ${ticket.ticket_number} — already in terminal status '${ticket.status}'`);
+      return;
+    }
+
     // Update the ticket status and set a follow-up check date
     // Hearings are typically scheduled 2-4 weeks out; re-check weekly
     const nextCheckDate = new Date();

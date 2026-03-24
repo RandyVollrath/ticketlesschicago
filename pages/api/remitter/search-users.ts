@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('id, name')
       .eq('api_key', apiKey)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
     if (partnerError || !partner) {
       console.error('Partner auth error:', partnerError);
