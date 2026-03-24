@@ -63,7 +63,7 @@ export default function RemittanceDashboard() {
       .from('user_profiles')
       .select('email')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     // Only allow specific admin emails
     const adminEmails = ['randy@autopilotamerica.com', 'admin@autopilotamerica.com'];

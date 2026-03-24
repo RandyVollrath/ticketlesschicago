@@ -14,7 +14,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { getChicagoTime } from '../../../lib/chicago-timezone-utils';
-import { sendPushNotification, isFirebaseConfigured } from '../../../lib/firebase-admin';
+import { sendPushNotification, isFirebaseConfigured, cleanupInvalidTokens } from '../../../lib/firebase-admin';
 import { sendClickSendVoiceCall } from '../../../lib/sms-service';
 
 interface ParkedVehicle {
@@ -427,6 +427,9 @@ export default async function handler(
       }
     }
 
+    // Collect invalid FCM tokens for batch cleanup at end
+    const invalidFcmTokens: string[] = [];
+
     for (const vehicle of parkedVehicles as ParkedVehicle[]) {
       try {
         const userProfile = userProfiles.get(vehicle.user_id);
@@ -456,10 +459,10 @@ export default async function handler(
             results.winterBanReminders++;
             console.log(`Sent winter ban reminder to ${vehicle.user_id}`);
           } else if (result.invalidToken) {
-            // Mark vehicle as inactive if token is invalid
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })
               .eq('id', vehicle.id);
+            invalidFcmTokens.push(vehicle.fcm_token);
             console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
           }
         }
@@ -492,6 +495,7 @@ export default async function handler(
               await supabaseAdmin.from('user_parked_vehicles')
                 .update({ is_active: false })
                 .eq('id', vehicle.id);
+              invalidFcmTokens.push(vehicle.fcm_token);
               console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
             }
           }
@@ -538,6 +542,7 @@ export default async function handler(
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })
               .eq('id', vehicle.id);
+            invalidFcmTokens.push(vehicle.fcm_token);
             console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
           }
         }
@@ -570,6 +575,7 @@ export default async function handler(
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })
               .eq('id', vehicle.id);
+            invalidFcmTokens.push(vehicle.fcm_token);
             console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
           }
         }
@@ -614,6 +620,7 @@ export default async function handler(
                 await supabaseAdmin.from('user_parked_vehicles')
                   .update({ is_active: false })
                   .eq('id', vehicle.id);
+                invalidFcmTokens.push(vehicle.fcm_token);
                 console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
               }
             }
@@ -675,6 +682,7 @@ export default async function handler(
               await supabaseAdmin.from('user_parked_vehicles')
                 .update({ is_active: false })
                 .eq('id', vehicle.id);
+              invalidFcmTokens.push(vehicle.fcm_token);
               console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
             }
           }
@@ -824,6 +832,11 @@ export default async function handler(
         console.error(`Error processing vehicle ${vehicle.id}:`, err);
         results.errors++;
       }
+    }
+
+    // Batch cleanup invalid FCM tokens in push_tokens table
+    if (invalidFcmTokens.length > 0) {
+      await cleanupInvalidTokens(supabaseAdmin, invalidFcmTokens);
     }
 
     // Cleanup stale parked vehicles (older than 48 hours)

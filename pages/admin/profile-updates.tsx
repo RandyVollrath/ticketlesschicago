@@ -181,7 +181,7 @@ export default function ProfileUpdates() {
               .from('user_profiles')
               .select('email, phone, home_address_full, license_plate, vin, city_sticker_expiry, license_plate_expiry')
               .eq('user_id', msg.user_id)
-              .single();
+              .maybeSingle();
 
             return { ...msg, user_profile: profile };
           }

@@ -34,7 +34,7 @@ export default function ManualAlerts() {
         .from('user_profiles')
         .select('role')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error || profile?.role !== 'admin') {
         setMessage('Access denied. Admin role required.');
@@ -76,7 +76,7 @@ export default function ManualAlerts() {
           .from('user_profiles')
           .select('user_id, phone_number, email')
           .eq('email', email)
-          .single();
+          .maybeSingle();
 
         if (profileError || !profile) {
           results.push(`❌ ${email}: User not found`);

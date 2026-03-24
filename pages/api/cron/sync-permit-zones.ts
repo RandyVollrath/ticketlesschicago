@@ -54,6 +54,10 @@ async function fetchAllPermitZones(): Promise<ChicagoPermitZone[]> {
   return allZones;
 }
 
+export const config = {
+  maxDuration: 120, // 2 minutes — fetches all permit zones from Chicago API + truncate/re-insert
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -62,7 +66,13 @@ export default async function handler(
   const authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  // Guard: if CRON_SECRET is not set, reject all requests
+  if (!cronSecret) {
+    console.error('CRON_SECRET not configured — rejecting request');
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
     console.log('❌ Unauthorized cron request');
     return res.status(401).json({ error: 'Unauthorized' });
   }
