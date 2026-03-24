@@ -21,6 +21,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { parseChicagoAddress } from '../../lib/address-parser';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,6 +48,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!parsed) {
     return res.status(400).json({ error: 'Could not parse address' });
   }
+
+  // Rate limiting — 100 requests per minute per IP
+  const clientIp = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(clientIp, 'api');
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests. Please try again later.',
+      retryAfter: Math.ceil(rateLimitResult.resetIn / 1000),
+    });
+  }
+  await recordRateLimitAction(clientIp, 'api');
 
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
   const day = req.query.day !== undefined ? parseInt(req.query.day as string) : now.getDay();
