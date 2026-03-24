@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
-import { verifyWebhook } from '../../../lib/webhook-verification';
+import { verifyWebhook, readRawBody } from '../../../lib/webhook-verification';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 import {
@@ -27,9 +27,9 @@ import {
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '25mb', // Must be large enough for base64-encoded image attachments
-    },
+    // Disable body parsing so we can read the raw body for Svix signature verification.
+    // Svix signs the exact bytes sent — JSON.stringify(req.body) may differ.
+    bodyParser: false,
   },
 };
 
@@ -38,8 +38,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // SECURITY: Verify webhook signature
-  if (!verifyWebhook('resend', req)) {
+  // Read raw body for signature verification, then parse manually
+  const rawBodyBuf = await readRawBody(req);
+  const rawBody = rawBodyBuf.toString('utf-8');
+
+  // Size limit: 25 MB (same as previous bodyParser config)
+  if (rawBodyBuf.length > 25 * 1024 * 1024) {
+    return res.status(413).json({ error: 'Request body too large' });
+  }
+
+  try {
+    req.body = JSON.parse(rawBody);
+  } catch {
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+
+  // SECURITY: Verify webhook signature using raw body
+  if (!verifyWebhook('resend', req, rawBody)) {
     console.error('⚠️ Resend webhook verification failed');
     return res.status(401).json({ error: 'Unauthorized - invalid signature' });
   }

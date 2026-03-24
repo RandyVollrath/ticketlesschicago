@@ -662,15 +662,18 @@ export function isFoiaResponseEmail(
   const subj = subject.toLowerCase();
   const text = body.toLowerCase();
 
-  // Check sender — DOF FOIA office or any cityofchicago.org
+  // Check sender — DOF FOIA office, any cityofchicago.org, or GovQA (city's FOIA portal)
   const foiaSenders = [
     'doffoia@cityofchicago.org',
     'foia@cityofchicago.org',
     'finance.foia@cityofchicago.org',
     'doah@cityofchicago.org', // Department of Administrative Hearings
     'noreply@cityofchicago.org',
+    'chicagoil@govqa.us', // GovQA FOIA portal used by Chicago
   ];
-  const isFromCity = foiaSenders.some(s => from.includes(s)) || from.includes('cityofchicago.org');
+  const isFromCity = foiaSenders.some(s => from.includes(s))
+    || from.includes('cityofchicago.org')
+    || from.includes('govqa.us'); // GovQA hosts Chicago's FOIA portal
 
   // Check subject/body keywords
   const foiaKeywords = ['foia', 'freedom of information', 'records request', 'public records', 'responsive documents', 'enforcement records'];

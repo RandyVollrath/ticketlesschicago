@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { verifyWebhook } from '../../../lib/webhook-verification';
+import { verifyWebhook, readRawBody } from '../../../lib/webhook-verification';
 import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 import type { ContestEvaluation } from '../../../lib/contest-kits/types';
 import {
@@ -50,9 +50,7 @@ function isAllowedAttachmentUrl(url: string): boolean {
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '25mb', // Must be large enough for base64-encoded image attachments
-    },
+    bodyParser: false, // Must read raw body for Svix signature verification
   },
 };
 
@@ -150,6 +148,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // ── Read raw body for Svix signature verification ──
+  const rawBodyBuf = await readRawBody(req);
+  const rawBody = rawBodyBuf.toString('utf-8');
+
+  if (rawBodyBuf.length > 25 * 1024 * 1024) {
+    return res.status(413).json({ error: 'Request body too large' });
+  }
+
+  try {
+    req.body = JSON.parse(rawBody);
+  } catch {
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+
   // SECURITY: Verify webhook signature
   // Support both Resend webhooks (uses RESEND_EVIDENCE_WEBHOOK_SECRET)
   // and Cloudflare Email Workers (uses X-Cloudflare-Email-Worker header)
@@ -163,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ? cloudflareHeader === expectedCloudflareSecret
     : false;
 
-  if (!isCloudflareWorker && !verifyWebhook('resend-evidence', req)) {
+  if (!isCloudflareWorker && !verifyWebhook('resend-evidence', req, rawBody)) {
     console.error('Evidence webhook verification failed');
     return res.status(401).json({ error: 'Unauthorized - invalid signature' });
   }
@@ -614,7 +626,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('autopilot_settings')
       .select('require_approval, auto_mail_enabled')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     // Default: require approval (matches new DB default)
     const requireApproval = userSettings?.require_approval ?? true;
