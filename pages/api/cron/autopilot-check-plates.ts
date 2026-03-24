@@ -51,19 +51,102 @@ interface UserProfile {
   mailing_zip: string | null;
 }
 
-const VIOLATION_TYPE_MAP: Record<string, string> = {
-  '0964125': 'expired_plates', // Expired Plates
-  '0964150': 'no_city_sticker', // No City Sticker
-  '0976160': 'expired_meter', // Expired Meter / No Pay
-  '0976170': 'expired_meter', // Overtime Parking
-  '0964170': 'street_cleaning', // Street Cleaning
-  '0964175': 'fire_hydrant', // Fire Hydrant
-  '0976120': 'disabled_zone', // Disabled Parking Zone
-  '0964190': 'other_unknown', // Default
+// Map violation CODES (from Chicago Data Portal API) → normalized type
+const VIOLATION_CODE_MAP: Record<string, string> = {
+  '0964125': 'expired_plates',
+  '0964150': 'no_city_sticker',
+  '0976160': 'expired_meter',
+  '0976170': 'expired_meter',
+  '0964170': 'street_cleaning',
+  '0964175': 'fire_hydrant',
+  '0976120': 'disabled_zone',
+  '0964190': 'parking_prohibited',
+  '0976140': 'parking_prohibited',
+  '0976150': 'no_standing_time_restricted',
+  '0964100': 'residential_permit',
+  '0976110': 'snow_route',
+  '0964165': 'double_parking',
+  '0964180': 'bus_stop',
 };
 
-function mapViolationType(code: string): string {
-  return VIOLATION_TYPE_MAP[code] || 'other_unknown';
+// Map violation DESCRIPTION keywords (from portal scraper or Data Portal) → normalized type
+// Used as fallback when violation_code is null or not in VIOLATION_CODE_MAP
+const VIOLATION_DESCRIPTION_MAP: Record<string, string> = {
+  'street cleaning': 'street_cleaning',
+  'expired meter': 'expired_meter',
+  'overtime parking': 'expired_meter',
+  'no meter pay': 'expired_meter',
+  'meter non-central': 'expired_meter',
+  'expired plates': 'expired_plates',
+  'no city sticker': 'no_city_sticker',
+  'fire hydrant': 'fire_hydrant',
+  'residential permit': 'residential_permit',
+  'no standing': 'no_standing_time_restricted',
+  'time restricted': 'no_standing_time_restricted',
+  'standing/parking': 'no_standing_time_restricted',
+  'snow route': 'snow_route',
+  'snow removal': 'snow_route',
+  'bike lane': 'bike_lane',
+  'bus lane': 'bus_lane',
+  'speed camera': 'speed_camera',
+  'automated speed': 'speed_camera',
+  'red light': 'red_light',
+  'traffic signal': 'red_light',
+  'parking prohibited': 'parking_prohibited',
+  'commercial loading': 'commercial_loading',
+  'disabled zone': 'disabled_zone',
+  'handicapped': 'disabled_zone',
+  'double parking': 'double_parking',
+  'double park': 'double_parking',
+  'missing plate': 'missing_plate',
+  'no front plate': 'missing_plate',
+  'no rear plate': 'missing_plate',
+  'parking alley': 'parking_alley',
+  'bus stop': 'bus_stop',
+  'crosswalk': 'parking_prohibited',
+  'rush hour': 'parking_prohibited',
+  'tow zone': 'parking_prohibited',
+};
+
+/**
+ * Normalize a violation code to strip suffix letters and hyphens.
+ * Portal returns codes like "0964125F" or "9-64-170" but the map expects "0964125".
+ */
+function normalizeViolationCode(code: string | null | undefined): string | null {
+  if (!code) return null;
+  // Strip trailing letters (e.g., "0964125F" → "0964125")
+  let normalized = code.replace(/[A-Za-z]+$/, '');
+  // Remove hyphens (e.g., "9-64-170" → "964170") then zero-pad to 7 digits
+  normalized = normalized.replace(/-/g, '');
+  if (normalized.length > 0 && normalized.length < 7) {
+    normalized = normalized.padStart(7, '0');
+  }
+  return normalized;
+}
+
+/**
+ * Map a ticket to its normalized violation type using code + description fallback.
+ * Priority: violation_code (normalized) → violation_description keyword match → 'other_unknown'
+ */
+function mapViolationType(code: string | null | undefined, description: string | null | undefined): string {
+  // Try code-based mapping first (with normalization)
+  const normalizedCode = normalizeViolationCode(code);
+  if (normalizedCode && VIOLATION_CODE_MAP[normalizedCode]) {
+    return VIOLATION_CODE_MAP[normalizedCode];
+  }
+
+  // Fall back to description-based mapping
+  if (description) {
+    const lower = description.toLowerCase().trim();
+    // Check exact matches first
+    if (VIOLATION_DESCRIPTION_MAP[lower]) return VIOLATION_DESCRIPTION_MAP[lower];
+    // Check substring matches
+    for (const [keyword, type] of Object.entries(VIOLATION_DESCRIPTION_MAP)) {
+      if (lower.includes(keyword)) return type;
+    }
+  }
+
+  return 'other_unknown';
 }
 
 function isCameraViolation(violationType: string): boolean {
@@ -588,7 +671,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
                    parseFloat(ticket.fine_level2_amount) ||
                    parseFloat(ticket.fine_level1_amount) || 0;
 
-    const violationType = mapViolationType(ticket.violation_code);
+    const violationType = mapViolationType(ticket.violation_code, ticket.violation_description);
     const cameraViolation = isCameraViolation(violationType);
     // Calculate deadlines based on ticket issue date (21-day contest window)
     // Use Chicago timezone for calendar-day arithmetic to avoid UTC midnight edge cases
