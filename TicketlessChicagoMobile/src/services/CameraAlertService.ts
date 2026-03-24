@@ -1468,7 +1468,12 @@ class CameraAlertServiceClass {
       | null = null;
     const rejectDebugRadius = Math.max(effectiveRadius * 1.4, 220);
 
-    // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy
+    // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy.
+    // NOTE: The native Swift implementation (BackgroundLocationModule.swift) uses tighter
+    // tolerances when CoreMotion says not-automotive. JS doesn't have access to
+    // isDriving/coreMotionAutomotive here, so it still uses the wider vehicle tolerances.
+    // This is OK because native handles iOS alerts (both fg+bg) and Android uses its own
+    // native module. JS camera alerts are secondary/diagnostic only.
     const headingTol = getHeadingTolerance(speed);
     const bearingTol = getBearingTolerance(speed);
 

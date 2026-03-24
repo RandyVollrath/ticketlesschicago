@@ -964,18 +964,36 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   /// Heading smoothing buffer for GPS noise reduction at low speeds
   private var camHeadingBuffer: [Double] = []
 
-  /// Speed-adaptive heading tolerance: widen at low speeds where GPS heading is noisy
-  private func camGetHeadingTolerance(speedMps: Double) -> Double {
+  /// Speed-adaptive heading tolerance: widen at low speeds where GPS heading is noisy.
+  /// `isAutomotive`: true when CoreMotion says automotive or isDriving is set. When false,
+  /// the user is likely a pedestrian — use tighter tolerance to avoid false alerts.
+  /// Bug fix: Mar 24, 2026 — 75° tolerance at walking speed (1.87 m/s) let heading 230°
+  /// match WB camera (270°) while user was walking past 800 W Fullerton.
+  private func camGetHeadingTolerance(speedMps: Double, isAutomotive: Bool = true) -> Double {
     if speedMps < 0 { return camHeadingToleranceDeg }
-    if speedMps < 5.0 { return 75 }  // <11 mph — very noisy heading
+    // When not automotive (likely pedestrian), use standard tolerance even at low speeds.
+    // GPS heading is noisy at low speed, but widening to 75° for a pedestrian creates
+    // false alerts for cameras in the opposite direction.
+    if !isAutomotive {
+      // Without automotive confirmation, GPS heading noise is expected but the risk
+      // of false alerts outweighs the risk of missing a real one. A pedestrian or
+      // slow cyclist doesn't get tickets from red-light cameras.
+      if speedMps < 5.0 { return 40 }  // Tight: only 5° wider than standard 35° for GPS noise
+      return camHeadingToleranceDeg
+    }
+    if speedMps < 5.0 { return 75 }  // <11 mph — very noisy heading (vehicle)
     if speedMps < 8.0 { return 60 }  // <18 mph — moderately noisy
     return camHeadingToleranceDeg     // ≥18 mph — standard 35°
   }
 
   /// Speed-adaptive bearing tolerance: widen forward cone at low speeds
-  private func camGetBearingTolerance(speedMps: Double) -> Double {
+  private func camGetBearingTolerance(speedMps: Double, isAutomotive: Bool = true) -> Double {
     if speedMps < 0 { return camMaxBearingOffHeadingDeg }
-    if speedMps < 5.0 { return 50 }  // <11 mph — widen forward cone
+    if !isAutomotive {
+      if speedMps < 5.0 { return 35 }  // Tighter than vehicle 50° but wider than standard 30°
+      return camMaxBearingOffHeadingDeg
+    }
+    if speedMps < 5.0 { return 50 }  // <11 mph — widen forward cone (vehicle)
     if speedMps < 8.0 { return 40 }  // <18 mph — slightly wider
     return camMaxBearingOffHeadingDeg // ≥18 mph — standard 30°
   }
@@ -3879,9 +3897,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     var nearestRejectedDist: Double = Double.greatestFiniteMagnitude
     var nearestRejectedReason: String? = nil
     let rejectDebugRadius = max(effectiveRadius * 1.4, 220)
-    // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy
-    let headingTol = camGetHeadingTolerance(speedMps: speed)
-    let bearingTol = camGetBearingTolerance(speedMps: speed)
+    // Speed-adaptive tolerances: widen at low speeds where GPS heading is noisy.
+    // Pass automotive state so pedestrians get tighter tolerance (prevents false alerts
+    // like 800 W Fullerton at heading 230° matching WB camera at walking speed).
+    let isAutomotiveForTolerance = isDriving || coreMotionSaysAutomotive
+    let headingTol = camGetHeadingTolerance(speedMps: speed, isAutomotive: isAutomotiveForTolerance)
+    let bearingTol = camGetBearingTolerance(speedMps: speed, isAutomotive: isAutomotiveForTolerance)
     var bboxCandidateCount = 0
     var typeFilteredCount = 0
     var speedFilteredCount = 0
@@ -3914,7 +3935,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       bboxCandidateCount += 1
 
       let dist = haversineMeters(lat1: lat, lon1: lng, lat2: cam.lat, lon2: cam.lng)
-      let minSpeed = (cam.type == "speed") ? camMinSpeedSpeedCamMps : camMinSpeedRedlightMps
+      // When not automotive (likely pedestrian), raise the minimum speed threshold
+      // to reject walking-speed GPS. Red-light min of 1.0 m/s is walking pace and
+      // caused false alerts at 1.87 m/s (800 W Fullerton, Mar 21 2026).
+      let baseMinSpeed = (cam.type == "speed") ? camMinSpeedSpeedCamMps : camMinSpeedRedlightMps
+      let minSpeed = (!isAutomotiveForTolerance && baseMinSpeed < 2.5) ? 2.5 : baseMinSpeed
       let perCameraDeduped = alertedCameraAtByIndex[i].map { Date().timeIntervalSince($0) < camAlertDedupeSec } ?? false
       let headingOk = isHeadingMatch(headingDeg: heading, approaches: cam.approaches, tolerance: headingTol)
       let aheadOk = isCameraAhead(userLat: lat, userLng: lng, camLat: cam.lat, camLng: cam.lng, headingDeg: heading, bearingTolerance: bearingTol)
@@ -4038,6 +4063,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "bboxCandidates": bboxCandidateCount,
       "isBackgrounded": isBackgrounded,
       "notificationOnly": isBackgrounded,  // TTS speaks in foreground; background = notification only (no audio bg mode)
+      "isAutomotive": isAutomotiveForTolerance,
+      "headingTolerance": headingTol,
+      "bearingTolerance": bearingTol,
     ])
     log("NATIVE CAMERA ALERT: \(title) @ \(cam.address) (dist=\(Int(bestDist))m, radius=\(Int(alertRadius))m)")
   }
