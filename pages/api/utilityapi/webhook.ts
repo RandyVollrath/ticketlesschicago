@@ -26,6 +26,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // ── Webhook Authentication ──
+  // UtilityAPI webhook verification using shared secret.
+  // The webhook URL is configured with a secret query parameter:
+  // https://autopilotamerica.com/api/utilityapi/webhook?secret=<UTILITYAPI_WEBHOOK_SECRET>
+  const webhookSecret = process.env.UTILITYAPI_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const providedSecret = req.query.secret;
+    if (providedSecret !== webhookSecret) {
+      console.warn('UtilityAPI webhook: invalid or missing secret');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  } else {
+    console.warn('UtilityAPI webhook: UTILITYAPI_WEBHOOK_SECRET not configured — running without auth');
+  }
+
   try {
     const event = req.body;
 
