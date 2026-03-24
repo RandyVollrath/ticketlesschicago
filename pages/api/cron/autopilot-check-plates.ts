@@ -629,7 +629,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         raw_data: ticket,
       })
       .select('id')
-      .single();
+      .maybeSingle();
 
     if (insertError || !newTicket?.id) {
       errors.push(`Failed to insert ticket ${ticket.ticket_number}: ${insertError?.message || 'Unknown error'}`);
@@ -836,13 +836,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const activeUserIds = subscriptions.map(s => s.user_id);
 
-    // Get all active plates for these users (bounded to prevent runaway queries)
-    const { data: plates } = await supabaseAdmin
-      .from('monitored_plates')
-      .select('id, user_id, plate, state, status, last_checked_at, created_at')
-      .in('user_id', activeUserIds)
-      .eq('status', 'active')
-      .limit(500);
+    // Fetch ALL active plates with pagination (no hard cap)
+    let plates: any[] = [];
+    let offset = 0;
+    const PAGE_SIZE = 500;
+    while (true) {
+      const { data: batch } = await supabaseAdmin
+        .from('monitored_plates')
+        .select('id, user_id, plate, state, status, last_checked_at, created_at')
+        .in('user_id', activeUserIds)
+        .eq('status', 'active')
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (!batch || batch.length === 0) break;
+      plates = plates.concat(batch);
+      if (batch.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
 
     if (!plates || plates.length === 0) {
       console.log('No active plates to check');
