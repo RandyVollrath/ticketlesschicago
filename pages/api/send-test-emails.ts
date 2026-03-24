@@ -9,6 +9,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Auth: require CRON_SECRET to prevent unauthorized mass email sends
+  const authHeader = req.headers.authorization;
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+  if (authHeader !== `Bearer ${secret}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     if (!supabaseAdmin) {
       return res.status(500).json({ error: 'Supabase admin client not available' });

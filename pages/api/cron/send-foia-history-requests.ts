@@ -215,8 +215,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (result.success) {
         console.log(`    Sent (Resend ID: ${result.emailId}, Ref: ${referenceId})`);
 
-        // Update status — wrapped in try-catch because the email was ALREADY SENT
-        // If this fails, the orphan recovery logic will re-queue it on the next run
+        // ── CRITICAL: Save resend_message_id IMMEDIATELY after send ──
+        // This is the anti-duplicate guard. If the full status update below fails,
+        // the recovery logic checks resend_message_id to know the email was already
+        // sent and marks it as 'sent' instead of re-queuing (which would send a
+        // duplicate FOIA to the city).
+        try {
+          await supabaseAdmin
+            .from('foia_history_requests')
+            .update({
+              resend_message_id: result.emailId,
+              reference_id: referenceId,
+              updated_at: new Date().toISOString(),
+            } as any)
+            .eq('id', request.id);
+        } catch (earlyErr: any) {
+          // If even this minimal save fails, log prominently but continue —
+          // the full update below may succeed
+          console.error(`    ⚠️ Early resend_message_id save failed: ${earlyErr.message}. Duplicate risk if full update also fails.`);
+        }
+
+        // Full status update — wrapped in try-catch because the email was ALREADY SENT
+        // If this fails, the orphan recovery logic will use resend_message_id (saved above)
+        // to detect it was already sent and mark as 'sent' instead of re-queuing
         const updatePayload: any = {
           status: 'sent',
           foia_sent_at: new Date().toISOString(),
@@ -233,7 +254,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .update(updatePayload)
             .eq('id', request.id);
         } catch (dbErr: any) {
-          console.error(`    ⚠️ CRITICAL: History FOIA email sent but DB update failed: ${dbErr.message}. Row ${request.id} may be stuck in 'drafting'. Will be recovered on next run.`);
+          console.error(`    ⚠️ CRITICAL: History FOIA email sent but DB update failed: ${dbErr.message}. Row ${request.id} stuck in 'drafting' but resend_message_id saved — recovery will fix it.`);
         }
 
         sent++;

@@ -355,12 +355,23 @@ function calculateTotalWithFees(basePrice: number): {
   };
 }
 
+export const config = {
+  maxDuration: 120, // 2 minutes — makes Stripe API calls per customer
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify this is a cron request (skip auth for dry run testing)
   const dryRun = req.query.dryRun === 'true';
   const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
 
-  if (!dryRun && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Guard: if CRON_SECRET is not set, reject all requests (except dry run)
+  if (!dryRun && !cronSecret) {
+    console.error('CRON_SECRET not configured — rejecting request');
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+
+  if (!dryRun && authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

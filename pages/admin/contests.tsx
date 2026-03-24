@@ -50,8 +50,8 @@ export default function AdminContests() {
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
-      .single();
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     if (profile?.role !== 'admin') {
       router.push('/');

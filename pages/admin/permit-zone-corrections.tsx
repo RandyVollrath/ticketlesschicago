@@ -77,7 +77,7 @@ export default function PermitZoneCorrections() {
       .from('user_profiles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     if (profile?.role !== 'admin') {
       router.push('/');
       return;

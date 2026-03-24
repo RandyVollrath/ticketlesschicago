@@ -6,7 +6,7 @@
  */
 
 import { supabaseAdmin } from '../../../lib/supabase';
-import { sendPushNotification, isFirebaseConfigured } from '../../../lib/firebase-admin';
+import { sendPushNotification, isFirebaseConfigured, cleanupInvalidTokens } from '../../../lib/firebase-admin';
 
 interface ParkedVehicle {
   id: string;
@@ -60,6 +60,8 @@ export async function sendMobileSnowBanNotifications(
 
     console.log(`Found ${parkedVehicles.length} mobile users parked on snow routes`);
 
+    const invalidFcmTokens: string[] = [];
+
     // Determine notification content based on type
     const isUrgent = notificationType === 'confirmation';
     const title = isUrgent
@@ -104,6 +106,7 @@ export async function sendMobileSnowBanNotifications(
             .from('user_parked_vehicles')
             .update({ is_active: false })
             .eq('id', vehicle.id);
+          invalidFcmTokens.push(vehicle.fcm_token);
           console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
           results.failed++;
         } else {
@@ -113,6 +116,11 @@ export async function sendMobileSnowBanNotifications(
         console.error(`Error sending notification to ${vehicle.user_id}:`, err);
         results.failed++;
       }
+    }
+
+    // Batch cleanup invalid FCM tokens in push_tokens table
+    if (supabaseAdmin && invalidFcmTokens.length > 0) {
+      await cleanupInvalidTokens(supabaseAdmin, invalidFcmTokens);
     }
 
     console.log('Mobile snow ban notifications completed:', results);
