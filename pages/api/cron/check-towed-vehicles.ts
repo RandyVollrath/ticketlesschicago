@@ -203,7 +203,7 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
           .from('towed_vehicles')
           .select('notified_users')
           .eq('id', tow.id)
-          .single();
+          .maybeSingle();
         const currentNotified = (freshTow?.notified_users as string[]) || [];
         if (!currentNotified.includes(user.user_id)) {
           const { error: updateErr } = await supabaseAdmin

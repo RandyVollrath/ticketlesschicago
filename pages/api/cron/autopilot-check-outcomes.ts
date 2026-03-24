@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Fetch tickets that have been mailed (contest letters sent) but no outcome yet
     const { data: trackedTickets, error } = await supabaseAdmin
       .from('detected_tickets')
-      .select('id, ticket_number, user_id, violation_type, violation_code, amount, officer_badge, location, plate, state, last_portal_status, last_portal_check')
+      .select('id, ticket_number, user_id, violation_type, violation_code, amount, officer_badge, location, status, plate, state, last_portal_status, last_portal_check')
       .in('status', ['mailed', 'letter_generated', 'hearing_scheduled', 'needs_approval'])
       .not('ticket_number', 'is', null)
       .order('created_at', { ascending: true })

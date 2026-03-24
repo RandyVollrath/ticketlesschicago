@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('renewal_charges')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error || !renewal) {
       return res.status(404).send(`
@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('email, first_name, last_name, license_plate')
       .eq('user_id', renewal.user_id)
-      .single();
+      .maybeSingle();
 
     if (profileError || !userProfile) {
       return res.status(404).send(`

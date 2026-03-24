@@ -58,7 +58,7 @@ async function handleGet(appealId: string, userId: string, res: NextApiResponse)
       .select('*')
       .eq('id', appealId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (appealError || !appeal) {
       return res.status(404).json({ error: 'Appeal not found' });
@@ -88,7 +88,7 @@ async function handleGet(appealId: string, userId: string, res: NextApiResponse)
         .eq('pin', appeal.pin)
         .order('assessment_year', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
     ]);
 
     const comparables = comparablesResult.data;
@@ -207,7 +207,7 @@ async function handlePatch(
       .select('id, stage')
       .eq('id', appealId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (!existing) {
       return res.status(404).json({ error: 'Appeal not found' });
@@ -262,7 +262,7 @@ async function handlePatch(
         .from('property_tax_appeals')
         .select('current_assessed_value')
         .eq('id', appealId)
-        .single();
+        .maybeSingle();
 
       if (appeal) {
         const reduction = Math.max(0, appeal.current_assessed_value - updates.proposed_assessed_value);
@@ -311,7 +311,7 @@ async function handleDelete(appealId: string, userId: string, res: NextApiRespon
       .select('id, stage')
       .eq('id', appealId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (!existing) {
       return res.status(404).json({ error: 'Appeal not found' });

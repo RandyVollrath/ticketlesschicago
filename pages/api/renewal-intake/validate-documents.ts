@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('*')
       .eq('api_key', apiKey)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
     if (!partner) {
       return res.status(401).json({ error: 'Invalid API key' });
@@ -62,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('*')
       .eq('id', orderId)
       .eq('partner_id', partner.id)
-      .single();
+      .maybeSingle();
 
     if (orderError || !order) {
       return res.status(404).json({ error: 'Order not found' });

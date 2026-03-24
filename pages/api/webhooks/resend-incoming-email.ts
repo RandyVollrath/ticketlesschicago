@@ -318,7 +318,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .from('ticket_foia_requests')
               .select('ticket_id')
               .eq('id', foiaResult.requestId || '')
-              .single();
+              .maybeSingle();
 
             if (foiaReqData) {
               const { data: letter } = await supabaseAdmin
@@ -372,7 +372,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .from('detected_tickets')
                 .select('user_id, ticket_number')
                 .eq('id', foiaReqData.ticket_id)
-                .single();
+                .maybeSingle();
 
               if (ticketData) {
                 const { data: userData } = await supabaseAdmin.auth.admin.getUserById(ticketData.user_id);
@@ -571,7 +571,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('status', 'pending_evidence')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (pendingTicket) {
         console.log(`🎫 Found pending ticket: ${pendingTicket.ticket_number}`);
@@ -740,7 +740,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('user_profiles')
           .select('first_name, last_name, contest_consent')
           .eq('user_id', matchedUserId)
-          .single();
+          .maybeSingle();
 
         if (consentProfile && !consentProfile.contest_consent) {
           const signatureName = `${consentProfile.first_name || ''} ${consentProfile.last_name || ''}`.trim() || fromEmail;

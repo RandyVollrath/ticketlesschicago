@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `)
       .eq('id', appealId)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (appealError || !appeal) {
       return res.status(404).json({ error: 'Appeal not found' });
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('first_name, last_name, street_address, city, state, zip_code')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile?.street_address) {
       return res.status(400).json({

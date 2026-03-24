@@ -367,7 +367,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
         .from('renewal_charges')
         .select('*')
         .eq('id', chargeId)
-        .single();
+        .maybeSingle();
 
       if (chargeError || !charge) {
         return res.status(404).json({ success: false, error: 'Charge not found' });
