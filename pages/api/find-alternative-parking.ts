@@ -4,11 +4,11 @@ import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 
 // Use MyStreetCleaning database for street cleaning schedule data
-const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL || 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
+const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL || '';
 const MSC_SUPABASE_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
 
-if (!MSC_SUPABASE_KEY) {
-  throw new Error('MSC_SUPABASE_SERVICE_ROLE_KEY not configured');
+if (!MSC_SUPABASE_URL || !MSC_SUPABASE_KEY) {
+  throw new Error('MSC_SUPABASE_URL and MSC_SUPABASE_SERVICE_ROLE_KEY must be configured');
 }
 
 const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_KEY);

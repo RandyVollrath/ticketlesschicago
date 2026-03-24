@@ -56,21 +56,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const blockId = `${Math.floor(parsed.number / 100) * 100} ${parsed.direction || ''} ${parsed.name}`.replace(/\s+/g, ' ').trim();
 
-    // Fetch hourly patterns for this block
+    // Fetch hourly patterns for this block (capped to prevent unbounded result sets)
     const { data: hourlyData, error: hourlyErr } = await supabaseAdmin
       .from('foia_block_hourly')
       .select('violation_category, hour, day_of_week, ticket_count')
-      .eq('block_id', blockId);
+      .eq('block_id', blockId)
+      .limit(5000);
 
     if (hourlyErr) {
       console.error('[ticket-risk] Hourly query error:', hourlyErr.message);
     }
 
-    // Fetch monthly patterns for this block
+    // Fetch monthly patterns for this block (capped to prevent unbounded result sets)
     const { data: monthlyData, error: monthlyErr } = await supabaseAdmin
       .from('foia_block_monthly')
       .select('violation_category, month, ticket_count')
-      .eq('block_id', blockId);
+      .eq('block_id', blockId)
+      .limit(1000);
 
     if (monthlyErr) {
       console.error('[ticket-risk] Monthly query error:', monthlyErr.message);

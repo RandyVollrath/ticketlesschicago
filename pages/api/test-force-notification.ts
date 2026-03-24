@@ -11,6 +11,16 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Auth: require CRON_SECRET — this endpoint sends emails/SMS/voice to arbitrary recipients
+  const authHeader = req.headers.authorization;
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+  if (authHeader !== `Bearer ${secret}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const { email, phone, testType = 'all' } = req.body;
 
   if (!email) {

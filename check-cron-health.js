@@ -14,21 +14,21 @@ async function checkCronHealth() {
   // Check street cleaning notifications (should run 3x daily at 00:00, 12:00, 20:00 UTC)
   console.log('\n📍 STREET CLEANING CRON STATUS:');
   const { data: streetCleaningNotifs, error: sc_error } = await supabase
-    .from('notifications')
-    .select('created_at, notification_type, sent_at')
-    .ilike('notification_type', '%street%')
-    .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-    .order('created_at', { ascending: false })
+    .from('message_audit_log')
+    .select('timestamp, message_key')
+    .ilike('message_key', '%street%')
+    .gte('timestamp', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .order('timestamp', { ascending: false })
     .limit(20);
 
   if (streetCleaningNotifs && streetCleaningNotifs.length > 0) {
     console.log(`✅ Found ${streetCleaningNotifs.length} street cleaning notifications in last 7 days`);
-    console.log(`   Most recent: ${streetCleaningNotifs[0].created_at}`);
+    console.log(`   Most recent: ${streetCleaningNotifs[0].timestamp}`);
 
     // Group by date to see daily pattern
     const byDate = {};
     streetCleaningNotifs.forEach(n => {
-      const date = n.created_at.split('T')[0];
+      const date = n.timestamp.split('T')[0];
       byDate[date] = (byDate[date] || 0) + 1;
     });
     console.log(`   Daily counts:`, byDate);
@@ -40,16 +40,16 @@ async function checkCronHealth() {
   // Check renewal notifications (should run daily at 09:00 UTC)
   console.log('\n🔔 RENEWAL NOTIFICATIONS CRON STATUS:');
   const { data: renewalNotifs, error: rn_error } = await supabase
-    .from('notifications')
-    .select('created_at, notification_type')
-    .ilike('notification_type', '%renewal%')
-    .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-    .order('created_at', { ascending: false })
+    .from('message_audit_log')
+    .select('timestamp, message_key')
+    .ilike('message_key', '%renewal%')
+    .gte('timestamp', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .order('timestamp', { ascending: false })
     .limit(20);
 
   if (renewalNotifs && renewalNotifs.length > 0) {
     console.log(`✅ Found ${renewalNotifs.length} renewal notifications in last 7 days`);
-    console.log(`   Most recent: ${renewalNotifs[0].created_at}`);
+    console.log(`   Most recent: ${renewalNotifs[0].timestamp}`);
   } else {
     console.log(`⚠️  No renewal notifications in last 7 days (may be normal if no renewals due)`);
   }
@@ -57,17 +57,17 @@ async function checkCronHealth() {
   // Check general notifications (should run daily at 14:00 UTC / 2pm)
   console.log('\n📨 GENERAL NOTIFICATIONS CRON STATUS (2pm):');
   const { data: generalNotifs, error: gn_error } = await supabase
-    .from('notifications')
-    .select('created_at, notification_type')
-    .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-    .order('created_at', { ascending: false })
+    .from('message_audit_log')
+    .select('timestamp, message_key')
+    .gte('timestamp', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .order('timestamp', { ascending: false })
     .limit(50);
 
   if (generalNotifs && generalNotifs.length > 0) {
     console.log(`✅ Found ${generalNotifs.length} total notifications in last 7 days`);
     const byDate = {};
     generalNotifs.forEach(n => {
-      const date = n.created_at.split('T')[0];
+      const date = n.timestamp.split('T')[0];
       byDate[date] = (byDate[date] || 0) + 1;
     });
     console.log(`   Daily counts:`, byDate);
