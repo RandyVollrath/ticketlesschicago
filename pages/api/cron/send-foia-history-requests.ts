@@ -42,8 +42,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
   }
 
-  // ── Recovery: Re-queue orphaned 'drafting' rows (cron crashed mid-send) ──
+  // ── Recovery: Fix sent-but-stuck rows (email sent but DB update failed) ──
+  // If a row has been in 'drafting' for >5 minutes, the previous run died.
+  // BUT: If resend_message_id is set, the email was ALREADY SENT and the DB
+  // update just failed — mark as 'sent' instead of re-queuing (prevents
+  // sending duplicate FOIA emails to the city).
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+  // First: fix rows where email was sent but status stuck in 'drafting'
+  const { data: sentButStuck, error: sentButStuckError } = await supabaseAdmin
+    .from('foia_history_requests')
+    .select('id, resend_message_id')
+    .eq('status', 'drafting')
+    .lt('updated_at', fiveMinutesAgo)
+    .not('resend_message_id', 'is', null);
+
+  if (sentButStuckError) {
+    console.error('Failed to fetch sent-but-stuck history FOIA requests:', sentButStuckError.message);
+  }
+  if (sentButStuck && sentButStuck.length > 0) {
+    for (const row of sentButStuck) {
+      const { error: fixError } = await supabaseAdmin
+        .from('foia_history_requests')
+        .update({
+          status: 'sent',
+          foia_sent_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          notes: 'Recovered: email was sent (has resend_message_id) but status was stuck in drafting',
+        } as any)
+        .eq('id', row.id);
+      if (fixError) {
+        console.error(`Failed to fix sent-but-stuck history FOIA request ${row.id}: ${fixError.message}`);
+      }
+    }
+    console.log(`  ✅ Fixed ${sentButStuck.length} sent-but-stuck history FOIA request(s) (marked as sent)`);
+  }
+
+  // Then: re-queue truly orphaned rows (no resend_message_id = email never sent)
   const { data: orphanedDrafting, error: orphanRecoveryError } = await supabaseAdmin
     .from('foia_history_requests')
     .update({
@@ -53,6 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } as any)
     .eq('status', 'drafting')
     .lt('updated_at', fiveMinutesAgo)
+    .is('resend_message_id', null)
     .select('id');
   if (orphanRecoveryError) {
     console.error('Failed to recover orphaned drafting history FOIA requests:', orphanRecoveryError.message);
@@ -110,7 +146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!queuedRequests || queuedRequests.length === 0) {
     console.log('No queued FOIA history requests to process.');
-    return res.status(200).json({ message: 'No queued requests', processed: 0, retried, recovered: orphanedDrafting?.length || 0 });
+    return res.status(200).json({ message: 'No queued requests', processed: 0, retried, recovered: orphanedDrafting?.length || 0, sentButStuckFixed: sentButStuck?.length || 0 });
   }
 
   console.log(`Found ${queuedRequests.length} queued FOIA history requests`);

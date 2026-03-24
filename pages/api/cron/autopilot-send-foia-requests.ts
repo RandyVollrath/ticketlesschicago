@@ -62,6 +62,17 @@ const VIOLATION_TYPE_MAP: Record<string, string> = {
   'bus stop': 'bus_stop',
 };
 
+/**
+ * Validate that a ticket number looks like a real Chicago parking ticket.
+ * Real Chicago tickets are exactly 10 digits (e.g., 9204909636).
+ * Test/fake tickets are shorter (e.g., 48, 123, 98132876).
+ * This guard prevents submitting real FOIA requests for test data.
+ */
+function isValidChicagoTicketNumber(ticketNumber: string | null | undefined): boolean {
+  if (!ticketNumber) return false;
+  return /^\d{10}$/.test(ticketNumber.trim());
+}
+
 function normalizeViolationType(rawType: string | null): string {
   if (!rawType) return 'other_unknown';
   const lower = rawType.toLowerCase().trim();
@@ -245,6 +256,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error(`    Ticket ${ticketId} not found: ${ticketError?.message}`);
         await markFailed(request.id, `Ticket not found: ${ticketError?.message}`);
         failed++;
+        continue;
+      }
+
+      // Guard: skip test/fake tickets that aren't real 10-digit Chicago ticket numbers
+      const realTicketNumber = ticket.ticket_number || ticketNumber;
+      if (!isValidChicagoTicketNumber(realTicketNumber)) {
+        console.log(`    Skipping: ticket number "${realTicketNumber}" is not a valid 10-digit Chicago ticket (likely test data)`);
+        await supabaseAdmin
+          .from('ticket_foia_requests' as any)
+          .update({
+            status: 'not_needed',
+            notes: `Skipped: ticket number "${realTicketNumber}" is not a valid 10-digit Chicago format — likely test data`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', request.id);
+        skipped++;
         continue;
       }
 

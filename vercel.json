@@ -128,6 +128,9 @@
     },
     "pages/api/cron/check-schedule-changes.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/monitor-foia-deadlines.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -262,6 +265,10 @@
     {
       "path": "/api/cron/check-schedule-changes",
       "schedule": "0 4 * * 3"
+    },
+    {
+      "path": "/api/cron/monitor-foia-deadlines",
+      "schedule": "0 16 * * *"
     }
   ],
   "headers": [
