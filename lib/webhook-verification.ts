@@ -8,14 +8,32 @@ import crypto from 'crypto';
 import { NextApiRequest } from 'next';
 
 /**
+ * Read the raw request body as a Buffer.
+ * Call this BEFORE any body parsing middleware.
+ */
+export async function readRawBody(req: NextApiRequest): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req as any) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
  * Verify Resend webhook signature
  *
- * Resend uses Svix for webhook signing
- * Docs: https://resend.com/docs/dashboard/webhooks/verify-event
+ * Resend uses Svix for webhook signing.
+ * Svix secret format: "whsec_<base64-encoded-key>"
+ *   → strip the "whsec_" prefix, base64-decode the remainder, use as HMAC key
+ * Signed payload: "${svix-id}.${svix-timestamp}.${raw_body}"
+ *   → HMAC-SHA256 with decoded key, then base64 the digest
+ *
+ * Docs: https://docs.svix.com/receiving/verifying-payloads/how-manual
  */
 export function verifyResendWebhook(
   req: NextApiRequest,
-  secret: string
+  secret: string,
+  rawBody?: string,
 ): boolean {
   try {
     const signature = req.headers['svix-signature'] as string;
@@ -23,7 +41,7 @@ export function verifyResendWebhook(
     const id = req.headers['svix-id'] as string;
 
     if (!signature || !timestamp || !id) {
-      console.error('Missing Resend webhook headers');
+      console.error('Missing Resend webhook headers (svix-signature, svix-timestamp, svix-id)');
       return false;
     }
 
@@ -33,19 +51,33 @@ export function verifyResendWebhook(
       return { version, signature: sig };
     });
 
-    const payload = JSON.stringify(req.body);
+    // Use raw body if provided (preferred), otherwise fall back to JSON.stringify
+    const payload = rawBody ?? JSON.stringify(req.body);
     const signedPayload = `${id}.${timestamp}.${payload}`;
+
+    // Svix secrets start with "whsec_" — strip prefix and base64-decode the key
+    let secretKey: Buffer;
+    if (secret.startsWith('whsec_')) {
+      secretKey = Buffer.from(secret.substring(6), 'base64');
+    } else {
+      // Fallback: use raw secret bytes (shouldn't happen with Resend/Svix)
+      secretKey = Buffer.from(secret);
+    }
 
     // Verify at least one signature matches
     for (const { version, signature: sig } of signatures) {
       if (version !== 'v1') continue;
 
       const expectedSignature = crypto
-        .createHmac('sha256', secret)
+        .createHmac('sha256', secretKey)
         .update(signedPayload)
         .digest('base64');
 
-      if (crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSignature))) {
+      // Use timing-safe comparison to prevent timing attacks
+      const sigBuf = Buffer.from(sig, 'base64');
+      const expectedBuf = Buffer.from(expectedSignature, 'base64');
+
+      if (sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf)) {
         // Check timestamp is recent (within 5 minutes)
         const webhookTimestamp = parseInt(timestamp, 10);
         const now = Math.floor(Date.now() / 1000);
@@ -59,7 +91,7 @@ export function verifyResendWebhook(
       }
     }
 
-    console.error('Resend webhook signature verification failed');
+    console.error('Resend webhook signature verification failed — no matching signature');
     return false;
   } catch (error) {
     console.error('Error verifying Resend webhook:', error);
@@ -114,10 +146,15 @@ export function verifyClickSendWebhook(
 
 /**
  * Generic webhook verification wrapper
+ *
+ * @param rawBody — For Resend/Svix webhooks, pass the raw request body string.
+ *   Svix signs the raw bytes, NOT JSON.stringify(req.body). If omitted, falls
+ *   back to JSON.stringify(req.body) which may work if Next.js parsed identically.
  */
 export function verifyWebhook(
   provider: 'resend' | 'resend-evidence' | 'clicksend',
-  req: NextApiRequest
+  req: NextApiRequest,
+  rawBody?: string,
 ): boolean {
   switch (provider) {
     case 'resend': {
@@ -129,7 +166,7 @@ export function verifyWebhook(
         console.error('RESEND_WEBHOOK_SECRET not set - rejecting webhook (fail closed)');
         return false;
       }
-      return verifyResendWebhook(req, secret);
+      return verifyResendWebhook(req, secret, rawBody);
     }
 
     case 'resend-evidence': {
@@ -138,7 +175,7 @@ export function verifyWebhook(
         console.error('RESEND_EVIDENCE_WEBHOOK_SECRET not set - rejecting webhook (fail closed)');
         return false;
       }
-      return verifyResendWebhook(req, secret);
+      return verifyResendWebhook(req, secret, rawBody);
     }
 
     case 'clicksend': {

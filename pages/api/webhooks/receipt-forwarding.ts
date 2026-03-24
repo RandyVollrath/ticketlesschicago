@@ -16,7 +16,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-import { verifyWebhook } from '../../../lib/webhook-verification';
+import { verifyWebhook, readRawBody } from '../../../lib/webhook-verification';
 import { maskEmail } from '../../../lib/mask-pii';
 
 const supabase = createClient(
@@ -227,10 +227,10 @@ async function generateEmailEvidenceScreenshot(params: {
   return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();
 }
 
-// Disable body parsing to handle raw webhook payload
+// Disable body parsing to read raw body for Svix signature verification
 export const config = {
   api: {
-    bodyParser: true,
+    bodyParser: false,
   },
 };
 
@@ -245,6 +245,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method);
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // ── Read raw body for Svix signature verification ──
+  const rawBodyBuf = await readRawBody(req);
+  const rawBody = rawBodyBuf.toString('utf-8');
+
+  if (rawBodyBuf.length > 25 * 1024 * 1024) {
+    return res.status(413).json({ error: 'Request body too large' });
+  }
+
+  try {
+    req.body = JSON.parse(rawBody);
+  } catch {
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+
   // Log the request for debugging (metadata only — never log full body/email content)
   console.log('🔔 Webhook received:', {
     method: req.method,
@@ -256,14 +275,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     attachments: req.body?.data?.attachments?.length || 0,
   });
 
-  if (req.method !== 'POST') {
-    console.log('❌ Method not allowed:', req.method);
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
   // SECURITY: Verify Resend webhook signature to prevent forged receipt submissions.
   // Without this, attackers could inject fake city sticker receipts or utility bills.
-  if (!verifyWebhook('resend', req)) {
+  if (!verifyWebhook('resend', req, rawBody)) {
     console.error('⚠️ Receipt forwarding webhook verification failed');
     return res.status(401).json({ error: 'Unauthorized - invalid signature' });
   }
@@ -401,7 +415,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('user_id, email_forwarding_address, has_contesting, has_permit_zone')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       console.error('❌ User not found:', userId, 'Error:', profileError);
