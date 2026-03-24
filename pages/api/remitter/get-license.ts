@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('id, name')
       .eq('api_key', apiKey)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
     if (partnerError || !partner) {
       return res.status(401).json({ error: 'Invalid API key' });
@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         license_reuse_consent_given
       `)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       return res.status(404).json({ error: 'User not found' });

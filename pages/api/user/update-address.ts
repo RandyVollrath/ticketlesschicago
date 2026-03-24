@@ -60,7 +60,7 @@ export default async function handler(
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !currentProfile) {
       return res.status(404).json({ error: 'User not found' });

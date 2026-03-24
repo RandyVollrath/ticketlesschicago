@@ -71,7 +71,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
       .from('user_profiles')
       .select('user_id, email, first_name, last_name, street_address, residency_proof_path, residency_proof_verified')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       throw new Error('Document not found');

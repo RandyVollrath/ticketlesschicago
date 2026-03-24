@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .select('*')
     .eq('api_key', apiKey)
     .eq('status', 'active')
-    .single();
+    .maybeSingle();
 
   if (partnerError || !partner) {
     return res.status(401).json({ error: 'Invalid API key' });
@@ -66,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('*')
       .eq('id', orderId)
       .eq('partner_id', partner.id)
-      .single();
+      .maybeSingle();
 
     if (orderError || !order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .update(updateData)
       .eq('id', orderId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (updateError) {
       console.error('Error updating order:', updateError);
@@ -115,7 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('user_profiles')
         .select('user_id, phone_number, first_name, city_sticker_expiry, license_plate_expiry, permit_requested')
         .eq('email', order.customer_email)
-        .single();
+        .maybeSingle();
 
       if (userProfile) {
         // Determine renewal type from order

@@ -47,7 +47,7 @@ export default async function handler(
       .from('user_profiles')
       .select('user_id, first_name, email, phone_number, emissions_date, emissions_completed')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (userError || !user) {
       console.error('User not found:', userError);

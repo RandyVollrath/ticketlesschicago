@@ -79,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .gte('cached_at', cacheExpiry)
       .order('cached_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (cachedAnalysis?.analysis_data) {
       console.log(`Cache hit for PIN ${normalizedPin} (cached ${cachedAnalysis.cached_at})`);
@@ -183,7 +183,7 @@ async function getDeadlinesForTownship(township: string): Promise<AppealOpportun
     .select('*')
     .eq('township', township)
     .eq('year', currentYear)
-    .single();
+    .maybeSingle();
 
   if (!deadline) {
     return null;

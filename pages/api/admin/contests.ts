@@ -72,11 +72,15 @@ export default withAdminAuth(async (req, res, adminUser) => {
         .update(updateData)
         .eq('id', contestId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (updateError) {
         console.error('Update error:', updateError);
         return res.status(500).json({ error: sanitizeErrorMessage(updateError) });
+      }
+
+      if (!contest) {
+        return res.status(404).json({ error: 'Contest not found' });
       }
 
       res.status(200).json({

@@ -236,11 +236,15 @@ export default async function handler(
         .update(updateData)
         .eq('id', obligationId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error updating obligation:', error);
         return res.status(500).json({ error: 'Failed to update obligation' });
+      }
+
+      if (!obligation) {
+        return res.status(404).json({ error: 'Obligation not found after update' });
       }
 
       return res.status(200).json({

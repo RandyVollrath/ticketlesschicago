@@ -65,8 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('message_audit_log')
           .select('id')
           .eq('message_key', messageKey)
-          .limit(1)
-          .single();
+          .maybeSingle();
 
         if (alreadySent) continue;
 
@@ -75,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('user_profiles')
           .select('email, first_name, notify_email')
           .eq('user_id', appeal.user_id)
-          .single();
+          .maybeSingle();
 
         if (!profile?.email || profile.notify_email === false) continue;
 
@@ -142,8 +141,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .select('id')
           .eq('message_key', messageKey)
           .gte('sent_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-          .limit(1)
-          .single();
+          .maybeSingle();
 
         if (recentReminder) continue;
 
@@ -152,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .from('user_profiles')
           .select('email, first_name, notify_email')
           .eq('user_id', appeal.user_id)
-          .single();
+          .maybeSingle();
 
         if (!profile?.email || profile.notify_email === false) continue;
 

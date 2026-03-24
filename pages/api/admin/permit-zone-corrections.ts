@@ -63,8 +63,7 @@ export default withAdminAuth(async (req, res) => {
           .eq('zone', report.zone)
           .eq('block_number', report.block_number)
           .eq('street_name', report.street_name)
-          .limit(1)
-          .single();
+          .maybeSingle();
         if (override) {
           dbSchedule = override.restriction_schedule;
           dbSource = override.source;
@@ -77,8 +76,7 @@ export default withAdminAuth(async (req, res) => {
           .from('permit_zone_hours')
           .select('restriction_schedule, source')
           .eq('zone', report.zone)
-          .limit(1)
-          .single();
+          .maybeSingle();
         if (zoneHours) {
           dbSchedule = zoneHours.restriction_schedule;
           dbSource = zoneHours.source;
@@ -114,7 +112,7 @@ export default withAdminAuth(async (req, res) => {
         .from('permit_zone_user_reports')
         .select('*')
         .eq('id', reportId)
-        .single();
+        .maybeSingle();
 
       if (fetchErr || !report) {
         return res.status(404).json({ error: 'Report not found' });
@@ -167,7 +165,7 @@ export default withAdminAuth(async (req, res) => {
         .from('permit_zone_user_reports')
         .select('*')
         .eq('id', reportId)
-        .single();
+        .maybeSingle();
 
       if (report?.street_name && report?.block_number) {
         await supabaseAdmin

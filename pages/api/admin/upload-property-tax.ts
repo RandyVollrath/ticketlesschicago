@@ -70,7 +70,7 @@ async function uploadPropertyTax(req: NextApiRequest, res: NextApiResponse) {
       .from('user_profiles')
       .select('user_id, email, first_name, last_name, residency_proof_type')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (userError || !user) {
       return res.status(404).json({ error: 'User not found' });
@@ -91,7 +91,7 @@ async function uploadPropertyTax(req: NextApiRequest, res: NextApiResponse) {
       .from('user_profiles')
       .select('residency_proof_path')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (existingProfile?.residency_proof_path) {
       await supabase.storage

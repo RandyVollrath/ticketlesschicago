@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq('user_id', user.id)
       .eq('pin', normalizedPin)
       .not('stage', 'in', '("completed","withdrawn","expired")')
-      .single();
+      .maybeSingle();
 
     if (existingAppeal) {
       return res.status(409).json({
@@ -102,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('status, bor_open_date, bor_close_date')
       .eq('township', property.township)
       .eq('year', currentYear)
-      .single();
+      .maybeSingle();
 
     // Block filing if deadline is unknown
     if (!deadline || deadline.status === DEADLINE_STATUS.UNKNOWN) {

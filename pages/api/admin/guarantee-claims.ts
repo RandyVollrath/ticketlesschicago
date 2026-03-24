@@ -48,7 +48,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
         .from('guarantee_claims')
         .select('id, user_id')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (claimError || !claim?.user_id) {
         return res.status(404).json({ error: 'Guarantee claim not found' });
@@ -58,7 +58,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
         .from('autopilot_subscriptions')
         .select('stripe_subscription_id')
         .eq('user_id', claim.user_id)
-        .single();
+        .maybeSingle();
 
       if (subError || !sub?.stripe_subscription_id) {
         return res.status(400).json({ error: 'No active subscription found for refund' });

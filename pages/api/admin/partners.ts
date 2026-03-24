@@ -161,11 +161,15 @@ async function handler(
         .update(sanitizedUpdates)
         .eq('id', partnerId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error updating partner:', error);
         return res.status(500).json({ success: false, error: sanitizeErrorMessage(error) });
+      }
+
+      if (!data) {
+        return res.status(404).json({ success: false, error: 'Partner not found' });
       }
 
       return res.status(200).json({

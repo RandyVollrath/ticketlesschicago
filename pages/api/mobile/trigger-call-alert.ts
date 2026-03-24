@@ -64,7 +64,7 @@ export default async function handler(
       .from('user_profiles')
       .select('phone_call_enabled, phone_number, call_alert_preferences')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile?.phone_call_enabled || !profile?.phone_number) {
       return res.status(200).json({

@@ -100,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('user_profiles')
             .select('email, first_name, notify_email')
             .eq('user_id', appeal.user_id)
-            .single();
+            .maybeSingle();
 
           if (!profile?.email || profile.notify_email === false) {
             continue;
@@ -114,8 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('user_id', appeal.user_id)
             .eq('message_key', messageKey)
             .gte('sent_at', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
-            .limit(1)
-            .single();
+            .maybeSingle();
 
           if (recentNotification) {
             continue; // Already sent
@@ -194,8 +193,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('pin', item.pin)
             .eq('assessment_year', now.getFullYear())
             .not('stage', 'in', '("withdrawn","expired")')
-            .limit(1)
-            .single();
+            .maybeSingle();
 
           if (existingAppeal) {
             continue; // Already has an appeal, skip watchlist notification
@@ -209,8 +207,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('user_email', item.email)
             .eq('message_key', messageKey)
             .gte('sent_at', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
-            .limit(1)
-            .single();
+            .maybeSingle();
 
           if (recentNotification) {
             continue;

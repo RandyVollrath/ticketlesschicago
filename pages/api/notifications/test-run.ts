@@ -35,7 +35,7 @@ export default async function handler(
       .from('user_profiles')
       .select('*')
       .eq('email', 'randyvollrath@gmail.com')
-      .single();
+      .maybeSingle();
     
     if (userError) {
       log(`❌ Error fetching user: ${userError.message}`);

@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select('*')
       .eq('api_key', apiKey)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
     if (partnerError || !partner) {
       return res.status(401).json({ error: 'Invalid API key' });
@@ -62,7 +62,7 @@ async function getOverview(res: NextApiResponse, partnerId: string, partnerName:
     .from('renewal_partner_stats')
     .select('*')
     .eq('partner_id', partnerId)
-    .single();
+    .maybeSingle();
 
   // Get recent orders
   const { data: recentOrders } = await supabase
@@ -159,7 +159,7 @@ async function getStats(res: NextApiResponse, partnerId: string) {
     .from('renewal_partner_stats')
     .select('*')
     .eq('partner_id', partnerId)
-    .single();
+    .maybeSingle();
 
   // Get trend data (last 30 days)
   const thirtyDaysAgo = new Date();

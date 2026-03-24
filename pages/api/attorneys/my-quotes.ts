@@ -186,11 +186,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .update(updateData)
         .eq('id', quoteId)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (updateError) {
+      if (updateError || !updatedQuote) {
         console.error('Error updating quote:', updateError);
-        return res.status(500).json({ error: 'Failed to update quote' });
+        return res.status(updateError ? 500 : 404).json({
+          error: updateError ? 'Failed to update quote' : 'Quote not found'
+        });
       }
 
       // Send email notification to user about attorney response
