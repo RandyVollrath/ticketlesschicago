@@ -622,7 +622,9 @@ export function isExtensionResponse(subject: string, body: string): boolean {
   const statutoryExtensionPatterns = [
     '5 ilcs 140/3(e)',         // Exact statute citation for extensions
     '5 ilcs 140/3 (e)',       // Alternate spacing
+    '5 ilcs 140, section 3',  // Longer form citation
     'section 3(e)',            // Short form of extension statute
+    'section 3 (e)',           // Short form with space
   ];
   const hasStatutorySignal = statutoryExtensionPatterns.some(p => combined.includes(p));
 
@@ -633,29 +635,43 @@ export function isExtensionResponse(subject: string, body: string): boolean {
     'additional five (5) business days',
     'additional 5 business days',
     'additional five business days',
+    'five (5) business day extension',
+    'five business day extension',
+    '5 business day extension',
     'extending the time',
     'extend the time',
+    'request additional time',
+    'requesting additional time',
+    'extended deadline',
     'extension of the response',
     'notify you of an extension',
     'notifying you of an extension',
-    'hereby notif',   // "hereby notify" / "hereby notifying"
+    'notice of extension',
   ];
   const hasExtensionKeyword = extensionKeywords.some(k => combined.includes(k));
 
-  // Extension reasons the city commonly cites
+  // "hereby notify/notifying" — only count when "extension" is also nearby
+  const hasHerebyNotifyWithExtension =
+    combined.includes('hereby notif') && combined.includes('extension');
+
+  // Extension reasons the city commonly cites under 5 ILCS 140/3(e)
   const extensionReasons = [
     'consultation with another public body',
     'unduly burdensome',
     'voluminous',
     'categorical request',
+    'need to search for',
+    'records are stored',
+    'consult with another',
   ];
   const hasExtensionReason = extensionReasons.some(r => combined.includes(r));
 
-  // Must have statutory signal OR (extension keyword + extension reason)
+  // Must have statutory signal OR (extension keyword + extension reason/context)
   // This prevents false positives from casual mentions of "extension"
   if (hasStatutorySignal) return true;
   if (hasExtensionKeyword && hasExtensionReason) return true;
   if (hasExtensionKeyword && combined.includes('extension')) return true;
+  if (hasHerebyNotifyWithExtension) return true;
 
   return false;
 }
@@ -672,14 +688,18 @@ export function isFoiaResponseEmail(
   const subj = subject.toLowerCase();
   const text = body.toLowerCase();
 
-  // Check sender — DOF FOIA office, any cityofchicago.org, or GovQA (city's FOIA portal)
+  // Check sender — DOF FOIA office, CDOT, any cityofchicago.org, or GovQA (city's FOIA portal)
   const foiaSenders = [
     'doffoia@cityofchicago.org',
+    'dof-foia@cityofchicago.org',       // Hyphenated variant
     'foia@cityofchicago.org',
     'finance.foia@cityofchicago.org',
-    'doah@cityofchicago.org', // Department of Administrative Hearings
+    'doah@cityofchicago.org',            // Department of Administrative Hearings
     'noreply@cityofchicago.org',
-    'chicagoil@govqa.us', // GovQA FOIA portal used by Chicago
+    'cdotfoia@cityofchicago.org',        // CDOT (red-light/speed camera evidence)
+    'cdot-foia@cityofchicago.org',       // CDOT hyphenated variant
+    'cdot.foia@cityofchicago.org',       // CDOT dotted variant
+    'chicagoil@govqa.us',                // GovQA FOIA portal used by Chicago
   ];
   const isFromCity = foiaSenders.some(s => from.includes(s))
     || from.includes('cityofchicago.org')
@@ -1225,6 +1245,48 @@ export async function processHistoryFoiaResponse(
     });
   } catch (emailErr: any) {
     console.error(`  Failed to send results email: ${emailErr.message}`);
+
+    // Flag in DB so admin can see the user was never notified
+    await supabase
+      .from('foia_history_requests')
+      .update({
+        notes: `${updatePayload.notes || ''} [WARNING: User results email FAILED: ${emailErr.message}]`,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('id', requestId);
+
+    // Send admin alert so we can manually notify the user
+    try {
+      const resendKey = process.env.RESEND_API_KEY;
+      if (resendKey) {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Autopilot <alerts@autopilotamerica.com>',
+            to: ['randy@autopilotamerica.com'],
+            subject: `⚠ FOIA Results Email Failed — ${historyRequest.license_state} ${historyRequest.license_plate}`,
+            text: `Failed to send FOIA history results email to ${historyRequest.name} (${historyRequest.email}).
+
+Plate: ${historyRequest.license_state} ${historyRequest.license_plate}
+Tickets found: ${ticketCount}
+Total fines: $${totalFines}
+Reference: ${historyRequest.reference_id}
+Error: ${emailErr.message}
+
+The FOIA response was processed and saved, but the user was NOT notified.
+Please manually notify them or retrigger the email.
+
+Results URL: https://autopilotamerica.com/my-tickets?plate=${encodeURIComponent(historyRequest.license_plate)}&state=${encodeURIComponent(historyRequest.license_state)}`,
+          }),
+        });
+      }
+    } catch (adminErr: any) {
+      console.error(`  Also failed to send admin alert: ${adminErr.message}`);
+    }
   }
 
   return {
