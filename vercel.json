@@ -131,6 +131,9 @@
     },
     "pages/api/cron/monitor-foia-deadlines.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/cleanup-push-tokens.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -189,10 +192,6 @@
     {
       "path": "/api/cron/notify-expiring-licenses",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/notify-remitter-daily",
-      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/cron/mobile-parking-reminders",
@@ -269,6 +268,10 @@
     {
       "path": "/api/cron/monitor-foia-deadlines",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-push-tokens",
+      "schedule": "0 5 * * 0"
     }
   ],
   "headers": [

@@ -683,10 +683,11 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
     // evidence_deadline = Day 17 (auto-send date, unified across all code paths)
     const evidenceDeadline = autoSendDeadline;
 
-    // Insert new ticket directly into evidence collection flow
+    // Upsert new ticket into evidence collection flow (onConflict prevents duplicates
+    // from concurrent cron runs — the unique index on ticket_number ensures atomicity)
     const { data: newTicket, error: insertError } = await supabaseAdmin
       .from('detected_tickets')
-      .insert({
+      .upsert({
         user_id: plate.user_id,
         plate_id: plate.id,
         plate: plate.plate,
@@ -710,12 +711,15 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         auto_send_deadline: autoSendDeadline.toISOString(),
         reminder_count: 0,
         raw_data: ticket,
-      })
+      }, { onConflict: 'ticket_number', ignoreDuplicates: true })
       .select('id')
       .maybeSingle();
 
-    if (insertError || !newTicket?.id) {
-      errors.push(`Failed to insert ticket ${ticket.ticket_number}: ${insertError?.message || 'Unknown error'}`);
+    if (insertError) {
+      errors.push(`Failed to insert ticket ${ticket.ticket_number}: ${insertError.message}`);
+    } else if (!newTicket?.id) {
+      // ignoreDuplicates returns no row when ticket already exists — not an error
+      console.log(`    SKIP (duplicate): ${ticket.ticket_number} already in detected_tickets`);
     } else {
       newTickets++;
       console.log(`    NEW: ${ticket.ticket_number} - ${ticket.violation_description} - $${amount}`);
@@ -882,8 +886,14 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify cron secret
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    console.error('CRON_SECRET not configured — rejecting request');
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+
   const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

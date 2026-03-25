@@ -28,10 +28,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, renewalType, licensePlate, dueDate } = req.body;
+  // SECURITY: Verify JWT authentication
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const token = authHeader.substring(7);
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid session' });
+  }
+
+  const { renewalType, licensePlate, dueDate } = req.body;
+  // Use authenticated user's ID — never trust userId from request body
+  const userId = authUser.id;
 
   // Validate input
-  if (!userId || !renewalType || !licensePlate || !dueDate) {
+  if (!renewalType || !licensePlate || !dueDate) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 

@@ -172,22 +172,21 @@ function formatAddressForNotification(address: string): string {
   return streetPart || address;
 }
 
+export const config = { maxDuration: 60 };
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Auth: Vercel cron header OR CRON_SECRET (Bearer or query param)
-  const authHeader = req.headers.authorization;
-  const keyParam = req.query.key as string | undefined;
-  const isVercelCron = req.headers['x-vercel-cron'] === '1';
-  const secret = process.env.CRON_SECRET;
-  // Guard: if CRON_SECRET is not set, only allow Vercel's cron header.
-  // Without this, undefined === undefined would bypass auth.
-  const isAuthorized = secret
-    ? (authHeader === `Bearer ${secret}` || keyParam === secret)
-    : false;
+  // Auth: require CRON_SECRET via Bearer token
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    console.error('CRON_SECRET not configured — rejecting request');
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
 
-  if (!isAuthorized) {
+  const authHeader = req.headers.authorization;
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

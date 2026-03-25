@@ -42,14 +42,19 @@ function businessDaysBetween(start: Date, end: Date): number {
   return count;
 }
 
+export const config = { maxDuration: 60 };
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify authorization
   const authHeader = req.headers.authorization;
-  const isVercelCron = req.headers['x-vercel-cron'] === '1';
-  const secret = process.env.CRON_SECRET;
-  const isAuthorized = isVercelCron || (secret ? (authHeader === `Bearer ${secret}`) : false);
+  const cronSecret = process.env.CRON_SECRET;
 
-  if (!isAuthorized) {
+  if (!cronSecret) {
+    console.error('CRON_SECRET not configured — rejecting request');
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
