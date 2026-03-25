@@ -24,14 +24,19 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+export const config = { maxDuration: 120 };
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify authorization (header only — never accept secrets in query params which get logged)
-  const authHeader = req.headers.authorization;
-  const isVercelCron = req.headers['x-vercel-cron'] === '1';
-  const secret = process.env.CRON_SECRET;
-  const isAuthorized = isVercelCron || (secret ? (authHeader === `Bearer ${secret}`) : false);
+  const cronSecret = process.env.CRON_SECRET;
 
-  if (!isAuthorized) {
+  if (!cronSecret) {
+    console.error('CRON_SECRET not configured — rejecting request');
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

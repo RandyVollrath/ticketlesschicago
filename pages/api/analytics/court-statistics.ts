@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,11 +41,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         startDate.setFullYear(now.getFullYear() - 1);
     }
 
+    // Rate limiting — 100 requests per minute per IP
+    const clientIp = getClientIP(req);
+    const rateLimitResult = await checkRateLimit(clientIp, 'api');
+    if (!rateLimitResult.allowed) {
+      return res.status(429).json({
+        error: 'Too many requests. Please try again later.',
+        retryAfter: Math.ceil(rateLimitResult.resetIn / 1000),
+      });
+    }
+    await recordRateLimitAction(clientIp, 'api');
+
     // Build base query
     let query = supabase
       .from('court_case_outcomes')
       .select('*')
-      .gte('decision_date', new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(startDate));
+      .gte('decision_date', new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(startDate))
+      .limit(10000);
 
     // Apply filters
     if (violationCode) {

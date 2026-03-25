@@ -7,12 +7,6 @@ import Footer from '../components/Footer';
 import { PermitZoneWarning } from '../components/PermitZoneWarning';
 import MobileNav from '../components/MobileNav';
 import { analytics } from '../lib/analytics';
-import {
-  CITY_STICKER_PRICES,
-  LICENSE_PLATE_TYPE_INFO,
-  type LicensePlateType,
-  PLATFORM_FEES,
-} from '../lib/pricing-config';
 
 // Phone validation - must match backend validation
 function isValidUSPhone(phone: string): boolean {
@@ -46,13 +40,6 @@ export default function Protection() {
   const [billingPlan, setBillingPlan] = useState<'monthly' | 'annual'>('monthly');
   const [user, setUser] = useState<any>(null);
 
-  // Renewal information
-  const [needsCitySticker, setNeedsCitySticker] = useState(true);
-  const [needsLicensePlate, setNeedsLicensePlate] = useState(true);
-  const [licensePlateType, setLicensePlateType] = useState<LicensePlateType>('passenger_standard');
-  const [cityStickerDate, setCityStickerDate] = useState('');
-  const [licensePlateDate, setLicensePlateDate] = useState('');
-  const [vehicleType, setVehicleType] = useState<'MB' | 'P' | 'LP' | 'ST' | 'LT'>('P');
 
   // Permit zone detection
   const [streetAddress, setStreetAddress] = useState('');
@@ -69,9 +56,6 @@ export default function Protection() {
 
   // Phone number (REQUIRED for Protection)
   const [phone, setPhone] = useState('');
-
-  // VIN (REQUIRED for city sticker renewal)
-  const [vin, setVin] = useState('');
 
   // Google auth loading state
   const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
@@ -180,11 +164,7 @@ export default function Protection() {
     // Track checkout initiated
     analytics.checkoutInitiated({
       plan: checkoutData.billingPlan,
-      needsCitySticker: !!checkoutData.renewals?.citySticker,
-      needsLicensePlate: !!checkoutData.renewals?.licensePlate,
       hasPermitZone: checkoutData.hasPermitZone || false,
-      hasVanityPlate: checkoutData.renewals?.licensePlate?.plateType === 'vanity',
-      licensePlateType: checkoutData.renewals?.licensePlate?.plateType || 'passenger_standard'
     });
 
     try {
@@ -244,7 +224,6 @@ export default function Protection() {
     const checkoutData = {
       billingPlan,
       email: userEmail,
-      vin: vin || undefined,
       phone: phone,
       userId: user?.id || undefined,
       rewardfulReferral: rewardfulReferral,
@@ -252,12 +231,7 @@ export default function Protection() {
       hasPermitZone: hasPermitZone,
       permitZones: hasPermitZone ? zones : undefined,
       permitRequested: permitRequested,
-      vehicleType: vehicleType,
       smsConsent: smsConsent, // TCPA compliance - pass SMS consent to backend
-      renewals: {
-        citySticker: needsCitySticker ? { date: cityStickerDate, vehicleType: vehicleType } : null,
-        licensePlate: needsLicensePlate ? { date: licensePlateDate, plateType: licensePlateType } : null
-      }
     };
 
     await proceedToCheckout(checkoutData);
@@ -303,18 +277,12 @@ export default function Protection() {
       const checkoutData = {
         billingPlan,
         phone: phone,
-        vin: vin || undefined,
         rewardfulReferral: rewardfulReferral,
         streetAddress: streetAddress || undefined,
         hasPermitZone: hasPermitZone,
         permitZones: hasPermitZone ? zones : undefined,
         permitRequested: permitRequested,
-        vehicleType: vehicleType,
         smsConsent: smsConsent, // TCPA compliance - pass SMS consent to backend
-        renewals: {
-          citySticker: needsCitySticker ? { date: cityStickerDate, vehicleType: vehicleType } : null,
-          licensePlate: needsLicensePlate ? { date: licensePlateDate, plateType: licensePlateType } : null
-        }
       };
 
       // Save checkout data to database (survives OAuth redirects)
@@ -343,18 +311,6 @@ export default function Protection() {
     }
   };
 
-  // City sticker vehicle type info - uses pricing config
-  const vehicleTypeInfo: Record<'MB' | 'P' | 'LP' | 'ST' | 'LT', { label: string; price: number; description: string }> = {
-    MB: { label: 'Motorbike', price: CITY_STICKER_PRICES.MB.amount, description: CITY_STICKER_PRICES.MB.label },
-    P: { label: 'Passenger', price: CITY_STICKER_PRICES.P.amount, description: 'Vehicle ≤4,500 lbs curb weight, ≤2,499 lbs payload' },
-    LP: { label: 'Large Passenger', price: CITY_STICKER_PRICES.LP.amount, description: 'Vehicle ≥4,501 lbs curb weight, ≤2,499 lbs payload' },
-    ST: { label: 'Small Truck', price: CITY_STICKER_PRICES.ST.amount, description: 'Truck/Van ≤16,000 lbs or ≥2,500 lbs payload' },
-    LT: { label: 'Large Truck', price: CITY_STICKER_PRICES.LT.amount, description: 'Truck/Vehicle ≥16,001 lbs or ≥2,500 lbs payload' }
-  };
-
-  // License plate renewal cost based on selected plate type
-  const licensePlateRenewalCost = LICENSE_PLATE_TYPE_INFO[licensePlateType].totalRenewal + PLATFORM_FEES.SERVICE_FEE;
-
   const calculateTotal = () => {
     const subscriptionPrice = billingPlan === 'monthly' ? 8 : 80;
     return subscriptionPrice;
@@ -364,7 +320,7 @@ export default function Protection() {
     <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete }}>
       <Head>
         <title>Activate Autopilot - Autopilot America</title>
-        <meta name="description" content="Premium renewal reminders and ticket coverage" />
+        <meta name="description" content="Automated parking ticket contesting for Chicago drivers" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
         <style>{`
           @media (max-width: 768px) {
@@ -797,184 +753,6 @@ export default function Protection() {
                   )}
                 </div>
 
-                {/* Renewals Section */}
-                <div style={{
-                  backgroundColor: COLORS.concrete,
-                  borderRadius: '12px',
-                  padding: '24px',
-                  marginBottom: '20px'
-                }}>
-                  <h3 style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: COLORS.graphite,
-                    marginBottom: '12px',
-                    margin: '0 0 12px 0',
-                    fontFamily: '"Space Grotesk", sans-serif'
-                  }}>
-                    Your Renewals
-                  </h3>
-                  <p style={{ fontSize: '14px', color: COLORS.slate, marginBottom: '12px', margin: '0 0 12px 0', lineHeight: '1.5' }}>
-                    Track your city sticker and license plate renewal deadlines.
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#b45309', backgroundColor: '#fef3c7', padding: '8px 12px', borderRadius: '6px', marginBottom: '20px', lineHeight: '1.4' }}>
-                    Prices shown are 2025 rates set by the City of Chicago and Illinois Secretary of State. Renewal fees are subject to change and you will be charged the official rate at the time of your renewal.
-                  </p>
-
-                  {/* City Sticker */}
-                  <div style={{
-                    marginBottom: '16px',
-                    padding: '16px',
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    border: `1px solid ${COLORS.border}`
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <label style={{ fontSize: '15px', fontWeight: '600', color: COLORS.graphite, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input
-                          type="checkbox"
-                          checked={needsCitySticker}
-                          onChange={(e) => setNeedsCitySticker(e.target.checked)}
-                          style={{ width: '18px', height: '18px' }}
-                        />
-                        City Sticker Renewal
-                      </label>
-                      <span style={{ fontSize: '15px', fontWeight: '600', color: COLORS.graphite }}>
-                        ${vehicleTypeInfo[vehicleType].price.toFixed(2)}
-                      </span>
-                    </div>
-                    {needsCitySticker && (
-                      <div style={{ paddingLeft: '26px' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: COLORS.graphite, marginBottom: '6px' }}>
-                          Vehicle Type
-                        </label>
-                        <select
-                          value={vehicleType}
-                          onChange={(e) => setVehicleType(e.target.value as 'MB' | 'P' | 'LP' | 'ST' | 'LT')}
-                          style={{
-                            width: '100%',
-                            padding: '10px 12px',
-                            border: `1px solid ${COLORS.border}`,
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            boxSizing: 'border-box',
-                            marginBottom: '12px',
-                            backgroundColor: 'white'
-                          }}
-                        >
-                          {Object.entries(vehicleTypeInfo).map(([key, info]) => (
-                            <option key={key} value={key}>
-                              {info.label} - ${info.price.toFixed(2)}
-                            </option>
-                          ))}
-                        </select>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: COLORS.graphite, marginBottom: '6px' }}>
-                          Current expiration date (optional)
-                        </label>
-                        <input
-                          type="date"
-                          value={cityStickerDate}
-                          onChange={(e) => setCityStickerDate(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            border: `1px solid ${COLORS.border}`,
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* License Plate */}
-                  <div style={{
-                    padding: '16px',
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    border: `1px solid ${COLORS.border}`
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <label style={{ fontSize: '15px', fontWeight: '600', color: COLORS.graphite, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input
-                          type="checkbox"
-                          checked={needsLicensePlate}
-                          onChange={(e) => setNeedsLicensePlate(e.target.checked)}
-                          style={{ width: '18px', height: '18px' }}
-                        />
-                        License Plate Renewal
-                      </label>
-                      <span style={{ fontSize: '15px', fontWeight: '600', color: COLORS.graphite }}>
-                        ${needsLicensePlate ? licensePlateRenewalCost.toFixed(2) : LICENSE_PLATE_TYPE_INFO.passenger_standard.totalRenewal + PLATFORM_FEES.SERVICE_FEE}
-                      </span>
-                    </div>
-                    {needsLicensePlate && (
-                      <div style={{ paddingLeft: '26px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '500', color: COLORS.graphite, marginBottom: '6px' }}>
-                          Plate type
-                          <span
-                            title="What's the difference? Vanity plates contain up to 3 numbers only or 1-7 letters only. Personalized plates contain both letters and numbers."
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '14px',
-                              height: '14px',
-                              borderRadius: '50%',
-                              backgroundColor: COLORS.slate,
-                              color: 'white',
-                              fontSize: '10px',
-                              fontWeight: '600',
-                              cursor: 'help'
-                            }}
-                          >?</span>
-                        </label>
-                        <select
-                          value={licensePlateType}
-                          onChange={(e) => setLicensePlateType(e.target.value as LicensePlateType)}
-                          style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            border: `1px solid ${COLORS.border}`,
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            marginBottom: '12px',
-                            boxSizing: 'border-box',
-                            backgroundColor: 'white'
-                          }}
-                        >
-                          {(Object.keys(LICENSE_PLATE_TYPE_INFO) as LicensePlateType[]).map((type) => (
-                            <option key={type} value={type}>
-                              {LICENSE_PLATE_TYPE_INFO[type].label} - ${(LICENSE_PLATE_TYPE_INFO[type].totalRenewal + PLATFORM_FEES.SERVICE_FEE).toFixed(2)}
-                            </option>
-                          ))}
-                        </select>
-                        <div style={{ fontSize: '11px', color: COLORS.slate, marginBottom: '12px' }}>
-                          {LICENSE_PLATE_TYPE_INFO[licensePlateType].description}
-                        </div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: COLORS.graphite, marginBottom: '6px' }}>
-                          Current expiration date (optional)
-                        </label>
-                        <input
-                          type="date"
-                          value={licensePlateDate}
-                          onChange={(e) => setLicensePlateDate(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            border: `1px solid ${COLORS.border}`,
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-
                 {/* Price Summary */}
                 <div style={{
                   backgroundColor: billingPlan === 'annual' ? `${COLORS.signal}08` : `${COLORS.regulatory}08`,
@@ -995,7 +773,7 @@ export default function Protection() {
                       Due today: ${billingPlan === 'monthly' ? '8' : '80'}
                     </div>
                     <div style={{ fontSize: '12px', color: COLORS.slate }}>
-                      Renewal fees billed only when due (30 days before expiration)
+                      {billingPlan === 'monthly' ? 'Billed monthly. Cancel anytime.' : 'Billed annually.'}
                     </div>
                   </div>
 
@@ -1003,20 +781,6 @@ export default function Protection() {
                     <span>Protection subscription ({billingPlan})</span>
                     <span>${billingPlan === 'monthly' ? '8' : '80'}</span>
                   </div>
-
-                  {needsCitySticker && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', color: COLORS.slate }}>
-                      <span>City sticker (billed later)</span>
-                      <span>${vehicleTypeInfo[vehicleType].price.toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  {needsLicensePlate && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', color: COLORS.slate }}>
-                      <span>License plate - {LICENSE_PLATE_TYPE_INFO[licensePlateType].label} (billed later)</span>
-                      <span>${licensePlateRenewalCost.toFixed(2)}</span>
-                    </div>
-                  )}
 
                   {hasPermitZone && permitRequested && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', color: COLORS.slate }}>
@@ -1080,7 +844,7 @@ export default function Protection() {
                       required
                     />
                     <span>
-                      I authorize Autopilot America to monitor my vehicle renewal deadlines and coordinate automated renewals on my behalf. I understand that renewal fees are set by the City of Chicago and State of Illinois, and I will be charged the official rate at the time of renewal. I agree to the <a href="/terms" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Privacy Policy</a>.
+                      I authorize Autopilot America to monitor my license plate for parking tickets and contest eligible tickets on my behalf. I agree to the <a href="/terms" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" style={{ color: COLORS.regulatory, textDecoration: 'underline' }}>Privacy Policy</a>.
                     </span>
                   </label>
                 </div>
@@ -1109,7 +873,7 @@ export default function Protection() {
                       style={{ width: '20px', height: '20px', marginTop: '2px', cursor: 'pointer', flexShrink: 0 }}
                     />
                     <span>
-                      <strong>Yes, send me SMS/text alerts!</strong> I consent to receive automated text messages from Autopilot America about my vehicle renewals, street cleaning, permit zone updates, and important reminders. Message & data rates may apply. Reply STOP to opt-out anytime.
+                      <strong>Yes, send me SMS/text alerts!</strong> I consent to receive automated text messages from Autopilot America about parking tickets, street cleaning, permit zone updates, and important reminders. Message & data rates may apply. Reply STOP to opt-out anytime.
                     </span>
                   </label>
                 </div>
@@ -1240,10 +1004,10 @@ export default function Protection() {
                 margin: '0 0 8px 0',
                 fontFamily: '"Space Grotesk", sans-serif'
               }}>
-                Automated Renewals
+                Automated Contesting
               </h3>
               <p style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5', margin: 0 }}>
-                We handle your city sticker and license plate renewals end-to-end.
+                We monitor your plate and contest eligible parking tickets automatically.
               </p>
             </div>
 

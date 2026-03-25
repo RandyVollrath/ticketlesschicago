@@ -10,13 +10,21 @@ import { createTowAlert, markAlertNotified } from '../../../lib/contest-intellig
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
+export const config = { maxDuration: 60 };
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   // Verify cron secret
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    console.error('CRON_SECRET not configured — rejecting request');
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+
   const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

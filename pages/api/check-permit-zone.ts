@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../lib/supabase';
 import { parseChicagoAddress } from '../../lib/address-parser';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 export interface PermitZoneResult {
   hasPermitZone: boolean;
@@ -47,6 +48,19 @@ export default async function handler(
       error: 'Missing required parameter: address'
     });
   }
+
+  // Rate limiting — 100 requests per minute per IP
+  const clientIp = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(clientIp, 'api');
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      hasPermitZone: false,
+      zones: [],
+      parsedAddress: null,
+      error: 'Too many requests. Please try again later.'
+    });
+  }
+  await recordRateLimitAction(clientIp, 'api');
 
   try {
     // Parse the address

@@ -874,16 +874,10 @@ function SettingsPageInner() {
   const prevPhoneRef = useRef<string>(''); // Track previous phone value for auto-enable SMS
   const [streetCleaningAlerts, setStreetCleaningAlerts] = useState(true);
   const [snowBanAlerts, setSnowBanAlerts] = useState(true);
-  const [renewalReminders, setRenewalReminders] = useState(true);
   const [towAlerts, setTowAlerts] = useState(true);
   const [dotPermitAlerts, setDotPermitAlerts] = useState(true);
   const [allClearAlerts, setAllClearAlerts] = useState(true);
   const [notificationDays, setNotificationDays] = useState<number[]>([30, 7, 1]);
-
-  // Renewal Dates
-  const [cityStickerExpiry, setCityStickerExpiry] = useState('');
-  const [licensePlateExpiry, setLicensePlateExpiry] = useState('');
-  const [emissionsDate, setEmissionsDate] = useState('');
 
   // Autopilot Settings — default: auto-contest everything except cameras
   const [autoMailEnabled, setAutoMailEnabled] = useState(true);
@@ -940,9 +934,8 @@ function SettingsPageInner() {
     homeAddress: '', ward: null as number | null, section: '', homeCity: 'Chicago', homeState: 'IL', homeZip: '',
     mailingAddress1: '', mailingAddress2: '', mailingCity: 'Chicago', mailingState: 'IL', mailingZip: '',
     vin: '', vehicleMake: '', vehicleModel: '', vehicleColor: '', vehicleYear: '',
-    cityStickerExpiry: '', licensePlateExpiry: '', emissionsDate: '',
     emailNotifications: true, smsNotifications: false, phoneCallNotifications: false,
-    streetCleaningAlerts: true, snowBanAlerts: true, renewalReminders: true,
+    streetCleaningAlerts: true, snowBanAlerts: true,
     towAlerts: true, dotPermitAlerts: true, allClearAlerts: true, notificationDays: [30, 7, 1] as number[],
     autoMailEnabled: true, requireApproval: false, allowedTicketTypes: [] as string[],
     emailOnTicketFound: true, emailOnLetterMailed: true, emailOnApprovalNeeded: true,
@@ -955,9 +948,8 @@ function SettingsPageInner() {
     homeAddress, ward, section, homeCity, homeState, homeZip,
     mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip,
     vin, vehicleMake, vehicleModel, vehicleColor, vehicleYear,
-    cityStickerExpiry, licensePlateExpiry, emissionsDate,
     emailNotifications, smsNotifications, phoneCallNotifications,
-    streetCleaningAlerts, snowBanAlerts, renewalReminders,
+    streetCleaningAlerts, snowBanAlerts,
     towAlerts, dotPermitAlerts, allClearAlerts, notificationDays,
     autoMailEnabled, requireApproval, allowedTicketTypes,
     emailOnTicketFound, emailOnLetterMailed, emailOnApprovalNeeded,
@@ -1129,9 +1121,6 @@ function SettingsPageInner() {
         setVehicleModel(profileData.vehicle_model || '');
         setVehicleColor(profileData.vehicle_color || '');
         setVehicleYear(profileData.vehicle_year ? String(profileData.vehicle_year) : '');
-        setCityStickerExpiry(profileData.city_sticker_expiry || '');
-        setLicensePlateExpiry(profileData.license_plate_expiry || '');
-        setEmissionsDate(profileData.emissions_date || '');
 
         if (profileData.license_plate) {
           setPlateNumber(profileData.license_plate);
@@ -1148,7 +1137,6 @@ function SettingsPageInner() {
           setPhoneCallNotifications(prefs.phone_call ?? profileData.phone_call_enabled ?? false);
           setStreetCleaningAlerts(prefs.street_cleaning ?? true);
           setSnowBanAlerts(prefs.snow_ban ?? profileData.notify_snow_ban ?? true);
-          setRenewalReminders(prefs.renewals ?? true);
           setTowAlerts(prefs.tow ?? profileData.notify_tow ?? true);
           setDotPermitAlerts(prefs.dot_permits ?? profileData.notify_dot_permits ?? true);
           setAllClearAlerts(prefs.all_clear ?? true);
@@ -1290,9 +1278,6 @@ function SettingsPageInner() {
         vehicle_year: s.vehicleYear ? parseInt(s.vehicleYear, 10) || null : null,
         license_plate: plateUpper || null,
         license_state: s.plateState || 'IL',
-        city_sticker_expiry: s.cityStickerExpiry || null,
-        license_plate_expiry: s.licensePlateExpiry || null,
-        emissions_date: s.emissionsDate || null,
         notify_email: s.emailNotifications,
         notify_sms: s.smsNotifications,
         phone_call_enabled: s.phoneCallNotifications,
@@ -1306,7 +1291,6 @@ function SettingsPageInner() {
           phone_call: s.phoneCallNotifications,
           street_cleaning: s.streetCleaningAlerts,
           snow_ban: s.snowBanAlerts,
-          renewals: s.renewalReminders,
           tow: s.towAlerts,
           dot_permits: s.dotPermitAlerts,
           all_clear: s.allClearAlerts,
@@ -1380,8 +1364,8 @@ function SettingsPageInner() {
   const prevSaveGenRef = useRef(0);
   useEffect(() => { saveGenRef.current += 1; }, [firstName, lastName, phone, plateNumber, plateState, isLeased, homeAddress, ward, section, homeCity, homeState, homeZip,
       mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip, vin,
-      cityStickerExpiry, licensePlateExpiry, emissionsDate, emailNotifications, smsNotifications, phoneCallNotifications,
-      streetCleaningAlerts, snowBanAlerts, renewalReminders, dotPermitAlerts, allClearAlerts, notificationDays,
+      emailNotifications, smsNotifications, phoneCallNotifications,
+      streetCleaningAlerts, snowBanAlerts, dotPermitAlerts, allClearAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
       emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference]);
 
@@ -1718,7 +1702,6 @@ function SettingsPageInner() {
             <ul style={{ margin: '0 0 16px', paddingLeft: 20, color: COLORS.textDark, fontSize: 14, lineHeight: 1.8 }}>
               <li>Automatic ticket detection and contesting</li>
               <li>Street cleaning and snow ban alerts</li>
-              <li>City sticker &amp; plate renewal reminders</li>
               <li>Red-light &amp; speed camera alerts</li>
             </ul>
             <p style={{ margin: 0, fontSize: 14, color: COLORS.textMuted }}>
@@ -2773,26 +2756,6 @@ function SettingsPageInner() {
             <Toggle checked={dotPermitAlerts} onChange={setDotPermitAlerts} />
           </div>
 
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 20,
-            paddingBottom: 16,
-            borderBottom: `1px solid ${COLORS.border}`,
-          }}>
-            <div>
-              <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
-                Renewal reminders
-              </h4>
-              <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
-                City sticker, plates, and emissions &mdash; {(!cityStickerExpiry && !licensePlateExpiry && !emissionsDate)
-                  ? 'enter your expiry dates below for reminders to work'
-                  : 'based on your expiry dates below'}
-              </p>
-            </div>
-            <Toggle checked={renewalReminders} onChange={setRenewalReminders} />
-          </div>
 
           <div style={{
             display: 'flex',
@@ -2850,94 +2813,6 @@ function SettingsPageInner() {
           </div>
         </Card>
 
-        {/* Renewal Dates */}
-        <Card title="Renewal Dates" badge={
-          <span style={{ fontSize: 11, color: COLORS.textMuted }}>Optional</span>
-        }>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 150px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                marginBottom: 6,
-                textTransform: 'uppercase',
-              }}>
-                City Sticker Expiry
-              </label>
-              <input
-                type="date"
-                value={cityStickerExpiry}
-                onChange={(e) => setCityStickerExpiry(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <div style={{ flex: '1 1 150px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                marginBottom: 6,
-                textTransform: 'uppercase',
-              }}>
-                License Plate Expiry
-              </label>
-              <input
-                type="date"
-                value={licensePlateExpiry}
-                onChange={(e) => setLicensePlateExpiry(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <div style={{ flex: '1 1 150px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                marginBottom: 6,
-                textTransform: 'uppercase',
-              }}>
-                Emissions Test Date
-              </label>
-              <input
-                type="date"
-                value={emissionsDate}
-                onChange={(e) => setEmissionsDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-          </div>
-        </Card>
 
         {/* Soft nudge banner — only shown when user has zero receipts on file */}
         {receiptCount === 0 && !receiptBannerDismissed && (

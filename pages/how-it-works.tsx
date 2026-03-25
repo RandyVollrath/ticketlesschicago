@@ -61,7 +61,7 @@ export default function HowItWorks() {
               marginBottom: '24px',
               lineHeight: '1.6'
             }}>
-              Autopilot America provides unlimited automated contesting for eligible Chicago tickets and handles the paperwork and mailing for you.
+              Autopilot America provides unlimited automated contesting for eligible Chicago parking tickets and handles the paperwork and mailing for you.
               First Dismissal Guarantee: if we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full membership refund.
             </p>
             <div style={{
@@ -74,7 +74,7 @@ export default function HowItWorks() {
                 fontWeight: '500',
                 margin: 0
               }}>
-                This is a protection plan, not insurance. We help you avoid and manage compliance tickets while handling vehicle registrations.
+                This is a protection plan, not insurance. We help you avoid and contest parking tickets.
               </p>
             </div>
           </section>
@@ -181,99 +181,6 @@ export default function HowItWorks() {
             </div>
           </section>
 
-          {/* Registration Services */}
-          <section style={{
-            background: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            padding: '32px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{
-                background: '#dcfce7',
-                borderRadius: '50%',
-                padding: '12px',
-                marginRight: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#16a34a' }}>
-                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                </svg>
-              </div>
-              <h3 style={{ 
-                fontSize: '20px', 
-                fontWeight: '600', 
-                color: '#374151',
-                margin: 0
-              }}>
-                City Sticker & License Plate Renewal
-              </h3>
-            </div>
-            
-            <p style={{
-              color: '#6b7280',
-              marginBottom: '16px',
-              lineHeight: '1.6'
-            }}>
-              Get timely reminders before your city sticker and license plate renewal deadlines so you can avoid avoidable tickets.
-            </p>
-            
-            <div style={{
-              background: '#f9fafb',
-              borderRadius: '8px',
-              padding: '16px'
-            }}>
-              <h4 style={{ 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                Coverage Requirements:
-              </h4>
-              <ul style={{ 
-                margin: 0,
-                paddingLeft: '0',
-                listStyle: 'none'
-              }}>
-                <li style={{ 
-                  display: 'flex', 
-                  alignItems: 'flex-start',
-                  marginBottom: '8px'
-                }}>
-                  <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  <span style={{ color: '#6b7280' }}>Opt-in to Autopilot America fulfillment service</span>
-                </li>
-                <li style={{ 
-                  display: 'flex', 
-                  alignItems: 'flex-start',
-                  marginBottom: '8px'
-                }}>
-                  <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  <span style={{ color: '#6b7280' }}>Alerts must be enabled</span>
-                </li>
-                <li style={{ 
-                  display: 'flex', 
-                  alignItems: 'flex-start',
-                  marginBottom: '8px'
-                }}>
-                  <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  <span style={{ color: '#6b7280' }}>Provide all required documents upfront</span>
-                </li>
-                <li style={{ 
-                  display: 'flex', 
-                  alignItems: 'flex-start'
-                }}>
-                  <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  <span style={{ color: '#6b7280' }}>Submit photo of sticker on car within 7 days of receipt</span>
-                </li>
-              </ul>
-            </div>
-          </section>
-
           {/* Coverage Summary */}
           <section style={{
             background: 'linear-gradient(to right, #2563eb, #1d4ed8)',
@@ -313,8 +220,8 @@ export default function HowItWorks() {
                   <li style={{ marginBottom: '4px' }}>• First Dismissal Guarantee on eligible non-camera tickets</li>
                   <li style={{ marginBottom: '4px' }}>• Street cleaning tickets ($60 each)</li>
                   <li style={{ marginBottom: '4px' }}>• Snow removal tickets ($60 each)</li>
-                  <li style={{ marginBottom: '4px' }}>• City sticker violations</li>
-                  <li>• License plate renewal violations</li>
+                  <li style={{ marginBottom: '4px' }}>• Expired city sticker tickets</li>
+                  <li>• Expired plate tickets</li>
                 </ul>
               </div>
               <div>

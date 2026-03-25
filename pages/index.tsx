@@ -173,7 +173,7 @@ export default function LandingPage() {
     }}>
       <Head>
         <title>Chicago Driver Protection Plan | Autopilot America</title>
-        <meta name="description" content="Chicago's complete ticket protection system — alerts before street cleaning, snow bans, and renewal deadlines, automatic parking detection, and unlimited ticket contesting. $49/year." />
+        <meta name="description" content="Chicago's complete ticket protection system — alerts before street cleaning and snow bans, automatic parking detection, and unlimited ticket contesting. $49/year." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -697,7 +697,7 @@ export default function LandingPage() {
                 'First Dismissal Guarantee',
                 'Street cleaning & snow ban alerts',
                 'Red-light & speed camera alerts (mobile app)',
-                'Renewal reminders (sticker, plates, emissions)',
+                'Full parking history with departure tracking',
                 'Full dashboard & ticket tracking',
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff' }}>
