@@ -14,6 +14,7 @@ import {
   generateNeighborhoodRealityReport,
   NeighborhoodRealityReport,
 } from '../../lib/neighborhood-reality-report';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 interface GeocodeResponse {
   results: Array<{
@@ -92,6 +93,17 @@ export default async function handler(
     res.setHeader('Allow', ['GET']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limiting — 100 requests per minute per IP
+  const clientIp = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(clientIp, 'api');
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests. Please try again later.',
+      retryAfter: Math.ceil(rateLimitResult.resetIn / 1000),
+    });
+  }
+  await recordRateLimitAction(clientIp, 'api');
 
   try {
     let latitude: number | undefined;

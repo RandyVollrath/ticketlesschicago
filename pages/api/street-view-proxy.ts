@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 /**
  * Street View Proxy — allows CLI scripts to fetch Street View images
@@ -13,6 +14,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limiting — 100 requests per minute per IP
+  const clientIp = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(clientIp, 'api');
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests. Please try again later.',
+      retryAfter: Math.ceil(rateLimitResult.resetIn / 1000),
+    });
+  }
+  await recordRateLimitAction(clientIp, 'api');
 
   // Auth check (fail closed if not configured)
   const token = req.headers['x-admin-token'] as string;

@@ -5,6 +5,7 @@ import { isAddressOnSnowRoute } from '../../lib/snow-route-matcher';
 import { isAddressOnWinterBan } from '../../lib/winter-ban-matcher';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
+import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
 // MyStreetCleaning database for PostGIS queries (has the geospatial data)
 // Uses environment variables - set MSC_SUPABASE_URL and MSC_SUPABASE_ANON_KEY in .env
@@ -130,6 +131,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limiting — 100 requests per minute per IP
+  const clientIp = getClientIP(req);
+  const rateLimitResult = await checkRateLimit(clientIp, 'api');
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests. Please try again later.',
+      retryAfter: Math.ceil(rateLimitResult.resetIn / 1000),
+    });
+  }
+  await recordRateLimitAction(clientIp, 'api');
 
   const { address, lat, lng, mode, startDate, endDate, includeGeom } = req.query;
 
