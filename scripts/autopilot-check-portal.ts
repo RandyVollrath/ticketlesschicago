@@ -2882,7 +2882,7 @@ async function main() {
       try {
         await supabaseAdmin
           .from('portal_check_results')
-          .insert({
+          .upsert({
             ticket_number: ticket.ticket_number,
             plate: plateInfo.plate,
             state: plateInfo.state || 'IL',
@@ -2894,7 +2894,7 @@ async function main() {
             issue_date: ticket.issue_date || null,
             raw_response: ticket.raw_text || null,
             checked_at: new Date().toISOString(),
-          });
+          }, { onConflict: 'ticket_number', ignoreDuplicates: true });
       } catch (portalInsertErr: any) {
         console.warn(`    portal_check_results insert failed for ${ticket.ticket_number}: ${portalInsertErr.message}`);
       }
