@@ -3,9 +3,6 @@
     "pages/api/notifications/process.ts": {
       "maxDuration": 60
     },
-    "pages/api/send-renewal-reminders.background.js": {
-      "maxDuration": 60
-    },
     "pages/api/street-cleaning/process.ts": {
       "maxDuration": 60
     },
@@ -27,13 +24,7 @@
     "pages/api/cron/check-towed-vehicles.ts": {
       "maxDuration": 60
     },
-    "pages/api/cron/process-all-renewals.ts": {
-      "maxDuration": 60
-    },
     "pages/api/cron/cleanup-license-images.ts": {
-      "maxDuration": 60
-    },
-    "pages/api/cron/notify-expiring-licenses.ts": {
       "maxDuration": 60
     },
     "pages/api/cron/cleanup-residency-proofs.ts": {
@@ -42,19 +33,7 @@
     "pages/api/cron/flag-property-tax-refresh.ts": {
       "maxDuration": 60
     },
-    "pages/api/cron/notify-remitter-daily.ts": {
-      "maxDuration": 60
-    },
-    "pages/api/cron/notify-emissions-test.ts": {
-      "maxDuration": 60
-    },
-    "pages/api/cron/notify-sticker-purchased.ts": {
-      "maxDuration": 60
-    },
     "pages/api/cron/send-winter-ban-reminder.ts": {
-      "maxDuration": 60
-    },
-    "pages/api/cron/send-sticker-reminders.ts": {
       "maxDuration": 60
     },
     "pages/api/cron/sync-winter-ban-streets.ts": {
@@ -64,12 +43,6 @@
       "maxDuration": 60
     },
     "pages/api/cron/mobile-parking-reminders.ts": {
-      "maxDuration": 60
-    },
-    "pages/api/cron/notify-renewal-profile-confirmation.ts": {
-      "maxDuration": 60
-    },
-    "pages/api/cron/notify-free-user-renewals.ts": {
       "maxDuration": 60
     },
     "pages/api/cron/autopilot-check-plates.ts": {
@@ -162,10 +135,6 @@
       "schedule": "0 3 * * *"
     },
     {
-      "path": "/api/cron/process-all-renewals",
-      "schedule": "0 13 * * *"
-    },
-    {
       "path": "/api/drip/send-emails",
       "schedule": "0 14 * * *"
     },
@@ -188,10 +157,6 @@
     {
       "path": "/api/cron/cleanup-license-images",
       "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/notify-expiring-licenses",
-      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/cron/mobile-parking-reminders",
