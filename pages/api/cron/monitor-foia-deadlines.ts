@@ -70,10 +70,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Find 'sent' requests older than 5 business days
   const { data: sentEvidence, error: evidenceError } = await supabaseAdmin
     .from('ticket_foia_requests')
-    .select('id, ticket_number, foia_sent_at, reference_id, notes, status')
+    .select('id, ticket_number, sent_at, reference_id, notes, status')
     .in('status', ['sent', 'extension_requested'])
-    .not('foia_sent_at', 'is', null)
-    .order('foia_sent_at', { ascending: true });
+    .not('sent_at', 'is', null)
+    .order('sent_at', { ascending: true });
 
   if (evidenceError) {
     console.error('Failed to fetch sent evidence FOIAs:', evidenceError.message);
@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (sentEvidence && sentEvidence.length > 0) {
     for (const req of sentEvidence as any[]) {
-      const sentDate = new Date(req.foia_sent_at);
+      const sentDate = new Date(req.sent_at);
       const bDays = businessDaysBetween(sentDate, now);
 
       const isExtended = req.status === 'extension_requested';
@@ -117,10 +117,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // ── Check foia_history_requests (plate history FOIAs) ──
   const { data: sentHistory, error: historyError } = await supabaseAdmin
     .from('foia_history_requests')
-    .select('id, license_plate, license_state, foia_sent_at, reference_id, notes, status')
+    .select('id, license_plate, license_state, sent_at, reference_id, notes, status')
     .in('status', ['sent', 'extension_requested'])
-    .not('foia_sent_at', 'is', null)
-    .order('foia_sent_at', { ascending: true });
+    .not('sent_at', 'is', null)
+    .order('sent_at', { ascending: true });
 
   if (historyError) {
     console.error('Failed to fetch sent history FOIAs:', historyError.message);
@@ -128,7 +128,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (sentHistory && sentHistory.length > 0) {
     for (const req of sentHistory as any[]) {
-      const sentDate = new Date(req.foia_sent_at);
+      const sentDate = new Date(req.sent_at);
       const bDays = businessDaysBetween(sentDate, now);
 
       const isExtended = req.status === 'extension_requested';
