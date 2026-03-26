@@ -93,7 +93,8 @@ export interface UnifiedParkingResult {
  */
 export async function checkAllParkingRestrictions(
   latitude: number,
-  longitude: number
+  longitude: number,
+  overrideStreetName?: string
 ): Promise<UnifiedParkingResult> {
   const timestamp = new Date().toISOString();
 
@@ -173,9 +174,36 @@ export async function checkAllParkingRestrictions(
       result.location.streetName = geocodeResult.street_name || null;
       result.location.neighborhood = geocodeResult.neighborhood || null;
 
+      // If snap-to-street identified a different street (heading-based disambiguation),
+      // override the Nominatim street name. This fixes cases like Belden/Kenmore intersection
+      // where Nominatim picks the nearest road centerline (Kenmore) but the user's heading
+      // indicates they're on the cross street (Belden).
+      if (overrideStreetName && geocodeResult.street_name) {
+        // Extract core street name (strip direction prefix and type suffix) for comparison
+        // Snap: "W BELDEN AVE" → "BELDEN", Nominatim: "North Kenmore Avenue" → "KENMORE"
+        const extractCoreName = (name: string) =>
+          name.toUpperCase()
+            .replace(/^(NORTH|SOUTH|EAST|WEST|N|S|E|W)\s+/i, '')
+            .replace(/\s+(AVENUE|AVE|STREET|ST|BOULEVARD|BLVD|DRIVE|DR|ROAD|RD|LANE|LN|PLACE|PL|COURT|CT|PARKWAY|PKWY|TERRACE|TER|WAY)$/i, '')
+            .trim();
+        const snapCore = extractCoreName(overrideStreetName);
+        const nominatimCore = extractCoreName(geocodeResult.street_name);
+
+        if (snapCore && nominatimCore && snapCore !== nominatimCore) {
+          console.log(`[unified-checker] Overriding Nominatim street "${geocodeResult.street_name}" with snap street "${overrideStreetName}" (core: ${nominatimCore} → ${snapCore})`);
+          result.location.streetName = overrideStreetName;
+          // Rebuild formatted address with the corrected street name
+          if (geocodeResult.street_number) {
+            const newAddress = `${geocodeResult.street_number} ${overrideStreetName}, Chicago, IL${geocodeResult.zip_code ? ' ' + geocodeResult.zip_code : ''}`;
+            result.location.address = newAddress;
+          }
+        }
+      }
+
       // Parse address for database matching
-      if (geocodeResult.street_number && geocodeResult.street_name) {
-        const fullAddress = `${geocodeResult.street_number} ${geocodeResult.street_name}`;
+      const streetNameForParsing = result.location.streetName || geocodeResult.street_name;
+      if (geocodeResult.street_number && streetNameForParsing) {
+        const fullAddress = `${geocodeResult.street_number} ${streetNameForParsing}`;
         result.location.parsedAddress = parseChicagoAddress(fullAddress);
       }
     }

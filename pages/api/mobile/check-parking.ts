@@ -330,7 +330,7 @@ export default async function handler(
     // We then pass the parsed address to the metered parking checker so it uses the
     // SAME street identification — eliminating the dual-geocoder bug where Google and
     // Nominatim disagreed on which street the user was on.
-    const result = await checkAllParkingRestrictions(checkLat, checkLng);
+    const result = await checkAllParkingRestrictions(checkLat, checkLng, snapResult?.streetName || undefined);
 
     // Step 2b: Metered parking check uses the shared parsed address from step 2
     const meteredParkingResult = await checkMeteredParking(
