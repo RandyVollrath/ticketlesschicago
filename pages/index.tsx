@@ -210,7 +210,7 @@ export default function LandingPage() {
           ) : (
             <>
               <Link href="/auth/signin" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Login</Link>
-              <Button primary href="/start" style={{ padding: '10px 20px', fontSize: '14px' }}>Get Started</Button>
+              <Button primary href="/get-started" style={{ padding: '10px 20px', fontSize: '14px' }}>Get Started</Button>
             </>
           )}
         </div>
@@ -252,7 +252,7 @@ export default function LandingPage() {
           ) : (
             <>
               <Link href="/auth/signin" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Login</Link>
-              <Button primary href="/start" fullWidth style={{ marginTop: '8px' }}>Get Started</Button>
+              <Button primary href="/get-started" fullWidth style={{ marginTop: '8px' }}>Get Started</Button>
             </>
           )}
         </div>
@@ -333,7 +333,7 @@ export default function LandingPage() {
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Button primary href="/start">
+          <Button primary href="/get-started">
             Get Started - $49/year <ArrowRight />
           </Button>
         </div>
@@ -600,7 +600,7 @@ export default function LandingPage() {
               <br/>• Which arguments succeed
               <br/>• Which tickets aren't worth fighting
             </p>
-            <Button primary href="/start">Start Protecting</Button>
+            <Button primary href="/get-started">Start Protecting</Button>
           </div>
           <div style={{ flex: '1 1 350px' }}>
             {dismissalRates.map((stat, i) => (
@@ -708,7 +708,7 @@ export default function LandingPage() {
 
             <Button
               fullWidth
-              href="/start"
+              href="/get-started"
               style={{ backgroundColor: '#fff', color: COLORS.primary }}
             >
               Get Started
@@ -796,7 +796,7 @@ export default function LandingPage() {
             Not a generic national template.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button primary href="/start">
+            <Button primary href="/get-started">
               Get Started - $49/year <ArrowRight />
             </Button>
           </div>

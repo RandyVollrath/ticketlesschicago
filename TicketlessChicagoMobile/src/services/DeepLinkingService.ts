@@ -5,8 +5,9 @@ import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('DeepLinking');
 
-// URL scheme for the app
-const URL_SCHEME = 'autopilotamerica://';
+// Canonical URL scheme for the app. Keep legacy support for autopilotamerica://
+// in handleUrl() and the navigation prefixes below.
+const URL_SCHEME = 'ticketlesschicago://';
 
 // Deep link routes
 export const DEEP_LINK_ROUTES = {
@@ -299,9 +300,9 @@ class DeepLinkingServiceClass {
       let path = '';
       let params: URLParams = {};
 
-      // Handle custom schemes (autopilotamerica:// or ticketlesschicago://)
-      if (url.startsWith(URL_SCHEME) || url.startsWith('ticketlesschicago://')) {
-        const scheme = url.startsWith(URL_SCHEME) ? URL_SCHEME : 'ticketlesschicago://';
+      // Handle custom schemes (ticketlesschicago:// or legacy autopilotamerica://)
+      if (url.startsWith(URL_SCHEME) || url.startsWith('autopilotamerica://')) {
+        const scheme = url.startsWith(URL_SCHEME) ? URL_SCHEME : 'autopilotamerica://';
         const withoutScheme = url.substring(scheme.length);
 
         // Split hash fragment FIRST — Supabase puts tokens in the hash
@@ -403,7 +404,12 @@ class DeepLinkingServiceClass {
    */
   getLinkingConfig() {
     return {
-      prefixes: [URL_SCHEME, 'ticketlesschicago://', 'https://autopilotamerica.com'],
+      prefixes: [
+        URL_SCHEME,
+        'autopilotamerica://',
+        'https://autopilotamerica.com',
+        'https://www.autopilotamerica.com',
+      ],
       config: {
         screens: {
           Onboarding: 'onboarding',

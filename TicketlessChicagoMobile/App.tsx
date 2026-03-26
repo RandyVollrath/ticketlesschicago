@@ -6,24 +6,10 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Screens
-import HomeScreen from './src/screens/HomeScreen';
-import HistoryScreen from './src/screens/HistoryScreen';
-import NativeAlertsScreen from './src/screens/NativeAlertsScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
-import OnboardingScreen from './src/screens/OnboardingScreen';
-import LoginScreen from './src/screens/LoginScreen';
-import CheckDestinationScreen from './src/screens/CheckDestinationScreen';
-import ReportZoneHoursScreen from './src/screens/ReportZoneHoursScreen';
-import AccountInactiveScreen from './src/screens/AccountInactiveScreen';
-
 // Services
-import AuthService, { AuthState } from './src/services/AuthService';
-import PushNotificationService from './src/services/PushNotificationService';
-import DeepLinkingService from './src/services/DeepLinkingService';
+import AuthService from './src/services/AuthService';
+import type { AuthState } from './src/services/AuthService';
 import ApiClient from './src/utils/ApiClient';
-import AnalyticsService from './src/services/AnalyticsService';
 
 // Components
 import TabBar from './src/navigation/TabBar';
@@ -73,6 +59,8 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 // Custom TabBar renderer - extracted to avoid re-creation on each render
 const renderTabBar = (props: any) => <TabBar {...props} />;
 
+const getScreen = <T,>(loader: () => T): T => loader();
+
 // Main Tab Navigator
 function MainTabNavigator() {
   return (
@@ -84,28 +72,28 @@ function MainTabNavigator() {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        getComponent={() => getScreen(() => require('./src/screens/HomeScreen').default)}
         options={{ tabBarLabel: 'Home' }}
       />
       <Tab.Screen
         name="Search"
-        component={CheckDestinationScreen}
+        getComponent={() => getScreen(() => require('./src/screens/CheckDestinationScreen').default)}
         options={{ tabBarLabel: 'Search' }}
         initialParams={{ isTab: true }}
       />
       <Tab.Screen
         name="History"
-        component={HistoryScreen}
+        getComponent={() => getScreen(() => require('./src/screens/HistoryScreen').default)}
         options={{ tabBarLabel: 'History' }}
       />
       <Tab.Screen
         name="Manage"
-        component={NativeAlertsScreen}
+        getComponent={() => getScreen(() => require('./src/screens/NativeAlertsScreen').default)}
         options={{ tabBarLabel: 'Manage' }}
       />
       <Tab.Screen
         name="Settings"
-        component={ProfileScreen}
+        getComponent={() => getScreen(() => require('./src/screens/ProfileScreen').default)}
         options={{ tabBarLabel: 'Settings' }}
       />
     </Tab.Navigator>
@@ -119,6 +107,7 @@ function App(): React.JSX.Element {
   const [hasSeenLogin, setHasSeenLogin] = useState(false);
   const [authState, setAuthState] = useState<AuthState | null>(null);
   const [isPaidUser, setIsPaidUser] = useState<boolean | null>(null); // null = not checked yet
+  const [linkingConfig, setLinkingConfig] = useState<any>(undefined);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   useEffect(() => {
@@ -132,6 +121,14 @@ function App(): React.JSX.Element {
     initializeApp();
 
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    void import('./src/services/DeepLinkingService').then(({ default: DeepLinkingService }) => {
+      setLinkingConfig(DeepLinkingService.getLinkingConfig());
+    }).catch((error) => {
+      log.error('Error loading deep linking config', error);
+    });
   }, []);
 
   // Note: Deep linking and push notification navigation refs are set in
@@ -225,6 +222,14 @@ function App(): React.JSX.Element {
       // Defer non-critical services
       setTimeout(async () => {
         try {
+          const [
+            { default: AnalyticsService },
+            { default: PushNotificationService },
+          ] = await Promise.all([
+            import('./src/services/AnalyticsService'),
+            import('./src/services/PushNotificationService'),
+          ]);
+
           // Initialize analytics early so it captures sessions
           await AnalyticsService.initialize();
           await AnalyticsService.logAppOpen();
@@ -281,6 +286,7 @@ function App(): React.JSX.Element {
     // Track login/signup
     const user = AuthService.getUser();
     if (user) {
+      const { default: AnalyticsService } = await import('./src/services/AnalyticsService');
       await AnalyticsService.setUserId(user.id);
       await AnalyticsService.logLogin('magic_link');
     }
@@ -308,6 +314,7 @@ function App(): React.JSX.Element {
 
     // Request push notification permissions AFTER navigation (non-blocking)
     try {
+      const { default: PushNotificationService } = await import('./src/services/PushNotificationService');
       await PushNotificationService.requestPermissionAndRegister();
     } catch (error) {
       log.error('Push notification registration failed (non-fatal)', error);
@@ -357,87 +364,107 @@ function App(): React.JSX.Element {
     <SafeAreaProvider>
       <ErrorBoundary>
         <NavigationContainer
-        ref={navigationRef}
-        linking={DeepLinkingService.getLinkingConfig()}
-        onStateChange={() => {
-          const currentRoute = navigationRef.current?.getCurrentRoute();
-          if (currentRoute?.name) {
-            AnalyticsService.logScreenView(currentRoute.name);
-          }
-        }}
-        onReady={() => {
-          // Initialize navigation refs for deep linking and push notifications
-          // This is called when navigation container is ready, ensuring safe navigation
-          if (navigationRef.current) {
-            DeepLinkingService.setNavigationRef(navigationRef.current);
-            DeepLinkingService.initialize(navigationRef.current);
-            PushNotificationService.setNavigationRef(navigationRef.current);
-          }
-        }}
-      >
-        <Stack.Navigator
-          initialRouteName={getInitialRoute()}
-          screenOptions={{ headerShown: false }}
+          ref={navigationRef}
+          linking={linkingConfig}
+          onStateChange={() => {
+            const currentRoute = navigationRef.current?.getCurrentRoute();
+            if (currentRoute?.name) {
+              void import('./src/services/AnalyticsService').then(({ default: AnalyticsService }) => {
+                return AnalyticsService.logScreenView(currentRoute.name!);
+              }).catch((error) => {
+                log.error('Error logging screen view', error);
+              });
+            }
+          }}
+          onReady={() => {
+            // Initialize navigation refs for deep linking and push notifications
+            // This is called when navigation container is ready, ensuring safe navigation
+            if (!navigationRef.current) return;
+
+            void Promise.all([
+              import('./src/services/DeepLinkingService'),
+              import('./src/services/PushNotificationService'),
+            ]).then(([{ default: DeepLinkingService }, { default: PushNotificationService }]) => {
+              DeepLinkingService.setNavigationRef(navigationRef.current);
+              void DeepLinkingService.initialize(navigationRef.current);
+              PushNotificationService.setNavigationRef(navigationRef.current);
+            }).catch((error) => {
+              log.error('Error initializing navigation-linked services', error);
+            });
+          }}
         >
-          <Stack.Screen name="Onboarding">
-            {(props) => (
-              <OnboardingScreen
-                {...props}
-                onComplete={handleOnboardingComplete}
-              />
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="Login">
-            {(props) => (
-              <LoginScreen
-                {...props}
-                onAuthSuccess={handleLoginComplete}
-              />
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="AccountInactive">
-            {(props) => (
-              <AccountInactiveScreen
-                {...props}
-                onSignOut={handleAccountSignOut}
-                onRetryCheck={handleAccountRetryCheck}
-              />
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
-          <Stack.Screen
-            name="CheckDestination"
-            component={CheckDestinationScreen}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
-          />
-          <Stack.Screen
-            name="ReportZoneHours"
-            component={ReportZoneHoursScreen}
-            options={{
-              headerShown: false,
-              gestureEnabled: true,
-            }}
-          />
-          <Stack.Screen
-            name="BluetoothSettings"
-            component={SettingsScreen}
-            options={{
-              headerShown: true,
-              title: 'Pair Your Car',
-              headerBackTitle: 'Back',
-              headerStyle: {
-                backgroundColor: colors.cardBg,
-              },
-              headerTintColor: colors.primary,
-              headerTitleStyle: {
-                fontWeight: typography.weights.semibold,
-              },
-            }}
-          />
-        </Stack.Navigator>
+          <Stack.Navigator
+            initialRouteName={getInitialRoute()}
+            screenOptions={{ headerShown: false }}
+          >
+            <Stack.Screen name="Onboarding">
+              {(props) => {
+                const OnboardingScreen = getScreen(() => require('./src/screens/OnboardingScreen').default);
+                return (
+                  <OnboardingScreen
+                    {...props}
+                    onComplete={handleOnboardingComplete}
+                  />
+                );
+              }}
+            </Stack.Screen>
+            <Stack.Screen name="Login">
+              {(props) => {
+                const LoginScreen = getScreen(() => require('./src/screens/LoginScreen').default);
+                return (
+                  <LoginScreen
+                    {...props}
+                    onAuthSuccess={handleLoginComplete}
+                  />
+                );
+              }}
+            </Stack.Screen>
+            <Stack.Screen name="AccountInactive">
+              {(props) => {
+                const AccountInactiveScreen = getScreen(() => require('./src/screens/AccountInactiveScreen').default);
+                return (
+                  <AccountInactiveScreen
+                    {...props}
+                    onSignOut={handleAccountSignOut}
+                    onRetryCheck={handleAccountRetryCheck}
+                  />
+                );
+              }}
+            </Stack.Screen>
+            <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+            <Stack.Screen
+              name="CheckDestination"
+              getComponent={() => getScreen(() => require('./src/screens/CheckDestinationScreen').default)}
+              options={{
+                headerShown: false,
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen
+              name="ReportZoneHours"
+              getComponent={() => getScreen(() => require('./src/screens/ReportZoneHoursScreen').default)}
+              options={{
+                headerShown: false,
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen
+              name="BluetoothSettings"
+              getComponent={() => getScreen(() => require('./src/screens/SettingsScreen').default)}
+              options={{
+                headerShown: true,
+                title: 'Pair Your Car',
+                headerBackTitle: 'Back',
+                headerStyle: {
+                  backgroundColor: colors.cardBg,
+                },
+                headerTintColor: colors.primary,
+                headerTitleStyle: {
+                  fontWeight: typography.weights.semibold,
+                },
+              }}
+            />
+          </Stack.Navigator>
         </NavigationContainer>
       </ErrorBoundary>
     </SafeAreaProvider>

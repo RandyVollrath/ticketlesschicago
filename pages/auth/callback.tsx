@@ -245,6 +245,16 @@ export default function AuthCallback() {
             }
           }
 
+          const isFreeSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'free-signup';
+
+          if (isFreeSignupFlow) {
+            console.log('🚫 Legacy free-signup flow blocked - redirecting to paid funnel');
+            sessionStorage.removeItem('pendingSignup');
+            localStorage.removeItem('pendingSignup');
+            router.push('/start?error=free_signup_retired');
+            return;
+          }
+
           // Check if this user has a profile (existing user vs new OAuth user)
           const { data: userProfile } = await supabase
             .from('user_profiles')
@@ -253,41 +263,21 @@ export default function AuthCallback() {
             .maybeSingle();
 
           if (!userProfile) {
-            // New user signed in with OAuth - create account profile
-            console.log('🆕 New OAuth user detected - creating profile...');
-            setDebugInfo(`🆕 Welcome! Setting up your account...`);
+            console.log('🆕 New OAuth user without paid profile - redirecting to paid funnel');
+            setDebugInfo('🆕 Signed in. Continue in the paid signup flow.');
 
-            // Create a basic profile for the new user
-            const { error: insertError } = await supabase
-              .from('user_profiles')
-              .insert({
-                user_id: user.id,
-                email: user.email,
-                has_contesting: false, // Not yet activated - needs to complete purchase
-                created_at: new Date().toISOString(),
-              });
-
-            if (insertError) {
-              console.error('Error creating user profile:', insertError);
-              // Don't block - they can still use the app
-            } else {
-              console.log('✅ User profile created successfully');
-            }
-
-            // Link any orphaned FOIA history requests submitted before signup
+            let redirectTarget = '/start';
             try {
-              await fetch('/api/foia/link-user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, email: user.email }),
-              });
+              const stored = localStorage.getItem('post_auth_redirect');
+              if (stored && stored !== '/settings') {
+                redirectTarget = stored;
+                localStorage.removeItem('post_auth_redirect');
+              }
             } catch (e) {
-              // Non-critical — don't block signup
+              console.error('Failed to read localStorage redirect:', e);
             }
 
-            await new Promise(r => setTimeout(r, 500));
-            // Redirect to settings so they can complete their profile
-            router.push('/settings?welcome=true');
+            router.push(redirectTarget);
             return;
           }
 
@@ -334,9 +324,6 @@ export default function AuthCallback() {
 
             sessionStorage.removeItem('expectedGoogleEmail');
           }
-
-          // Check if this is a legacy signup flow (even if data was lost)
-          const isFreeSignupFlow = new URLSearchParams(window.location.search).get('flow') === 'free-signup';
 
           // Check for pending signup data - try database first (most reliable), then sessionStorage/localStorage
           let pendingSignup = null;

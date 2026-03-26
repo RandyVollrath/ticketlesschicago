@@ -64,9 +64,6 @@ class AuthServiceClass {
       log.debug('Auth state changed', event);
       this.updateAuthState(session);
     });
-
-    // Configure Google Sign-In
-    this.configureGoogleSignIn();
   }
 
   private configureGoogleSignIn(): void {
@@ -80,6 +77,18 @@ class AuthServiceClass {
       log.info('Google Sign-In configured');
     } catch (error) {
       log.error('Failed to configure Google Sign-In', error);
+    }
+  }
+
+  /**
+   * Configure Google Sign-In lazily instead of during module import.
+   * This keeps launch-time native initialization smaller and avoids
+   * crashing the whole app before the first screen on devices where
+   * Google Play Services / the Google Sign-In module behaves badly.
+   */
+  private ensureGoogleSignInConfigured(): void {
+    if (!this.googleSignInConfigured) {
+      this.configureGoogleSignIn();
     }
   }
 
@@ -201,6 +210,8 @@ class AuthServiceClass {
   }
 
   async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
+    this.ensureGoogleSignInConfigured();
+
     if (!this.googleSignInConfigured) {
       return { success: false, error: 'Google Sign-In is not configured' };
     }
@@ -311,7 +322,7 @@ class AuthServiceClass {
     try {
       log.info('Starting Apple Sign In via Supabase OAuth flow (Safari)');
 
-      const redirectTo = 'autopilotamerica://auth/callback';
+      const redirectTo = 'ticketlesschicago://auth/callback';
       const oauthUrl = `${Config.SUPABASE_URL}/auth/v1/authorize?provider=apple&redirect_to=${encodeURIComponent(redirectTo)}`;
 
       const canOpen = await Linking.canOpenURL(oauthUrl);
@@ -322,7 +333,7 @@ class AuthServiceClass {
       await Linking.openURL(oauthUrl);
 
       // Auth completion happens asynchronously via deep link callback
-      // (DeepLinkingService handles autopilotamerica://auth/callback)
+      // (DeepLinkingService handles ticketlesschicago://auth/callback)
       log.info('Apple OAuth flow launched in Safari');
       return { success: true };
     } catch (error: any) {

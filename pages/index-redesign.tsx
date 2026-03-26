@@ -340,10 +340,10 @@ export default function LandingPage() {
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Button primary href="/start">
+          <Button primary href="/get-started">
             Get Started <ArrowRight />
           </Button>
-          <Button href="/start" style={{ backgroundColor: COLORS.highlight, color: '#fff' }}>
+          <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff' }}>
             Become a Founding Member - $49/yr
           </Button>
         </div>
@@ -442,7 +442,7 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <Button fullWidth href="/start" style={{ backgroundColor: COLORS.accent, color: COLORS.primary }}>
+            <Button fullWidth href="/get-started" style={{ backgroundColor: COLORS.accent, color: COLORS.primary }}>
               Become a Founding Member - $49/yr
             </Button>
             <p style={{ fontSize: '12px', color: '#64748B', marginTop: '12px', textAlign: 'center' }}>
@@ -621,10 +621,10 @@ export default function LandingPage() {
             Founding Member rate - $49/year for complete protection.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button primary href="/start">
+            <Button primary href="/get-started">
               Get Started <ArrowRight />
             </Button>
-            <Button href="/start" style={{ backgroundColor: COLORS.highlight, color: '#fff', border: 'none' }}>
+            <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff', border: 'none' }}>
               Become a Founding Member - $49/yr
             </Button>
           </div>
