@@ -319,6 +319,88 @@ export default async function handler(
             }
           }
         }
+        // --- Extended heading search (Failure Mode 1: GPS drift >50m) ---
+        // If heading is available but NO snap candidate matched the heading direction,
+        // the correct street may be beyond the initial search radius (e.g., GPS drifted
+        // 100-170m north of Belden onto Kenmore's centerline). Do a wider search (150m)
+        // specifically to find a heading-matching street.
+        if (hasHeading && !snapResult) {
+          try {
+            const headingDir = isHeadingNorthSouth(headingDeg) ? 'N-S' : 'E-W';
+            console.log(`[check-parking] No heading-matching snap candidate within initial radius. Trying extended search (150m) for ${headingDir} street...`);
+
+            const { data: extendedData, error: extendedError } = await supabaseAdmin.rpc(
+              'snap_to_nearest_street',
+              {
+                user_lat: latitude,
+                user_lng: longitude,
+                search_radius_meters: 150,
+              }
+            );
+
+            if (!extendedError && extendedData && extendedData.length > 0) {
+              // Find closest candidate matching heading direction
+              const headingMatch = extendedData
+                .filter((s: any) => s.was_snapped)
+                .find((s: any) => getChicagoStreetOrientation(s.street_name) === headingDir);
+
+              if (headingMatch) {
+                checkLat = headingMatch.snapped_lat;
+                checkLng = headingMatch.snapped_lng;
+                snapResult = {
+                  wasSnapped: true,
+                  snapDistanceMeters: headingMatch.snap_distance_meters,
+                  streetName: headingMatch.street_name,
+                  snapSource: `${headingMatch.snap_source}+heading_extended`,
+                };
+                console.log(`[check-parking] Extended heading search found: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${headingDeg.toFixed(0)}° → ${headingDir})`);
+              } else {
+                console.log(`[check-parking] Extended heading search: no ${headingDir} street found within 150m`);
+              }
+            }
+          } catch (extErr) {
+            console.warn('[check-parking] Extended heading search failed (non-fatal):', extErr);
+          }
+        }
+
+        // --- Nominatim cross-reference (no heading available) ---
+        // When heading is unavailable and snap gave us a result, cross-check with
+        // Nominatim reverse geocoding. Nominatim identifies the nearest road from OSM
+        // data, which can be more accurate than centerline distance for identifying
+        // the actual street the user is on (especially at intersections).
+        if (!hasHeading && snapResult && supabaseAdmin) {
+          try {
+            const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
+            const nominatimResult = await reverseGeocode(latitude, longitude);
+
+            if (nominatimResult?.street_name) {
+              const snapOrientation = getChicagoStreetOrientation(snapResult.streetName);
+              const nominatimOrientation = getChicagoStreetOrientation(nominatimResult.street_name);
+
+              // If Nominatim says a DIFFERENT orientation street than snap, and they disagree,
+              // prefer Nominatim. This catches the case where GPS is near an intersection and
+              // snap picks the closest centerline (wrong street) while Nominatim correctly
+              // identifies the road segment.
+              if (snapOrientation && nominatimOrientation && snapOrientation !== nominatimOrientation) {
+                console.log(`[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). Preferring Nominatim.`);
+                // Use original coords (not snapped) since Nominatim identified a different street.
+                // The unified checker will use its own geocoding with the original coordinates.
+                checkLat = latitude;
+                checkLng = longitude;
+                snapResult = {
+                  wasSnapped: false,
+                  snapDistanceMeters: 0,
+                  streetName: null,
+                  snapSource: 'nominatim_override',
+                };
+              } else if (snapOrientation && nominatimOrientation) {
+                console.log(`[check-parking] Nominatim cross-reference confirms snap: both say ${snapOrientation} orientation`);
+              }
+            }
+          } catch (nomErr) {
+            console.warn('[check-parking] Nominatim cross-reference failed (non-fatal):', nomErr);
+          }
+        }
       } catch (snapErr) {
         // Snap is optional - log and continue with original coordinates
         console.warn('[check-parking] Snap-to-street failed (non-fatal):', snapErr);

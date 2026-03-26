@@ -136,6 +136,10 @@ class BackgroundTaskServiceClass {
   private gpsCacheInterval: ReturnType<typeof setInterval> | null = null;
   private cameraLocationUnsubscribe: (() => void) | null = null;
   private androidDrivingGpsWatchId: number | null = null;
+  /** Last valid driving heading from Android GPS watcher. Used as fallback when
+   *  the parked GPS fix has no heading (speed ≈ 0 → heading unreliable).
+   *  iOS native already captures last driving heading in ParkingDetectedEvent. */
+  private lastDrivingHeading: number | null = null;
   // Native BT monitor service event subscriptions (Android only)
   private nativeBtDisconnectSub: any = null;
   private nativeBtConnectSub: any = null;
@@ -1082,6 +1086,9 @@ class BackgroundTaskServiceClass {
   private async handleCarReconnection(nativeDrivingTimestamp?: number): Promise<void> {
     void this.captureIosHealthSnapshot('handleCarReconnection', { force: true, includeLogTail: true });
     log.info('Car reconnection detected via Bluetooth');
+    // Reset last driving heading — stale heading from a previous drive session
+    // could cause incorrect street disambiguation if the new drive is on a different street.
+    this.lastDrivingHeading = null;
     void AnalyticsService.logDrivingStarted(Platform.OS === 'ios' ? 'ios_coremotion' : 'android_bluetooth');
     void BackgroundLocationService.appendToDecisionLog('js_car_reconnection', {
       nativeDrivingTimestamp: nativeDrivingTimestamp ? new Date(nativeDrivingTimestamp).toISOString() : null,
@@ -1397,11 +1404,20 @@ class BackgroundTaskServiceClass {
     try {
       this.androidDrivingGpsWatchId = Geolocation.watchPosition(
         (position) => {
+          // Store last valid driving heading for parking street disambiguation.
+          // GPS heading is only reliable while moving (speed > 0). When the car stops,
+          // heading becomes null/-1/stale. By saving the last known driving heading,
+          // we can tell the server which direction the car was traveling, which helps
+          // pick the correct street at intersections (e.g., Belden vs Kenmore).
+          const heading = position.coords.heading ?? -1;
+          if (heading >= 0 && heading < 360 && (position.coords.speed ?? 0) > 1.0) {
+            this.lastDrivingHeading = heading;
+          }
           CameraAlertService.onLocationUpdate(
             position.coords.latitude,
             position.coords.longitude,
             position.coords.speed ?? -1,
-            position.coords.heading ?? -1,
+            heading,
             position.coords.accuracy ?? null
           );
         },
@@ -1459,6 +1475,7 @@ class BackgroundTaskServiceClass {
     latitude: number;
     longitude: number;
     accuracy?: number;
+    heading?: number;
   }, nativeTimestamp?: number): Promise<void> {
     const detectionMeta = this.pendingNativeDetectionMeta;
     void this.captureIosHealthSnapshot('handleCarDisconnection', { force: true, includeLogTail: true });
@@ -1484,6 +1501,7 @@ class BackgroundTaskServiceClass {
       lat: parkingCoords?.latitude,
       lng: parkingCoords?.longitude,
       accuracy: parkingCoords?.accuracy,
+      heading: parkingCoords?.heading,
       nativeTimestamp: nativeTimestamp ? new Date(nativeTimestamp).toISOString() : null,
       smState: ParkingDetectionStateMachine.state,
       hasPendingDeparture: !!this.state.pendingDepartureConfirmation,
@@ -1681,7 +1699,17 @@ class BackgroundTaskServiceClass {
         this.backgroundBurstRefine(initialCoords, nativeTimestamp, persistParkingEvent);
       }
 
-      log.info(`GPS acquired via ${gpsSource}. Now calling parking API...`);
+      // Inject last driving heading if coords don't already have one.
+      // GPS heading is unreliable at low speed / when stopped (Android returns null/-1).
+      // The last driving heading from the watchPosition watcher is more accurate because
+      // it was captured while the car was actually moving. iOS native already handles this
+      // in BackgroundLocationModule (ParkingDetectedEvent.heading falls back to last driving course).
+      if ((!coords.heading || coords.heading < 0) && this.lastDrivingHeading !== null) {
+        log.info(`Injecting last driving heading ${this.lastDrivingHeading.toFixed(1)}° into parking coords (original heading: ${coords.heading})`);
+        coords = { ...coords, heading: this.lastDrivingHeading };
+      }
+
+      log.info(`GPS acquired via ${gpsSource}. Heading: ${coords.heading != null && coords.heading >= 0 ? coords.heading.toFixed(1) + '°' : 'none'}. Now calling parking API...`);
 
       // Check parking rules
       let result;
