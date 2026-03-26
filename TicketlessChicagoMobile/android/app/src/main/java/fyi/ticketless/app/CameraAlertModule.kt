@@ -632,15 +632,40 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     // Audio focus for ducking music during speech
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
+    @Volatile private var moduleInitialized = false
 
     init {
-        createNotificationChannel()
-        audioManager = reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        restorePersistedSettings()
-        // Pre-warm TTS engine eagerly so it's ready for the first camera alert.
-        // TTS initialization takes 200-500ms. Without this, the first alert is delayed
-        // or silent if TTS init hasn't completed by the time doSpeak() is called.
-        initTts()
+        // Keep constructor side-effect free. React Native instantiates native
+        // modules during app startup, and eager TTS/service initialization here
+        // can crash the whole app before JS renders on some Android devices.
+    }
+
+    private fun ensureInitialized() {
+        if (moduleInitialized) return
+
+        synchronized(this) {
+            if (moduleInitialized) return
+
+            try {
+                createNotificationChannel()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create notification channel during lazy init", e)
+            }
+
+            try {
+                audioManager = reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to acquire AudioManager during lazy init", e)
+            }
+
+            try {
+                restorePersistedSettings()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to restore camera settings during lazy init", e)
+            }
+
+            moduleInitialized = true
+        }
     }
 
     private fun restorePersistedSettings() {
@@ -682,6 +707,8 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         volume: Double,
         promise: Promise
     ) {
+        ensureInitialized()
+
         this.isEnabled = enabled
         this.speedAlertsEnabled = speedEnabled
         this.redLightAlertsEnabled = redLightEnabled
@@ -710,6 +737,8 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         accuracy: Double,
         promise: Promise
     ) {
+        ensureInitialized()
+
         if (!isEnabled) {
             if (locationUpdateCount++ % 30 == 0L) {
                 Log.w(TAG, "CAMERA_DISABLED: isEnabled=false — all camera checks skipped (update #$locationUpdateCount)")
@@ -740,6 +769,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun speakAlert(message: String, promise: Promise) {
+        ensureInitialized()
         // doSpeak handles the TTS-not-ready case by queuing via pendingSpeech
         doSpeak(message)
         promise.resolve(true)
@@ -750,6 +780,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun clearState(promise: Promise) {
+        ensureInitialized()
         alertedCameras.clear()
         lastGlobalAlertTime = 0
         headingBuffer.clear()  // Reset heading smoothing for new drive session
@@ -762,6 +793,7 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun getStatus(promise: Promise) {
+        ensureInitialized()
         val result = Arguments.createMap().apply {
             putBoolean("enabled", isEnabled)
             putBoolean("speedAlertsEnabled", speedAlertsEnabled)

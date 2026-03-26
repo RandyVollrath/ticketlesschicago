@@ -136,10 +136,18 @@ export default function GetStarted() {
     setAuthError('');
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Please sign in again before checkout.');
+      }
+
       // Go to Stripe checkout for Autopilot plan
       const response = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           userId: user.id,
           licensePlate: cleanPlate,

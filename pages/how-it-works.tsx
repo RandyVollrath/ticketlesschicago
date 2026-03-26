@@ -259,7 +259,7 @@ export default function HowItWorks() {
               Ready to Get Protected?
             </h3>
             <button
-              onClick={() => router.push('/start')}
+              onClick={() => router.push('/get-started')}
               style={{
                 background: '#2563eb',
                 color: 'white',

@@ -41,19 +41,21 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
-        <!-- Deep link for custom scheme -->
+        <!-- Deep links for custom schemes -->
         <intent-filter>
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="ticketlesschicago" />
+            <data android:scheme="autopilotamerica" />
         </intent-filter>
-        <!-- Deep link for https://ticketless.fyi/auth -->
+        <!-- Deep link for https://autopilotamerica.com/auth -->
         <intent-filter android:autoVerify="true">
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="https" android:host="autopilotamerica.com" android:pathPrefix="/auth" />
+            <data android:scheme="https" android:host="www.autopilotamerica.com" android:pathPrefix="/auth" />
         </intent-filter>
       </activity>
 

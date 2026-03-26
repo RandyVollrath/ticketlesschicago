@@ -479,7 +479,7 @@ export default function MobileNav({ user, protectionStatus = 'none', onLogout }:
                 Sign In
               </button>
               <button
-                onClick={() => { router.push('/start'); setIsOpen(false); }}
+                onClick={() => { router.push('/get-started'); setIsOpen(false); }}
                 style={{
                   flex: 1,
                   padding: '12px',

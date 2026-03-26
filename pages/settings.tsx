@@ -321,7 +321,7 @@ const DashboardContent = React.memo(function DashboardContent({
           Your account needs to be activated to use Autopilot America. Complete your purchase to get started.
         </p>
 
-        <Link href="/start" style={{
+        <Link href="/get-started" style={{
           display: 'inline-block',
           padding: '14px 36px',
           borderRadius: 8,
@@ -1008,12 +1008,15 @@ function SettingsPageInner() {
       // Immediately verify checkout with Stripe and activate user
       const verifyAndActivate = async () => {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        if (!session?.access_token) return;
 
         try {
           const response = await fetch('/api/autopilot/verify-checkout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
             body: JSON.stringify({ userId: session.user.id }),
           });
           const result = await response.json();
@@ -1415,10 +1418,17 @@ function SettingsPageInner() {
     try {
       // Save any current profile data before checkout
       await autoSave();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Please sign in again before checkout.');
+      }
 
       const response = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           userId,
           lastName: lastName.trim() || null,

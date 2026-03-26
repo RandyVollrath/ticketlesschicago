@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import RegistrationForwardingSetup from '../components/RegistrationForwardingSetup';
 
-// Pre-payment: plate → city → signin → value → price → (stripe)
+// Pre-payment: plate → address → signin → value → price → (stripe)
 // Post-payment: confirmed → address → tickets → receipt-forwarding → notifications
 type Step = 'plate' | 'city' | 'signin' | 'value' | 'price' | 'confirmed' | 'address' | 'tickets' | 'receipt-forwarding' | 'notifications';
 
@@ -55,6 +55,8 @@ export default function StartFunnel() {
   const [plate, setPlate] = useState('');
   const [plateState, setPlateState] = useState('IL');
   const [city, setCity] = useState('Chicago');
+  const [preCheckoutStreet, setPreCheckoutStreet] = useState('');
+  const [preCheckoutZip, setPreCheckoutZip] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
@@ -77,7 +79,7 @@ export default function StartFunnel() {
   const stepRef = useRef<Step>(step);
   stepRef.current = step;
 
-  // Restore plate/city from localStorage on mount (survives OAuth redirect)
+  // Restore pre-checkout state from localStorage on mount (survives OAuth redirect)
   useEffect(() => {
     try {
       const saved = localStorage.getItem('start_funnel_state');
@@ -86,6 +88,14 @@ export default function StartFunnel() {
         if (parsed.plate) setPlate(parsed.plate);
         if (parsed.plateState) setPlateState(parsed.plateState);
         if (parsed.city) setCity(parsed.city);
+        if (parsed.preCheckoutStreet) {
+          setPreCheckoutStreet(parsed.preCheckoutStreet);
+          setMailingAddress(parsed.preCheckoutStreet);
+        }
+        if (parsed.preCheckoutZip) {
+          setPreCheckoutZip(parsed.preCheckoutZip);
+          setMailingZip(parsed.preCheckoutZip);
+        }
       }
     } catch {
       // ignore parse errors
@@ -128,12 +138,43 @@ export default function StartFunnel() {
 
   // Handle checkout=success from Stripe redirect
   useEffect(() => {
-    if (router.query.checkout === 'success' && user) {
-      setStep('confirmed');
-      // Clean the URL and clear saved funnel state
-      localStorage.removeItem('start_funnel_state');
-      router.replace('/start', undefined, { shallow: true });
-    }
+    if (router.query.checkout !== 'success' || !user) return;
+
+    const verifyCheckout = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('Please sign in again to finish setup.');
+        }
+
+        const response = await fetch('/api/autopilot/verify-checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ userId: session.user.id }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || result.message || 'Payment not yet confirmed.');
+        }
+
+        setStep('confirmed');
+        if (preCheckoutStreet && !mailingAddress) setMailingAddress(preCheckoutStreet);
+        if (preCheckoutZip && !mailingZip) setMailingZip(preCheckoutZip);
+        localStorage.removeItem('start_funnel_state');
+        router.replace('/start', undefined, { shallow: true });
+      } catch (err: any) {
+        setError(err.message || 'We could not confirm your payment. Please try checkout again.');
+        setStep('price');
+        router.replace('/start', undefined, { shallow: true });
+      }
+    };
+
+    verifyCheckout();
   }, [router.query.checkout, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Focus input on step change
@@ -181,8 +222,12 @@ export default function StartFunnel() {
   };
 
   const handleCitySubmit = () => {
-    if (!city.trim()) {
-      setError('Please select your city.');
+    if (!preCheckoutStreet.trim()) {
+      setError('Please enter your street address.');
+      return;
+    }
+    if (!preCheckoutZip.trim() || !/^\d{5}(-\d{4})?$/.test(preCheckoutZip.trim())) {
+      setError('Please enter a valid ZIP code.');
       return;
     }
     // If user is already signed in (e.g. came back), skip signin step
@@ -202,6 +247,8 @@ export default function StartFunnel() {
         plate,
         plateState,
         city,
+        preCheckoutStreet,
+        preCheckoutZip,
         step: 'signin',
       }));
 
@@ -235,28 +282,18 @@ export default function StartFunnel() {
 
     try {
       const cleanPlate = plate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-      // Create account record with plate (upserts if exists)
-      const accountRes = await fetch('/api/start/create-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: user.email,
-          licensePlate: cleanPlate,
-          city: city.toLowerCase().replace(/\s+/g, '-'),
-          state: plateState,
-        }),
-      });
-
-      if (!accountRes.ok) {
-        const accountData = await accountRes.json();
-        throw new Error(accountData.error || 'Failed to create account');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Please sign in again before checkout.');
       }
 
       // Create Stripe checkout session
       const checkoutRes = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           userId: user.id,
           licensePlate: cleanPlate,
@@ -477,8 +514,8 @@ export default function StartFunnel() {
           {/* ── Step: License Plate ── */}
           {step === 'plate' && (
             <StepContainer>
-              <StepLabel>What&apos;s your license plate?</StepLabel>
-              <StepSubtext>We&apos;ll monitor the City of Chicago portal for any tickets on this plate.</StepSubtext>
+              <StepLabel>Start with your plate</StepLabel>
+              <StepSubtext>We use your plate to monitor the City of Chicago portal and catch tickets before they turn into a bigger mess.</StepSubtext>
               <div style={{ display: 'flex', gap: 10, marginBottom: 0 }}>
                 <select
                   value={plateState}
@@ -521,35 +558,71 @@ export default function StartFunnel() {
               </div>
               {error && <ErrorText>{error}</ErrorText>}
               <ContinueButton onClick={handlePlateSubmit}>Continue</ContinueButton>
-              <Reassurance>Takes about 60 seconds to set up.</Reassurance>
+              <Reassurance>Setup takes about 2 minutes. Payment comes after we show you the offer.</Reassurance>
             </StepContainer>
           )}
 
-          {/* ── Step: City ── */}
+          {/* ── Step: Address ── */}
           {step === 'city' && (
             <StepContainer>
-              <StepLabel>Which city?</StepLabel>
-              <StepSubtext>Parking rules and enforcement vary by city. We&apos;ll tailor your protection.</StepSubtext>
+              <StepLabel>What&apos;s your home address?</StepLabel>
+              <StepSubtext>
+                We use this to power block-specific alert context and make sure your contest mail is set up correctly.
+                We&apos;ll ask for renewal dates after payment.
+              </StepSubtext>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <CityOption
-                  selected={city === 'Chicago'}
-                  onClick={() => { setCity('Chicago'); setError(''); }}
-                >
-                  <span style={{ fontSize: 20 }}>&#127959;</span>
-                  <div>
-                    <div style={{ fontWeight: 600, color: COLORS.text }}>Chicago, IL</div>
-                    <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>Full coverage — tickets, cameras, street sweeping</div>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={preCheckoutStreet}
+                  onChange={(e) => {
+                    setPreCheckoutStreet(e.target.value);
+                    setMailingAddress(e.target.value);
+                    setError('');
+                  }}
+                  placeholder="Street address"
+                  autoComplete="street-address"
+                  style={inputStyle}
+                />
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{
+                    flex: 1,
+                    padding: '16px 18px',
+                    borderRadius: 12,
+                    border: `2px solid ${COLORS.border}`,
+                    backgroundColor: COLORS.bg,
+                    color: COLORS.text,
+                    fontSize: 16,
+                    fontWeight: 600,
+                  }}>
+                    Chicago, IL
                   </div>
-                </CityOption>
+                  <input
+                    type="text"
+                    value={preCheckoutZip}
+                    onChange={(e) => {
+                      const nextZip = e.target.value.replace(/[^\d-]/g, '').slice(0, 10);
+                      setPreCheckoutZip(nextZip);
+                      setMailingZip(nextZip);
+                      setError('');
+                    }}
+                    placeholder="ZIP"
+                    autoComplete="postal-code"
+                    inputMode="numeric"
+                    maxLength={10}
+                    style={{ ...inputStyle, width: 132 }}
+                  />
+                </div>
                 <div style={{
-                  padding: '16px 20px',
+                  padding: '14px 16px',
                   borderRadius: 12,
                   border: `1px solid ${COLORS.border}`,
-                  backgroundColor: COLORS.bg,
-                  opacity: 0.6,
+                  backgroundColor: COLORS.primaryLight,
+                  fontSize: 13,
+                  color: COLORS.textSecondary,
+                  lineHeight: 1.5,
                 }}>
-                  <div style={{ fontSize: 14, color: COLORS.textMuted, fontWeight: 500 }}>More cities coming soon</div>
-                  <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 2 }}>San Francisco, Boston, San Diego, Los Angeles</div>
+                  Chicago-only for now. We use your address to make the alerts more relevant before we ask for any extra paperwork.
                 </div>
               </div>
               {error && <ErrorText>{error}</ErrorText>}
@@ -560,8 +633,8 @@ export default function StartFunnel() {
           {/* ── Step: Sign In (Google OAuth) ── */}
           {step === 'signin' && (
             <StepContainer>
-              <StepLabel>Create your account</StepLabel>
-              <StepSubtext>Sign in to start protecting <strong>{plate}</strong> from parking tickets.</StepSubtext>
+              <StepLabel>Secure your account</StepLabel>
+              <StepSubtext>Sign in to unlock checkout and tie protection to <strong>{plate}</strong> at <strong>{preCheckoutStreet || 'your address'}</strong>.</StepSubtext>
 
               <button
                 type="button"
@@ -596,30 +669,43 @@ export default function StartFunnel() {
 
               {error && <ErrorText>{error}</ErrorText>}
 
-              <Reassurance>We only use your email for ticket alerts and account access.</Reassurance>
+              <Reassurance>No free account is created here. Protection starts only after payment clears.</Reassurance>
             </StepContainer>
           )}
 
           {/* ── Step: Value Proposition ── */}
           {step === 'value' && (
             <StepContainer>
-              <StepLabel>Here&apos;s how Autopilot protects you</StepLabel>
+              <StepLabel>Why people pay for this</StepLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20, margin: '8px 0' }}>
                 <ValueItem
-                  icon="&#128269;"
-                  title="We check for tickets automatically"
-                  desc="Twice a week, we scan the City of Chicago payment portal for any new tickets on your plate."
+                  icon="&#128202;"
+                  title="Built on real Chicago win-rate data"
+                  desc="Across 1.18M decided Chicago parking contests, 68.5% were dismissed. Expired plates were 76%. No city sticker was 72%."
                 />
                 <ValueItem
                   icon="&#9993;&#65039;"
-                  title="Contest letters mailed for you"
-                  desc="When we find a ticket, we generate a customized contest letter and mail it to the city — no effort on your part."
+                  title="We do the work people procrastinate"
+                  desc="We monitor your plate, spot tickets, draft the contest letter, print it, mail it, and keep you updated."
                 />
                 <ValueItem
                   icon="&#128176;"
-                  title="First Dismissal Guarantee"
-                  desc="If your first contested ticket isn't dismissed, we'll refund your membership in full."
+                  title="One ticket can pay for the year"
+                  desc="At $49/year, the membership costs less than one common Chicago ticket and covers your whole year of monitoring."
                 />
+              </div>
+              <div style={{
+                padding: '16px 18px',
+                borderRadius: 12,
+                border: `1px solid ${COLORS.border}`,
+                backgroundColor: COLORS.card,
+                marginTop: 8,
+                fontSize: 14,
+                color: COLORS.textSecondary,
+                lineHeight: 1.6,
+              }}>
+                You&apos;ve already given us the two things that matter most up front: the plate we protect and the address context that makes the alerts useful.
+                We collect the rest after payment so setup friction does not kill the signup.
               </div>
               <ContinueButton onClick={goNext}>See pricing</ContinueButton>
             </StepContainer>
@@ -658,18 +744,18 @@ export default function StartFunnel() {
                   Price locked for life while your membership stays active.
                 </div>
                 <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 4 }}>
-                  That&apos;s less than a single parking ticket.
+                  Less than one Chicago ticket. No free tier. No partial setup. Paid members only.
                 </div>
               </div>
 
               <div style={{ marginBottom: 24 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 12 }}>What&apos;s included:</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <IncludedItem text="Twice-weekly ticket monitoring" />
-                  <IncludedItem text="Automatic contest letters, printed & mailed" />
+                  <IncludedItem text="Plate monitoring for new Chicago tickets" />
+                  <IncludedItem text="Contest letters drafted, printed, and mailed for you" />
                   <IncludedItem text="First Dismissal Guarantee" />
-                  <IncludedItem text="Email + SMS alerts" />
-                  <IncludedItem text="Red-light & speed camera alerts (mobile app)" />
+                  <IncludedItem text="Address-based alert context for your block" />
+                  <IncludedItem text="Post-payment onboarding for renewal dates and extra alerts" />
                 </div>
               </div>
 
@@ -705,7 +791,7 @@ export default function StartFunnel() {
               </ContinueButton>
 
               <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: COLORS.textMuted }}>
-                Secure payment via Stripe. Cancel anytime.
+                Secure payment via Stripe. We ask for registration dates after checkout so setup friction stays low and conversion stays high.
               </div>
             </StepContainer>
           )}

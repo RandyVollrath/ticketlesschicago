@@ -52,7 +52,7 @@
         ],
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["ticketlesschicago"]
+            "CFBundleURLSchemes": ["ticketlesschicago", "autopilotamerica"]
           }
         ]
       }
@@ -85,8 +85,16 @@
               "scheme": "ticketlesschicago"
             },
             {
+              "scheme": "autopilotamerica"
+            },
+            {
               "scheme": "https",
               "host": "autopilotamerica.com",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "www.autopilotamerica.com",
               "pathPrefix": "/auth"
             }
           ],
