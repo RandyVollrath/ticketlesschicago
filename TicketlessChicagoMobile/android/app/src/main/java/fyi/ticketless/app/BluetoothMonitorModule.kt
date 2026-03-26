@@ -38,8 +38,20 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
         const val EVENT_CAR_CONNECTED = "BtMonitorCarConnected"
     }
 
+    @Volatile
+    private var lifecycleListenerRegistered = false
+
     init {
-        reactContext.addLifecycleEventListener(this)
+        // Keep constructor side-effect free. React Native instantiates native
+        // modules during app startup, and calling addLifecycleEventListener()
+        // here can crash if ReactContext lifecycle infrastructure isn't ready.
+    }
+
+    private fun ensureLifecycleListener() {
+        if (!lifecycleListenerRegistered) {
+            lifecycleListenerRegistered = true
+            reactApplicationContext.addLifecycleEventListener(this)
+        }
     }
 
     override fun getName(): String = "BluetoothMonitorModule"
@@ -52,6 +64,7 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun startMonitoring(address: String, name: String, promise: Promise) {
+        ensureLifecycleListener()
         try {
             Log.i(TAG, "Starting BT monitor service for: $name ($address)")
 
@@ -106,6 +119,7 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun stopMonitoring(promise: Promise) {
+        ensureLifecycleListener()
         try {
             Log.i(TAG, "Stopping BT monitor service")
 
@@ -133,6 +147,7 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun checkPendingEvents(promise: Promise) {
+        ensureLifecycleListener()
         try {
             val disconnect = BluetoothMonitorService.consumePendingDisconnect(reactApplicationContext)
             val connect = BluetoothMonitorService.consumePendingConnect(reactApplicationContext)
@@ -155,6 +170,7 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun isCarConnected(promise: Promise) {
+        ensureLifecycleListener()
         try {
             val connected = BluetoothMonitorService.isDeviceConnected(reactApplicationContext)
             promise.resolve(connected)
@@ -169,6 +185,7 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun isBatteryOptimizationExempt(promise: Promise) {
+        ensureLifecycleListener()
         try {
             val pm = reactApplicationContext.getSystemService(PowerManager::class.java)
             val exempt = pm?.isIgnoringBatteryOptimizations(reactApplicationContext.packageName) ?: false
@@ -184,6 +201,7 @@ class BluetoothMonitorModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun requestBatteryOptimizationExemption(promise: Promise) {
+        ensureLifecycleListener()
         try {
             val pm = reactApplicationContext.getSystemService(PowerManager::class.java)
             if (pm?.isIgnoringBatteryOptimizations(reactApplicationContext.packageName) == true) {
