@@ -363,12 +363,15 @@ export default async function handler(
           }
         }
 
-        // --- Nominatim cross-reference (no heading available) ---
-        // When heading is unavailable and snap gave us a result, cross-check with
-        // Nominatim reverse geocoding. Nominatim identifies the nearest road from OSM
-        // data, which can be more accurate than centerline distance for identifying
-        // the actual street the user is on (especially at intersections).
-        if (!hasHeading && snapResult && supabaseAdmin) {
+        // --- Nominatim cross-reference (ALWAYS runs when snap produced a result) ---
+        // Nominatim identifies the nearest road from OSM data using road geometry,
+        // which can be more accurate than centerline-distance snapping at intersections.
+        // This MUST run even when heading is available because heading can be STALE
+        // after a turn (e.g., driving south on Kenmore → turn right onto Belden → park
+        // quickly: lastDrivingHeading is still ~180° south = N-S = Kenmore's orientation,
+        // so heading-based disambiguation actively picks the WRONG street).
+        // Nominatim is ground truth from the GPS position — it doesn't care about heading.
+        if (snapResult) {
           try {
             const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
             const nominatimResult = await reverseGeocode(latitude, longitude);
@@ -377,12 +380,8 @@ export default async function handler(
               const snapOrientation = getChicagoStreetOrientation(snapResult.streetName);
               const nominatimOrientation = getChicagoStreetOrientation(nominatimResult.street_name);
 
-              // If Nominatim says a DIFFERENT orientation street than snap, and they disagree,
-              // prefer Nominatim. This catches the case where GPS is near an intersection and
-              // snap picks the closest centerline (wrong street) while Nominatim correctly
-              // identifies the road segment.
               if (snapOrientation && nominatimOrientation && snapOrientation !== nominatimOrientation) {
-                console.log(`[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). Preferring Nominatim.`);
+                console.log(`[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). Preferring Nominatim — it identifies the road from GPS position directly.`);
                 // Use original coords (not snapped) since Nominatim identified a different street.
                 // The unified checker will use its own geocoding with the original coordinates.
                 checkLat = latitude;
@@ -390,11 +389,13 @@ export default async function handler(
                 snapResult = {
                   wasSnapped: false,
                   snapDistanceMeters: 0,
-                  streetName: null,
+                  streetName: nominatimResult.street_name,
                   snapSource: 'nominatim_override',
                 };
               } else if (snapOrientation && nominatimOrientation) {
-                console.log(`[check-parking] Nominatim cross-reference confirms snap: both say ${snapOrientation} orientation`);
+                console.log(`[check-parking] Nominatim cross-reference confirms snap: both say ${snapOrientation} orientation (snap=${snapResult.streetName}, nominatim=${nominatimResult.street_name})`);
+              } else {
+                console.log(`[check-parking] Nominatim cross-reference: could not determine orientation (snap=${snapResult.streetName}/${snapOrientation}, nominatim=${nominatimResult.street_name}/${nominatimOrientation})`);
               }
             }
           } catch (nomErr) {
