@@ -79,7 +79,7 @@ async function reverseGeocodeNominatim(
 } | null> {
   try {
     const resp = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`,
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=17&addressdetails=1`,
       {
         headers: { 'User-Agent': 'TicketlessChicago/1.0 (parking-checker)' },
         signal: AbortSignal.timeout(3000),
