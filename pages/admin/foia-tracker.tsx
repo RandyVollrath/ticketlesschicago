@@ -76,6 +76,7 @@ interface Stats {
   history: number;
   byStatus: Record<string, number>;
   unmatched: number;
+  sent_overdue_14d: number;
 }
 
 // ── Design System & Constants ──
@@ -174,7 +175,7 @@ export default function FoiaTracker() {
   const [evidenceFoias, setEvidenceFoias] = useState<FoiaItem[]>([]);
   const [historyFoias, setHistoryFoias] = useState<FoiaItem[]>([]);
   const [unmatchedResponses, setUnmatchedResponses] = useState<UnmatchedResponse[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, evidence: 0, history: 0, byStatus: {}, unmatched: 0 });
+  const [stats, setStats] = useState<Stats>({ total: 0, evidence: 0, history: 0, byStatus: {}, unmatched: 0, sent_overdue_14d: 0 });
 
   const [filter, setFilter] = useState<'all' | 'evidence' | 'history' | 'action_needed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -207,7 +208,7 @@ export default function FoiaTracker() {
       setEvidenceFoias(data.evidence || []);
       setHistoryFoias(data.history || []);
       setUnmatchedResponses(data.unmatched || []);
-      setStats(data.stats || { total: 0, evidence: 0, history: 0, byStatus: {}, unmatched: 0 });
+      setStats(data.stats || { total: 0, evidence: 0, history: 0, byStatus: {}, unmatched: 0, sent_overdue_14d: 0 });
     } catch (err: any) {
       console.error('Failed to load FOIA data:', err);
     } finally {
@@ -302,7 +303,7 @@ export default function FoiaTracker() {
                 <svg viewBox="0 0 20 20" fill="currentColor" style={{width: 16, height: 16}}><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
                 Refresh
               </button>
-              <button onClick={() => router.push('/admin-portal')} style={{...headerBtnStyle, backgroundColor: C.text, color: '#fff', borderColor: C.text}}>
+              <button onClick={() => router.push('/admin-portal-new')} style={{...headerBtnStyle, backgroundColor: C.text, color: '#fff', borderColor: C.text}}>
                 Admin Portal
               </button>
             </div>
@@ -322,6 +323,7 @@ export default function FoiaTracker() {
             <StatCard label="Fulfilled" value={(stats.byStatus['fulfilled'] || 0) + (stats.byStatus['fulfilled_with_records'] || 0)} color={C.green} />
             <StatCard label="Needs Action" value={actionCount} color={C.amber} isAlert={actionCount > 0} />
             <StatCard label="Failed" value={stats.byStatus['failed'] || 0} color={C.red} isAlert={stats.byStatus['failed'] > 0} />
+            <StatCard label="Overdue (>14 Days)" value={stats.sent_overdue_14d} color={C.amber} isAlert={stats.sent_overdue_14d > 0} />
           </div>
 
           <div style={{

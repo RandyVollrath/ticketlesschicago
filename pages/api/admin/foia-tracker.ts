@@ -222,10 +222,19 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
       history: enrichedHistory.length,
       byStatus: {} as Record<string, number>,
       unmatched: (unmatchedRaw || []).filter((r: any) => r.status === 'pending').length,
+      sent_overdue_14d: 0,
     };
     for (const f of allFoias) {
       stats.byStatus[f.status] = (stats.byStatus[f.status] || 0) + 1;
     }
+
+    // Calculate FOIAs sent >14 days ago with no response
+    const fourteenDaysAgo = Date.now() - (14 * 24 * 60 * 60 * 1000);
+    stats.sent_overdue_14d = allFoias.filter(f =>
+      f.status === 'sent' &&
+      f.sent_at &&
+      new Date(f.sent_at).getTime() < fourteenDaysAgo
+    ).length;
 
     return res.status(200).json({
       stats,
