@@ -7,40 +7,104 @@ const TA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const TA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = TA_URL && TA_KEY ? createClient(TA_URL, TA_KEY) : null;
 
-// Top street cleaning ticket hotspot addresses (from FOIA data, 2023-2024)
-// These are the addresses where the most street cleaning tickets are issued citywide
-const TOP_HOTSPOTS = [
-  { address: '303 E Huron St', tickets2023: 78, ticketsAllTime: 90, lat: 41.8948, lng: -87.6189, neighborhood: 'Gold Coast / Streeterville' },
-  { address: '100 E Walton St', tickets2023: 72, ticketsAllTime: 286, lat: 41.9000, lng: -87.6275, neighborhood: 'Gold Coast' },
-  { address: '7 E Chestnut St', tickets2023: 61, ticketsAllTime: 115, lat: 41.8983, lng: -87.6282, neighborhood: 'Gold Coast' },
-  { address: '148 E Lake Shore Dr', tickets2023: 58, ticketsAllTime: 64, lat: 41.8857, lng: -87.6168, neighborhood: 'Streeterville' },
-  { address: '435 E 35th St', tickets2023: 52, ticketsAllTime: 110, lat: 41.8313, lng: -87.6178, neighborhood: 'Bronzeville / IIT' },
-  { address: '2130 W Cermak Rd', tickets2023: 51, ticketsAllTime: 72, lat: 41.8522, lng: -87.6793, neighborhood: 'Pilsen' },
-  { address: '67 E Chestnut St', tickets2023: 50, ticketsAllTime: 71, lat: 41.8983, lng: -87.6253, neighborhood: 'Gold Coast' },
-  { address: '1011 W 18th St', tickets2023: 45, ticketsAllTime: 88, lat: 41.8579, lng: -87.6551, neighborhood: 'Pilsen' },
-  { address: '2107 S Western Ave', tickets2023: 44, ticketsAllTime: 63, lat: 41.8543, lng: -87.6860, neighborhood: 'Pilsen' },
-  { address: '205 E Ohio St', tickets2023: 43, ticketsAllTime: 56, lat: 41.8923, lng: -87.6220, neighborhood: 'Streeterville' },
-  { address: '449 E 35th St', tickets2023: 42, ticketsAllTime: 103, lat: 41.8313, lng: -87.6170, neighborhood: 'Bronzeville / IIT' },
-  { address: '38 E Walton St', tickets2023: 41, ticketsAllTime: 60, lat: 41.9000, lng: -87.6290, neighborhood: 'Gold Coast' },
-  { address: '1708 W Cermak Rd', tickets2023: 40, ticketsAllTime: 78, lat: 41.8522, lng: -87.6680, neighborhood: 'Pilsen' },
-  { address: '3001 S Indiana Ave', tickets2023: 39, ticketsAllTime: 86, lat: 41.8388, lng: -87.6217, neighborhood: 'Bronzeville' },
-  { address: '1055 W Bryn Mawr Ave', tickets2023: 38, ticketsAllTime: 92, lat: 41.9838, lng: -87.6580, neighborhood: 'Edgewater' },
-  { address: '1134 W Granville Ave', tickets2023: 38, ticketsAllTime: 69, lat: 41.9940, lng: -87.6592, neighborhood: 'Edgewater' },
-  { address: '2243 W 18th St', tickets2023: 38, ticketsAllTime: 69, lat: 41.8579, lng: -87.6822, neighborhood: 'Pilsen' },
-  { address: '319 S Jefferson', tickets2023: 38, ticketsAllTime: 149, lat: 41.8773, lng: -87.6424, neighborhood: 'West Loop' },
-  { address: '1704 W Cermak Rd', tickets2023: 37, ticketsAllTime: 80, lat: 41.8522, lng: -87.6678, neighborhood: 'Pilsen' },
-  { address: '307 S Desplaines', tickets2023: 37, ticketsAllTime: 68, lat: 41.8773, lng: -87.6440, neighborhood: 'West Loop' },
-  { address: '2355 E 67th St', tickets2023: 35, ticketsAllTime: 118, lat: 41.7736, lng: -87.5754, neighborhood: 'South Shore' },
-  { address: '1905 W Taylor St', tickets2023: 34, ticketsAllTime: 79, lat: 41.8692, lng: -87.6740, neighborhood: 'Tri-Taylor / UIC' },
-  { address: '237 S Desplaines', tickets2023: 34, ticketsAllTime: 111, lat: 41.8780, lng: -87.6440, neighborhood: 'West Loop' },
-  { address: '328 S Jefferson', tickets2023: 34, ticketsAllTime: 105, lat: 41.8769, lng: -87.6424, neighborhood: 'West Loop' },
-  { address: '6400 N Artesian Ave', tickets2023: 33, ticketsAllTime: 42, lat: 41.9980, lng: -87.6885, neighborhood: 'West Rogers Park' },
-  { address: '2136 W Devon Ave', tickets2023: 32, ticketsAllTime: 71, lat: 41.9979, lng: -87.6803, neighborhood: 'West Rogers Park' },
-  { address: '3643 W Montrose Ave', tickets2023: 32, ticketsAllTime: 54, lat: 41.9614, lng: -87.7188, neighborhood: 'Albany Park' },
-  { address: '4452 N Ashland Ave', tickets2023: 32, ticketsAllTime: 49, lat: 41.9630, lng: -87.6691, neighborhood: 'Uptown' },
-  { address: '1627 E 67th St', tickets2023: 31, ticketsAllTime: 107, lat: 41.7736, lng: -87.5850, neighborhood: 'Woodlawn' },
-  { address: '2140 W Devon Ave', tickets2023: 31, ticketsAllTime: 31, lat: 41.9979, lng: -87.6805, neighborhood: 'West Rogers Park' },
+// ============================================================================
+// FOIA DATA: Top ticket blocks, streets, and ward stats (2023-2024)
+// Source: 26.8M ticket rows, violation_code 0964040B (STREET CLEANING)
+// ============================================================================
+
+// Top blocks by ticket density (block = 100-block, e.g. "1000 W Granville Ave")
+// These are the exact stretches where ticket writers hammer hardest
+const TOP_BLOCKS: HotBlock[] = [
+  { block: '1000 W Granville Ave', tickets: 696, daysTicketed: 129, lat: 41.9940, lng: -87.6580, neighborhood: 'Edgewater', ward: '48' },
+  { block: '4200 N Broadway', tickets: 555, daysTicketed: 65, lat: 41.9595, lng: -87.6483, neighborhood: 'Uptown', ward: '46' },
+  { block: '2100 W 18th St', tickets: 516, daysTicketed: 198, lat: 41.8579, lng: -87.6780, neighborhood: 'Pilsen', ward: '25' },
+  { block: '1800 W 18th St', tickets: 482, daysTicketed: 181, lat: 41.8579, lng: -87.6710, neighborhood: 'Pilsen', ward: '25' },
+  { block: '2200 W 18th St', tickets: 464, daysTicketed: 183, lat: 41.8579, lng: -87.6805, neighborhood: 'Pilsen', ward: '25' },
+  { block: '2600 N Kimball Ave', tickets: 440, daysTicketed: 68, lat: 41.9296, lng: -87.7130, neighborhood: 'Avondale', ward: '35' },
+  { block: '1700 E 67th St', tickets: 435, daysTicketed: 65, lat: 41.7736, lng: -87.5850, neighborhood: 'Woodlawn / South Shore', ward: '5' },
+  { block: '800 W Lawrence Ave', tickets: 434, daysTicketed: 49, lat: 41.9690, lng: -87.6500, neighborhood: 'Uptown', ward: '46' },
+  { block: '2000 W Devon Ave', tickets: 424, daysTicketed: 128, lat: 41.9979, lng: -87.6790, neighborhood: 'West Rogers Park', ward: '50' },
+  { block: '1800 W Cermak Rd', tickets: 416, daysTicketed: 191, lat: 41.8522, lng: -87.6680, neighborhood: 'Pilsen', ward: '25' },
+  { block: '2100 W Devon Ave', tickets: 383, daysTicketed: 126, lat: 41.9979, lng: -87.6803, neighborhood: 'West Rogers Park', ward: '50' },
+  { block: '1100 W Granville Ave', tickets: 380, daysTicketed: 112, lat: 41.9940, lng: -87.6600, neighborhood: 'Edgewater', ward: '48' },
+  { block: '4000 N Broadway', tickets: 373, daysTicketed: 54, lat: 41.9560, lng: -87.6483, neighborhood: 'Uptown', ward: '46' },
+  { block: '0 E Elm St', tickets: 365, daysTicketed: 85, lat: 41.9020, lng: -87.6280, neighborhood: 'Gold Coast', ward: '2' },
+  { block: '0 E Walton St', tickets: 361, daysTicketed: 43, lat: 41.9000, lng: -87.6280, neighborhood: 'Gold Coast', ward: '42' },
+  { block: '1000 W 18th St', tickets: 354, daysTicketed: 156, lat: 41.8579, lng: -87.6550, neighborhood: 'Pilsen', ward: '25' },
+  { block: '1100 W 18th St', tickets: 351, daysTicketed: 178, lat: 41.8579, lng: -87.6575, neighborhood: 'Pilsen', ward: '25' },
+  { block: '900 W 18th St', tickets: 346, daysTicketed: 151, lat: 41.8579, lng: -87.6525, neighborhood: 'Pilsen', ward: '25' },
+  { block: '2000 W 18th St', tickets: 330, daysTicketed: 162, lat: 41.8579, lng: -87.6755, neighborhood: 'Pilsen', ward: '25' },
+  { block: '4500 N Ashland Ave', tickets: 329, daysTicketed: 78, lat: 41.9630, lng: -87.6691, neighborhood: 'Uptown', ward: '46' },
+  { block: '1900 W Cermak Rd', tickets: 319, daysTicketed: 170, lat: 41.8522, lng: -87.6700, neighborhood: 'Pilsen', ward: '25' },
+  { block: '7000 N Glenwood Ave', tickets: 318, daysTicketed: 29, lat: 42.0090, lng: -87.6603, neighborhood: 'Rogers Park', ward: '49' },
+  { block: '4400 N Ashland Ave', tickets: 315, daysTicketed: 82, lat: 41.9620, lng: -87.6691, neighborhood: 'Uptown', ward: '46' },
+  { block: '6900 N Ravenswood Ave', tickets: 314, daysTicketed: 49, lat: 42.0080, lng: -87.6745, neighborhood: 'Rogers Park', ward: '49' },
+  { block: '3300 S Morgan St', tickets: 313, daysTicketed: 85, lat: 41.8340, lng: -87.6512, neighborhood: 'Bridgeport', ward: '11' },
+  { block: '700 S Loomis St', tickets: 309, daysTicketed: 105, lat: 41.8725, lng: -87.6620, neighborhood: 'University Village', ward: '25' },
+  { block: '2300 W 18th St', tickets: 307, daysTicketed: 150, lat: 41.8579, lng: -87.6830, neighborhood: 'Pilsen', ward: '25' },
+  { block: '1700 W Cermak Rd', tickets: 307, daysTicketed: 133, lat: 41.8522, lng: -87.6680, neighborhood: 'Pilsen', ward: '25' },
+  { block: '3500 W Montrose Ave', tickets: 304, daysTicketed: 66, lat: 41.9614, lng: -87.7170, neighborhood: 'Albany Park', ward: '33' },
+  { block: '2300 E 67th St', tickets: 299, daysTicketed: 54, lat: 41.7736, lng: -87.5760, neighborhood: 'South Shore', ward: '5' },
+  { block: '3600 W Montrose Ave', tickets: 296, daysTicketed: 67, lat: 41.9614, lng: -87.7195, neighborhood: 'Albany Park', ward: '33' },
+  { block: '1400 N Ashland Ave', tickets: 295, daysTicketed: 57, lat: 41.9076, lng: -87.6691, neighborhood: 'Wicker Park', ward: '32' },
+  { block: '2600 N Laramie Ave', tickets: 293, daysTicketed: 81, lat: 41.9296, lng: -87.7543, neighborhood: 'Belmont Cragin', ward: '31' },
+  { block: '1300 W 18th St', tickets: 290, daysTicketed: 166, lat: 41.8579, lng: -87.6610, neighborhood: 'Pilsen', ward: '25' },
+  { block: '200 E Ohio St', tickets: 289, daysTicketed: 43, lat: 41.8923, lng: -87.6220, neighborhood: 'Streeterville', ward: '42' },
+  { block: '1300 W Wilson Ave', tickets: 282, daysTicketed: 31, lat: 41.9654, lng: -87.6610, neighborhood: 'Uptown', ward: '46' },
+  { block: '0 E Cedar St', tickets: 282, daysTicketed: 88, lat: 41.9028, lng: -87.6280, neighborhood: 'Gold Coast', ward: '2' },
+  { block: '4800 N Ashland Ave', tickets: 281, daysTicketed: 57, lat: 41.9685, lng: -87.6691, neighborhood: 'Uptown', ward: '46' },
+  { block: '4100 N Ashland Ave', tickets: 274, daysTicketed: 73, lat: 41.9555, lng: -87.6691, neighborhood: 'Uptown', ward: '46' },
+  { block: '2300 S Marshall Blvd', tickets: 268, daysTicketed: 93, lat: 41.8497, lng: -87.6983, neighborhood: 'Little Village', ward: '24' },
 ];
+
+// Neighborhood priority rankings — aggregate ticket data tells us where to spend time
+// Score = total tickets per block in neighborhood (higher = more people getting ticketed = more potential customers)
+const NEIGHBORHOOD_RANKINGS: NeighborhoodRank[] = [
+  { name: 'Pilsen (Ward 25)', totalTickets: 4416, blocks: 10, avgPerBlock: 442, topStreets: ['W 18th St', 'W Cermak Rd'], strategy: 'Massive ticket zone. 18th St alone has 10 blocks in the top 100. Every cleaning day is a goldmine. Focus on 18th St from Loomis to Western, and Cermak from Ashland to Western.', zipcode: '60608' },
+  { name: 'Uptown / Buena Park (Ward 46)', totalTickets: 3251, blocks: 8, avgPerBlock: 406, topStreets: ['N Broadway', 'N Ashland Ave', 'W Lawrence Ave', 'W Wilson Ave'], strategy: 'Dense apartment parking along Broadway and Ashland. Cars packed bumper-to-bumper. Hit the Ashland corridor from Montrose to Bryn Mawr.', zipcode: '60640' },
+  { name: 'Edgewater (Ward 48)', totalTickets: 1076, blocks: 2, avgPerBlock: 538, topStreets: ['W Granville Ave'], strategy: 'Granville Ave is a monster — 696 tickets on one block alone. The 1000-1100 blocks of Granville are the #1 and #12 worst blocks citywide.', zipcode: '60660' },
+  { name: 'Gold Coast (Ward 2/42)', totalTickets: 1008, blocks: 3, avgPerBlock: 336, topStreets: ['E Elm St', 'E Walton St', 'E Cedar St'], strategy: 'Wealthy area with expensive cars. Drivers here can afford the app. High-value flyer targets. Focus on the 0 block of Elm, Walton, and Cedar.', zipcode: '60610' },
+  { name: 'West Rogers Park (Ward 50)', totalTickets: 807, blocks: 2, avgPerBlock: 404, topStreets: ['W Devon Ave'], strategy: 'Devon Ave corridor from Western to California. Dense commercial street parking. Two blocks both in top 15 citywide.', zipcode: '60659' },
+  { name: 'Albany Park (Ward 33)', totalTickets: 600, blocks: 2, avgPerBlock: 300, topStreets: ['W Montrose Ave', 'W Lawrence Ave'], strategy: 'Montrose Ave from Kedzie to Pulaski. Heavy residential parking both sides. Two blocks in the top 50.', zipcode: '60625' },
+  { name: 'Rogers Park (Ward 49)', totalTickets: 632, blocks: 2, avgPerBlock: 316, topStreets: ['N Glenwood Ave', 'N Ravenswood Ave'], strategy: 'Glenwood and Ravenswood around Howard. Dense rental area — residents forget cleaning day constantly.', zipcode: '60626' },
+  { name: 'Avondale (Ward 35)', totalTickets: 440, blocks: 1, avgPerBlock: 440, topStreets: ['N Kimball Ave'], strategy: 'Kimball Ave from Diversey to Belmont. One concentrated block with 440 tickets. Quick hit.', zipcode: '60618' },
+  { name: 'South Shore / Woodlawn (Ward 5)', totalTickets: 734, blocks: 2, avgPerBlock: 367, topStreets: ['E 67th St'], strategy: '67th St between Stony Island and the lake. Consistent ticketing zone.', zipcode: '60649' },
+  { name: 'Bridgeport (Ward 11)', totalTickets: 313, blocks: 1, avgPerBlock: 313, topStreets: ['S Morgan St'], strategy: 'Morgan St south of 33rd. Quick single-block hit near Sox park area.', zipcode: '60609' },
+  { name: 'Belmont Cragin (Ward 31)', totalTickets: 293, blocks: 1, avgPerBlock: 293, topStreets: ['N Laramie Ave'], strategy: 'Laramie at Diversey. Dense residential parking.', zipcode: '60639' },
+  { name: 'Little Village (Ward 24)', totalTickets: 268, blocks: 1, avgPerBlock: 268, topStreets: ['S Marshall Blvd'], strategy: 'Marshall Blvd near Cermak. Residential area with heavy street parking.', zipcode: '60623' },
+  { name: 'Streeterville (Ward 42)', totalTickets: 289, blocks: 1, avgPerBlock: 289, topStreets: ['E Ohio St'], strategy: 'Ohio St near Michigan Ave. Tourists and commuters — high visibility.', zipcode: '60611' },
+  { name: 'Wicker Park (Ward 32)', totalTickets: 295, blocks: 1, avgPerBlock: 295, topStreets: ['N Ashland Ave'], strategy: 'Ashland at North Ave. Hip neighborhood, app-savvy demographic.', zipcode: '60622' },
+];
+
+// Ward-level ticket counts (2024) — used to score zones by ward ticket intensity
+const WARD_TICKET_COUNTS: Record<string, number> = {
+  '1': 15967, '25': 12390, '26': 11921, '35': 10618, '28': 10441,
+  '43': 10330, '15': 10243, '33': 9874, '44': 9843, '46': 10179,
+  '31': 9490, '49': 9392, '3': 8963, '5': 8713, '24': 8642,
+  '36': 8568, '32': 7970, '37': 7816, '47': 7794, '48': 7781,
+  '50': 7671, '30': 7663, '27': 7400, '4': 7203, '40': 7135,
+  '2': 7051, '29': 6990, '42': 6000, '11': 5500, '12': 5200,
+};
+
+interface HotBlock {
+  block: string;
+  tickets: number;
+  daysTicketed: number;
+  lat: number;
+  lng: number;
+  neighborhood: string;
+  ward: string;
+}
+
+interface NeighborhoodRank {
+  name: string;
+  totalTickets: number;
+  blocks: number;
+  avgPerBlock: number;
+  topStreets: string[];
+  strategy: string;
+  zipcode: string;
+}
 
 interface ZoneCentroid {
   ward: string;
@@ -72,31 +136,24 @@ function loadZoneCentroids(): ZoneCentroid[] {
   return cachedCentroids!;
 }
 
-// Nearest-neighbor TSP approximation for driving route optimization
-function optimizeRoute(points: { lat: number; lng: number; label: string }[], startLat: number, startLng: number) {
+// Nearest-neighbor TSP approximation
+function optimizeRoute<T extends { lat: number; lng: number }>(points: T[], startLat: number, startLng: number): T[] {
   if (points.length === 0) return [];
   const remaining = [...points];
-  const route: typeof points = [];
-  let currentLat = startLat;
-  let currentLng = startLng;
-
+  const route: T[] = [];
+  let curLat = startLat, curLng = startLng;
   while (remaining.length > 0) {
-    let nearestIdx = 0;
-    let nearestDist = Infinity;
+    let bestIdx = 0, bestDist = Infinity;
     for (let i = 0; i < remaining.length; i++) {
-      const dlat = remaining[i].lat - currentLat;
-      const dlng = remaining[i].lng - currentLng;
-      // Approximate distance weighting lng by cos(lat)
-      const dist = dlat * dlat + (dlng * Math.cos(currentLat * Math.PI / 180)) ** 2;
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestIdx = i;
-      }
+      const dlat = remaining[i].lat - curLat;
+      const dlng = (remaining[i].lng - curLng) * Math.cos(curLat * Math.PI / 180);
+      const dist = dlat * dlat + dlng * dlng;
+      if (dist < bestDist) { bestDist = dist; bestIdx = i; }
     }
-    const next = remaining.splice(nearestIdx, 1)[0];
+    const next = remaining.splice(bestIdx, 1)[0];
     route.push(next);
-    currentLat = next.lat;
-    currentLng = next.lng;
+    curLat = next.lat;
+    curLng = next.lng;
   }
   return route;
 }
@@ -111,20 +168,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Database not configured' });
     }
 
-    // Get Chicago today and tomorrow dates
+    // Chicago timezone dates
     const chicagoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
     const todayStr = chicagoNow.toISOString().split('T')[0];
+    const yesterday = new Date(chicagoNow);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
     const tomorrow = new Date(chicagoNow);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-    // Fetch schedule for today and tomorrow
+    // Fetch schedule for yesterday, today, and tomorrow
     const { data: scheduleData, error: dbError } = await supabase
       .from('street_cleaning_schedule')
       .select('ward, section, cleaning_date, north_street, south_street, east_street, west_street, north_block, south_block, east_block, west_block')
       .not('ward', 'is', null)
       .not('section', 'is', null)
-      .in('cleaning_date', [todayStr, tomorrowStr]);
+      .in('cleaning_date', [yesterdayStr, todayStr, tomorrowStr]);
 
     if (dbError) {
       return res.status(500).json({ error: 'Failed to fetch schedule data' });
@@ -136,10 +196,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return date.getDay() !== 0;
     });
 
-    // Load centroids and merge with schedule
     const centroids = loadZoneCentroids();
     const centroidMap = new Map(centroids.map(c => [`${c.ward}-${c.section}`, c]));
 
+    const yesterdayZones: any[] = [];
     const todayZones: any[] = [];
     const tomorrowZones: any[] = [];
 
@@ -148,12 +208,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const centroid = centroidMap.get(key);
       if (!centroid) continue;
 
+      const wardTickets = WARD_TICKET_COUNTS[item.ward] || 5000;
+      // Priority score: higher ward ticket count = more people getting ticketed = better ROI
+      const priorityScore = Math.round(wardTickets / 1000);
+
       const zone = {
         ward: item.ward,
         section: item.section,
         cleaningDate: item.cleaning_date,
         lat: centroid.lat,
         lng: centroid.lng,
+        priorityScore,
+        wardTickets2024: wardTickets,
         boundaries: {
           north: item.north_block || item.north_street || '',
           south: item.south_block || item.south_street || '',
@@ -162,43 +228,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       };
 
-      if (item.cleaning_date === todayStr) todayZones.push(zone);
+      if (item.cleaning_date === yesterdayStr) yesterdayZones.push(zone);
+      else if (item.cleaning_date === todayStr) todayZones.push(zone);
       else tomorrowZones.push(zone);
     }
 
-    // Parse optional starting location from query params
-    const startLat = parseFloat(req.query.startLat as string) || 41.8781; // default: downtown Chicago
+    // Sort by priority score (highest first) then optimize route within priority tiers
+    const startLat = parseFloat(req.query.startLat as string) || 41.8781;
     const startLng = parseFloat(req.query.startLng as string) || -87.6298;
 
-    // Optimize routes
-    const todayRoute = optimizeRoute(
-      todayZones.map(z => ({ lat: z.lat, lng: z.lng, label: `Ward ${z.ward} Sec ${z.section}` })),
-      startLat, startLng
-    );
-    const tomorrowRoute = optimizeRoute(
-      tomorrowZones.map(z => ({ lat: z.lat, lng: z.lng, label: `Ward ${z.ward} Sec ${z.section}` })),
-      startLat, startLng
-    );
+    const sortAndOptimize = (zones: any[]) => {
+      // Sort by priority desc first, then optimize within each group
+      zones.sort((a: any, b: any) => b.priorityScore - a.priorityScore);
+      return optimizeRoute(zones, startLat, startLng);
+    };
 
-    // Map route order back to zones
-    const todayOrdered = todayRoute.map(r => {
-      return todayZones.find(z => z.lat === r.lat && z.lng === r.lng);
-    }).filter(Boolean);
-    const tomorrowOrdered = tomorrowRoute.map(r => {
-      return tomorrowZones.find(z => z.lat === r.lat && z.lng === r.lng);
-    }).filter(Boolean);
+    // Day of week intelligence
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const tomorrowDay = dayNames[tomorrow.getDay()];
+    const isPeakDay = [2, 3, 4].includes(tomorrow.getDay()); // Tue/Wed/Thu
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
 
     return res.status(200).json({
       success: true,
       chicagoDate: todayStr,
+      chicagoDateYesterday: yesterdayStr,
       chicagoDateTomorrow: tomorrowStr,
-      todayZones: todayOrdered,
-      tomorrowZones: tomorrowOrdered,
-      todayCount: todayOrdered.length,
-      tomorrowCount: tomorrowOrdered.length,
-      hotspots: TOP_HOTSPOTS,
+      tomorrowDayOfWeek: tomorrowDay,
+      isPeakTicketDay: isPeakDay,
+      // "Just cleaned" = yesterday + today. People there just got ticketed!
+      justCleanedZones: sortAndOptimize([...yesterdayZones, ...todayZones]),
+      justCleanedCount: yesterdayZones.length + todayZones.length,
+      // Tomorrow = flyer TONIGHT for max impact
+      tomorrowZones: sortAndOptimize(tomorrowZones),
+      tomorrowCount: tomorrowZones.length,
+      // Block-level hotspots with FOIA data
+      hotBlocks: TOP_BLOCKS,
+      // Neighborhood intelligence
+      neighborhoods: NEIGHBORHOOD_RANKINGS,
       startingPoint: { lat: startLat, lng: startLng },
     });
   } catch (error: any) {
