@@ -1,0 +1,2774 @@
+ZONE REVIEW LIST — PLEASE CHECK THESE
+==========================================================================================
+Total zones: 835
+Verified (3+ boundaries match 2025): 320
+Approximate (1-2 boundaries differ): 499
+Unverified (can't parse CSV): 8
+New zones: 8
+
+I'm using 2025 polygons for ALL zones (including approximate/unverified)
+because clipping creates overlaps. But these zones may have WRONG boundaries.
+Please review the ones marked below.
+
+
+ZONES WHERE BOUNDARIES MAY HAVE CHANGED (507):
+------------------------------------------------------------------------------------------
+
+  1-1 (0/4 boundaries match 2025):
+    CSV: E=Racine (1200 West) | W=Ashland (1600 West) | N=Chicago (800 North) | S=Kinzie (400 North)
+    ⚠ east: CSV=-87.65695 vs 2025=-87.68782 (diff=0.03086)
+    ⚠ west: CSV=-87.66666 vs 2025=-87.70498 (diff=0.03832)
+    ⚠ north: CSV=41.89643 vs 2025=41.93212 (diff=0.03569)
+    ⚠ south: CSV=41.88919 vs 2025=41.92837 (diff=0.03918)
+
+  1-10 (0/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=California (2800 West) | N=Armitage (2000 North) | S=North (1600 North)
+    ⚠ east: CSV=-87.68607 vs 2025=-87.66751 (diff=0.01856)
+    ⚠ west: CSV=-87.69577 vs 2025=-87.67759 (diff=0.01819)
+    ⚠ north: CSV=41.91816 vs 2025=41.91063 (diff=0.00753)
+    ⚠ south: CSV=41.91091 vs 2025=41.90402 (diff=0.00690)
+
+  1-11 (0/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=Rockwell (2600 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+    ⚠ east: CSV=-87.68607 vs 2025=-87.66114 (diff=0.02493)
+    ⚠ west: CSV=-87.69092 vs 2025=-87.66769 (diff=0.02323)
+    ⚠ north: CSV=41.92540 vs 2025=41.91066 (diff=0.01473)
+    ⚠ south: CSV=41.91816 vs 2025=41.90336 (diff=0.01480)
+
+  1-12 (0/4 boundaries match 2025):
+    CSV: E=Rockwell (2600 West) | W=California (2800 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+    ⚠ east: CSV=-87.69092 vs 2025=-87.66730 (diff=0.02363)
+    ⚠ west: CSV=-87.69577 vs 2025=-87.67359 (diff=0.02219)
+    ⚠ north: CSV=41.92540 vs 2025=41.90334 (diff=0.02206)
+    ⚠ south: CSV=41.91816 vs 2025=41.89598 (diff=0.02217)
+
+  1-13 (0/4 boundaries match 2025):
+    CSV: E=California (2800 West) | W=Kedzie (3200 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+    ⚠ east: CSV=-87.69577 vs 2025=-87.66246 (diff=0.03331)
+    ⚠ west: CSV=-87.70548 vs 2025=-87.66753 (diff=0.03795)
+    ⚠ north: CSV=41.92540 vs 2025=41.90402 (diff=0.02138)
+    ⚠ south: CSV=41.91816 vs 2025=41.89607 (diff=0.02209)
+
+  1-14 (0/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=Milwaukee (3100 West) | N=Logan (2600 North) | S=Fullerton (2400 North)
+    ⚠ east: CSV=-87.68607 vs 2025=-87.66716 (diff=0.01891)
+    ⚠ west: CSV=-87.70305 vs 2025=-87.67217 (diff=0.03088)
+    ⚠ north: CSV=41.92902 vs 2025=41.89607 (diff=0.03294)
+    ⚠ south: CSV=41.92540 vs 2025=41.89090 (diff=0.03449)
+
+  1-15 (0/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=Albany (3100 West) | N=Diversey (2800 North) | S=Logan (2600 North)
+    ⚠ east: CSV=-87.68607 vs 2025=-87.65743 (diff=0.02864)
+    ⚠ west: CSV=-87.70305 vs 2025=-87.66729 (diff=0.03576)
+    ⚠ north: CSV=41.93264 vs 2025=41.89610 (diff=0.03654)
+    ⚠ south: CSV=41.92902 vs 2025=41.88889 (diff=0.04013)
+
+  1-2 (0/4 boundaries match 2025):
+    CSV: E=Ashland (1600 West) | W=Wood (1800 West) | N=Chicago (800 North) | S=Kinzie (400 North)
+    ⚠ east: CSV=-87.66666 vs 2025=-87.68764 (diff=0.02098)
+    ⚠ west: CSV=-87.67151 vs 2025=-87.70575 (diff=0.03423)
+    ⚠ north: CSV=41.89643 vs 2025=41.92862 (diff=0.03219)
+    ⚠ south: CSV=41.88919 vs 2025=41.92290 (diff=0.03371)
+
+  1-3 (0/4 boundaries match 2025):
+    CSV: E=Noble (1400 West) | W=Ashland (1600 West) | N=Division (1200 North) | S=Chicago (800 North)
+    ⚠ east: CSV=-87.66181 vs 2025=-87.69720 (diff=0.03539)
+    ⚠ west: CSV=-87.66666 vs 2025=-87.70761 (diff=0.04095)
+    ⚠ north: CSV=41.90367 vs 2025=41.92597 (diff=0.02229)
+    ⚠ south: CSV=41.89643 vs 2025=41.91740 (diff=0.02097)
+
+  1-4 (0/4 boundaries match 2025):
+    CSV: E=Ashland (1600 West) | W=Honore (1828 West) | N=Division (1200 North) | S=Chicago (800 North)
+    ⚠ east: CSV=-87.66666 vs 2025=-87.68853 (diff=0.02187)
+    ⚠ west: CSV=-87.67219 vs 2025=-87.69741 (diff=0.02522)
+    ⚠ north: CSV=41.90367 vs 2025=41.92484 (diff=0.02117)
+    ⚠ south: CSV=41.89643 vs 2025=41.91748 (diff=0.02105)
+
+  1-5 (0/4 boundaries match 2025):
+    CSV: E=Noble (1400 West) | W=Ashland (1600 West) | N=North Ave (1600 North) | S=Division (1200 North)
+    ⚠ east: CSV=-87.66181 vs 2025=-87.68740 (diff=0.02560)
+    ⚠ west: CSV=-87.66666 vs 2025=-87.69280 (diff=0.02614)
+    ⚠ north: CSV=41.91091 vs 2025=41.92491 (diff=0.01400)
+    ⚠ south: CSV=41.90367 vs 2025=41.91756 (diff=0.01388)
+
+  1-6 (0/4 boundaries match 2025):
+    CSV: E=Ashland (1600 West) | W=Damen (2000 West) | N=North Ave (1600 North) | S=Division (1200 North)
+    ⚠ east: CSV=-87.66666 vs 2025=-87.68722 (diff=0.02056)
+    ⚠ west: CSV=-87.67636 vs 2025=-87.69772 (diff=0.02135)
+    ⚠ north: CSV=41.91091 vs 2025=41.91757 (diff=0.00665)
+    ⚠ south: CSV=41.90367 vs 2025=41.91027 (diff=0.00659)
+
+  10-1 (0/4 boundaries match 2025):
+    CSV: E=Carondolet (3032 E) | W=Saginaw (2600 E) | N=126th Street (12600 S) | S=130th Street (13000 S)
+    ⚠ east: CSV=-87.55428 vs 2025=-87.54570 (diff=0.00857)
+    ⚠ west: CSV=-87.56476 vs 2025=-87.55847 (diff=0.00628)
+    ⚠ north: CSV=41.65385 vs 2025=41.66675 (diff=0.01289)
+    ⚠ south: CSV=41.64661 vs 2025=41.65915 (diff=0.01254)
+
+  10-18 (0/4 boundaries match 2025):
+    CSV: E=St. Lawrence (600 East) | W=Indiana (200 East) | N=130th Street (13000 S) | S=138th Street (13800 South)
+    ⚠ east: CSV=-87.61328 vs 2025=-87.57857 (diff=0.03471)
+    ⚠ west: CSV=-87.62299 vs 2025=-87.61724 (diff=0.00575)
+    ⚠ north: CSV=41.64661 vs 2025=41.66040 (diff=0.01379)
+    ⚠ south: CSV=41.63213 vs 2025=41.64458 (diff=0.01245)
+
+  10-2 (0/4 boundaries match 2025):
+    CSV: E=Carondolet (3032 E) | W=Marquette (2600 East) | N=130th Street (13000 S) | S=134th Street (13400 S)
+    ⚠ east: CSV=-87.55428 vs 2025=-87.54713 (diff=0.00715)
+    ⚠ west: CSV=-87.56476 vs 2025=-87.55851 (diff=0.00624)
+    ⚠ north: CSV=41.64661 vs 2025=41.65920 (diff=0.01259)
+    ⚠ south: CSV=41.63937 vs 2025=41.64939 (diff=0.01001)
+
+  10-3 (0/4 boundaries match 2025):
+    CSV: E=Mackinaw (3332 E) | W=Houston (3032 E) | N=129th Street (12900 S) | S=136th Street (13600 S)
+    ⚠ east: CSV=-87.54700 vs 2025=-87.53988 (diff=0.00712)
+    ⚠ west: CSV=-87.55428 vs 2025=-87.54727 (diff=0.00701)
+    ⚠ north: CSV=41.64842 vs 2025=41.65935 (diff=0.01092)
+    ⚠ south: CSV=41.63575 vs 2025=41.64456 (diff=0.00881)
+
+  10-4 (0/4 boundaries match 2025):
+    CSV: E=Avenue K (3624 E) | W=Greenbay (3332 E) | N=130th Street (13000 S) | S=136th Street (13600 S)
+    ⚠ east: CSV=-87.53991 vs 2025=-87.53307 (diff=0.00685)
+    ⚠ west: CSV=-87.54700 vs 2025=-87.54000 (diff=0.00699)
+    ⚠ north: CSV=41.64661 vs 2025=41.65916 (diff=0.01254)
+    ⚠ south: CSV=41.63575 vs 2025=41.64809 (diff=0.01234)
+
+  11-10 (0/4 boundaries match 2025):
+    CSV: E=Keeley Street (1400 W) | W=River (153 North) | N=Archer Ave (2800 S) | S=31st St (3100 S)
+    ⚠ east: CSV=-87.66181 vs 2025=-87.65131 (diff=0.01050)
+    ⚠ west: CSV=41.88472 vs 2025=-87.66401 (diff=129.54873)
+    ⚠ north: CSV=41.83126 vs 2025=41.84276 (diff=0.01150)
+    ⚠ south: CSV=41.82583 vs 2025=41.83786 (diff=0.01203)
+
+  17-23 (0/4 boundaries match 2025):
+    CSV: E=Claremont (2332 West) | W=Rockwell Street (2600 West) California Ave (2800 West) | N=71st Street (7100 South) | S=74th Street (7400 South)
+    ⚠ east: CSV=-87.68442 vs 2025=-87.67088 (diff=0.01354)
+    ⚠ west: CSV=-87.69092 vs 2025=-87.67858 (diff=0.01234)
+    ⚠ north: CSV=41.75342 vs 2025=41.76485 (diff=0.01143)
+    ⚠ south: CSV=41.74799 vs 2025=41.75745 (diff=0.00946)
+
+  19-16 (0/4 boundaries match 2025):
+    CSV: E=Western Ave (2400 West) | W=California (2800 West) | N=111th Street (11100 South) | S=115th Street (11500 South)
+    ⚠ east: CSV=-87.68607 vs 2025=-87.68100 (diff=0.00507)
+    ⚠ west: CSV=-87.69577 vs 2025=-87.68976 (diff=0.00602)
+    ⚠ north: CSV=41.68101 vs 2025=41.69185 (diff=0.01084)
+    ⚠ south: CSV=41.67377 vs 2025=41.68442 (diff=0.01065)
+
+  20-10 (0/4 boundaries match 2025):
+    CSV: E=59th Street (5900 South) | W=66th Street (6600 South) | N=State Streeet (0 E/W) | S=Yale (232 West)
+    ⚠ east: CSV=41.77514 vs 2025=-87.62540 (diff=129.40055)
+    ⚠ west: CSV=41.76247 vs 2025=-87.63197 (diff=129.39444)
+    ⚠ north: CSV=-87.62784 vs 2025=41.78737 (diff=129.41521)
+    ⚠ south: CSV=-87.63347 vs 2025=41.77491 (diff=129.40838)
+
+  20-11 (0/4 boundaries match 2025):
+    CSV: E=55th Street (5500 South) | W=59th Street (5900 South) | N=King Drive (400 East) | S=State Street (0 E/W)
+    ⚠ east: CSV=41.78238 vs 2025=-87.62562 (diff=129.40801)
+    ⚠ west: CSV=41.77514 vs 2025=-87.63197 (diff=129.40711)
+    ⚠ north: CSV=-87.61814 vs 2025=41.79465 (diff=129.41278)
+    ⚠ south: CSV=-87.62784 vs 2025=41.78723 (diff=129.41507)
+
+  20-12 (0/4 boundaries match 2025):
+    CSV: E=59th Street (5900 South) | W=66th Street (6600 South) | N=State Streeet (0 E/W) | S=King Drive (400 East)
+    ⚠ east: CSV=41.77514 vs 2025=-87.61577 (diff=129.39091)
+    ⚠ west: CSV=41.76247 vs 2025=-87.62579 (diff=129.38826)
+    ⚠ north: CSV=-87.62784 vs 2025=41.79472 (diff=129.42256)
+    ⚠ south: CSV=-87.61814 vs 2025=41.78737 (diff=129.40550)
+
+  20-13 (0/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 East) | W=Washington Park Court (417 East) | N=49th Street (4900 South) | S=51st Street (5100 South)
+    ⚠ east: CSV=-87.60843 vs 2025=-87.61545 (diff=0.00702)
+    ⚠ west: CSV=-87.61772 vs 2025=-87.62567 (diff=0.00794)
+    ⚠ north: CSV=41.79325 vs 2025=41.78748 (diff=0.00577)
+    ⚠ south: CSV=41.78963 vs 2025=41.77292 (diff=0.01670)
+
+  20-7 (0/4 boundaries match 2025):
+    CSV: E=51st Street (5100 South) | W=55th Street (5500 South) | N=Wallace (620 West) | S=Federal (60 West)
+    ⚠ east: CSV=41.78963 vs 2025=-87.62678 (diff=129.41641)
+    ⚠ west: CSV=41.78238 vs 2025=-87.64048 (diff=129.42287)
+    ⚠ north: CSV=-87.64288 vs 2025=41.80191 (diff=129.44479)
+    ⚠ south: CSV=-87.62930 vs 2025=41.79438 (diff=129.42368)
+
+  20-8 (0/4 boundaries match 2025):
+    CSV: E=55th Street (5500 South) | W=59th Street (5900 South) | N=wallace (620 West) | S=State Street (0 E/W)
+    ⚠ east: CSV=41.78238 vs 2025=-87.63178 (diff=129.41416)
+    ⚠ west: CSV=41.77514 vs 2025=-87.64032 (diff=129.41546)
+    ⚠ north: CSV=-87.64288 vs 2025=41.79454 (diff=129.43742)
+    ⚠ south: CSV=-87.62784 vs 2025=41.78713 (diff=129.41497)
+
+  21-1 (0/4 boundaries match 2025):
+    CSV: E=Vincennes Ave (162 West) | W=Halsted (800 West) | N=103rd Street (10300 South) | S=107th Street (10700 South)
+    ⚠ east: CSV=-87.63177 vs 2025=-87.64254 (diff=0.01077)
+    ⚠ west: CSV=-87.64725 vs 2025=-87.65870 (diff=0.01145)
+    ⚠ north: CSV=41.69549 vs 2025=41.70693 (diff=0.01144)
+    ⚠ south: CSV=41.68825 vs 2025=41.69955 (diff=0.01130)
+
+  21-10 (0/4 boundaries match 2025):
+    CSV: E=Halsted Street (800 West) | W=Ashland Ave (1600 West) | N=119th Street (11900 South) | S=123rd Street (12300 South)
+    ⚠ east: CSV=-87.64725 vs 2025=-87.64164 (diff=0.00561)
+    ⚠ west: CSV=-87.66666 vs 2025=-87.66138 (diff=0.00528)
+    ⚠ north: CSV=41.66653 vs 2025=41.67780 (diff=0.01127)
+    ⚠ south: CSV=41.65929 vs 2025=41.67029 (diff=0.01100)
+
+  21-11 (0/4 boundaries match 2025):
+    CSV: E=Stewart Ave (400 West) | W=Halsted Street (800 West) | N=119th Street (11900 South) | S=123rd Street (12300 South)
+    ⚠ east: CSV=-87.63754 vs 2025=-87.63206 (diff=0.00549)
+    ⚠ west: CSV=-87.64725 vs 2025=-87.64176 (diff=0.00549)
+    ⚠ north: CSV=41.66653 vs 2025=41.67792 (diff=0.01139)
+    ⚠ south: CSV=41.65929 vs 2025=41.67054 (diff=0.01125)
+
+  21-13 (0/4 boundaries match 2025):
+    CSV: E=Vincennes Ave (162 West) | W=Carpenter Street (1032 West) | N=99th Street (9900 South) | S=103rd Street (10300 South)
+    ⚠ east: CSV=-87.63177 vs 2025=-87.64843 (diff=0.01666)
+    ⚠ west: CSV=-87.65288 vs 2025=-87.65963 (diff=0.00675)
+    ⚠ north: CSV=41.70273 vs 2025=41.71412 (diff=0.01139)
+    ⚠ south: CSV=41.69549 vs 2025=41.70678 (diff=0.01129)
+
+  21-4 (0/4 boundaries match 2025):
+    CSV: E=Vincennes Ave (162 West) | W=Halsted Street (800 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+    ⚠ east: CSV=-87.63177 vs 2025=-87.64230 (diff=0.01053)
+    ⚠ west: CSV=-87.64725 vs 2025=-87.66334 (diff=0.01609)
+    ⚠ north: CSV=41.68825 vs 2025=41.69973 (diff=0.01148)
+    ⚠ south: CSV=41.68101 vs 2025=41.69212 (diff=0.01111)
+
+  21-5 (0/4 boundaries match 2025):
+    CSV: E=Vincennes Ave (162 West) | W=Aberdeen Street (1100 West) | N=111th Street (11100 South) | S=115th Street (11500 South)
+    ⚠ east: CSV=-87.63177 vs 2025=-87.64524 (diff=0.01347)
+    ⚠ west: CSV=-87.65453 vs 2025=-87.66772 (diff=0.01319)
+    ⚠ north: CSV=41.68101 vs 2025=41.69229 (diff=0.01128)
+    ⚠ south: CSV=41.67377 vs 2025=41.68471 (diff=0.01094)
+
+  21-6 (0/4 boundaries match 2025):
+    CSV: E=Princeton Ave (300 West) | W=Averdeen Street (1100 West) | N=111th Street (11100 South) | S=115th Street (11500 South)
+    ⚠ east: CSV=-87.63512 vs 2025=-87.63009 (diff=0.00503)
+    ⚠ west: CSV=-87.65453 vs 2025=-87.64898 (diff=0.00554)
+    ⚠ north: CSV=41.68101 vs 2025=41.69250 (diff=0.01149)
+    ⚠ south: CSV=41.67377 vs 2025=41.68505 (diff=0.01128)
+
+  21-7 (0/4 boundaries match 2025):
+    CSV: E=Princeton Ave (300 West) | W=Halsted Street (800 West) | N=115th Street (11500 South) | S=119th Street (11900 South)
+    ⚠ east: CSV=-87.63512 vs 2025=-87.62987 (diff=0.00525)
+    ⚠ west: CSV=-87.64725 vs 2025=-87.64218 (diff=0.00507)
+    ⚠ north: CSV=41.67377 vs 2025=41.68524 (diff=0.01147)
+    ⚠ south: CSV=41.66653 vs 2025=41.67780 (diff=0.01127)
+
+  21-8 (0/4 boundaries match 2025):
+    CSV: E=Halsted (800 West) | W=Loomis (1400 West) | N=115th Street (11500 South) | S=119th Street (11900 South)
+    ⚠ east: CSV=-87.64725 vs 2025=-87.64176 (diff=0.00549)
+    ⚠ west: CSV=-87.66181 vs 2025=-87.65674 (diff=0.00507)
+    ⚠ north: CSV=41.67377 vs 2025=41.68509 (diff=0.01132)
+    ⚠ south: CSV=41.66653 vs 2025=41.67760 (diff=0.01108)
+
+  21-9 (0/4 boundaries match 2025):
+    CSV: E=Vincennes Ave (162 West) | W=Loomis Street (1400 West) | N=115th Street (11500 South) | S=119th Street (11900 South)
+    ⚠ east: CSV=-87.63177 vs 2025=-87.65652 (diff=0.02475)
+    ⚠ west: CSV=-87.66181 vs 2025=-87.67188 (diff=0.01007)
+    ⚠ north: CSV=41.67377 vs 2025=41.68490 (diff=0.01114)
+    ⚠ south: CSV=41.66653 vs 2025=41.67596 (diff=0.00944)
+
+  26-12 (0/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=California (2800 West) | N=Hirsch (1400 North) | S=Division (1200 North)
+    ⚠ east: CSV=-87.68607 vs 2025=-87.70697 (diff=0.02090)
+    ⚠ west: CSV=-87.69577 vs 2025=-87.72660 (diff=0.03082)
+    ⚠ north: CSV=41.90729 vs 2025=41.91923 (diff=0.01193)
+    ⚠ south: CSV=41.90367 vs 2025=41.91722 (diff=0.01355)
+
+  26-14 (0/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Central Park (3600 West) | N=Hirsch (1400 North) | S=Augusta (1000 North)
+    ⚠ NEW ZONE
+
+  26-15 (0/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Central Park (3600 West) | N=North Ave (1600 North) | S=Hirsch (1400 North)
+    ⚠ NEW ZONE
+
+  26-16 (0/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=North Ave (1600 North) | S=Potomac (1300 North)
+    ⚠ NEW ZONE
+
+  26-9 (0/4 boundaries match 2025):
+    CSV: E=Mozart (2832 West) | W=Kedzie (3200 West) | N=Armitage (2000 North) | S=Bloomingdale (1800 North)
+    ⚠ east: CSV=-87.69655 vs 2025=-87.68701 (diff=0.00955)
+    ⚠ west: CSV=-87.70548 vs 2025=-87.69712 (diff=0.00836)
+    ⚠ north: CSV=41.91816 vs 2025=41.91032 (diff=0.00783)
+    ⚠ south: CSV=41.91454 vs 2025=41.90208 (diff=0.01246)
+
+  27-10 (0/4 boundaries match 2025):
+    CSV: E=Halsted (800 West) | W=Clark (1000 West) | N=North Ave (1600 North) | S=Chicago Ave (800 North)
+    ⚠ east: CSV=-87.64725 vs 2025=-87.67646 (diff=0.02921)
+    ⚠ west: CSV=-87.65210 vs 2025=-87.68654 (diff=0.03444)
+    ⚠ north: CSV=41.91091 vs 2025=41.88127 (diff=0.02964)
+    ⚠ south: CSV=41.89643 vs 2025=41.87397 (diff=0.02247)
+
+  27-3 (0/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=Kedzie (3200 West) | N=Grand (500 North) | S=Lake (200 North)
+    ⚠ east: CSV=-87.68607 vs 2025=-87.71146 (diff=0.02539)
+    ⚠ west: CSV=-87.70548 vs 2025=-87.71648 (diff=0.01100)
+    ⚠ north: CSV=41.89100 vs 2025=41.90094 (diff=0.00994)
+    ⚠ south: CSV=41.88557 vs 2025=41.89547 (diff=0.00990)
+
+  27-4 (0/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=Kedzie (3200 West) | N=Lake (200 North) | S=Harrison (600 South)
+    ⚠ east: CSV=-87.68607 vs 2025=-87.71126 (diff=0.02519)
+    ⚠ west: CSV=-87.70548 vs 2025=-87.71631 (diff=0.01083)
+    ⚠ north: CSV=41.88557 vs 2025=41.89553 (diff=0.00996)
+    ⚠ south: CSV=41.87109 vs 2025=41.88806 (diff=0.01697)
+
+  27-5 (0/4 boundaries match 2025):
+    CSV: E=Ashland (1600 West) | W=Western (2400 West) | N=Washington (100 North) | S=Roosevelt (1200 South)
+    ⚠ east: CSV=-87.66666 vs 2025=-87.70173 (diff=0.03508)
+    ⚠ west: CSV=-87.68607 vs 2025=-87.71156 (diff=0.02549)
+    ⚠ north: CSV=41.88376 vs 2025=41.89916 (diff=0.01540)
+    ⚠ south: CSV=41.86023 vs 2025=41.89022 (diff=0.03000)
+
+  27-8 (0/4 boundaries match 2025):
+    CSV: E=Jefferson (600 West) | W=Ogden (1800 South) | N=Division (1200 North) | S=Kinzie (400 North)
+    ⚠ east: CSV=-87.64240 vs 2025=-87.68648 (diff=0.04409)
+    ⚠ west: CSV=41.84936 vs 2025=-87.69647 (diff=129.54583)
+    ⚠ north: CSV=41.90367 vs 2025=41.89134 (diff=0.01233)
+    ⚠ south: CSV=41.88919 vs 2025=41.88112 (diff=0.00807)
+
+  27-9 (0/4 boundaries match 2025):
+    CSV: E=Halsted (800 West) | W=Armour (1500 West) | N=North Ave (1600 North) | S=Erie (658 North)
+    ⚠ east: CSV=-87.64725 vs 2025=-87.67660 (diff=0.02935)
+    ⚠ west: CSV=-87.66423 vs 2025=-87.68672 (diff=0.02249)
+    ⚠ north: CSV=41.91091 vs 2025=41.89082 (diff=0.02009)
+    ⚠ south: CSV=41.89386 vs 2025=41.88114 (diff=0.01272)
+
+  28-11 (0/4 boundaries match 2025):
+    CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Kinzie (400 North) | S=Van Buren 400 South)
+    ⚠ NEW ZONE
+
+  3-12 (0/4 boundaries match 2025):
+    CSV: E=Michigan (100 East) | W=Federal (60 West) | N=43rd St (4300 South) | S=47th St (4700 South)
+    ⚠ east: CSV=-87.62541 vs 2025=-87.61659 (diff=0.00883)
+    ⚠ west: CSV=-87.62930 vs 2025=-87.62141 (diff=0.00789)
+    ⚠ north: CSV=41.80411 vs 2025=41.81664 (diff=0.01253)
+    ⚠ south: CSV=41.79687 vs 2025=41.80932 (diff=0.01245)
+
+  3-14 (0/4 boundaries match 2025):
+    CSV: E=Michigan (100 East) | W=State St (0 E/W) | N=47th St (4700 South) | S=51st St (5100 South)
+    ⚠ east: CSV=-87.62541 vs 2025=-87.61611 (diff=0.00930)
+    ⚠ west: CSV=-87.62784 vs 2025=-87.62119 (diff=0.00665)
+    ⚠ north: CSV=41.79687 vs 2025=41.80938 (diff=0.01251)
+    ⚠ south: CSV=41.78963 vs 2025=41.80202 (diff=0.01240)
+
+  3-16 (0/4 boundaries match 2025):
+    CSV: E=Michigan (100 East) | W=Dearborn (36 West) | N=51st (5100 South) | S=55th St (5500 South)
+    ⚠ east: CSV=-87.62541 vs 2025=-87.61596 (diff=0.00946)
+    ⚠ west: CSV=-87.62871 vs 2025=-87.62103 (diff=0.00769)
+    ⚠ north: CSV=41.78963 vs 2025=41.80210 (diff=0.01248)
+    ⚠ south: CSV=41.78238 vs 2025=41.79383 (diff=0.01145)
+
+  36-15 (0/4 boundaries match 2025):
+    CSV: E=Wood Street (1800 West) | W=Hoyne (2100 West) | N=Chicago Ave (800 North) | S=Grand (500 North)
+    ⚠ NEW ZONE
+
+  36-16 (0/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=California (2800 West) | N=Iowa (900 North) | S=Grand (500 North)
+    ⚠ NEW ZONE
+
+  38-26A (0/4 boundaries match 2025):
+    CSV: E=Pioneer (8200 West) | W=Cumberland (8400 West) | N=Berteau (4200 North) | S=Irving Park (4000 North)
+    ⚠ NEW ZONE
+
+  38-26B (0/4 boundaries match 2025):
+    CSV: E=Cumberland (8400 West) | W=East River Road (8800 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+    ⚠ NEW ZONE
+
+  39-10 (0/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Avers (3800 West) | N=Foster (5200 North) | S=Ainslie (4900 North)
+    ⚠ east: CSV=-87.70548 vs 2025=-87.69892 (diff=0.00656)
+    ⚠ west: CSV=-87.72004 vs 2025=-87.71102 (diff=0.00901)
+    ⚠ north: CSV=41.97608 vs 2025=41.99038 (diff=0.01430)
+    ⚠ south: CSV=41.97065 vs 2025=41.97575 (diff=0.00509)
+
+  39-12 (0/4 boundaries match 2025):
+    CSV: E=Pulaski (4000 West) | W=Kostner (4400 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+    ⚠ east: CSV=-87.72489 vs 2025=-87.70887 (diff=0.01602)
+    ⚠ west: CSV=-87.73459 vs 2025=-87.71886 (diff=0.01573)
+    ⚠ north: CSV=41.99781 vs 2025=41.99036 (diff=0.00745)
+    ⚠ south: CSV=41.99057 vs 2025=41.98294 (diff=0.00763)
+
+  39-18 (0/4 boundaries match 2025):
+    CSV: E=Austin (6000 West) | W=Nagle (6400 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+    ⚠ east: CSV=-87.77341 vs 2025=-87.74791 (diff=0.02550)
+    ⚠ west: CSV=-87.78312 vs 2025=-87.75543 (diff=0.02769)
+    ⚠ north: CSV=41.99781 vs 2025=41.98344 (diff=0.01437)
+    ⚠ south: CSV=41.99057 vs 2025=41.97288 (diff=0.01769)
+
+  39-8 (0/4 boundaries match 2025):
+    CSV: E=Jersey (3200 West) | W=Saint Louis (3500 West) | N=Peterson (6000 North) | S=Bryn Mawr (5600 North)
+    ⚠ east: CSV=-87.70548 vs 2025=-87.71835 (diff=0.01287)
+    ⚠ west: CSV=-87.71276 vs 2025=-87.72823 (diff=0.01547)
+    ⚠ north: CSV=41.99057 vs 2025=41.97564 (diff=0.01493)
+    ⚠ south: CSV=41.98333 vs 2025=41.96869 (diff=0.01463)
+
+  4-11 (0/4 boundaries match 2025):
+    CSV: E=Vincennes (600 E) | W=Calumet (334 E) | N=35th St (3500 S) | S=39th St (3900 S)
+    ⚠ east: CSV=-87.61328 vs 2025=-87.59765 (diff=0.01564)
+    ⚠ west: CSV=-87.61974 vs 2025=-87.61278 (diff=0.00695)
+    ⚠ north: CSV=41.81859 vs 2025=41.83128 (diff=0.01269)
+    ⚠ south: CSV=41.81135 vs 2025=41.82389 (diff=0.01254)
+
+  4-8 (0/4 boundaries match 2025):
+    CSV: E=Oakenwald (1200 E) | W=Drexel (900 E) | N=39th St (3900 S) | S=43rd St (4300 S
+    ⚠ east: CSV=-87.59873 vs 2025=-87.60406 (diff=0.00534)
+    ⚠ west: CSV=-87.60600 vs 2025=-87.61410 (diff=0.00809)
+    ⚠ north: CSV=41.81135 vs 2025=41.82396 (diff=0.01262)
+    ⚠ south: CSV=41.80411 vs 2025=41.81668 (diff=0.01257)
+
+  4-9 (0/4 boundaries match 2025):
+    CSV: E=Drexel (900 E) | W=Vincennes 600 E | N=39th St (3900 S) | S=43rd St (4300 S)
+    ⚠ east: CSV=-87.60600 vs 2025=-87.59241 (diff=0.01360)
+    ⚠ west: CSV=-87.61328 vs 2025=-87.60687 (diff=0.00641)
+    ⚠ north: CSV=41.81135 vs 2025=41.82618 (diff=0.01483)
+    ⚠ south: CSV=41.80411 vs 2025=41.81685 (diff=0.01274)
+
+  41-28 (0/4 boundaries match 2025):
+    CSV: E=Raven (6300 West) | W=Nagle (6400 West) | N=Northwestern Highway (6700 North) | S=Newburg (6400 North)
+    ⚠ east: CSV=-87.78069 vs 2025=-87.78763 (diff=0.00693)
+    ⚠ west: CSV=-87.78312 vs 2025=-87.79976 (diff=0.01664)
+    ⚠ north: CSV=42.00324 vs 2025=41.99367 (diff=0.00957)
+    ⚠ south: CSV=41.99781 vs 2025=41.98498 (diff=0.01283)
+
+  45-23 (0/4 boundaries match 2025):
+    CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Tonty (6150 North) | S=Loleta (5826 North)
+    ⚠ east: CSV=-87.75886 vs 2025=-87.76987 (diff=0.01101)
+    ⚠ west: CSV=-87.76614 vs 2025=-87.78136 (diff=0.01522)
+    ⚠ north: CSV=41.99328 vs 2025=42.00873 (diff=0.01545)
+    ⚠ south: CSV=41.98742 vs 2025=42.00055 (diff=0.01314)
+
+  45-24 (0/4 boundaries match 2025):
+    CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Devon (6400 North) | S=Loleta (5826 North)
+    ⚠ east: CSV=-87.75886 vs 2025=-87.76577 (diff=0.00691)
+    ⚠ west: CSV=-87.76614 vs 2025=-87.77369 (diff=0.00755)
+    ⚠ north: CSV=41.99781 vs 2025=42.00524 (diff=0.00743)
+    ⚠ south: CSV=41.98742 vs 2025=41.99730 (diff=0.00988)
+
+  5-18 (0/4 boundaries match 2025):
+    CSV: E=Midway Plaisance E & W (5900 S) | W= | N=Cottage Grove (800 E) | S=Kimbark Ave (1300 E)
+    ⚠ east: CSV=41.77514 vs 2025=-87.59470 (diff=129.36985)
+    ⚠ north: CSV=-87.60843 vs 2025=41.78783 (diff=129.39626)
+    ⚠ south: CSV=-87.59630 vs 2025=41.78585 (diff=129.38215)
+
+  5-19 (0/4 boundaries match 2025):
+    CSV: E=Midway Plaisance E & W (5900 S) | W= | N=Kimbark Ave (1300 E) | S=Stony Island Ave (1600 E)
+    ⚠ east: CSV=41.77514 vs 2025=-87.58655 (diff=129.36169)
+    ⚠ north: CSV=-87.59630 vs 2025=41.78793 (diff=129.38423)
+    ⚠ south: CSV=-87.58902 vs 2025=41.78603 (diff=129.37505)
+
+  5-9 (0/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 E) | W=Ellis Ave (600 E) | N=55th Street (5500 S) | S=61st Street (6100 S)
+    ⚠ east: CSV=-87.60843 vs 2025=-87.60110 (diff=0.00733)
+    ⚠ west: CSV=-87.61328 vs 2025=-87.60622 (diff=0.00707)
+    ⚠ north: CSV=41.78238 vs 2025=41.79501 (diff=0.01262)
+    ⚠ south: CSV=41.77152 vs 2025=41.78402 (diff=0.01250)
+
+  7-12 (0/4 boundaries match 2025):
+    CSV: E=Kingston Ave (2531 E) | W=Yates (2400 E) | N=84th St (8400) | S=86th St (8600)
+    ⚠ east: CSV=-87.56643 vs 2025=-87.56117 (diff=0.00526)
+    ⚠ west: CSV=-87.56961 vs 2025=-87.57563 (diff=0.00602)
+    ⚠ north: CSV=41.72989 vs 2025=41.74634 (diff=0.01646)
+    ⚠ south: CSV=41.72627 vs 2025=41.73901 (diff=0.01275)
+
+  7-14 (0/4 boundaries match 2025):
+    CSV: E=89th St (8900 E) | W=83rd St (8300 E) | N=Muskegon (2818 E) | S=Jeffery (2000 E)
+    ⚠ east: CSV=-87.41190 vs 2025=-87.55258 (diff=0.14068)
+    ⚠ west: CSV=-87.42646 vs 2025=-87.56605 (diff=0.13959)
+    ⚠ north: CSV=-87.55947 vs 2025=41.73914 (diff=129.29861)
+    ⚠ south: CSV=-87.57932 vs 2025=41.72759 (diff=129.30691)
+
+  7-18 (0/4 boundaries match 2025):
+    CSV: E=Paxton (2161 E) | W=Constance (1801 E) | N=95th St (9500) | S=96th St (9600)
+    ⚠ east: CSV=-87.57541 vs 2025=-87.57039 (diff=0.00502)
+    ⚠ west: CSV=-87.58414 vs 2025=-87.57900 (diff=0.00514)
+    ⚠ north: CSV=41.70997 vs 2025=41.72253 (diff=0.01256)
+    ⚠ south: CSV=41.70816 vs 2025=41.71872 (diff=0.01055)
+
+  7-22 (0/4 boundaries match 2025):
+    CSV: E=102nd St (10200) | W=105th (10500 E) | N=Torrence (2533 E) | S=Crandon (2331 E)
+    ⚠ east: CSV=41.69730 vs 2025=-87.55964 (diff=129.25695)
+    ⚠ west: CSV=-87.37308 vs 2025=-87.57068 (diff=0.19759)
+    ⚠ north: CSV=-87.56638 vs 2025=41.71177 (diff=129.27816)
+    ⚠ south: CSV=-87.57128 vs 2025=41.70457 (diff=129.27585)
+
+  7-7 (0/4 boundaries match 2025):
+    CSV: E=Exchange (2399 E) | W=Lake Front (1600 East) | N=71st Street (7100) | S=75th Street (7500)
+    ⚠ east: CSV=-87.56963 vs 2025=-87.55467 (diff=0.01496)
+    ⚠ west: CSV=-87.58902 vs 2025=-87.56649 (diff=0.02253)
+    ⚠ north: CSV=41.75342 vs 2025=41.76636 (diff=0.01294)
+    ⚠ south: CSV=41.74618 vs 2025=41.75911 (diff=0.01293)
+
+  7-8 (0/4 boundaries match 2025):
+    CSV: E=Exchange (2600 E) | W=Lake Front (1600 East) | N=75th Street (7500) | S=79th Street (7900)
+    ⚠ east: CSV=-87.56476 vs 2025=-87.54060 (diff=0.02416)
+    ⚠ west: CSV=-87.58902 vs 2025=-87.56004 (diff=0.02898)
+    ⚠ north: CSV=41.74618 vs 2025=41.76149 (diff=0.01531)
+    ⚠ south: CSV=41.73894 vs 2025=41.75192 (diff=0.01298)
+
+  8-10 (0/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 E) | W=Ellis (600 E) | N=83rd St (8300 S) | S=87th St (8700 S)
+    ⚠ east: CSV=-87.60843 vs 2025=-87.59826 (diff=0.01017)
+    ⚠ west: CSV=-87.61328 vs 2025=-87.60503 (diff=0.00825)
+    ⚠ north: CSV=41.73170 vs 2025=41.74406 (diff=0.01236)
+    ⚠ south: CSV=41.72446 vs 2025=41.73665 (diff=0.01219)
+
+  9-11 (0/4 boundaries match 2025):
+    CSV: E=Martin Luther King Dr. (400 E) | W=Michigan Ave (100 E) | N=103rd Street (10300 S) | S=107th Street (10698 S)
+    ⚠ east: CSV=-87.61814 vs 2025=-87.60642 (diff=0.01172)
+    ⚠ west: CSV=-87.62541 vs 2025=-87.61881 (diff=0.00660)
+    ⚠ north: CSV=41.69549 vs 2025=41.70744 (diff=0.01195)
+    ⚠ south: CSV=41.68829 vs 2025=41.69993 (diff=0.01165)
+
+  9-12 (0/4 boundaries match 2025):
+    CSV: E=Maryland Ave (730 E) | W=Martin Luther King Dr. (400 E) | N=103rd Street (10300 S) | S=107th Street (10698 S)
+    ⚠ east: CSV=-87.61013 vs 2025=-87.59178 (diff=0.01835)
+    ⚠ west: CSV=-87.61814 vs 2025=-87.60816 (diff=0.00997)
+    ⚠ north: CSV=41.69549 vs 2025=41.70767 (diff=0.01217)
+    ⚠ south: CSV=41.68829 vs 2025=41.70003 (diff=0.01174)
+
+  9-13 (0/4 boundaries match 2025):
+    CSV: E=Langley Ave (650 E) | W=Vernon Ave (330 E) | N=107th Street (10700 S) | S=111th Street (11098 S)
+    ⚠ east: CSV=-87.61207 vs 2025=-87.59383 (diff=0.01824)
+    ⚠ west: CSV=-87.61983 vs 2025=-87.61357 (diff=0.00626)
+    ⚠ north: CSV=41.68825 vs 2025=41.70018 (diff=0.01193)
+    ⚠ south: CSV=41.68104 vs 2025=41.69237 (diff=0.01133)
+
+  9-14 (0/4 boundaries match 2025):
+    CSV: E=State Street (0 E) | W=Martin Luther King Dr. (400 E) | N=111th Street (11098 S) | S=111th Street (11098 S)
+    ⚠ east: CSV=-87.62784 vs 2025=-87.61348 (diff=0.01436)
+    ⚠ west: CSV=-87.61814 vs 2025=-87.62333 (diff=0.00519)
+    ⚠ north: CSV=41.68104 vs 2025=41.69998 (diff=0.01894)
+    ⚠ south: CSV=41.68104 vs 2025=41.69258 (diff=0.01153)
+
+  9-19 (0/4 boundaries match 2025):
+    CSV: E=State Street (0 E) | W=Front Street (430 E) | N=115th Street (11500 S) | S=119th Street (11900 S)
+    ⚠ east: CSV=-87.62784 vs 2025=-87.61238 (diff=0.01546)
+    ⚠ west: CSV=-87.61741 vs 2025=-87.62286 (diff=0.00546)
+    ⚠ north: CSV=41.67377 vs 2025=41.68543 (diff=0.01167)
+    ⚠ south: CSV=41.66653 vs 2025=41.67802 (diff=0.01149)
+
+  9-20 (0/4 boundaries match 2025):
+    CSV: E=State Street (0 E) | W=Princeton Ave (300 W) | N=115th Street (11500 S) | S=119th Street (11900 S)
+    ⚠ east: CSV=-87.62784 vs 2025=-87.62265 (diff=0.00519)
+    ⚠ west: CSV=-87.63512 vs 2025=-87.63009 (diff=0.00503)
+    ⚠ north: CSV=41.67377 vs 2025=41.68532 (diff=0.01155)
+    ⚠ south: CSV=41.66653 vs 2025=41.67795 (diff=0.01142)
+
+  9-21 (0/4 boundaries match 2025):
+    CSV: E=State Street (0 E) | W=Stewart Ave (430 W) | N=111th Street (11900 S) | S=123rd Street (12300 S)
+    ⚠ east: CSV=-87.62784 vs 2025=-87.62244 (diff=0.00540)
+    ⚠ west: CSV=-87.63827 vs 2025=-87.63227 (diff=0.00600)
+    ⚠ north: CSV=41.66653 vs 2025=41.67803 (diff=0.01150)
+    ⚠ south: CSV=41.65929 vs 2025=41.67064 (diff=0.01135)
+
+  9-22 (0/4 boundaries match 2025):
+    CSV: E=State Street (0 E) | W=Front Street (430 E) | N=119th Street (11900 S) | S=123rd Street (12300 S)
+    ⚠ east: CSV=-87.62784 vs 2025=-87.61422 (diff=0.01362)
+    ⚠ west: CSV=-87.61741 vs 2025=-87.62266 (diff=0.00525)
+    ⚠ north: CSV=41.66653 vs 2025=41.67815 (diff=0.01162)
+    ⚠ south: CSV=41.65929 vs 2025=41.67074 (diff=0.01145)
+
+  9-23 (0/4 boundaries match 2025):
+    CSV: E=Indiana Ave (130 E) | W=Wentworth (200 W) | N=123rd Street (12300 S) | S=127th Street (12700 S)
+    ⚠ east: CSV=-87.62469 vs 2025=-87.61582 (diff=0.00887)
+    ⚠ west: CSV=-87.63269 vs 2025=-87.62724 (diff=0.00545)
+    ⚠ north: CSV=41.65929 vs 2025=41.67087 (diff=0.01158)
+    ⚠ south: CSV=41.65204 vs 2025=41.66330 (diff=0.01126)
+
+  9-25 (0/4 boundaries match 2025):
+    CSV: E=Steward Ave (430 W) | W=Halsted Ave (800 W) | N=123rd Street (12300 S) | S=127th Street (12700 S)
+    ⚠ east: CSV=-87.63827 vs 2025=-87.62960 (diff=0.00867)
+    ⚠ west: CSV=-87.64725 vs 2025=-87.64166 (diff=0.00559)
+    ⚠ north: CSV=41.65929 vs 2025=41.67065 (diff=0.01137)
+    ⚠ south: CSV=41.65204 vs 2025=41.66324 (diff=0.01119)
+
+  10-12 (1/4 boundaries match 2025):
+    CSV: E=Avenue H (3800 E) | W=Avenue N (3500 E) | N=93rd Street (9300 South) | S=98th Street (9800 South)
+    ⚠ east: CSV=-87.53564 vs 2025=-87.53064 (diff=0.00500)
+    ⚠ north: CSV=41.71359 vs 2025=41.72814 (diff=0.01455)
+    ⚠ south: CSV=41.70454 vs 2025=41.71771 (diff=0.01317)
+
+  10-14 (1/4 boundaries match 2025):
+    CSV: E=Greenbay (3400 E) | W=Burnham (2800 E) | N=87th Street (8700 South) | S=83rd Street (83000 S)
+    ⚠ east: CSV=-87.54535 vs 2025=-87.54030 (diff=0.00504)
+    ⚠ north: CSV=41.72446 vs 2025=41.74478 (diff=0.02032)
+    ⚠ south: CSV=40.37942 vs 2025=41.73734 (diff=1.35792)
+
+  10-15 (1/4 boundaries match 2025):
+    CSV: E=Baltimore (3234 E) | W=Muskegon (2734 E) | N=87th Street (8700 South) | S=95th Street (9500 South)
+    ⚠ west: CSV=-87.56151 vs 2025=-87.55559 (diff=0.00592)
+    ⚠ north: CSV=41.72446 vs 2025=41.73742 (diff=0.01296)
+    ⚠ south: CSV=41.70997 vs 2025=41.72229 (diff=0.01232)
+
+  10-16 (1/4 boundaries match 2025):
+    CSV: E=Baltimore (2808 E) | W=Marquette (2634 East) | N=95th Street (9500 South) | S=104th Street (10400 S)
+    ⚠ east: CSV=-87.55971 vs 2025=-87.54673 (diff=0.01298)
+    ⚠ north: CSV=41.70997 vs 2025=41.72278 (diff=0.01281)
+    ⚠ south: CSV=41.69368 vs 2025=41.70640 (diff=0.01272)
+
+  10-5 (1/4 boundaries match 2025):
+    CSV: E=Avenue G (3832 E) | W=Avenue O (3432 E) | N=114th Street (11400 South) | S=118th Street (11800 S)
+    ⚠ east: CSV=-87.53487 vs 2025=-87.52938 (diff=0.00549)
+    ⚠ north: CSV=41.67558 vs 2025=41.68845 (diff=0.01287)
+    ⚠ south: CSV=41.66834 vs 2025=41.68034 (diff=0.01200)
+
+  10-7 (1/4 boundaries match 2025):
+    CSV: E=State Line Road (4000 E) | W=Avenue F (3832 E) | N=103rd Street (10300 S) | S=11th Street (11200 S)
+    ⚠ east: CSV=-87.53079 vs 2025=-87.52453 (diff=0.00626)
+    ⚠ north: CSV=41.69549 vs 2025=41.70829 (diff=0.01280)
+    ⚠ south: CSV=41.67920 vs 2025=41.69180 (diff=0.01260)
+
+  11-9 (1/4 boundaries match 2025):
+    CSV: E=Halsted Street (800 W) | W=Loomis St (1400 W) | N=Archer Ave (2500 S) | S=31st Street (3100 S)
+    ⚠ west: CSV=-87.66181 vs 2025=-87.65541 (diff=0.00640)
+    ⚠ north: CSV=41.83669 vs 2025=41.84701 (diff=0.01032)
+    ⚠ south: CSV=41.82583 vs 2025=41.83799 (diff=0.01216)
+
+  12-10 (1/4 boundaries match 2025):
+    CSV: E=Damen (2000 West) | W=Western (2400 West) | N=32nd Street (3200 South) | S=37th Street (3700 South)
+    ⚠ east: CSV=-87.67636 vs 2025=-87.66259 (diff=0.01378)
+    ⚠ north: CSV=41.82402 vs 2025=41.83874 (diff=0.01472)
+    ⚠ south: CSV=41.81497 vs 2025=41.82628 (diff=0.01131)
+
+  15-2 (1/4 boundaries match 2025):
+    CSV: E=Wood (1800 West) Winchester (1932 West) | W=Damen (2000 West) McDowell (1404 West) | N=43rd Street (4300 South) 44th Street (4400 South) | S=45th Street (4500 South) 46th Street (4600 South) 47th Street (4700 South)
+    ⚠ east: CSV=-87.67151 vs 2025=-87.65997 (diff=0.01155)
+    ⚠ north: CSV=41.80411 vs 2025=41.81587 (diff=0.01176)
+    ⚠ south: CSV=41.80049 vs 2025=41.80851 (diff=0.00802)
+
+  18-11 (1/4 boundaries match 2025):
+    CSV: E=Lawndale (3700 West) | W=Pulaski (4000 West) | N=75th Street (7500 South) | S=79th Street (7900 South)
+    ⚠ east: CSV=-87.71761 vs 2025=-87.71187 (diff=0.00574)
+    ⚠ north: CSV=41.74618 vs 2025=41.75693 (diff=0.01075)
+    ⚠ south: CSV=41.73894 vs 2025=41.74957 (diff=0.01063)
+
+  18-17 (1/4 boundaries match 2025):
+    CSV: E=Pulaski (4000 West) | W=Kostner (4800 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ west: CSV=-87.74430 vs 2025=-87.73164 (diff=0.01266)
+    ⚠ north: CSV=41.73894 vs 2025=41.74948 (diff=0.01054)
+    ⚠ south: CSV=41.73170 vs 2025=41.74195 (diff=0.01025)
+
+  19-12 (1/4 boundaries match 2025):
+    CSV: E=Vincennes (1500 West) | W=Longwood (1932 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+    ⚠ east: CSV=-87.66423 vs 2025=-87.65875 (diff=0.00549)
+    ⚠ north: CSV=41.68825 vs 2025=41.69943 (diff=0.01118)
+    ⚠ south: CSV=41.68101 vs 2025=41.69008 (diff=0.00907)
+
+  19-2 (1/4 boundaries match 2025):
+    CSV: E=Damen (2000 West) | W=Western (2400 West) | N=91st Street (9100 South) | S=95th Street (9500 South)
+    ⚠ east: CSV=-87.67636 vs 2025=-87.67108 (diff=0.00529)
+    ⚠ north: CSV=41.71721 vs 2025=41.72855 (diff=0.01133)
+    ⚠ south: CSV=41.70997 vs 2025=41.72101 (diff=0.01104)
+
+  19-20 (1/4 boundaries match 2025):
+    CSV: E=Sacramento (3000 West) | W=Homan (3400 West) | N=103rd Street (10300 South) | S=107th Street (10700 South)
+    ⚠ east: CSV=-87.70063 vs 2025=-87.69129 (diff=0.00934)
+    ⚠ north: CSV=41.69549 vs 2025=41.70720 (diff=0.01171)
+    ⚠ south: CSV=41.68825 vs 2025=41.69880 (diff=0.01055)
+
+  19-22 (1/4 boundaries match 2025):
+    CSV: E=Homan (3400 West) | W=Hamlin (3800 West) | N=111th Street (11100 South) | S=117th Street (11700 South)
+    ⚠ east: CSV=-87.71033 vs 2025=-87.70528 (diff=0.00505)
+    ⚠ north: CSV=41.68101 vs 2025=41.69149 (diff=0.01048)
+    ⚠ south: CSV=41.67015 vs 2025=41.68051 (diff=0.01036)
+
+  19-24 (1/4 boundaries match 2025):
+    CSV: E=Lawndale (3700 West) | W=Pulaski (4000 West) | N=101st Street (10100 South) | S=107th Street (10700 South)
+    ⚠ east: CSV=-87.71761 vs 2025=-87.71113 (diff=0.00649)
+    ⚠ north: CSV=41.69911 vs 2025=41.71330 (diff=0.01419)
+    ⚠ south: CSV=41.68825 vs 2025=41.69859 (diff=0.01034)
+
+  19-4 (1/4 boundaries match 2025):
+    CSV: E=Charles (1530 West) | W=Damen (2000 West) | N=95th Street (9500 South) | S=99th Street (9900 South)
+    ⚠ east: CSV=-87.66496 vs 2025=-87.65988 (diff=0.00508)
+    ⚠ north: CSV=41.70997 vs 2025=41.72124 (diff=0.01127)
+    ⚠ south: CSV=41.70273 vs 2025=41.71392 (diff=0.01119)
+
+  19-5 (1/4 boundaries match 2025):
+    CSV: E=Longwood (1900 West) | W=Western Ave (2400 West) | N=99th Street (9900 South) | S=103rd Street (10300 South)
+    ⚠ east: CSV=-87.67394 vs 2025=-87.66883 (diff=0.00511)
+    ⚠ north: CSV=41.70273 vs 2025=41.71399 (diff=0.01126)
+    ⚠ south: CSV=41.69549 vs 2025=41.70652 (diff=0.01103)
+
+  19-6 (1/4 boundaries match 2025):
+    CSV: E=Vincennes (1500 West) | W=Longwood (1932 West) | N=103rd Street (10300 South) | S=107th Street (10700 South0
+    ⚠ east: CSV=-87.66423 vs 2025=-87.65602 (diff=0.00821)
+    ⚠ north: CSV=41.69549 vs 2025=41.70689 (diff=0.01140)
+    ⚠ south: CSV=41.68825 vs 2025=41.69926 (diff=0.01101)
+
+  19-7 (1/4 boundaries match 2025):
+    CSV: E=Malta (1506 West) | W=Longwood (1900 West) | N=99th Street (9900 South) | S=103rd Street (10300 South)
+    ⚠ east: CSV=-87.66438 vs 2025=-87.65605 (diff=0.00833)
+    ⚠ north: CSV=41.70273 vs 2025=41.71416 (diff=0.01143)
+    ⚠ south: CSV=41.69549 vs 2025=41.70668 (diff=0.01119)
+
+  20-14 (1/4 boundaries match 2025):
+    CSV: E=Ingleside (930 East) | W=Cottage Grove (800 East) | N=50th Street (5000 South) | S=60th Street (6000 South)
+    ⚠ west: CSV=-87.60843 vs 2025=-87.61645 (diff=0.00802)
+    ⚠ north: CSV=41.79144 vs 2025=41.80580 (diff=0.01437)
+    ⚠ south: CSV=41.77333 vs 2025=41.78571 (diff=0.01238)
+
+  21-15 (1/4 boundaries match 2025):
+    CSV: E=Lowe Ave (632 West) | W=Genoa Ave (814 West) | N=95th Street (9500 South) | S=99th Street (9900 South)
+    ⚠ east: CSV=-87.64317 vs 2025=-87.63697 (diff=0.00620)
+    ⚠ north: CSV=41.70997 vs 2025=41.72151 (diff=0.01153)
+    ⚠ south: CSV=41.70273 vs 2025=41.71408 (diff=0.01135)
+
+  21-19 (1/4 boundaries match 2025):
+    CSV: E=Eggleston Ave (432 West) | W=Aberdeen Street (1710 West) | N=87th Street (8700 South) | S=91st Street (9100 South)
+    ⚠ west: CSV=-87.66933 vs 2025=-87.65092 (diff=0.01841)
+    ⚠ north: CSV=41.72446 vs 2025=41.73729 (diff=0.01284)
+    ⚠ south: CSV=41.71721 vs 2025=41.72864 (diff=0.01142)
+
+  21-20 (1/4 boundaries match 2025):
+    CSV: E=State Street (0 E/W) | W=Vincennes Ave (162 West) | N=83rd Street (8300 South) | S=90th Street (9000 South)
+    ⚠ west: CSV=-87.63177 vs 2025=-87.64383 (diff=0.01206)
+    ⚠ north: CSV=41.73170 vs 2025=41.74416 (diff=0.01247)
+    ⚠ south: CSV=41.71902 vs 2025=41.72999 (diff=0.01097)
+
+  21-3 (1/4 boundaries match 2025):
+    CSV: E=Eggleston Ave (432 West) | W=Halsted Street (800 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+    ⚠ east: CSV=-87.63832 vs 2025=-87.62802 (diff=0.01031)
+    ⚠ north: CSV=41.68825 vs 2025=41.69984 (diff=0.01159)
+    ⚠ south: CSV=41.68101 vs 2025=41.69236 (diff=0.01135)
+
+  22-1 (1/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Kostner Ave (4400 West) | N=31st Street (3100 South) | S=35th Street (3500 Sotuh)
+    ⚠ east: CSV=-87.71518 vs 2025=-87.70466 (diff=0.01053)
+    ⚠ west: CSV=-87.73459 vs 2025=-87.74476 (diff=0.01017)
+    ⚠ north: CSV=41.82583 vs 2025=41.83723 (diff=0.01140)
+
+  22-11 (1/4 boundaries match 2025):
+    CSV: E=Spaulding (3000 West) | W=Drake (3532 West) | N=Cermak (2200 South) | S=26th Street (2600 South)
+    ⚠ east: CSV=-87.70063 vs 2025=-87.70759 (diff=0.00696)
+    ⚠ north: CSV=41.84212 vs 2025=41.85199 (diff=0.00987)
+    ⚠ south: CSV=41.83488 vs 2025=41.84439 (diff=0.00951)
+
+  23-13 (1/4 boundaries match 2025):
+    CSV: E=Hamlin Avenue (3800 West) | W=Pulaski Road (4432 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ west: CSV=-87.73537 vs 2025=-87.72350 (diff=0.01187)
+    ⚠ north: CSV=41.78963 vs 2025=41.80057 (diff=0.01094)
+    ⚠ south: CSV=41.78238 vs 2025=41.79309 (diff=0.01071)
+
+  24-3 (1/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=Ogden (1544 South) | S=Cermak (2200 South)
+    ⚠ east: CSV=-87.71518 vs 2025=-87.70309 (diff=0.01210)
+    ⚠ north: CSV=41.85400 vs 2025=41.85924 (diff=0.00524)
+    ⚠ south: CSV=41.84212 vs 2025=41.85157 (diff=0.00944)
+
+  24-7 (1/4 boundaries match 2025):
+    CSV: E=Homan (3400 West) Albany 3100 West) | W=Central Park (3600 West) | N=Roosevelt (1200 South), Douglas (1400 South) | S=16th Street (1600 South)
+    ⚠ east: CSV=-87.71033 vs 2025=-87.70310 (diff=0.00723)
+    ⚠ north: CSV=41.86023 vs 2025=41.86634 (diff=0.00611)
+    ⚠ south: CSV=41.85299 vs 2025=41.85907 (diff=0.00608)
+
+  25-2 (1/4 boundaries match 2025):
+    CSV: E=Sacramento (3000 West) | W=Kedzie (3200 West) | N=23rd Street (2300 South) | S=31st Street (3100 South)
+    ⚠ east: CSV=-87.70063 vs 2025=-87.68744 (diff=0.01319)
+    ⚠ north: CSV=41.84031 vs 2025=41.85002 (diff=0.00970)
+    ⚠ south: CSV=41.82583 vs 2025=41.83125 (diff=0.00542)
+
+  26-11 (1/4 boundaries match 2025):
+    CSV: E=Rockwell (2600 West) | W=California (2800 West) | N=Bloomingdale (1800 North) | S=Hirsch (1400 North)
+    ⚠ east: CSV=-87.69092 vs 2025=-87.70686 (diff=0.01594)
+    ⚠ west: CSV=-87.69577 vs 2025=-87.72045 (diff=0.02468)
+    ⚠ south: CSV=41.90729 vs 2025=41.91353 (diff=0.00623)
+
+  26-13 (1/4 boundaries match 2025):
+    CSV: E=Washtenaw (2700 West) | W=Sacamento (3000 West) | N=Division (1200 North) | S=Walton (932 North)
+    ⚠ west: CSV=-87.70063 vs 2025=-87.70702 (diff=0.00639)
+    ⚠ north: CSV=41.90367 vs 2025=41.91748 (diff=0.01381)
+    ⚠ south: CSV=41.89882 vs 2025=41.91379 (diff=0.01497)
+
+  26-8 (1/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Central Park (3600 West) | N=Bloomingdale (1800 North) | S=North Ave (1600 North)
+    ⚠ east: CSV=-87.70548 vs 2025=-87.69433 (diff=0.01115)
+    ⚠ north: CSV=41.91454 vs 2025=41.90307 (diff=0.01146)
+    ⚠ south: CSV=41.91091 vs 2025=41.89634 (diff=0.01458)
+
+  27-7 (1/4 boundaries match 2025):
+    CSV: E=Halsted (800 West) | W=Ogden (1800 South) | N=Kinzie (400 North) | S=Van Buren (400 South)
+    ⚠ east: CSV=-87.64725 vs 2025=-87.68635 (diff=0.03910)
+    ⚠ west: CSV=41.84936 vs 2025=-87.70121 (diff=129.55057)
+    ⚠ north: CSV=41.88919 vs 2025=41.88114 (diff=0.00806)
+
+  28-10 (1/4 boundaries match 2025):
+    CSV: E=Kenton (4600 West) | W=Lavergne (5000 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+    ⚠ west: CSV=-87.74915 vs 2025=-87.75534 (diff=0.00618)
+    ⚠ north: CSV=41.88195 vs 2025=41.89509 (diff=0.01314)
+    ⚠ south: CSV=41.89643 vs 2025=41.88037 (diff=0.01606)
+
+  28-7 (1/4 boundaries match 2025):
+    CSV: E=Hamlin (3800 West) | W=Kenton (4600 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+    ⚠ east: CSV=-87.72004 vs 2025=-87.72566 (diff=0.00562)
+    ⚠ north: CSV=41.88195 vs 2025=41.89510 (diff=0.01315)
+    ⚠ south: CSV=41.89643 vs 2025=41.88056 (diff=0.01587)
+
+  28-9 (1/4 boundaries match 2025):
+    CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Carroll (328 North) | S=Harrison (600 South)
+    ⚠ east: CSV=-87.73459 vs 2025=-87.74025 (diff=0.00566)
+    ⚠ west: CSV=-87.74430 vs 2025=-87.75507 (diff=0.01077)
+    ⚠ north: CSV=41.88789 vs 2025=41.88055 (diff=0.00733)
+
+  3-11 (1/4 boundaries match 2025):
+    CSV: E=King Drive (400 East) | W=Indiana (200 East) | N=43rd St (4300 South) | S=47th St (4700 South)
+    ⚠ west: CSV=-87.62299 vs 2025=-87.62913 (diff=0.00614)
+    ⚠ north: CSV=41.80411 vs 2025=41.81656 (diff=0.01246)
+    ⚠ south: CSV=41.79687 vs 2025=41.80919 (diff=0.01232)
+
+  3-13 (1/4 boundaries match 2025):
+    CSV: E=King Drive (400 East) | W=Indiana (200 East) | N=47th St (4700 South) | S=51st St (5100 South)
+    ⚠ west: CSV=-87.62299 vs 2025=-87.62896 (diff=0.00598)
+    ⚠ north: CSV=41.79687 vs 2025=41.80932 (diff=0.01245)
+    ⚠ south: CSV=41.78963 vs 2025=41.80189 (diff=0.01227)
+
+  3-2 (1/4 boundaries match 2025):
+    CSV: E=Calumet (340 East) | W=Clark (1000 West) | N=16th St (1600 South) | S=Cermak (2200 South)
+    ⚠ west: CSV=-87.65210 vs 2025=-87.63027 (diff=0.02183)
+    ⚠ north: CSV=41.85299 vs 2025=41.86029 (diff=0.00731)
+    ⚠ south: CSV=41.84212 vs 2025=41.85281 (diff=0.01068)
+
+  3-3 (1/4 boundaries match 2025):
+    CSV: E=Indiana (200 East) | W=Clark (1000 West) | N=Cermak (2200 South) | S=26th St (2600 South)
+    ⚠ west: CSV=-87.65210 vs 2025=-87.63027 (diff=0.02184)
+    ⚠ north: CSV=41.84212 vs 2025=41.85294 (diff=0.01082)
+    ⚠ south: CSV=41.83488 vs 2025=41.84554 (diff=0.01066)
+
+  39-13 (1/4 boundaries match 2025):
+    CSV: E=Lowell (4432 West) | W=Cicero (4800 West) | N=Peterson (6000 North) | S=Bryn Mawr (5600 North)
+    ⚠ east: CSV=-87.73537 vs 2025=-87.72849 (diff=0.00688)
+    ⚠ west: CSV=-87.74430 vs 2025=-87.73836 (diff=0.00594)
+    ⚠ south: CSV=41.98333 vs 2025=41.97702 (diff=0.00631)
+
+  39-7 (1/4 boundaries match 2025):
+    CSV: E=Saint Louis (3500 West) | W=Lowell (4432 West) | N=Devon (6400 North) | S=Bryn Mawr (5600 North)
+    ⚠ east: CSV=-87.71276 vs 2025=-87.72803 (diff=0.01527)
+    ⚠ north: CSV=41.99781 vs 2025=41.97554 (diff=0.02227)
+    ⚠ south: CSV=41.98333 vs 2025=41.96813 (diff=0.01519)
+
+  4-12 (1/4 boundaries match 2025):
+    CSV: E=Lake Park (428 East) | W=Prairie (300 E) | N=31st St (3100 S) | S=35th St (3500 S)
+    ⚠ east: CSV=-87.61746 vs 2025=-87.60269 (diff=0.01477)
+    ⚠ north: CSV=41.82583 vs 2025=41.83983 (diff=0.01400)
+    ⚠ south: CSV=41.81859 vs 2025=41.83104 (diff=0.01245)
+
+  4-13 (1/4 boundaries match 2025):
+    CSV: E=Lake Park (428 East) | W=Michigan (100 E) | N=26th St (2600 S) | S=31st St (3100 S)
+    ⚠ east: CSV=-87.61746 vs 2025=-87.61133 (diff=0.00612)
+    ⚠ north: CSV=41.83488 vs 2025=41.84573 (diff=0.01084)
+    ⚠ south: CSV=41.82583 vs 2025=41.83835 (diff=0.01251)
+
+  4-7 (1/4 boundaries match 2025):
+    CSV: E=Oakenwald (1200 E) | W=Greenwood (1100 E) | N=43rd St (4300 S) | S=47th St (4700 S)
+    ⚠ east: CSV=-87.59873 vs 2025=-87.58708 (diff=0.01165)
+    ⚠ north: CSV=41.80411 vs 2025=41.81807 (diff=0.01396)
+    ⚠ south: CSV=41.79687 vs 2025=41.80962 (diff=0.01275)
+
+  45-17 (1/4 boundaries match 2025):
+    CSV: E=Elston (1132 West) | W=Farragut (5232 West) | N=Central (5600 West) | S=Ludlam (5470 North)
+    ⚠ east: CSV=-87.65531 vs 2025=-87.76028 (diff=0.10498)
+    ⚠ west: CSV=-87.75478 vs 2025=-87.76846 (diff=0.01368)
+    ⚠ north: CSV=-87.76371 vs 2025=41.98500 (diff=129.74871)
+
+  45-22 (1/4 boundaries match 2025):
+    CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Fitch (7132 North) | S=Tonty (6150 North)
+    ⚠ east: CSV=-87.75886 vs 2025=-87.77168 (diff=0.01282)
+    ⚠ west: CSV=-87.76614 vs 2025=-87.78468 (diff=0.01855)
+    ⚠ south: CSV=41.99328 vs 2025=42.00413 (diff=0.01085)
+
+  5-1 (1/4 boundaries match 2025):
+    CSV: E=Kimbark (1300 E) | W=Cottage Grove (400 E) | N=71st St (7100 S) | S=75th St (7500 S)
+    ⚠ west: CSV=-87.61814 vs 2025=-87.60821 (diff=0.00992)
+    ⚠ north: CSV=41.75342 vs 2025=41.76601 (diff=0.01259)
+    ⚠ south: CSV=41.74618 vs 2025=41.75864 (diff=0.01247)
+
+  5-10 (1/4 boundaries match 2025):
+    CSV: E=Kimbark Ave (1300 E) | W=Ellis Ave (600 E) | N=55th Street (5500 S) | S=61st Street (6100 S)
+    ⚠ west: CSV=-87.61328 vs 2025=-87.60138 (diff=0.01190)
+    ⚠ north: CSV=41.78238 vs 2025=41.79508 (diff=0.01270)
+    ⚠ south: CSV=41.77152 vs 2025=41.78411 (diff=0.01259)
+
+  5-12 (1/4 boundaries match 2025):
+    CSV: E=Shore Dr. (1800 E) | W=Blackstone Ave (1436 E) | N=55th Street (5500 S) | S=59th Street (5900 S)
+    ⚠ east: CSV=-87.58417 vs 2025=-87.57632 (diff=0.00785)
+    ⚠ north: CSV=41.78238 vs 2025=41.79554 (diff=0.01316)
+    ⚠ south: CSV=41.77514 vs 2025=41.78600 (diff=0.01086)
+
+  5-16 (1/4 boundaries match 2025):
+    CSV: E=Shore Dr. (1800 E) | W=Lake Park Ave (1517 E) | N=53rd Street (5300 S) | S=55th Street (5500 S)
+    ⚠ east: CSV=-87.58417 vs 2025=-87.57516 (diff=0.00900)
+    ⚠ north: CSV=41.78601 vs 2025=41.79969 (diff=0.01368)
+    ⚠ south: CSV=41.78238 vs 2025=41.79505 (diff=0.01266)
+
+  5-17 (1/4 boundaries match 2025):
+    CSV: E=Chicago Beach Dr (1642 E) | W=Lake Park Ave (1517 E) | N=47th Street (4700 S) | S=53rd Street (5300 S)
+    ⚠ east: CSV=-87.58800 vs 2025=-87.58001 (diff=0.00799)
+    ⚠ north: CSV=41.79687 vs 2025=41.81144 (diff=0.01457)
+    ⚠ south: CSV=41.78601 vs 2025=41.79957 (diff=0.01357)
+
+  6-15 (1/4 boundaries match 2025):
+    CSV: E=St Lawrence Ave (600 E) | W=Indiana Ave (200 E) | N=87th St (8700 S) | S=91st St (9100 S)
+    ⚠ west: CSV=-87.62299 vs 2025=-87.61777 (diff=0.00522)
+    ⚠ north: CSV=41.72446 vs 2025=41.73650 (diff=0.01205)
+    ⚠ south: CSV=41.71721 vs 2025=41.72914 (diff=0.01193)
+
+  6-18 (1/4 boundaries match 2025):
+    CSV: E=Indiana Ave (200 E) | W=State St (0 E/W) | N=87th St (8700 S) | S=91st St (9100 S)
+    ⚠ east: CSV=-87.62299 vs 2025=-87.61754 (diff=0.00545)
+    ⚠ north: CSV=41.72446 vs 2025=41.73645 (diff=0.01200)
+    ⚠ south: CSV=41.71721 vs 2025=41.72904 (diff=0.01183)
+
+  6-4 (1/4 boundaries match 2025):
+    CSV: E=Ellis Ave (1000 E) | W=Rhodes Ave (532 E) | N=71st St (7100 S) | S=75th St (7500 S)
+    ⚠ east: CSV=-87.60358 vs 2025=-87.59820 (diff=0.00538)
+    ⚠ north: CSV=41.75342 vs 2025=41.76580 (diff=0.01238)
+    ⚠ south: CSV=41.74618 vs 2025=41.75844 (diff=0.01226)
+
+  7-11 (1/4 boundaries match 2025):
+    CSV: E=Buffalo (3200 E) | W=Commercial (3014 E) | N=79th Pl (7900) | S=82nd St (8200)
+    ⚠ east: CSV=-87.55020 vs 2025=-87.53040 (diff=0.01980)
+    ⚠ north: CSV=41.73894 vs 2025=41.75207 (diff=0.01313)
+    ⚠ south: CSV=41.73351 vs 2025=41.74464 (diff=0.01113)
+
+  7-13 (1/4 boundaries match 2025):
+    CSV: E=Manistee (2729 E) | W=Colfax (2600 E) | N=84th St (8400) | S=86th St (8600)
+    ⚠ east: CSV=-87.56163 vs 2025=-87.55029 (diff=0.01133)
+    ⚠ north: CSV=41.72989 vs 2025=41.74646 (diff=0.01657)
+    ⚠ south: CSV=41.72627 vs 2025=41.73907 (diff=0.01281)
+
+  7-17 (1/4 boundaries match 2025):
+    CSV: E=Merrill (2133 E) | W=Chappel (2020 E) | N=89th St (8900) | S=93rd St (9300)
+    ⚠ east: CSV=-87.57609 vs 2025=-87.57047 (diff=0.00562)
+    ⚠ north: CSV=41.72083 vs 2025=41.73348 (diff=0.01264)
+    ⚠ south: CSV=41.71359 vs 2025=41.72247 (diff=0.00888)
+
+  7-20 (1/4 boundaries match 2025):
+    CSV: E=Torrence (2632 E) | W=Clyde (2132 E) | N=99th St (9900) | S=102nd St (10200)
+    ⚠ east: CSV=-87.56398 vs 2025=-87.55875 (diff=0.00523)
+    ⚠ north: CSV=41.70273 vs 2025=41.71880 (diff=0.01607)
+    ⚠ south: CSV=41.69730 vs 2025=41.71333 (diff=0.01603)
+
+  7-6 (1/4 boundaries match 2025):
+    CSV: E=Escanaba (2800 E) | W=Essex (2464 E) | N=75th Street (7500) | S=79th Street (7900)
+    ⚠ east: CSV=-87.55991 vs 2025=-87.55227 (diff=0.00764)
+    ⚠ north: CSV=41.74618 vs 2025=41.75914 (diff=0.01296)
+    ⚠ south: CSV=41.73894 vs 2025=41.75175 (diff=0.01281)
+
+  8-11 (1/4 boundaries match 2025):
+    CSV: E=Stony Island (1600 E) | W=University (1400 E) | N=83rd St (8300 S) | S=87th St (8700 S)
+    ⚠ west: CSV=-87.59387 vs 2025=-87.59999 (diff=0.00612)
+    ⚠ north: CSV=41.73170 vs 2025=41.74421 (diff=0.01252)
+    ⚠ south: CSV=41.72446 vs 2025=41.73672 (diff=0.01226)
+
+  8-15 (1/4 boundaries match 2025):
+    CSV: E=Woodlawn (1200 E) | W=Cottage Grove (800 E) | N=87th St (8700 S) | S=91st St (9100 S)
+    ⚠ east: CSV=-87.59873 vs 2025=-87.59146 (diff=0.00727)
+    ⚠ north: CSV=41.72446 vs 2025=41.73678 (diff=0.01232)
+    ⚠ south: CSV=41.71721 vs 2025=41.72937 (diff=0.01216)
+
+  8-2 (1/4 boundaries match 2025):
+    CSV: E=Greenwood (1100 E) | W=Cottage Grove (800 E) | N=75th St (7500 S) | S=79th St (7900 S)
+    ⚠ east: CSV=-87.60115 vs 2025=-87.59555 (diff=0.00560)
+    ⚠ north: CSV=41.74618 vs 2025=41.75870 (diff=0.01252)
+    ⚠ south: CSV=41.73894 vs 2025=41.75129 (diff=0.01235)
+
+  8-20 (1/4 boundaries match 2025):
+    CSV: E=Dorchester (1400 E) | W=Cottage Grove (800 E) | N=91st St (9100 S) | S=95th St (9500 S)
+    ⚠ east: CSV=-87.59387 vs 2025=-87.58659 (diff=0.00728)
+    ⚠ north: CSV=41.71721 vs 2025=41.72953 (diff=0.01232)
+    ⚠ south: CSV=41.70997 vs 2025=41.72202 (diff=0.01205)
+
+  8-23 (1/4 boundaries match 2025):
+    CSV: E=Kimbark (1300 E) | W=Cottage Grove (800 E) | N=95th St (9500 S) | S=100th St (10000 S)
+    ⚠ east: CSV=-87.59630 vs 2025=-87.58494 (diff=0.01136)
+    ⚠ north: CSV=41.70997 vs 2025=41.72232 (diff=0.01235)
+    ⚠ south: CSV=41.70092 vs 2025=41.71346 (diff=0.01254)
+
+  9-10 (1/4 boundaries match 2025):
+    CSV: E=Michigan Ave (100 E) | W=Wentworth (200 W) | N=103rd Street (10300 S) | S=107th Street (10698 S)
+    ⚠ east: CSV=-87.62541 vs 2025=-87.61850 (diff=0.00692)
+    ⚠ north: CSV=41.69549 vs 2025=41.70724 (diff=0.01175)
+    ⚠ south: CSV=41.68829 vs 2025=41.69985 (diff=0.01156)
+
+  9-15 (1/4 boundaries match 2025):
+    CSV: E=Lafayette Ave (30 W) | W=Princeton Ave (300 W) | N=107th Street (10700 S) | S=111th Street (11098 S)
+    ⚠ east: CSV=-87.62857 vs 2025=-87.62310 (diff=0.00547)
+    ⚠ north: CSV=41.68825 vs 2025=41.69989 (diff=0.01164)
+    ⚠ south: CSV=41.68104 vs 2025=41.69249 (diff=0.01145)
+
+  9-17 (1/4 boundaries match 2025):
+    CSV: E=State Street (0 E) | W=Martin Luther King Dr. (400 E) | N=111th Street (11100 South) | S=115th Street (11500 S)
+    ⚠ east: CSV=-87.62784 vs 2025=-87.61311 (diff=0.01473)
+    ⚠ north: CSV=41.68101 vs 2025=41.69271 (diff=0.01170)
+    ⚠ south: CSV=41.67377 vs 2025=41.68532 (diff=0.01155)
+
+  9-18 (1/4 boundaries match 2025):
+    CSV: E=Ellis Ave (1000 E) | W=Vernon Ave (430 E) | N=111th Street (11100 S) | S=115th Street (11498 S)
+    ⚠ east: CSV=-87.60358 vs 2025=-87.59829 (diff=0.00529)
+    ⚠ north: CSV=41.68101 vs 2025=41.69293 (diff=0.01192)
+    ⚠ south: CSV=41.67380 vs 2025=41.68417 (diff=0.01037)
+
+  9-24 (1/4 boundaries match 2025):
+    CSV: E=Yale Ave (230 W) | W=Eggleston (430 W) | N=123rd Street (12300 S) | S=127th Street (12700 S)
+    ⚠ east: CSV=-87.63342 vs 2025=-87.62698 (diff=0.00644)
+    ⚠ north: CSV=41.65929 vs 2025=41.67068 (diff=0.01139)
+    ⚠ south: CSV=41.65204 vs 2025=41.66324 (diff=0.01119)
+
+  9-26 (1/4 boundaries match 2025):
+    CSV: E=Eggleston Ave (430 W) | W=Morgan Street (1000 W) | N=127th Street (12700 S) | S=129th Place (12930 S)
+    ⚠ east: CSV=-87.63827 vs 2025=-87.63202 (diff=0.00625)
+    ⚠ north: CSV=41.65204 vs 2025=41.66329 (diff=0.01125)
+    ⚠ south: CSV=41.64788 vs 2025=41.65735 (diff=0.00946)
+
+  9-27 (1/4 boundaries match 2025):
+    CSV: E=Rhodes Ave (530 E) | W=Indiana Ave (130 E) | N=130th Street (12000 S) | S=134th Street (13400 S)
+    ⚠ east: CSV=-87.61498 vs 2025=-87.60757 (diff=0.00741)
+    ⚠ north: CSV=41.66472 vs 2025=41.65914 (diff=0.00558)
+    ⚠ south: CSV=41.63937 vs 2025=41.65028 (diff=0.01090)
+
+  9-4 (1/4 boundaries match 2025):
+    CSV: E=Wentworth Ave (200 W) | W=Stewart Ave (400 W) | N=95th Street (9500 S) | S=988th Place (9830 S)
+    ⚠ east: CSV=-87.63269 vs 2025=-87.62458 (diff=0.00811)
+    ⚠ north: CSV=41.70997 vs 2025=41.72170 (diff=0.01173)
+    ⚠ south: CSV=41.70400 vs 2025=41.71523 (diff=0.01123)
+
+  9-6 (1/4 boundaries match 2025):
+    CSV: E=Dauphin Ave (630 E) | W=Martin Luther King Dr. (400 E) | N=99th Street (9900 South) | S=103rd Street (10300 South)
+    ⚠ east: CSV=-87.61255 vs 2025=-87.60512 (diff=0.00743)
+    ⚠ north: CSV=41.70273 vs 2025=41.71359 (diff=0.01086)
+    ⚠ south: CSV=41.69549 vs 2025=41.70731 (diff=0.01182)
+
+  9-7 (1/4 boundaries match 2025):
+    CSV: E=Martin Luther King Dr. (400 E) | W=State Street (0 E) | N=99th Street (9900 S) | S=103rd Street (10300 South)
+    ⚠ west: CSV=-87.62784 vs 2025=-87.62032 (diff=0.00752)
+    ⚠ north: CSV=41.70273 vs 2025=41.71401 (diff=0.01128)
+    ⚠ south: CSV=41.69549 vs 2025=41.70721 (diff=0.01172)
+
+  9-8 (1/4 boundaries match 2025):
+    CSV: E=Lafayuette (30 W) | W=Princeton (300 W) | N=99th Place (9930 S) | S=103rd Street (10300 South)
+    ⚠ east: CSV=-87.62857 vs 2025=-87.61988 (diff=0.00869)
+    ⚠ north: CSV=41.70219 vs 2025=41.72163 (diff=0.01944)
+    ⚠ south: CSV=41.69549 vs 2025=41.70704 (diff=0.01155)
+
+  1-7 (2/4 boundaries match 2025):
+    CSV: E=Ashland (1600 West) | W=Hoyne (2100 West) | N=North Ave (1600 North) | S=Division (1200 North)
+    ⚠ east: CSV=-87.66666 vs 2025=-87.68202 (diff=0.01536)
+    ⚠ west: CSV=-87.67879 vs 2025=-87.69211 (diff=0.01332)
+
+  1-9 (2/4 boundaries match 2025):
+    CSV: E=Leavitt (2200 West) | W=Rockwell (2600 West) | N=North Ave (1600 North) | S=Augusta (1000 North)
+    ⚠ east: CSV=-87.68122 vs 2025=-87.66751 (diff=0.01370)
+    ⚠ west: CSV=-87.69092 vs 2025=-87.67991 (diff=0.01102)
+
+  10-10 (2/4 boundaries match 2025):
+    CSV: E=Avenue G (3832 E) | W=Greenbay (3400 E) | N=102nd Street (10200 S) | S=106th Street (10600 S)
+    ⚠ north: CSV=41.69730 vs 2025=41.71006 (diff=0.01275)
+    ⚠ south: CSV=41.69006 vs 2025=41.70274 (diff=0.01268)
+
+  10-13 (2/4 boundaries match 2025):
+    CSV: E=Greenbay (3432 E) | W=Brandon (3200 E) | N=87th Street (8700 South) | S=94th Street (94000 S)
+    ⚠ north: CSV=41.72446 vs 2025=41.73751 (diff=0.01306)
+    ⚠ south: CSV=40.18028 vs 2025=41.72401 (diff=1.54373)
+
+  10-17 (2/4 boundaries match 2025):
+    CSV: E=Torrence (2634 East) | W=Bensley (2600 East) | N=104th Street (10400 S) | S=109th Street (10900 S)
+    ⚠ north: CSV=41.69368 vs 2025=41.70640 (diff=0.01272)
+    ⚠ south: CSV=41.68463 vs 2025=41.69545 (diff=0.01082)
+
+  10-6 (2/4 boundaries match 2025):
+    CSV: E=Avenue G (3832 E) | W=Avenue O (3432 E) | N=110th Street (11000 South) | S=114th Street (11400 S)
+    ⚠ north: CSV=41.68282 vs 2025=41.69550 (diff=0.01268)
+    ⚠ south: CSV=41.67558 vs 2025=41.68821 (diff=0.01263)
+
+  10-8 (2/4 boundaries match 2025):
+    CSV: E=Avenue G (3832 E) | W=Avenue O (3432 E) | N=106th Street (10600 S) | S=110th Street (11000 S)
+    ⚠ north: CSV=41.69006 vs 2025=41.70277 (diff=0.01271)
+    ⚠ south: CSV=41.68282 vs 2025=41.69545 (diff=0.01263)
+
+  10-9 (2/4 boundaries match 2025):
+    CSV: E=Greenbay (3432 E) | W=Burley (3234 E) | N=106th Street (10600 S) | S=114th Street (11400 S)
+    ⚠ north: CSV=41.69006 vs 2025=41.70280 (diff=0.01274)
+    ⚠ south: CSV=41.67558 vs 2025=41.69550 (diff=0.01992)
+
+  11-1 (2/4 boundaries match 2025):
+    CSV: E=Princeton Ave (300 W) | W=Halsted Street (800 W) | N=35th Street (3500 S) | S=Pershing Rd (3900 S)
+    ⚠ north: CSV=41.81859 vs 2025=41.83094 (diff=0.01235)
+    ⚠ south: CSV=41.81135 vs 2025=41.82350 (diff=0.01215)
+
+  11-11 (2/4 boundaries match 2025):
+    CSV: E=Senour (930 W) | W=Pitney Ct (1530 W) | N=Eleanor Street (2430 S) | S=31st Street (3100 S)
+    ⚠ north: CSV=41.83796 vs 2025=41.84927 (diff=0.01131)
+    ⚠ south: CSV=41.82583 vs 2025=41.83865 (diff=0.01282)
+
+  11-12 (2/4 boundaries match 2025):
+    CSV: E=Paulina Street (1700 W) | W=Damen Avenue (2000 West) | N=32nd Street (3200 S) | S=35th Street (3500 S)
+    ⚠ north: CSV=41.82402 vs 2025=41.83624 (diff=0.01221)
+    ⚠ south: CSV=41.81859 vs 2025=41.82865 (diff=0.01006)
+
+  11-13 (2/4 boundaries match 2025):
+    CSV: E=Justine Street (1532 W) | W=Paulina Street (1700 W) | N=32nd Street (3200 S) | S=Pershing Road (3900 S)
+    ⚠ east: CSV=-87.66501 vs 2025=-87.64563 (diff=0.01938)
+    ⚠ north: CSV=41.82402 vs 2025=41.83556 (diff=0.01154)
+
+  11-2 (2/4 boundaries match 2025):
+    CSV: E=LaSalle Street (100 W) | W=Stewart Ave (400 W) | N=25th Place (2430 S) | S=35th Street (3500 S)
+    ⚠ north: CSV=41.83796 vs 2025=41.84633 (diff=0.00837)
+    ⚠ south: CSV=41.81859 vs 2025=41.83090 (diff=0.01231)
+
+  11-3 (2/4 boundaries match 2025):
+    CSV: E=Canal St (430 W) | W=Halsted Street (800 W) | N=31st Street (3100 S) | S=35th Street (3500 S)
+    ⚠ north: CSV=41.82583 vs 2025=41.83818 (diff=0.01234)
+    ⚠ south: CSV=41.81859 vs 2025=41.83075 (diff=0.01216)
+
+  11-4 (2/4 boundaries match 2025):
+    CSV: E=Canal St (430 W) | W=Halsted Street (800 W) | N=25th Place (2530 S) | S=31st Street (3100 S)
+    ⚠ north: CSV=41.83615 vs 2025=41.84623 (diff=0.01008)
+    ⚠ south: CSV=41.82583 vs 2025=41.83805 (diff=0.01221)
+
+  11-5 (2/4 boundaries match 2025):
+    CSV: E=Wentworth Ave (200 W) | W=Halsted Street / River (800 W) | N=16th Street (1600 S) | S=24th Place (2430 S)
+    ⚠ north: CSV=41.85299 vs 2025=41.86015 (diff=0.00716)
+    ⚠ south: CSV=41.83796 vs 2025=41.84528 (diff=0.00732)
+
+  11-6 (2/4 boundaries match 2025):
+    CSV: E=Tracks (400 W) | W=Halsted Street (800 W) | N=Pershing Road (3900 S) | S=43rd Place (4330 S)
+    ⚠ north: CSV=41.81135 vs 2025=41.82359 (diff=0.01224)
+    ⚠ south: CSV=41.80356 vs 2025=41.81482 (diff=0.01125)
+
+  11-7 (2/4 boundaries match 2025):
+    CSV: E=Halsted Street (800 W) | W=Morgan Street (1000 West) | N=35th Street (3500 S) | S=Pershing Road (3900 S)
+    ⚠ north: CSV=41.81859 vs 2025=41.83075 (diff=0.01216)
+    ⚠ south: CSV=41.81135 vs 2025=41.82336 (diff=0.01201)
+
+  11-8 (2/4 boundaries match 2025):
+    CSV: E=Halsted Street (800 W) | W=Benson Street (1400 W) | N=31st Street (3100 S) | S=35th Street (3500 S)
+    ⚠ north: CSV=41.82583 vs 2025=41.83805 (diff=0.01221)
+    ⚠ south: CSV=41.81859 vs 2025=41.83060 (diff=0.01201)
+
+  12-1 (2/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Drake (3530 West) | N=43rd Street (4300 S) | S=Archer Ave (4640 South)
+    ⚠ north: CSV=41.80411 vs 2025=41.81551 (diff=0.01140)
+    ⚠ south: CSV=41.79795 vs 2025=41.80818 (diff=0.01023)
+
+  12-11 (2/4 boundaries match 2025):
+    CSV: E=Ashland (1600 West) | W=Damen (2000 West) | N=35th Street (3500 South) | S=Pershing (3900 South)
+    ⚠ north: CSV=41.81859 vs 2025=41.83047 (diff=0.01188)
+    ⚠ south: CSV=41.81135 vs 2025=41.82324 (diff=0.01190)
+
+  12-2 (2/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Drake (3530 West) | N=44th Street (4400 South) | S=Archer Ave (4640 South)
+    ⚠ north: CSV=41.80230 vs 2025=41.81413 (diff=0.01184)
+    ⚠ south: CSV=41.79795 vs 2025=41.80799 (diff=0.01004)
+
+  12-3 (2/4 boundaries match 2025):
+    CSV: E=Sacramento (3000 West) | W=Kedzie (3200 West) | N=41st Place (4130 South) | S=47th Street (4700 S)
+    ⚠ north: CSV=41.80719 vs 2025=41.81816 (diff=0.01097)
+    ⚠ south: CSV=41.79687 vs 2025=41.80817 (diff=0.01130)
+
+  12-4 (2/4 boundaries match 2025):
+    CSV: E=California (2800 West) | W=Sacramento (3000 West) | N=42nd Street (4200 South) | S=47th Street (4700)
+    ⚠ north: CSV=41.80592 vs 2025=41.82002 (diff=0.01410)
+    ⚠ south: CSV=41.79687 vs 2025=41.80820 (diff=0.01133)
+
+  12-5 (2/4 boundaries match 2025):
+    CSV: E=Rockwell (2600 West) | W=California (2800 West) | N=Pershing (3900 South) | S=47th Street (4700 South)
+    ⚠ north: CSV=41.81135 vs 2025=41.82300 (diff=0.01165)
+    ⚠ south: CSV=41.79687 vs 2025=41.80828 (diff=0.01141)
+
+  12-6 (2/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=Rockwell (2600 West) | N=Pershing (3900 South) | S=45th Street (4500 South)
+    ⚠ north: CSV=41.81135 vs 2025=41.82303 (diff=0.01168)
+    ⚠ south: CSV=41.80049 vs 2025=41.81199 (diff=0.01151)
+
+  12-7 (2/4 boundaries match 2025):
+    CSV: E=California (2800 West) | W=Kedzie (3200 West) | N=Pershing (3900 South) | S=42nd Street (4200 South)
+    ⚠ north: CSV=41.81135 vs 2025=41.82279 (diff=0.01144)
+    ⚠ south: CSV=41.80592 vs 2025=41.81706 (diff=0.01115)
+
+  12-8 (2/4 boundaries match 2025):
+    CSV: E=California (2800 West) | W=Drake (3530 West) | N=37th Street (3700 South) | S=Pershing (3900 South)
+    ⚠ north: CSV=41.81497 vs 2025=41.82562 (diff=0.01065)
+    ⚠ south: CSV=41.81135 vs 2025=41.82237 (diff=0.01102)
+
+  12-9 (2/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=Kedzie (3200 West) | N=35th Street (3500 South) | S=Pershing (3900 South)
+    ⚠ north: CSV=41.81859 vs 2025=41.83028 (diff=0.01169)
+    ⚠ south: CSV=41.81135 vs 2025=41.82279 (diff=0.01144)
+
+  13-1 (2/4 boundaries match 2025):
+    CSV: E=Sayre (7000 West) | W=Harlem (7200 West) | N=Archer Avenue (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79206 (diff=0.00968)
+    ⚠ south: CSV=41.77514 vs 2025=41.78394 (diff=0.00880)
+
+  13-10 (2/4 boundaries match 2025):
+    CSV: E=Menard (5800 West) | W=Austin (6000 W) | N=Railroad Tracks (5940 South) | S=63rd Street. (6300 South)
+    ⚠ north: CSV=41.77442 vs 2025=41.78438 (diff=0.00996)
+    ⚠ south: CSV=41.76790 vs 2025=41.77789 (diff=0.00998)
+
+  13-11 (2/4 boundaries match 2025):
+    CSV: E=Austin (6000 West) | W=Melvina (6200 West) | N=Railroad Tracks (5940 S) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77442 vs 2025=41.78409 (diff=0.00967)
+    ⚠ south: CSV=41.76790 vs 2025=41.77781 (diff=0.00991)
+
+  13-12 (2/4 boundaries match 2025):
+    CSV: E=Melvina (6200 West) | W=Narragansett (6400 West) | N=Railroad Tracks (5940 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77442 vs 2025=41.78405 (diff=0.00963)
+    ⚠ south: CSV=41.76790 vs 2025=41.77773 (diff=0.00983)
+
+  13-13 (2/4 boundaries match 2025):
+    CSV: E=Narragansett (6400 W) | W=Nashville (6600 West) | N=Railroad Tracks (5940 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77442 vs 2025=41.78395 (diff=0.00953)
+    ⚠ south: CSV=41.76790 vs 2025=41.77760 (diff=0.00970)
+
+  13-14 (2/4 boundaries match 2025):
+    CSV: E=Nashbille (6600 West) | W=Oak Park (6800 W) | N=Railroad Tracks (5940 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77442 vs 2025=41.78407 (diff=0.00965)
+    ⚠ south: CSV=41.76790 vs 2025=41.77757 (diff=0.00967)
+
+  13-15 (2/4 boundaries match 2025):
+    CSV: E=Oak Park (6800 West) | W=Harlem (7200 West) | N=Railroad Tracks (5940 South) | S=65th Street (6500 South)
+    ⚠ north: CSV=41.77442 vs 2025=41.78404 (diff=0.00962)
+    ⚠ south: CSV=41.76428 vs 2025=41.77378 (diff=0.00950)
+
+  13-16 (2/4 boundaries match 2025):
+    CSV: E=Narragansett (6400 West) | W=Oak Park (6800 W) | N=63rd Street (6300 South) | S=65th Street (6500 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77773 (diff=0.00982)
+    ⚠ south: CSV=41.76428 vs 2025=41.77394 (diff=0.00966)
+
+  13-17 (2/4 boundaries match 2025):
+    CSV: E=Austin (6000 West) | W=Narragansett (6400 West) | N=63rd Street (6300 South) | S=65th Street (6500 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77786 (diff=0.00996)
+    ⚠ south: CSV=41.76428 vs 2025=41.77409 (diff=0.00981)
+
+  13-18 (2/4 boundaries match 2025):
+    CSV: E=Central (5600 West) | W=Austin (6000 W) | N=63rd Street (6300 South) | S=65th Street (6500 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77814 (diff=0.01024)
+    ⚠ south: CSV=41.76428 vs 2025=41.77429 (diff=0.01000)
+
+  13-19 (2/4 boundaries match 2025):
+    CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=63rd Street (6300 South) | S=65th Street (6500 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77831 (diff=0.01041)
+    ⚠ south: CSV=41.76428 vs 2025=41.77448 (diff=0.01020)
+
+  13-2 (2/4 boundaries match 2025):
+    CSV: E=Oak Park (6800 West) | W=Sayre (7000 West) | N=Archer Ave (5500 South) | S=Railroad Tracks (5930 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79216 (diff=0.00977)
+    ⚠ south: CSV=41.77460 vs 2025=41.78394 (diff=0.00934)
+
+  13-20 (2/4 boundaries match 2025):
+    CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=63rd Street (6300 South) | S=65th Street (6500 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77852 (diff=0.01062)
+    ⚠ south: CSV=41.76428 vs 2025=41.77435 (diff=0.01007)
+
+  13-21 (2/4 boundaries match 2025):
+    CSV: E=Railroad Tracks (4600 West) | W=Cicero (4800 West) | N=60th Street (6000 South) | S=Marquette Road (6700 South)
+    ⚠ north: CSV=41.77333 vs 2025=41.78578 (diff=0.01245)
+    ⚠ south: CSV=41.76066 vs 2025=41.77113 (diff=0.01047)
+
+  13-22 (2/4 boundaries match 2025):
+    CSV: E=Kildare (4300 West) | W=Railroad Tracks (4600 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79314 (diff=0.01075)
+    ⚠ south: CSV=41.77514 vs 2025=41.78578 (diff=0.01064)
+
+  13-23 (2/4 boundaries match 2025):
+    CSV: E=Pulaski (4000 West) | W=Kildare (4300 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79320 (diff=0.01082)
+    ⚠ south: CSV=41.77514 vs 2025=41.78586 (diff=0.01072)
+
+  13-24 (2/4 boundaries match 2025):
+    CSV: E=Kildare (4300 West) | W=Railroad Tracks (4600 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78586 (diff=0.01072)
+    ⚠ south: CSV=41.76790 vs 2025=41.77849 (diff=0.01058)
+
+  13-25 (2/4 boundaries match 2025):
+    CSV: E=Pulaski (4000 West) | W=Kildare (4300 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78591 (diff=0.01077)
+    ⚠ south: CSV=41.76790 vs 2025=41.77857 (diff=0.01067)
+
+  13-26 (2/4 boundaries match 2025):
+    CSV: E=Kildare (4300 West) | W=Railroad Tracks (4600 West) | N=63rd Street (6300 South) | S=Marquette Road (6700 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77857 (diff=0.01067)
+    ⚠ south: CSV=41.76066 vs 2025=41.77120 (diff=0.01054)
+
+  13-27 (2/4 boundaries match 2025):
+    CSV: E=Pulaski (4000 West) | W=Kildare (4300 West) | N=63rd Street (6300 South) | S=Marquette Road (6700 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77866 (diff=0.01076)
+    ⚠ south: CSV=41.76066 vs 2025=41.77129 (diff=0.01063)
+
+  13-3 (2/4 boundaries match 2025):
+    CSV: E=Nashville (6600 W) | W=Oak Park (6800 W) | N=Archer Ave (5500 South) | S=Railroad Tracks (5930 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79225 (diff=0.00987)
+    ⚠ south: CSV=41.77460 vs 2025=41.78404 (diff=0.00943)
+
+  13-4 (2/4 boundaries match 2025):
+    CSV: E=Narragansett (6400 W) | W=Nashville (6600 West) | N=Archer Ave (5500 South) | S=Railroad Tracks (5930 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79235 (diff=0.00996)
+    ⚠ south: CSV=41.77460 vs 2025=41.78389 (diff=0.00929)
+
+  13-5 (2/4 boundaries match 2025):
+    CSV: E=Melvina (6200 West) | W=Narragansett (6400 West) | N=55th Street (5500 South) | S=Railroad Tracks (5930 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79244 (diff=0.01006)
+    ⚠ south: CSV=41.77460 vs 2025=41.78400 (diff=0.00940)
+
+  13-6 (2/4 boundaries match 2025):
+    CSV: E=Austin (6000 West) | W=Melvina (6200 West) | N=55th Street (5500 S) | S=Railroad Tracks (5930 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79254 (diff=0.01016)
+    ⚠ south: CSV=41.77460 vs 2025=41.78405 (diff=0.00945)
+
+  13-7 (2/4 boundaries match 2025):
+    CSV: E=Menard (5800 West) | W=Austin (6000 W) | N=55th Street (5500 S) | S=Railroad Tracks (5930 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79264 (diff=0.01026)
+    ⚠ south: CSV=41.77460 vs 2025=41.78403 (diff=0.00943)
+
+  13-8 (2/4 boundaries match 2025):
+    CSV: E=Central (5600 West) | W=Menard (5800 West) | N=55th Street (5500 South) | S=Railroad Tracks (5930 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79274 (diff=0.01035)
+    ⚠ south: CSV=41.77460 vs 2025=41.78436 (diff=0.00976)
+
+  13-9 (2/4 boundaries match 2025):
+    CSV: E=Central (5600 West) | W=Menard (5800 West) | N=Minuteman Park (5915 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77487 vs 2025=41.78607 (diff=0.01120)
+    ⚠ south: CSV=41.76790 vs 2025=41.77795 (diff=0.01005)
+
+  14-1 (2/4 boundaries match 2025):
+    CSV: E=Kostner (4400 West) Kilbourn (4500 West) | W=Cicero (4800 West) Knox (4632 West) | N=47th Street (4700 South) 49th Street (4900 South) | S=51st Street (5100 South)
+    ⚠ north: CSV=41.79687 vs 2025=41.80775 (diff=0.01088)
+    ⚠ south: CSV=41.78963 vs 2025=41.80033 (diff=0.01070)
+
+  14-10 (2/4 boundaries match 2025):
+    CSV: E=Albany (3100 West) | W=Spaulding (3300 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80088 (diff=0.01126)
+    ⚠ south: CSV=41.78238 vs 2025=41.79344 (diff=0.01105)
+
+  14-11 (2/4 boundaries match 2025):
+    CSV: E=Spaulding (3300 West) | W=St Louis (3500 West) | N=50th Street (5000 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.79144 vs 2025=41.80285 (diff=0.01141)
+    ⚠ south: CSV=41.78238 vs 2025=41.79330 (diff=0.01092)
+
+  14-12 (2/4 boundaries match 2025):
+    CSV: E=Christiana (3332 West) | W=Central Park (3600 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.80072 (diff=0.01833)
+    ⚠ south: CSV=41.77514 vs 2025=41.78609 (diff=0.01095)
+
+  14-13 (2/4 boundaries match 2025):
+    CSV: E=Troy (3132 West) | W=Christiana (3332 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79354 (diff=0.01115)
+    ⚠ south: CSV=41.77514 vs 2025=41.78619 (diff=0.01105)
+
+  14-15 (2/4 boundaries match 2025):
+    CSV: E=Albany (3100 West) | W=Central Park (3600 West) | N=59th Street (5900 South) | S=61st Street (6100 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78629 (diff=0.01114)
+    ⚠ south: CSV=41.77152 vs 2025=41.78246 (diff=0.01094)
+
+  14-16 (2/4 boundaries match 2025):
+    CSV: E=Troy (3132 West) | W=Central Park (3600 West) | N=61st Street (6100 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77152 vs 2025=41.78263 (diff=0.01110)
+    ⚠ south: CSV=41.76790 vs 2025=41.77883 (diff=0.01092)
+
+  14-17 (2/4 boundaries match 2025):
+    CSV: E=Troy (3132 West) | W=Central Park (3600 West) | N=63rd Street (6300 South) | S=65th Street (6500 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77899 (diff=0.01109)
+    ⚠ south: CSV=41.76428 vs 2025=41.77517 (diff=0.01089)
+
+  14-18 (2/4 boundaries match 2025):
+    CSV: E=Troy (3132 West) | W=St. Louis Ave (3500 West) | N=65th Street (6500 South) | S=Marquette Road (6700 South)
+    ⚠ north: CSV=41.76428 vs 2025=41.77534 (diff=0.01106)
+    ⚠ south: CSV=41.76066 vs 2025=41.77156 (diff=0.01090)
+
+  14-2 (2/4 boundaries match 2025):
+    CSV: E=Keeler (4200 West) | W=Kostner (4400 West) | N=47th Street (4700 South) | S=51st Street (5100 South)
+    ⚠ north: CSV=41.79687 vs 2025=41.80781 (diff=0.01094)
+    ⚠ south: CSV=41.78963 vs 2025=41.80039 (diff=0.01076)
+
+  14-3 (2/4 boundaries match 2025):
+    CSV: E=Pulaski Road (4000 West) | W=Keeler (4200 West) | N=43rd Street (4300 South) | S=47th Street (4700 South)
+    ⚠ north: CSV=41.80411 vs 2025=41.81520 (diff=0.01109)
+    ⚠ south: CSV=41.79687 vs 2025=41.80780 (diff=0.01093)
+
+  14-4 (2/4 boundaries match 2025):
+    CSV: E=Pulaski Road (4000 West) | W=Keeler (4200 West) | N=47th Street (4700 South) | S=51st Street (5100 South)
+    ⚠ north: CSV=41.79687 vs 2025=41.80786 (diff=0.01100)
+    ⚠ south: CSV=41.78963 vs 2025=41.80049 (diff=0.01087)
+
+  14-5 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski Road (4000 West) | N=45th Street (4500 South) | S=Archer Avenue (4780 South / 4890 South
+    ⚠ north: CSV=41.80049 vs 2025=41.81161 (diff=0.01112)
+    ⚠ south: CSV=41.79542 vs 2025=41.80234 (diff=0.00692)
+
+  14-6 (2/4 boundaries match 2025):
+    CSV: E=Albany (3100 West) Kedzie (3200 West) | W=Pulaski Road (4000 West) Central Park (3600 West) | N=46th Street (4600 South) 47th Street (4700 South) | S=Archer Ave (4781 South) 51st Street (5100 South)
+    ⚠ east: CSV=-87.70305 vs 2025=-87.69400 (diff=0.00905)
+    ⚠ north: CSV=41.79868 vs 2025=41.80998 (diff=0.01130)
+
+  14-8 (2/4 boundaries match 2025):
+    CSV: E=Washtenaw (2700 West) | W=Francisco (2900 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80103 (diff=0.01141)
+    ⚠ south: CSV=41.78238 vs 2025=41.79365 (diff=0.01126)
+
+  14-9 (2/4 boundaries match 2025):
+    CSV: E=Francisco (2900 West) | W=Albany (3100 West) Kedzie (3200 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80097 (diff=0.01135)
+    ⚠ south: CSV=41.78238 vs 2025=41.79356 (diff=0.01118)
+
+  15-1 (2/4 boundaries match 2025):
+    CSV: E=Stewart (400 West) Wallace (600 West) | W=Halsted (800 West) Canal (500 West) | N=43rd Street (4300 South) 45th Street (4500 South) | S=47th Street (4700 South) 49th Street (4900 South)
+    ⚠ north: CSV=41.80411 vs 2025=41.81635 (diff=0.01224)
+    ⚠ south: CSV=41.79687 vs 2025=41.80493 (diff=0.00806)
+
+  15-10 (2/4 boundaries match 2025):
+    CSV: E=Marshfield (1632 West) | W=Wolcott (1900 West) | N=61st Street (6100 South) | S=66th Street (6600 South)
+    ⚠ north: CSV=41.77152 vs 2025=41.78312 (diff=0.01159)
+    ⚠ south: CSV=41.76247 vs 2025=41.77392 (diff=0.01145)
+
+  15-3 (2/4 boundaries match 2025):
+    CSV: E=Paulina (1700 West) Hermitage (1732 West) | W=Leavitt (2200 West) | N=47th Street (4700 South) 50th Place (5032 South) | S=48th Street (4800 South) 51st Street (5100 South)
+    ⚠ north: CSV=41.79687 vs 2025=41.80858 (diff=0.01172)
+    ⚠ south: CSV=41.79506 vs 2025=41.80116 (diff=0.00610)
+
+  15-4 (2/4 boundaries match 2025):
+    CSV: E=Fairfield (2732 West) Oakley (2300 West) | W=California (2800 West) Artesian (2434 West) | N=43rd Street (4300 South) 50th Place (5032 South) | S=44th Street (4400 South) 50th Place (5032 South)
+    ⚠ east: CSV=-87.69412 vs 2025=-87.67902 (diff=0.01511)
+    ⚠ north: CSV=41.80411 vs 2025=41.81570 (diff=0.01160)
+
+  15-5 (2/4 boundaries match 2025):
+    CSV: E=Hoyne (2100 West) | W=Rockwell (2600 West) | N=51st Street (5100 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80116 (diff=0.01154)
+    ⚠ south: CSV=41.77514 vs 2025=41.78648 (diff=0.01134)
+
+  15-6 (2/4 boundaries match 2025):
+    CSV: E=Rockwell (2600 West) | W=Sacramento (3000 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79377 (diff=0.01139)
+    ⚠ south: CSV=41.77514 vs 2025=41.78632 (diff=0.01118)
+
+  15-7 (2/4 boundaries match 2025):
+    CSV: E=California (2800 West) | W=Troy (3132 West) | N=59th Street (5900 South) | S=61st Street (6100 South) 63rd Street (6300 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78640 (diff=0.01126)
+    ⚠ south: CSV=41.77152 vs 2025=41.77899 (diff=0.00747)
+
+  15-8 (2/4 boundaries match 2025):
+    CSV: E=California (2800 West) | W=Troy (3132 West) | N=63rd Street (6300 South) | S=Marquette (6700 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77912 (diff=0.01121)
+    ⚠ south: CSV=41.76066 vs 2025=41.77169 (diff=0.01103)
+
+  15-9 (2/4 boundaries match 2025):
+    CSV: E=Marshfield (1632 West) | W=Damen (2000 West) Wolcott (1900 West) | N=56th Street (5600 South) | S=61st Street (6100 South)
+    ⚠ north: CSV=41.78057 vs 2025=41.79218 (diff=0.01161)
+    ⚠ south: CSV=41.77152 vs 2025=41.78306 (diff=0.01154)
+
+  16-1 (2/4 boundaries match 2025):
+    CSV: E=Damen (2000 West) | W=Western Ave (2400 W) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80123 (diff=0.01161)
+    ⚠ south: CSV=41.78238 vs 2025=41.79208 (diff=0.00970)
+
+  16-10 (2/4 boundaries match 2025):
+    CSV: E=Western Ave (2400 West) | W=California (2800 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78656 (diff=0.01141)
+    ⚠ south: CSV=41.76790 vs 2025=41.77907 (diff=0.01117)
+
+  16-11 (2/4 boundaries match 2025):
+    CSV: E=Bell (2230 West) | W=Oakley (2300 West) Western (2400 West) | N=58th Street (5800 South) | S=59th Street (5900 South) 70th Street (7000 South)
+    ⚠ north: CSV=41.77695 vs 2025=41.78839 (diff=0.01143)
+    ⚠ south: CSV=41.77514 vs 2025=41.76652 (diff=0.00863)
+
+  16-12 (2/4 boundaries match 2025):
+    CSV: E=Damen (2000 W) | W=Hamilton (2100 West) | N=59th Street (5900 South) | S=Marquette (6700 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78663 (diff=0.01148)
+    ⚠ south: CSV=41.76066 vs 2025=41.77201 (diff=0.01135)
+
+  16-14 (2/4 boundaries match 2025):
+    CSV: E=Loomis (1400 West) | W=Marshfield (1630 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78682 (diff=0.01167)
+    ⚠ south: CSV=41.76790 vs 2025=41.77943 (diff=0.01153)
+
+  16-15 (2/4 boundaries match 2025):
+    CSV: E=Racine (1200 West) | W=Loomis (1400 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78689 (diff=0.01174)
+    ⚠ south: CSV=41.76790 vs 2025=41.77954 (diff=0.01164)
+
+  16-16 (2/4 boundaries match 2025):
+    CSV: E=Morgan (1000 West) | W=Racine (1200 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78696 (diff=0.01181)
+    ⚠ south: CSV=41.76790 vs 2025=41.77961 (diff=0.01171)
+
+  16-17 (2/4 boundaries match 2025):
+    CSV: E=Wallace (600 West) | W=Morgan (1000 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78711 (diff=0.01196)
+    ⚠ south: CSV=41.76790 vs 2025=41.77965 (diff=0.01175)
+
+  16-18 (2/4 boundaries match 2025):
+    CSV: E=Loomis (1400 West) | W=Marshfield (1630 West) | N=63rd Street (6300 South) | S=68th Street (6800 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77954 (diff=0.01164)
+    ⚠ south: CSV=41.75885 vs 2025=41.77037 (diff=0.01152)
+
+  16-19 (2/4 boundaries match 2025):
+    CSV: E=Morgan (1000 West) | W=Loomis (1400 West) | N=63rd Street (6300 South) | S=Marquette (6700 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77968 (diff=0.01177)
+    ⚠ south: CSV=41.76066 vs 2025=41.77239 (diff=0.01173)
+
+  16-2 (2/4 boundaries match 2025):
+    CSV: E=Hermitage (1730 West) | W=Damen (2000 West) | N=51st Street (5100 South) | S=56th Street (5600 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80129 (diff=0.01166)
+    ⚠ south: CSV=41.78057 vs 2025=41.79210 (diff=0.01152)
+
+  16-20 (2/4 boundaries match 2025):
+    CSV: E=Lowe (632 West) | W=Morgan (1000 West) | N=63rd Street (6300 South) | S=Marquette (6700 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77975 (diff=0.01185)
+    ⚠ south: CSV=41.76066 vs 2025=41.77250 (diff=0.01184)
+
+  16-21 (2/4 boundaries match 2025):
+    CSV: E=Western Ave (2400 West) | W=California (2800 West) | N=63rd Street (6300 South) | S=Marquette (6700 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77925 (diff=0.01134)
+    ⚠ south: CSV=41.76066 vs 2025=41.77185 (diff=0.01119)
+
+  16-22 (2/4 boundaries match 2025):
+    CSV: E=Western (2400 West) | W=California (2800 West) | N=Marquette (6700 South) | S=70th Street (7000 South)
+    ⚠ north: CSV=41.76066 vs 2025=41.77199 (diff=0.01132)
+    ⚠ south: CSV=41.75523 vs 2025=41.76644 (diff=0.01121)
+
+  16-23 (2/4 boundaries match 2025):
+    CSV: E=Ashland (1600 West) | W=Hamilton (2100 West) | N=Marquette (6700 South) | S=69th Street (6900 South)
+    ⚠ north: CSV=41.76066 vs 2025=41.77218 (diff=0.01152)
+    ⚠ south: CSV=41.75704 vs 2025=41.76839 (diff=0.01134)
+
+  16-24 (2/4 boundaries match 2025):
+    CSV: E=Morgan (1000 West) | W=Racine (1200 West) | N=Marquette (6700 South) | S=71st Street (7100 South)
+    ⚠ north: CSV=41.76066 vs 2025=41.77246 (diff=0.01180)
+    ⚠ south: CSV=41.75342 vs 2025=41.76506 (diff=0.01164)
+
+  16-25 (2/4 boundaries match 2025):
+    CSV: E=Emerald (720 West) | W=Morgan (1000 West) | N=Marquette (6700 South) | S=71st Street (7100 South)
+    ⚠ north: CSV=41.76066 vs 2025=41.77251 (diff=0.01185)
+    ⚠ south: CSV=41.75342 vs 2025=41.76513 (diff=0.01171)
+
+  16-3 (2/4 boundaries match 2025):
+    CSV: E=Bishiop (1430 West) | W=Hermitage (1730 West) | N=51st Street (5100 SOuth) | S=56th Street (5600 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80138 (diff=0.01176)
+    ⚠ south: CSV=41.78057 vs 2025=41.79356 (diff=0.01299)
+
+  16-4 (2/4 boundaries match 2025):
+    CSV: E=Wallace (600 West) | W=Racine (1200 West) | N=53rd Street (5300 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78601 vs 2025=41.79803 (diff=0.01202)
+    ⚠ south: CSV=41.78238 vs 2025=41.79386 (diff=0.01148)
+
+  16-5 (2/4 boundaries match 2025):
+    CSV: E=Loomis (1400 West) | W=Hermitage (1730 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79365 (diff=0.01127)
+    ⚠ south: CSV=41.77514 vs 2025=41.78672 (diff=0.01157)
+
+  16-6 (2/4 boundaries match 2025):
+    CSV: E=Racine (1200 West) | W=Loomis (1400 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79417 (diff=0.01179)
+    ⚠ south: CSV=41.77514 vs 2025=41.78682 (diff=0.01167)
+
+  16-7 (2/4 boundaries match 2025):
+    CSV: E=Morgan (1000 West) | W=Racine (1200 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79393 (diff=0.01154)
+    ⚠ south: CSV=41.77514 vs 2025=41.78689 (diff=0.01174)
+
+  16-8 (2/4 boundaries match 2025):
+    CSV: E=Halsted (800 West) | W=Morgan Street (1000 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79399 (diff=0.01161)
+    ⚠ south: CSV=41.77514 vs 2025=41.78696 (diff=0.01181)
+
+  16-9 (2/4 boundaries match 2025):
+    CSV: E=Wallace (600 West) | W=Halsted (800 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79405 (diff=0.01167)
+    ⚠ south: CSV=41.77514 vs 2025=41.78703 (diff=0.01188)
+
+  17-1 (2/4 boundaries match 2025):
+    CSV: E=Summit Street (800 West) Halsted Street (800 West) | W=Morgan Street (1000 West) | N=83rd Street (8300 South) | S=86th Place (8600 South) 87th Street (8700 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74336 (diff=0.01166)
+    ⚠ south: CSV=41.72627 vs 2025=41.73600 (diff=0.00974)
+
+  17-10 (2/4 boundaries match 2025):
+    CSV: E=Ashland Ave (1600 West) | W=Woods Street (1800 West) | N=75th Street (7500 South) | S=79th Street (7900 South)
+    ⚠ north: CSV=41.74618 vs 2025=41.75756 (diff=0.01138)
+    ⚠ south: CSV=41.73894 vs 2025=41.75030 (diff=0.01136)
+
+  17-11 (2/4 boundaries match 2025):
+    CSV: E=Racine Ave (1200 West) | W=Ashland Ave (1600 West) | N=75th Street (7500 South) | S=79th Street (7900 South)
+    ⚠ north: CSV=41.74618 vs 2025=41.75759 (diff=0.01142)
+    ⚠ south: CSV=41.73894 vs 2025=41.75036 (diff=0.01142)
+
+  17-12 (2/4 boundaries match 2025):
+    CSV: E=Morgan Street (1000 West) | W=Racine Ave (1200 West) | N=75th Street (7500 South) | S=79th Street (7900 South)
+    ⚠ north: CSV=41.74618 vs 2025=41.75767 (diff=0.01149)
+    ⚠ south: CSV=41.73894 vs 2025=41.75050 (diff=0.01156)
+
+  17-13 (2/4 boundaries match 2025):
+    CSV: E=Halsted Street (800 West) | W=Morgan Street (1000 West) | N=75th Street (7500 South) | S=79th Street (7900 South)
+    ⚠ north: CSV=41.74618 vs 2025=41.75775 (diff=0.01157)
+    ⚠ south: CSV=41.73894 vs 2025=41.75057 (diff=0.01163)
+
+  17-14 (2/4 boundaries match 2025):
+    CSV: E=Wallace Street (600 West) | W=Halsted Street (800 West) | N=74th Street (7400 South) | S=79th Street (7900 South)
+    ⚠ north: CSV=41.74799 vs 2025=41.75982 (diff=0.01183)
+    ⚠ south: CSV=41.73894 vs 2025=41.75064 (diff=0.01170)
+
+  17-15 (2/4 boundaries match 2025):
+    CSV: E=Perry (100 West) Layfayette (30 West) | W=Wallace St (600 West) Princeton Ave (300 West) | N=76th Street (7600 South) | S=79th Street (7900 South) 81st Street (8100 South)
+    ⚠ north: CSV=41.74437 vs 2025=41.75634 (diff=0.01197)
+    ⚠ south: CSV=41.73894 vs 2025=41.74719 (diff=0.00825)
+
+  17-16 (2/4 boundaries match 2025):
+    CSV: E=Halsted Street (800 West) | W=Morgan Street (1000 West) | N=71st Street (7100 South) | S=75th Street (7500 South)
+    ⚠ north: CSV=41.75342 vs 2025=41.76520 (diff=0.01178)
+    ⚠ south: CSV=41.74618 vs 2025=41.75767 (diff=0.01149)
+
+  17-17 (2/4 boundaries match 2025):
+    CSV: E=Morgan Street (1000 West) | W=Racine Ave (1200 West) | N=71st Street (7100 South) | S=75th Street (7500 South)
+    ⚠ north: CSV=41.75342 vs 2025=41.76513 (diff=0.01171)
+    ⚠ south: CSV=41.74618 vs 2025=41.75758 (diff=0.01140)
+
+  17-18 (2/4 boundaries match 2025):
+    CSV: E=Racine Ave (1200 West) | W=Ashland Ave (1600 West) | N=71st Street (7100 South) | S=74th Street (7400 South)
+    ⚠ north: CSV=41.75342 vs 2025=41.76506 (diff=0.01164)
+    ⚠ south: CSV=41.74799 vs 2025=41.75756 (diff=0.00957)
+
+  17-19 (2/4 boundaries match 2025):
+    CSV: E=Racine Ave (1200 West) | W=Ashland Ave (1600 West) | N=Marquette (6700 South) 68th Street (6800 South) | S=71st Street (7100 South)
+    ⚠ north: CSV=41.76066 vs 2025=41.77233 (diff=0.01167)
+    ⚠ south: CSV=41.75342 vs 2025=41.76494 (diff=0.01152)
+
+  17-2 (2/4 boundaries match 2025):
+    CSV: E=Morgan Street (1000 West) | W=Racine Ave (1200 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74329 (diff=0.01159)
+    ⚠ south: CSV=41.72446 vs 2025=41.73594 (diff=0.01148)
+
+  17-20 (2/4 boundaries match 2025):
+    CSV: E=Ashland Ave (1600 West) | W=Wolcott Ave (1900 West) | N=71st Street (7100 South) | S=74th Street (7400 South)
+    ⚠ north: CSV=41.75342 vs 2025=41.76494 (diff=0.01152)
+    ⚠ south: CSV=41.74799 vs 2025=41.75753 (diff=0.00955)
+
+  17-21 (2/4 boundaries match 2025):
+    CSV: E=Ashland Ave (1600 West) | W=Honore Street (1828 West) | N=68th Street (6800 South) | S=71st Street (7100 South)
+    ⚠ north: CSV=41.75885 vs 2025=41.77037 (diff=0.01152)
+    ⚠ south: CSV=41.75342 vs 2025=41.76486 (diff=0.01144)
+
+  17-22 (2/4 boundaries match 2025):
+    CSV: E=Honore Street (1828 West) | W=Bell Ave (2232 West) | N=68th Street 6800 South) | S=71st Street (7100 South)
+    ⚠ north: CSV=41.75885 vs 2025=41.77030 (diff=0.01145)
+    ⚠ south: CSV=41.75342 vs 2025=41.76475 (diff=0.01133)
+
+  17-24 (2/4 boundaries match 2025):
+    CSV: E=Bell Ave (2232 West) Claremenont (2332 West) | W=Rockwell Ave (2600 West) California (2800 West) | N=Lithuana Place Court (6900 South) 70th Street (7000 South) | S=71st Street (7100 South) 72nd Street (7200 South)
+    ⚠ north: CSV=41.75704 vs 2025=41.76837 (diff=0.01133)
+    ⚠ south: CSV=41.75342 vs 2025=41.76272 (diff=0.00930)
+
+  17-25 (2/4 boundaries match 2025):
+    CSV: E=Kedzie Ave (3200 West) | W=Central Park Ave (3600 West) | N=71st Street (7100 South) | S=73rd Street (7300 South) 74st Street (7400 South)
+    ⚠ north: CSV=41.75342 vs 2025=41.76439 (diff=0.01097)
+    ⚠ south: CSV=41.74980 vs 2025=41.75832 (diff=0.00852)
+
+  17-3 (2/4 boundaries match 2025):
+    CSV: E=Racine (1200 West) Ada Street (1342 West) | W=Loomis Blvd (1400 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74322 (diff=0.01152)
+    ⚠ south: CSV=41.72446 vs 2025=41.73588 (diff=0.01142)
+
+  17-4 (2/4 boundaries match 2025):
+    CSV: E=Halsted Street (800 West) Emerald Ave (732 West) | W=Morgan Street (1000 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.75066 (diff=0.01173)
+    ⚠ south: CSV=41.73170 vs 2025=41.74329 (diff=0.01159)
+
+  17-5 (2/4 boundaries match 2025):
+    CSV: E=Morgan Street (1000 West) | W=Racine Ave (1200 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.75057 (diff=0.01163)
+    ⚠ south: CSV=41.73170 vs 2025=41.74322 (diff=0.01152)
+
+  17-6 (2/4 boundaries match 2025):
+    CSV: E=Racine (1200 West) | W=Ashland Ave (1600 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.75050 (diff=0.01156)
+    ⚠ south: CSV=41.73170 vs 2025=41.74308 (diff=0.01138)
+
+  17-7 (2/4 boundaries match 2025):
+    CSV: E=Ashland (1600 West) | W=Woods (1800 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.75036 (diff=0.01142)
+    ⚠ south: CSV=41.73170 vs 2025=41.74301 (diff=0.01131)
+
+  17-8 (2/4 boundaries match 2025):
+    CSV: E=Woods Street (1800 West) | W=Damen Ave (2000 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.75029 (diff=0.01136)
+    ⚠ south: CSV=41.73170 vs 2025=41.74294 (diff=0.01125)
+
+  17-9 (2/4 boundaries match 2025):
+    CSV: E=Woods Street (1800 West) | W=Damen (2000 West) | N=75th Street (7500 South) | S=79th Street (7900 South)
+    ⚠ north: CSV=41.74618 vs 2025=41.75754 (diff=0.01136)
+    ⚠ south: CSV=41.73894 vs 2025=41.75023 (diff=0.01129)
+
+  18-1 (2/4 boundaries match 2025):
+    CSV: E=Damen (2000 West) | W=California (2800 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74294 (diff=0.01125)
+    ⚠ south: CSV=41.72446 vs 2025=41.73536 (diff=0.01091)
+
+  18-10 (2/4 boundaries match 2025):
+    CSV: E=Richmond (2600 West) | W=Central Park Ave (3600 West) | N=75th Street (7500 South) | S=79th Street (7900 South)
+    ⚠ north: CSV=41.74618 vs 2025=41.75701 (diff=0.01083)
+    ⚠ south: CSV=41.73894 vs 2025=41.74973 (diff=0.01079)
+
+  18-12 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.74975 (diff=0.01081)
+    ⚠ south: CSV=41.73170 vs 2025=41.74203 (diff=0.01033)
+
+  18-13 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74221 (diff=0.01052)
+    ⚠ south: CSV=41.72446 vs 2025=41.73486 (diff=0.01040)
+
+  18-14 (2/4 boundaries match 2025):
+    CSV: E=Pulaski (4000 West) | W=Kostner (4400 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74203 (diff=0.01033)
+    ⚠ south: CSV=41.72446 vs 2025=41.73467 (diff=0.01021)
+
+  18-15 (2/4 boundaries match 2025):
+    CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74195 (diff=0.01025)
+    ⚠ south: CSV=41.72446 vs 2025=41.73452 (diff=0.01007)
+
+  18-16 (2/4 boundaries match 2025):
+    CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.74926 (diff=0.01032)
+    ⚠ south: CSV=41.73170 vs 2025=41.74186 (diff=0.01017)
+
+  18-18 (2/4 boundaries match 2025):
+    CSV: E=Pulaski (4000 West) | W=Cicero (4800 West) | N=77th Place (7700 South) | S=79th Street (7900 South)
+    ⚠ north: CSV=41.74256 vs 2025=41.75510 (diff=0.01255)
+    ⚠ south: CSV=41.73894 vs 2025=41.74905 (diff=0.01011)
+
+  18-19 (2/4 boundaries match 2025):
+    CSV: E=Loomis Blvd (1400 West) | W=Damen (2000 West) | N=83rd Street (8300 South) | S=86th Street (8600 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74314 (diff=0.01145)
+    ⚠ south: CSV=41.72627 vs 2025=41.73764 (diff=0.01137)
+
+  18-2 (2/4 boundaries match 2025):
+    CSV: E=Damen (2000 West) | W=Western (2400 West) | N=75th Street (7500 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.74618 vs 2025=41.75927 (diff=0.01309)
+    ⚠ south: CSV=41.73170 vs 2025=41.74276 (diff=0.01107)
+
+  18-20 (2/4 boundaries match 2025):
+    CSV: E=Justine (1532 West) | W=Damen (2000 West) | N=86th Street (8600 South) | S=90th Street (9000 South)
+    ⚠ north: CSV=41.72627 vs 2025=41.73781 (diff=0.01154)
+    ⚠ south: CSV=41.71902 vs 2025=41.73022 (diff=0.01120)
+
+  18-3 (2/4 boundaries match 2025):
+    CSV: E=Bell (2232 West) | W=Rockwell (2600 West) | N=71st Street (7100 South) | S=77th Street (7700 South)
+    ⚠ north: CSV=41.75342 vs 2025=41.76476 (diff=0.01134)
+    ⚠ south: CSV=41.74256 vs 2025=41.75385 (diff=0.01129)
+
+  18-4 (2/4 boundaries match 2025):
+    CSV: E=Rockwell (2600 West) | W=Kedzie (3200 West) | N=71st Street (7100 South) | S=75th Street (7500 South)
+    ⚠ north: CSV=41.75342 vs 2025=41.76454 (diff=0.01112)
+    ⚠ south: CSV=41.74618 vs 2025=41.75726 (diff=0.01108)
+
+  18-5 (2/4 boundaries match 2025):
+    CSV: E=Western Ave (2400 West) | W=California (2800 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.75018 (diff=0.01124)
+    ⚠ south: CSV=41.73170 vs 2025=41.74258 (diff=0.01089)
+
+  18-6 (2/4 boundaries match 2025):
+    CSV: E=California (2800 West) | W=Kedzie (3200 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.75001 (diff=0.01107)
+    ⚠ south: CSV=41.73170 vs 2025=41.74240 (diff=0.01070)
+
+  18-7 (2/4 boundaries match 2025):
+    CSV: E=California (2800 West) | W=Kedzie (3200 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74258 (diff=0.01088)
+    ⚠ south: CSV=41.72446 vs 2025=41.73520 (diff=0.01075)
+
+  18-8 (2/4 boundaries match 2025):
+    CSV: E=Kedzie Ave (3200 West) | W=Central Park Ave (3600 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    ⚠ north: CSV=41.73170 vs 2025=41.74240 (diff=0.01070)
+    ⚠ south: CSV=41.72446 vs 2025=41.73503 (diff=0.01058)
+
+  18-9 (2/4 boundaries match 2025):
+    CSV: E=Kedzie Ave (3200 West) | W=Central Park Ave (3600 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    ⚠ north: CSV=41.73894 vs 2025=41.74985 (diff=0.01091)
+    ⚠ south: CSV=41.73170 vs 2025=41.74222 (diff=0.01053)
+
+  19-1 (2/4 boundaries match 2025):
+    CSV: E=Charles (1530 West) Damen (2000 West) | W=Western (2400 West) | N=87th Street (8700 South) 91st Street (9100 South) | S=95th Street (9500 South)
+    ⚠ north: CSV=41.72446 vs 2025=41.73569 (diff=0.01123)
+    ⚠ south: CSV=41.70997 vs 2025=41.72110 (diff=0.01113)
+
+  19-10 (2/4 boundaries match 2025):
+    CSV: E=Longwood (1900 West) | W=Western (2400 West) | N=103rd Street (10300 South) | S=107th Street (10700 South)
+    ⚠ north: CSV=41.69549 vs 2025=41.70668 (diff=0.01119)
+    ⚠ south: CSV=41.68825 vs 2025=41.69911 (diff=0.01086)
+
+  19-11 (2/4 boundaries match 2025):
+    CSV: E=Vincennes (1500 West) | W=Longwood (1932 West) | N=111th Street (11100 South) | S=119th Street (11900 South)
+    ⚠ north: CSV=41.68101 vs 2025=41.69204 (diff=0.01103)
+    ⚠ south: CSV=41.66653 vs 2025=41.67729 (diff=0.01076)
+
+  19-13 (2/4 boundaries match 2025):
+    CSV: E=Western Ave (2400 West) | W=California (2800 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+    ⚠ north: CSV=41.68825 vs 2025=41.69911 (diff=0.01086)
+    ⚠ south: CSV=41.68101 vs 2025=41.69173 (diff=0.01072)
+
+  19-14 (2/4 boundaries match 2025):
+    CSV: E=Longwood (1932 West) | W=Western (2400 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+    ⚠ north: CSV=41.68825 vs 2025=41.69926 (diff=0.01101)
+    ⚠ south: CSV=41.68101 vs 2025=41.69185 (diff=0.01084)
+
+  19-15 (2/4 boundaries match 2025):
+    CSV: E=Longwood (1932 West) | W=Western (2400 West) | N=111th Street (11100 South) | S=115th Street (11500 South)
+    ⚠ north: CSV=41.68101 vs 2025=41.69204 (diff=0.01103)
+    ⚠ south: CSV=41.67377 vs 2025=41.68362 (diff=0.00985)
+
+  19-17 (2/4 boundaries match 2025):
+    CSV: E=Hale (1900 West) | W=Rockwell (2600 West) | N=115th Street (11500 South) | S=119th Street (11900 South)
+    ⚠ north: CSV=41.67377 vs 2025=41.68454 (diff=0.01077)
+    ⚠ south: CSV=41.66653 vs 2025=41.67721 (diff=0.01068)
+
+  19-18 (2/4 boundaries match 2025):
+    CSV: E=Sacramento (3000 West) | W=Homan (3400 West) | N=111th Street (11100 South) | S=115th Street (11500 South)
+    ⚠ north: CSV=41.68101 vs 2025=41.69163 (diff=0.01062)
+    ⚠ south: CSV=41.67377 vs 2025=41.68419 (diff=0.01042)
+
+  19-19 (2/4 boundaries match 2025):
+    CSV: E=Sacramento (3000 West) | W=Homan (3400 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+    ⚠ north: CSV=41.68825 vs 2025=41.69894 (diff=0.01069)
+    ⚠ south: CSV=41.68101 vs 2025=41.69149 (diff=0.01048)
+
+  19-21 (2/4 boundaries match 2025):
+    CSV: E=Homan (3400 West) | W=Lawndale (3700 West) | N=107th Street (10700 South) | S=111th Street (11100 Souht)
+    ⚠ north: CSV=41.68825 vs 2025=41.69880 (diff=0.01055)
+    ⚠ south: CSV=41.68101 vs 2025=41.69139 (diff=0.01038)
+
+  19-23 (2/4 boundaries match 2025):
+    CSV: E=Lawndale (3700 West) | W=Pulaski (4000 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+    ⚠ north: CSV=41.68825 vs 2025=41.69870 (diff=0.01045)
+    ⚠ south: CSV=41.68101 vs 2025=41.69128 (diff=0.01028)
+
+  19-25 (2/4 boundaries match 2025):
+    CSV: E=Homan (3400 West) | W=Lawndale (3700 West) | N=103rd Street (10300 South) | S=107th Street (10700 South)
+    ⚠ north: CSV=41.69549 vs 2025=41.70613 (diff=0.01064)
+    ⚠ south: CSV=41.68825 vs 2025=41.69869 (diff=0.01044)
+
+  19-3 (2/4 boundaries match 2025):
+    CSV: E=Damen (2000 West) | W=Western (2400 West) | N=95th Street (9500 South) | S=99th Street (9900 South)
+    ⚠ north: CSV=41.70997 vs 2025=41.72114 (diff=0.01117)
+    ⚠ south: CSV=41.70273 vs 2025=41.71373 (diff=0.01100)
+
+  19-8 (2/4 boundaries match 2025):
+    CSV: E=Western Ave (2400 West) | W=California (2800 West) | N=103rd Street (10300 South) | S=107th Street (10700 South)
+    ⚠ north: CSV=41.69549 vs 2025=41.70652 (diff=0.01103)
+    ⚠ south: CSV=41.68825 vs 2025=41.69897 (diff=0.01072)
+
+  19-9 (2/4 boundaries match 2025):
+    CSV: E=Western Ave (2400 West) | W=California (2800 West) | N=99th Street (9900 South) | S=103rd Street (10300 South)
+    ⚠ north: CSV=41.70273 vs 2025=41.71373 (diff=0.01100)
+    ⚠ south: CSV=41.69549 vs 2025=41.70638 (diff=0.01088)
+
+  20-1 (2/4 boundaries match 2025):
+    CSV: E=Loomis (1400 West) | W=Wolcott (1900 West) | N=47th Street (4700 South) | S=51st Street (5100 South)
+    ⚠ north: CSV=41.79687 vs 2025=41.80867 (diff=0.01180)
+    ⚠ south: CSV=41.78963 vs 2025=41.80125 (diff=0.01162)
+
+  20-15 (2/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 East) | W=kIng Drive (400 East) | N=63rd Street (6300 South) | S=67th Street (6700 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.78042 (diff=0.01252)
+    ⚠ south: CSV=41.76066 vs 2025=41.77297 (diff=0.01231)
+
+  20-16 (2/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 East) | W=King Drive (400 East) | N=60th Street (6000 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77333 vs 2025=41.78588 (diff=0.01254)
+    ⚠ south: CSV=41.76790 vs 2025=41.78026 (diff=0.01236)
+
+  20-17 (2/4 boundaries match 2025):
+    CSV: E=Woodlawn (1200 East) | W=Cottage Grove (800 East) | N=60th Street (6000 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77333 vs 2025=41.78588 (diff=0.01254)
+    ⚠ south: CSV=41.76790 vs 2025=41.78041 (diff=0.01251)
+
+  20-18 (2/4 boundaries match 2025):
+    CSV: E=Woodlawn (1200 East) | W=Cottage Grove (800 East) | N=63rd Street (6300 South) | S=67th Street (6700 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.78052 (diff=0.01261)
+    ⚠ south: CSV=41.76066 vs 2025=41.77314 (diff=0.01248)
+
+  20-19 (2/4 boundaries match 2025):
+    CSV: E=Dorchester (1400 East) | W=Woodlawn (1200 East) | N=60th Street (6000 South) | S=67th Street (6700 South)
+    ⚠ north: CSV=41.77333 vs 2025=41.78604 (diff=0.01271)
+    ⚠ south: CSV=41.76066 vs 2025=41.77323 (diff=0.01257)
+
+  20-2 (2/4 boundaries match 2025):
+    CSV: E=Halsted (800 West) | W=Loomis (1400 West) | N=47th Street (4700 South) | S=51st Street (5100 South)
+    ⚠ north: CSV=41.79687 vs 2025=41.80887 (diff=0.01200)
+    ⚠ south: CSV=41.78963 vs 2025=41.80141 (diff=0.01178)
+
+  20-3 (2/4 boundaries match 2025):
+    CSV: E=Racine (1200 West) | W=Bishop (1438 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80148 (diff=0.01185)
+    ⚠ south: CSV=41.78238 vs 2025=41.79409 (diff=0.01170)
+
+  20-4 (2/4 boundaries match 2025):
+    CSV: E=Halsted (800 West) | W=Racine (1200 West) | N=49th Place (4900 South) | S=53rd Street (5300 South)
+    ⚠ north: CSV=41.79325 vs 2025=41.80438 (diff=0.01113)
+    ⚠ south: CSV=41.78601 vs 2025=41.79777 (diff=0.01177)
+
+  20-5 (2/4 boundaries match 2025):
+    CSV: E=Wallace (620 West) | W=Halsted (800 West) | N=49th Street (4900 South) | S=53rd Street (5300 South)
+    ⚠ north: CSV=41.79325 vs 2025=41.80494 (diff=0.01169)
+    ⚠ south: CSV=41.78601 vs 2025=41.79794 (diff=0.01194)
+
+  20-6 (2/4 boundaries match 2025):
+    CSV: E=La Salle (140 West) | W=Union (700 West) | N=42nd Street (4200 South) | S=51st Street (5100 South)
+    ⚠ north: CSV=41.80592 vs 2025=41.81774 (diff=0.01182)
+    ⚠ south: CSV=41.78963 vs 2025=41.80162 (diff=0.01200)
+
+  20-9 (2/4 boundaries match 2025):
+    CSV: E=Wells (236 West) | W=Halsted (800 West) | N=59th Street (5900 South) | S=65th Street (6500 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78725 (diff=0.01211)
+    ⚠ south: CSV=41.76428 vs 2025=41.77616 (diff=0.01188)
+
+  21-12 (2/4 boundaries match 2025):
+    CSV: E=Parnell Ave (532 West) | W=Carpenter Street (1032 West) | N=99th street (9900 South) | S=103rd Street (10300 South)
+    ⚠ north: CSV=41.70273 vs 2025=41.71425 (diff=0.01152)
+    ⚠ south: CSV=41.69549 vs 2025=41.70686 (diff=0.01137)
+
+  21-14 (2/4 boundaries match 2025):
+    CSV: E=Genoa Ave (814 West) | W=Beverely Ave/Ashland Ave (1600 West) | N=95th Street (9500 South) | S=99th Street (9900 South)
+    ⚠ north: CSV=41.70997 vs 2025=41.72139 (diff=0.01141)
+    ⚠ south: CSV=41.70273 vs 2025=41.71399 (diff=0.01126)
+
+  21-16 (2/4 boundaries match 2025):
+    CSV: E=Wallace Street (600 West) | W=Aberdeen Street (1100 West) | N=91st Street (9100 South) | S=95th Street (9500 South)
+    ⚠ north: CSV=41.71721 vs 2025=41.72883 (diff=0.01162)
+    ⚠ south: CSV=41.70997 vs 2025=41.72137 (diff=0.01140)
+
+  21-17 (2/4 boundaries match 2025):
+    CSV: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=91st Street (9100 South) | S=95th Street (9500 South)
+    ⚠ north: CSV=41.71721 vs 2025=41.72865 (diff=0.01144)
+    ⚠ south: CSV=41.70997 vs 2025=41.72122 (diff=0.01125)
+
+  21-18 (2/4 boundaries match 2025):
+    CSV: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=84th Street (8400 South) | S=91st Street (9100 South)
+    ⚠ north: CSV=41.72989 vs 2025=41.73952 (diff=0.00963)
+    ⚠ south: CSV=41.71721 vs 2025=41.72841 (diff=0.01119)
+
+  21-2 (2/4 boundaries match 2025):
+    CSV: E=Wentworth Ave (200 West) | W=Halsted Street (800 West) | N=103rd Street (10300 South) | S=107th Street (10700 South)
+    ⚠ north: CSV=41.69549 vs 2025=41.70710 (diff=0.01161)
+    ⚠ south: CSV=41.68825 vs 2025=41.69973 (diff=0.01148)
+
+  22-10 (2/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=St Louis (3500 West) | N=26th Street (2600 South) | S=31st Street (3100 South)
+    ⚠ north: CSV=41.83488 vs 2025=41.84446 (diff=0.00958)
+    ⚠ south: CSV=41.82583 vs 2025=41.83713 (diff=0.01130)
+
+  22-12 (2/4 boundaries match 2025):
+    CSV: E=Knox (4632 West) | W=Cicero (4800 West) | N=43rd Street (4300 South) | S=49th Street (4900 South)
+    ⚠ north: CSV=41.80411 vs 2025=41.81805 (diff=0.01394)
+    ⚠ south: CSV=41.79325 vs 2025=41.80397 (diff=0.01072)
+
+  22-13 (2/4 boundaries match 2025):
+    CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=44th Street (4400 South) | S=47th Street (4700 South)
+    ⚠ north: CSV=41.80230 vs 2025=41.81641 (diff=0.01411)
+    ⚠ south: CSV=41.79687 vs 2025=41.80753 (diff=0.01067)
+
+  22-14 (2/4 boundaries match 2025):
+    CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=47th Street (4700 South) | S=50th Street (5000 South)
+    ⚠ north: CSV=41.79687 vs 2025=41.80769 (diff=0.01082)
+    ⚠ south: CSV=41.79144 vs 2025=41.80202 (diff=0.01058)
+
+  22-2 (2/4 boundaries match 2025):
+    CSV: E=Tripp (4232 West) | W=Kilbourn (4500 West) | N=26th Street (2600 South) | S=31st Street (3100 South)
+    ⚠ north: CSV=41.83488 vs 2025=41.84408 (diff=0.00920)
+    ⚠ south: CSV=41.82583 vs 2025=41.83677 (diff=0.01094)
+
+  22-3 (2/4 boundaries match 2025):
+    CSV: E=Pulaski (4000 West) | W=Tripp (4232 West) | N=26th Street (2600 South) | S=31st Street (3100 South)
+    ⚠ north: CSV=41.83488 vs 2025=41.84419 (diff=0.00931)
+    ⚠ south: CSV=41.82583 vs 2025=41.83689 (diff=0.01106)
+
+  22-4 (2/4 boundaries match 2025):
+    CSV: E=Pulaski (4000 West) | W=Kostner Ave (4400 West) | N=Ogden (2250 South) | S=26th Street (2600 South)
+    ⚠ north: CSV=41.84122 vs 2025=41.85108 (diff=0.00986)
+    ⚠ south: CSV=41.83488 vs 2025=41.84392 (diff=0.00904)
+
+  22-6 (2/4 boundaries match 2025):
+    CSV: E=Ridgeway (3732 West) | W=Pulaski (4000 West) | N=26th Street (2600 South) | S=31st Street (3100 South)
+    ⚠ north: CSV=41.83488 vs 2025=41.84430 (diff=0.00942)
+    ⚠ south: CSV=41.82583 vs 2025=41.83697 (diff=0.01114)
+
+  22-7 (2/4 boundaries match 2025):
+    CSV: E=Ridgeway (3732 West) | W=Pulaski (4000 West) | N=Cermak (2000 South) | S=26th Street (2600 South)
+    ⚠ north: CSV=41.84574 vs 2025=41.85162 (diff=0.00588)
+    ⚠ south: CSV=41.83488 vs 2025=41.84419 (diff=0.00931)
+
+  22-8 (2/4 boundaries match 2025):
+    CSV: E=St. Louis (3500 West) | W=Ridgeway (3732 West) | N=26th Street (2600 South) | S=31st Street (3100 South)
+    ⚠ north: CSV=41.83488 vs 2025=41.84441 (diff=0.00953)
+    ⚠ south: CSV=41.82583 vs 2025=41.83705 (diff=0.01122)
+
+  22-9 (2/4 boundaries match 2025):
+    CSV: E=Drake (3532 West) | W=Ridgeway (3732 West) | N=Cermak (2200 South) | S=26th Street (2600 South)
+    ⚠ north: CSV=41.84212 vs 2025=41.85168 (diff=0.00955)
+    ⚠ south: CSV=41.83488 vs 2025=41.84430 (diff=0.00942)
+
+  23-1 (2/4 boundaries match 2025):
+    CSV: E=New England (6900 West) | W=Harlem Ave (7200 West) | N=51st Street (5100 South) | S=Archer Ave
+    ⚠ north: CSV=41.78963 vs 2025=41.79949 (diff=0.00987)
+
+  23-10 (2/4 boundaries match 2025):
+    CSV: E=Cicero Ave (4800 West) | W=Laramie Ave (5200 West) | N=50th Street (5000 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.79144 vs 2025=41.80215 (diff=0.01071)
+    ⚠ south: CSV=41.78238 vs 2025=41.79289 (diff=0.01051)
+
+  23-11 (2/4 boundaries match 2025):
+    CSV: E=Kolin Avenue (4332 West) | W=Cicero Avenue (4800 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80048 (diff=0.01086)
+    ⚠ south: CSV=41.78238 vs 2025=41.79303 (diff=0.01065)
+
+  23-12 (2/4 boundaries match 2025):
+    CSV: E=Pulaski Road (4000 West) | W=Kolin Avenue (4432 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80057 (diff=0.01095)
+    ⚠ south: CSV=41.78238 vs 2025=41.79313 (diff=0.01074)
+
+  23-14 (2/4 boundaries match 2025):
+    CSV: E=Central Park Avenue (3600 West) | W=Hamlin Avenue (3800 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80069 (diff=0.01106)
+    ⚠ south: CSV=41.78238 vs 2025=41.79321 (diff=0.01083)
+
+  23-15 (2/4 boundaries match 2025):
+    CSV: E=Central Park Avenue (3600 West) | W=Pulaski Road (4000 West) | N=55th Street (5500 South) | S=57th Street (5700 South)
+    ⚠ north: CSV=41.78238 vs 2025=41.79333 (diff=0.01095)
+    ⚠ south: CSV=41.77876 vs 2025=41.78960 (diff=0.01083)
+
+  23-16 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski Road (4000 West) | N=57th Street (5700 South) | S=59th Street (5900 South)
+    ⚠ north: CSV=41.77876 vs 2025=41.78969 (diff=0.01093)
+    ⚠ south: CSV=41.77514 vs 2025=41.78593 (diff=0.01078)
+
+  23-17 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Karlov Ave (4100 West) | N=59th Street (5900 South) | S=61st Street (6100 South)
+    ⚠ north: CSV=41.77514 vs 2025=41.78608 (diff=0.01094)
+    ⚠ south: CSV=41.77152 vs 2025=41.78227 (diff=0.01074)
+
+  23-18 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski Road (4000 West) | N=61st Street (6100 South) | S=63rd Street (6300 South)
+    ⚠ north: CSV=41.77152 vs 2025=41.78250 (diff=0.01098)
+    ⚠ south: CSV=41.76790 vs 2025=41.77869 (diff=0.01079)
+
+  23-19 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski Road (4000 West) | N=63rd Street (6300 South) | S=65th Street (6500 South)
+    ⚠ north: CSV=41.76790 vs 2025=41.77884 (diff=0.01094)
+    ⚠ south: CSV=41.76428 vs 2025=41.77501 (diff=0.01073)
+
+  23-2 (2/4 boundaries match 2025):
+    CSV: E=Normandy Ave (6700 West) | W=New England Ave (6900 West) | N=51st Street (5100 South) | S=Archer Ave
+    ⚠ north: CSV=41.78963 vs 2025=41.79957 (diff=0.00995)
+
+  23-20 (2/4 boundaries match 2025):
+    CSV: E=St Louis (3500 West) | W=Pulaski Road (4000 West) | N=65th Street (6500 South) | S=Marquette Ave (6700 South)
+    ⚠ north: CSV=41.76428 vs 2025=41.77521 (diff=0.01093)
+    ⚠ south: CSV=41.76066 vs 2025=41.77134 (diff=0.01068)
+
+  23-21 (2/4 boundaries match 2025):
+    CSV: E=Pulaski Road (4000 West) | W=Cicero Ave (4800 West) | N=Marquette Ave (6700 South) | S=70th Street (7000 South)
+    ⚠ north: CSV=41.76066 vs 2025=41.77137 (diff=0.01071)
+    ⚠ south: CSV=41.75523 vs 2025=41.76406 (diff=0.00883)
+
+  23-22 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski Road (4000 West) | N=Marquette Ave (6700 South) | S=69th Street (6900 South)
+    ⚠ north: CSV=41.76066 vs 2025=41.77153 (diff=0.01087)
+    ⚠ south: CSV=41.75704 vs 2025=41.76773 (diff=0.01069)
+
+  23-23 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski Road (4000 West) | N=69th Street (6900 South) | S=71st Street (7100 South)
+    ⚠ north: CSV=41.75704 vs 2025=41.76788 (diff=0.01084)
+    ⚠ south: CSV=41.75342 vs 2025=41.76402 (diff=0.01060)
+
+  23-24 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski Road (4000 West) | N=71st Street (7100 South) | S=74th Street (7400 South)
+    ⚠ north: CSV=41.75342 vs 2025=41.76422 (diff=0.01080)
+    ⚠ south: CSV=41.74799 vs 2025=41.75684 (diff=0.00885)
+
+  23-3 (2/4 boundaries match 2025):
+    CSV: E=Natchez Ave (6434 West) | W=Normandy (6700 West) | N=51st Street (5100 south) | S=Archer Ave
+    ⚠ north: CSV=41.78963 vs 2025=41.79966 (diff=0.01003)
+
+  23-4 (2/4 boundaries match 2025):
+    CSV: E=Merrimac Ave (6234 West) | W=Natchez Ave (6434 West) | N=51st Street (5100 South) | S=Archer Ave
+    ⚠ north: CSV=41.78963 vs 2025=41.79974 (diff=0.01011)
+
+  23-5 (2/4 boundaries match 2025):
+    CSV: E=Austin Ave (6000 West) | W=Merrimac Ave (6234 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.79988 (diff=0.01026)
+    ⚠ south: CSV=41.78238 vs 2025=41.79242 (diff=0.01004)
+
+  23-6 (2/4 boundaries match 2025):
+    CSV: E=Menard Ave (5800 West) | W=Austin Ave (6000 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.79999 (diff=0.01036)
+    ⚠ south: CSV=41.78238 vs 2025=41.79254 (diff=0.01016)
+
+  23-7 (2/4 boundaries match 2025):
+    CSV: E=Luna (5532 West) | W=Menard (5800 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80007 (diff=0.01044)
+    ⚠ south: CSV=41.78238 vs 2025=41.79264 (diff=0.01026)
+
+  23-8 (2/4 boundaries match 2025):
+    CSV: E=Laramie Ave (5200 West) | W=Luna Ave (5532 West) | N=51st Street (5100 South) | S=Archer Avenue
+    ⚠ north: CSV=41.78963 vs 2025=41.80018 (diff=0.01056)
+
+  23-9 (2/4 boundaries match 2025):
+    CSV: E=Laramie Ave (5200 West) | W=Luna Ave (5532 West) | N=Archer Avenue | S=55th Street (5500 South)
+    ⚠ south: CSV=41.78238 vs 2025=41.79276 (diff=0.01037)
+
+  24-1 (2/4 boundaries match 2025):
+    CSV: E=Rockwell (2600 West) | W=Albany (3100 West) | N=16th Street (1600 South) | S=31st Street (3100 South)
+    ⚠ north: CSV=41.85299 vs 2025=41.86651 (diff=0.01353)
+    ⚠ south: CSV=41.82583 vs 2025=41.83732 (diff=0.01149)
+
+  24-4 (2/4 boundaries match 2025):
+    CSV: E=Pulaski Road (4000 West) | W=Kenton (4600 West) | N=16th Street (1600 South) | S=Cermak (2200 South)
+    ⚠ north: CSV=41.85299 vs 2025=41.85890 (diff=0.00592)
+    ⚠ south: CSV=41.84212 vs 2025=41.85135 (diff=0.00923)
+
+  24-5 (2/4 boundaries match 2025):
+    CSV: E=Pulaski Road (4000 West) | W=Koman (4500 West) | N=Roosevelt (1200 South) | S=16th Street (1600 South)
+    ⚠ north: CSV=41.86023 vs 2025=41.86614 (diff=0.00592)
+    ⚠ south: CSV=41.85299 vs 2025=41.85879 (diff=0.00580)
+
+  24-6 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=Roosevelt (1200 South) | S=16th Street (1600 South)
+    ⚠ north: CSV=41.86023 vs 2025=41.86627 (diff=0.00604)
+    ⚠ south: CSV=41.85299 vs 2025=41.85898 (diff=0.00599)
+
+  25-1 (2/4 boundaries match 2025):
+    CSV: E=Kedzie Ave (3200 West) | W=Homan Ave (3400 West) | N=23rd Street (2300 South) | S=27th Street (2700 South)
+    ⚠ north: CSV=41.84031 vs 2025=41.84995 (diff=0.00964)
+    ⚠ south: CSV=41.83307 vs 2025=41.84262 (diff=0.00955)
+
+  25-11 (2/4 boundaries match 2025):
+    CSV: E=Canal Street (500 West) | W=Halsted Street (800 West) | N=16th Street (1600 South) | S=Cermak Road (2200 South)
+    ⚠ north: CSV=41.85299 vs 2025=41.86013 (diff=0.00714)
+    ⚠ south: CSV=41.84212 vs 2025=41.84927 (diff=0.00715)
+
+  25-3 (2/4 boundaries match 2025):
+    CSV: E=Western Ave (2400 West) | W=California Avenue (2800 West) | N=18th Street (1800 South) | S=26th Street (2600 South)
+    ⚠ north: CSV=41.84936 vs 2025=41.85743 (diff=0.00806)
+    ⚠ south: CSV=41.83488 vs 2025=41.84472 (diff=0.00984)
+
+  25-4 (2/4 boundaries match 2025):
+    CSV: E=Ashland Ave (1600 West) | W=Western Ave (2400 West) | N=Cermak Road (2200 South) | S=Blue Island (2600 South)
+    ⚠ north: CSV=41.84212 vs 2025=41.85240 (diff=0.01028)
+    ⚠ south: CSV=41.83488 vs 2025=41.84484 (diff=0.00995)
+
+  25-5 (2/4 boundaries match 2025):
+    CSV: E=Damen Avenue (2000 West) | W=Western Avenue (2400 West) | N=18th Street (1800 South) | S=Cermak (2200 South)
+    ⚠ north: CSV=41.84936 vs 2025=41.85929 (diff=0.00993)
+    ⚠ south: CSV=41.84212 vs 2025=41.85210 (diff=0.00998)
+
+  25-6 (2/4 boundaries match 2025):
+    CSV: E=Ashland Ave (1600 West) | W=Damen Ave (2000 West) | N=16th Street (1600 South) | S=Cermak Road (2200 South)
+    ⚠ north: CSV=41.85299 vs 2025=41.85961 (diff=0.00662)
+    ⚠ south: CSV=41.84212 vs 2025=41.85227 (diff=0.01014)
+
+  25-7 (2/4 boundaries match 2025):
+    CSV: E=Halsted (800 West) | W=Ashland Ave (1600 West) | N=16th Street (1600 South) | S=18th Street (1800 South)
+    ⚠ north: CSV=41.85299 vs 2025=41.85997 (diff=0.00698)
+    ⚠ south: CSV=41.84936 vs 2025=41.85779 (diff=0.00843)
+
+  25-8 (2/4 boundaries match 2025):
+    CSV: E=Racine Ave (1200 West) | W=Ashland Ave (1600 West) | N=18th Street (1800 South) | S=Cermak Road (2200 South)
+    ⚠ north: CSV=41.84936 vs 2025=41.85795 (diff=0.00859)
+    ⚠ south: CSV=41.84212 vs 2025=41.85240 (diff=0.01028)
+
+  25-9 (2/4 boundaries match 2025):
+    CSV: E=Halsted Street (800 West) | W=Racine (1200 West) | N=18th Street (1800 South) | S=Cermak Road (2200 South)
+    ⚠ north: CSV=41.84936 vs 2025=41.85809 (diff=0.00873)
+    ⚠ south: CSV=41.84212 vs 2025=41.85253 (diff=0.01041)
+
+  26-6 (2/4 boundaries match 2025):
+    CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=Bloomingdale (1800 North) | S=North Ave (1600 North)
+    ⚠ east: CSV=-87.71518 vs 2025=-87.70217 (diff=0.01302)
+    ⚠ west: CSV=-87.72489 vs 2025=-87.71671 (diff=0.00818)
+
+  26-7 (2/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Central Park (3600 West) | N=Dickens (2100 North) | S=Bloomingdale (1800 North
+    ⚠ north: CSV=41.91997 vs 2025=41.91017 (diff=0.00980)
+    ⚠ south: CSV=41.91454 vs 2025=41.90005 (diff=0.01448)
+
+  27-2 (2/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Drake (3532 West) | N=Augusta (1000 North) | S=Governors Pkwy (400 North)
+    ⚠ east: CSV=-87.70548 vs 2025=-87.71607 (diff=0.01059)
+    ⚠ west: CSV=-87.71353 vs 2025=-87.72241 (diff=0.00888)
+
+  27-6 (2/4 boundaries match 2025):
+    CSV: E=Ogden (1000 South) | W=Western (2400 West) | N=Grand (500 North) | S=Washington (100 North)
+    ⚠ east: CSV=41.86385 vs 2025=-87.69629 (diff=129.56014)
+    ⚠ west: CSV=-87.68607 vs 2025=-87.70640 (diff=0.02033)
+
+  28-1 (2/4 boundaries match 2025):
+    CSV: E=Canal (500 West) | W=Racine (1200 West) | N=Van Buren (400 South) | S=16th Street (1600 South)
+    ⚠ east: CSV=-87.63997 vs 2025=-87.63438 (diff=0.00559)
+    ⚠ south: CSV=41.85299 vs 2025=41.86001 (diff=0.00703)
+
+  28-5 (2/4 boundaries match 2025):
+    CSV: E=California (2800 West) | W=Homan (3400 West) | N=Franklin (500 South) | S=Roosevelt (1200 South)
+    ⚠ north: CSV=41.87290 vs 2025=41.89024 (diff=0.01735)
+    ⚠ south: CSV=41.86023 vs 2025=41.86627 (diff=0.00604)
+
+  28-6 (2/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Hamlin (3800 West) | N=Franklin Blvd (500 North) | S=Congress (500 South)
+    ⚠ east: CSV=-87.70548 vs 2025=-87.71078 (diff=0.00530)
+    ⚠ west: CSV=-87.72004 vs 2025=-87.72580 (diff=0.00576)
+
+  28-8 (2/4 boundaries match 2025):
+    CSV: E=Hamlin (3800 West) | W=Kostner (4400 West) | N=Madison (0 North) | S=Congress (500 South)
+    ⚠ east: CSV=-87.72004 vs 2025=-87.72544 (diff=0.00540)
+    ⚠ west: CSV=-87.73459 vs 2025=-87.74059 (diff=0.00600)
+
+  3-1 (2/4 boundaries match 2025):
+    CSV: E=Calumet (340 East) | W=Clark (1000 West) | N=12th St (1200 South) | S=16th St (1600 South)
+    ⚠ west: CSV=-87.65210 vs 2025=-87.63532 (diff=0.01678)
+    ⚠ north: CSV=41.86023 vs 2025=41.86759 (diff=0.00736)
+
+  3-10 (2/4 boundaries match 2025):
+    CSV: E=King Drive (400 East) | W=State (0 E/W) | N=39th St (3900 South) | S=43rd St (4300 South)
+    ⚠ north: CSV=41.81135 vs 2025=41.82383 (diff=0.01249)
+    ⚠ south: CSV=41.80411 vs 2025=41.81650 (diff=0.01239)
+
+  3-15 (2/4 boundaries match 2025):
+    CSV: E=King Drive (400 East) | W=Indiana (200 East) | N=51st St (5100 South) | S=55th St (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80202 (diff=0.01240)
+    ⚠ south: CSV=41.78238 vs 2025=41.79463 (diff=0.01225)
+
+  3-4 (2/4 boundaries match 2025):
+    CSV: E=Giles (300 East) | W=State St (0 E/W) | N=26th St (2600 South) | S=35th St (3500 South)
+    ⚠ north: CSV=41.83488 vs 2025=41.84564 (diff=0.01076)
+    ⚠ south: CSV=41.81859 vs 2025=41.83097 (diff=0.01238)
+
+  3-5 (2/4 boundaries match 2025):
+    CSV: E=State St (0 E/W) | W=Princeton (300 West) | N=35th St (3500 South) | S=39th St (3900 South)
+    ⚠ north: CSV=41.81859 vs 2025=41.83101 (diff=0.01242)
+    ⚠ south: CSV=41.81135 vs 2025=41.82362 (diff=0.01227)
+
+  3-6 (2/4 boundaries match 2025):
+    CSV: E=King Drive (400 East) | W=State St (0 E/W) | N=35th St (3500 South) | S=39th St (3900 South)
+    ⚠ north: CSV=41.81859 vs 2025=41.83109 (diff=0.01250)
+    ⚠ south: CSV=41.81135 vs 2025=41.82371 (diff=0.01236)
+
+  3-7 (2/4 boundaries match 2025):
+    CSV: E=State (0 E/W) | W=Stewart (400 West) | N=39th St. (3900 South) | S=47th St (4700 South)
+    ⚠ north: CSV=41.81135 vs 2025=41.82371 (diff=0.01236)
+    ⚠ south: CSV=41.79687 vs 2025=41.80905 (diff=0.01218)
+
+  3-8 (2/4 boundaries match 2025):
+    CSV: E=Evans (732 East) | W=King Drive (400 East) | N=39th St (3900 South) | S=45th St (4500 South)
+    ⚠ north: CSV=41.81135 vs 2025=41.82389 (diff=0.01254)
+    ⚠ south: CSV=41.80049 vs 2025=41.81301 (diff=0.01253)
+
+  3-9 (2/4 boundaries match 2025):
+    CSV: E=Champlain (634 East) | W=King Drive (400 East) | N=45th St (4500 South) | S=50th St (5000 South)
+    ⚠ north: CSV=41.80049 vs 2025=41.81312 (diff=0.01264)
+    ⚠ south: CSV=41.79144 vs 2025=41.80392 (diff=0.01249)
+
+  32-20 (2/4 boundaries match 2025):
+    CSV: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+    ⚠ east: CSV=-87.63754 vs 2025=-87.65408 (diff=0.01653)
+    ⚠ west: CSV=-87.67714 vs 2025=-87.68776 (diff=0.01062)
+
+  35-12 (2/4 boundaries match 2025):
+    CSV: E=Albany (3100 West) | W=Chicago River | N=Irving Park (4000 North) | S=Diversey (2800 North)
+    ⚠ east: CSV=-87.70305 vs 2025=-87.68789 (diff=0.01516)
+
+  36-13 (2/4 boundaries match 2025):
+    CSV: E=Wood Street (1800 West) | W=Hoyne (2100 West) | N=Augusta (1000 North) | S=Chicago Ave (800 North)
+    ⚠ west: CSV=-87.67879 vs 2025=-87.68684 (diff=0.00805)
+    ⚠ south: CSV=41.89643 vs 2025=41.89065 (diff=0.00578)
+
+  36-14 (2/4 boundaries match 2025):
+    CSV: E=Hoyne (2100 West) | W=Western (2400 West) | N=Chicago Ave (800 North) | S=Grand (500 North)
+    ⚠ east: CSV=-87.67879 vs 2025=-87.68669 (diff=0.00790)
+    ⚠ west: CSV=-87.68607 vs 2025=-87.69675 (diff=0.01068)
+
+  37-1 (2/4 boundaries match 2025):
+    CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=North Ave (1600 North) | S=Grand Ave (500 North)
+    ⚠ north: CSV=41.91091 vs 2025=41.91876 (diff=0.00785)
+    ⚠ south: CSV=41.89100 vs 2025=41.90937 (diff=0.01837)
+
+  37-11 (2/4 boundaries match 2025):
+    CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Chicago Ave (800 North) | S=Grand Ave (500 North)
+    ⚠ north: CSV=41.89643 vs 2025=41.91571 (diff=0.01928)
+    ⚠ south: CSV=41.89100 vs 2025=41.90953 (diff=0.01853)
+
+  38-10 (2/4 boundaries match 2025):
+    CSV: E=Austin (6000 West) | W=Narragansett (6400 West) | N=Irving Park (4000 North) | S=Grace (3800 North)
+    ⚠ west: CSV=-87.78312 vs 2025=-87.79628 (diff=0.01316)
+    ⚠ south: CSV=41.95074 vs 2025=41.94548 (diff=0.00526)
+
+  39-14 (2/4 boundaries match 2025):
+    CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+    ⚠ east: CSV=-87.73459 vs 2025=-87.72136 (diff=0.01324)
+    ⚠ west: CSV=-87.74430 vs 2025=-87.72892 (diff=0.01538)
+
+  39-15 (2/4 boundaries match 2025):
+    CSV: E=Cicero (4800 West) | W=Central (5500 West) | N=Devon (6400 North) | S=Caldwell (6100 North)
+    ⚠ east: CSV=-87.74430 vs 2025=-87.72864 (diff=0.01566)
+    ⚠ west: CSV=-87.76128 vs 2025=-87.73860 (diff=0.02269)
+
+  39-16 (2/4 boundaries match 2025):
+    CSV: E=Cicero (4800 West) | W=Legett (5100 West) | N=Caldwell (6100 North) | S=Elston (5100 North)
+    ⚠ east: CSV=-87.74430 vs 2025=-87.73771 (diff=0.00659)
+    ⚠ south: CSV=41.97427 vs 2025=41.98989 (diff=0.01561)
+
+  39-17 (2/4 boundaries match 2025):
+    CSV: E=Forest Glen (5100 West) | W=Austin (6000 West) | N=Devon (6400 North) | S=Berwyn (5300 North)
+    ⚠ east: CSV=-87.75158 vs 2025=-87.73286 (diff=0.01872)
+    ⚠ west: CSV=-87.77341 vs 2025=-87.75278 (diff=0.02064)
+
+  39-2 (2/4 boundaries match 2025):
+    CSV: E=Keystone (4032 West) | W=Kenneth (4432 West) | N=Leland (4700 North) | S=Irving Park (4000 North)
+    ⚠ west: CSV=-87.73537 vs 2025=-87.74353 (diff=0.00816)
+    ⚠ north: CSV=41.96703 vs 2025=41.96095 (diff=0.00609)
+
+  39-3 (2/4 boundaries match 2025):
+    CSV: E=Lowell (4432 West) | W=Cicero (4800 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+    ⚠ east: CSV=-87.73537 vs 2025=-87.72732 (diff=0.00805)
+    ⚠ west: CSV=-87.74430 vs 2025=-87.73791 (diff=0.00639)
+
+  39-5 (2/4 boundaries match 2025):
+    CSV: E=Lowell (4432 West) | W=Cicero (4800 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+    ⚠ north: CSV=41.97608 vs 2025=41.96813 (diff=0.00795)
+    ⚠ south: CSV=41.96884 vs 2025=41.96076 (diff=0.00809)
+
+  39-6 (2/4 boundaries match 2025):
+    CSV: E=Avers (3832 West) | W=Lowell (4332 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+    ⚠ east: CSV=-87.72081 vs 2025=-87.73791 (diff=0.01709)
+    ⚠ west: CSV=-87.73294 vs 2025=-87.74797 (diff=0.01503)
+
+  39-9 (2/4 boundaries match 2025):
+    CSV: E=Kedzie (3200 West) | W=Saint Louis (3500 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+    ⚠ west: CSV=-87.71276 vs 2025=-87.71849 (diff=0.00573)
+    ⚠ north: CSV=41.98333 vs 2025=41.97574 (diff=0.00758)
+
+  4-1 (2/4 boundaries match 2025):
+    CSV: E=Lake Park (1500 E) | W=Woodlawn (1200 E) | N=51st St (5100 S) | S=53rd St (5300 S)
+    ⚠ north: CSV=41.78963 vs 2025=41.80248 (diff=0.01285)
+    ⚠ south: CSV=41.78601 vs 2025=41.79946 (diff=0.01345)
+
+  4-10 (2/4 boundaries match 2025):
+    CSV: E=Vincennes 600 E | W=Lake Park 428 E | N=35th St (3500 S) | S=39th St. (3900 S)
+    ⚠ north: CSV=41.81859 vs 2025=41.83116 (diff=0.01257)
+    ⚠ south: CSV=41.81135 vs 2025=41.82383 (diff=0.01249)
+
+  4-14 (2/4 boundaries match 2025):
+    CSV: E=Michigan (100 E) | W=Clark (1000 West) | N=Polk (800 S) | S=12th St (1200 S)
+    ⚠ west: CSV=-87.65210 vs 2025=-87.63061 (diff=0.02149)
+    ⚠ south: CSV=41.86023 vs 2025=41.86743 (diff=0.00721)
+
+  4-2 (2/4 boundaries match 2025):
+    CSV: E=Lake Park (1500 E) | W=Woodlawn (1200 E) | N=47th St (4700 S) | S=51st St (5100 S)
+    ⚠ north: CSV=41.79687 vs 2025=41.81038 (diff=0.01351)
+    ⚠ south: CSV=41.78963 vs 2025=41.80237 (diff=0.01274)
+
+  4-3 (2/4 boundaries match 2025):
+    CSV: E=Woodlawn (1200 E) | W=Drexel (900 E) | N=47th St (4700 S) | S=51st St (5100 S)
+    ⚠ north: CSV=41.79687 vs 2025=41.80965 (diff=0.01278)
+    ⚠ south: CSV=41.78963 vs 2025=41.80228 (diff=0.01266)
+
+  4-4 (2/4 boundaries match 2025):
+    CSV: E=Drexel (900 E) | W=Forrestville (532 E) | N=47th St (4700 S) | S=51st St (5100 S)
+    ⚠ north: CSV=41.79687 vs 2025=41.80956 (diff=0.01269)
+    ⚠ south: CSV=41.78963 vs 2025=41.80398 (diff=0.01436)
+
+  4-5 (2/4 boundaries match 2025):
+    CSV: E=Drexel (900 E) | W=Forrestville (532 E) | N=43rd St (4300 S) | S=47th St (4700 S)
+    ⚠ north: CSV=41.80411 vs 2025=41.81684 (diff=0.01273)
+    ⚠ south: CSV=41.79687 vs 2025=41.80946 (diff=0.01259)
+
+  4-6 (2/4 boundaries match 2025):
+    CSV: E=Greenwood (1100 E) | W=Drexel (900 E) | N=43rd St (4300 S) | S=47th St (4700 S)
+    ⚠ north: CSV=41.80411 vs 2025=41.81690 (diff=0.01279)
+    ⚠ south: CSV=41.79687 vs 2025=41.80956 (diff=0.01269)
+
+  40-13 (2/4 boundaries match 2025):
+    CSV: E=Chicago River (2300 West) | W=Washtenaw (2700 West) | N=Ardmore (5800 North) | S=Bryn Mawr (5600 North)
+    ⚠ east: CSV=-87.68364 vs 2025=-87.68941 (diff=0.00577)
+    ⚠ west: CSV=-87.69335 vs 2025=-87.69928 (diff=0.00593)
+
+  40-18 (2/4 boundaries match 2025):
+    CSV: E=Chicago River (2300 West) | W=Washtenaw (2700 West) | N=Foster (5200 North) | S=Leland (4700 North)
+    ⚠ east: CSV=-87.68364 vs 2025=-87.69630 (diff=0.01265)
+    ⚠ west: CSV=-87.69335 vs 2025=-87.70473 (diff=0.01138)
+
+  41-31 (2/4 boundaries match 2025):
+    CSV: E=Milwaukee Avenue | W=Newark (6700 West) | N=Albion (6600 North) | S=Devon (6400 North)
+    ⚠ west: CSV=-87.79040 vs 2025=-87.79720 (diff=0.00680)
+
+  45-18 (2/4 boundaries match 2025):
+    CSV: E=Milwaukee Ave | W=Elston (1132 West) | N=Ludlam (5470 North) | S=Foster Ave (5200 North)
+    ⚠ west: CSV=-87.65531 vs 2025=-87.76848 (diff=0.11318)
+
+  45-21 (2/4 boundaries match 2025):
+    CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Sherwin (7332 North) | S=Fitch (7132 North)
+    ⚠ east: CSV=-87.75886 vs 2025=-87.77414 (diff=0.01528)
+    ⚠ west: CSV=-87.76614 vs 2025=-87.78882 (diff=0.02269)
+
+  47-5 (2/4 boundaries match 2025):
+    CSV: E=Clark (1000 West) | W=Ravenswood (1800 West) | N=Sunnyside (4500 North) | S=Montrose (4400 North)
+    ⚠ east: CSV=-87.65210 vs 2025=-87.66673 (diff=0.01463)
+    ⚠ north: CSV=41.96341 vs 2025=41.97344 (diff=0.01002)
+
+  49-1 (2/4 boundaries match 2025):
+    CSV: E=Lake Michigan (500 East) | W=Haskins (1800 West) | N=Juneway (7734 North) | S=Howard (7600 North)
+    ⚠ east: CSV=-87.61571 vs 2025=-87.66364 (diff=0.04793)
+    ⚠ west: CSV=-87.67151 vs 2025=-87.67706 (diff=0.00554)
+
+  49-10 (2/4 boundaries match 2025):
+    CSV: E=Lake Michigan (500 East) | W= | N=Touhy (7200 North) | S=Pratt (6800 North)
+    ⚠ east: CSV=-87.61571 vs 2025=-87.65535 (diff=0.03964)
+
+  5-11 (2/4 boundaries match 2025):
+    CSV: E=Blackstone Ave (1436 E) | W=Kimbark Ave (1300 E) | N=55th Street (5900 S) | S=61st Street (6100 S)
+    ⚠ north: CSV=41.77514 vs 2025=41.79512 (diff=0.01998)
+    ⚠ south: CSV=41.77152 vs 2025=41.78328 (diff=0.01175)
+
+  5-13 (2/4 boundaries match 2025):
+    CSV: E=University Ave (1144 East) | W=Ingleside Ave (930 East) | N=Hyde Park Blvd (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80235 (diff=0.01272)
+    ⚠ south: CSV=41.78238 vs 2025=41.79499 (diff=0.01260)
+
+  5-14 (2/4 boundaries match 2025):
+    CSV: E=Ridgewood Ct (1368 East) | W=University Ave (1144 East) | N=Hyde Park Blvd (5100 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78963 vs 2025=41.80237 (diff=0.01274)
+    ⚠ south: CSV=41.78238 vs 2025=41.79505 (diff=0.01267)
+
+  5-15 (2/4 boundaries match 2025):
+    CSV: E=Lake Park Ave (1517 East) | W=Ridgewood Ct (1368 East) | N=53rd Street (5300 South) | S=55th Street (5500 South)
+    ⚠ north: CSV=41.78601 vs 2025=41.79957 (diff=0.01357)
+    ⚠ south: CSV=41.78238 vs 2025=41.79519 (diff=0.01281)
+
+  5-2 (2/4 boundaries match 2025):
+    CSV: E=Stony Island Ave (1600 E) | W=Woodlawn (1200 E) | N=67th St (6700 S) | S=71st St (7100 S)
+    ⚠ north: CSV=41.76066 vs 2025=41.77332 (diff=0.01266)
+    ⚠ south: CSV=41.75342 vs 2025=41.76589 (diff=0.01247)
+
+  5-3 (2/4 boundaries match 2025):
+    CSV: E=Cregier Ave (1800 E) | W=Stony Island Ave (1600 E) | N=67th St (6700 S) | S=71st St (7100 S)
+    ⚠ north: CSV=41.76066 vs 2025=41.77338 (diff=0.01272)
+    ⚠ south: CSV=41.75342 vs 2025=41.76421 (diff=0.01079)
+
+  5-4 (2/4 boundaries match 2025):
+    CSV: E=Jeffery Blvd (2000 E) | W=Cregier Ave (1800 E) | N=67th St (6700 S) | S=71st Street (7100 S)
+    ⚠ north: CSV=41.76066 vs 2025=41.77345 (diff=0.01279)
+    ⚠ south: CSV=41.75342 vs 2025=41.76608 (diff=0.01266)
+
+  5-5 (2/4 boundaries match 2025):
+    CSV: E=Clyde Ave (2100 E) | W=Jeffery Blvd (2000 E) | N=67th Street (6700 S) | S=71st Street (7100 S)
+    ⚠ north: CSV=41.76066 vs 2025=41.77349 (diff=0.01283)
+    ⚠ south: CSV=41.75342 vs 2025=41.76624 (diff=0.01282)
+
+  5-6 (2/4 boundaries match 2025):
+    CSV: E=South Shore Dr (2400 E) | W=Merrill Ave (2132 E) | N=67th Street (6700 S) | S=71st Street (7100 S)
+    ⚠ north: CSV=41.76066 vs 2025=41.77359 (diff=0.01293)
+    ⚠ south: CSV=41.75342 vs 2025=41.76626 (diff=0.01284)
+
+  5-7 (2/4 boundaries match 2025):
+    CSV: E=Yates Blvd (2400 E) | W=Bennett Ave (1900 E) | N=71st Street (7100 S) | S=73rd Street (7300 S)
+    ⚠ north: CSV=41.75342 vs 2025=41.76632 (diff=0.01290)
+    ⚠ south: CSV=41.74980 vs 2025=41.76248 (diff=0.01268)
+
+  5-8 (2/4 boundaries match 2025):
+    CSV: E=Stony Island Ave (1600 E) | W=Dorchester Ave (1400 E) | N=60th Street (6000 S) | S=67th Street (6700 S)
+    ⚠ north: CSV=41.77333 vs 2025=41.78614 (diff=0.01281)
+    ⚠ south: CSV=41.76066 vs 2025=41.77327 (diff=0.01261)
+
+  6-1 (2/4 boundaries match 2025):
+    CSV: E=Prairie Ave (300 E) | W=State St (0 W/E) | N=66th St (6600 S) | S=71st St (7100 S)
+    ⚠ north: CSV=41.76247 vs 2025=41.77493 (diff=0.01246)
+    ⚠ south: CSV=41.75342 vs 2025=41.76542 (diff=0.01200)
+
+  6-10 (2/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 E) | W=Rhodes Ave (532 E) | N=79th St (7900 S) | S=83rd St (8300 S)
+    ⚠ north: CSV=41.73894 vs 2025=41.75128 (diff=0.01234)
+    ⚠ south: CSV=41.73170 vs 2025=41.74386 (diff=0.01217)
+
+  6-11 (2/4 boundaries match 2025):
+    CSV: E=Rhodes Ave (532 E) | W=Prairie Ave (300 E) | N=79th St (7900 S) | S=83rd St (8300 S)
+    ⚠ north: CSV=41.73894 vs 2025=41.75117 (diff=0.01223)
+    ⚠ south: CSV=41.73170 vs 2025=41.74375 (diff=0.01205)
+
+  6-12 (2/4 boundaries match 2025):
+    CSV: E=Prairie Ave (300 E) | W=State St (0 E/W) | N=79th St (7900 S) | S=83rd St (8300 S)
+    ⚠ north: CSV=41.73894 vs 2025=41.75106 (diff=0.01212)
+    ⚠ south: CSV=41.73170 vs 2025=41.74366 (diff=0.01196)
+
+  6-13 (2/4 boundaries match 2025):
+    CSV: E=Rhodes Ave (532 E) | W=Prairie Ave (300 E) | N=83rd St (8300 S) | S=87th St (8700 S)
+    ⚠ north: CSV=41.73170 vs 2025=41.74386 (diff=0.01217)
+    ⚠ south: CSV=41.72446 vs 2025=41.73645 (diff=0.01200)
+
+  6-14 (2/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 E) | W=Rhodes Ave (532 E) | N=83rd St (8300 S) | S=87th St (8700 S)
+    ⚠ north: CSV=41.73170 vs 2025=41.74397 (diff=0.01227)
+    ⚠ south: CSV=41.72446 vs 2025=41.73655 (diff=0.01210)
+
+  6-16 (2/4 boundaries match 2025):
+    CSV: E=Milking Dr (400 E) | W=Indiana Ave (200 E) | N=91st St (9100 S) | S=95th St (9500 S)
+    ⚠ north: CSV=41.71721 vs 2025=41.72920 (diff=0.01198)
+    ⚠ south: CSV=41.70997 vs 2025=41.72181 (diff=0.01184)
+
+  6-17 (2/4 boundaries match 2025):
+    CSV: E=Indiana Ave (200 E) | W=State St (0 E/W) | N=91st St (9100 S) | S=95th St (9500 S)
+    ⚠ north: CSV=41.71721 vs 2025=41.72912 (diff=0.01190)
+    ⚠ south: CSV=41.70997 vs 2025=41.72170 (diff=0.01173)
+
+  6-19 (2/4 boundaries match 2025):
+    CSV: E=Prairie Ave (300 E) | W=State St (0 E/W) | N=83rd St (8300 S) | S=87th St (8700 S)
+    ⚠ north: CSV=41.73170 vs 2025=41.74376 (diff=0.01206)
+    ⚠ south: CSV=41.72446 vs 2025=41.73630 (diff=0.01184)
+
+  6-2 (2/4 boundaries match 2025):
+    CSV: E=Rhodes Ave (532 E) | W=Prairie (300 E) | N=67th St (6700 S) | S=71st St (7100 S)
+    ⚠ north: CSV=41.76066 vs 2025=41.77334 (diff=0.01267)
+    ⚠ south: CSV=41.75342 vs 2025=41.76562 (diff=0.01220)
+
+  6-20 (2/4 boundaries match 2025):
+    CSV: E=State St (0 E/W) | W=Vincennes Ave (400 W) | N=79th St (7900 S) | S=84th St (8400 S)
+    ⚠ north: CSV=41.73894 vs 2025=41.75092 (diff=0.01198)
+    ⚠ south: CSV=41.72989 vs 2025=41.74174 (diff=0.01186)
+
+  6-21 (2/4 boundaries match 2025):
+    CSV: E=Vincennes Ave (400 W) | W=Halsted St (800 W) | N=79th St (7900 S) | S=83rd St (8300 S)
+    ⚠ north: CSV=41.73894 vs 2025=41.75078 (diff=0.01185)
+    ⚠ south: CSV=41.73170 vs 2025=41.74336 (diff=0.01166)
+
+  6-22 (2/4 boundaries match 2025):
+    CSV: E=Lafayette Ave (30 W) | W=Vincennes Ave (100 W) | N=71st St (7100 S) | S=79th St (7900 S)
+    ⚠ north: CSV=41.75342 vs 2025=41.76545 (diff=0.01203)
+    ⚠ south: CSV=41.73894 vs 2025=41.75091 (diff=0.01197)
+
+  6-23 (2/4 boundaries match 2025):
+    CSV: E=Vincennes Ave (100 W) | W=Stewart Ave (400 W) | N=71st St (7100 S) | S=76th St (7600 S)
+    ⚠ north: CSV=41.75342 vs 2025=41.76544 (diff=0.01202)
+    ⚠ south: CSV=41.74437 vs 2025=41.75625 (diff=0.01189)
+
+  6-24 (2/4 boundaries match 2025):
+    CSV: E=Stewart Ave (400 W) | W=Halsted St (800 W) | N=71st St (7100 S) | S=76th St (7600 S)
+    ⚠ north: CSV=41.75342 vs 2025=41.76535 (diff=0.01193)
+    ⚠ south: CSV=41.74437 vs 2025=41.75616 (diff=0.01179)
+
+  6-25 (2/4 boundaries match 2025):
+    CSV: E=Stewart Ave (400 W) | W=Halsted St (800 W) | N=Marquette Rd (6700 S) | S=71st St (7100 S)
+    ⚠ north: CSV=41.76066 vs 2025=41.77259 (diff=0.01193)
+    ⚠ south: CSV=41.75342 vs 2025=41.76520 (diff=0.01178)
+
+  6-26 (2/4 boundaries match 2025):
+    CSV: E=Lafayette Ave (30 W) | W=Union Ave (700 W) | N=64th St (6400 S) | S=Marquette Rd (6700 S)
+    ⚠ north: CSV=41.76609 vs 2025=41.77813 (diff=0.01204)
+    ⚠ south: CSV=41.76066 vs 2025=41.77251 (diff=0.01184)
+
+  6-27 (2/4 boundaries match 2025):
+    CSV: E=Lafayette Ave (30 W) | W=Normal Blvd (500 W) | N=Marquette Rd (6700 S) | S=71st St (7100 S)
+    ⚠ north: CSV=41.76066 vs 2025=41.77273 (diff=0.01207)
+    ⚠ south: CSV=41.75342 vs 2025=41.76535 (diff=0.01193)
+
+  6-3 (2/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 E) | W=Rhodes Ave (532 E) | N=67th St (6700 S) | S=71st St (7100 S)
+    ⚠ north: CSV=41.76066 vs 2025=41.77316 (diff=0.01250)
+    ⚠ south: CSV=41.75342 vs 2025=41.76571 (diff=0.01229)
+
+  6-5 (2/4 boundaries match 2025):
+    CSV: E=Rhodes Ave (532 E) | W=Prairie Ave (300 E) | N=71st St (7100 S) | S=75th St (7500 S)
+    ⚠ north: CSV=41.75342 vs 2025=41.76568 (diff=0.01226)
+    ⚠ south: CSV=41.74618 vs 2025=41.75834 (diff=0.01216)
+
+  6-6 (2/4 boundaries match 2025):
+    CSV: E=Prairie Ave (300 E) | W=State St (0 E/W) | N=71st St (7100 S) | S=75th St (7500 S)
+    ⚠ north: CSV=41.75342 vs 2025=41.76565 (diff=0.01223)
+    ⚠ south: CSV=41.74618 vs 2025=41.75818 (diff=0.01200)
+
+  6-7 (2/4 boundaries match 2025):
+    CSV: E=Prairie Ave (300 E) | W=State St (0 E/W) | N=75th St (7500 S) | S=79th St (7900 S)
+    ⚠ north: CSV=41.74618 vs 2025=41.75835 (diff=0.01217)
+    ⚠ south: CSV=41.73894 vs 2025=41.75096 (diff=0.01202)
+
+  6-8 (2/4 boundaries match 2025):
+    CSV: E=Rhodes Ave (532 E) | W=Prairie Ave (300 E) | N=75th St (7500 S) | S=79th St (7900 S)
+    ⚠ north: CSV=41.74618 vs 2025=41.75848 (diff=0.01230)
+    ⚠ south: CSV=41.73894 vs 2025=41.75106 (diff=0.01212)
+
+  6-9 (2/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 E) | W=Rhodes Ave (532 E) | N=75th St (7500 S) | S=79th St (7900 S)
+    ⚠ north: CSV=41.74618 vs 2025=41.75858 (diff=0.01240)
+    ⚠ south: CSV=41.73894 vs 2025=41.75118 (diff=0.01224)
+
+  7-1 (2/4 boundaries match 2025):
+    CSV: E=Euclid (2130 E) | W=Merrill (2121 E) | N=73rd Street (7100) | S=75th Street (7500)
+    ⚠ north: CSV=41.75342 vs 2025=41.76257 (diff=0.00915)
+    ⚠ south: CSV=41.74618 vs 2025=41.75885 (diff=0.01267)
+
+  7-10 (2/4 boundaries match 2025):
+    CSV: E=Exchange (3000 E) | W=Saginaw (2635 East) | N=80th Street (8000) | S=82nd Street (8200)
+    ⚠ north: CSV=41.73713 vs 2025=41.75191 (diff=0.01478)
+    ⚠ south: CSV=41.73351 vs 2025=41.74634 (diff=0.01284)
+
+  7-15 (2/4 boundaries match 2025):
+    CSV: E=Escanaba (2863 E) | W=Phillips (2401 E) | N=89th St (8900) | S=94th St (9400)
+    ⚠ north: CSV=41.72083 vs 2025=41.73546 (diff=0.01463)
+    ⚠ south: CSV=41.71178 vs 2025=41.72259 (diff=0.01080)
+
+  7-16 (2/4 boundaries match 2025):
+    CSV: E=Yates (2401 E) | W=Paxton (2201 E) | N=89th St (8900) | S=93rd St (9300)
+    ⚠ north: CSV=41.72083 vs 2025=41.73354 (diff=0.01271)
+    ⚠ south: CSV=41.71359 vs 2025=41.72253 (diff=0.00893)
+
+  7-2 (2/4 boundaries match 2025):
+    CSV: E=Bennett (1900 E) | W=Blackstone (1499 E) | N=71st Street (7100) | S=74th Street (7400)
+    ⚠ north: CSV=41.75342 vs 2025=41.76611 (diff=0.01269)
+    ⚠ south: CSV=41.74799 vs 2025=41.76057 (diff=0.01258)
+
+  7-21 (2/4 boundaries match 2025):
+    CSV: E=Torrence (2634 E) | W=Oglesby (2400 East) | N=100th St (10000) | S=101st St (10100)
+    ⚠ north: CSV=41.70092 vs 2025=41.71354 (diff=0.01262)
+    ⚠ south: CSV=41.69911 vs 2025=41.71162 (diff=0.01251)
+
+  7-3 (2/4 boundaries match 2025):
+    CSV: E=Yates (2600 E) | W=Paxton (2198 E) | N=72nd Street (7200) | S=75th Street (7500)
+    ⚠ north: CSV=41.75161 vs 2025=41.76502 (diff=0.01341)
+    ⚠ south: CSV=41.74618 vs 2025=41.75894 (diff=0.01276)
+
+  7-4 (2/4 boundaries match 2025):
+    CSV: E=Yates (2600 E) | W=Colfax (2518 E) | N=71st Street (7100) | S=74th Street (7400)
+    ⚠ north: CSV=41.75342 vs 2025=41.76629 (diff=0.01287)
+    ⚠ south: CSV=41.74799 vs 2025=41.75899 (diff=0.01100)
+
+  7-5 (2/4 boundaries match 2025):
+    CSV: E=Yates (2400 E) | W=Paxton (2200 E) | N=75th Street (7500) | S=79th Street (7900)
+    ⚠ north: CSV=41.74618 vs 2025=41.75899 (diff=0.01281)
+    ⚠ south: CSV=41.73894 vs 2025=41.75167 (diff=0.01273)
+
+  7-9 (2/4 boundaries match 2025):
+    CSV: E=Colfax (2600 E) | W=Paxton (2200 E) | N=80th Street (8000) | S=82nd Street (8200)
+    ⚠ north: CSV=41.73713 vs 2025=41.75179 (diff=0.01467)
+    ⚠ south: CSV=41.73351 vs 2025=41.74625 (diff=0.01274)
+
+  8-1 (2/4 boundaries match 2025):
+    CSV: E=Stony Island (1600 E) | W=Avalon (1232 E) | N=71st St (7100 S) | S=76th St (7600 S)
+    ⚠ north: CSV=41.75342 vs 2025=41.76606 (diff=0.01264)
+    ⚠ south: CSV=41.74437 vs 2025=41.75686 (diff=0.01249)
+
+  8-12 (2/4 boundaries match 2025):
+    CSV: E=Bennett (1900 E) | W=Stony Island (1600 E) | N=83rd St (8300 S) | S=87th St (8700 S)
+    ⚠ north: CSV=41.73170 vs 2025=41.74431 (diff=0.01261)
+    ⚠ south: CSV=41.72446 vs 2025=41.73692 (diff=0.01247)
+
+  8-13 (2/4 boundaries match 2025):
+    CSV: E=Yates (2400 E) | W=bennett (1900 E) | N=84th St (8400 S) | S=87th St (8700 S)
+    ⚠ north: CSV=41.72989 vs 2025=41.74434 (diff=0.01445)
+    ⚠ south: CSV=41.72446 vs 2025=41.73703 (diff=0.01257)
+
+  8-14 (2/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 E) | W=King Drive (400 E) | N=87th St (8700 S) | S=91st St (9100 S)
+    ⚠ north: CSV=41.72446 vs 2025=41.73665 (diff=0.01219)
+    ⚠ south: CSV=41.71721 vs 2025=41.72928 (diff=0.01206)
+
+  8-16 (2/4 boundaries match 2025):
+    CSV: E=Stony Island (1600 East) | W=Avalon (1232 E) | N=87th St (8700 S) | S=90th Street (9000 S)
+    ⚠ north: CSV=41.72446 vs 2025=41.73693 (diff=0.01247)
+    ⚠ south: CSV=41.71902 vs 2025=41.73130 (diff=0.01227)
+
+  8-17 (2/4 boundaries match 2025):
+    CSV: E=Jeffery (2000 E) | W=Stony Island (1600 E) | N=87th St (8700 S) | S=91st St (9100 S)
+    ⚠ north: CSV=41.72446 vs 2025=41.73706 (diff=0.01260)
+    ⚠ south: CSV=41.71721 vs 2025=41.72963 (diff=0.01242)
+
+  8-18 (2/4 boundaries match 2025):
+    CSV: E=Yates (2400 E) | W=Jeffery (2000 E) | N=87th St (8700 S) | S=91st St (9100 S)
+    ⚠ north: CSV=41.72446 vs 2025=41.73719 (diff=0.01274)
+    ⚠ south: CSV=41.71721 vs 2025=41.72976 (diff=0.01255)
+
+  8-19 (2/4 boundaries match 2025):
+    CSV: E=Cottage Grove (800 E) | W=King Drive (400 E) | N=91st St (9100 S) | S=95th. St (9500 S)
+    ⚠ north: CSV=41.71721 vs 2025=41.72935 (diff=0.01214)
+    ⚠ south: CSV=41.70997 vs 2025=41.72190 (diff=0.01192)
+
+  8-21 (2/4 boundaries match 2025):
+    CSV: E=Stony Island (1600 E) | W=Dorchester (1400 E) | N=90th Street (9000 S) | S=94th St (9400 S)
+    ⚠ north: CSV=41.71902 vs 2025=41.73146 (diff=0.01243)
+    ⚠ south: CSV=41.71178 vs 2025=41.72232 (diff=0.01054)
+
+  8-22 (2/4 boundaries match 2025):
+    CSV: E=Jeffery (2000 E) | W=Stony Island (1600 E) | N=91st St (9100 S) | S=94th St (9400 S)
+    ⚠ north: CSV=41.71721 vs 2025=41.72976 (diff=0.01255)
+    ⚠ south: CSV=41.71178 vs 2025=41.72233 (diff=0.01055)
+
+  8-3 (2/4 boundaries match 2025):
+    CSV: E=Stony Island (1600 E) | W=Woodlawn (1200 E) | N=76th St (7600 S) | S=79th St (7900 S)
+    ⚠ north: CSV=41.74437 vs 2025=41.75695 (diff=0.01258)
+    ⚠ south: CSV=41.73894 vs 2025=41.75137 (diff=0.01244)
+
+  8-4 (2/4 boundaries match 2025):
+    CSV: E=Bennett (1900 E) | W=Stony Island (1600 E) | N=74th St (7400 S) | S=79th St (7900S)
+    ⚠ north: CSV=41.74799 vs 2025=41.76067 (diff=0.01268)
+    ⚠ south: CSV=41.73894 vs 2025=41.75151 (diff=0.01257)
+
+  8-5 (2/4 boundaries match 2025):
+    CSV: E=Paxton (2200 E) | W=Bennett (1900 E) | N=75th St (7500 S) | S=79th St (7900 S)
+    ⚠ north: CSV=41.74618 vs 2025=41.75892 (diff=0.01274)
+    ⚠ south: CSV=41.73894 vs 2025=41.75157 (diff=0.01264)
+
+  8-6 (2/4 boundaries match 2025):
+    CSV: E=Woodlawn (1200 E) | W=Cottage Grove (800 E) | N=79th Street (7900 S) | S=83rd St (8300 S)
+    ⚠ north: CSV=41.73894 vs 2025=41.75140 (diff=0.01246)
+    ⚠ south: CSV=41.73170 vs 2025=41.74397 (diff=0.01227)
+
+  8-7 (2/4 boundaries match 2025):
+    CSV: E=Stony Island (1600 E) | W=Woodlawn (1200 E) | N=79th St (7900 S) | S=83rd St (8300 S)
+    ⚠ north: CSV=41.73894 vs 2025=41.75151 (diff=0.01257)
+    ⚠ south: CSV=41.73170 vs 2025=41.74409 (diff=0.01240)
+
+  8-8 (2/4 boundaries match 2025):
+    CSV: E=Jeffery (2000 E) | W=Stony Island (1600 E) | N=79th St (7900 S) | S=83rd St (8300 S)
+    ⚠ north: CSV=41.73894 vs 2025=41.75161 (diff=0.01268)
+    ⚠ south: CSV=41.73170 vs 2025=41.74422 (diff=0.01252)
+
+  8-9 (2/4 boundaries match 2025):
+    CSV: E=Crandon 2300 E) | W=Jeffery (2000 E) | N=79th St (7900 S) | S=83rd St (8300 S)
+    ⚠ north: CSV=41.73894 vs 2025=41.75167 (diff=0.01273)
+    ⚠ south: CSV=41.73170 vs 2025=41.74434 (diff=0.01264)
+
+  9-1 (2/4 boundaries match 2025):
+    CSV: E=Lafayette (30 W) | W=Stewart (400 W) | N=91st Street (9100 S) | S=95th Street (9498 S)
+    ⚠ north: CSV=41.71721 vs 2025=41.73014 (diff=0.01292)
+    ⚠ south: CSV=41.71001 vs 2025=41.72158 (diff=0.01157)
+
+  9-16 (2/4 boundaries match 2025):
+    CSV: E=State Street (0 E) | W=Princeton Ave (300 W) | N=111th Street (11100 S) | S=115th Street (11500 S)
+    ⚠ north: CSV=41.68101 vs 2025=41.69258 (diff=0.01157)
+    ⚠ south: CSV=41.67377 vs 2025=41.68523 (diff=0.01147)
+
+  9-2 (2/4 boundaries match 2025):
+    CSV: E=Eggleston (400 W) | W=Lowe (630 W) | N=91st Street (9100 S) | S=95th Street (9498 S)
+    ⚠ north: CSV=41.71721 vs 2025=41.72999 (diff=0.01277)
+    ⚠ south: CSV=41.71001 vs 2025=41.72151 (diff=0.01150)
+
+  9-3 (2/4 boundaries match 2025):
+    CSV: E=Eggleston (400 W) | W=Lowe (630 W) | N=95th Street (9500 S) | S=98th Place (9830 S)
+    ⚠ north: CSV=41.70997 vs 2025=41.72159 (diff=0.01161)
+    ⚠ south: CSV=41.70400 vs 2025=41.71517 (diff=0.01117)
+
+  9-5 (2/4 boundaries match 2025):
+    CSV: E=Martin Luther King Dr. (400 E) | W=Michigan Ave (100 E) | N=95th Street (9500 S) | S=99th Place (9930 S)
+    ⚠ north: CSV=41.70997 vs 2025=41.72189 (diff=0.01192)
+    ⚠ south: CSV=41.70219 vs 2025=41.71341 (diff=0.01123)
+
+  9-9 (2/4 boundaries match 2025):
+    CSV: E=Eggleston (430 W) | W=Lowe (630 W) | N=99th Place (9930 S) | S=103rd Street (10300 South)
+    ⚠ north: CSV=41.70219 vs 2025=41.71523 (diff=0.01304)
+    ⚠ south: CSV=41.69549 vs 2025=41.70696 (diff=0.01147)
+
+
+ZONES WITH UNPARSEABLE CSV (8):
+------------------------------------------------------------------------------------------
+  35-10: E=Kennedy Expressway | W=Kedzie (3200 West) | N=Kennedy Expressway | S=Logan Blvd (2600 North)
+  35-11: E=Kennedy Expressway | W=Elston Avenue | N=Belmont (3200 North) | S=Schubert (2700 North)
+  35-8: E=Kimball (3400 West) | W=Milwaukee Ave | N=Belmont (3200 North) | S=Milwaukee Ave
+  45-10: E=Central (5600 West) | W=Austin (6000 West) | N=Avondale | S=Higgins
+  45-19: E=Leclaire (5100 West) | W=Milwaukee | N=Foster (5200 North) | S=Kennedy Expressway
+  45-5: E=Avondale | W=Milwaukee | N=Kennedy Expressway | S=Montrose (4400 North)
+  45-7: E=Milwaukee Ave | W=Central (5600 West) | N=Kennedy Expressway | S=Windsor (4532 North)
+  7-19: E=96th Street (9600) | W=97th Pl (9700) | N=Yates (2498) | S=Colfax (2600)
