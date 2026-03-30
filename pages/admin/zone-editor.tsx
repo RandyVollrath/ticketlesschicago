@@ -258,37 +258,52 @@ export default function ZoneEditor() {
     const editGroup = new L.FeatureGroup();
     const geom = feature.geometry;
 
-    // Douglas-Peucker simplification: keeps shape-defining vertices,
-    // removes only points that don't significantly change the outline
-    const dpSimplify = (pts: number[][], tolerance: number): number[][] => {
-      if (pts.length <= 4) return pts;
-      let maxDist = 0, maxIdx = 0;
-      const [x1, y1] = pts[0];
-      const [x2, y2] = pts[pts.length - 1];
-      const len = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
-      for (let i = 1; i < pts.length - 1; i++) {
-        const [x, y] = pts[i];
-        const dist = len > 0 ? Math.abs((y2-y1)*x - (x2-x1)*y + x2*y1 - y2*x1) / len : 0;
-        if (dist > maxDist) { maxDist = dist; maxIdx = i; }
-      }
-      if (maxDist > tolerance) {
-        const left = dpSimplify(pts.slice(0, maxIdx + 1), tolerance);
-        const right = dpSimplify(pts.slice(maxIdx), tolerance);
-        return [...left.slice(0, -1), ...right];
-      }
-      return [pts[0], pts[pts.length - 1]];
-    };
-
+    // Simplify a closed polygon ring by keeping every Nth point
+    // but always keeping corner points (where direction changes significantly)
     const simplifyRing = (ring: number[][]): number[][] => {
-      if (ring.length <= 10) return ring;
-      // Use ~0.00005 tolerance (~5m) — keeps corners and bends, removes straight-line points
-      let result = dpSimplify(ring, 0.00005);
-      // Ensure minimum 4 points for a valid polygon and ring is closed
-      if (result.length < 4) result = ring; // fallback to original if too aggressive
-      if (result[0][0] !== result[result.length-1][0] || result[0][1] !== result[result.length-1][1]) {
-        result.push(result[0]);
+      if (ring.length <= 12) return ring;
+
+      // Target ~15-25 vertices
+      const target = Math.min(25, Math.max(12, Math.ceil(ring.length / 4)));
+
+      // Score each point by how much the direction changes there
+      const angles: { idx: number; angle: number }[] = [];
+      for (let i = 1; i < ring.length - 1; i++) {
+        const [x0, y0] = ring[i - 1];
+        const [x1, y1] = ring[i];
+        const [x2, y2] = ring[i + 1];
+        const a1 = Math.atan2(y1 - y0, x1 - x0);
+        const a2 = Math.atan2(y2 - y1, x2 - x1);
+        let diff = Math.abs(a2 - a1);
+        if (diff > Math.PI) diff = 2 * Math.PI - diff;
+        angles.push({ idx: i, angle: diff });
       }
-      return result;
+
+      // Sort by angle (biggest turns first) and keep the top N
+      angles.sort((a, b) => b.angle - a.angle);
+      const keepSet = new Set<number>([0, ring.length - 1]); // always keep first and last
+      for (let i = 0; i < Math.min(target - 2, angles.length); i++) {
+        keepSet.add(angles[i].idx);
+      }
+
+      // Also ensure we don't have huge gaps — add midpoints if needed
+      const kept = [...keepSet].sort((a, b) => a - b);
+      const withMids = new Set(kept);
+      for (let i = 0; i < kept.length - 1; i++) {
+        const gap = kept[i + 1] - kept[i];
+        if (gap > ring.length / 6) {
+          withMids.add(kept[i] + Math.floor(gap / 2));
+        }
+      }
+
+      const result = [...withMids].sort((a, b) => a - b).map(i => ring[i]);
+
+      // Close ring
+      if (result.length >= 3 && (result[0][0] !== result[result.length-1][0] || result[0][1] !== result[result.length-1][1])) {
+        result.push([...result[0]]);
+      }
+
+      return result.length >= 4 ? result : ring;
     };
 
     const addPolygon = (coords: number[][][]) => {
