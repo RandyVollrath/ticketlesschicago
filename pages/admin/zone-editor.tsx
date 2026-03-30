@@ -33,29 +33,29 @@ export default function ZoneEditor() {
   const [statusMsg, setStatusMsg] = useState('Loading...');
   const [filter, setFilter] = useState<string>('all');
   const editingLayerRef = useRef<any>(null);
+  const LRef = useRef<any>(null);
 
-  // Color zones by source/status
   const getColor = (source: string, isSelected: boolean) => {
     if (isSelected) return '#ff00ff';
     switch (source) {
-      case 'city_2025_verified': return '#28a745';  // green
-      case 'city_2025_adjusted': return '#ffc107';  // yellow
-      case 'city_2025_approx': return '#17a2b8';    // cyan
-      case 'city_2025_UNVERIFIED': return '#dc3545'; // red
-      case 'grid_new': return '#dc3545';             // red
-      case 'carved_from_2025': return '#fd7e14';     // orange
-      default: return '#6c757d';                      // gray
+      case 'city_2025_verified': return '#28a745';
+      case 'city_2025_adjusted': return '#ffc107';
+      case 'city_2025_approx': return '#17a2b8';
+      case 'city_2025_UNVERIFIED': return '#dc3545';
+      case 'grid_new': return '#dc3545';
+      case 'carved_from_2025': return '#fd7e14';
+      case 'manual_edit': return '#00ff88';
+      default: return '#6c757d';
     }
   };
 
-  // Load data
+  // Load data from static file + Supabase overrides + CSV boundaries
   useEffect(() => {
     Promise.all([
       fetch('/data/street-cleaning-zones-2026.geojson').then(r => r.json()),
-      fetch('/api/admin/zone-csv-data').then(r => r.ok ? r.json() : null),
+      fetch('/api/admin/zone-csv-data').then(r => r.ok ? r.json() : {}),
       fetch('/api/admin/save-zone-geometry').then(r => r.ok ? r.json() : {}),
     ]).then(([geojson, csv, edits]) => {
-      // Apply saved edits from Supabase on top of static GeoJSON
       const editCount = Object.keys(edits || {}).length;
       for (const f of geojson.features) {
         const ws = `${f.properties.ward}-${f.properties.section}`;
@@ -70,8 +70,8 @@ export default function ZoneEditor() {
         zones[f.properties.id] = f;
       }
       setZoneData(zones);
-      if (csv) setCsvData(csv);
-      setStatusMsg(`Loaded ${geojson.features.length} zones` + (editCount ? ` (${editCount} manual edits applied)` : ''));
+      setCsvData(csv || {});
+      setStatusMsg(`Loaded ${geojson.features.length} zones` + (editCount ? ` (${editCount} edits)` : ''));
     }).catch(err => setStatusMsg(`Error: ${err.message}`));
   }, []);
 
@@ -81,19 +81,11 @@ export default function ZoneEditor() {
 
     const initMap = async () => {
       const L = (await import('leaflet')).default;
+      LRef.current = L;
 
-      // Load Leaflet.Editable
-      await new Promise<void>((resolve) => {
-        if ((window as any).L?.Editable) { resolve(); return; }
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/leaflet-editable@1.2.0/src/Leaflet.Editable.js';
-        script.onload = () => resolve();
-        document.head.appendChild(script);
-      });
-
-      const map = L.map(mapRef.current!, { editable: true } as any).setView([41.8781, -87.6298], 11);
+      const map = L.map(mapRef.current!).setView([41.8781, -87.6298], 11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
+        attribution: '© OpenStreetMap',
         maxZoom: 19,
       }).addTo(map);
 
@@ -107,7 +99,6 @@ export default function ZoneEditor() {
   const renderZones = useCallback((L: any, map: any) => {
     if (!geojsonData) return;
 
-    // Clear existing layers
     layersRef.current.forEach(layer => map.removeLayer(layer));
     layersRef.current.clear();
 
@@ -115,13 +106,13 @@ export default function ZoneEditor() {
       const id = feature.properties.id;
       const source = feature.properties.source;
 
-      // Filter
       if (filter !== 'all') {
-        if (filter === 'overlapping' && !['grid_new', 'city_2025_UNVERIFIED'].includes(source)) continue;
         if (filter === 'adjusted' && source !== 'city_2025_adjusted') continue;
         if (filter === 'unverified' && source !== 'city_2025_UNVERIFIED') continue;
-        if (filter === 'new' && source !== 'grid_new') continue;
+        if (filter === 'new' && !['grid_new', 'carved_from_2025'].includes(source)) continue;
         if (filter === 'verified' && source !== 'city_2025_verified') continue;
+        if (filter === 'review' && !['city_2025_UNVERIFIED', 'grid_new', 'city_2025_adjusted'].includes(source)) continue;
+        if (filter === 'manual' && source !== 'manual_edit') continue;
       }
 
       const isSelected = id === selectedZone;
@@ -129,23 +120,24 @@ export default function ZoneEditor() {
 
       const layer = L.geoJSON(feature.geometry, {
         style: {
-          color: color,
+          color,
           weight: isSelected ? 4 : 2,
           fillColor: color,
           fillOpacity: isSelected ? 0.4 : 0.15,
         },
       });
 
-      // Click handler
       layer.on('click', () => {
         setSelectedZone(id);
         setEditMode(false);
+        // Cancel any active edit
+        if (editingLayerRef.current) {
+          map.removeLayer(editingLayerRef.current);
+          editingLayerRef.current = null;
+        }
       });
 
-      // Tooltip with ward-section
-      const ward = feature.properties.ward;
-      const section = feature.properties.section;
-      layer.bindTooltip(`${ward}-${section}`, {
+      layer.bindTooltip(`${feature.properties.ward}-${feature.properties.section}`, {
         permanent: false,
         direction: 'center',
         className: 'zone-tooltip',
@@ -156,62 +148,58 @@ export default function ZoneEditor() {
     }
   }, [geojsonData, filter, selectedZone]);
 
-  // Re-render when filter or selection changes
   useEffect(() => {
-    if (!mapInstanceRef.current || !geojsonData) return;
-    const loadL = async () => {
-      const L = (await import('leaflet')).default;
-      renderZones(L, mapInstanceRef.current);
-    };
-    loadL();
+    if (!mapInstanceRef.current || !geojsonData || !LRef.current) return;
+    renderZones(LRef.current, mapInstanceRef.current);
   }, [filter, selectedZone, renderZones]);
 
-  // Start editing
+  // Start editing — use native Leaflet polygon editing (no plugin needed)
   const startEdit = async () => {
     if (!selectedZone || !mapInstanceRef.current) return;
-    const L = (await import('leaflet')).default;
+    const L = LRef.current || (await import('leaflet')).default;
     const map = mapInstanceRef.current;
 
-    // Remove the display layer
     const displayLayer = layersRef.current.get(selectedZone);
     if (displayLayer) map.removeLayer(displayLayer);
 
-    // Create an editable layer
     const feature = zoneData[selectedZone];
     if (!feature) return;
 
+    // Create editable polygon layer
     const editLayer = L.geoJSON(feature.geometry, {
       style: { color: '#ff00ff', weight: 3, fillColor: '#ff00ff', fillOpacity: 0.3 },
+      onEachFeature: (_: any, layer: any) => {
+        if (layer.editing) {
+          layer.editing.enable();
+        }
+      }
     });
 
     editLayer.addTo(map);
-    editLayer.eachLayer((l: any) => {
-      if (l.enableEdit) l.enableEdit();
-    });
+
+    // Zoom to the zone
+    map.fitBounds(editLayer.getBounds().pad(0.3));
 
     editingLayerRef.current = editLayer;
     setEditMode(true);
+    setStatusMsg('Drag vertices to reshape. Click Save when done.');
   };
 
-  // Save edit
+  // Save
   const saveEdit = async () => {
     if (!editingLayerRef.current || !selectedZone) return;
     setSaving(true);
+    setStatusMsg('Saving...');
 
     try {
-      // Get the edited geometry
       const editedGeoJSON = editingLayerRef.current.toGeoJSON();
       let newGeometry: any;
 
       if (editedGeoJSON.type === 'FeatureCollection') {
-        // Merge all features into one MultiPolygon
         const allCoords: any[] = [];
         for (const f of editedGeoJSON.features) {
-          if (f.geometry.type === 'Polygon') {
-            allCoords.push(f.geometry.coordinates);
-          } else if (f.geometry.type === 'MultiPolygon') {
-            allCoords.push(...f.geometry.coordinates);
-          }
+          if (f.geometry.type === 'Polygon') allCoords.push(f.geometry.coordinates);
+          else if (f.geometry.type === 'MultiPolygon') allCoords.push(...f.geometry.coordinates);
         }
         newGeometry = { type: 'MultiPolygon', coordinates: allCoords };
       } else if (editedGeoJSON.type === 'Feature') {
@@ -221,34 +209,31 @@ export default function ZoneEditor() {
         }
       }
 
-      // Update local data
-      const updatedFeature = { ...zoneData[selectedZone], geometry: newGeometry };
+      const ward = zoneData[selectedZone].properties.ward;
+      const section = zoneData[selectedZone].properties.section;
+
+      // Save to Supabase
+      const res = await fetch('/api/admin/save-zone-geometry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ward, section, geometry: newGeometry }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Save failed');
+
+      // Update local state
+      const updatedFeature = { ...zoneData[selectedZone] };
+      updatedFeature.geometry = newGeometry;
       updatedFeature.properties = { ...updatedFeature.properties, source: 'manual_edit' };
 
       const newZoneData = { ...zoneData, [selectedZone]: updatedFeature };
       setZoneData(newZoneData);
 
-      // Update the full GeoJSON
-      const newGeoJSON = {
-        type: 'FeatureCollection',
-        features: Object.values(newZoneData),
-      };
+      const newGeoJSON = { type: 'FeatureCollection', features: Object.values(newZoneData) };
       setGeojsonData(newGeoJSON);
 
-      // Save to server
-      const res = await fetch('/api/admin/save-zone-geometry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ward: updatedFeature.properties.ward,
-          section: updatedFeature.properties.section,
-          geometry: newGeometry,
-        }),
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-
-      // Clean up edit layer
+      // Clean up
       const map = mapInstanceRef.current;
       if (editingLayerRef.current) {
         map.removeLayer(editingLayerRef.current);
@@ -256,31 +241,32 @@ export default function ZoneEditor() {
       }
 
       setEditMode(false);
-      setStatusMsg(`Saved ${selectedZone}`);
+      setStatusMsg(`Saved ${ward}-${section} to Supabase`);
 
-      // Re-render
-      const L = (await import('leaflet')).default;
-      renderZones(L, map);
+      const L = LRef.current;
+      if (L) renderZones(L, map);
     } catch (err: any) {
-      setStatusMsg(`Error saving: ${err.message}`);
+      setStatusMsg(`Error: ${err.message}`);
     } finally {
       setSaving(false);
     }
   };
 
-  // Cancel edit
-  const cancelEdit = async () => {
-    if (!editingLayerRef.current || !mapInstanceRef.current) return;
-    mapInstanceRef.current.removeLayer(editingLayerRef.current);
-    editingLayerRef.current = null;
+  const cancelEdit = () => {
+    if (editingLayerRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(editingLayerRef.current);
+      editingLayerRef.current = null;
+    }
     setEditMode(false);
-
-    const L = (await import('leaflet')).default;
-    renderZones(L, mapInstanceRef.current);
+    setStatusMsg('Edit cancelled');
+    if (LRef.current && mapInstanceRef.current) {
+      renderZones(LRef.current, mapInstanceRef.current);
+    }
   };
 
   const selected = selectedZone ? zoneData[selectedZone] : null;
-  const csv = selectedZone ? csvData[selectedZone?.replace('chi-sc-', '')] : null;
+  const csvKey = selectedZone?.replace('chi-sc-', '') || '';
+  const csv = csvData[csvKey];
 
   return (
     <>
@@ -291,99 +277,94 @@ export default function ZoneEditor() {
       <div style={{ display: 'flex', height: '100vh', fontFamily: 'system-ui, sans-serif' }}>
         {/* Sidebar */}
         <div style={{
-          width: '380px', background: '#1a1d27', color: '#e8e9ed',
+          width: '400px', background: '#1a1d27', color: '#e8e9ed',
           padding: '16px', overflowY: 'auto', borderRight: '1px solid #2e3140',
           display: 'flex', flexDirection: 'column', gap: '12px'
         }}>
           <h2 style={{ margin: 0, fontSize: '18px' }}>Zone Editor</h2>
-          <div style={{ fontSize: '12px', color: '#9ca3af' }}>{statusMsg}</div>
-
-          {/* Filter */}
-          <div>
-            <label style={{ fontSize: '12px', color: '#9ca3af' }}>Filter:</label>
-            <select value={filter} onChange={e => setFilter(e.target.value)}
-              style={{ width: '100%', padding: '6px', background: '#22252f', color: '#e8e9ed',
-                border: '1px solid #2e3140', borderRadius: '4px', marginTop: '4px' }}>
-              <option value="all">All zones (835)</option>
-              <option value="adjusted">Adjusted (129)</option>
-              <option value="unverified">Unverified (8)</option>
-              <option value="new">New / Grid (8)</option>
-              <option value="verified">Verified (241)</option>
-            </select>
+          <div style={{ fontSize: '12px', color: statusMsg.includes('Error') ? '#f87171' : statusMsg.includes('Saved') ? '#4ade80' : '#9ca3af' }}>
+            {statusMsg}
           </div>
 
+          {/* Filter */}
+          <select value={filter} onChange={e => setFilter(e.target.value)}
+            style={{ padding: '8px', background: '#22252f', color: '#e8e9ed',
+              border: '1px solid #2e3140', borderRadius: '4px', fontSize: '13px' }}>
+            <option value="all">All zones (835)</option>
+            <option value="review">Needs Review</option>
+            <option value="adjusted">Adjusted</option>
+            <option value="unverified">Unverified</option>
+            <option value="new">New / Grid</option>
+            <option value="verified">Verified</option>
+            <option value="manual">Manual Edits</option>
+          </select>
+
           {/* Legend */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '11px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '11px' }}>
             {[
               ['#28a745', 'Verified'],
               ['#ffc107', 'Adjusted'],
               ['#17a2b8', 'Approx'],
               ['#dc3545', 'Needs Review'],
-              ['#fd7e14', 'Carved'],
+              ['#00ff88', 'Manual Edit'],
               ['#ff00ff', 'Selected'],
             ].map(([color, label]) => (
-              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: '12px', height: '12px', background: color, borderRadius: '2px', display: 'inline-block' }} />
+              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <span style={{ width: '10px', height: '10px', background: color, borderRadius: '2px', display: 'inline-block' }} />
                 {label}
               </span>
             ))}
           </div>
 
-          {/* Selected zone info */}
-          {selected && (
-            <div style={{
-              background: '#22252f', borderRadius: '8px', padding: '12px',
-              border: '1px solid #2e3140'
-            }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: '16px' }}>
-                Ward {selected.properties.ward} Section {selected.properties.section}
+          {/* Selected zone */}
+          {selected ? (
+            <div style={{ background: '#22252f', borderRadius: '8px', padding: '14px', border: '1px solid #2e3140' }}>
+              <h3 style={{ margin: '0 0 6px', fontSize: '18px', color: '#fff' }}>
+                Ward {selected.properties.ward} / Section {selected.properties.section}
               </h3>
-              <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>
-                Source: <span style={{ color: getColor(selected.properties.source, false) }}>
-                  {selected.properties.source}
+              <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px' }}>
+                Status: <span style={{ color: getColor(selected.properties.source, false), fontWeight: 'bold' }}>
+                  {selected.properties.source.replace('city_2025_', '').replace(/_/g, ' ')}
                 </span>
-                {selected.properties.changed && (
-                  <> | Changed edges: <strong>{selected.properties.changed}</strong></>
-                )}
               </div>
 
-              {/* CSV Boundaries */}
-              {csv && (
-                <div style={{
-                  background: '#1a1d27', borderRadius: '6px', padding: '10px',
-                  fontSize: '13px', lineHeight: '1.6'
-                }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#ffc107' }}>
-                    CSV Boundaries (drag polygon edges to match):
-                  </div>
-                  <div><strong style={{ color: '#4ade80' }}>N:</strong> {csv.north}</div>
-                  <div><strong style={{ color: '#f87171' }}>S:</strong> {csv.south}</div>
-                  <div><strong style={{ color: '#60a5fa' }}>E:</strong> {csv.east}</div>
-                  <div><strong style={{ color: '#c084fc' }}>W:</strong> {csv.west}</div>
+              {/* CSV Boundaries — always shown */}
+              <div style={{
+                background: '#1a1d27', borderRadius: '6px', padding: '12px',
+                fontSize: '14px', lineHeight: '2', border: '1px solid #3a3d4a'
+              }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '6px', color: '#ffc107', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  2026 CSV Boundaries
                 </div>
-              )}
+                <div><span style={{ color: '#4ade80', fontWeight: 'bold', width: '20px', display: 'inline-block' }}>N</span> {csv?.north || '(not loaded)'}</div>
+                <div><span style={{ color: '#f87171', fontWeight: 'bold', width: '20px', display: 'inline-block' }}>S</span> {csv?.south || '(not loaded)'}</div>
+                <div><span style={{ color: '#60a5fa', fontWeight: 'bold', width: '20px', display: 'inline-block' }}>E</span> {csv?.east || '(not loaded)'}</div>
+                <div><span style={{ color: '#c084fc', fontWeight: 'bold', width: '20px', display: 'inline-block' }}>W</span> {csv?.west || '(not loaded)'}</div>
+              </div>
 
               {/* Edit buttons */}
-              <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+              <div style={{ marginTop: '14px', display: 'flex', gap: '8px' }}>
                 {!editMode ? (
                   <button onClick={startEdit} style={{
-                    padding: '8px 16px', background: '#6366f1', color: 'white',
-                    border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
+                    padding: '10px 20px', background: '#6366f1', color: 'white',
+                    border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
+                    fontWeight: 'bold', width: '100%'
                   }}>
                     Edit Polygon
                   </button>
                 ) : (
                   <>
                     <button onClick={saveEdit} disabled={saving} style={{
-                      padding: '8px 16px', background: '#059669', color: 'white',
+                      padding: '10px 20px', background: '#059669', color: 'white',
                       border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
-                      opacity: saving ? 0.5 : 1,
+                      fontWeight: 'bold', flex: 1, opacity: saving ? 0.5 : 1,
                     }}>
                       {saving ? 'Saving...' : 'Save'}
                     </button>
                     <button onClick={cancelEdit} style={{
-                      padding: '8px 16px', background: '#dc2626', color: 'white',
-                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
+                      padding: '10px 20px', background: '#dc2626', color: 'white',
+                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
+                      fontWeight: 'bold', flex: 1,
                     }}>
                       Cancel
                     </button>
@@ -391,15 +372,15 @@ export default function ZoneEditor() {
                 )}
               </div>
             </div>
-          )}
-
-          {!selected && (
-            <div style={{ color: '#6b7280', fontSize: '14px', marginTop: '20px' }}>
+          ) : (
+            <div style={{ color: '#6b7280', fontSize: '14px', marginTop: '20px', lineHeight: '1.8' }}>
               Click a zone on the map to select it.
-              <br /><br />
-              Then click "Edit Polygon" to drag vertices.
-              <br /><br />
-              The CSV boundary streets are shown to guide you on where edges should be.
+              <br />
+              The 2026 CSV boundary streets will appear here.
+              <br />
+              Click "Edit Polygon" to drag vertices.
+              <br />
+              Save writes directly to Supabase.
             </div>
           )}
         </div>
@@ -410,14 +391,16 @@ export default function ZoneEditor() {
 
       <style jsx global>{`
         .zone-tooltip {
-          background: rgba(0,0,0,0.8) !important;
+          background: rgba(0,0,0,0.85) !important;
           color: white !important;
           border: none !important;
-          font-size: 11px !important;
-          padding: 2px 6px !important;
-          border-radius: 3px !important;
+          font-size: 12px !important;
+          font-weight: bold !important;
+          padding: 3px 8px !important;
+          border-radius: 4px !important;
         }
         .zone-tooltip::before { display: none !important; }
+        .leaflet-interactive { cursor: pointer !important; }
       `}</style>
     </>
   );
