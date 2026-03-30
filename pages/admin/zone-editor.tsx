@@ -187,8 +187,24 @@ export default function ZoneEditor() {
     const editGroup = new L.FeatureGroup();
     const geom = feature.geometry;
 
+    // Simplify a ring: keep every Nth point to reduce handles
+    const simplifyRing = (ring: number[][]): number[][] => {
+      if (ring.length <= 8) return ring;
+      // Keep ~15-20 points max
+      const target = Math.min(20, Math.max(8, Math.floor(ring.length / 5)));
+      const step = Math.max(1, Math.floor(ring.length / target));
+      const result: number[][] = [];
+      for (let i = 0; i < ring.length - 1; i += step) {
+        result.push(ring[i]);
+      }
+      // Always include last point to close the ring
+      result.push(ring[ring.length - 1]);
+      return result;
+    };
+
     const addPolygon = (coords: number[][][]) => {
-      const latlngs = coords.map((ring: number[][]) =>
+      const simplified = coords.map(ring => simplifyRing(ring));
+      const latlngs = simplified.map((ring: number[][]) =>
         ring.map((c: number[]) => [c[1], c[0]] as [number, number])
       );
       const poly = L.polygon(latlngs, {
@@ -318,91 +334,7 @@ export default function ZoneEditor() {
     }
   };
 
-  // Simplify: reduce vertices while keeping shape
-  const simplifyPolygon = () => {
-    if (!editingLayerRef.current || !mapInstanceRef.current) return;
-    const L = LRef.current;
-    const map = mapInstanceRef.current;
-
-    // Collect current geometry
-    const allCoords: any[] = [];
-    editingLayerRef.current.eachLayer((layer: any) => {
-      if (layer.toGeoJSON) {
-        const gj = layer.toGeoJSON();
-        if (gj.type === 'Feature' && gj.geometry.type === 'Polygon') {
-          allCoords.push(gj.geometry.coordinates);
-        }
-      }
-    });
-
-    if (!allCoords.length) return;
-
-    // Remove edit layer
-    map.removeLayer(editingLayerRef.current);
-
-    // Simplify each ring using Douglas-Peucker
-    const simplify = (coords: number[][], tolerance: number): number[][] => {
-      if (coords.length <= 4) return coords;
-
-      // Find point with max distance from line between first and last
-      let maxDist = 0, maxIdx = 0;
-      const [x1, y1] = coords[0];
-      const [x2, y2] = coords[coords.length - 1];
-
-      for (let i = 1; i < coords.length - 1; i++) {
-        const [x, y] = coords[i];
-        const dist = Math.abs((y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1) /
-          Math.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2);
-        if (dist > maxDist) { maxDist = dist; maxIdx = i; }
-      }
-
-      if (maxDist > tolerance) {
-        const left = simplify(coords.slice(0, maxIdx + 1), tolerance);
-        const right = simplify(coords.slice(maxIdx), tolerance);
-        return [...left.slice(0, -1), ...right];
-      }
-      return [coords[0], coords[coords.length - 1]];
-    };
-
-    const simplified = allCoords.map(polyCoords =>
-      polyCoords.map((ring: number[][]) => {
-        const s = simplify(ring, 0.0002); // ~20m tolerance
-        // Ensure ring is closed
-        if (s.length >= 3 && (s[0][0] !== s[s.length-1][0] || s[0][1] !== s[s.length-1][1])) {
-          s.push(s[0]);
-        }
-        return s;
-      })
-    );
-
-    // Count before/after
-    const beforePts = allCoords.reduce((sum, p) => sum + p.reduce((s2: number, r: number[][]) => s2 + r.length, 0), 0);
-    const afterPts = simplified.reduce((sum, p) => sum + p.reduce((s2: number, r: number[][]) => s2 + r.length, 0), 0);
-
-    // Recreate edit layer with simplified geometry
-    const editGroup = new L.FeatureGroup();
-    for (const polyCoords of simplified) {
-      const latlngs = polyCoords.map((ring: number[][]) =>
-        ring.map((c: number[]) => [c[1], c[0]] as [number, number])
-      );
-      const poly = L.polygon(latlngs, {
-        color: '#ff00ff', weight: 3, fillColor: '#ff00ff', fillOpacity: 0.3,
-      });
-      editGroup.addLayer(poly);
-    }
-
-    editGroup.addTo(map);
-
-    // Re-enable editing - need small delay for leaflet-draw to attach
-    setTimeout(() => {
-      editGroup.eachLayer((layer: any) => {
-        if (layer.editing) layer.editing.enable();
-      });
-    }, 100);
-
-    editingLayerRef.current = editGroup;
-    setStatusMsg(`Simplified: ${beforePts} → ${afterPts} vertices`);
-  };
+  // Simplify removed — was causing data loss
 
   const selected = selectedZone ? zoneData[selectedZone] : null;
   const csvKey = selectedZone?.replace('chi-sc-', '') || '';
@@ -493,31 +425,22 @@ export default function ZoneEditor() {
                     Edit Polygon
                   </button>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={saveEdit} disabled={saving} style={{
-                        padding: '10px 20px', background: '#059669', color: 'white',
-                        border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
-                        fontWeight: 'bold', flex: 1, opacity: saving ? 0.5 : 1,
-                      }}>
-                        {saving ? 'Saving...' : 'Save'}
-                      </button>
-                      <button onClick={cancelEdit} style={{
-                        padding: '10px 20px', background: '#dc2626', color: 'white',
-                        border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
-                        fontWeight: 'bold', flex: 1,
-                      }}>
-                        Cancel
-                      </button>
-                    </div>
-                    <button onClick={simplifyPolygon} style={{
-                      padding: '8px 16px', background: '#d97706', color: 'white',
-                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px',
-                      fontWeight: 'bold', width: '100%'
+                  <>
+                    <button onClick={saveEdit} disabled={saving} style={{
+                      padding: '10px 20px', background: '#059669', color: 'white',
+                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
+                      fontWeight: 'bold', flex: 1, opacity: saving ? 0.5 : 1,
                     }}>
-                      Simplify (reduce vertices)
+                      {saving ? 'Saving...' : 'Save'}
                     </button>
-                  </div>
+                    <button onClick={cancelEdit} style={{
+                      padding: '10px 20px', background: '#dc2626', color: 'white',
+                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
+                      fontWeight: 'bold', flex: 1,
+                    }}>
+                      Cancel
+                    </button>
+                  </>
                 )}
               </div>
             </div>
