@@ -40,13 +40,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // Load confirmed/edited zones from zone_geometry_edits table
+    const confirmedSet = new Set<string>();
+    try {
+      const { data: editsData } = await supabase
+        .from('zone_geometry_edits')
+        .select('ward_section, confirmed');
+      for (const row of (editsData || [])) {
+        if (row.confirmed) confirmedSet.add(row.ward_section);
+      }
+    } catch {}
+
     // Override static geometry with Supabase geometry where different
     let overrides = 0;
     for (const feature of geojson.features) {
       const ws = `${feature.properties.ward}-${feature.properties.section}`;
       const dbG = dbGeom.get(ws);
       if (dbG) {
-        // Always use Supabase version — it has the latest edits
         const dbFirst = JSON.stringify(dbG.coordinates?.[0]?.[0]?.[0]);
         const stFirst = JSON.stringify(feature.geometry?.coordinates?.[0]?.[0]?.[0]);
         if (dbFirst !== stFirst) {
@@ -54,6 +64,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           feature.properties.source = 'manual_edit';
           overrides++;
         }
+      }
+      // Mark confirmed zones
+      if (confirmedSet.has(ws)) {
+        feature.properties.source = 'manual_edit';
       }
     }
 
