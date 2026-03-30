@@ -1,57 +1,36 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const csvPath = '/home/randy-vollrath/Downloads/2026 Street Cleaning Wards 1-50 - Sheet1.csv';
-
-    // Try local file first, fall back to reading from Supabase
-    let csvText: string;
-    try {
-      csvText = fs.readFileSync(csvPath, 'utf-8');
-    } catch {
-      // Fallback: read from the schedule table
-      return res.status(200).json({});
-    }
-
-    const lines = csvText.split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
-
-    const eastIdx = headers.indexOf('east_block');
-    const westIdx = headers.indexOf('west_block');
-    const northIdx = headers.indexOf('north_boundary');
-    const southIdx = headers.indexOf('south_boundary');
-    const wardIdx = headers.indexOf('ward');
-    const sectionIdx = headers.indexOf('section');
-
+    // Read boundary data from the street_cleaning_schedule table
     const zones: Record<string, { east: string; west: string; north: string; south: string }> = {};
 
-    for (let i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue;
+    let allRows: any[] = [];
+    let page = 0;
+    while (true) {
+      const { data } = await supabase
+        .from('street_cleaning_schedule')
+        .select('ward_section, ward, section, east_block, west_block, north_block, south_block')
+        .range(page * 1000, (page + 1) * 1000 - 1);
+      if (!data || data.length === 0) break;
+      allRows.push(...data);
+      page++;
+    }
 
-      // Simple CSV parse (handles our format)
-      const cols: string[] = [];
-      let current = '';
-      let inQuotes = false;
-      for (const ch of lines[i]) {
-        if (ch === '"') { inQuotes = !inQuotes; }
-        else if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; }
-        else { current += ch; }
-      }
-      cols.push(current.trim());
-
-      const ward = cols[wardIdx]?.trim();
-      const section = cols[sectionIdx]?.trim();
-      if (!ward || !section) continue;
-
-      const key = `${ward}-${section}`;
+    for (const row of allRows) {
+      const key = row.ward_section || `${row.ward}-${row.section}`;
       if (!zones[key]) {
         zones[key] = {
-          east: cols[eastIdx]?.trim() || '',
-          west: cols[westIdx]?.trim() || '',
-          north: cols[northIdx]?.trim() || '',
-          south: cols[southIdx]?.trim() || '',
+          east: row.east_block || '',
+          west: row.west_block || '',
+          north: row.north_block || '',
+          south: row.south_block || '',
         };
       }
     }
