@@ -54,7 +54,7 @@ export default function ZoneEditor() {
     Promise.all([
       fetch('/data/street-cleaning-zones-2026.geojson').then(r => r.json()),
       fetch('/api/admin/zone-csv-data').then(r => r.ok ? r.json() : {}),
-      fetch('/api/admin/save-zone-geometry').then(r => r.ok ? r.json() : {}),
+      fetch('/api/admin/zone-edits').then(r => r.ok ? r.json() : {}),
     ]).then(([geojson, csv, edits]) => {
       const editCount = Object.keys(edits || {}).length;
       for (const f of geojson.features) {
@@ -71,7 +71,7 @@ export default function ZoneEditor() {
       }
       setZoneData(zones);
       setCsvData(csv || {});
-      setStatusMsg(`Loaded ${geojson.features.length} zones` + (editCount ? ` (${editCount} edits)` : ''));
+      setStatusMsg(`Loaded ${geojson.features.length} zones` + (editCount ? ` (${editCount} manual edits)` : ''));
     }).catch(err => setStatusMsg(`Error: ${err.message}`));
   }, []);
 
@@ -378,9 +378,13 @@ export default function ZoneEditor() {
     }
 
     editGroup.addTo(map);
-    editGroup.eachLayer((layer: any) => {
-      if (layer.editing) layer.editing.enable();
-    });
+
+    // Re-enable editing - need small delay for leaflet-draw to attach
+    setTimeout(() => {
+      editGroup.eachLayer((layer: any) => {
+        if (layer.editing) layer.editing.enable();
+      });
+    }, 100);
 
     editingLayerRef.current = editGroup;
     setStatusMsg(`Simplified: ${beforePts} → ${afterPts} vertices`);
