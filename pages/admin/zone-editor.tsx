@@ -187,24 +187,8 @@ export default function ZoneEditor() {
     const editGroup = new L.FeatureGroup();
     const geom = feature.geometry;
 
-    // Simplify a ring: keep every Nth point to reduce handles
-    const simplifyRing = (ring: number[][]): number[][] => {
-      if (ring.length <= 8) return ring;
-      // Keep ~15-20 points max
-      const target = Math.min(20, Math.max(8, Math.floor(ring.length / 5)));
-      const step = Math.max(1, Math.floor(ring.length / target));
-      const result: number[][] = [];
-      for (let i = 0; i < ring.length - 1; i += step) {
-        result.push(ring[i]);
-      }
-      // Always include last point to close the ring
-      result.push(ring[ring.length - 1]);
-      return result;
-    };
-
     const addPolygon = (coords: number[][][]) => {
-      const simplified = coords.map(ring => simplifyRing(ring));
-      const latlngs = simplified.map((ring: number[][]) =>
+      const latlngs = coords.map((ring: number[][]) =>
         ring.map((c: number[]) => [c[1], c[0]] as [number, number])
       );
       const poly = L.polygon(latlngs, {
@@ -390,7 +374,46 @@ export default function ZoneEditor() {
     }
   };
 
-  // Simplify removed — was causing data loss
+  // Confirm: mark zone as correct without changing geometry
+  const confirmZone = async () => {
+    if (!selectedZone) return;
+    setSaving(true);
+    setStatusMsg('Confirming...');
+
+    try {
+      const feature = zoneData[selectedZone];
+      if (!feature) throw new Error('Zone not found');
+
+      const ward = feature.properties.ward;
+      const section = feature.properties.section;
+
+      // Save current geometry as-is to Supabase (ensures DB matches what's on screen)
+      const res = await fetch('/api/admin/save-zone-geometry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ward, section, geometry: feature.geometry }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Confirm failed');
+
+      // Update local state to show as confirmed
+      const updatedFeature = { ...feature };
+      updatedFeature.properties = { ...updatedFeature.properties, source: 'manual_edit' };
+      const newZoneData = { ...zoneData, [selectedZone]: updatedFeature };
+      setZoneData(newZoneData);
+      setGeojsonData({ type: 'FeatureCollection', features: Object.values(newZoneData) });
+
+      setStatusMsg(`Confirmed ${ward}-${section}`);
+      if (LRef.current && mapInstanceRef.current) {
+        renderZones(LRef.current, mapInstanceRef.current);
+      }
+    } catch (err: any) {
+      setStatusMsg(`Error: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const selected = selectedZone ? zoneData[selectedZone] : null;
   const csvKey = selectedZone?.replace('chi-sc-', '') || '';
@@ -473,20 +496,29 @@ export default function ZoneEditor() {
               {/* Edit buttons */}
               <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {!editMode ? (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={startEdit} style={{
-                      padding: '10px 20px', background: '#6366f1', color: 'white',
-                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
-                      fontWeight: 'bold', flex: 1
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={startEdit} style={{
+                        padding: '10px 20px', background: '#6366f1', color: 'white',
+                        border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
+                        fontWeight: 'bold', flex: 1
+                      }}>
+                        Edit Polygon
+                      </button>
+                      <button onClick={undoEdit} disabled={saving} style={{
+                        padding: '10px 20px', background: '#d97706', color: 'white',
+                        border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
+                        fontWeight: 'bold', flex: 1, opacity: saving ? 0.5 : 1,
+                      }}>
+                        {saving ? 'Restoring...' : 'Undo Edit'}
+                      </button>
+                    </div>
+                    <button onClick={confirmZone} disabled={saving} style={{
+                      padding: '8px 16px', background: '#059669', color: 'white',
+                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px',
+                      fontWeight: 'bold', width: '100%', opacity: saving ? 0.5 : 1,
                     }}>
-                      Edit Polygon
-                    </button>
-                    <button onClick={undoEdit} disabled={saving} style={{
-                      padding: '10px 20px', background: '#d97706', color: 'white',
-                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
-                      fontWeight: 'bold', flex: 1, opacity: saving ? 0.5 : 1,
-                    }}>
-                      {saving ? 'Restoring...' : 'Undo Edit'}
+                      {saving ? 'Confirming...' : 'Confirm Zone is Correct'}
                     </button>
                   </div>
                 ) : (
