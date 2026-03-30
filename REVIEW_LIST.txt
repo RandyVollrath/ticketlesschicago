@@ -1,3 +1,35 @@
+CURRENT STATUS — ZONES STILL NEEDING WORK
+==========================================
+Updated: auto-loop pass
+
+REMAINING OVERLAPS (6 pairs):
+  25-10 ↔ 25-8/25-9/25-11: 28-40% — 25-10 is a thin strip (Canal to Blue Island, 14th Pl to Viaduct)
+    that cuts across ward 25 zones. 2025 data had wrong polygon for 25-10. Using grid rectangle.
+    NEEDS MANUAL VERIFICATION of correct boundaries.
+  
+  26-14 ↔ 36-10: 9% — new zone grid rectangle slightly overlaps ward 36
+  26-16 ↔ 36-9: 8% — new zone grid rectangle slightly overlaps ward 36
+  36-13 ↔ 36-16: 8% — new zone 36-16 slightly overlaps trimmed 36-13
+
+COVERAGE GAP: ~3% of Chicago
+  Mainly thin slivers between zones where grid math doesn't perfectly align with streets.
+
+ZONE ACCURACY:
+  320 zones: VERIFIED (3+ of 4 boundaries match 2025 polygon within tolerance)
+  499 zones: APPROXIMATE (using 2025 polygon, 1-2 boundaries may differ)
+  8 zones: NEW (grid rectangles, no 2025 equivalent)  
+  8 zones: UNVERIFIED (CSV unparseable, using 2025 polygon as fallback)
+
+WHAT I CAN'T FIX AUTOMATICALLY:
+  - Zones with diagonal street boundaries (Archer, Milwaukee, Kennedy, Elston, etc.)
+  - Zones where the CSV grid numbers might be typos that I can't detect
+  - The 499 "approximate" zones where 1-2 boundaries changed from 2025
+  
+  The 499 approximate zones are the biggest risk. They use the 2025 polygon which
+  tiles perfectly (no overlaps), but some boundaries may have shifted. Without the
+  official 2026 city shapefile, I can't know which ones changed.
+
+
 ZONE REVIEW LIST — PLEASE CHECK THESE
 ==========================================================================================
 Total zones: 835
