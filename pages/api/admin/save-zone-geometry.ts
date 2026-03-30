@@ -35,25 +35,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { ward, section, geometry } = req.body;
-    if (!ward || !section || !geometry) {
-      return res.status(400).json({ error: 'Missing ward, section, or geometry' });
+    const { ward, section, geometry, confirmed } = req.body;
+    if (!ward || !section) {
+      return res.status(400).json({ error: 'Missing ward or section' });
     }
 
     const wardSection = `${ward}-${section}`;
 
-    // 1. Update geometry in street_cleaning_schedule
-    const { error: schedError } = await supabase
-      .from('street_cleaning_schedule')
-      .update({ geom: geometry, geom_simplified: geometry })
-      .eq('ward_section', wardSection);
+    if (geometry) {
+      // Update geometry in street_cleaning_schedule
+      const { error: schedError } = await supabase
+        .from('street_cleaning_schedule')
+        .update({ geom: geometry, geom_simplified: geometry })
+        .eq('ward_section', wardSection);
 
-    if (schedError) {
-      console.warn(`Schedule update for ${wardSection}:`, schedError.message);
+      if (schedError) {
+        console.warn(`Schedule update for ${wardSection}:`, schedError.message);
+      }
     }
 
-    // 2. Store the edit in zone_geometry_edits for persistence
-    // Try upsert - if table doesn't exist, just skip
+    // Store confirmation/edit metadata
     try {
       await supabase
         .from('zone_geometry_edits')
@@ -61,14 +62,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ward_section: wardSection,
           ward,
           section,
-          geometry,
+          geometry: geometry || null,
+          confirmed: confirmed || false,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'ward_section' });
     } catch {
-      // Table might not exist - that's ok, schedule table was updated
+      // Table might not exist - that's ok
     }
 
-    res.status(200).json({ success: true, zone: wardSection });
+    res.status(200).json({ success: true, zone: wardSection, confirmed: !!confirmed });
   } catch (err: any) {
     console.error('Save zone error:', err);
     res.status(500).json({ error: err.message });
