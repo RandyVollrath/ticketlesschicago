@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
+import dynamic from 'next/dynamic'
 import { getHighRiskWardData } from '../lib/high-risk-wards'
 import Footer from '../components/Footer'
 import MobileNav from '../components/MobileNav'
+
+const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMap'), {
+  ssr: false,
+  loading: () => <div style={{ height: '500px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6', borderRadius: '8px', color: '#6b7280' }}>Loading zone map...</div>
+})
 
 const GEOAPIFY_KEY = process.env.NEXT_PUBLIC_GEOAPIFY_KEY || ''
 
@@ -54,10 +60,48 @@ export default function CheckYourStreet() {
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [zoneMapData, setZoneMapData] = useState<any[]>([])
+  const [mapLoading, setMapLoading] = useState(true)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const suggestionsRef = useRef<HTMLDivElement>(null)
+
+  // Load zone map data: geometry from static GeoJSON + schedule from API
+  useEffect(() => {
+    Promise.all([
+      fetch('/data/street-cleaning-zones-2026.geojson').then(r => r.ok ? r.json() : null),
+      fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null),
+    ]).then(([geojson, scheduleResult]) => {
+      if (!geojson?.features) return
+
+      // Build schedule lookup
+      const schedMap = new Map<string, any>()
+      if (scheduleResult?.data) {
+        for (const z of scheduleResult.data) {
+          schedMap.set(`${z.ward}-${z.section}`, z)
+        }
+      }
+
+      // Merge geometry with schedule status
+      const features = geojson.features.map((f: any) => {
+        const key = `${f.properties.ward}-${f.properties.section}`
+        const sched = schedMap.get(key)
+        return {
+          type: 'Feature' as const,
+          geometry: f.geometry,
+          properties: {
+            id: key,
+            ward: f.properties.ward,
+            section: f.properties.section,
+            cleaningStatus: sched?.cleaningStatus || 'none',
+            nextCleaningDateISO: sched?.nextCleaningDateISO || null,
+          }
+        }
+      })
+      setZoneMapData(features)
+    }).catch(() => {}).finally(() => setMapLoading(false))
+  }, [])
 
   // Geoapify autocomplete fetcher
   const fetchSuggestions = useCallback(async (text: string) => {
@@ -555,6 +599,38 @@ export default function CheckYourStreet() {
               </div>
             )}
           </form>
+        </div>
+      </section>
+
+      {/* Zone Map */}
+      <section style={{ padding: '24px 32px 0', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{
+          backgroundColor: 'white',
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: '16px',
+          overflow: 'hidden',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        }}>
+          <div style={{ padding: '16px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>
+              Street Cleaning Zones — All Wards
+            </h2>
+            <p style={{ fontSize: '13px', color: COLORS.slate, margin: '4px 0 0' }}>
+              Click any zone to see its next cleaning date. {searchResult?.ward && `Your zone (Ward ${searchResult.ward}, Section ${searchResult.section}) is highlighted.`}
+            </p>
+          </div>
+          {mapLoading ? (
+            <div style={{ height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.slate }}>
+              Loading zone map...
+            </div>
+          ) : (
+            <div style={{ height: '500px' }}>
+              <StreetCleaningMap
+                data={zoneMapData}
+                triggerPopup={searchResult?.ward && searchResult?.section ? { ward: searchResult.ward, section: searchResult.section } : null}
+              />
+            </div>
+          )}
         </div>
       </section>
 

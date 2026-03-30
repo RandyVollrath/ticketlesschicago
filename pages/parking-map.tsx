@@ -48,25 +48,41 @@ export default function ParkingMapPage() {
   useEffect(() => {
     const fetchMapData = async () => {
       try {
-        const response = await fetch('/api/get-street-cleaning-data')
-        if (response.ok) {
-          const result = await response.json()
-          
-          // Transform the data to GeoJSON Feature format expected by the map
-          const transformedData = result.data?.map((zone: any) => ({
-            type: 'Feature',
-            geometry: zone.geom_simplified,
-            properties: {
-              id: `${zone.ward}-${zone.section}`,
-              ward: zone.ward,
-              section: zone.section,
-              cleaningStatus: zone.cleaningStatus,
-              nextCleaningDateISO: zone.nextCleaningDateISO
+        // Load geometry from static file + schedule from API in parallel
+        const [geojsonRes, scheduleRes] = await Promise.all([
+          fetch('/data/street-cleaning-zones-2026.geojson'),
+          fetch('/api/get-street-cleaning-data'),
+        ])
+
+        const geojson = geojsonRes.ok ? await geojsonRes.json() : null
+        const scheduleResult = scheduleRes.ok ? await scheduleRes.json() : null
+
+        if (geojson?.features) {
+          const schedMap = new Map()
+          if (scheduleResult?.data) {
+            for (const z of scheduleResult.data) {
+              schedMap.set(`${z.ward}-${z.section}`, z)
             }
-          })) || []
-          
-          console.log('Transformed map data:', transformedData.length, 'features')
-          setMapData(transformedData)
+          }
+
+          const features = geojson.features.map((f: any) => {
+            const key = `${f.properties.ward}-${f.properties.section}`
+            const sched = schedMap.get(key)
+            return {
+              type: 'Feature',
+              geometry: f.geometry,
+              properties: {
+                id: key,
+                ward: f.properties.ward,
+                section: f.properties.section,
+                cleaningStatus: sched?.cleaningStatus || 'none',
+                nextCleaningDateISO: sched?.nextCleaningDateISO || null,
+              }
+            }
+          })
+
+          console.log('Map data loaded:', features.length, 'zones')
+          setMapData(features)
         }
       } catch (error) {
         console.error('Error fetching map data:', error)
