@@ -70,7 +70,7 @@ export default function CheckYourStreet() {
   // Load zone map data: geometry from static GeoJSON + schedule from API
   useEffect(() => {
     Promise.all([
-      fetch('/data/street-cleaning-zones-2026.geojson').then(r => r.ok ? r.json() : null),
+      fetch('/api/zone-geojson').then(r => r.ok ? r.json() : null),
       fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null),
     ]).then(([geojson, scheduleResult]) => {
       if (!geojson?.features) return
@@ -862,7 +862,7 @@ export default function CheckYourStreet() {
                 ? `${Math.min(...blockStats.by_year.map((y: any) => y.year))}-${Math.max(...blockStats.by_year.map((y: any) => y.year))}`
                 : '2019-2024';
               const avgFines = blockStats.avg_fines_per_year ? Math.round(blockStats.avg_fines_per_year) : 0;
-              const potentialSavings = Math.round(avgFines * 0.685);
+              const potentialSavings = Math.round(avgFines * 0.68);
 
               return (
                 <>
@@ -944,7 +944,7 @@ export default function CheckYourStreet() {
                             <div style={{ fontSize: '15px', color: 'white', fontWeight: '600', lineHeight: '1.4' }}>
                               {avgFines >= 200
                                 ? <>This block averages <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines. We could save you up to <span style={{ color: '#6EE7B7' }}>${potentialSavings.toLocaleString()}/yr</span>.</>
-                                : <>68.5% of contested tickets get dismissed. At <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines, one win pays for itself.</>
+                                : <>68% of contested tickets get dismissed. At <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines, one win pays for itself.</>
                               }
                             </div>
                             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
@@ -1093,7 +1093,7 @@ export default function CheckYourStreet() {
           <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', margin: '0 0 8px', fontFamily: '"Space Grotesk", sans-serif' }}>
             Never worry about parking tickets again
           </h3>
-          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 68.5% get dismissed. $49/yr.</p>
+          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 68% get dismissed. $49/yr.</p>
           <button onClick={() => router.push('/get-started')} style={{
             backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '10px',
             padding: '12px 24px', fontSize: '15px', fontWeight: '700', cursor: 'pointer',

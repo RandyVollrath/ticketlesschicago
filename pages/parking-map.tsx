@@ -50,7 +50,7 @@ export default function ParkingMapPage() {
       try {
         // Load geometry from static file + schedule from API in parallel
         const [geojsonRes, scheduleRes] = await Promise.all([
-          fetch('/data/street-cleaning-zones-2026.geojson'),
+          fetch('/api/zone-geojson'),
           fetch('/api/get-street-cleaning-data'),
         ])
 
