@@ -55,21 +55,13 @@ export default function ZoneEditor() {
   // Load data from static file + Supabase overrides + CSV boundaries + ward boundaries
   useEffect(() => {
     Promise.all([
-      fetch('/data/street-cleaning-zones-2026.geojson').then(r => r.json()),
+      fetch('/api/zone-geojson').then(r => r.json()),
       fetch('/api/admin/zone-csv-data').then(r => r.ok ? r.json() : {}),
-      fetch('/api/admin/zone-edits').then(r => r.ok ? r.json() : {}),
       fetch('/data/chicago-ward-boundaries.geojson').then(r => r.ok ? r.json() : null),
-    ]).then(([geojson, csv, edits, wardGeoJSON]) => {
-      const editCount = Object.keys(edits || {}).length;
-      for (const f of geojson.features) {
-        const ws = `${f.properties.ward}-${f.properties.section}`;
-        if (edits && edits[ws]) {
-          f.geometry = edits[ws];
-          f.properties.source = 'manual_edit';
-        }
-      }
+    ]).then(([geojson, csv, wardGeoJSON]) => {
       setGeojsonData(geojson);
       const zones: Record<string, ZoneFeature> = {};
+      const editCount = geojson.features.filter((f: any) => f.properties.source === 'manual_edit').length;
       for (const f of geojson.features) {
         zones[f.properties.id] = f;
       }
