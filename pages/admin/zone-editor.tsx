@@ -34,6 +34,7 @@ export default function ZoneEditor() {
   const [filter, setFilter] = useState<string>('all');
   const [showWardBoundaries, setShowWardBoundaries] = useState(true);
   const wardLayerRef = useRef<any>(null);
+  const wardLabelsRef = useRef<any>(null);
   const editingLayerRef = useRef<any>(null);
   const LRef = useRef<any>(null);
 
@@ -123,6 +124,25 @@ export default function ZoneEditor() {
         wardLayer.addTo(map);
         wardLayer.setZIndex(1000);
         wardLayerRef.current = wardLayer;
+
+        // Add ward number labels at polygon centers
+        const labelGroup = L.layerGroup();
+        for (const feature of wardGJ.features) {
+          const bounds = L.geoJSON(feature.geometry).getBounds();
+          const center = bounds.getCenter();
+          const label = L.marker(center, {
+            icon: L.divIcon({
+              className: 'ward-label',
+              html: `<span>${feature.properties.ward}</span>`,
+              iconSize: [30, 20],
+              iconAnchor: [15, 10],
+            }),
+            interactive: false,
+          });
+          labelGroup.addLayer(label);
+        }
+        labelGroup.addTo(map);
+        wardLabelsRef.current = labelGroup;
       }
     };
 
@@ -191,14 +211,16 @@ export default function ZoneEditor() {
     renderZones(LRef.current, mapInstanceRef.current);
   }, [filter, selectedZone, renderZones]);
 
-  // Toggle ward boundaries visibility
+  // Toggle ward boundaries + labels visibility
   useEffect(() => {
-    if (!wardLayerRef.current || !mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+    if (!map) return;
     if (showWardBoundaries) {
-      wardLayerRef.current.addTo(mapInstanceRef.current);
-      wardLayerRef.current.bringToFront();
+      if (wardLayerRef.current) { wardLayerRef.current.addTo(map); wardLayerRef.current.bringToFront(); }
+      if (wardLabelsRef.current) wardLabelsRef.current.addTo(map);
     } else {
-      mapInstanceRef.current.removeLayer(wardLayerRef.current);
+      if (wardLayerRef.current) map.removeLayer(wardLayerRef.current);
+      if (wardLabelsRef.current) map.removeLayer(wardLabelsRef.current);
     }
   }, [showWardBoundaries]);
 
@@ -675,6 +697,18 @@ export default function ZoneEditor() {
           border-radius: 3px !important;
         }
         .ward-tooltip::before { display: none !important; }
+        .ward-label {
+          background: none !important;
+          border: none !important;
+        }
+        .ward-label span {
+          color: #ff4444;
+          font-size: 13px;
+          font-weight: 900;
+          text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff,
+                       0 -1px 0 #fff, 0 1px 0 #fff, -1px 0 0 #fff, 1px 0 0 #fff;
+          pointer-events: none;
+        }
         .leaflet-interactive { cursor: pointer !important; }
       `}</style>
     </>
