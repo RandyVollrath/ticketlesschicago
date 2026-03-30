@@ -153,11 +153,30 @@ export default function ZoneEditor() {
     renderZones(LRef.current, mapInstanceRef.current);
   }, [filter, selectedZone, renderZones]);
 
+  // Load leaflet-draw plugin
+  const loadDrawPlugin = async () => {
+    if ((window as any).__leafletDrawLoaded) return;
+    // CSS
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css';
+    document.head.appendChild(css);
+    // JS
+    await new Promise<void>((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js';
+      script.onload = () => { (window as any).__leafletDrawLoaded = true; resolve(); };
+      document.head.appendChild(script);
+    });
+  };
+
   // Start editing
   const startEdit = async () => {
     if (!selectedZone || !mapInstanceRef.current) return;
     const L = LRef.current || (await import('leaflet')).default;
     const map = mapInstanceRef.current;
+
+    await loadDrawPlugin();
 
     const displayLayer = layersRef.current.get(selectedZone);
     if (displayLayer) map.removeLayer(displayLayer);
@@ -165,50 +184,34 @@ export default function ZoneEditor() {
     const feature = zoneData[selectedZone];
     if (!feature) return;
 
-    // Convert MultiPolygon to individual polygon layers with editing enabled
-    const editGroup = L.featureGroup();
+    const editGroup = new L.FeatureGroup();
     const geom = feature.geometry;
 
-    if (geom.type === 'MultiPolygon') {
-      for (const polyCoords of geom.coordinates) {
-        // polyCoords is [exteriorRing, ...holes]
-        // Convert [lng, lat] to [lat, lng] for Leaflet
-        const latlngs = polyCoords.map((ring: number[][]) =>
-          ring.map((c: number[]) => L.latLng(c[1], c[0]))
-        );
-        const poly = L.polygon(latlngs, {
-          color: '#ff00ff', weight: 3, fillColor: '#ff00ff', fillOpacity: 0.3,
-        });
-        poly.addTo(editGroup);
-        // Enable editing AFTER adding to map
-        editGroup.addTo(map);
-        if (poly.editing) poly.editing.enable();
-      }
-    } else if (geom.type === 'Polygon') {
-      const latlngs = geom.coordinates.map((ring: number[][]) =>
-        ring.map((c: number[]) => L.latLng(c[1], c[0]))
+    const addPolygon = (coords: number[][][]) => {
+      const latlngs = coords.map((ring: number[][]) =>
+        ring.map((c: number[]) => [c[1], c[0]] as [number, number])
       );
       const poly = L.polygon(latlngs, {
         color: '#ff00ff', weight: 3, fillColor: '#ff00ff', fillOpacity: 0.3,
       });
-      poly.addTo(editGroup);
-      editGroup.addTo(map);
-      if (poly.editing) poly.editing.enable();
+      editGroup.addLayer(poly);
+    };
+
+    if (geom.type === 'MultiPolygon') {
+      for (const polyCoords of geom.coordinates) addPolygon(polyCoords);
+    } else if (geom.type === 'Polygon') {
+      addPolygon(geom.coordinates);
     }
 
-    if (!editGroup.getLayers().length) {
-      // Fallback: just use geoJSON layer
-      const editLayer = L.geoJSON(feature.geometry, {
-        style: { color: '#ff00ff', weight: 3, fillColor: '#ff00ff', fillOpacity: 0.3 },
-      });
-      editLayer.addTo(map);
-      editLayer.eachLayer((l: any) => { if (l.editing) l.editing.enable(); });
-      editingLayerRef.current = editLayer;
-    } else {
-      editingLayerRef.current = editGroup;
-    }
+    editGroup.addTo(map);
 
-    map.fitBounds(editingLayerRef.current.getBounds().pad(0.3));
+    // Enable editing on each layer via leaflet-draw
+    editGroup.eachLayer((layer: any) => {
+      if (layer.editing) layer.editing.enable();
+    });
+
+    editingLayerRef.current = editGroup;
+    map.fitBounds(editGroup.getBounds().pad(0.3));
     setEditMode(true);
     setStatusMsg('Drag the square handles to reshape. Click Save when done.');
   };
