@@ -263,8 +263,8 @@ export default function ZoneEditor() {
     const simplifyRing = (ring: number[][]): number[][] => {
       if (ring.length <= 12) return ring;
 
-      // Target ~15-25 vertices
-      const target = Math.min(25, Math.max(12, Math.ceil(ring.length / 4)));
+      // Target ~8-12 vertices
+      const target = Math.min(12, Math.max(6, Math.ceil(ring.length / 10)));
 
       // Score each point by how much the direction changes there
       const angles: { idx: number; angle: number }[] = [];
@@ -521,11 +521,11 @@ export default function ZoneEditor() {
       const ward = feature.properties.ward;
       const section = feature.properties.section;
 
-      // Save current geometry as-is to Supabase (ensures DB matches what's on screen)
+      // Save confirmation to Supabase (geometry + confirmed flag)
       const res = await fetch('/api/admin/save-zone-geometry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ward, section, geometry: feature.geometry }),
+        body: JSON.stringify({ ward, section, geometry: feature.geometry, confirmed: true }),
       });
 
       const result = await res.json();
