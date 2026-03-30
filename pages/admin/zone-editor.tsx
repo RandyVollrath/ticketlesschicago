@@ -153,7 +153,7 @@ export default function ZoneEditor() {
     renderZones(LRef.current, mapInstanceRef.current);
   }, [filter, selectedZone, renderZones]);
 
-  // Start editing — use native Leaflet polygon editing (no plugin needed)
+  // Start editing
   const startEdit = async () => {
     if (!selectedZone || !mapInstanceRef.current) return;
     const L = LRef.current || (await import('leaflet')).default;
@@ -165,24 +165,52 @@ export default function ZoneEditor() {
     const feature = zoneData[selectedZone];
     if (!feature) return;
 
-    // Create editable polygon layer
-    const editLayer = L.geoJSON(feature.geometry, {
-      style: { color: '#ff00ff', weight: 3, fillColor: '#ff00ff', fillOpacity: 0.3 },
-      onEachFeature: (_: any, layer: any) => {
-        if (layer.editing) {
-          layer.editing.enable();
-        }
+    // Convert MultiPolygon to individual polygon layers with editing enabled
+    const editGroup = L.featureGroup();
+    const geom = feature.geometry;
+
+    if (geom.type === 'MultiPolygon') {
+      for (const polyCoords of geom.coordinates) {
+        // polyCoords is [exteriorRing, ...holes]
+        // Convert [lng, lat] to [lat, lng] for Leaflet
+        const latlngs = polyCoords.map((ring: number[][]) =>
+          ring.map((c: number[]) => L.latLng(c[1], c[0]))
+        );
+        const poly = L.polygon(latlngs, {
+          color: '#ff00ff', weight: 3, fillColor: '#ff00ff', fillOpacity: 0.3,
+        });
+        poly.addTo(editGroup);
+        // Enable editing AFTER adding to map
+        editGroup.addTo(map);
+        if (poly.editing) poly.editing.enable();
       }
-    });
+    } else if (geom.type === 'Polygon') {
+      const latlngs = geom.coordinates.map((ring: number[][]) =>
+        ring.map((c: number[]) => L.latLng(c[1], c[0]))
+      );
+      const poly = L.polygon(latlngs, {
+        color: '#ff00ff', weight: 3, fillColor: '#ff00ff', fillOpacity: 0.3,
+      });
+      poly.addTo(editGroup);
+      editGroup.addTo(map);
+      if (poly.editing) poly.editing.enable();
+    }
 
-    editLayer.addTo(map);
+    if (!editGroup.getLayers().length) {
+      // Fallback: just use geoJSON layer
+      const editLayer = L.geoJSON(feature.geometry, {
+        style: { color: '#ff00ff', weight: 3, fillColor: '#ff00ff', fillOpacity: 0.3 },
+      });
+      editLayer.addTo(map);
+      editLayer.eachLayer((l: any) => { if (l.editing) l.editing.enable(); });
+      editingLayerRef.current = editLayer;
+    } else {
+      editingLayerRef.current = editGroup;
+    }
 
-    // Zoom to the zone
-    map.fitBounds(editLayer.getBounds().pad(0.3));
-
-    editingLayerRef.current = editLayer;
+    map.fitBounds(editingLayerRef.current.getBounds().pad(0.3));
     setEditMode(true);
-    setStatusMsg('Drag vertices to reshape. Click Save when done.');
+    setStatusMsg('Drag the square handles to reshape. Click Save when done.');
   };
 
   // Save
@@ -192,22 +220,31 @@ export default function ZoneEditor() {
     setStatusMsg('Saving...');
 
     try {
-      const editedGeoJSON = editingLayerRef.current.toGeoJSON();
-      let newGeometry: any;
+      // Collect all polygon geometries from the edit layer
+      const allCoords: any[] = [];
+      const collectLayer = (layer: any) => {
+        if (layer.toGeoJSON) {
+          const gj = layer.toGeoJSON();
+          if (gj.type === 'Feature') {
+            if (gj.geometry.type === 'Polygon') allCoords.push(gj.geometry.coordinates);
+            else if (gj.geometry.type === 'MultiPolygon') allCoords.push(...gj.geometry.coordinates);
+          } else if (gj.type === 'FeatureCollection') {
+            for (const f of gj.features) {
+              if (f.geometry.type === 'Polygon') allCoords.push(f.geometry.coordinates);
+              else if (f.geometry.type === 'MultiPolygon') allCoords.push(...f.geometry.coordinates);
+            }
+          }
+        }
+      };
 
-      if (editedGeoJSON.type === 'FeatureCollection') {
-        const allCoords: any[] = [];
-        for (const f of editedGeoJSON.features) {
-          if (f.geometry.type === 'Polygon') allCoords.push(f.geometry.coordinates);
-          else if (f.geometry.type === 'MultiPolygon') allCoords.push(...f.geometry.coordinates);
-        }
-        newGeometry = { type: 'MultiPolygon', coordinates: allCoords };
-      } else if (editedGeoJSON.type === 'Feature') {
-        newGeometry = editedGeoJSON.geometry;
-        if (newGeometry.type === 'Polygon') {
-          newGeometry = { type: 'MultiPolygon', coordinates: [newGeometry.coordinates] };
-        }
+      if (editingLayerRef.current.eachLayer) {
+        editingLayerRef.current.eachLayer(collectLayer);
+      } else {
+        collectLayer(editingLayerRef.current);
       }
+
+      if (!allCoords.length) throw new Error('No polygon data found');
+      const newGeometry = { type: 'MultiPolygon' as const, coordinates: allCoords };
 
       const ward = zoneData[selectedZone].properties.ward;
       const section = zoneData[selectedZone].properties.section;
