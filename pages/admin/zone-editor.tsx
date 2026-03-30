@@ -53,7 +53,17 @@ export default function ZoneEditor() {
     Promise.all([
       fetch('/data/street-cleaning-zones-2026.geojson').then(r => r.json()),
       fetch('/api/admin/zone-csv-data').then(r => r.ok ? r.json() : null),
-    ]).then(([geojson, csv]) => {
+      fetch('/api/admin/save-zone-geometry').then(r => r.ok ? r.json() : {}),
+    ]).then(([geojson, csv, edits]) => {
+      // Apply saved edits from Supabase on top of static GeoJSON
+      const editCount = Object.keys(edits || {}).length;
+      for (const f of geojson.features) {
+        const ws = `${f.properties.ward}-${f.properties.section}`;
+        if (edits && edits[ws]) {
+          f.geometry = edits[ws];
+          f.properties.source = 'manual_edit';
+        }
+      }
       setGeojsonData(geojson);
       const zones: Record<string, ZoneFeature> = {};
       for (const f of geojson.features) {
@@ -61,7 +71,7 @@ export default function ZoneEditor() {
       }
       setZoneData(zones);
       if (csv) setCsvData(csv);
-      setStatusMsg(`Loaded ${geojson.features.length} zones`);
+      setStatusMsg(`Loaded ${geojson.features.length} zones` + (editCount ? ` (${editCount} manual edits applied)` : ''));
     }).catch(err => setStatusMsg(`Error: ${err.message}`));
   }, []);
 
