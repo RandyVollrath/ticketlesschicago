@@ -236,21 +236,41 @@ export default function ZoneEditor() {
     const editGroup = new L.FeatureGroup();
     const geom = feature.geometry;
 
-    // Reduce vertices for easier editing — keep ~15-20 handles
-    const simplifyForEdit = (ring: number[][]): number[][] => {
-      if (ring.length <= 10) return ring;
-      const target = Math.min(20, Math.max(8, Math.floor(ring.length / 5)));
-      const step = Math.max(1, Math.floor((ring.length - 1) / target));
-      const result: number[][] = [ring[0]];
-      for (let i = step; i < ring.length - 1; i += step) {
-        result.push(ring[i]);
+    // Douglas-Peucker simplification: keeps shape-defining vertices,
+    // removes only points that don't significantly change the outline
+    const dpSimplify = (pts: number[][], tolerance: number): number[][] => {
+      if (pts.length <= 4) return pts;
+      let maxDist = 0, maxIdx = 0;
+      const [x1, y1] = pts[0];
+      const [x2, y2] = pts[pts.length - 1];
+      const len = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const [x, y] = pts[i];
+        const dist = len > 0 ? Math.abs((y2-y1)*x - (x2-x1)*y + x2*y1 - y2*x1) / len : 0;
+        if (dist > maxDist) { maxDist = dist; maxIdx = i; }
       }
-      result.push(ring[ring.length - 1]); // close ring
+      if (maxDist > tolerance) {
+        const left = dpSimplify(pts.slice(0, maxIdx + 1), tolerance);
+        const right = dpSimplify(pts.slice(maxIdx), tolerance);
+        return [...left.slice(0, -1), ...right];
+      }
+      return [pts[0], pts[pts.length - 1]];
+    };
+
+    const simplifyRing = (ring: number[][]): number[][] => {
+      if (ring.length <= 10) return ring;
+      // Use ~0.00005 tolerance (~5m) — keeps corners and bends, removes straight-line points
+      let result = dpSimplify(ring, 0.00005);
+      // Ensure minimum 4 points for a valid polygon and ring is closed
+      if (result.length < 4) result = ring; // fallback to original if too aggressive
+      if (result[0][0] !== result[result.length-1][0] || result[0][1] !== result[result.length-1][1]) {
+        result.push(result[0]);
+      }
       return result;
     };
 
     const addPolygon = (coords: number[][][]) => {
-      const simplified = coords.map(ring => simplifyForEdit(ring));
+      const simplified = coords.map(ring => simplifyRing(ring));
       const latlngs = simplified.map((ring: number[][]) =>
         ring.map((c: number[]) => [c[1], c[0]] as [number, number])
       );
