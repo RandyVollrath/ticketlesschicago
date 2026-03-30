@@ -328,45 +328,59 @@ export default function ZoneEditor() {
     setStatusMsg('Saving...');
 
     try {
-      // Disable editing first to finalize vertex positions
+      // Extract geometry WHILE editing is still active
+      const allCoords: any[] = [];
+
+      // Get coordinates from each polygon layer in the edit group
+      if (editingLayerRef.current.eachLayer) {
+        editingLayerRef.current.eachLayer((layer: any) => {
+          // Get latlngs directly from the layer (most reliable)
+          if (layer.getLatLngs) {
+            const latlngs = layer.getLatLngs();
+            // Convert back to GeoJSON [lng, lat] format
+            const convertRing = (ring: any[]): number[][] => {
+              return ring.map((ll: any) => {
+                if (ll.lng !== undefined) return [ll.lng, ll.lat];
+                if (Array.isArray(ll)) return convertRing(ll) as any;
+                return ll;
+              });
+            };
+
+            if (Array.isArray(latlngs[0]) && Array.isArray(latlngs[0][0])) {
+              // Has holes: [[exterior], [hole1], ...]
+              const rings = latlngs.map((ring: any) => {
+                const converted = convertRing(ring);
+                // Close ring
+                if (converted.length > 0 && (converted[0][0] !== converted[converted.length-1][0] || converted[0][1] !== converted[converted.length-1][1])) {
+                  converted.push([...converted[0]]);
+                }
+                return converted;
+              });
+              allCoords.push(rings);
+            } else {
+              // Simple polygon: [latlngs]
+              const converted = convertRing(latlngs[0] || latlngs);
+              if (converted.length > 0 && (converted[0][0] !== converted[converted.length-1][0] || converted[0][1] !== converted[converted.length-1][1])) {
+                converted.push([...converted[0]]);
+              }
+              allCoords.push([converted]);
+            }
+          }
+        });
+      }
+
+      // Now disable editing
       if (editingLayerRef.current.eachLayer) {
         editingLayerRef.current.eachLayer((layer: any) => {
           if (layer.editing) layer.editing.disable();
         });
       }
 
-      // Collect all polygon geometries
-      const allCoords: any[] = [];
-
-      // Try getting GeoJSON from the whole group first
-      try {
-        const groupGJ = editingLayerRef.current.toGeoJSON();
-        if (groupGJ.type === 'FeatureCollection') {
-          for (const f of groupGJ.features) {
-            if (f.geometry?.type === 'Polygon') allCoords.push(f.geometry.coordinates);
-            else if (f.geometry?.type === 'MultiPolygon') allCoords.push(...f.geometry.coordinates);
-          }
-        } else if (groupGJ.type === 'Feature') {
-          if (groupGJ.geometry?.type === 'Polygon') allCoords.push(groupGJ.geometry.coordinates);
-          else if (groupGJ.geometry?.type === 'MultiPolygon') allCoords.push(...groupGJ.geometry.coordinates);
-        }
-      } catch {
-        // Fallback: iterate layers individually
-        if (editingLayerRef.current.eachLayer) {
-          editingLayerRef.current.eachLayer((layer: any) => {
-            try {
-              const gj = layer.toGeoJSON();
-              if (gj?.type === 'Feature') {
-                if (gj.geometry?.type === 'Polygon') allCoords.push(gj.geometry.coordinates);
-                else if (gj.geometry?.type === 'MultiPolygon') allCoords.push(...gj.geometry.coordinates);
-              }
-            } catch {}
-          });
-        }
-      }
-
+      console.log('Zone editor: extracted', allCoords.length, 'polygons');
       if (!allCoords.length) throw new Error('No polygon data extracted. Try dragging a vertex first.');
+
       const newGeometry = { type: 'MultiPolygon' as const, coordinates: allCoords };
+      console.log('Zone editor: geometry has', JSON.stringify(newGeometry).length, 'chars');
 
       const ward = zoneData[selectedZone].properties.ward;
       const section = zoneData[selectedZone].properties.section;
