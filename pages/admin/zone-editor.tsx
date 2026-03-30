@@ -223,30 +223,44 @@ export default function ZoneEditor() {
     setStatusMsg('Saving...');
 
     try {
-      // Collect all polygon geometries from the edit layer
-      const allCoords: any[] = [];
-      const collectLayer = (layer: any) => {
-        if (layer.toGeoJSON) {
-          const gj = layer.toGeoJSON();
-          if (gj.type === 'Feature') {
-            if (gj.geometry.type === 'Polygon') allCoords.push(gj.geometry.coordinates);
-            else if (gj.geometry.type === 'MultiPolygon') allCoords.push(...gj.geometry.coordinates);
-          } else if (gj.type === 'FeatureCollection') {
-            for (const f of gj.features) {
-              if (f.geometry.type === 'Polygon') allCoords.push(f.geometry.coordinates);
-              else if (f.geometry.type === 'MultiPolygon') allCoords.push(...f.geometry.coordinates);
-            }
-          }
-        }
-      };
-
+      // Disable editing first to finalize vertex positions
       if (editingLayerRef.current.eachLayer) {
-        editingLayerRef.current.eachLayer(collectLayer);
-      } else {
-        collectLayer(editingLayerRef.current);
+        editingLayerRef.current.eachLayer((layer: any) => {
+          if (layer.editing) layer.editing.disable();
+        });
       }
 
-      if (!allCoords.length) throw new Error('No polygon data found');
+      // Collect all polygon geometries
+      const allCoords: any[] = [];
+
+      // Try getting GeoJSON from the whole group first
+      try {
+        const groupGJ = editingLayerRef.current.toGeoJSON();
+        if (groupGJ.type === 'FeatureCollection') {
+          for (const f of groupGJ.features) {
+            if (f.geometry?.type === 'Polygon') allCoords.push(f.geometry.coordinates);
+            else if (f.geometry?.type === 'MultiPolygon') allCoords.push(...f.geometry.coordinates);
+          }
+        } else if (groupGJ.type === 'Feature') {
+          if (groupGJ.geometry?.type === 'Polygon') allCoords.push(groupGJ.geometry.coordinates);
+          else if (groupGJ.geometry?.type === 'MultiPolygon') allCoords.push(...groupGJ.geometry.coordinates);
+        }
+      } catch {
+        // Fallback: iterate layers individually
+        if (editingLayerRef.current.eachLayer) {
+          editingLayerRef.current.eachLayer((layer: any) => {
+            try {
+              const gj = layer.toGeoJSON();
+              if (gj?.type === 'Feature') {
+                if (gj.geometry?.type === 'Polygon') allCoords.push(gj.geometry.coordinates);
+                else if (gj.geometry?.type === 'MultiPolygon') allCoords.push(...gj.geometry.coordinates);
+              }
+            } catch {}
+          });
+        }
+      }
+
+      if (!allCoords.length) throw new Error('No polygon data extracted. Try dragging a vertex first.');
       const newGeometry = { type: 'MultiPolygon' as const, coordinates: allCoords };
 
       const ward = zoneData[selectedZone].properties.ward;
