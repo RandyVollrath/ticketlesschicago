@@ -334,6 +334,62 @@ export default function ZoneEditor() {
     }
   };
 
+  // Undo: restore zone to original polygon from static GeoJSON file
+  const undoEdit = async () => {
+    if (!selectedZone) return;
+    setSaving(true);
+    setStatusMsg('Restoring original polygon...');
+
+    try {
+      const ward = selectedZone.replace('chi-sc-', '').split('-')[0];
+      const section = selectedZone.replace('chi-sc-', '').split('-').slice(1).join('-');
+
+      // Fetch the static GeoJSON to get the original polygon
+      const geojsonRes = await fetch('/data/street-cleaning-zones-2026.geojson');
+      const geojson = await geojsonRes.json();
+      const original = geojson.features.find(
+        (f: any) => f.properties.ward === ward && f.properties.section === section
+      );
+
+      if (!original) throw new Error('Original polygon not found');
+
+      // Save original back to Supabase
+      const res = await fetch('/api/admin/save-zone-geometry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ward, section, geometry: original.geometry }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Restore failed');
+
+      // Update local state
+      const updatedFeature = { ...zoneData[selectedZone] };
+      updatedFeature.geometry = original.geometry;
+      updatedFeature.properties = { ...updatedFeature.properties, source: original.properties.source };
+
+      const newZoneData = { ...zoneData, [selectedZone]: updatedFeature };
+      setZoneData(newZoneData);
+      setGeojsonData({ type: 'FeatureCollection', features: Object.values(newZoneData) });
+
+      // Cancel edit mode if active
+      if (editingLayerRef.current && mapInstanceRef.current) {
+        mapInstanceRef.current.removeLayer(editingLayerRef.current);
+        editingLayerRef.current = null;
+      }
+      setEditMode(false);
+      setStatusMsg(`Restored ${ward}-${section} to original`);
+
+      if (LRef.current && mapInstanceRef.current) {
+        renderZones(LRef.current, mapInstanceRef.current);
+      }
+    } catch (err: any) {
+      setStatusMsg(`Error: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Simplify removed — was causing data loss
 
   const selected = selectedZone ? zoneData[selectedZone] : null;
@@ -415,15 +471,24 @@ export default function ZoneEditor() {
               </div>
 
               {/* Edit buttons */}
-              <div style={{ marginTop: '14px', display: 'flex', gap: '8px' }}>
+              <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {!editMode ? (
-                  <button onClick={startEdit} style={{
-                    padding: '10px 20px', background: '#6366f1', color: 'white',
-                    border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
-                    fontWeight: 'bold', width: '100%'
-                  }}>
-                    Edit Polygon
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={startEdit} style={{
+                      padding: '10px 20px', background: '#6366f1', color: 'white',
+                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
+                      fontWeight: 'bold', flex: 1
+                    }}>
+                      Edit Polygon
+                    </button>
+                    <button onClick={undoEdit} disabled={saving} style={{
+                      padding: '10px 20px', background: '#d97706', color: 'white',
+                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px',
+                      fontWeight: 'bold', flex: 1, opacity: saving ? 0.5 : 1,
+                    }}>
+                      {saving ? 'Restoring...' : 'Undo Edit'}
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <button onClick={saveEdit} disabled={saving} style={{
