@@ -2,15 +2,15 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 
-// Use MyStreetCleaning database for street cleaning data
+// TicketlessAmerica database
+const TA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const TA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const taSupabase = TA_URL && TA_KEY ? createClient(TA_URL, TA_KEY) : null;
+
+// MSC database (fallback)
 const MSC_URL = process.env.MSC_SUPABASE_URL;
 const MSC_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
-
-if (!MSC_URL || !MSC_KEY) {
-  throw new Error('MyStreetCleaning database credentials not configured');
-}
-
-const mscSupabase = createClient(MSC_URL, MSC_KEY);
+const mscSupabase = MSC_URL && MSC_KEY ? createClient(MSC_URL, MSC_KEY) : null;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -18,49 +18,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Get today's date for status calculation
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString().split('T')[0];
-    
-    // Get ALL street cleaning zones with geometry - using same logic as MSC notification system
-    // Note: Supabase has a hard 1000 row limit, so we need to paginate
-    // Get first batch to check total count
-    const { data: firstBatch, error: allZonesError, count } = await mscSupabase
-      .from('street_cleaning_schedule')
-      .select('ward, section, geom_simplified', { count: 'exact' })
-      .not('geom_simplified', 'is', null)
-      .not('ward', 'is', null)
-      .not('section', 'is', null)
-      .range(0, 999);
 
-    if (allZonesError) {
-      return res.status(500).json({ error: 'Failed to load street cleaning zones' });
+    const db = taSupabase || mscSupabase;
+    if (!db) {
+      return res.status(500).json({ error: 'Database not configured' });
     }
 
-    // Fetch remaining batches if needed
-    let allZones = firstBatch || [];
-    if (count && count > 1000) {
-      const numBatches = Math.ceil((count - 1000) / 1000);
-      for (let i = 0; i < numBatches; i++) {
-        const start = 1000 + (i * 1000);
-        const end = start + 999;
-        const { data: batch } = await mscSupabase
-          .from('street_cleaning_schedule')
-          .select('ward, section, geom_simplified')
-          .not('geom_simplified', 'is', null)
-          .not('ward', 'is', null)
-          .not('section', 'is', null)
-          .range(start, end);
-        if (batch) {
-          allZones = allZones.concat(batch);
-        }
-      }
-    }
-
-    // Get future cleaning schedules for status calculation
-    // Also needs pagination since there could be >1000 future cleaning dates
-    const { data: firstScheduleBatch, error: scheduleError, count: scheduleCount } = await mscSupabase
+    // Lightweight query: just schedule data (no geometry)
+    // Geometry is served from static /data/street-cleaning-zones-2026.geojson
+    let rawScheduleData: any[] = [];
+    const { data: firstBatch, count } = await db
       .from('street_cleaning_schedule')
       .select('ward, section, cleaning_date', { count: 'exact' })
       .not('ward', 'is', null)
@@ -69,105 +39,62 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .order('cleaning_date', { ascending: true })
       .range(0, 999);
 
-    if (scheduleError) {
-      return res.status(500).json({ error: 'Failed to load street cleaning schedules' });
-    }
-
-    // Fetch remaining schedule batches if needed
-    let rawScheduleData = firstScheduleBatch || [];
-    if (scheduleCount && scheduleCount > 1000) {
-      const numBatches = Math.ceil((scheduleCount - 1000) / 1000);
-      for (let i = 0; i < numBatches; i++) {
-        const start = 1000 + (i * 1000);
-        const end = start + 999;
-        const { data: batch } = await mscSupabase
+    rawScheduleData = firstBatch || [];
+    if (count && count > 1000) {
+      for (let i = 1000; i < count; i += 1000) {
+        const { data: batch } = await db
           .from('street_cleaning_schedule')
           .select('ward, section, cleaning_date')
           .not('ward', 'is', null)
           .not('section', 'is', null)
           .gte('cleaning_date', todayStr)
           .order('cleaning_date', { ascending: true })
-          .range(start, end);
-        if (batch) {
-          rawScheduleData = rawScheduleData.concat(batch);
-        }
+          .range(i, i + 999);
+        if (batch) rawScheduleData = rawScheduleData.concat(batch);
       }
     }
 
-    // Filter out invalid Sunday dates (street cleaning never happens on Sunday)
-    const scheduleData = rawScheduleData?.filter(item => {
-      // Parse date in UTC to avoid timezone conversion issues
+    // Filter Sundays
+    const scheduleData = rawScheduleData.filter(item => {
       const date = new Date(item.cleaning_date + 'T12:00:00Z');
-      const dayOfWeek = date.getDay(); // 0 = Sunday
-      if (dayOfWeek === 0) {
-        console.warn(`Filtering out invalid Sunday cleaning date: ${item.cleaning_date} for Ward ${item.ward}, Section ${item.section}`);
-        return false;
-      }
-      return true;
-    }) || [];
+      return date.getDay() !== 0;
+    });
 
-    // Create schedule lookup map for efficient zone-to-date mapping
-    const scheduleMap = new Map();
+    // Build next-cleaning-date lookup per zone
+    const scheduleMap = new Map<string, string>();
     scheduleData.forEach(item => {
-      const zoneKey = `${item.ward}-${item.section}`;
-      if (!scheduleMap.has(zoneKey)) {
-        scheduleMap.set(zoneKey, item.cleaning_date);
-      }
+      const key = `${item.ward}-${item.section}`;
+      if (!scheduleMap.has(key)) scheduleMap.set(key, item.cleaning_date);
     });
 
-    // Process all zones and assign cleaning status
-    const zoneMap = new Map();
-    allZones?.forEach(zone => {
-      const zoneKey = `${zone.ward}-${zone.section}`;
-      if (!zoneMap.has(zoneKey)) {
-        let cleaningStatus = 'none';
-        let nextCleaningDateISO = null;
-        
-        // Check if this zone has upcoming cleaning
-        if (scheduleMap.has(zoneKey)) {
-          const cleaningDateStr = scheduleMap.get(zoneKey);
-          nextCleaningDateISO = cleaningDateStr;
-
-          // Compare dates as strings to avoid timezone issues
-          if (cleaningDateStr === todayStr) {
-            cleaningStatus = 'today';
-          } else {
-            // Calculate days difference for future dates
-            const cleaningDate = new Date(cleaningDateStr + 'T12:00:00Z');
-            const diffTime = cleaningDate.getTime() - today.getTime();
-            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays >= 1 && diffDays <= 3) {
-              cleaningStatus = 'soon';
-            } else if (diffDays > 3) {
-              cleaningStatus = 'later';
-            }
-          }
-        }
-        
-        zoneMap.set(zoneKey, {
-          ward: zone.ward,
-          section: zone.section,
-          geom_simplified: zone.geom_simplified,
-          cleaningStatus,
-          nextCleaningDateISO
-        });
+    // Build zone status data (no geometry — client merges with static GeoJSON)
+    const zones = Array.from(scheduleMap.entries()).map(([key, cleaningDate]) => {
+      const [ward, section] = key.split('-');
+      let cleaningStatus = 'none';
+      if (cleaningDate === todayStr) {
+        cleaningStatus = 'today';
+      } else {
+        const diffDays = Math.round(
+          (new Date(cleaningDate + 'T12:00:00Z').getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (diffDays >= 1 && diffDays <= 3) cleaningStatus = 'soon';
+        else if (diffDays > 3) cleaningStatus = 'later';
       }
+      return { ward, section, cleaningStatus, nextCleaningDateISO: cleaningDate };
     });
 
-    const processedData = Array.from(zoneMap.values());
+    // Cache for 5 minutes
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
 
     return res.status(200).json({
       success: true,
-      data: processedData,
-      count: processedData.length
+      data: zones,
+      count: zones.length,
+      geometryUrl: '/data/street-cleaning-zones-2026.geojson',
     });
 
   } catch (error: any) {
     console.error('Street cleaning data API error:', error);
-
-    return res.status(500).json({
-      error: sanitizeErrorMessage(error)
-    });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 }
