@@ -101,12 +101,11 @@ export default function ZoneEditor() {
       if (wardGJ) {
         const wardLayer = L.geoJSON(wardGJ, {
           style: {
-            color: '#000000',
-            weight: 2.5,
+            color: '#ff4444',
+            weight: 3,
             fillColor: 'transparent',
             fillOpacity: 0,
-            dashArray: '6, 4',
-            opacity: 0.7,
+            opacity: 1,
           },
           onEachFeature: (feature: any, layer: any) => {
             layer.bindTooltip(`Ward ${feature.properties.ward}`, {
@@ -114,11 +113,15 @@ export default function ZoneEditor() {
               direction: 'center',
               className: 'ward-tooltip',
             });
+            // Keep ward lines non-interactive so clicks pass through to zones
+            layer.on('add', () => {
+              const el = layer.getElement?.();
+              if (el) el.style.pointerEvents = 'none';
+            });
           },
-          interactive: false,
         });
         wardLayer.addTo(map);
-        wardLayer.bringToBack();
+        wardLayer.setZIndex(1000);
         wardLayerRef.current = wardLayer;
       }
     };
@@ -177,9 +180,9 @@ export default function ZoneEditor() {
       layersRef.current.set(id, layer);
     }
 
-    // Keep ward boundaries behind zone polygons
+    // Keep ward boundaries on top so they're visible, but non-interactive
     if (wardLayerRef.current && showWardBoundaries) {
-      wardLayerRef.current.bringToBack();
+      wardLayerRef.current.bringToFront();
     }
   }, [geojsonData, filter, selectedZone, showWardBoundaries]);
 
@@ -193,7 +196,7 @@ export default function ZoneEditor() {
     if (!wardLayerRef.current || !mapInstanceRef.current) return;
     if (showWardBoundaries) {
       wardLayerRef.current.addTo(mapInstanceRef.current);
-      wardLayerRef.current.bringToBack();
+      wardLayerRef.current.bringToFront();
     } else {
       mapInstanceRef.current.removeLayer(wardLayerRef.current);
     }
@@ -533,10 +536,10 @@ export default function ZoneEditor() {
               type="checkbox"
               checked={showWardBoundaries}
               onChange={e => setShowWardBoundaries(e.target.checked)}
-              style={{ accentColor: '#000' }}
+              style={{ accentColor: '#ff4444' }}
             />
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '16px', height: '0', borderTop: '2.5px dashed #000', display: 'inline-block', background: '#fff', padding: '0 0' }} />
+              <span style={{ width: '20px', height: '0', borderTop: '3px solid #ff4444', display: 'inline-block' }} />
               Ward boundaries
             </span>
           </label>
