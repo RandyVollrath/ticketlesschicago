@@ -32,6 +32,8 @@ export default function ZoneEditor() {
   const [editMode, setEditMode] = useState(false);
   const [statusMsg, setStatusMsg] = useState('Loading...');
   const [filter, setFilter] = useState<string>('all');
+  const [showWardBoundaries, setShowWardBoundaries] = useState(true);
+  const wardLayerRef = useRef<any>(null);
   const editingLayerRef = useRef<any>(null);
   const LRef = useRef<any>(null);
 
@@ -49,13 +51,14 @@ export default function ZoneEditor() {
     }
   };
 
-  // Load data from static file + Supabase overrides + CSV boundaries
+  // Load data from static file + Supabase overrides + CSV boundaries + ward boundaries
   useEffect(() => {
     Promise.all([
       fetch('/data/street-cleaning-zones-2026.geojson').then(r => r.json()),
       fetch('/api/admin/zone-csv-data').then(r => r.ok ? r.json() : {}),
       fetch('/api/admin/zone-edits').then(r => r.ok ? r.json() : {}),
-    ]).then(([geojson, csv, edits]) => {
+      fetch('/data/chicago-ward-boundaries.geojson').then(r => r.ok ? r.json() : null),
+    ]).then(([geojson, csv, edits, wardGeoJSON]) => {
       const editCount = Object.keys(edits || {}).length;
       for (const f of geojson.features) {
         const ws = `${f.properties.ward}-${f.properties.section}`;
@@ -71,6 +74,7 @@ export default function ZoneEditor() {
       }
       setZoneData(zones);
       setCsvData(csv || {});
+      if (wardGeoJSON) (window as any).__wardGeoJSON = wardGeoJSON;
       setStatusMsg(`Loaded ${geojson.features.length} zones` + (editCount ? ` (${editCount} manual edits)` : ''));
     }).catch(err => setStatusMsg(`Error: ${err.message}`));
   }, []);
@@ -91,6 +95,32 @@ export default function ZoneEditor() {
 
       mapInstanceRef.current = map;
       renderZones(L, map);
+
+      // Add ward boundaries
+      const wardGJ = (window as any).__wardGeoJSON;
+      if (wardGJ) {
+        const wardLayer = L.geoJSON(wardGJ, {
+          style: {
+            color: '#000000',
+            weight: 2.5,
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            dashArray: '6, 4',
+            opacity: 0.7,
+          },
+          onEachFeature: (feature: any, layer: any) => {
+            layer.bindTooltip(`Ward ${feature.properties.ward}`, {
+              permanent: false,
+              direction: 'center',
+              className: 'ward-tooltip',
+            });
+          },
+          interactive: false,
+        });
+        wardLayer.addTo(map);
+        wardLayer.bringToBack();
+        wardLayerRef.current = wardLayer;
+      }
     };
 
     initMap();
@@ -146,12 +176,28 @@ export default function ZoneEditor() {
       layer.addTo(map);
       layersRef.current.set(id, layer);
     }
-  }, [geojsonData, filter, selectedZone]);
+
+    // Keep ward boundaries behind zone polygons
+    if (wardLayerRef.current && showWardBoundaries) {
+      wardLayerRef.current.bringToBack();
+    }
+  }, [geojsonData, filter, selectedZone, showWardBoundaries]);
 
   useEffect(() => {
     if (!mapInstanceRef.current || !geojsonData || !LRef.current) return;
     renderZones(LRef.current, mapInstanceRef.current);
   }, [filter, selectedZone, renderZones]);
+
+  // Toggle ward boundaries visibility
+  useEffect(() => {
+    if (!wardLayerRef.current || !mapInstanceRef.current) return;
+    if (showWardBoundaries) {
+      wardLayerRef.current.addTo(mapInstanceRef.current);
+      wardLayerRef.current.bringToBack();
+    } else {
+      mapInstanceRef.current.removeLayer(wardLayerRef.current);
+    }
+  }, [showWardBoundaries]);
 
   // Load leaflet-draw plugin
   const loadDrawPlugin = async () => {
@@ -481,6 +527,20 @@ export default function ZoneEditor() {
             ))}
           </div>
 
+          {/* Ward boundaries toggle */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={showWardBoundaries}
+              onChange={e => setShowWardBoundaries(e.target.checked)}
+              style={{ accentColor: '#000' }}
+            />
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '16px', height: '0', borderTop: '2.5px dashed #000', display: 'inline-block', background: '#fff', padding: '0 0' }} />
+              Ward boundaries
+            </span>
+          </label>
+
           {/* Selected zone */}
           {selected ? (
             <div style={{ background: '#22252f', borderRadius: '8px', padding: '14px', border: '1px solid #2e3140' }}>
@@ -583,6 +643,15 @@ export default function ZoneEditor() {
           border-radius: 4px !important;
         }
         .zone-tooltip::before { display: none !important; }
+        .ward-tooltip {
+          background: rgba(0,0,0,0.75) !important;
+          color: #ccc !important;
+          border: 1px solid #555 !important;
+          font-size: 11px !important;
+          padding: 2px 6px !important;
+          border-radius: 3px !important;
+        }
+        .ward-tooltip::before { display: none !important; }
         .leaflet-interactive { cursor: pointer !important; }
       `}</style>
     </>
