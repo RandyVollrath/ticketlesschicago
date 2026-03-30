@@ -187,8 +187,22 @@ export default function ZoneEditor() {
     const editGroup = new L.FeatureGroup();
     const geom = feature.geometry;
 
+    // Reduce vertices for easier editing — keep ~15-20 handles
+    const simplifyForEdit = (ring: number[][]): number[][] => {
+      if (ring.length <= 10) return ring;
+      const target = Math.min(20, Math.max(8, Math.floor(ring.length / 5)));
+      const step = Math.max(1, Math.floor((ring.length - 1) / target));
+      const result: number[][] = [ring[0]];
+      for (let i = step; i < ring.length - 1; i += step) {
+        result.push(ring[i]);
+      }
+      result.push(ring[ring.length - 1]); // close ring
+      return result;
+    };
+
     const addPolygon = (coords: number[][][]) => {
-      const latlngs = coords.map((ring: number[][]) =>
+      const simplified = coords.map(ring => simplifyForEdit(ring));
+      const latlngs = simplified.map((ring: number[][]) =>
         ring.map((c: number[]) => [c[1], c[0]] as [number, number])
       );
       const poly = L.polygon(latlngs, {
