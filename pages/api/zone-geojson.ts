@@ -51,23 +51,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } catch {}
 
-    // Override static geometry with Supabase geometry where different
+    // Override: any zone in zone_geometry_edits gets its geometry from that table
+    // (these are explicit saves/confirms from the editor)
+    // For all other zones, use Supabase schedule geom if it differs from static
+    const editGeom = new Map<string, any>();
+    try {
+      const { data: editsData2 } = await supabase
+        .from('zone_geometry_edits')
+        .select('ward_section, geometry');
+      for (const row of (editsData2 || [])) {
+        if (row.geometry) editGeom.set(row.ward_section, row.geometry);
+      }
+    } catch {}
+
     let overrides = 0;
     for (const feature of geojson.features) {
       const ws = `${feature.properties.ward}-${feature.properties.section}`;
+
+      // Priority 1: zone_geometry_edits table (explicit editor saves)
+      const editG = editGeom.get(ws);
+      if (editG) {
+        feature.geometry = editG;
+        feature.properties.source = 'manual_edit';
+        overrides++;
+        continue;
+      }
+
+      // Priority 2: confirmed flag (no geometry change but user approved)
+      if (confirmedSet.has(ws)) {
+        // Use Supabase schedule geom (might differ from static)
+        const dbG = dbGeom.get(ws);
+        if (dbG) feature.geometry = dbG;
+        feature.properties.source = 'manual_edit';
+        continue;
+      }
+
+      // Priority 3: Supabase schedule geom if different from static
       const dbG = dbGeom.get(ws);
       if (dbG) {
-        const dbFirst = JSON.stringify(dbG.coordinates?.[0]?.[0]?.[0]);
-        const stFirst = JSON.stringify(feature.geometry?.coordinates?.[0]?.[0]?.[0]);
-        if (dbFirst !== stFirst) {
+        const dbLen = JSON.stringify(dbG.coordinates).length;
+        const stLen = JSON.stringify(feature.geometry?.coordinates).length;
+        if (Math.abs(dbLen - stLen) > 10) {
           feature.geometry = dbG;
           feature.properties.source = 'manual_edit';
           overrides++;
         }
-      }
-      // Mark confirmed zones
-      if (confirmedSet.has(ws)) {
-        feature.properties.source = 'manual_edit';
       }
     }
 
