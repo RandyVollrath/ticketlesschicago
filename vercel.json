@@ -164,7 +164,7 @@
     },
     {
       "path": "/api/cron/autopilot-check-plates",
-      "schedule": "0 14 * * *"
+      "schedule": "0 14 * * 1,2,3,4,5"
     },
     {
       "path": "/api/cron/autopilot-mail-letters",
@@ -237,6 +237,14 @@
     {
       "path": "/api/cron/cleanup-push-tokens",
       "schedule": "0 5 * * 0"
+    },
+    {
+      "path": "/api/cron/update-user-zones",
+      "schedule": "0 8 * * 0"
+    },
+    {
+      "path": "/api/cron/monitor-crons",
+      "schedule": "0 17 * * *"
     }
   ],
   "headers": [
