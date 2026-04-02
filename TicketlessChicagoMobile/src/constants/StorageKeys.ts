@@ -64,6 +64,9 @@ export const StorageKeys = {
   LAST_LOG_UPLOAD_LINE_COUNT: 'lastLogUploadLineCount', // number of lines already uploaded (watermark)
   LAST_LOG_UPLOAD_TIME: 'lastLogUploadTime', // ISO timestamp of last successful upload
 
+  // Account
+  IS_PAID_USER: 'isPaidUser', // Cached paid status for offline fallback
+
   // One-time nudges
   PLATE_COMPLIANCE_NUDGE_DISMISSED: 'plateComplianceNudgeDismissed', // 'true' if user dismissed the front plate nudge
   CROSS_POLL_PROMPT_DISMISSED: 'crossPollPromptDismissed', // 'true' if user dismissed the advance-alerts cross-pollination prompt
@@ -78,6 +81,7 @@ export const LOGOUT_CLEAR_KEYS: StorageKey[] = [
   StorageKeys.PUSH_TOKEN,
   StorageKeys.PUSH_TOKEN_REGISTERED,
   StorageKeys.LAST_API_RESPONSE_CACHE,
+  StorageKeys.IS_PAID_USER,
 ];
 
 // Keys that persist across logout (user preferences and parking data)

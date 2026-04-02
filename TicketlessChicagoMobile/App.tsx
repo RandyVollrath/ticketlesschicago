@@ -152,12 +152,16 @@ function App(): React.JSX.Element {
 
       const paid = profileData?.has_contesting === true;
       setIsPaidUser(paid);
+      // Cache paid status so we can fall back to it on network errors
+      await AsyncStorage.setItem(StorageKeys.IS_PAID_USER, paid ? 'true' : 'false');
       return paid;
     } catch (error) {
       log.error('Error checking paid status', error);
-      // On error, allow access (don't lock out due to network issues)
-      setIsPaidUser(true);
-      return true;
+      // On error, fall back to cached value (defaults to false for new users)
+      const cached = await AsyncStorage.getItem(StorageKeys.IS_PAID_USER);
+      const fallback = cached === 'true';
+      setIsPaidUser(fallback);
+      return fallback;
     }
   };
 
