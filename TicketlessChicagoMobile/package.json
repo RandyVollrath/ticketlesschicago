@@ -1,7 +1,7 @@
 {
   "name": "ticketless-chicago-mobile",
   "displayName": "Autopilot America",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "private": true,
   "description": "Peace of Mind Parking in Chicago. Automatic parking violation detection and alerts.",
   "author": "Autopilot America <support@autopilotamerica.com>",
@@ -43,6 +43,7 @@
     "react-native-bluetooth-classic": "^1.73.0-rc.17",
     "react-native-geolocation-service": "^5.3.1",
     "react-native-gesture-handler": "^2.29.0",
+    "react-native-iap": "^14.7.19",
     "react-native-image-picker": "^8.2.1",
     "react-native-permissions": "^5.4.2",
     "react-native-reanimated": "^4.2.1",

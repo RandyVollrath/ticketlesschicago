@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,13 @@ import {
   Platform,
   Linking,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing } from '../theme';
 import AuthService from '../services/AuthService';
+import IAPService from '../services/IAPService';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('AccountInactiveScreen');
@@ -23,16 +25,35 @@ interface AccountInactiveScreenProps {
 
 /**
  * Shown when a user logs in but doesn't have an active account.
- * This is a "login only" app — accounts are created/managed on the website.
  *
- * On iOS: No pricing, purchase links, or subscription language (App Store guideline 3.1.1).
- *         Tells user to visit autopilotamerica.com to set up their account (text only, no link).
- * On Android: Shows a clickable "Set Up on Website" button.
+ * On iOS: Shows In-App Purchase button ($69.99) to activate account via Apple IAP.
+ * On Android: Shows a clickable "Set Up on Website" button linking to autopilotamerica.com.
  */
 export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: AccountInactiveScreenProps) {
   const [signingOut, setSigningOut] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [iapReady, setIapReady] = useState(false);
+  const [iapPrice, setIapPrice] = useState<string | null>(null);
   const user = AuthService.getUser();
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      initializeIAP();
+    }
+
+    return () => {
+      if (Platform.OS === 'ios') {
+        IAPService.cleanup();
+      }
+    };
+  }, []);
+
+  const initializeIAP = async () => {
+    await IAPService.initialize();
+    setIapReady(IAPService.isAvailable());
+    setIapPrice(IAPService.getPrice());
+  };
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -60,6 +81,25 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
     Linking.openURL('https://autopilotamerica.com/start');
   };
 
+  const handlePurchase = async () => {
+    setPurchasing(true);
+    try {
+      await IAPService.purchase((success, error) => {
+        setPurchasing(false);
+        if (success) {
+          // Account activated — trigger retry check which will navigate to MainTabs
+          onRetryCheck();
+        } else if (error && error !== 'Purchase cancelled') {
+          Alert.alert('Purchase Failed', error);
+        }
+      });
+    } catch (error: any) {
+      setPurchasing(false);
+      log.error('Purchase error', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -73,13 +113,13 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>Account Required</Text>
+        <Text style={styles.title}>Activate Your Account</Text>
 
         {/* Message - different per platform */}
         {Platform.OS === 'ios' ? (
           <Text style={styles.message}>
-            An active Autopilot account is required to use this app.{'\n\n'}
-            Visit autopilotamerica.com to set up your account, then come back and tap the button below.
+            Get started with Autopilot America for {iapPrice || '$69.99'}/year.{'\n\n'}
+            Automatic parking violation detection, street cleaning alerts, and ticket contesting — all in one app.
           </Text>
         ) : (
           <Text style={styles.message}>
@@ -96,14 +136,39 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
           </View>
         )}
 
-        {/* Open website button - Android only. iOS App Store Guideline 3.1.1
-           prohibits linking to external purchase flows. On iOS, the website
-           URL is mentioned as plain text in the message above instead. */}
+        {/* iOS: In-App Purchase button */}
+        {Platform.OS === 'ios' && (
+          <TouchableOpacity
+            style={[styles.primaryButton, (!iapReady || purchasing) && styles.buttonDisabled]}
+            onPress={handlePurchase}
+            disabled={!iapReady || purchasing}
+          >
+            {purchasing ? (
+              <ActivityIndicator size="small" color={colors.textInverse} />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
+                <Text style={styles.primaryButtonText}>
+                  {iapReady ? `Subscribe — ${iapPrice || '$69.99'}/year` : 'Loading...'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Android: Open website button */}
         {Platform.OS !== 'ios' && (
           <TouchableOpacity style={styles.primaryButton} onPress={handleOpenWebsite}>
             <MaterialCommunityIcons name="web" size={20} color={colors.textInverse} />
             <Text style={styles.primaryButtonText}>Set Up on Website</Text>
           </TouchableOpacity>
+        )}
+
+        {/* iOS: "Already have an account?" for users who purchased on the web */}
+        {Platform.OS === 'ios' && (
+          <Text style={styles.existingAccountHint}>
+            Already purchased on autopilotamerica.com? Tap below to refresh.
+          </Text>
         )}
 
         {/* Refresh / retry button */}
@@ -200,10 +265,19 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: spacing.md,
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   primaryButtonText: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
     color: colors.textInverse,
+  },
+  existingAccountHint: {
+    fontSize: typography.sizes.sm,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   secondaryButton: {
     flexDirection: 'row',
