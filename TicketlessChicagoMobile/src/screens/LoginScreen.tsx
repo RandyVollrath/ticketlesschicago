@@ -104,7 +104,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       if (!isMountedRef.current) return;
 
       if (result.success) {
-        onAuthSuccess?.();
+        await onAuthSuccess?.();
       } else {
         setError(result.error || 'Google sign-in failed');
       }
@@ -134,7 +134,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       if (!isMountedRef.current) return;
 
       if (result.success) {
-        onAuthSuccess?.();
+        await onAuthSuccess?.();
       } else {
         if (result.error !== 'Sign in was cancelled') {
           setError(result.error || 'Apple sign-in failed');
@@ -181,7 +181,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       if (!isMountedRef.current) return;
 
       if (result.success) {
-        onAuthSuccess?.();
+        await onAuthSuccess?.();
       } else {
         setError(result.error || 'Sign in failed. Check your email and password.');
       }
