@@ -82,6 +82,14 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
   };
 
   const handlePurchase = async () => {
+    if (!iapReady) {
+      Alert.alert(
+        'Purchase Not Available',
+        'In-App Purchase is still loading. Please try again in a moment.',
+      );
+      return;
+    }
+
     setPurchasing(true);
     try {
       await IAPService.purchase((success, error) => {
@@ -139,9 +147,9 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
         {/* iOS: In-App Purchase button */}
         {Platform.OS === 'ios' && (
           <TouchableOpacity
-            style={[styles.primaryButton, (!iapReady || purchasing) && styles.buttonDisabled]}
+            style={[styles.primaryButton, purchasing && styles.buttonDisabled]}
             onPress={handlePurchase}
-            disabled={!iapReady || purchasing}
+            disabled={purchasing}
           >
             {purchasing ? (
               <ActivityIndicator size="small" color={colors.textInverse} />
@@ -149,7 +157,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
               <>
                 <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
                 <Text style={styles.primaryButtonText}>
-                  {iapReady ? `Subscribe — ${iapPrice || '$69.99'}/year` : 'Loading...'}
+                  Subscribe — {iapPrice || '$69.99'}/year
                 </Text>
               </>
             )}
