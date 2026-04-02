@@ -216,7 +216,12 @@ function App(): React.JSX.Element {
       setHasOnboarded(onboarded === 'true');
       setHasSeenLogin(seenLogin === 'true');
 
-      // Show UI immediately - push notifications can initialize in background
+      // For authenticated users, check paid status BEFORE showing UI
+      // to prevent unpaid users from briefly seeing MainTabs
+      if (AuthService.isAuthenticated()) {
+        await checkPaidStatus();
+      }
+
       setIsLoading(false);
 
       // Defer non-critical services
@@ -243,9 +248,6 @@ function App(): React.JSX.Element {
                 email_domain: user.email?.split('@')[1] || 'unknown',
               });
             }
-
-            // Check paid status on startup for returning users
-            await checkPaidStatus();
 
             const pushEnabled = await PushNotificationService.isEnabled();
             if (pushEnabled) {
@@ -283,12 +285,16 @@ function App(): React.JSX.Element {
     await AsyncStorage.setItem(StorageKeys.HAS_SEEN_LOGIN, 'true');
     setHasSeenLogin(true);
 
-    // Track login/signup
-    const user = AuthService.getUser();
-    if (user) {
-      const { default: AnalyticsService } = await import('./src/services/AnalyticsService');
-      await AnalyticsService.setUserId(user.id);
-      await AnalyticsService.logLogin('magic_link');
+    // Track login/signup (non-fatal if analytics fails)
+    try {
+      const user = AuthService.getUser();
+      if (user) {
+        const { default: AnalyticsService } = await import('./src/services/AnalyticsService');
+        await AnalyticsService.setUserId(user.id);
+        await AnalyticsService.logLogin('auth');
+      }
+    } catch (error) {
+      log.error('Analytics tracking failed (non-fatal)', error);
     }
 
     // Check if user has an active paid account
@@ -374,6 +380,21 @@ function App(): React.JSX.Element {
               }).catch((error) => {
                 log.error('Error logging screen view', error);
               });
+            }
+
+            // Navigation guard: redirect unpaid users away from MainTabs
+            // This catches deep links, push notifications, and any other
+            // navigation that bypasses the normal login flow
+            if (isPaidUser === false && navigationRef.current) {
+              const state = navigationRef.current.getState();
+              const topRoute = state?.routes?.[state.routes.length - 1];
+              if (topRoute?.name === 'MainTabs' || topRoute?.name === 'CheckDestination' || topRoute?.name === 'ReportZoneHours' || topRoute?.name === 'BluetoothSettings') {
+                log.warn('Unpaid user navigated to protected screen, redirecting to AccountInactive');
+                navigationRef.current.reset({
+                  index: 0,
+                  routes: [{ name: 'AccountInactive' }],
+                });
+              }
             }
           }}
           onReady={() => {
