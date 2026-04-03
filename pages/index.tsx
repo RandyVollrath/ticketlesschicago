@@ -124,7 +124,7 @@ export default function LandingPage() {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  // Based on 1.18M contested tickets from Chicago FOIA data (decided cases, all contest methods)
+  // Based on 35.7M ticket records from Chicago FOIA data (2018-2025)
   const dismissalRates = [
     { label: 'Expired Plates', pct: 76 },
     { label: 'No City Sticker', pct: 72 },
@@ -150,7 +150,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "68.5% of contested parking tickets get dismissed — based on 1.18M cases from Chicago FOIA data (decided cases, excluding camera tickets). By category: expired plates 76%, city sticker 72%, handicapped zone 69%, expired meter 67%, residential permit 54%. Camera tickets are harder at 17-21%. These are real rates from actual hearings — not estimates."
+      a: "68% of contested parking tickets get dismissed — based on 155,002 decided parking cases from Chicago FOIA data (excluding camera tickets). By category: expired plates 89%, city sticker 85%, handicapped zone 72%, expired meter 66-68%, residential permit 52%. Camera tickets are harder at 19-26%. These are real rates from actual hearings — not estimates."
     },
     {
       q: "Can I review letters before they're sent?",
@@ -158,7 +158,7 @@ export default function LandingPage() {
     },
     {
       q: "What if the ticket isn't dismissed?",
-      a: "First Dismissal Guarantee: if we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full refund of your membership fee."
+      a: "First Dismissal Guarantee: if we don't get you at least 1 ticket dismissed, you get a full refund. Your first dismissed ticket pays for the whole year."
     },
   ];
 
@@ -304,7 +304,7 @@ export default function LandingPage() {
           fontWeight: 600,
           border: '1px solid rgba(255,255,255,0.2)'
         }}>
-          <span style={{color: COLORS.accent}}>●</span> 1.2M+ Tickets Analyzed
+          <span style={{color: COLORS.accent}}>●</span> 35.7M Tickets Analyzed
         </div>
 
         <h1 style={{
@@ -317,7 +317,7 @@ export default function LandingPage() {
           margin: '0 auto 24px',
           position: 'relative',
         }}>
-          Chicago Writes $259M in Parking Tickets Every Year.
+          Chicago Wrote $420M in Parking Tickets Last Year.
         </h1>
 
         <p style={{
@@ -339,7 +339,7 @@ export default function LandingPage() {
         </div>
 
         <p style={{ marginTop: '16px', fontSize: '14px', color: '#CBD5E1' }}>
-          Built on 1.2M Chicago ticket outcomes.
+          Built on 35.7M Chicago ticket records.
         </p>
 
         <div style={{
@@ -348,17 +348,20 @@ export default function LandingPage() {
           backgroundColor: 'rgba(16, 185, 129, 0.08)',
           border: '1px solid rgba(16, 185, 129, 0.5)',
           borderRadius: '14px',
-          padding: '14px 16px',
+          padding: '14px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
         }}>
-          <p style={{ margin: 0, color: '#D1FAE5', fontSize: '13px', fontWeight: 700, letterSpacing: '0.2px' }}>
+          <span style={{ color: '#D1FAE5', fontSize: '14px', fontWeight: 700 }}>
             FIRST DISMISSAL GUARANTEE
-          </p>
-          <p style={{ margin: '6px 0 0', color: '#E2E8F0', fontSize: '14px', lineHeight: 1.5 }}>
-            If we don't successfully dismiss at least one eligible non-camera ticket during your first year, you can request a full refund of your membership.
-          </p>
-          <p style={{ margin: '6px 0 0', color: '#E2E8F0', fontSize: '14px', lineHeight: 1.5, fontWeight: 700 }}>
-            You don't take the risk. We do.
-          </p>
+          </span>
+          <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
+          <span style={{ color: '#E2E8F0', fontSize: '14px' }}>
+            If we don't get you at least 1 ticket dismissed, you get a full refund.
+          </span>
         </div>
 
       </header>
@@ -396,7 +399,7 @@ export default function LandingPage() {
           letterSpacing: '-0.5px',
         }}>
           <div>94% of tickets go uncontested.</div>
-          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 55% of contested tickets win.</div>
+          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 68% of contested parking tickets win.</div>
         </div>
         <p style={{
           margin: '24px 0 0',
@@ -405,7 +408,7 @@ export default function LandingPage() {
           lineHeight: 1.6,
           maxWidth: '580px',
         }}>
-          9 million parking tickets. 530,000 hearings. The data is clear: most people never fight back — and the ones who do win more than half the time.
+          35.7 million parking tickets. 530,000 hearings. The data is clear: most people never fight back — and the ones who do win more than half the time.
         </p>
       </section>
 
@@ -584,7 +587,7 @@ export default function LandingPage() {
           Data-Driven Defense
         </h2>
         <p style={{ textAlign: 'center', color: COLORS.textMuted, marginBottom: '48px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
-          Based on analysis of 1.2 million contested Chicago tickets
+          Based on analysis of 35.7 million Chicago ticket records
         </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '50px', alignItems: 'center' }}>
@@ -595,7 +598,7 @@ export default function LandingPage() {
             <p style={{ color: COLORS.textMuted, marginBottom: '30px', lineHeight: 1.7 }}>
               Most drivers pay because they don't know which violations are actually beatable.
               <br/><br/>
-              We've analyzed 1.2 million Chicago tickets to understand:
+              We've analyzed 35.7 million Chicago tickets to understand:
               <br/>• Which codes win most often
               <br/>• Which arguments succeed
               <br/>• Which tickets aren't worth fighting
@@ -715,7 +718,7 @@ export default function LandingPage() {
             </Button>
 
             <p style={{ fontSize: '13px', color: '#64748B', marginTop: '16px' }}>
-              Full membership-fee refund if no eligible non-camera dismissal in your first year.
+              First Dismissal Guarantee: if we don't get you at least 1 ticket dismissed, you get a full refund.
             </p>
           </div>
         </div>
