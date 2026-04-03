@@ -42,7 +42,7 @@ export default function PricingPage() {
 
           <h3>First Dismissal Guarantee</h3>
           <p style={{ color: '#64748B', lineHeight: 1.7 }}>
-            If we don't get you at least 1 ticket dismissed, you get a full refund.
+            If we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund.
             Your first dismissed ticket pays for the whole year.
           </p>
           <p style={{ color: '#94A3B8', fontSize: 13, lineHeight: 1.6, marginBottom: 0 }}>

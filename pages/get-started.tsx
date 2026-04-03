@@ -497,7 +497,7 @@ export default function GetStarted() {
                   </div>
                   <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
                     <strong>First Dismissal Guarantee</strong><br />
-                    If we don't get you at least 1 ticket dismissed, you get a full refund. Your first dismissed ticket pays for the whole year. Camera tickets excluded. <a href="/guarantee" style={{ color: '#2563EB' }}>Full details</a>
+                    If we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund. Your first dismissed ticket pays for the whole year. Camera tickets excluded. <a href="/guarantee" style={{ color: '#2563EB' }}>Full details</a>
                   </div>
                   <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
                     <input
