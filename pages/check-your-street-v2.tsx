@@ -783,7 +783,7 @@ export default function CheckYourStreet() {
                   </div>
                   <h2 className="text-4xl font-black mb-4 leading-tight">Never pay a parking ticket again.</h2>
                   <p className="text-lg text-slate-300 mb-8 font-medium">
-                    We auto-contest every ticket on your plate. $49/yr.
+                    We auto-contest every ticket on your plate. $99/yr.
                   </p>
 
                   <button

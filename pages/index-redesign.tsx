@@ -139,11 +139,11 @@ export default function LandingPage() {
   const faqs = [
     {
       q: "What's included?",
-      a: "Autopilot Protection includes all alerts (street cleaning, snow bans, renewal deadlines) plus automatic ticket monitoring and contesting. For $49/year, we monitor Chicago's database twice a week and automatically mail contest letters when tickets are found."
+      a: "Autopilot Protection includes all alerts (street cleaning, snow bans, renewal deadlines) plus automatic ticket monitoring and contesting. For $99/year, we monitor Chicago's database twice a week and automatically mail contest letters when tickets are found."
     },
     {
       q: "How does Autopilot work?",
-      a: "For $49/year, we monitor Chicago's database twice a week for tickets on your plate. When found, we automatically generate and mail contest letters using our database of 1.2M contested tickets."
+      a: "For $99/year, we monitor Chicago's database twice a week for tickets on your plate. When found, we automatically generate and mail contest letters using our database of 35.7M ticket records."
     },
     {
       q: "Is this legal?",
@@ -151,7 +151,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "Based on 1.2M contested tickets: expired plates have 75% dismissal, no city sticker 70%, expired meters 67%. Camera tickets are lower at 18-20%."
+      a: "Based on 35.7M ticket records: expired plates have 75% dismissal, no city sticker 70%, expired meters 67%. Camera tickets are lower at 18-20%."
     },
     {
       q: "Can I review letters before they're sent?",
@@ -170,7 +170,7 @@ export default function LandingPage() {
     }}>
       <Head>
         <title>Autopilot America - Chicago Driver Protection System</title>
-        <meta name="description" content="Chicago's complete ticket protection — alerts for street cleaning, snow bans, and renewals, automatic parking detection, and unlimited ticket contesting. $49/year. Based on 1.2M Chicago ticket outcomes." />
+        <meta name="description" content="Chicago's complete ticket protection — alerts for street cleaning, snow bans, and renewals, automatic parking detection, and unlimited ticket contesting. $99/year. Based on 35.7M Chicago ticket records." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -303,7 +303,7 @@ export default function LandingPage() {
           fontWeight: 600,
           border: '1px solid rgba(255,255,255,0.2)'
         }}>
-          <span style={{color: COLORS.accent}}>●</span> Autopilot Protection $49/year
+          <span style={{color: COLORS.accent}}>●</span> Autopilot Protection $99/year
         </div>
 
         <h1 style={{
@@ -344,7 +344,7 @@ export default function LandingPage() {
             Get Started <ArrowRight />
           </Button>
           <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff' }}>
-            Become a Founding Member - $49/yr
+            Become a Founding Member - $99/yr
           </Button>
         </div>
 
@@ -413,7 +413,7 @@ export default function LandingPage() {
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}>
-              $49/year
+              $99/year
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '28px', marginBottom: '12px', color: '#fff' }}>
               Autopilot Protection
@@ -433,7 +433,7 @@ export default function LandingPage() {
                 'Full dashboard access',
                 'Contest letter approval system',
                 'Email notifications on ticket status',
-                '68.5% parking ticket dismissal rate',
+                '67% parking ticket dismissal rate',
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
                   <div style={{ color: COLORS.accent, flexShrink: 0, marginTop: '2px' }}><CheckIcon /></div>
@@ -443,7 +443,7 @@ export default function LandingPage() {
             </div>
 
             <Button fullWidth href="/get-started" style={{ backgroundColor: COLORS.accent, color: COLORS.primary }}>
-              Become a Founding Member - $49/yr
+              Become a Founding Member - $99/yr
             </Button>
             <p style={{ fontSize: '12px', color: '#64748B', marginTop: '12px', textAlign: 'center' }}>
               Founding Member rate. Keep membership active to keep your price.
@@ -473,7 +473,7 @@ export default function LandingPage() {
           Data-Driven Defense
         </h2>
         <p style={{ textAlign: 'center', color: COLORS.textMuted, marginBottom: '48px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
-          Based on analysis of 1.2 million contested Chicago tickets
+          Based on analysis of 35.7 million Chicago ticket records
         </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '50px', alignItems: 'center' }}>
@@ -618,14 +618,14 @@ export default function LandingPage() {
             Start protecting yourself today
           </h2>
           <p style={{ color: '#94A3B8', marginBottom: '32px', fontSize: '18px' }}>
-            Founding Member rate - $49/year for complete protection.
+            Founding Member rate - $99/year for complete protection.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button primary href="/get-started">
               Get Started <ArrowRight />
             </Button>
             <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff', border: 'none' }}>
-              Become a Founding Member - $49/yr
+              Become a Founding Member - $99/yr
             </Button>
           </div>
         </div>

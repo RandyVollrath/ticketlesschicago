@@ -183,7 +183,7 @@ export default function FlyerRoutes() {
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Flyer Route Planner</h1>
             <p style={{ margin: '6px 0 0', opacity: 0.7, fontSize: 13 }}>
-              Powered by 26.8M ticket records from FOIA data
+              Powered by 35.7M ticket records from FOIA data
             </p>
           </div>
         </div>

@@ -274,7 +274,7 @@ const DashboardContent = React.memo(function DashboardContent({
   const avgTicketAmount = tickets.length > 0
     ? Math.round(tickets.filter(t => t.amount).reduce((sum, t) => sum + (t.amount || 0), 0) / Math.max(tickets.filter(t => t.amount).length, 1))
     : 0;
-  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.685);
+  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.67);
 
   if (!isPaidUser) {
     return (
@@ -389,7 +389,7 @@ const DashboardContent = React.memo(function DashboardContent({
           label="Estimated Savings"
           value={`$${estimatedSavings}`}
           color={COLORS.accent}
-          subtext="Based on 68.5% win rate"
+          subtext="Based on 67% win rate"
         />
         <StatCard label="Next Check" value={nextCheckDate} />
       </div>
@@ -687,7 +687,7 @@ const DashboardContent = React.memo(function DashboardContent({
             }}>
               <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>Plan</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.primary, fontFamily: FONTS.heading }}>
-                $49/year
+                $99/year
               </div>
             </div>
             <div style={{
@@ -1757,14 +1757,14 @@ function SettingsPageInner() {
               <div>
                 <h3 style={{ margin: 0, fontSize: 18, fontFamily: FONTS.heading }}>Let's get you set up</h3>
                 <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.9 }}>
-                  Just {[!lastName.trim(), !plateNumber.trim(), !mailingAddress1.trim()].filter(Boolean).length} quick {[!lastName.trim(), !plateNumber.trim(), !mailingAddress1.trim()].filter(Boolean).length === 1 ? 'thing' : 'things'} to fill in
+                  Step {guidedSetupStep + 1} of 3
                 </p>
               </div>
               <button onClick={() => setGuidedSetupDismissed(true)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', opacity: 0.7 }}>&times;</button>
             </div>
             <div style={{ padding: 24 }}>
               {/* Step: Last Name */}
-              {!lastName.trim() && guidedSetupStep === 0 && (
+              {guidedSetupStep === 0 && (
                 <div>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: COLORS.primary, marginBottom: 8 }}>What's your last name?</label>
                   <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>Used to look up tickets in Chicago's system.</p>
@@ -1779,7 +1779,7 @@ function SettingsPageInner() {
                 </div>
               )}
               {/* Step: License Plate */}
-              {(lastName.trim() || guidedSetupStep > 0) && !plateNumber.trim() && (guidedSetupStep === 0 || guidedSetupStep === 1) && (
+              {guidedSetupStep === 1 && (
                 <div>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: COLORS.primary, marginBottom: 8 }}>What's your license plate?</label>
                   <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>So we can check for new tickets automatically.</p>
@@ -1797,12 +1797,13 @@ function SettingsPageInner() {
                       onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
                       placeholder="ABC1234"
                       style={{ flex: 1, padding: '12px 16px', border: `2px solid ${COLORS.primary}`, borderRadius: 8, fontSize: 18, fontFamily: 'monospace', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                      autoFocus
                     />
                   </div>
                 </div>
               )}
               {/* Step: Mailing Address */}
-              {lastName.trim() && plateNumber.trim() && !mailingAddress1.trim() && (
+              {guidedSetupStep === 2 && (
                 <div>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: COLORS.primary, marginBottom: 8 }}>What's your mailing address?</label>
                   <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '0 0 12px' }}>Where we'll mail contest letters on your behalf.</p>
@@ -1812,6 +1813,7 @@ function SettingsPageInner() {
                     onChange={(e) => setMailingAddress1(e.target.value)}
                     placeholder="123 Main St"
                     style={{ width: '100%', padding: '12px 16px', border: `2px solid ${COLORS.primary}`, borderRadius: 8, fontSize: 16, boxSizing: 'border-box', marginBottom: 8 }}
+                    autoFocus
                   />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
@@ -1840,7 +1842,7 @@ function SettingsPageInner() {
                 </div>
               )}
               {/* All done */}
-              {lastName.trim() && plateNumber.trim() && mailingAddress1.trim() && (
+              {guidedSetupStep === 3 && (
                 <div style={{ textAlign: 'center', padding: 12 }}>
                   <p style={{ fontSize: 18, fontWeight: 600, color: COLORS.accent, margin: 0 }}>All set! Your profile is complete.</p>
                   <p style={{ fontSize: 13, color: COLORS.textMuted, margin: '8px 0 0' }}>We'll start monitoring for tickets automatically.</p>
@@ -1853,12 +1855,13 @@ function SettingsPageInner() {
                 >
                   Skip for now
                 </button>
-                {!(lastName.trim() && plateNumber.trim() && mailingAddress1.trim()) ? (
+                {guidedSetupStep < 3 ? (
                   <button
                     onClick={() => {
-                      if (!lastName.trim()) { /* stay on current step */ }
-                      else if (!plateNumber.trim()) { setGuidedSetupStep(1); }
-                      else { setGuidedSetupStep(2); }
+                      if (guidedSetupStep === 0 && !lastName.trim()) { /* stay — need last name */ }
+                      else if (guidedSetupStep === 1 && !plateNumber.trim()) { /* stay — need plate */ }
+                      else if (guidedSetupStep === 2 && !mailingAddress1.trim()) { /* stay — need address */ }
+                      else { setGuidedSetupStep(guidedSetupStep + 1); }
                     }}
                     style={{ padding: '10px 20px', backgroundColor: COLORS.primary, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                   >

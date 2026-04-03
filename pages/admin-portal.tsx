@@ -3159,7 +3159,7 @@ export default function AdminPortal() {
                 <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>SUBJECT</div>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937' }}>
                   {selectedEmailTemplate === 'drip-welcome' && 'Welcome to Autopilot America'}
-                  {selectedEmailTemplate === 'drip-proof' && 'The $259 million parking ticket machine'}
+                  {selectedEmailTemplate === 'drip-proof' && 'The $420 million parking ticket machine'}
                   {selectedEmailTemplate === 'drip-soft-sell' && 'Randy, your next ticket is already scheduled'}
                   {selectedEmailTemplate === 'foia-confirmation' && 'FOIA filed on plate IL ABC1234 — the city has 5 days to respond'}
                   {selectedEmailTemplate === 'foia-results' && "7 tickets. $825 in fines. Here's your FOIA report."}

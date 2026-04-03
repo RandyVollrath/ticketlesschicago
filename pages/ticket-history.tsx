@@ -377,7 +377,7 @@ export default function TicketHistory() {
                   Stop getting tickets in the first place
                 </h3>
                 <p style={{ fontSize: '14px', color: '#15803D', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                  Our Autopilot system detects new tickets and automatically contests them for you. 68.5% of contested parking tickets get dismissed.
+                  Our Autopilot system detects new tickets and automatically contests them for you. 67% of contested parking tickets get dismissed.
                 </p>
                 <Link href="/get-started" style={{
                   display: 'inline-block',
@@ -389,7 +389,7 @@ export default function TicketHistory() {
                   fontWeight: 700,
                   fontSize: '15px',
                 }}>
-                  Get Protected - $49/year
+                  Get Protected - $99/year
                 </Link>
               </div>
 
@@ -809,7 +809,7 @@ export default function TicketHistory() {
             Want instant results?
           </h3>
           <p style={{ fontSize: '14px', color: '#1E40AF', lineHeight: 1.6, margin: '0 0 16px 0', opacity: 0.8 }}>
-            See how much your block pays in tickets right now — no waiting required. Block-level data from 26.8M FOIA tickets.
+            See how much your block pays in tickets right now — no waiting required. Block-level data from 35.7M FOIA tickets.
           </p>
           <Link href="/check-your-street" style={{
             display: 'inline-flex',
@@ -863,7 +863,7 @@ export default function TicketHistory() {
           }}>
             Chicago drivers pay an average of $300+ per year in parking tickets.
             Our Autopilot system catches new tickets and automatically contests them.
-            68.5% of contested parking tickets get dismissed.
+            67% of contested parking tickets get dismissed.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/get-started" style={{
@@ -878,7 +878,7 @@ export default function TicketHistory() {
               fontWeight: 700,
               fontSize: '16px',
             }}>
-              Get Protected - $49/year
+              Get Protected - $99/year
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M12 5l7 7-7 7"/>
               </svg>
@@ -941,7 +941,7 @@ export default function TicketHistory() {
             },
             {
               q: 'Can I contest tickets you find?',
-              a: 'If the FOIA results show unpaid tickets that were issued incorrectly, you may have grounds to contest them. Our $49/year Autopilot service handles this automatically.',
+              a: 'If the FOIA results show unpaid tickets that were issued incorrectly, you may have grounds to contest them. Our $99/year Autopilot service handles this automatically.',
             },
           ].map((faq, i) => (
             <div key={i} style={{
