@@ -20,7 +20,7 @@ export default function FOIATestPage() {
         <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
           <h1 className="text-3xl font-bold mb-2">FOIA Data Test Page</h1>
           <p className="text-gray-600 mb-6">
-            Testing 1.2M contested ticket records from Chicago DOAH
+            Testing 35.7M ticket records from Chicago FOIA data
           </p>
 
           <div className="mb-8">
@@ -65,7 +65,7 @@ export default function FOIATestPage() {
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h3 className="font-semibold text-blue-900 mb-2">What You're Seeing:</h3>
           <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-            <li>Real win rates from 1,178,954 contested tickets (2019-present)</li>
+            <li>Real win rates from 35.7M ticket records (2018-2025)</li>
             <li>Most common dismissal reasons for this violation</li>
             <li>Best contest method (Mail vs In-Person)</li>
             <li>Smart recommendation based on historical data</li>

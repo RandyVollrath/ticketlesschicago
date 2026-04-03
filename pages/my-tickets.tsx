@@ -196,9 +196,9 @@ export default function MyTickets() {
   }
   const sortedYears = Object.entries(yearGroups).sort(([a], [b]) => a.localeCompare(b));
 
-  // Potential savings (68.5% of parking tickets get dismissed when contested)
-  const potentialSavings = Math.round(totalFines * 0.685);
-  const autopilotCost = sortedYears.length > 0 ? sortedYears.length * 49 : 49;
+  // Potential savings (68% of parking tickets get dismissed when contested)
+  const potentialSavings = Math.round(totalFines * 0.68);
+  const autopilotCost = sortedYears.length > 0 ? sortedYears.length * 99 : 99;
 
   const animatedFines = useAnimatedNumber(totalFines);
 
@@ -714,10 +714,10 @@ export default function MyTickets() {
                   {fmtMoney(potentialSavings)}
                 </div>
                 <p style={{ fontSize: '15px', color: '#94A3B8', margin: '0 0 8px 0', lineHeight: 1.6 }}>
-                  Based on the 68.5% parking ticket dismissal rate from our FOIA data.
+                  Based on the 68% parking ticket dismissal rate from our FOIA data.
                 </p>
                 <p style={{ fontSize: '14px', color: '#64748B', margin: '0 0 24px 0' }}>
-                  Autopilot would have cost {fmtMoney(autopilotCost)} ({sortedYears.length || 1} year{(sortedYears.length || 1) !== 1 ? 's' : ''} @ $49/yr) and potentially saved you <strong style={{ color: COLORS.signal }}>{fmtMoney(potentialSavings)}</strong>.
+                  Autopilot would have cost {fmtMoney(autopilotCost)} ({sortedYears.length || 1} year{(sortedYears.length || 1) !== 1 ? 's' : ''} @ $99/yr) and potentially saved you <strong style={{ color: COLORS.signal }}>{fmtMoney(potentialSavings)}</strong>.
                 </p>
 
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -733,7 +733,7 @@ export default function MyTickets() {
                     fontWeight: 700,
                     fontSize: '16px',
                   }}>
-                    Start Auto-Contesting - $49/year
+                    Start Auto-Contesting - $99/year
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
@@ -814,7 +814,7 @@ export default function MyTickets() {
               </div>
             )}
 
-            {/* 68.5% callout */}
+            {/* 68% callout */}
             <div style={{
               background: `linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)`,
               borderRadius: '16px',
@@ -824,14 +824,14 @@ export default function MyTickets() {
               textAlign: 'center',
             }}>
               <div style={{ fontSize: '40px', fontWeight: 800, color: '#166534', fontFamily: '"Space Grotesk", sans-serif', margin: '0 0 8px 0' }}>
-                68.5%
+                68%
               </div>
               <p style={{ fontSize: '16px', fontWeight: 600, color: '#166534', margin: '0 0 8px 0' }}>
                 of contested parking tickets get dismissed
               </p>
               <p style={{ fontSize: '14px', color: '#15803D', lineHeight: 1.6, margin: '0 0 16px 0', maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>
-                From 1.18 million contested tickets in City of Chicago FOIA data (parking violations only).
-                Yet 93% of Chicagoans never contest. Autopilot does it automatically for $49/year.
+                From 35.7M ticket records in City of Chicago FOIA data (2018-2025).
+                Yet 94% of Chicagoans never contest. Autopilot does it automatically for $99/year.
               </p>
               <Link href="/get-started" style={{
                 display: 'inline-flex',
@@ -845,7 +845,7 @@ export default function MyTickets() {
                 fontWeight: 700,
                 fontSize: '15px',
               }}>
-                Get Protected - $49/year
+                Get Protected - $99/year
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
