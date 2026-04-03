@@ -41,6 +41,7 @@ import Logger from '../utils/Logger';
 import Config from '../config/config';
 import NetworkStatus from '../utils/NetworkStatus';
 import { StorageKeys } from '../constants';
+import LocationDisclosureScreen, { hasAcceptedLocationDisclosure } from './LocationDisclosureScreen';
 
 // Native module for querying BT connection state directly from foreground service
 const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
@@ -265,6 +266,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [debugHoldReason, setDebugHoldReason] = useState<string>('');
   const [debugDecisionSource, setDebugDecisionSource] = useState<string>('');
   const [showGroundTruthBanner, setShowGroundTruthBanner] = useState(false);
+  const [showLocationDisclosure, setShowLocationDisclosure] = useState(false);
   const debugTransitionsRef = useRef<DebugTransition[]>([]);
 
   // Update time every minute
@@ -382,7 +384,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       refreshBtStatus();
       // Re-check location permission (user may have just enabled it in Settings)
       if (locationDenied) {
-        const hasPermission = await LocationService.requestLocationPermission(true);
+        const needsDisclosure = Platform.OS === 'android' && !(await hasAcceptedLocationDisclosure());
+        const hasPermission = await LocationService.requestLocationPermission(!needsDisclosure);
         if (hasPermission) {
           setLocationDenied(false);
           if (!isMonitoring) {
@@ -577,6 +580,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // Small delay to let the UI render first, but properly await everything
     await new Promise<void>((resolve) => setTimeout(() => resolve(), 500));
     try {
+      // Android: Show prominent disclosure before requesting background location
+      if (Platform.OS === 'android') {
+        const disclosureAccepted = await hasAcceptedLocationDisclosure();
+        if (!disclosureAccepted) {
+          setShowLocationDisclosure(true);
+          return; // Will resume after user accepts
+        }
+      }
+
       const hasLocationPermission = await LocationService.requestLocationPermission(true);
       if (!hasLocationPermission) {
         log.warn('Location permission not granted, monitoring not auto-started');
@@ -1215,6 +1227,23 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   // Speed helper for debug (m/s to mph)
   const speedMph = (ms: number) => (ms * 2.237).toFixed(0);
+
+  // Android: Show location disclosure before anything else
+  if (showLocationDisclosure && Platform.OS === 'android') {
+    return (
+      <LocationDisclosureScreen
+        onAccept={() => {
+          setShowLocationDisclosure(false);
+          // Now that disclosure is accepted, start monitoring (which will request permission)
+          autoStartMonitoring();
+        }}
+        onDecline={() => {
+          setShowLocationDisclosure(false);
+          setLocationDenied(true);
+        }}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
