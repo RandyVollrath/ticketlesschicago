@@ -455,7 +455,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              Founding Member rate: $49/year. Unlimited automated contesting for eligible tickets.
+              Founding Member rate: $99/year. Unlimited automated contesting for eligible tickets.
             </p>
           </div>
 
@@ -1042,7 +1042,7 @@ export default function Protection() {
                 First Dismissal Guarantee
               </h3>
               <p style={{ fontSize: '14px', color: COLORS.slate, lineHeight: '1.5', margin: 0 }}>
-                If we don't dismiss at least one eligible non-camera ticket during your membership year, we refund your membership fee.
+                If we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund.
               </p>
             </div>
 
