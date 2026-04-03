@@ -158,7 +158,7 @@ export default function LandingPage() {
     },
     {
       q: "What if the ticket isn't dismissed?",
-      a: "First Dismissal Guarantee: if we don't get you at least 1 ticket dismissed, you get a full refund. Your first dismissed ticket pays for the whole year."
+      a: "First Dismissal Guarantee: if we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund. Your first dismissed ticket pays for the whole year."
     },
   ];
 
@@ -360,7 +360,7 @@ export default function LandingPage() {
           </span>
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
           <span style={{ color: '#E2E8F0', fontSize: '14px' }}>
-            If we don't get you at least 1 ticket dismissed, you get a full refund.
+            If we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund.
           </span>
         </div>
 
@@ -718,7 +718,7 @@ export default function LandingPage() {
             </Button>
 
             <p style={{ fontSize: '13px', color: '#64748B', marginTop: '16px' }}>
-              First Dismissal Guarantee: if we don't get you at least 1 ticket dismissed, you get a full refund.
+              First Dismissal Guarantee: if we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund.
             </p>
           </div>
         </div>
