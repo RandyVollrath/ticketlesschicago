@@ -150,7 +150,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "68% of contested parking tickets get dismissed — based on 155,002 decided parking cases from Chicago FOIA data (excluding camera tickets). By category: expired plates 89%, city sticker 85%, handicapped zone 72%, expired meter 66-68%, residential permit 52%. Camera tickets are harder at 19-26%. These are real rates from actual hearings — not estimates."
+      a: "68% of contested parking tickets get dismissed — based on 35.7M ticket records from Chicago FOIA data (2018-2025). By category: expired plates 88%, city sticker 85%, handicapped zone 72%, expired meter 67-68%, residential permit 54%. Camera tickets are harder at 19-26%. These are real rates from actual hearings — not estimates."
     },
     {
       q: "Can I review letters before they're sent?",
@@ -173,7 +173,7 @@ export default function LandingPage() {
     }}>
       <Head>
         <title>Chicago Driver Protection Plan | Autopilot America</title>
-        <meta name="description" content="Chicago's complete ticket protection system — alerts before street cleaning and snow bans, automatic parking detection, and unlimited ticket contesting. $49/year." />
+        <meta name="description" content="Chicago's complete ticket protection system — alerts before street cleaning and snow bans, automatic parking detection, and unlimited ticket contesting. $99/year." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -334,7 +334,7 @@ export default function LandingPage() {
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button primary href="/get-started">
-            Get Started - $49/year <ArrowRight />
+            Get Started - $99/year <ArrowRight />
           </Button>
         </div>
 
@@ -389,7 +389,7 @@ export default function LandingPage() {
           letterSpacing: '1px',
           textTransform: 'uppercase',
         }}>
-          Chicago FOIA Data, 2021–2024
+          Chicago FOIA Data, 2018–2025
         </p>
         <div style={{
           fontFamily: FONTS.heading,
@@ -686,11 +686,11 @@ export default function LandingPage() {
               margin: '8px 0 10px 0',
               color: '#fff'
             }}>
-              $49<span style={{fontSize: '18px', color: '#94A3B8'}}>/year</span>
+              $99<span style={{fontSize: '18px', color: '#94A3B8'}}>/year</span>
             </h3>
             <p style={{ color: '#CBD5E1', marginBottom: '32px' }}>Year-round protection. Price locked for life while active.</p>
             <p style={{ color: '#94A3B8', marginTop: '-20px', marginBottom: '28px', fontSize: '13px' }}>
-              Less than the cost of a single street cleaning ticket.
+              Less than the cost of two parking tickets.
             </p>
 
             <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -699,8 +699,8 @@ export default function LandingPage() {
                 'Code-specific contest letters, printed & mailed',
                 'First Dismissal Guarantee',
                 'Street cleaning & snow ban alerts',
-                'Red-light & speed camera alerts (mobile app)',
-                'Full parking history with departure tracking',
+                'Mobile app for Android (iOS coming soon)',
+                'Real-time parking detection & smart alerts',
                 'Full dashboard & ticket tracking',
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff' }}>
@@ -800,7 +800,7 @@ export default function LandingPage() {
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button primary href="/get-started">
-              Get Started - $49/year <ArrowRight />
+              Get Started - $99/year <ArrowRight />
             </Button>
           </div>
         </div>

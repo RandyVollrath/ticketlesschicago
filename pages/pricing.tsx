@@ -35,7 +35,7 @@ export default function PricingPage() {
         <section style={{ marginTop: 20, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24 }}>
           <h3 style={{ marginTop: 0 }}>Founding Member Rate</h3>
           <p style={{ color: '#64748B', lineHeight: 1.7 }}>
-            Founding Members pay $49/year. Your rate is locked as long as you keep an active membership.
+            Founding Members pay $99/year. Your rate is locked as long as you keep an active membership.
             If your membership is canceled or lapses beyond a 7-day renewal grace period, you may lose your Founding rate
             and re-subscribe at the then-current price.
           </p>

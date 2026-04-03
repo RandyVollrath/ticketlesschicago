@@ -186,7 +186,7 @@ export default function GetStarted() {
     <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete, minHeight: '100vh' }}>
       <Head>
         <title>Start Saving - Autopilot America</title>
-        <meta name="description" content="Become a Founding Member for $49/year. Price locks while your membership stays active." />
+        <meta name="description" content="Become a Founding Member for $99/year. Price locks while your membership stays active." />
       </Head>
 
       {/* Header */}
@@ -241,7 +241,7 @@ export default function GetStarted() {
               </div>
               <div style={{ padding: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$49</span>
+                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$99</span>
                   <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
                 </div>
                 <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 16px 0' }}>
@@ -493,11 +493,11 @@ export default function GetStarted() {
                 }}>
                   <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
                     <strong>Founding Member Rate</strong><br />
-                    Founding Members pay $49/year. Your rate is locked as long as you keep an active membership. If your membership is canceled or lapses beyond a 7-day renewal grace period, you may lose your Founding rate and re-subscribe at the then-current price.
+                    Founding Members pay $99/year. Your rate is locked as long as you keep an active membership. If your membership is canceled or lapses beyond a 7-day renewal grace period, you may lose your Founding rate and re-subscribe at the then-current price.
                   </div>
                   <div style={{ marginBottom: 12, fontSize: 13, color: COLORS.slate }}>
                     <strong>First Dismissal Guarantee</strong><br />
-                    If we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full refund of your membership fee. Camera tickets (red light / speed cameras) are excluded from the guarantee. Eligibility requires timely cooperation, including providing requested documentation promptly when asked.
+                    If we don't get you at least 1 ticket dismissed, you get a full refund. Your first dismissed ticket pays for the whole year. Camera tickets excluded. <a href="/guarantee" style={{ color: '#2563EB' }}>Full details</a>
                   </div>
                   <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
                     <input
@@ -547,7 +547,7 @@ export default function GetStarted() {
                     opacity: (checkoutLoading || !licensePlate.trim() || !consentChecked) ? 0.7 : 1,
                   }}
                 >
-                  {checkoutLoading ? 'Loading...' : 'Continue to Payment - $49/year'}
+                  {checkoutLoading ? 'Loading...' : 'Continue to Payment - $99/year'}
                 </button>
 
                 <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 16, textAlign: 'center' }}>

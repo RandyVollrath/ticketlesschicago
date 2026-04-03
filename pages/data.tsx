@@ -98,7 +98,7 @@ export default function DataPage() {
         </Head>
         <div style={styles.loadingContainer}>
           <div style={styles.loadingSpinner} />
-          <p style={styles.loadingText}>Crunching 1.17 million records...</p>
+          <p style={styles.loadingText}>Crunching 35.7 million records...</p>
         </div>
       </>
     );
@@ -123,9 +123,9 @@ export default function DataPage() {
   return (
     <>
       <Head>
-        <title>Chicago Ticket Contest Data - 1.17M Records Exposed</title>
+        <title>Chicago Ticket Contest Data - 35.7M Records Exposed</title>
         <meta name="description" content={`Analysis of ${formatNumber(overall.total_records)} Chicago parking ticket contests. ${overall.win_rate}% of people who contest win. Data from City of Chicago via FOIA.`} />
-        <meta property="og:title" content="Chicago Ticket Contest Data - 1.17M Records" />
+        <meta property="og:title" content="Chicago Ticket Contest Data - 35.7M Records" />
         <meta property="og:description" content={`${overall.win_rate}% of people who contest their Chicago parking tickets WIN. Exposed via FOIA from the City of Chicago.`} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
