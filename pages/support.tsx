@@ -19,7 +19,7 @@ export default function Support() {
         },
         {
           q: 'How much does it cost?',
-          a: 'Founding Member pricing is $49/year. The rate stays locked while your membership remains active.'
+          a: 'Founding Member pricing is $99/year. The rate stays locked while your membership remains active.'
         },
         {
           q: 'Can I cancel anytime?',
@@ -36,7 +36,7 @@ export default function Support() {
         },
         {
           q: 'What does the First Dismissal Guarantee cover?',
-          a: 'If we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full refund of your membership fee.'
+          a: 'If we don\'t help you avoid all tickets or get at least 1 dismissed, you get a full refund. Your first dismissed ticket pays for the whole year. Camera tickets excluded.'
         },
         {
           q: 'What makes a ticket eligible for the guarantee?',

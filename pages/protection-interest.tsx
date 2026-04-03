@@ -224,7 +224,7 @@ export default function ProtectionInterest() {
                       First Dismissal Guarantee
                     </div>
                     <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                      If we do not dismiss at least one eligible non-camera ticket during your membership year, you can request a full membership refund
+                      If we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund.
                     </div>
                   </div>
                 </label>

@@ -62,7 +62,7 @@ export default function HowItWorks() {
               lineHeight: '1.6'
             }}>
               Autopilot America provides unlimited automated contesting for eligible Chicago parking tickets and handles the paperwork and mailing for you.
-              First Dismissal Guarantee: if we do not successfully dismiss at least one eligible non-camera ticket during your membership year, you can request a full membership refund.
+              First Dismissal Guarantee: if we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund. Your first dismissed ticket pays for the whole year.
             </p>
             <div style={{
               background: '#dbeafe',
