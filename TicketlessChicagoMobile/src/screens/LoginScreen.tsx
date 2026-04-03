@@ -183,7 +183,11 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       if (result.success) {
         await onAuthSuccess?.();
       } else {
-        setError(result.error || 'Sign in failed. Check your email and password.');
+        // If credentials are invalid, the account may have been created via Google/Apple
+        const msg = result.error?.toLowerCase().includes('invalid')
+          ? 'Invalid login credentials. If you signed up with Google or Apple, please use that button instead.'
+          : result.error || 'Sign in failed. Check your email and password.';
+        setError(msg);
       }
     } catch (err) {
       log.error('Email/password sign-in error', err);
