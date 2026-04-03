@@ -36,7 +36,7 @@ export default function FOIADemo() {
             FOIA Data Integration Demo
           </h1>
           <p style={{ fontSize: '18px', color: '#6b7280', marginBottom: '8px' }}>
-            Testing 1.2M Chicago contested ticket records
+            Testing 35.7M Chicago ticket records
           </p>
           <p style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>
             No login required - Public test page

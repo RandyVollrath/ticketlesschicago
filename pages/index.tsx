@@ -150,7 +150,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "68% of contested parking tickets get dismissed — based on 35.7M ticket records from Chicago FOIA data (2018-2025). By category: expired plates 88%, city sticker 85%, handicapped zone 72%, expired meter 67-68%, residential permit 54%. Camera tickets are harder at 19-26%. These are real rates from actual hearings — not estimates."
+      a: "67% of contested parking tickets get dismissed — based on 35.7M ticket records from Chicago FOIA data (2018-2025). By category: expired plates 88%, city sticker 85%, handicapped zone 72%, expired meter 67-68%, residential permit 54%. Camera tickets are harder at 19-26%. These are real rates from actual hearings — not estimates."
     },
     {
       q: "Can I review letters before they're sent?",
@@ -399,7 +399,7 @@ export default function LandingPage() {
           letterSpacing: '-0.5px',
         }}>
           <div>94% of tickets go uncontested.</div>
-          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 68% of contested parking tickets win.</div>
+          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 67% of contested parking tickets win.</div>
         </div>
         <p style={{
           margin: '24px 0 0',

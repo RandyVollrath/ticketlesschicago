@@ -153,7 +153,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       total_tickets: totalTickets,
       total_fines: totalFines,
       data_period: '2019-2024',
-      source: 'City of Chicago FOIA (26.8M tickets)',
+      source: 'City of Chicago FOIA (35.7M tickets)',
     });
   } catch (err: any) {
     console.error('[zip-marketing] Error:', err);

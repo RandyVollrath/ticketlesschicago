@@ -9,7 +9,7 @@ const supabase = TA_URL && TA_KEY ? createClient(TA_URL, TA_KEY) : null;
 
 // ============================================================================
 // FOIA DATA: Top ticket blocks, streets, and ward stats (2023-2024)
-// Source: 26.8M ticket rows, violation_code 0964040B (STREET CLEANING)
+// Source: 35.7M ticket rows, violation_code 0964040B (STREET CLEANING)
 // ============================================================================
 
 // Top blocks by ticket density (block = 100-block, e.g. "1000 W Granville Ave")

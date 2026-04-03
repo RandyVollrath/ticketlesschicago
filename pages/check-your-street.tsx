@@ -498,7 +498,7 @@ export default function CheckYourStreet() {
             lineHeight: '1.5',
             margin: '0 0 40px 0'
           }}>
-            Powered by 26.8 million Chicago ticket records (FOIA 2019-2024)
+            Powered by 35.7 million Chicago ticket records (FOIA 2018-2025)
           </p>
 
           {/* Search Form */}
@@ -862,7 +862,7 @@ export default function CheckYourStreet() {
                 ? `${Math.min(...blockStats.by_year.map((y: any) => y.year))}-${Math.max(...blockStats.by_year.map((y: any) => y.year))}`
                 : '2019-2024';
               const avgFines = blockStats.avg_fines_per_year ? Math.round(blockStats.avg_fines_per_year) : 0;
-              const potentialSavings = Math.round(avgFines * 0.68);
+              const potentialSavings = Math.round(avgFines * 0.67);
 
               return (
                 <>
@@ -944,11 +944,11 @@ export default function CheckYourStreet() {
                             <div style={{ fontSize: '15px', color: 'white', fontWeight: '600', lineHeight: '1.4' }}>
                               {avgFines >= 200
                                 ? <>This block averages <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines. We could save you up to <span style={{ color: '#6EE7B7' }}>${potentialSavings.toLocaleString()}/yr</span>.</>
-                                : <>68% of contested tickets get dismissed. At <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines, one win pays for itself.</>
+                                : <>67% of contested tickets get dismissed. At <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines, one win pays for itself.</>
                               }
                             </div>
                             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
-                              We automatically contest every ticket on your plate. $49/yr.
+                              We automatically contest every ticket on your plate. $99/yr.
                             </div>
                           </div>
                           <button onClick={() => router.push('/get-started')} style={{
@@ -966,7 +966,7 @@ export default function CheckYourStreet() {
                         fontSize: '11px', color: 'rgba(255,255,255,0.35)',
                       }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        Source: City of Chicago FOIA F118906-110325 &middot; 26.8M tickets ({yearsLabel})
+                        Source: City of Chicago FOIA &middot; 35.7M tickets ({yearsLabel})
                       </div>
                     </div>
                   </div>
@@ -1093,7 +1093,7 @@ export default function CheckYourStreet() {
           <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', margin: '0 0 8px', fontFamily: '"Space Grotesk", sans-serif' }}>
             Never worry about parking tickets again
           </h3>
-          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 68% get dismissed. $49/yr.</p>
+          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 67% get dismissed. $99/yr.</p>
           <button onClick={() => router.push('/get-started')} style={{
             backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '10px',
             padding: '12px 24px', fontSize: '15px', fontWeight: '700', cursor: 'pointer',

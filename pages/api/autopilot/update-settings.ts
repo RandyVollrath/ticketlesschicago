@@ -42,6 +42,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mailing_state,
       mailing_zip,
       home_address_full,
+      // Profile fields from /start funnel
+      last_name,
+      first_name,
+      license_plate,
+      license_state,
+      city_sticker_expiry,
+      plate_expiry,
     } = req.body;
 
     // ── Update autopilot_settings (ticket types + notifications) ──
@@ -79,9 +86,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // ── Update user_profiles (address fields) ──
+    // ── Update user_profiles (profile + address fields) ──
     const profileUpdates: Record<string, any> = {};
 
+    if (typeof last_name === 'string' && last_name.trim()) {
+      profileUpdates.last_name = last_name.trim();
+    }
+    if (typeof first_name === 'string' && first_name.trim()) {
+      profileUpdates.first_name = first_name.trim();
+    }
+    if (typeof license_plate === 'string' && license_plate.trim()) {
+      profileUpdates.license_plate = license_plate.trim().toUpperCase();
+    }
+    if (typeof license_state === 'string' && license_state.trim()) {
+      profileUpdates.license_state = license_state.trim().toUpperCase();
+    }
+    if (typeof city_sticker_expiry === 'string' && city_sticker_expiry) {
+      profileUpdates.city_sticker_expiry = city_sticker_expiry;
+    }
+    if (typeof plate_expiry === 'string' && plate_expiry) {
+      profileUpdates.plate_expiry = plate_expiry;
+    }
     if (typeof mailing_address === 'string' && mailing_address.trim()) {
       profileUpdates.mailing_address = mailing_address.trim();
     }
@@ -102,8 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       profileUpdates.updated_at = new Date().toISOString();
       const { error } = await supabaseAdmin
         .from('user_profiles')
-        .update(profileUpdates)
-        .eq('user_id', userId);
+        .upsert({ user_id: userId, ...profileUpdates }, { onConflict: 'user_id' });
 
       if (error) {
         console.error('Error updating user profile:', error);

@@ -229,7 +229,7 @@ export default function DashboardPage() {
   const avgTicketAmount = tickets.length > 0
     ? Math.round(tickets.filter(t => t.amount).reduce((sum, t) => sum + (t.amount || 0), 0) / tickets.filter(t => t.amount).length)
     : 0;
-  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.685); // 68.5% parking ticket dismissal rate
+  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.67); // 67% parking ticket dismissal rate
 
   if (loading) {
     return (
@@ -464,7 +464,7 @@ export default function DashboardPage() {
             label="Estimated Savings"
             value={`$${estimatedSavings}`}
             color={COLORS.accent}
-            subtext="Based on 68.5% win rate"
+            subtext="Based on 67% win rate"
           />
           <StatCard label="Next Check" value={nextCheckDate} />
         </div>
@@ -629,7 +629,7 @@ export default function DashboardPage() {
               }}>
                 <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>Plan</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.primary, fontFamily: FONTS.heading }}>
-                  $49/year
+                  $99/year
                 </div>
               </div>
               <div style={{

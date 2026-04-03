@@ -1,7 +1,7 @@
 /**
  * GET /api/block-stats?address=1710+S+Clinton+St
  *
- * Returns block-level ticket stats from 26.8M FOIA tickets (2019-2024).
+ * Returns block-level ticket stats from 35.7M FOIA tickets (2018-2025).
  * Parses the address into block_id components and calls the
  * get_block_ticket_summary RPC function.
  *

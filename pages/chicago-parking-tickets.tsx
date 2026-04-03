@@ -45,7 +45,7 @@ const STATS = {
   appCovers: '$345,057,744',
   appCoversPct: '82%',
   uncontested: '94%',
-  winRate: '68%',
+  winRate: '67%',
   cameraRevenue: '$183,083,108',
   streetCleaningRevenue: '$25,503,427',
   streetCleaningTickets: '323,144',
@@ -247,7 +247,7 @@ function BlockLookup() {
               )}
               <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: C.greenBg, borderRadius: '8px', border: `1px solid #A7F3D0` }}>
                 <span style={{ fontSize: '14px', color: '#065F46' }}>
-                  Autopilot would have contested these automatically. 68% of parking tickets get dismissed. <Link href="/get-started" style={{ color: C.greenDark, fontWeight: 700 }}>Protect your car for $99/yr &rarr;</Link>
+                  Autopilot would have contested these automatically. 67% of parking tickets get dismissed. <Link href="/get-started" style={{ color: C.greenDark, fontWeight: 700 }}>Protect your car for $99/yr &rarr;</Link>
                 </span>
               </div>
             </>
@@ -281,7 +281,7 @@ export default function ChicagoParkingTickets() {
     <>
       <Head>
         <title>Chicago Parking Tickets: $420 Million in Fines (2025 FOIA Data) | Autopilot America</title>
-        <meta name="description" content="Chicago charged drivers $420 million in parking tickets in 2025. 94% go uncontested. 68% of contested tickets win. See the data and protect yourself." />
+        <meta name="description" content="Chicago charged drivers $420 million in parking tickets in 2025. 94% go uncontested. 67% of contested tickets win. See the data and protect yourself." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
@@ -324,7 +324,7 @@ export default function ChicagoParkingTickets() {
             5.2 million tickets. 598 every hour. The average Chicago car gets hit with <strong style={{ color: C.white }}>{fmtMoney(avgPerCar)}/year</strong> in fines.
           </p>
           <p style={{ fontFamily: F.body, fontSize: 'clamp(16px, 2.5vw, 20px)', color: '#6EE7B7', maxWidth: '600px', margin: '0 auto 40px', lineHeight: 1.6 }}>
-            <strong>94% of people never fight back. The ones who do win 68% of the time.</strong>
+            <strong>94% of people never fight back. The ones who do win 67% of the time.</strong>
           </p>
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -344,7 +344,7 @@ export default function ChicagoParkingTickets() {
           <StatCard value="$420M" label="Charged in 2025" color={C.red} />
           <StatCard value="5.2M" label="Tickets in 2025" color="#FCA5A5" />
           <StatCard value="94%" label="Never contested" color={C.orange} />
-          <StatCard value="68%" label="Win when contested" color={C.green} />
+          <StatCard value="67%" label="Win when contested" color={C.green} />
         </div>
       </section>
 
@@ -427,10 +427,10 @@ export default function ChicagoParkingTickets() {
 
       {/* ════════ THE CONTEST SECRET ════════ */}
       <Section bg={C.offWhite}>
-        <Headline>94% of People Just Pay. The Other 6% Win 68% of the Time.</Headline>
+        <Headline>94% of People Just Pay. The Other 6% Win 67% of the Time.</Headline>
 
         <Body>Out of 5.2 million tickets issued in 2025, only <strong>6% were contested</strong>. The other 94% of people just paid &mdash; or worse, ignored the ticket until it doubled.</Body>
-        <Body>But here's the thing: <strong>of the parking tickets that were contested, 68% were found "Not Liable."</strong> The driver won. The ticket was dismissed.</Body>
+        <Body>But here's the thing: <strong>of the parking tickets that were contested, 67% were found "Not Liable."</strong> The driver won. The ticket was dismissed.</Body>
 
         <div style={{ borderRadius: '12px', overflow: 'hidden', border: `1px solid ${C.gray200}`, backgroundColor: C.white, margin: '32px 0' }}>
           <div style={{ padding: '16px 20px', backgroundColor: C.navy, color: C.white, fontFamily: F.heading, fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Win rates by violation type (FOIA data)</div>
@@ -438,7 +438,7 @@ export default function ChicagoParkingTickets() {
             { name: 'Expired Plates', rate: '89%' },
             { name: 'No City Sticker', rate: '85%' },
             { name: 'Disabled Parking Zone', rate: '72%' },
-            { name: 'Expired Meter (CBD)', rate: '68%' },
+            { name: 'Expired Meter (CBD)', rate: '67%' },
             { name: 'Expired Meter (Non-CBD)', rate: '66%' },
             { name: 'Double Parking', rate: '62-69%' },
             { name: 'Residential Permit Parking', rate: '52%' },
