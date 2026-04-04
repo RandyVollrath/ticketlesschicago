@@ -201,9 +201,9 @@ export default async function handler(
         transaction_id: finalTransactionId || `unknown_${Date.now()}`,
         receipt_data: (purchaseToken || receipt || '').substring(0, 500),
         environment: validation.environment || 'unknown',
-        amount_cents: 6999,
+        amount_cents: 13999,
         apple_fee_cents: 2100,
-        net_cents: 4899,
+        net_cents: 11899,
       });
 
     // Activate the user's account
