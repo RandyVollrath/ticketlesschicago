@@ -40,6 +40,8 @@
 		F8E854848C4643CFB72934B1 /* FontAwesome6_Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 444E0DA135824B178300D37C /* FontAwesome6_Regular.ttf */; };
 		F99F4ACEF6FB404399AB7CF0 /* Fontisto.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FB605FD6CF4541558299A6B4 /* Fontisto.ttf */; };
 		GSERVICEINFO001A68108700A75B /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = GSERVICEINFO001A68108700A75A /* GoogleService-Info.plist */; };
+		CAMALERT0001000001SPEED01 /* speed_camera.caf in Resources */ = {isa = PBXBuildFile; fileRef = CAMALERT0001000001SPEED02 /* speed_camera.caf */; };
+		CAMALERT0001000001REDLT01 /* red_light_camera.caf in Resources */ = {isa = PBXBuildFile; fileRef = CAMALERT0001000001REDLT02 /* red_light_camera.caf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -67,6 +69,8 @@
 		A1B2C3D401000001MOTIO002 /* MotionActivityModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MotionActivityModule.swift; path = TicketlessChicagoMobile/MotionActivityModule.swift; sourceTree = "<group>"; };
 		A1B2C3D401000001MOTIO004 /* MotionActivityModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MotionActivityModule.m; path = TicketlessChicagoMobile/MotionActivityModule.m; sourceTree = "<group>"; };
 		A1B2C3D401000001SPEEC002 /* SpeechModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpeechModule.swift; path = TicketlessChicagoMobile/SpeechModule.swift; sourceTree = "<group>"; };
+		CAMALERT0001000001SPEED02 /* speed_camera.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; name = speed_camera.caf; path = TicketlessChicagoMobile/speed_camera.caf; sourceTree = "<group>"; };
+		CAMALERT0001000001REDLT02 /* red_light_camera.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; name = red_light_camera.caf; path = TicketlessChicagoMobile/red_light_camera.caf; sourceTree = "<group>"; };
 		A1B2C3D401000001SPEEC004 /* SpeechModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SpeechModule.m; path = TicketlessChicagoMobile/SpeechModule.m; sourceTree = "<group>"; };
 		A625434B00424C00AC75DD3C /* Feather.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Feather.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Feather.ttf"; sourceTree = "<group>"; };
 		BB5BF92DB7D34D4B816F4F6C /* FontAwesome5_Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf"; sourceTree = "<group>"; };
@@ -109,6 +113,8 @@
 				A1B2C3D401000001SPEEC002 /* SpeechModule.swift */,
 				A1B2C3D401000001SPEEC004 /* SpeechModule.m */,
 				GSERVICEINFO001A68108700A75A /* GoogleService-Info.plist */,
+				CAMALERT0001000001SPEED02 /* speed_camera.caf */,
+				CAMALERT0001000001REDLT02 /* red_light_camera.caf */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -256,6 +262,8 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				GSERVICEINFO001A68108700A75B /* GoogleService-Info.plist in Resources */,
 				C43826487FF1883095ABEF6C /* PrivacyInfo.xcprivacy in Resources */,
+				CAMALERT0001000001SPEED01 /* speed_camera.caf in Resources */,
+				CAMALERT0001000001REDLT01 /* red_light_camera.caf in Resources */,
 				450947DE14D84D32BB2B1D0C /* EvilIcons.ttf in Resources */,
 				F99F4ACEF6FB404399AB7CF0 /* Fontisto.ttf in Resources */,
 				E0A7754DA2784458B6D1A985 /* Foundation.ttf in Resources */,
@@ -411,7 +419,7 @@
 				CODE_SIGN_ENTITLEMENTS = TicketlessChicagoMobile/TicketlessChicagoMobile.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 27;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = V22BMBQJ67;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = TicketlessChicagoMobile/Info.plist;
@@ -420,7 +428,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.25;
+				MARKETING_VERSION = 2.0.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -444,7 +452,7 @@
 				CODE_SIGN_ENTITLEMENTS = TicketlessChicagoMobile/TicketlessChicagoMobile.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 27;
+				CURRENT_PROJECT_VERSION = 34;
 				DEVELOPMENT_TEAM = V22BMBQJ67;
 				INFOPLIST_FILE = TicketlessChicagoMobile/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -452,7 +460,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.25;
+				MARKETING_VERSION = 2.0.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

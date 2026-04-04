@@ -4089,7 +4089,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       let content = UNMutableNotificationContent()
       content.title = title
       content.body = body
-      content.sound = UNNotificationSound.default  // Standard push sound — App Store safe, no audio background mode needed
+      // Custom spoken alert sounds — iOS plays these as part of the notification (no audio background mode needed)
+      if title.lowercased().contains("red") {
+        content.sound = UNNotificationSound(named: UNNotificationSoundName("red_light_camera.caf"))
+      } else {
+        content.sound = UNNotificationSound(named: UNNotificationSoundName("speed_camera.caf"))
+      }
 
       // Fire immediately (short delay to avoid iOS dropping same-tick notifications)
       let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
