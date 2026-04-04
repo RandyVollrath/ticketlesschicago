@@ -66,7 +66,11 @@ export default function StartFunnel() {
   const [street, setStreet] = useState('');
   const [zip, setZip] = useState('');
 
+  // Block stats (fetched after address step)
+  const [blockStats, setBlockStats] = useState<any>(null);
+
   // Price step
+  const [billingPlan, setBillingPlan] = useState<'annual' | 'monthly'>('annual');
   const [consentChecked, setConsentChecked] = useState(false);
 
   // Post-payment fields
@@ -290,6 +294,11 @@ export default function StartFunnel() {
       mailing_zip: zip.trim(),
       home_address_full: `${street.trim()}, Chicago, IL ${zip.trim()}`,
     });
+    // Fetch block stats in background (non-blocking)
+    fetch(`/api/block-stats?address=${encodeURIComponent(street.trim())}`)
+      .then(r => r.json())
+      .then(data => { if (data && data.total_tickets) setBlockStats(data); })
+      .catch(() => { /* non-fatal */ });
     goNext();
   };
 
@@ -325,6 +334,7 @@ export default function StartFunnel() {
           userId: user.id,
           licensePlate: cleanPlate,
           plateState,
+          billingPlan,
         }),
       });
 
@@ -486,8 +496,8 @@ export default function StartFunnel() {
           {/* ── Step 1: Sign In ── */}
           {step === 'signin' && (
             <StepContainer>
-              <StepLabel>Stop paying unfair parking tickets</StepLabel>
-              <StepSubtext>We monitor your plate, catch new tickets, and automatically mail contest letters on your behalf. Sign in to get started — takes about 2 minutes.</StepSubtext>
+              <StepLabel>The parking app Chicago drivers need</StepLabel>
+              <StepSubtext>Address-based alerts before you get a ticket. Real-time warnings when your car is at risk. And if you do get a ticket, we contest it automatically. Sign in to get started — takes about 2 minutes.</StepSubtext>
 
               <button
                 type="button"
@@ -522,7 +532,7 @@ export default function StartFunnel() {
 
               {error && <ErrorText>{error}</ErrorText>}
 
-              <Reassurance>$99/year. One ticket dismissed pays for itself. No payment until the last step.</Reassurance>
+              <Reassurance>$99/year. Pays for itself with one avoided ticket. No payment until the last step.</Reassurance>
             </StepContainer>
           )}
 
@@ -660,36 +670,66 @@ export default function StartFunnel() {
           {/* ── Step 5: Value Proposition ── */}
           {step === 'value' && (
             <StepContainer>
-              <StepLabel>Why people pay for this</StepLabel>
+              <StepLabel>Three layers of protection</StepLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20, margin: '8px 0' }}>
                 <ValueItem
-                  icon="&#128202;"
-                  title="Built on real Chicago win-rate data"
-                  desc="Chicago charged drivers $420 million in 2025. Our app covers the ticket types we help you avoid or contest. Based on 35.7M ticket records."
+                  icon="&#128205;"
+                  title="Address alerts — before you park"
+                  desc="Street cleaning schedules, snow bans, and permit restrictions for your block. Get notified the night before so you can move your car."
+                />
+                <ValueItem
+                  icon="&#128663;"
+                  title="Car alerts — while you're parked"
+                  desc="The app knows where your car is. If a street cleaning sweep or tow zone is about to hit your location, you get a real-time warning."
                 />
                 <ValueItem
                   icon="&#9993;&#65039;"
-                  title="We do the work people procrastinate"
-                  desc="We monitor your plate, spot tickets, draft the contest letter, print it, mail it, and keep you updated."
-                />
-                <ValueItem
-                  icon="&#128176;"
-                  title="One ticket can pay for the year"
-                  desc="At $99/year, the membership costs less than two parking tickets and covers your whole year of monitoring."
+                  title="Automatic contesting — after a ticket"
+                  desc="We check your plate twice a week. When we find a ticket, we draft a contest letter, print it, and mail it to the City on your behalf."
                 />
               </div>
-              <div style={{
-                padding: '16px 18px',
-                borderRadius: 12,
-                border: `1px solid ${COLORS.border}`,
-                backgroundColor: COLORS.card,
-                marginTop: 8,
-                fontSize: 14,
-                color: COLORS.textSecondary,
-                lineHeight: 1.6,
-              }}>
-                We already have your plate and address — that&apos;s everything we need to start protecting you. The rest is just choosing your plan.
-              </div>
+              {blockStats && blockStats.total_tickets >= 20 && (
+                <div style={{
+                  padding: '18px 20px',
+                  borderRadius: 12,
+                  border: `2px solid ${COLORS.primary}`,
+                  backgroundColor: COLORS.primaryLight,
+                  marginTop: 12,
+                  fontSize: 14,
+                  color: COLORS.text,
+                  lineHeight: 1.6,
+                }}>
+                  <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 15 }}>Your block: {street}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, color: COLORS.textSecondary }}>
+                    <div><strong style={{ color: COLORS.text }}>{blockStats.total_tickets?.toLocaleString()}</strong> tickets issued on your block since 2018</div>
+                    {blockStats.avg_tickets_per_year > 0 && (
+                      <div><strong style={{ color: COLORS.text }}>~{blockStats.avg_tickets_per_year?.toLocaleString()}</strong> tickets per year on average</div>
+                    )}
+                    {blockStats.total_fines > 0 && (
+                      <div><strong style={{ color: COLORS.text }}>${blockStats.total_fines?.toLocaleString()}</strong> in total fines on this block</div>
+                    )}
+                    {blockStats.alertable_tickets > 0 && (
+                      <div style={{ marginTop: 4, color: COLORS.success, fontWeight: 600 }}>
+                        {blockStats.alertable_tickets?.toLocaleString()} of those were street cleaning or snow — exactly what our alerts prevent
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {(!blockStats || blockStats.total_tickets < 20) && (
+                <div style={{
+                  padding: '16px 18px',
+                  borderRadius: 12,
+                  border: `1px solid ${COLORS.border}`,
+                  backgroundColor: COLORS.successBg,
+                  marginTop: 8,
+                  fontSize: 14,
+                  color: COLORS.textSecondary,
+                  lineHeight: 1.6,
+                }}>
+                  The average Chicago car gets 3 tickets a year — $250 in fines and late fees. The top culprits: camera tickets, expired meters, and street cleaning. That&apos;s exactly what Autopilot protects against.
+                </div>
+              )}
               <ContinueButton onClick={goNext}>See pricing</ContinueButton>
             </StepContainer>
           )}
@@ -697,6 +737,74 @@ export default function StartFunnel() {
           {/* ── Step 6: Price + Consent ── */}
           {step === 'price' && (
             <StepContainer>
+              {/* Cost anchoring — what Chicago drivers pay WITHOUT protection */}
+              <div style={{
+                padding: '16px 20px',
+                borderRadius: 12,
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECACA',
+                marginBottom: 16,
+                fontSize: 14,
+                lineHeight: 1.7,
+                color: COLORS.textSecondary,
+              }}>
+                <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: 6, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  What Chicago drivers pay without protection
+                </div>
+                <div><strong style={{ color: COLORS.text }}>3 tickets/year</strong> average per car</div>
+                <div><strong style={{ color: COLORS.text }}>$83</strong> per ticket with late fees</div>
+                <div><strong style={{ color: COLORS.text }}>$250/year</strong> in fines and late fees per car</div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>Source: City of Chicago FOIA data, 2025</div>
+              </div>
+
+              {/* Billing toggle */}
+              <div style={{
+                display: 'flex',
+                backgroundColor: '#F1F5F9',
+                borderRadius: 10,
+                padding: 3,
+                marginBottom: 16,
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setBillingPlan('annual')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 0',
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: billingPlan === 'annual' ? 700 : 500,
+                    backgroundColor: billingPlan === 'annual' ? '#fff' : 'transparent',
+                    color: billingPlan === 'annual' ? COLORS.text : COLORS.textSecondary,
+                    boxShadow: billingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Annual <span style={{ fontSize: 11, color: COLORS.success, fontWeight: 600 }}>Save 45%</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingPlan('monthly')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 0',
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: billingPlan === 'monthly' ? 700 : 500,
+                    backgroundColor: billingPlan === 'monthly' ? '#fff' : 'transparent',
+                    color: billingPlan === 'monthly' ? COLORS.text : COLORS.textSecondary,
+                    boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Monthly
+                </button>
+              </div>
+
               <div style={{
                 textAlign: 'center',
                 padding: '24px',
@@ -705,41 +813,58 @@ export default function StartFunnel() {
                 border: `1px solid ${COLORS.border}`,
                 marginBottom: 24,
               }}>
-                <div style={{
-                  display: 'inline-block',
-                  padding: '4px 12px',
-                  borderRadius: 20,
-                  backgroundColor: COLORS.primary,
-                  color: '#fff',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: 16,
-                }}>
-                  Founding Member Rate
-                </div>
+                {billingPlan === 'annual' && (
+                  <div style={{
+                    display: 'inline-block',
+                    padding: '4px 12px',
+                    borderRadius: 20,
+                    backgroundColor: COLORS.primary,
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: 16,
+                  }}>
+                    Founding Member Rate
+                  </div>
+                )}
                 <div style={{ fontSize: 48, fontWeight: 700, color: COLORS.text, lineHeight: 1.1 }}>
-                  $99
-                  <span style={{ fontSize: 20, fontWeight: 400, color: COLORS.textSecondary }}>/year</span>
+                  {billingPlan === 'annual' ? '$99' : '$15'}
+                  <span style={{ fontSize: 20, fontWeight: 400, color: COLORS.textSecondary }}>
+                    {billingPlan === 'annual' ? '/year' : '/month'}
+                  </span>
                 </div>
-                <div style={{ fontSize: 14, color: COLORS.textSecondary, marginTop: 8 }}>
-                  Price locked for life while your membership stays active.
-                </div>
-                <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 4 }}>
-                  Less than two Chicago tickets. No free tier. Paid members only.
-                </div>
+                {billingPlan === 'annual' ? (
+                  <>
+                    <div style={{ fontSize: 14, color: COLORS.textSecondary, marginTop: 8 }}>
+                      Price locked for life while your membership stays active.
+                    </div>
+                    <div style={{ fontSize: 14, color: COLORS.success, fontWeight: 600, marginTop: 6 }}>
+                      Pays for itself in 1.2 tickets. Average driver saves $151/year.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 14, color: COLORS.textSecondary, marginTop: 8 }}>
+                      Cancel anytime. No commitment.
+                    </div>
+                    <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 6 }}>
+                      $180/year — save 45% with annual billing
+                    </div>
+                  </>
+                )}
               </div>
 
               <div style={{ marginBottom: 24 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 12 }}>What&apos;s included:</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <IncludedItem text="Plate monitoring for new Chicago tickets" />
-                  <IncludedItem text="Contest letters drafted, printed, and mailed for you" />
+                  <IncludedItem text="Street cleaning and snow ban alerts for your address" />
+                  <IncludedItem text="Real-time car location alerts via the mobile app" />
+                  <IncludedItem text="Twice-weekly plate monitoring for new tickets" />
+                  <IncludedItem text="Contest letters drafted, printed, and mailed automatically" />
+                  <IncludedItem text="Registration renewal deadline reminders" />
                   <IncludedItem text="First Dismissal Guarantee" />
-                  <IncludedItem text="Street cleaning and snow ban alerts for your block" />
-                  <IncludedItem text="Mobile app for Android (iOS coming soon)" />
-                  <IncludedItem text="Registration renewal deadline alerts" />
                 </div>
               </div>
 
@@ -771,7 +896,7 @@ export default function StartFunnel() {
               {error && <ErrorText>{error}</ErrorText>}
 
               <ContinueButton onClick={handleCheckout} disabled={loading}>
-                {loading ? 'Setting up...' : 'Start my protection — $99/year'}
+                {loading ? 'Setting up...' : `Start my protection — ${billingPlan === 'annual' ? '$99/year' : '$15/month'}`}
               </ContinueButton>
 
               <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: COLORS.textMuted }}>

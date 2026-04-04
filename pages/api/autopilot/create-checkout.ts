@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import { ACTIVE_AUTOPILOT_PLAN, AUTOPILOT_PRICE_ID } from '../../../lib/autopilot-plans';
+import { ACTIVE_AUTOPILOT_PLAN, ACTIVE_MONTHLY_PLAN, AUTOPILOT_PRICE_ID, AUTOPILOT_MONTHLY_PRICE_ID } from '../../../lib/autopilot-plans';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -31,7 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const userId = authUser.id;
 
-    const { licensePlate, plateState } = req.body;
+    const { licensePlate, plateState, billingPlan } = req.body;
+    const isMonthly = billingPlan === 'monthly';
 
     if (!licensePlate) {
       return res.status(400).json({ error: 'License plate required' });
@@ -97,13 +98,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }, { onConflict: 'user_id' });
     }
 
+    // Select plan and price based on billing interval
+    const selectedPlan = isMonthly ? ACTIVE_MONTHLY_PLAN : ACTIVE_AUTOPILOT_PLAN;
+    const priceId = isMonthly ? AUTOPILOT_MONTHLY_PRICE_ID : AUTOPILOT_PRICE_ID;
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [
         {
-          price: AUTOPILOT_PRICE_ID,
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -113,14 +118,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         metadata: {
           supabase_user_id: userId,
           service: 'autopilot',
-          plan_code: ACTIVE_AUTOPILOT_PLAN.code,
-          price_lock: String(ACTIVE_AUTOPILOT_PLAN.priceLock),
+          plan_code: selectedPlan.code,
+          price_lock: String(selectedPlan.priceLock),
         },
       },
       metadata: {
         supabase_user_id: userId,
         service: 'autopilot',
-        plan_code: ACTIVE_AUTOPILOT_PLAN.code,
+        plan_code: selectedPlan.code,
         license_plate_number: cleanPlate,
         license_plate_state: cleanState,
       },
@@ -132,13 +137,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('autopilot_subscriptions')
       .upsert({
         user_id: userId,
-        plan_code: ACTIVE_AUTOPILOT_PLAN.code,
+        plan_code: selectedPlan.code,
         plan: 'autopilot',
-        price_cents: ACTIVE_AUTOPILOT_PLAN.priceCents,
-        price_lock: ACTIVE_AUTOPILOT_PLAN.priceLock,
-        price_lock_cents: ACTIVE_AUTOPILOT_PLAN.priceLockCents,
+        price_cents: selectedPlan.priceCents,
+        price_lock: selectedPlan.priceLock,
+        price_lock_cents: selectedPlan.priceLockCents,
         price_lock_expires_at: null,
-        grace_period_days: ACTIVE_AUTOPILOT_PLAN.gracePeriodDays,
+        grace_period_days: selectedPlan.gracePeriodDays,
         stripe_customer_id: customerId,
         status: 'trialing', // Will be updated to 'active' by webhook after payment
         updated_at: new Date().toISOString(),

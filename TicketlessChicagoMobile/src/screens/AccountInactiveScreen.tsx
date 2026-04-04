@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing } from '../theme';
 import AuthService from '../services/AuthService';
-import IAPService from '../services/IAPService';
+import IAPService, { type BillingPlan } from '../services/IAPService';
 import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('AccountInactiveScreen');
@@ -33,8 +33,11 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
   const [signingOut, setSigningOut] = useState(false);
   const [checking, setChecking] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [billingPlan, setBillingPlan] = useState<BillingPlan>('annual');
   const [iapReady, setIapReady] = useState(false);
-  const [iapPrice, setIapPrice] = useState<string | null>(null);
+  const [monthlyAvailable, setMonthlyAvailable] = useState(false);
+  const [annualPrice, setAnnualPrice] = useState<string | null>(null);
+  const [monthlyPrice, setMonthlyPrice] = useState<string | null>(null);
   const user = AuthService.getUser();
 
   useEffect(() => {
@@ -51,8 +54,10 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
 
   const initializeIAP = async () => {
     await IAPService.initialize();
-    setIapReady(IAPService.isAvailable());
-    setIapPrice(IAPService.getPrice());
+    setIapReady(IAPService.isAvailable('annual'));
+    setMonthlyAvailable(IAPService.isMonthlyAvailable());
+    setAnnualPrice(IAPService.getPrice('annual'));
+    setMonthlyPrice(IAPService.getPrice('monthly'));
   };
 
   const handleSignOut = async () => {
@@ -82,7 +87,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
   };
 
   const handlePurchase = async () => {
-    if (!iapReady) {
+    if (!IAPService.isAvailable(billingPlan)) {
       Alert.alert(
         'Purchase Not Available',
         'In-App Purchase is still loading. Please try again in a moment.',
@@ -95,12 +100,11 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
       await IAPService.purchase((success, error) => {
         setPurchasing(false);
         if (success) {
-          // Account activated — trigger retry check which will navigate to MainTabs
           onRetryCheck();
         } else if (error && error !== 'Purchase cancelled') {
           Alert.alert('Purchase Failed', error);
         }
-      });
+      }, billingPlan);
     } catch (error: any) {
       setPurchasing(false);
       log.error('Purchase error', error);
@@ -123,18 +127,12 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
         {/* Title */}
         <Text style={styles.title}>Activate Your Account</Text>
 
-        {/* Message - different per platform */}
-        {Platform.OS === 'ios' ? (
-          <Text style={styles.message}>
-            Get started with Autopilot America for {iapPrice || '$119.99'}/year.{'\n\n'}
-            Automatic parking violation detection, street cleaning alerts, and ticket contesting — all in one app.
-          </Text>
-        ) : (
-          <Text style={styles.message}>
-            An active Autopilot account is required to use this app.{'\n\n'}
-            Visit autopilotamerica.com to set up your account.
-          </Text>
-        )}
+        {/* Message */}
+        <Text style={styles.message}>
+          {Platform.OS === 'ios'
+            ? `Automatic parking violation detection, street cleaning alerts, and ticket contesting — all in one app.`
+            : `An active Autopilot account is required to use this app.\n\nVisit autopilotamerica.com to set up your account.`}
+        </Text>
 
         {/* Email display */}
         {user?.email && (
@@ -144,24 +142,63 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
           </View>
         )}
 
-        {/* iOS: In-App Purchase button */}
+        {/* iOS: Billing toggle + In-App Purchase button */}
         {Platform.OS === 'ios' && (
-          <TouchableOpacity
-            style={[styles.primaryButton, purchasing && styles.buttonDisabled]}
-            onPress={handlePurchase}
-            disabled={purchasing}
-          >
-            {purchasing ? (
-              <ActivityIndicator size="small" color={colors.textInverse} />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
-                <Text style={styles.primaryButtonText}>
-                  Subscribe — {iapPrice || '$119.99'}/year
+          <>
+            {/* Billing plan toggle */}
+            <View style={styles.billingToggle}>
+              <TouchableOpacity
+                style={[styles.toggleOption, billingPlan === 'annual' && styles.toggleOptionActive]}
+                onPress={() => setBillingPlan('annual')}
+              >
+                <Text style={[styles.toggleText, billingPlan === 'annual' && styles.toggleTextActive]}>
+                  Annual
                 </Text>
-              </>
+                {billingPlan === 'annual' && (
+                  <Text style={styles.toggleSavings}>Save 45%</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleOption, billingPlan === 'monthly' && styles.toggleOptionActive]}
+                onPress={() => setBillingPlan('monthly')}
+              >
+                <Text style={[styles.toggleText, billingPlan === 'monthly' && styles.toggleTextActive]}>
+                  Monthly
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Price display */}
+            <Text style={styles.priceText}>
+              {billingPlan === 'annual'
+                ? (annualPrice || '$119.99') + '/year'
+                : (monthlyPrice || '$14.99') + '/month'}
+            </Text>
+            {billingPlan === 'monthly' && (
+              <Text style={styles.savingsHint}>
+                $179.88/year — save 45% with annual
+              </Text>
             )}
-          </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.primaryButton, purchasing && styles.buttonDisabled]}
+              onPress={handlePurchase}
+              disabled={purchasing}
+            >
+              {purchasing ? (
+                <ActivityIndicator size="small" color={colors.textInverse} />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
+                  <Text style={styles.primaryButtonText}>
+                    Subscribe — {billingPlan === 'annual'
+                      ? (annualPrice || '$119.99') + '/year'
+                      : (monthlyPrice || '$14.99') + '/month'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </>
         )}
 
         {/* Android: Open website button */}
@@ -260,6 +297,56 @@ const styles = StyleSheet.create({
   emailText: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
+  },
+  billingToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 3,
+    width: '100%',
+    marginBottom: spacing.md,
+  },
+  toggleOption: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  toggleOptionActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+  },
+  toggleTextActive: {
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+  },
+  toggleSavings: {
+    fontSize: 11,
+    fontWeight: typography.weights.semibold,
+    color: '#10B981',
+    marginTop: 2,
+  },
+  priceText: {
+    fontSize: typography.sizes.xxl || 32,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  savingsHint: {
+    fontSize: typography.sizes.sm,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
   primaryButton: {
     flexDirection: 'row',

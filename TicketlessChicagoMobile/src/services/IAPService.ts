@@ -4,20 +4,23 @@
  * Handles StoreKit purchases for users who sign up directly in the iOS app.
  * Users who signed up on the website already have active accounts and skip this.
  *
- * Product: Non-consumable "autopilot_annual" at $119.99
- * Apple takes 15% (~$18), we net ~$102 (Small Business Program rate).
+ * Products:
+ *   - "autopilot_annual" — $119.99/year (non-consumable, legacy)
+ *   - "autopilot_monthly" — $14.99/month (auto-renewable subscription)
+ *
+ * Apple takes 15% (Small Business Program rate).
  */
 
 import { Platform } from 'react-native';
 import {
   initConnection,
   endConnection,
-  fetchProducts,
-  requestPurchase,
+  getSubscriptions,
+  requestSubscription,
   finishTransaction,
   purchaseUpdatedListener,
   purchaseErrorListener,
-  type Product,
+  type Subscription,
   type Purchase,
   type PurchaseError,
 } from 'react-native-iap';
@@ -27,13 +30,17 @@ import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('IAPService');
 
-const PRODUCT_ID = 'autopilot_annual';
+const PRODUCT_ID_ANNUAL = 'autopilot_annual_v2';
+const PRODUCT_ID_MONTHLY = 'autopilot_monthly_v2';
+
+export type BillingPlan = 'annual' | 'monthly';
 
 type PurchaseCallback = (success: boolean, error?: string) => void;
 
 class IAPService {
   private connected = false;
-  private product: Product | null = null;
+  private annualSubscription: Subscription | null = null;
+  private monthlySubscription: Subscription | null = null;
   private purchaseUpdateSubscription: ReturnType<typeof purchaseUpdatedListener> | null = null;
   private purchaseErrorSubscription: ReturnType<typeof purchaseErrorListener> | null = null;
   private pendingCallback: PurchaseCallback | null = null;
@@ -50,13 +57,26 @@ class IAPService {
       this.connected = true;
       log.info('IAP connection established');
 
-      // Fetch product details from App Store
-      const products = await fetchProducts({ skus: [PRODUCT_ID] });
-      if (products && products.length > 0) {
-        this.product = products[0];
-        log.info(`IAP product loaded: ${this.product.displayPrice}`);
-      } else {
-        log.warn('IAP product not found in App Store — is it configured in App Store Connect?');
+      // Fetch both subscriptions
+      try {
+        const subs = await getSubscriptions({ skus: [PRODUCT_ID_ANNUAL, PRODUCT_ID_MONTHLY] });
+        for (const sub of subs) {
+          if (sub.productId === PRODUCT_ID_ANNUAL) {
+            this.annualSubscription = sub;
+            log.info(`IAP annual subscription loaded: ${sub.displayPrice}`);
+          } else if (sub.productId === PRODUCT_ID_MONTHLY) {
+            this.monthlySubscription = sub;
+            log.info(`IAP monthly subscription loaded: ${sub.displayPrice}`);
+          }
+        }
+        if (!this.annualSubscription) {
+          log.warn('IAP annual subscription not found in App Store');
+        }
+        if (!this.monthlySubscription) {
+          log.warn('IAP monthly subscription not found in App Store');
+        }
+      } catch (subError) {
+        log.warn('Failed to fetch subscriptions', subError);
       }
 
       // Listen for purchase events
@@ -83,24 +103,36 @@ class IAPService {
   }
 
   /**
-   * Get the localized price string (e.g. "$139.99") for display.
+   * Get the localized price string for a plan.
    */
-  getPrice(): string | null {
-    return this.product?.displayPrice ?? null;
+  getPrice(plan: BillingPlan = 'annual'): string | null {
+    if (plan === 'monthly') {
+      return this.monthlySubscription?.displayPrice ?? null;
+    }
+    return this.annualSubscription?.displayPrice ?? null;
   }
 
   /**
-   * Whether IAP is available (connected + product loaded).
+   * Whether IAP is available for a given plan.
    */
-  isAvailable(): boolean {
-    return Platform.OS === 'ios' && this.connected && this.product !== null;
+  isAvailable(plan: BillingPlan = 'annual'): boolean {
+    if (Platform.OS !== 'ios' || !this.connected) return false;
+    if (plan === 'monthly') return this.monthlySubscription !== null;
+    return this.annualSubscription !== null;
+  }
+
+  /**
+   * Whether monthly subscription is available in the store.
+   */
+  isMonthlyAvailable(): boolean {
+    return this.isAvailable('monthly');
   }
 
   /**
    * Initiate a purchase. Returns via callback when complete.
    */
-  async purchase(callback: PurchaseCallback): Promise<void> {
-    if (!this.isAvailable()) {
+  async purchase(callback: PurchaseCallback, plan: BillingPlan = 'annual'): Promise<void> {
+    if (!this.isAvailable(plan)) {
       callback(false, 'In-App Purchase is not available');
       return;
     }
@@ -108,11 +140,11 @@ class IAPService {
     this.pendingCallback = callback;
 
     try {
-      await requestPurchase({
+      const sku = plan === 'monthly' ? PRODUCT_ID_MONTHLY : PRODUCT_ID_ANNUAL;
+      await requestSubscription({
         request: {
-          apple: { sku: PRODUCT_ID },
+          apple: { sku },
         },
-        type: 'in-app',
       });
     } catch (error: any) {
       log.error('requestPurchase failed', error);
