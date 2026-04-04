@@ -665,7 +665,7 @@ export default function StartFunnel() {
                 <ValueItem
                   icon="&#128202;"
                   title="Built on real Chicago win-rate data"
-                  desc="Chicago issued $420 million in tickets in 2025. Our app covers $345 million of that — the ticket types we help you avoid or contest. Based on 35.7M ticket records."
+                  desc="Chicago charged drivers $420 million in fines and late fees in 2025. Our app covers the ticket types we help you avoid or contest. Based on 35.7M ticket records."
                 />
                 <ValueItem
                   icon="&#9993;&#65039;"

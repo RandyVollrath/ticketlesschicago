@@ -209,7 +209,7 @@ export default function TicketHeatmap() {
                 <line x1="12" y1="1" x2="12" y2="23"/>
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
               </svg>
-              Chicago Paid $420M in Car Tickets Last Year
+              Chicago Charged Drivers $420M in Fines and Late Fees Last Year
             </h2>
             <p style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1e40af' }}>
               Average driver could lose $1,000+/year to preventable tickets. Don't be a statistic.
