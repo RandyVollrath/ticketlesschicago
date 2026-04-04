@@ -280,8 +280,8 @@ export default function ChicagoParkingTickets() {
   return (
     <>
       <Head>
-        <title>Chicago Parking Tickets: $420 Million in Fines and Late Fees (2025 FOIA Data) | Autopilot America</title>
-        <meta name="description" content="Chicago charged drivers $420 million in fines and late fees in 2025. 94% go uncontested. 67% of contested tickets win. See the data and protect yourself." />
+        <title>Chicago Parking Tickets: $420 Million Charged (2025 FOIA Data) | Autopilot America</title>
+        <meta name="description" content="Chicago charged drivers $420 million in 2025. 94% go uncontested. 67% of contested tickets win. See the data and protect yourself." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
@@ -317,7 +317,7 @@ export default function ChicagoParkingTickets() {
           }}>
             Chicago Charged Drivers<br />
             <span style={{ color: C.red }}>$420 Million</span> in 2025<br />
-            in Fines and Late Fees.
+            in Tickets and Late Fees.
           </h1>
 
           <p style={{ fontFamily: F.body, fontSize: 'clamp(16px, 2.5vw, 20px)', color: C.gray400, maxWidth: '600px', margin: '0 auto 16px', lineHeight: 1.6 }}>
@@ -341,7 +341,7 @@ export default function ChicagoParkingTickets() {
       {/* ════════ STAT BAR ════════ */}
       <section style={{ backgroundColor: C.navy, borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
         <div className="stat-grid-4" style={{ maxWidth: '900px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0', padding: '0 5%' }}>
-          <StatCard value="$420M" label="Fines & late fees in 2025" color={C.red} />
+          <StatCard value="$420M" label="Charged in 2025" color={C.red} />
           <StatCard value="5.2M" label="Tickets in 2025" color="#FCA5A5" />
           <StatCard value="94%" label="Never contested" color={C.orange} />
           <StatCard value="67%" label="Win when contested" color={C.green} />
@@ -409,7 +409,7 @@ export default function ChicagoParkingTickets() {
           <div style={{ padding: '32px 24px', borderRadius: '16px', backgroundColor: C.redLight, border: '1px solid #FECACA', textAlign: 'center' }}>
             <div style={{ fontFamily: F.heading, fontSize: '48px', fontWeight: 800, color: C.red }}>{fmtMoney(avgPerCar)}</div>
             <div style={{ fontFamily: F.body, fontSize: '16px', color: '#991B1B', marginTop: '8px' }}>Average fines per car per year</div>
-            <div style={{ fontFamily: F.body, fontSize: '13px', color: '#B91C1C', marginTop: '4px' }}>$420M in fines &amp; late fees &divide; 1.1M registered vehicles</div>
+            <div style={{ fontFamily: F.body, fontSize: '13px', color: '#B91C1C', marginTop: '4px' }}>$420M charged &divide; 1.1M registered vehicles</div>
           </div>
           <div style={{ padding: '32px 24px', borderRadius: '16px', backgroundColor: C.greenBg, border: '1px solid #A7F3D0', textAlign: 'center' }}>
             <div style={{ fontFamily: F.heading, fontSize: '48px', fontWeight: 800, color: C.greenDark }}>{fmtMoney(STATS.autopilotCost)}</div>
