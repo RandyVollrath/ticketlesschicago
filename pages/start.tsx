@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import RegistrationForwardingSetup from '../components/RegistrationForwardingSetup';
+import { capture } from '../lib/posthog';
 
 // Pre-payment: signin → lastname → plate → address → value → price → (stripe)
 // Post-payment: confirmed → registration → receipt-forwarding → tickets → notifications
@@ -70,7 +71,11 @@ export default function StartFunnel() {
   const [blockStats, setBlockStats] = useState<any>(null);
 
   // Price step
-  const [billingPlan, setBillingPlan] = useState<'annual' | 'monthly'>('annual');
+  const [billingPlan, _setBillingPlan] = useState<'annual' | 'monthly'>('annual');
+  const setBillingPlan = (plan: 'annual' | 'monthly') => {
+    capture('billing_plan_selected', { plan });
+    _setBillingPlan(plan);
+  };
   const [consentChecked, setConsentChecked] = useState(false);
 
   // Post-payment fields
@@ -89,6 +94,7 @@ export default function StartFunnel() {
 
   // Restore state from localStorage on mount (survives OAuth redirect)
   useEffect(() => {
+    capture('start_funnel_viewed', { referrer: document.referrer || 'direct' });
     try {
       const saved = localStorage.getItem('start_funnel_state');
       if (saved) {
@@ -206,7 +212,9 @@ export default function StartFunnel() {
     setError('');
     const idx = currentSteps.indexOf(step);
     if (idx < currentSteps.length - 1) {
-      setStep(currentSteps[idx + 1]);
+      const nextStep = currentSteps[idx + 1];
+      capture('funnel_step_completed', { from_step: step, to_step: nextStep, step_index: idx });
+      setStep(nextStep);
     }
   };
 
@@ -316,6 +324,7 @@ export default function StartFunnel() {
 
     setLoading(true);
     setError('');
+    capture('checkout_initiated', { billing_plan: billingPlan, plate_state: plateState });
 
     try {
       const cleanPlate = plate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
