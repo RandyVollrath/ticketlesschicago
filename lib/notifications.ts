@@ -349,32 +349,6 @@ export class NotificationScheduler {
             // Send notifications based on preferences
             try {
               const prefs = user.notification_preferences || {};
-              // Registration automation is disabled by default.
-              // When disabled, paid users get reminder-style messaging only.
-              const hasProtection = FEATURES.REGISTRATION_AUTOMATION && (user.has_contesting || false);
-              const hasPermitZone = user.has_permit_zone || false;
-
-              // Check if user needs to submit permit zone documents
-              // Only request docs when within 60 days of City Sticker renewal for Protection users
-              let needsPermitDocs = false;
-              if (hasProtection && hasPermitZone && renewal.type === 'City Sticker' && daysUntil <= 60) {
-                // Use pre-fetched permit docs from Map (avoids N+1 query)
-                const permitDoc = permitDocsMap.get(user.user_id);
-
-                // Need docs if no customer code or not approved
-                needsPermitDocs = !permitDoc || !permitDoc.customer_code || permitDoc.verification_status !== 'approved';
-              }
-
-              // Check if we actually have a completed payment for this renewal
-              // IMPORTANT: Only say "already purchased" if we have confirmation from city
-              // This is used by both SMS and Email notifications
-              let actuallyPurchased = false;
-              if (hasProtection && renewal.canAutoPurchase && daysUntil < 30) {
-                // Use pre-fetched payments from Map (avoids N+1 query)
-                const renewalTypeDb = renewal.type === 'City Sticker' ? 'city_sticker' : 'license_plate';
-                const paymentKey = `${user.user_id}_${renewalTypeDb}_${dueDate.toISOString().split('T')[0]}`;
-                actuallyPurchased = paymentsMap.has(paymentKey);
-              }
 
               // Build context data for audit logging
               const contextData: MessageContext = {
@@ -382,8 +356,8 @@ export class NotificationScheduler {
                 zone: user.permit_zone || undefined,
                 days_until: daysUntil,
                 renewal_type: renewal.type,
-                has_contesting: hasProtection,
-                has_permit_zone: hasPermitZone
+                has_contesting: false,
+                has_permit_zone: user.has_permit_zone || false
               };
 
               // Generate message key for deduplication
@@ -414,17 +388,15 @@ export class NotificationScheduler {
                     renewalType: renewal.type as RenewalContext['renewalType'],
                     daysUntil,
                     dueDate,
-                    hasProtection,
+                    hasProtection: false,
                     profileConfirmed: user.profile_confirmed_at !== null,
-                    actuallyPurchased,
-                    needsPermitDocs,
+                    actuallyPurchased: false,
+                    needsPermitDocs: false,
                     blocksLicensePlate: renewal.type === 'Emissions Test' && 'blocksLicensePlate' in renewal && renewal.blocksLicensePlate
                   };
 
-                  // Use centralized SMS templates
-                  const message = (!hasProtection || !renewal.canAutoPurchase)
-                    ? sms.renewalFree(renewalCtx)
-                    : sms.renewalProtection(renewalCtx);
+                  // Use centralized SMS templates — all users get reminder-style messages
+                  const message = sms.renewalFree(renewalCtx);
 
                   if (this.dryRun) {
                     // DRY RUN MODE: Log what WOULD be sent but don't actually send
@@ -612,10 +584,10 @@ export class NotificationScheduler {
                     renewalType: renewal.type as RenewalContext['renewalType'],
                     daysUntil,
                     dueDate,
-                    hasProtection,
+                    hasProtection: false,
                     profileConfirmed: user.profile_confirmed_at !== null,
-                    actuallyPurchased,
-                    needsPermitDocs,
+                    actuallyPurchased: false,
+                    needsPermitDocs: false,
                     blocksLicensePlate: renewal.type === 'Emissions Test' && 'blocksLicensePlate' in renewal && renewal.blocksLicensePlate
                   };
 
@@ -626,10 +598,8 @@ export class NotificationScheduler {
                     licensePlate: user.license_plate
                   };
 
-                  // Use centralized email templates
-                  const emailContent = (hasProtection && renewal.canAutoPurchase)
-                    ? email.renewalProtection(emailRenewalCtx, userCtx)
-                    : email.renewalFree(emailRenewalCtx);
+                  // Use centralized email templates — all users get reminder-style messages
+                  const emailContent = email.renewalFree(emailRenewalCtx);
 
                   const emailSubject = emailContent.subject;
                   const emailHtml = emailContent.html;
