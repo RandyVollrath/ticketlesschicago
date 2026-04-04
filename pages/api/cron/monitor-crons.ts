@@ -36,10 +36,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: recentNotifs, count: notifCount } = await supabase
+    // Check user_notifications (where street cleaning notifications are actually logged)
+    // plus notification_log (used by other notification types) for a complete picture
+    const { count: userNotifCount } = await supabase
+      .from('user_notifications')
+      .select('*', { count: 'exact', head: true })
+      .gte('sent_at', yesterday);
+
+    const { count: logNotifCount } = await supabase
       .from('notification_log')
-      .select('*', { count: 'exact' })
+      .select('*', { count: 'exact', head: true })
       .gte('created_at', yesterday);
+
+    const notifCount = (userNotifCount || 0) + (logNotifCount || 0);
 
     // Check if street cleaning schedule has upcoming dates
     const today = new Date().toISOString().split('T')[0];

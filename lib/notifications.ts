@@ -337,10 +337,8 @@ export class NotificationScheduler {
           const daysUntil = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
           // Check if this matches a reminder day for the user
-          // Default: More reminders for Protection users to confirm info before 30-day charge
-          const defaultReminderDays = user.has_contesting
-            ? [60, 45, 37, 30, 14, 7, 1]  // Contesting: 60d, 45d, 37d (1 week before charge), 30d (charge day), then post-charge updates
-            : [30, 7, 1];                  // Free: standard reminders to renew themselves
+          // Sticker/plate reminders: people plan ahead for these (unlike street cleaning)
+          const defaultReminderDays = [30, 14, 7, 3, 1];
 
           const reminderDays = user.notification_preferences?.reminder_days || defaultReminderDays;
           
