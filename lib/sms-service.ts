@@ -105,7 +105,7 @@ async function sendClickSendSMSOnce(to: string, message: string): Promise<{succe
           {
             to: normalizePhoneForClickSend(to),
             body: message,
-            from: 'TicketLess',
+            from: 'Autopilot',
             source: 'nodejs'
           }
         ]
@@ -231,7 +231,7 @@ async function sendClickSendVoiceCallOnce(to: string, message: string): Promise<
             to: normalizePhoneForClickSend(to),
             body: message,
             voice: 'female', // or 'male'
-            custom_string: 'ticketless-reminder',
+            custom_string: 'autopilot-reminder',
             source: 'nodejs'
           }
         ]
