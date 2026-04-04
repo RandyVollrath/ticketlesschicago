@@ -5,7 +5,7 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const APP_BUNDLE_ID = 'fyi.ticketless.app';
-const VALID_PRODUCT_ID = 'autopilot_annual';
+const VALID_PRODUCT_IDS = ['autopilot_annual', 'autopilot_annual_v2', 'autopilot_monthly_v2'];
 
 /**
  * Decode a StoreKit 2 JWS (signed transaction) and extract claims.
@@ -48,7 +48,7 @@ function validateJWSTransaction(jws: string): {
   }
 
   // Verify product ID
-  if (payload.productId && payload.productId !== VALID_PRODUCT_ID) {
+  if (payload.productId && !VALID_PRODUCT_IDS.includes(payload.productId)) {
     return { valid: false, error: `Product ID mismatch: ${payload.productId}` };
   }
 
@@ -101,7 +101,7 @@ async function validateLegacyReceipt(receipt: string): Promise<{
   }
 
   const inApp = result.receipt?.in_app || [];
-  const matching = inApp.find((item: any) => item.product_id === VALID_PRODUCT_ID);
+  const matching = inApp.find((item: any) => VALID_PRODUCT_IDS.includes(item.product_id));
 
   if (!matching) {
     return { valid: false, error: 'Product not found in receipt' };
@@ -192,18 +192,24 @@ export default async function handler(
       }
     }
 
-    // Record the transaction
+    // Record the transaction with correct amounts per product
+    const finalProductId = validation.productId || productId;
+    const isMonthly = finalProductId === 'autopilot_monthly';
+    const amountCents = isMonthly ? 1499 : 11999;
+    const appleFeeCents = Math.round(amountCents * 0.15); // 15% Small Business Program
+    const netCents = amountCents - appleFeeCents;
+
     await supabaseAdmin
       .from('iap_transactions')
       .insert({
         user_id: user.id,
-        product_id: validation.productId || productId,
+        product_id: finalProductId,
         transaction_id: finalTransactionId || `unknown_${Date.now()}`,
         receipt_data: (purchaseToken || receipt || '').substring(0, 500),
         environment: validation.environment || 'unknown',
-        amount_cents: 13999,
-        apple_fee_cents: 2100,
-        net_cents: 11899,
+        amount_cents: amountCents,
+        apple_fee_cents: appleFeeCents,
+        net_cents: netCents,
       });
 
     // Activate the user's account
@@ -215,7 +221,7 @@ export default async function handler(
           email: user.email,
           has_contesting: true,
           is_paid: true,
-          payment_source: 'apple_iap',
+          payment_source: isMonthly ? 'apple_iap_monthly' : 'apple_iap',
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id' },
