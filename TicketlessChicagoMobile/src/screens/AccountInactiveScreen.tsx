@@ -26,7 +26,7 @@ interface AccountInactiveScreenProps {
 /**
  * Shown when a user logs in but doesn't have an active account.
  *
- * On iOS: Shows In-App Purchase button ($69.99) to activate account via Apple IAP.
+ * On iOS: Shows In-App Purchase button ($119.99) to activate account via Apple IAP.
  * On Android: Shows a clickable "Set Up on Website" button linking to autopilotamerica.com.
  */
 export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: AccountInactiveScreenProps) {
@@ -126,7 +126,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
         {/* Message - different per platform */}
         {Platform.OS === 'ios' ? (
           <Text style={styles.message}>
-            Get started with Autopilot America for {iapPrice || '$69.99'}/year.{'\n\n'}
+            Get started with Autopilot America for {iapPrice || '$119.99'}/year.{'\n\n'}
             Automatic parking violation detection, street cleaning alerts, and ticket contesting — all in one app.
           </Text>
         ) : (
@@ -157,7 +157,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
               <>
                 <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
                 <Text style={styles.primaryButtonText}>
-                  Subscribe — {iapPrice || '$69.99'}/year
+                  Subscribe — {iapPrice || '$119.99'}/year
                 </Text>
               </>
             )}
