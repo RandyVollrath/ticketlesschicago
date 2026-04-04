@@ -4,8 +4,8 @@
  * Handles StoreKit purchases for users who sign up directly in the iOS app.
  * Users who signed up on the website already have active accounts and skip this.
  *
- * Product: Non-consumable "autopilot_annual" at $69.99
- * Apple takes 30% ($21), we net ~$49.
+ * Product: Non-consumable "autopilot_annual" at $139.99
+ * Apple takes 15% (~$21), we net ~$119 (Small Business Program rate).
  */
 
 import { Platform } from 'react-native';
@@ -83,7 +83,7 @@ class IAPService {
   }
 
   /**
-   * Get the localized price string (e.g. "$69.99") for display.
+   * Get the localized price string (e.g. "$139.99") for display.
    */
   getPrice(): string | null {
     return this.product?.displayPrice ?? null;
