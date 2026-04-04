@@ -317,7 +317,7 @@ export default function LandingPage() {
           margin: '0 auto 24px',
           position: 'relative',
         }}>
-          Chicago Wrote $420M in Parking Tickets Last Year.
+          Chicago Charged Drivers $420M in Fines and Late Fees Last Year.
         </h1>
 
         <p style={{

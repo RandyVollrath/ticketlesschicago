@@ -448,7 +448,7 @@ export default function EarlyAccessPage() {
           fontWeight: 800,
           letterSpacing: '-0.5px',
         }}>
-          <div>Chicago wrote $420M in parking tickets in 2025.</div>
+          <div>Chicago charged drivers $420M in fines and late fees in 2025.</div>
           <div style={{ marginTop: '12px', color: '#A7F3D0' }}>67% of contested parking tickets win.</div>
         </div>
         <p style={{
