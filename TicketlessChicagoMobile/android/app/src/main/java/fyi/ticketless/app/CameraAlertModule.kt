@@ -8,6 +8,7 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -622,6 +623,9 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
     // Heading smoothing buffer for GPS noise reduction at low speeds
     private val headingBuffer = mutableListOf<Double>()
 
+    // Pre-recorded audio playback (preferred over TTS)
+    private var mediaPlayer: MediaPlayer? = null
+
     // TTS
     private var tts: TextToSpeech? = null
     @Volatile private var ttsReady = false
@@ -1175,20 +1179,84 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    /**
+     * Try to play a pre-recorded .m4a audio file for the camera type.
+     * Returns true if playback started, false if caller should fall back to TTS.
+     */
+    private fun playAudioFile(cameraType: String): Boolean {
+        return try {
+            mediaPlayer?.release()
+            mediaPlayer = null
+
+            val resId = if (cameraType == "redlight") {
+                R.raw.red_light_camera_ahead
+            } else {
+                R.raw.speed_camera_ahead
+            }
+
+            val player = MediaPlayer.create(reactApplicationContext, resId)
+            if (player == null) {
+                Log.w(TAG, "MediaPlayer.create returned null for $cameraType")
+                return false
+            }
+
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            player.setVolume(alertVolume, alertVolume)
+
+            player.setOnCompletionListener {
+                Log.d(TAG, "Audio file playback complete for $cameraType")
+                releaseAudioFocus()
+                it.release()
+                mediaPlayer = null
+            }
+
+            player.setOnErrorListener { mp, what, extra ->
+                Log.e(TAG, "MediaPlayer error: what=$what extra=$extra")
+                releaseAudioFocus()
+                mp.release()
+                mediaPlayer = null
+                false
+            }
+
+            requestAudioFocus()
+            player.start()
+            mediaPlayer = player
+            Log.i(TAG, "Playing audio file for: $cameraType")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Audio file playback failed: ${e.message}")
+            releaseAudioFocus()
+            mediaPlayer?.release()
+            mediaPlayer = null
+            false
+        }
+    }
+
     private fun doSpeak(message: String) {
+        // Try pre-recorded audio first
+        val cameraType = if (message.contains("Red-light", ignoreCase = true)) "redlight" else "speed"
+        if (playAudioFile(cameraType)) {
+            Log.i(TAG, "Camera alert played via audio file: $cameraType")
+            return
+        }
+
+        // Fall back to TTS
+        Log.w(TAG, "Audio file failed, falling back to TTS for: $message")
+
         if (!ttsReady || tts == null) {
             Log.w(TAG, "TTS not ready, queuing speech + playing fallback tone: $message")
             pendingSpeech = message
             initTts()
-            // Play a system alarm tone as fallback so the user hears SOMETHING
-            // even if TTS never initializes (e.g., no TTS engine installed).
             playFallbackTone()
             return
         }
 
         try {
-            // Request audio focus with ducking — lowers music/podcast volume
-            // instead of pausing it, which is less jarring for a 1-second alert.
             requestAudioFocus()
 
             val params = android.os.Bundle().apply {
@@ -1352,13 +1420,15 @@ class CameraAlertModule(reactContext: ReactApplicationContext) :
         super.onCatalystInstanceDestroy()
         try {
             releaseAudioFocus()
+            mediaPlayer?.release()
+            mediaPlayer = null
             tts?.stop()
             tts?.shutdown()
             tts = null
             ttsReady = false
             pendingSpeech = null
         } catch (e: Exception) {
-            Log.w(TAG, "Error shutting down TTS: ${e.message}")
+            Log.w(TAG, "Error shutting down TTS/MediaPlayer: ${e.message}")
         }
     }
 }
