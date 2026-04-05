@@ -198,6 +198,25 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
                 </>
               )}
             </TouchableOpacity>
+
+            {/* Subscription details required by App Store Guideline 3.1.2(c) */}
+            <Text style={styles.subscriptionDisclosure}>
+              {billingPlan === 'annual'
+                ? 'Auto-renewable yearly subscription. '
+                : 'Auto-renewable monthly subscription. '}
+              Payment will be charged to your Apple ID account at confirmation of purchase.
+              Subscription automatically renews unless canceled at least 24 hours before the end of the current period.
+              Manage subscriptions in Settings {'>'} Apple ID {'>'} Subscriptions.
+            </Text>
+            <View style={styles.legalLinks}>
+              <TouchableOpacity onPress={() => Linking.openURL('https://autopilotamerica.com/terms')}>
+                <Text style={styles.legalLinkText}>Terms of Use</Text>
+              </TouchableOpacity>
+              <Text style={styles.legalSeparator}>|</Text>
+              <TouchableOpacity onPress={() => Linking.openURL('https://autopilotamerica.com/privacy')}>
+                <Text style={styles.legalLinkText}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
 
@@ -390,6 +409,31 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     fontWeight: typography.weights.semibold,
     color: colors.primary,
+  },
+  subscriptionDisclosure: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 15,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  legalLinkText: {
+    fontSize: 12,
+    color: colors.primary,
+    textDecorationLine: 'underline',
+  },
+  legalSeparator: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginHorizontal: spacing.sm,
   },
   signOutButton: {
     paddingVertical: spacing.md,
