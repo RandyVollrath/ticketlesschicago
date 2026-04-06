@@ -903,7 +903,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let coreMotionStabilitySec: TimeInterval = 6  // CoreMotion must stay non-automotive for 6s
   private let minZeroSpeedForAgreeSec: TimeInterval = 10  // GPS speed≈0 for 10s before gps_coremotion_agree can fire
   private let minWalkingEvidenceSec: TimeInterval = 4
-  private let minZeroSpeedNoWalkingSec: TimeInterval = 45  // Raised from 20s to 45s — a 20s stop is easily a long red light at a 6-way intersection; 45s is more indicative of actual parking
+  private let minZeroSpeedNoWalkingSec: TimeInterval = 75  // Raised from 45s to 75s — Chicago arterial red phases commonly run 45-75s (e.g. 3239 S Ashland); 75s exceeds nearly all single-approach red phases
   private let unknownFallbackZeroSpeedSec: TimeInterval = 45
   private let unknownFallbackMaxSpeedMps: Double = 0.9
   private let unknownFallbackMinDrivingSec: TimeInterval = 20
@@ -915,9 +915,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let parkingFinalizationHoldSec: TimeInterval = 7
   private let parkingFinalizationHoldFastSec: TimeInterval = 5
   private let parkingFinalizationHoldStrongSec: TimeInterval = 11
+  private let parkingFinalizationHoldWeakSec: TimeInterval = 15  // No walking, no BT disconnect — weakest evidence, give extra time for light to change
   private let parkingFinalizationMaxDriftMeters: Double = 35
   // falsePositiveParkingLockoutSec and falsePositiveParkingLockoutRadiusMeters removed Mar 2026
-  private let gpsZeroSpeedHardTimeoutSec: TimeInterval = 90  // Hard override: 90s of GPS speed≈0 = parked, even if CoreMotion still says automotive (was 45s, raised to avoid false positives at long red lights like Lincoln/Belmont/Ashland 6-way intersections)
+  private let gpsZeroSpeedHardTimeoutSec: TimeInterval = 120  // Hard override: 120s of GPS speed≈0 = parked, even if CoreMotion still says automotive (raised from 90s — 90s can still overlap long red phases at 6-way intersections; location_stationary at 2min is a parallel backstop)
   private let intersectionRiskRadiusMeters: Double = 95
   private let intersectionDwellAbortWindowSec: TimeInterval = 90
   private let intersectionDwellMinStopSec: TimeInterval = 18
@@ -3058,10 +3059,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             let currentSpeedCheck = self.locationManager.location?.speed ?? -1
             let gpsSpeedOk = currentSpeedCheck >= 0 && currentSpeedCheck < 1.0
 
+            // Accelerometer engine-idle detection: if the accel buffer shows ongoing
+            // vibration consistent with engine idling, block the longNoWalkingStop path.
+            // Walking evidence and BT disconnect are unaffected — those are strong signals.
+            let accelAnalysis = self.analyzeAccelForEngineIdle(lastSeconds: 10)
+            let engineIdleDetected = accelAnalysis.idleLikelihood >= 0.5
+
             if zeroDuration >= self.minZeroSpeedForAgreeSec &&
                coreMotionStableDuration >= self.coreMotionStabilitySec &&
                gpsSpeedOk &&
-               (hasWalkingEvidence || longNoWalkingStop || hasCarDisconnectEvidence) {
+               (hasWalkingEvidence || (longNoWalkingStop && !engineIdleDetected) || hasCarDisconnectEvidence) {
               self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion non-automotive for \(String(format: "%.0f", coreMotionStableDuration))s + GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s")
               self.tripSummaryGatePassCount += 1
               self.decision("gps_coremotion_gate_passed", [
@@ -3075,6 +3082,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
                 "hasWalkingEvidence": hasWalkingEvidence,
                 "longNoWalkingStop": longNoWalkingStop,
                 "hasCarDisconnectEvidence": hasCarDisconnectEvidence,
+                "accelIdleLikelihood": accelAnalysis.idleLikelihood,
+                "accelStddev": accelAnalysis.stddev,
+                "accelSampleCount": accelAnalysis.sampleCount,
+                "engineIdleDetected": engineIdleDetected,
               ])
               timer.invalidate()
               self.speedZeroTimer = nil
@@ -3093,6 +3104,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
               if !hasWalkingEvidence && !longNoWalkingStop && !hasCarDisconnectEvidence {
                 waitReasons.append("no walk/car-disconnect evidence and stop<\(String(format: "%.0f", self.minZeroSpeedNoWalkingSec))s")
               }
+              if longNoWalkingStop && engineIdleDetected {
+                waitReasons.append("engine idle detected (accel stddev=\(String(format: "%.4f", accelAnalysis.stddev)), likelihood=\(String(format: "%.1f", accelAnalysis.idleLikelihood)))")
+              }
               self.log("CoreMotion agrees (not automotive) but guards not met: \(waitReasons.joined(separator: ", "))")
               self.tripSummaryGateWaitCount += 1
               self.decision("gps_coremotion_gate_wait", [
@@ -3106,6 +3120,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
                 "hasWalkingEvidence": hasWalkingEvidence,
                 "longNoWalkingStop": longNoWalkingStop,
                 "hasCarDisconnectEvidence": hasCarDisconnectEvidence,
+                "accelIdleLikelihood": accelAnalysis.idleLikelihood,
+                "accelStddev": accelAnalysis.stddev,
+                "accelSampleCount": accelAnalysis.sampleCount,
+                "engineIdleDetected": engineIdleDetected,
                 "reasons": waitReasons.joined(separator: "; "),
               ])
             }
@@ -5686,7 +5704,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       zeroDurationSec: zeroDurationSec,
       walkingEvidenceSec: walkingEvidenceSec,
       nearIntersectionRisk: nearIntersectionRisk,
-      confidenceScore: confidenceScore
+      confidenceScore: confidenceScore,
+      hasRecentDisconnectEvidence: hasRecentDisconnectEvidence
     )
     let adaptiveHoldSec = adaptiveHold.seconds
     let holdReason = adaptiveHold.reason
@@ -5865,7 +5884,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     zeroDurationSec: TimeInterval,
     walkingEvidenceSec: TimeInterval,
     nearIntersectionRisk: Bool,
-    confidenceScore: Int
+    confidenceScore: Int,
+    hasRecentDisconnectEvidence: Bool
   ) -> (seconds: TimeInterval, reason: String) {
     // Hotspot hold removed Mar 2026
     if nearIntersectionRisk && walkingEvidenceSec < minWalkingEvidenceSec {
@@ -5879,6 +5899,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     }
     if zeroDurationSec < 12 && walkingEvidenceSec < minWalkingEvidenceSec {
       return (parkingFinalizationHoldStrongSec, "short_zero_no_walking")
+    }
+    // No walking evidence AND no BT disconnect — weakest confirmation signal.
+    // Use a longer hold (15s) to give one more chance for the light to turn green.
+    // Combined with the 75s zero-speed threshold, total wall-clock time is ~98s.
+    if walkingEvidenceSec < minWalkingEvidenceSec && !hasRecentDisconnectEvidence {
+      return (parkingFinalizationHoldWeakSec, "no_walking_no_disconnect")
     }
     return (parkingFinalizationHoldSec, "balanced_default")
   }
@@ -5906,6 +5932,53 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // Hotspot penalty removed Mar 2026
 
     return max(0, min(100, score))
+  }
+
+  /// Analyze recent accelerometer data for engine idle vibration.
+  /// Returns likelihood (0.0-1.0) that the engine is running, plus stddev and sample count.
+  /// Engine idle produces continuous low-amplitude vibration (stddev 0.005-0.03g).
+  /// A parked car with engine off has near-zero accelerometer variance (stddev < 0.002g).
+  /// Uses CMDeviceMotion userAcceleration (gravity already removed).
+  private func analyzeAccelForEngineIdle(lastSeconds: TimeInterval = 10) -> (idleLikelihood: Double, stddev: Double, sampleCount: Int) {
+    accelBufferLock.lock()
+    let buffer = self.accelBuffer
+    accelBufferLock.unlock()
+
+    guard buffer.count >= 20 else {
+      return (0.0, 0.0, 0)
+    }
+
+    let cutoff = buffer.last!.timestamp - lastSeconds
+    let recent = buffer.filter { $0.timestamp >= cutoff }
+
+    guard recent.count >= 20 else {
+      return (0.0, 0.0, recent.count)
+    }
+
+    // Compute magnitude of userAcceleration (gravity already removed by CMDeviceMotion)
+    let magnitudes = recent.map { sqrt($0.x * $0.x + $0.y * $0.y + $0.z * $0.z) }
+
+    let mean = magnitudes.reduce(0, +) / Double(magnitudes.count)
+    let variance = magnitudes.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(magnitudes.count)
+    let stddev = sqrt(variance)
+
+    // Classification:
+    // stddev < 0.002  → engine off (parked, very still)         → idleLikelihood = 0.0
+    // stddev 0.002-0.005 → ambiguous (could be either)          → idleLikelihood = 0.3
+    // stddev 0.005-0.015 → likely engine idle                   → idleLikelihood = 0.7
+    // stddev > 0.015 → strong engine idle or road vibration     → idleLikelihood = 0.9
+    let idleLikelihood: Double
+    if stddev < 0.002 {
+      idleLikelihood = 0.0
+    } else if stddev < 0.005 {
+      idleLikelihood = 0.3
+    } else if stddev < 0.015 {
+      idleLikelihood = 0.7
+    } else {
+      idleLikelihood = 0.9
+    }
+
+    return (idleLikelihood, stddev, recent.count)
   }
 
   private func isNearSignalizedIntersection(_ location: CLLocation?) -> Bool {
