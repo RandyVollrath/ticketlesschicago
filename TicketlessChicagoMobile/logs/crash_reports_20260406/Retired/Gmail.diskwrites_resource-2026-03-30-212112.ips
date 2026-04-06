@@ -1,0 +1,128 @@
+{"roots_installed":0,"app_name":"Gmail","timestamp":"2026-03-30 21:21:12.00 -0500","app_version":"6.0.260316","slice_uuid":"F24B444A-78B8-3CE2-A1F9-9650EB71855D","adam_id":"422689480","build_version":"6.0.260316.1804168","bundleID":"com.google.Gmail","duration_ms":"77210793","is_first_party":0,"share_with_app_devs":1,"bug_type":"145","os_version":"iPhone OS 26.3.1 (23D8133)","distributor_id":"com.apple.AppStore","name":"Gmail","incident_id":"1F51F8A1-94DA-4261-BB84-A088923DAC41"}
+Date/Time:        2026-03-29 23:54:14.976 -0500
+End time:         2026-03-30 21:21:05.769 -0500
+OS Version:       iPhone OS 26.3.1 (Build 23D8133)
+Architecture:     arm64e
+Report Version:   67
+Incident Identifier: 1F51F8A1-94DA-4261-BB84-A088923DAC41
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     D6B932CE-D5D5-3B6A-A2E5-FDED45AA0995 slid base address 0x19f5d8000, slide 0x1f5d8000
+
+Command:          Gmail
+Path:             /private/var/containers/Bundle/Application/F45F1AF7-A27A-4971-96DE-3F5236662D69/Gmail.app/Gmail
+Identifier:       com.google.Gmail
+Version:          6.0.260316 (6.0.260316.1804168)
+Adam ID:          422689480
+Is First Party:   No
+Beta Identifier:  48D22F4F-683E-4496-BD7A-A15668411D1D
+Resource Coalition: "com.google.Gmail"(1515)
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+PID:              22960
+
+Event:            disk writes
+Action taken:     none
+Writes:           1073.76 MB of file backed memory dirtied over 77211 seconds (13.91 KB per second average), exceeding limit of 12.43 KB per second over 86400 seconds
+Writes limit:     1073.74 MB
+Limit duration:   86400s
+Writes caused:    1073.76 MB
+Writes duration:  77211s
+Duration:         77210.79s
+Duration Sampled: 4561.82s (event starts 72267.57s before samples, event ends 381.40s after samples)
+Steps:            8 (10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 7.68% (440.89 MB / 5742.41 MB)
+
+Time Since Boot:  200463s
+Time Awake Since Boot: 136909s
+Time Since Wake:  3592s
+
+Total CPU Time:   32.598s
+Advisory levels:  Battery -> 2, User -> 3, ThermalPressure -> 0, Combined -> 2
+Free disk space:  9059.62 MB/238.29 GB, low space threshold 150 MB
+Vnodes Available: 59.90% (11979/20000, 10000 allocated, 10000 soft limit)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+Keyboards:        en_US QWERTY, emoji Emoji
+OS Cryptex File Extents: 19018
+
+Heaviest stack for the target process:
+  8  ??? (libsystem_pthread.dylib + 2240) [0x1ff2708c0]
+  8  ??? (libsystem_pthread.dylib + 4988) [0x1ff27137c]
+  8  ??? (libdispatch.dylib + 83708) [0x1db4376fc]
+  8  ??? (libdispatch.dylib + 82108) [0x1db4370bc]
+  8  ??? (libdispatch.dylib + 230492) [0x1db45b45c]
+  8  ??? (libdispatch.dylib + 112636) [0x1db43e7fc]
+  8  ??? (libdispatch.dylib + 6876) [0x1db424adc]
+  8  ??? (<C12C05DE-E19D-3F6D-A7DE-1D2D3125E82E> + 6335420) [0x114d7ebbc]
+  8  ??? (<C12C05DE-E19D-3F6D-A7DE-1D2D3125E82E> + 6337876) [0x114d7f554]
+  8  ??? (Foundation + 457364) [0x19fda4a94]
+  8  ??? (Foundation + 457956) [0x19fda4ce4]
+  8  ??? (Foundation + 268096) [0x19fd76740]
+  8  ??? (Foundation + 461316) [0x19fda5a04]
+  8  ??? (Foundation + 461292) [0x19fda59ec]
+  8  ??? (Foundation + 461264) [0x19fda59d0]
+  7  ??? (Foundation + 474232) [0x19fda8c78]
+  7  ??? (libsystem_kernel.dylib + 20516) [0x24fec3024]
+
+
+Powerstats for:   Gmail [22960]
+UUID:             F24B444A-78B8-3CE2-A1F9-9650EB71855D
+Path:             /private/var/containers/Bundle/Application/F45F1AF7-A27A-4971-96DE-3F5236662D69/Gmail.app/Gmail
+Identifier:       com.google.Gmail
+Version:          6.0.260316 (6.0.260316.1804168)
+Adam ID:          422689480
+Is First Party:   No
+Beta Identifier:  48D22F4F-683E-4496-BD7A-A15668411D1D
+Resource Coalition: 8 samples "com.google.Gmail"(1515)
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+UID:              501
+Footprint:        117.58 MB -> 165.98 MB (+48.41 MB)
+Pageins:          15016 pages
+Start time:       2026-03-30 19:58:42.550 -0500
+End time:         2026-03-30 21:14:44.368 -0500
+Num samples:      8 (100%)
+Num threads:      1
+Primary state:    6 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Background, Requested Thread QoS Utility, Override Thread QoS Unspecified, e-core
+User Activity:    8 samples Idle, 0 samples Active
+Power Source:     8 samples on Battery, 0 samples on AC
+  8  ??? (libsystem_pthread.dylib + 2240) [0x1ff2708c0]
+    8  ??? (libsystem_pthread.dylib + 4988) [0x1ff27137c]
+      8  ??? (libdispatch.dylib + 83708) [0x1db4376fc]
+        8  ??? (libdispatch.dylib + 82108) [0x1db4370bc]
+          8  ??? (libdispatch.dylib + 230492) [0x1db45b45c]
+            8  ??? (libdispatch.dylib + 112636) [0x1db43e7fc]
+              8  ??? (libdispatch.dylib + 6876) [0x1db424adc]
+                8  ??? (<C12C05DE-E19D-3F6D-A7DE-1D2D3125E82E> + 6335420) [0x114d7ebbc]
+                  8  ??? (<C12C05DE-E19D-3F6D-A7DE-1D2D3125E82E> + 6337876) [0x114d7f554]
+                    8  ??? (Foundation + 457364) [0x19fda4a94]
+                      8  ??? (Foundation + 457956) [0x19fda4ce4]
+                        8  ??? (Foundation + 268096) [0x19fd76740]
+                          8  ??? (Foundation + 461316) [0x19fda5a04]
+                            8  ??? (Foundation + 461292) [0x19fda59ec]
+                              8  ??? (Foundation + 461264) [0x19fda59d0]
+                                7  ??? (Foundation + 474232) [0x19fda8c78]
+                                  7  ??? (libsystem_kernel.dylib + 20516) [0x24fec3024]
+                                    2  <Effective Thread QoS Utility>
+                                1  ??? (Foundation + 474760) [0x19fda8e88]
+                                  1  ??? (Foundation + 462640) [0x19fda5f30]
+                                    1  ??? (Foundation + 463660) [0x19fda632c]
+                                      1  ??? (libsystem_kernel.dylib + 21664) [0x24fec34a0]
+
+  Binary Images:
+           0x1006d4000 -                ???  com.google.Gmail 6.0.260316 (6.0.260316.1804168) <F24B444A-78B8-3CE2-A1F9-9650EB71855D>  /private/var/containers/Bundle/Application/F45F1AF7-A27A-4971-96DE-3F5236662D69/Gmail.app/Gmail
+           0x114774000 -                ???  ???                                              <C12C05DE-E19D-3F6D-A7DE-1D2D3125E82E>
+           0x19fd35000 -        0x1a0b7bc9f  Foundation                                       <42C593BB-89FB-3EC4-8220-C746811E7A43>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x1db423000 -        0x1db46921f  libdispatch.dylib                                <904D48A3-D99E-3962-BFA9-C3DFB66BBA83>  /usr/lib/system/libdispatch.dylib
+           0x1ff270000 -        0x1ff27c45f  libsystem_pthread.dylib                          <4F94107B-94D2-3E88-8542-F5403C581B50>  /usr/lib/system/libsystem_pthread.dylib
+           0x24febe000 -        0x24fef8d2b  libsystem_kernel.dylib                           <8D830129-2CBE-32A9-B61E-CE493EECB399>  /usr/lib/system/libsystem_kernel.dylib

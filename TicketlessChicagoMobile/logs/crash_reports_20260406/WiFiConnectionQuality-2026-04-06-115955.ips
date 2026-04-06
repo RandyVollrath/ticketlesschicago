@@ -1,0 +1,448 @@
+{"bug_type":"233","timestamp":"2026-04-06 11:59:55.00 -0500","os_version":"iPhone OS 26.3.1 (23D8133)","roots_installed":0,"incident_id":"FA610CF0-29CD-45F7-A01B-95733C6258DC"}
+<GEOLogMsgEvent: 0xd8f54de00> {
+    "event_type" = "WIFI_CONNECTION_QUALITY_PROBE";
+    "log_msg_state" =     (
+                {
+            "device_identifier" =             {
+                "device_hw_identifier" = "iPhone14,4";
+                "device_os_version" = "26.3.1.23D8133";
+                "is_internal_install" = 0;
+                "is_internal_tool" = 0;
+            };
+            "state_type" = "DEVICE_IDENTIFIER";
+        }
+    );
+    "wifi_connection_quality_probe_event" =     {
+        "wifi_connection_quality" =         {
+            apMode = INFRA;
+            associationLength = "TIME_BUCKET_GT_ONE_HOUR";
+            associationReason = CLIENT;
+            authTraits =             (
+                WPA
+            );
+            band = 1;
+            bytesInTotal = 330000000;
+            bytesOutTotal = 26000000;
+            captiveDetermination = "NOT_CAPTIVE";
+            cca = 14;
+            channel = 161;
+            channelWidth = 80;
+            dataStalls = 302;
+            disassociationReason = "TRIGGER_DISC";
+            essMembers =             (
+                                {
+                    channel = 161;
+                    rssi = "-63";
+                    uniqueID = "bc:5b:d5:7f:e8:e3";
+                }
+            );
+            failedConnections = 6417;
+            faultyStay = 0;
+            hotspot20 = 0;
+            isEdgeBSS = 1;
+            isKnownGood = 1;
+            location =             {
+                latLng =                 {
+                    lat = 0;
+                    lng = 0;
+                };
+            };
+            lowLQMStay = 16150;
+            nearbyBSS =             (
+                                {
+                    channel = 11;
+                    rssi = "-91";
+                    uniqueID = "4a:bd:ce:48:1b:87";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-73";
+                    uniqueID = "12:36:aa:5:e2:7d";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-46";
+                    uniqueID = "e2:db:d1:3d:6f:de";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-89";
+                    uniqueID = "3e:2d:9e:94:69:7a";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-73";
+                    uniqueID = "12:36:aa:5:e2:7e";
+                },
+                                {
+                    channel = 104;
+                    rssi = "-89";
+                    uniqueID = "fa:8f:ca:5a:52:3";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-89";
+                    uniqueID = "3e:2d:9e:94:69:7b";
+                },
+                                {
+                    channel = 157;
+                    rssi = "-82";
+                    uniqueID = "3c:b7:4b:9c:88:ff";
+                },
+                                {
+                    channel = 10;
+                    rssi = "-79";
+                    uniqueID = "ac:8f:a9:d7:13:54";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-83";
+                    uniqueID = "12:36:aa:cc:4c:da";
+                },
+                                {
+                    channel = 3;
+                    rssi = "-63";
+                    uniqueID = "de:8:da:54:14:dd";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-46";
+                    uniqueID = "e2:db:d1:3d:6f:df";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-77";
+                    uniqueID = "86:2a:fd:95:aa:3e";
+                },
+                                {
+                    channel = 157;
+                    rssi = "-82";
+                    uniqueID = "3c:b7:4b:9c:89:1";
+                },
+                                {
+                    channel = 104;
+                    rssi = "-84";
+                    uniqueID = "de:8:da:54:14:de";
+                },
+                                {
+                    channel = 9;
+                    rssi = "-78";
+                    uniqueID = "a2:8a:6:d0:60:be";
+                },
+                                {
+                    channel = 157;
+                    rssi = "-68";
+                    uniqueID = "e2:db:d1:44:6f:db";
+                },
+                                {
+                    channel = 11;
+                    rssi = "-55";
+                    uniqueID = "12:36:aa:2e:3a:92";
+                },
+                                {
+                    channel = 5;
+                    rssi = "-78";
+                    uniqueID = "3c:7c:3f:aa:c8:18";
+                },
+                                {
+                    channel = 44;
+                    rssi = "-88";
+                    uniqueID = "a2:8a:6:d0:60:bf";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-62";
+                    uniqueID = "e:fe:7b:6c:4d:8a";
+                },
+                                {
+                    channel = 157;
+                    rssi = "-64";
+                    uniqueID = "e2:db:d1:44:6f:dc";
+                },
+                                {
+                    channel = 5;
+                    rssi = "-86";
+                    uniqueID = "3c:7c:3f:aa:c8:19";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-85";
+                    uniqueID = "9a:9d:5d:cf:bd:b2";
+                },
+                                {
+                    channel = 157;
+                    rssi = "-62";
+                    uniqueID = "e2:db:d1:44:6f:d9";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-80";
+                    uniqueID = "8e:49:62:c9:6b:a7";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-84";
+                    uniqueID = "12:36:aa:cc:4c:d9";
+                },
+                                {
+                    channel = 11;
+                    rssi = "-77";
+                    uniqueID = "e8:97:9a:cc:5c:fc";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-84";
+                    uniqueID = "9a:9d:5d:cf:bd:b3";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-83";
+                    uniqueID = "12:36:aa:cc:4c:dd";
+                },
+                                {
+                    channel = 44;
+                    rssi = "-91";
+                    uniqueID = "12:36:aa:c:e2:7b";
+                },
+                                {
+                    channel = 3;
+                    rssi = "-64";
+                    uniqueID = "dc:8:da:44:14:dd";
+                },
+                                {
+                    channel = 11;
+                    rssi = "-55";
+                    uniqueID = "12:36:aa:2e:3a:95";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-87";
+                    uniqueID = "fa:5e:42:ed:7d:32";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-63";
+                    uniqueID = "e:fe:7b:6c:4d:8e";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-84";
+                    uniqueID = "12:36:aa:cc:4c:de";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-90";
+                    uniqueID = "76:54:25:78:ca:8c";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-87";
+                    uniqueID = "fa:5e:42:ed:7d:33";
+                },
+                                {
+                    channel = 44;
+                    rssi = "-94";
+                    uniqueID = "7a:54:25:78:ca:8d";
+                },
+                                {
+                    channel = 11;
+                    rssi = "-83";
+                    uniqueID = "10:c4:ca:37:58:94";
+                },
+                                {
+                    channel = 9;
+                    rssi = "-78";
+                    uniqueID = "a0:8a:6:d0:60:be";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-83";
+                    uniqueID = "9a:9d:5d:cf:bd:b5";
+                },
+                                {
+                    channel = 9;
+                    rssi = "-90";
+                    uniqueID = "8:9b:b9:35:e1:74";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-86";
+                    uniqueID = "9a:9d:5d:cf:bd:b6";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-88";
+                    uniqueID = "90:58:51:d4:1:26";
+                },
+                                {
+                    channel = 157;
+                    rssi = "-68";
+                    uniqueID = "12:36:aa:35:3a:93";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-70";
+                    uniqueID = "3c:b7:4b:9c:88:f4";
+                },
+                                {
+                    channel = 11;
+                    rssi = "-85";
+                    uniqueID = "28:74:f5:2a:c9:34";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-62";
+                    uniqueID = "e:fe:7b:6c:4d:89";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-88";
+                    uniqueID = "82:da:c2:c2:16:1c";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-86";
+                    uniqueID = "ce:f3:c8:c0:f9:e9";
+                },
+                                {
+                    channel = 11;
+                    rssi = "-88";
+                    uniqueID = "4a:bd:ce:48:1b:83";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-88";
+                    uniqueID = "82:da:c2:c2:16:19";
+                },
+                                {
+                    channel = 10;
+                    rssi = "-89";
+                    uniqueID = "ac:8f:a9:d3:8e:34";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-88";
+                    uniqueID = "fa:5e:42:ed:7d:37";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-82";
+                    uniqueID = "9a:9d:5d:7a:1d:9b";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-57";
+                    uniqueID = "bc:5b:d5:7f:e8:e2";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-70";
+                    uniqueID = "3c:b7:4b:9c:88:f7";
+                },
+                                {
+                    channel = 11;
+                    rssi = "-90";
+                    uniqueID = "4a:bd:ce:48:1b:84";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-70";
+                    uniqueID = "3c:b7:4b:9c:88:fa";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-84";
+                    uniqueID = "ac:8f:a9:d7:9:44";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-46";
+                    uniqueID = "e2:db:d1:3d:6f:db";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-86";
+                    uniqueID = "ce:f3:c8:c0:f9:ee";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-59";
+                    uniqueID = "58:96:71:34:46:b2";
+                },
+                                {
+                    channel = 44;
+                    rssi = "-89";
+                    uniqueID = "70:54:25:78:ca:8d";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-73";
+                    uniqueID = "12:36:aa:5:e2:7a";
+                },
+                                {
+                    channel = 2;
+                    rssi = "-71";
+                    uniqueID = "54:7:7d:10:f4:6c";
+                },
+                                {
+                    channel = 11;
+                    rssi = "-85";
+                    uniqueID = "72:13:1:52:a7:69";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-68";
+                    uniqueID = "8:a7:c0:32:57:23";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-70";
+                    uniqueID = "3c:b7:4b:9c:88:f9";
+                },
+                                {
+                    channel = 6;
+                    rssi = "-89";
+                    uniqueID = "ae:4c:a5:5e:ab:ca";
+                },
+                                {
+                    channel = 157;
+                    rssi = "-80";
+                    uniqueID = "e:fe:7b:73:4d:8f";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-73";
+                    uniqueID = "f8:63:d9:f:bb:10";
+                },
+                                {
+                    channel = 1;
+                    rssi = "-88";
+                    uniqueID = "dc:7f:a4:8a:67:91";
+                }
+            );
+            networkOrigin = "UNKNOWN_ORIGINATOR_TYPE";
+            networkType = "PRIVATE_NETWORK_TYPE";
+            overAllStay = 783414;
+            packetsIn = 179010;
+            packetsOut = 59036;
+            passpointInfo =             {
+                networkType = "UNKNOWN_NETWORK_TYPE";
+                venueGroup = "UNKNOWN_VENUE_GROUP";
+                venueName = "";
+                venueType = 0;
+            };
+            phyMode = 0;
+            responsivenessScore = 0;
+            roundTripTimeAvg = 0;
+            roundTripTimeMin = "0.011";
+            roundTripTimeVar = 0;
+            rssi = "-87";
+            snr = 11;
+            sslConnectionCount = 17684;
+            sslErrorCount = 3;
+            successfulConnections = 11267;
+            timeOfDay = 797181638;
+            uniqueID = "bc:5b:d5:7f:e8:e3";
+        };
+    };
+}
