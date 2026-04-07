@@ -5,24 +5,23 @@
  * Users who signed up on the website already have active accounts and skip this.
  *
  * Products:
- *   - "autopilot_annual" — $119.99/year (non-consumable, legacy)
- *   - "autopilot_monthly" — $14.99/month (auto-renewable subscription)
+ *   - "autopilot_annual_v2" — $119.99/year (auto-renewable subscription)
+ *   - "autopilot_monthly_v2" — $14.99/month (auto-renewable subscription)
  *
  * Apple takes 15% (Small Business Program rate).
+ *
+ * Uses react-native-iap v14 API: fetchProducts({type: 'subs'}) + requestPurchase({type: 'subs'}).
  */
 
 import { Platform } from 'react-native';
 import {
   initConnection,
   endConnection,
-  getSubscriptions,
-  requestSubscription,
+  fetchProducts,
+  requestPurchase,
   finishTransaction,
   purchaseUpdatedListener,
   purchaseErrorListener,
-  type Subscription,
-  type Purchase,
-  type PurchaseError,
 } from 'react-native-iap';
 import ApiClient from '../utils/ApiClient';
 import AuthService from './AuthService';
@@ -39,10 +38,10 @@ type PurchaseCallback = (success: boolean, error?: string) => void;
 
 class IAPService {
   private connected = false;
-  private annualSubscription: Subscription | null = null;
-  private monthlySubscription: Subscription | null = null;
-  private purchaseUpdateSubscription: ReturnType<typeof purchaseUpdatedListener> | null = null;
-  private purchaseErrorSubscription: ReturnType<typeof purchaseErrorListener> | null = null;
+  private annualSubscription: any | null = null;
+  private monthlySubscription: any | null = null;
+  private purchaseUpdateSubscription: any = null;
+  private purchaseErrorSubscription: any = null;
   private pendingCallback: PurchaseCallback | null = null;
   private lastInitError: string | null = null;
 
@@ -65,50 +64,55 @@ class IAPService {
       this.connected = true;
       log.info('IAP connection established');
 
-      // Fetch both subscriptions
+      // Fetch both subscriptions (v14 API: fetchProducts with type 'subs')
       try {
-        const subs = await getSubscriptions({ skus: [PRODUCT_ID_ANNUAL, PRODUCT_ID_MONTHLY] });
-        log.info(`IAP getSubscriptions returned ${subs.length} products`, {
-          productIds: subs.map((s) => s.productId),
+        const subs = await fetchProducts({
+          skus: [PRODUCT_ID_ANNUAL, PRODUCT_ID_MONTHLY],
+          type: 'subs',
         });
-        for (const sub of subs) {
-          if (sub.productId === PRODUCT_ID_ANNUAL) {
+        const subsArray = (subs ?? []) as any[];
+        log.info(`IAP fetchProducts returned ${subsArray.length} products`, {
+          productIds: subsArray.map((s) => s?.id ?? s?.productId),
+        });
+        for (const sub of subsArray) {
+          const productId = sub?.id ?? sub?.productId;
+          if (productId === PRODUCT_ID_ANNUAL) {
             this.annualSubscription = sub;
-            log.info(`IAP annual subscription loaded: ${sub.displayPrice}`);
-          } else if (sub.productId === PRODUCT_ID_MONTHLY) {
+            log.info(`IAP annual subscription loaded: ${sub?.displayPrice ?? sub?.localizedPrice}`);
+          } else if (productId === PRODUCT_ID_MONTHLY) {
             this.monthlySubscription = sub;
-            log.info(`IAP monthly subscription loaded: ${sub.displayPrice}`);
+            log.info(`IAP monthly subscription loaded: ${sub?.displayPrice ?? sub?.localizedPrice}`);
           }
         }
         if (!this.annualSubscription) {
           log.warn('IAP annual subscription not found in App Store');
-          this.lastInitError = `Annual subscription "${PRODUCT_ID_ANNUAL}" not found. getSubscriptions returned ${subs.length} products: [${subs.map((s) => s.productId).join(', ')}]`;
+          this.lastInitError = `Annual subscription "${PRODUCT_ID_ANNUAL}" not found. fetchProducts returned ${subsArray.length} products: [${subsArray.map((s) => s?.id ?? s?.productId).join(', ')}]`;
         }
         if (!this.monthlySubscription) {
           log.warn('IAP monthly subscription not found in App Store');
           if (!this.lastInitError) {
-            this.lastInitError = `Monthly subscription "${PRODUCT_ID_MONTHLY}" not found. getSubscriptions returned ${subs.length} products: [${subs.map((s) => s.productId).join(', ')}]`;
+            this.lastInitError = `Monthly subscription "${PRODUCT_ID_MONTHLY}" not found. fetchProducts returned ${subsArray.length} products: [${subsArray.map((s) => s?.id ?? s?.productId).join(', ')}]`;
           }
         }
       } catch (subError: any) {
         log.warn('Failed to fetch subscriptions', subError);
-        this.lastInitError = `getSubscriptions threw: ${subError?.message || String(subError)}`;
+        this.lastInitError = `fetchProducts threw: ${subError?.message || String(subError)}`;
       }
 
       // Listen for purchase events
       this.purchaseUpdateSubscription = purchaseUpdatedListener(
-        async (purchase: Purchase) => {
-          log.info('Purchase update received', { productId: purchase.productId });
+        async (purchase: any) => {
+          log.info('Purchase update received', { productId: purchase?.productId ?? purchase?.id });
           await this.handlePurchaseUpdate(purchase);
         },
       );
 
       this.purchaseErrorSubscription = purchaseErrorListener(
-        (error: PurchaseError) => {
+        (error: any) => {
           log.error('Purchase error', error);
-          const message = error.code === 'E_USER_CANCELLED'
+          const message = error?.code === 'E_USER_CANCELLED'
             ? 'Purchase cancelled'
-            : error.message || 'Purchase failed';
+            : error?.message || 'Purchase failed';
           this.pendingCallback?.(false, message);
           this.pendingCallback = null;
         },
@@ -123,10 +127,8 @@ class IAPService {
    * Get the localized price string for a plan.
    */
   getPrice(plan: BillingPlan = 'annual'): string | null {
-    if (plan === 'monthly') {
-      return this.monthlySubscription?.displayPrice ?? null;
-    }
-    return this.annualSubscription?.displayPrice ?? null;
+    const sub = plan === 'monthly' ? this.monthlySubscription : this.annualSubscription;
+    return sub?.displayPrice ?? sub?.localizedPrice ?? null;
   }
 
   /**
@@ -158,10 +160,12 @@ class IAPService {
 
     try {
       const sku = plan === 'monthly' ? PRODUCT_ID_MONTHLY : PRODUCT_ID_ANNUAL;
-      await requestSubscription({
+      // v14 API: requestPurchase with type 'subs' for subscriptions
+      await requestPurchase({
         request: {
           apple: { sku },
         },
+        type: 'subs',
       });
     } catch (error: any) {
       log.error('requestPurchase failed', error);
@@ -173,7 +177,7 @@ class IAPService {
   /**
    * Handle a successful purchase: verify receipt on backend, activate account.
    */
-  private async handlePurchaseUpdate(purchase: Purchase): Promise<void> {
+  private async handlePurchaseUpdate(purchase: any): Promise<void> {
     try {
       const userId = AuthService.getUser()?.id;
       if (!userId) {
@@ -187,9 +191,9 @@ class IAPService {
       const response = await ApiClient.authPost<{ activated: boolean }>(
         '/api/iap/verify-receipt',
         {
-          purchaseToken: purchase.purchaseToken,
-          productId: purchase.productId,
-          transactionId: purchase.id,
+          purchaseToken: purchase?.purchaseToken ?? purchase?.jwsRepresentationIos,
+          productId: purchase?.productId ?? purchase?.id,
+          transactionId: purchase?.id ?? purchase?.transactionId,
         },
       );
 
@@ -214,8 +218,8 @@ class IAPService {
    * Clean up IAP listeners and connection.
    */
   async cleanup(): Promise<void> {
-    this.purchaseUpdateSubscription?.remove();
-    this.purchaseErrorSubscription?.remove();
+    this.purchaseUpdateSubscription?.remove?.();
+    this.purchaseErrorSubscription?.remove?.();
     this.purchaseUpdateSubscription = null;
     this.purchaseErrorSubscription = null;
 
