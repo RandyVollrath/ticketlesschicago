@@ -146,11 +146,14 @@ function App(): React.JSX.Element {
 
       const { data: profileData } = await supabase
         .from('user_profiles')
-        .select('has_contesting')
+        .select('has_contesting, is_paid')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
-      const paid = profileData?.has_contesting === true;
+      // Accept either flag — Stripe webhook sets both, Apple IAP sets both,
+      // but older rows may only have one set. Don't gate users out due to
+      // a legacy column naming mismatch.
+      const paid = profileData?.has_contesting === true || profileData?.is_paid === true;
       setIsPaidUser(paid);
       // Cache paid status so we can fall back to it on network errors
       await AsyncStorage.setItem(StorageKeys.IS_PAID_USER, paid ? 'true' : 'false');

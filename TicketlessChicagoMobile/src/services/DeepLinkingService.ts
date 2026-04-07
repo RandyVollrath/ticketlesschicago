@@ -198,11 +198,12 @@ class DeepLinkingServiceClass {
         // Mark as having seen login
         await AsyncStorage.setItem('hasSeenLogin', 'true');
 
-        // Navigate to main app
+        // Check paid status before navigating
         if (this.navigationRef?.isReady()) {
+          const paid = await this.checkPaidStatus();
           this.navigationRef.reset({
             index: 0,
-            routes: [{ name: 'MainTabs' }],
+            routes: [{ name: paid ? 'MainTabs' : 'AccountInactive' }],
           });
         }
       } catch (error) {
@@ -242,17 +243,25 @@ class DeepLinkingServiceClass {
 
           log.info('Password reset session established');
 
-          // Navigate to main app - user is now authenticated and can change password in settings
+          // Check paid status before navigating
           if (this.navigationRef?.isReady()) {
-            Alert.alert(
-              'Password Reset',
-              'You are now signed in. You can update your password in your account settings.',
-              [{ text: 'OK' }]
-            );
-            this.navigationRef.reset({
-              index: 0,
-              routes: [{ name: 'MainTabs' }],
-            });
+            const paid = await this.checkPaidStatus();
+            if (paid) {
+              Alert.alert(
+                'Password Reset',
+                'You are now signed in. You can update your password in your account settings.',
+                [{ text: 'OK' }]
+              );
+              this.navigationRef.reset({
+                index: 0,
+                routes: [{ name: 'MainTabs' }],
+              });
+            } else {
+              this.navigationRef.reset({
+                index: 0,
+                routes: [{ name: 'AccountInactive' }],
+              });
+            }
           }
         } catch (error) {
           log.error('Error handling password reset', error);
@@ -396,6 +405,29 @@ class DeepLinkingServiceClass {
     } catch (error) {
       log.error('Error opening URL', error);
       return false;
+    }
+  }
+
+  /**
+   * Check if the authenticated user has an active paid account.
+   */
+  private async checkPaidStatus(): Promise<boolean> {
+    try {
+      const supabase = AuthService.getSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return false;
+
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('has_contesting, is_paid')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      return profileData?.has_contesting === true || profileData?.is_paid === true;
+    } catch (error) {
+      log.error('Error checking paid status in deep linking', error);
+      // On error, allow access (don't lock out due to network issues)
+      return true;
     }
   }
 
