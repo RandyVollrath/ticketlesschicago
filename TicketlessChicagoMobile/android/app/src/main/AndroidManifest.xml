@@ -49,14 +49,17 @@
             <data android:scheme="ticketlesschicago" />
             <data android:scheme="autopilotamerica" />
         </intent-filter>
-        <!-- Deep link for https://autopilotamerica.com/auth -->
-        <intent-filter android:autoVerify="true">
-            <action android:name="android.intent.action.VIEW" />
-            <category android:name="android.intent.category.DEFAULT" />
-            <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="https" android:host="autopilotamerica.com" android:pathPrefix="/auth" />
-            <data android:scheme="https" android:host="www.autopilotamerica.com" android:pathPrefix="/auth" />
-        </intent-filter>
+        <!--
+          NOTE: The universal-link intent filter for https://autopilotamerica.com/auth
+          was removed because it was hijacking Supabase's OAuth callback URL
+          (/auth/callback?code=...) and pulling Android users out of the web
+          signup flow into the app mid-checkout, causing an infinite loop
+          between AccountInactiveScreen and the website.
+
+          Mobile auth return still works via the custom scheme
+          ticketlesschicago://auth/callback (see pages/auth/callback.tsx),
+          which the intent-filter above handles.
+        -->
       </activity>
 
       <!-- Foreground service for persistent Bluetooth monitoring -->
