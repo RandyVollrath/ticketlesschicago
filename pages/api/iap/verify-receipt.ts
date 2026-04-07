@@ -194,10 +194,13 @@ export default async function handler(
 
     // Record the transaction with correct amounts per product
     const finalProductId = validation.productId || productId;
-    const isMonthly = finalProductId === 'autopilot_monthly';
+    const isMonthly = finalProductId === 'autopilot_monthly' || finalProductId === 'autopilot_monthly_v2';
     const amountCents = isMonthly ? 1499 : 11999;
     const appleFeeCents = Math.round(amountCents * 0.15); // 15% Small Business Program
     const netCents = amountCents - appleFeeCents;
+    const netDollars = (netCents / 100).toFixed(2);
+    const grossDollars = (amountCents / 100).toFixed(2);
+    const planLabel = isMonthly ? 'Monthly ($14.99/mo)' : 'Annual ($119.99/yr)';
 
     await supabaseAdmin
       .from('iap_transactions')
@@ -258,8 +261,8 @@ export default async function handler(
         resend.emails.send({
           from: 'Alerts <alerts@autopilotamerica.com>',
           to: 'randyvollrath@gmail.com',
-          subject: `New iOS IAP signup: ${user.email}`,
-          text: `New user signed up via Apple IAP!\n\nEmail: ${user.email}\nUser ID: ${user.id}\nTransaction: ${finalTransactionId}\nEnvironment: ${validation.environment}\nNet revenue: $48.99`,
+          subject: `New iOS IAP signup (${planLabel}): ${user.email}`,
+          text: `New user signed up via Apple IAP!\n\nEmail: ${user.email}\nUser ID: ${user.id}\nPlan: ${planLabel}\nProduct ID: ${finalProductId}\nTransaction: ${finalTransactionId}\nEnvironment: ${validation.environment}\nGross: $${grossDollars}\nApple fee (15%): $${(appleFeeCents / 100).toFixed(2)}\nNet revenue: $${netDollars}`,
         }),
       ]);
     } catch (e) {

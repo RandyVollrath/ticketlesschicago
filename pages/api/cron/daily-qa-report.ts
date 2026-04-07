@@ -276,11 +276,12 @@ async function checkUserGrowth(): Promise<CheckResult> {
 async function checkIsPaidIntegrity(): Promise<CheckResult> {
   const name = 'Users — is_paid Integrity';
   try {
-    // Check if any recent free signups have is_paid=true (the known historical bug)
+    // Check if any recent paid users lack a corresponding payment record
+    // (Stripe customer for web checkouts, or iap_transactions row for Apple IAP)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabaseAdmin!
       .from('user_profiles')
-      .select('user_id, email, is_paid, created_at')
+      .select('user_id, email, is_paid, created_at, stripe_customer_id')
       .eq('is_paid', true)
       .gte('created_at', sevenDaysAgo);
 
@@ -289,8 +290,22 @@ async function checkIsPaidIntegrity(): Promise<CheckResult> {
       return { name, category: 'Users', status: 'pass', detail: 'No new is_paid=true users in 7 days (expected if no new subscribers)', severity: 'high' };
     }
 
-    // Cross-check against Stripe — for now just flag for manual review
-    return { name, category: 'Users', status: 'warn', detail: `${data.length} users marked paid in last 7 days — verify against Stripe`, severity: 'high' };
+    // Cross-check against iap_transactions for Apple IAP users
+    const userIds = data.map(u => u.user_id);
+    const { data: iapRows } = await supabaseAdmin!
+      .from('iap_transactions')
+      .select('user_id')
+      .in('user_id', userIds);
+    const iapUserIds = new Set((iapRows || []).map(r => r.user_id));
+
+    // Unverified = no Stripe customer AND no IAP transaction
+    const unverified = data.filter(u => !u.stripe_customer_id && !iapUserIds.has(u.user_id));
+
+    if (unverified.length === 0) {
+      return { name, category: 'Users', status: 'pass', detail: `${data.length} new paid users in 7 days, all verified (Stripe or Apple IAP)`, severity: 'high' };
+    }
+
+    return { name, category: 'Users', status: 'warn', detail: `${unverified.length}/${data.length} new paid users have no Stripe or IAP record — investigate: ${unverified.map(u => u.email).join(', ')}`, severity: 'high' };
   } catch (e: any) {
     return { name, category: 'Users', status: 'fail', detail: e.message, severity: 'high' };
   }
