@@ -31,7 +31,7 @@ The website has **TWO COMPLETELY SEPARATE SIGNUP FUNNELS** that lead to differen
 ## 1. HOMEPAGE & MARKETING (`pages/index.tsx`)
 
 ### Structure
-- **Hero Section:** "Chicago Writes $259M in Parking Tickets Every Year. We fight back — automatically."
+- **Hero Section:** "Chicago Writes $315M in Parking Tickets Every Year. We fight back — automatically."
 - **Two Main CTAs:**
   - `"Become a Founding Member - $49/year"` → `/start` (PAID)
   - `"Quick Start (Free)"` → `/quick-start` (FREE)

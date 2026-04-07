@@ -1002,6 +1002,32 @@ class LocationServiceClass {
    * @param address Street address
    * @param fcmToken Firebase Cloud Messaging token for push delivery
    */
+  buildServerSavePayload(
+    coords: Coordinates,
+    parkingData: any,
+    address: string,
+    fcmToken: string
+  ): any {
+    return {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      address,
+      fcm_token: fcmToken,
+      on_winter_ban_street: !!(parkingData?.winterOvernightBan?.found || parkingData?.winterOvernightBan?.active),
+      winter_ban_street_name: parkingData?.winterOvernightBan?.streetName || null,
+      on_snow_route: !!(parkingData?.twoInchSnowBan?.found || parkingData?.twoInchSnowBan?.active),
+      snow_route_name: parkingData?.twoInchSnowBan?.streetName || null,
+      street_cleaning_date: parkingData?.streetCleaning?.nextDate || null,
+      street_cleaning_ward: parkingData?.streetCleaning?.ward || null,
+      street_cleaning_section: parkingData?.streetCleaning?.section || null,
+      permit_zone: parkingData?.permitZone?.zoneName || null,
+      permit_restriction_schedule: parkingData?.permitZone?.restrictionSchedule || null,
+      dot_permit_active: !!(parkingData?.dotPermit?.hasActivePermit),
+      dot_permit_type: parkingData?.dotPermit?.permitType || null,
+      dot_permit_start_date: parkingData?.dotPermit?.startDate || null,
+    };
+  }
+
   async saveParkedLocationToServer(
     coords: Coordinates,
     parkingData: any,
@@ -1009,26 +1035,7 @@ class LocationServiceClass {
     fcmToken: string
   ): Promise<{ success: boolean; id?: string }> {
     try {
-      const payload: any = {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        address,
-        fcm_token: fcmToken,
-        on_winter_ban_street: !!(parkingData?.winterOvernightBan?.found || parkingData?.winterOvernightBan?.active),
-        winter_ban_street_name: parkingData?.winterOvernightBan?.streetName || null,
-        on_snow_route: !!(parkingData?.twoInchSnowBan?.found || parkingData?.twoInchSnowBan?.active),
-        snow_route_name: parkingData?.twoInchSnowBan?.streetName || null,
-        street_cleaning_date: parkingData?.streetCleaning?.nextDate || null,
-        street_cleaning_ward: parkingData?.streetCleaning?.ward || null,
-        street_cleaning_section: parkingData?.streetCleaning?.section || null,
-        permit_zone: parkingData?.permitZone?.zoneName || null,
-        permit_restriction_schedule: parkingData?.permitZone?.restrictionSchedule || null,
-
-        // DOT permit flags
-        dot_permit_active: !!(parkingData?.dotPermit?.hasActivePermit),
-        dot_permit_type: parkingData?.dotPermit?.permitType || null,
-        dot_permit_start_date: parkingData?.dotPermit?.startDate || null,
-      };
+      const payload = this.buildServerSavePayload(coords, parkingData, address, fcmToken);
 
       const response = await ApiClient.authPost<any>('/api/mobile/save-parked-location', payload, {
         retries: 2,

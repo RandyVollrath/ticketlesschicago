@@ -65,7 +65,7 @@ export default function Login() {
         console.error('Failed to set localStorage:', e);
       }
 
-      const callbackUrl = `${window.location.origin}/auth/callback`;
+      const callbackUrl = `${window.location.origin}/oauth-return`;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -111,7 +111,7 @@ export default function Login() {
           email: email,
           password: password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/oauth-return`,
             data: {
               source: 'ticketless-america-login'
             }

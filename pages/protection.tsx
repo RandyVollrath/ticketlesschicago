@@ -300,7 +300,7 @@ export default function Protection() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?flow=protection-google`
+          redirectTo: `${window.location.origin}/oauth-return?flow=protection-google`
         }
       });
 

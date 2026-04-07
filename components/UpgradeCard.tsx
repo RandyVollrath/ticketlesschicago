@@ -79,7 +79,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
               margin: '0 0 20px 0',
               lineHeight: '1.6'
             }}>
-              Founding Member plan is active at $49/year with the First Dismissal Guarantee.
+              Founding Member plan is active at $99/year with the First Dismissal Guarantee.
             </p>
 
             <div style={{
@@ -241,7 +241,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             marginBottom: '24px'
           }}>
             {[
-              'Founding Member rate: $49/year',
+              'Founding Member rate: $99/year',
               'First Dismissal Guarantee',
               'We handle paperwork and mailing'
             ].map((item, i) => (
@@ -310,7 +310,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             marginBottom: '4px',
             fontFamily: '"Space Grotesk", sans-serif'
           }}>
-            $49
+            $99
           </div>
           <div style={{
             fontSize: '13px',

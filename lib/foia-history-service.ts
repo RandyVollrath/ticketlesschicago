@@ -209,8 +209,8 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
       callout('warning', 'The clock is ticking',
         `The city has <strong>5 business days</strong> to respond. When they do, we'll email you the full breakdown — every ticket, every fine, every outcome — and post it to your dashboard at <a href="https://autopilotamerica.com/my-tickets" style="color: #2563EB;">autopilotamerica.com/my-tickets</a>.`),
       callout('danger', 'Here\'s what most people find out',
-        'The average Chicago driver has tickets they forgot about, tickets they never knew existed, and fines that doubled while sitting in collections. <strong>68.5% of contested parking tickets in Chicago get dismissed.</strong> Many of yours could have been fought — and won.'),
-      button('Get Protected — $49/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
+        'The average Chicago driver has tickets they forgot about, tickets they never knew existed, and fines that doubled while sitting in collections. <strong>68% of contested parking tickets in Chicago get dismissed.</strong> Many of yours could have been fought — and won.'),
+      button('Get Protected — $99/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
       p("One dismissed ticket pays for the entire year.", { size: '13px', color: '#6B7280', center: true }),
     ].join(''),
   });
@@ -249,7 +249,7 @@ export async function sendFoiaHistoryResultsEmail(params: {
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) return;
 
-  const potentialSavings = Math.round(params.totalFines * 0.685);
+  const potentialSavings = Math.round(params.totalFines * 0.68);
   const avgPerTicket = params.ticketCount > 0 ? Math.round(params.totalFines / params.ticketCount) : 75;
   const safePlate = esc(params.licensePlate);
   const safeState = esc(params.licenseState);
@@ -274,20 +274,20 @@ export async function sendFoiaHistoryResultsEmail(params: {
       button('View Full Report', params.resultsUrl),
       params.ticketCount > 0
         ? callout('danger', `You left $${potentialSavings.toLocaleString()} on the table`,
-            `<strong>68.5% of contested parking tickets in Chicago get dismissed.</strong> That's not a guess — it's city data. If every one of your ${params.ticketCount} ticket${params.ticketCount !== 1 ? 's' : ''} had been automatically contested, you could have kept up to <strong>$${potentialSavings.toLocaleString()}</strong> in your pocket instead of the city's.`)
+            `<strong>68% of contested parking tickets in Chicago get dismissed.</strong> That's not a guess — it's city data. If every one of your ${params.ticketCount} ticket${params.ticketCount !== 1 ? 's' : ''} had been automatically contested, you could have kept up to <strong>$${potentialSavings.toLocaleString()}</strong> in your pocket instead of the city's.`)
         : '',
       params.ticketCount > 0
         ? p("Most people don't contest because it's a hassle. You have to figure out the defense, write the letter, mail it before the deadline, and hope you got the legal language right. <strong>Nobody has time for that.</strong> So you pay. And the city counts on it.")
-        : p("But here's the reality: Chicago writes <strong>2.8 million tickets a year</strong>. It's not a matter of if — it's when. And when it happens, most people just pay because contesting feels like too much work."),
+        : p("But here's the reality: Chicago writes <strong>4.5 million tickets a year</strong>. It's not a matter of if — it's when. And when it happens, most people just pay because contesting feels like too much work."),
       callout('success', params.ticketCount > 0 ? 'Never pay full price again' : 'Be ready when it happens',
-        "Autopilot monitors your plate twice a week. New ticket? We generate a custom contest letter with the specific legal defense for that violation and mail it before the deadline. <strong>68.5% get dismissed.</strong> You don't do anything."),
-      section('What $49/year gets you', bulletList([
+        "Autopilot monitors your plate twice a week. New ticket? We generate a custom contest letter with the specific legal defense for that violation and mail it before the deadline. <strong>68% get dismissed.</strong> You don't do anything."),
+      section('What $99/year gets you', bulletList([
         '<strong>Twice-weekly plate monitoring</strong> — we catch tickets within days, not months',
         '<strong>Automatic contest letters</strong> — custom legal defense for each violation, mailed for you',
         '<strong>Street cleaning, snow ban, and sticker alerts</strong> — stop tickets before they happen',
         '<strong>First Dismissal Guarantee</strong> — if your first contest isn\'t dismissed, full refund',
       ])),
-      button('Start Autopilot Protection — $49/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
+      button('Start Autopilot Protection — $99/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
       p(params.ticketCount > 0
         ? `That's less than a single $${avgPerTicket} ticket. One dismissal pays for itself.`
         : 'Less than the cost of a single parking ticket. One dismissal pays for itself.',

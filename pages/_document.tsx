@@ -15,7 +15,7 @@ export default function Document() {
             if (!(window.location.search && window.location.search.indexOf('mobile_access_token') !== -1)) {
               if (window.location.pathname === '/' && window.location.hash && window.location.hash.includes('access_token')) {
                 console.log('_document.tsx: Redirecting OAuth tokens to callback');
-                window.location.replace('/auth/callback' + window.location.hash);
+                window.location.replace('/oauth-return' + window.location.hash);
               }
             }
           `

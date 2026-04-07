@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('📧 Generating magic link for:', maskEmail(email));
 
     // Simple callback URL - redirect destination is stored in cookie
-    const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
+    const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/oauth-return`;
     console.log('📍 Callback URL:', callbackUrl);
 
     // Generate magic link using admin API

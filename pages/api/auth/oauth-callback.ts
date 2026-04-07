@@ -87,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Validate redirect URL - only allow safe relative paths
-    let redirectUrl = '/auth/callback'; // Safe default
+    let redirectUrl = '/oauth-return'; // Safe default
     const requestedRedirect = req.query.redirect;
     if (typeof requestedRedirect === 'string') {
       // Only allow relative paths starting with /

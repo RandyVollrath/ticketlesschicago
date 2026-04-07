@@ -27,7 +27,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
       type: 'magiclink',
       email: email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/oauth-return`
       }
     });
 

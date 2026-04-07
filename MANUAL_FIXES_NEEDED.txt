@@ -1,0 +1,1460 @@
+ZONES THAT NEED MANUAL FIXING
+==========================================================================================
+
+For each zone below, please look at the CSV boundaries, check them against
+Google Maps, and tell me what the correct boundaries should be.
+Format: ward-section: E=street (grid# direction), W=..., N=..., S=...
+
+
+──────────────────────────────────────────────────────────────────────────────────────────
+SECTION 1: MISSING ZONES (31 zones - not on map at all)
+──────────────────────────────────────────────────────────────────────────────────────────
+These zones have boundaries I can't parse. Need correct grid coordinates.
+
+  Ward 10:
+    10-13: E=Greenbay (3432 E) | W=Brandon (3200 E) | N=87th Street (8700 South) | S=94th Street (94000 S)
+    10-14: E=Greenbay (3400 E) | W=Burnham (2800 E) | N=87th Street (8700 South) | S=83rd Street (83000 S)
+
+  Ward 11:
+    11-10: E=Keeley Street (1400 W) | W=River (153 North) | N=Archer Ave (2800 S) | S=31st St (3100 S)
+
+  Ward 23:
+    23-1: E=New England (6900 West) | W=Harlem Ave (7200 West) | N=51st Street (5100 South) | S=Archer Ave
+    23-2: E=Normandy Ave (6700 West) | W=New England Ave (6900 West) | N=51st Street (5100 South) | S=Archer Ave
+    23-3: E=Natchez Ave (6434 West) | W=Normandy (6700 West) | N=51st Street (5100 south) | S=Archer Ave
+    23-4: E=Merrimac Ave (6234 West) | W=Natchez Ave (6434 West) | N=51st Street (5100 South) | S=Archer Ave
+    23-8: E=Laramie Ave (5200 West) | W=Luna Ave (5532 West) | N=51st Street (5100 South) | S=Archer Avenue
+    23-9: E=Laramie Ave (5200 West) | W=Luna Ave (5532 West) | N=Archer Avenue | S=55th Street (5500 South)
+
+  Ward 27:
+    27-6: E=Ogden (1000 South) | W=Western (2400 West) | N=Grand (500 North) | S=Washington (100 North)
+    27-7: E=Halsted (800 West) | W=Ogden (1800 South) | N=Kinzie (400 North) | S=Van Buren (400 South)
+    27-8: E=Jefferson (600 West) | W=Ogden (1800 South) | N=Division (1200 North) | S=Kinzie (400 North)
+
+  Ward 35:
+    35-10: E=Kennedy Expressway | W=Kedzie (3200 West) | N=Kennedy Expressway | S=Logan Blvd (2600 North)
+    35-11: E=Kennedy Expressway | W=Elston Avenue | N=Belmont (3200 North) | S=Schubert (2700 North)
+    35-12: E=Albany (3100 West) | W=Chicago River | N=Irving Park (4000 North) | S=Diversey (2800 North)
+    35-7: E=Kimball (3400 West) | W=Hamlin (3800 West) | N=Milwaukee Ave | S=Wrightwood (2600 North)
+    35-8: E=Kimball (3400 West) | W=Milwaukee Ave | N=Belmont (3200 North) | S=Milwaukee Ave
+
+  Ward 41:
+    41-31: E=Milwaukee Avenue | W=Newark (6700 West) | N=Albion (6600 North) | S=Devon (6400 North)
+
+  Ward 45:
+    45-10: E=Central (5600 West) | W=Austin (6000 West) | N=Avondale | S=Higgins
+    45-11: E=Austin (6000 West) | W=Mulligan (6632 West) | N=Avondale (1800 West - 2026 North) | S=Foster Ave (5200 North)
+    45-13: E=Melvina (6200 West) | W=Nagle (6400 West) | N=Peterson (6000 North) | S=Northwest Highway
+    45-14: E=Austin (6000 West) | W=Melvina (6200 West) | N=Peterson (6000 North) | S=Northwest Highway
+    45-15: E=Central (5600 West) | W=Austin (6000 West) | N=Elston (1132 West) | S=Bryn Mawr (5600 North)
+    45-16: E=Central (5600 West) | W=Austin (6000 West) | N=Bryn Mawr (5600 North) | S=Northwest Highway
+    45-17: E=Elston (1132 West) | W=Farragut (5232 West) | N=Central (5600 West) | S=Ludlam (5470 North)
+    45-18: E=Milwaukee Ave | W=Elston (1132 West) | N=Ludlam (5470 North) | S=Foster Ave (5200 North)
+    45-19: E=Leclaire (5100 West) | W=Milwaukee | N=Foster (5200 North) | S=Kennedy Expressway
+    45-20: E=Cicero (4800 West) | W=Leclaire (5100 West) | N=Foster (5200 North) | S=Kennedy Expressway
+    45-5: E=Avondale | W=Milwaukee | N=Kennedy Expressway | S=Montrose (4400 North)
+    45-7: E=Milwaukee Ave | W=Central (5600 West) | N=Kennedy Expressway | S=Windsor (4532 North)
+    45-8: E=Central (5600 West) | W=Melvina (6200 West) | N=Higgins | S=Eastwood (4632 North)
+
+
+──────────────────────────────────────────────────────────────────────────────────────────
+SECTION 2: OVERLAPPING ZONES (349 zones involved)
+──────────────────────────────────────────────────────────────────────────────────────────
+These zones overlap >20% with at least one other zone.
+Usually one of the pair has a wrong boundary in the CSV.
+
+  36-8: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+    Currently placed at: 5600 W-4400 W, 500 N-2400 N
+    Overlaps with: 26-1(100%), 26-2(100%), 37-12(100%), 37-9(100%), 37-3(100%)
+
+  32-20: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+    Currently placed at: 2032 W-400 W, 1600 N-2400 N
+    Overlaps with: 2-1(100%), 32-18(100%), 32-19(100%), 43-6(100%), 43-5(100%)
+
+  33-2: E=Chicago River (1500 West) | W=Kimball (3400 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+    Currently placed at: 3400 W-1500 W, 4800 N-5200 N
+    Overlaps with: 40-16(100%), 47-20(100%), 40-10(100%), 40-18(80%), 40-17(67%)
+
+  28-10: E=Kenton (4600 West) | W=Lavergne (5000 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+    Currently placed at: 5000 W-4600 W, 0 S-800 N
+    Overlaps with: 37-12(60%), 37-11(50%), 37-8(50%), 37-7(50%), 36-8(37%)
+
+  2-2: E=Clark 100 W | W=Kingsbury 1400 W | N=Cortland 1900 N | S=Clybourn (1300 North)
+    Currently placed at: 1400 W-100 W, 1300 N-1900 N
+    Overlaps with: 43-7(77%), 2-3(75%), 43-6(75%), 32-20(40%), 27-10(38%)
+
+  28-1: E=Canal (500 West) | W=Racine (1200 West) | N=Van Buren (400 South) | S=16th Street (1600 South)
+    Currently placed at: 1200 W-500 W, 1600 S-400 S
+    Overlaps with: 34-6(100%), 25-10(70%), 4-14(45%), 4-15(39%), 3-1(37%)
+
+  40-3: E=Clark (1000 West) | W=Ravenswood (1800 West) | N=Albion (6600 North) | S=Peterson (6000 North)
+    Currently placed at: 1800 W-1106 W, 6000 N-6600 N
+    Overlaps with: 48-9(100%), 48-1(100%), 48-10(100%), 49-13(100%), 49-12(37%)
+
+  37-7: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+    Currently placed at: 5200 W-4800 W, 200 N-700 N
+    Overlaps with: 37-8(100%), 37-11(67%), 28-10(50%), 28-11(40%), 36-8(40%)
+
+  37-1: E=Laramie (5200 West) | W=Central (5600 West) | N=North Ave (1600 North) | S=Grand Ave (500 North)
+    Currently placed at: 5600 W-5200 W, 500 N-1600 N
+    Overlaps with: 37-3(100%), 37-2(100%), 36-8(100%), 37-4(100%), 37-5(40%)
+
+  37-8: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+    Currently placed at: 5200 W-4800 W, 200 N-700 N
+    Overlaps with: 37-7(100%), 37-11(67%), 28-10(50%), 28-11(40%), 36-8(40%)
+
+  27-9: E=Halsted (800 West) | W=Armour (1500 West) | N=North Ave (1600 North) | S=Erie (658 North)
+    Currently placed at: 1500 W-800 W, 658 N-1600 N
+    Overlaps with: 27-10(100%), 1-3(50%), 1-5(50%), 2-2(27%), 1-1(27%)
+
+  21-18: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=84th Street (8400 South) | S=91st Street (9100 South)
+    Currently placed at: 1710 W-1100 W, 9100 S-8400 S
+    Overlaps with: 17-3(75%), 21-19(57%), 18-20(38%), 17-2(38%), 18-19(34%)
+
+  7-8: E=Exchange (2600 E) | W=Lake Front (1600 East) | N=75th Street (7500) | S=79th Street (7900)
+    Currently placed at: 1600 E-2600 E, 7900 S-7500 S
+    Overlaps with: 7-5(100%), 8-5(100%), 8-4(80%), 7-6(40%)
+
+  45-22: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Fitch (7132 North) | S=Tonty (6150 North)
+    Currently placed at: 5700 W-5400 W, 6150 N-6980 N
+    Overlaps with: 45-25(100%), 45-24(86%), 39-17(27%), 45-26(21%)
+
+  45-24: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Devon (6400 North) | S=Loleta (5826 North)
+    Currently placed at: 5700 W-5400 W, 5826 N-6400 N
+    Overlaps with: 39-17(100%), 45-23(100%), 45-22(86%), 39-15(38%)
+
+  37-11: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Chicago Ave (800 North) | S=Grand Ave (500 North)
+    Currently placed at: 5200 W-4800 W, 500 N-800 N
+    Overlaps with: 36-8(100%), 37-8(67%), 37-7(67%), 28-10(50%)
+
+  36-9: E=Central Park (3600 West) | W=Kostner (4400 West) | N=Wabansia (1700 North) | S=Thomas (1100 North)
+    Currently placed at: 4400 W-3600 W, 1100 N-1700 N
+    Overlaps with: 26-16(100%), 37-13(100%), 26-4(67%), 26-6(50%)
+
+  20-6: E=La Salle (140 West) | W=Union (700 West) | N=42nd Street (4200 South) | S=51st Street (5100 South)
+    Currently placed at: 700 W-140 W, 5100 S-4200 S
+    Overlaps with: 15-1(75%), 3-7(41%), 11-6(24%), 20-5(22%)
+
+  5-10: E=Kimbark Ave (1300 E) | W=Ellis Ave (600 E) | N=55th Street (5500 S) | S=61st Street (6100 S)
+    Currently placed at: 600 E-1300 E, 6100 S-5500 S
+    Overlaps with: 5-18(100%), 5-9(100%), 20-14(50%), 20-17(37%)
+
+  40-19: E=Chicago River (2300 West) | W=Sacramento (3000 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+    Currently placed at: 3000 W-2300 W, 4400 N-4800 N
+    Overlaps with: 47-1(100%), 33-10(68%), 47-2(50%), 40-17(33%)
+
+  7-14: E=89th St (8900 E) | W=83rd St (8300 E) | N=Muskegon (2818 E) | S=Jeffery (2000 E)
+    Currently placed at: 2000 E-2818 E, 8900 S-8300 S
+    Overlaps with: 7-12(100%), 7-13(100%), 8-13(80%), 8-18(55%)
+
+  39-17: E=Forest Glen (5100 West) | W=Austin (6000 West) | N=Devon (6400 North) | S=Berwyn (5300 North)
+    Currently placed at: 6000 W-5100 W, 5300 N-6400 N
+    Overlaps with: 45-24(100%), 45-23(100%), 39-15(56%), 45-22(27%)
+
+  47-5: E=Clark (1000 West) | W=Ravenswood (1800 West) | N=Sunnyside (4500 North) | S=Montrose (4400 North)
+    Currently placed at: 1800 W-1000 W, 4400 N-4500 N
+    Overlaps with: 46-1(49%), 46-2(30%), 47-8(26%), 47-7(25%)
+
+  4-15: E=Michigan (100 E) | W=Clark (1000 West) | N=Jackson (330 South) | S=Polk (800 S)
+    Currently placed at: 1000 W-100 E, 800 S-330 S
+    Overlaps with: 34-3(46%), 28-1(39%), 34-6(25%), 34-1(22%)
+
+  50-4: E=Ridge (1800 West) | W=Western (2400 West) | N=Birchwood (7500 North) | S=Lunt (7000 North)
+    Currently placed at: 2400 W-1800 W, 7000 N-7500 N
+    Overlaps with: 49-3(76%), 49-4(76%), 49-2(76%), 49-7(75%)
+
+  7-7: E=Exchange (2399 E) | W=Lake Front (1600 East) | N=71st Street (7100) | S=75th Street (7500)
+    Currently placed at: 1600 E-2399 E, 7500 S-7100 S
+    Overlaps with: 7-1(100%), 5-7(100%), 7-2(75%), 7-3(50%)
+
+  40-18: E=Chicago River (2300 West) | W=Washtenaw (2700 West) | N=Foster (5200 North) | S=Leland (4700 North)
+    Currently placed at: 2700 W-2300 W, 4700 N-5200 N
+    Overlaps with: 40-17(100%), 33-2(80%), 40-16(75%), 40-10(25%)
+
+  20-9: E=Wells (236 West) | W=Halsted (800 West) | N=59th Street (5900 South) | S=65th Street (6500 South)
+    Currently placed at: 800 W-236 W, 6500 S-5900 S
+    Overlaps with: 16-17(50%), 6-26(23%), 16-20(23%)
+
+  37-12: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Chicago Ave (800 North) | S=Grand Ave (500 North)
+    Currently placed at: 4800 W-4400 W, 500 N-800 N
+    Overlaps with: 36-8(100%), 28-10(60%), 28-7(40%)
+
+  30-15: E=Long (5400 West) | W=Narragansett (6400 West) | N=Wrightwood (2600 North) | S=Fullerton (2400 North)
+    Currently placed at: 6400 W-5400 W, 2400 N-2600 N
+    Overlaps with: 30-14(33%), 36-4(27%), 31-2(25%)
+
+  28-11: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Kinzie (400 North) | S=Van Buren 400 South)
+    Currently placed at: 5200 W-4800 W, 400 S-400 N
+    Overlaps with: 37-8(40%), 37-7(40%), 28-10(25%)
+
+  42-3: E=St. Clair (200 East) | W=LaSalle (150 West) | N=Walton (900 North) | S=Ohio (600 North)
+    Currently placed at: 150 W-200 E, 600 N-900 N
+    Overlaps with: 2-7(67%), 42-5(33%), 2-5(24%)
+
+  8-18: E=Yates (2400 E) | W=Jeffery (2000 E) | N=87th St (8700 S) | S=91st St (9100 S)
+    Currently placed at: 2000 E-2400 E, 9100 S-8700 S
+    Overlaps with: 7-17(100%), 7-14(55%), 7-16(50%)
+
+  40-5: E=Clark (1000 West) | W=Ravenswood (1800 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+    Currently placed at: 1800 W-1000 W, 5200 N-5600 N
+    Overlaps with: 48-7(100%), 48-5(100%), 48-4(100%)
+
+  34-7: E=Racine (1200 West) | W=Paulina Street (1700 West) | N=Madison Street (0 N/S) | S=Polk Street (800 South)
+    Currently placed at: 1700 W-1200 W, 800 S-0 S
+    Overlaps with: 28-2(40%), 34-5(27%), 27-5(20%)
+
+  40-8: E=Clark (1000 West) | W=Damen (2000 West) | N=Foster (5200 North) | S=Argyle (5000 North)
+    Currently placed at: 2000 W-1000 W, 5000 N-5200 N
+    Overlaps with: 48-6(55%), 33-2(50%), 47-6(50%)
+
+  40-17: E=Western (2400 West) | W=Washtenaw (2700 West) | N=Argyle (5000 North) | S=Leland (4700 North)
+    Currently placed at: 2700 W-2400 W, 4700 N-5000 N
+    Overlaps with: 40-18(100%), 33-2(67%), 40-19(33%)
+
+  7-3: E=Yates (2600 E) | W=Paxton (2198 E) | N=72nd Street (7200) | S=75th Street (7500)
+    Currently placed at: 2198 E-2600 E, 7500 S-7200 S
+    Overlaps with: 7-4(82%), 7-7(50%), 5-7(20%)
+
+  40-4: E=Clark (1000 West) | W=Ravenswood (1800 West) | N=Peterson (6000 North) | S=Bryn Mawr (5600 North)
+    Currently placed at: 1800 W-1128 W, 5600 N-6000 N
+    Overlaps with: 48-3(100%), 48-2(100%), 48-8(81%)
+
+  3-2: E=Calumet (340 East) | W=Clark (1000 West) | N=16th St (1600 South) | S=Cermak (2200 South)
+    Currently placed at: 1000 W-340 E, 2200 S-1600 S
+    Overlaps with: 25-11(100%), 11-5(72%), 25-9(51%)
+
+  4-14: E=Michigan (100 E) | W=Clark (1000 West) | N=Polk (800 S) | S=12th St (1200 S)
+    Currently placed at: 1000 W-100 E, 1200 S-800 S
+    Overlaps with: 28-1(45%), 34-1(44%), 34-6(25%)
+
+  34-6: E=Halsted Street (800 West) | W=Racine (1200 West) | N=Van Buren Street (400 South) | S=Roosevelt Road (1200 South)
+    Currently placed at: 1200 W-800 W, 1200 S-400 S
+    Overlaps with: 28-1(100%), 4-14(25%), 4-15(25%)
+
+  18-20: E=Justine (1532 West) | W=Damen (2000 West) | N=86th Street (8600 South) | S=90th Street (9000 South)
+    Currently placed at: 2000 W-1532 W, 9000 S-8600 S
+    Overlaps with: 19-1(75%), 21-18(38%), 21-19(29%)
+
+  21-13: E=Vincennes Ave (162 West) | W=Carpenter Street (1032 West) | N=99th Street (9900 South) | S=103rd Street (10300 South)
+    Currently placed at: 1032 W-162 W, 10300 S-9900 S
+    Overlaps with: 21-12(100%), 9-9(100%), 9-8(51%)
+
+  21-9: E=Vincennes Ave (162 West) | W=Loomis Street (1400 West) | N=115th Street (11500 South) | S=119th Street (11900 South)
+    Currently placed at: 1378 W-162 W, 11900 S-11500 S
+    Overlaps with: 21-7(100%), 21-8(100%), 9-20(46%)
+
+  40-10: E=Damen (2000 West) | W=Western (2400 West) | N=Foster (5200 North) | S=Ainsle (4900 North)
+    Currently placed at: 2400 W-2000 W, 4900 N-5200 N
+    Overlaps with: 33-2(100%), 47-20(44%), 40-18(25%)
+
+  28-4: E=Western (2400 West) | W=California (2800 West) | N=Adams (200 South) | S=23rd Street (2300 South)
+    Currently placed at: 2800 W-2400 W, 2300 S-200 S
+    Overlaps with: 25-3(71%), 27-4(25%), 24-1(23%)
+
+  24-1: E=Rockwell (2600 West) | W=Albany (3100 West) | N=16th Street (1600 South) | S=31st Street (3100 South)
+    Currently placed at: 3100 W-2600 W, 3100 S-1600 S
+    Overlaps with: 25-3(58%), 25-2(51%), 28-4(23%)
+
+  11-5: E=Wentworth Ave (200 W) | W=Halsted Street / River (800 W) | N=16th Street (1600 S) | S=24th Place (2430 S)
+    Currently placed at: 800 W-200 W, 2430 S-1600 S
+    Overlaps with: 25-11(100%), 3-2(72%), 3-3(29%)
+
+  5-7: E=Yates Blvd (2400 E) | W=Bennett Ave (1900 E) | N=71st Street (7100 S) | S=73rd Street (7300 S)
+    Currently placed at: 1900 E-2400 E, 7300 S-7100 S
+    Overlaps with: 7-7(100%), 7-1(50%), 7-3(20%)
+
+  45-2: E=Kenton (4600 West) | W=Lockwood (5300 West) | N=Belle Plaine (4100 North) | S=Grace (3800 North)
+    Currently placed at: 5300 W-4600 W, 3800 N-4100 N
+    Overlaps with: 38-1(50%), 30-7(40%), 30-6(27%)
+
+  36-10: E=California (2800 West) | W=Central Park (3600 West) | N=Division (1200 North) | S=Grand Ave (500 North)
+    Currently placed at: 3600 W-2800 W, 500 N-1200 N
+    Overlaps with: 27-2(84%), 26-13(64%), 26-14(53%)
+
+  25-10: E=Canal Street (500 West) | W=Blue Island (1500 West) | N=14th Place (1432 South) | S=Viaduct (1500 South)
+    Currently placed at: 1500 W-500 W, 1500 S-1432 S
+    Overlaps with: 28-1(70%), 3-1(50%), 28-2(30%)
+
+  19-1: E=Charles (1530 West) Damen (2000 West) | W=Western (2400 West) | N=87th Street (8700 South) 91st Street (9100 South) | S=95th Street (9500 South)
+    Currently placed at: 2400 W-1530 W, 9500 S-8700 S
+    Overlaps with: 19-2(100%), 18-20(75%), 21-17(30%)
+
+  37-4: E=Laramie (5200 West) | W=Central (5600 West) | N=Augusta (1000 North) | S=Huron (700 North)
+    Currently placed at: 5600 W-5200 W, 700 N-1000 N
+    Overlaps with: 37-1(100%), 36-8(100%)
+
+  47-20: E=Ravenswood (1800 West) | W=Western (2400 West) | N=Winnemac (5032 North) | S=Lawrence (4800 North)
+    Currently placed at: 2400 W-1800 W, 4800 N-5032 N
+    Overlaps with: 33-2(100%), 40-10(44%)
+
+  1-7: E=Ashland (1600 West) | W=Hoyne (2100 West) | N=North Ave (1600 North) | S=Division (1200 North)
+    Currently placed at: 2100 W-1600 W, 1200 N-1600 N
+    Overlaps with: 1-6(100%), 1-8(54%)
+
+  34-1: E=Indiana Ave (200 East) | W=Wells Street (200 West) | N=Harrison Street (600 South) | S=13th Street (1300 South)
+    Currently placed at: 200 W-200 E, 1300 S-600 S
+    Overlaps with: 4-14(44%), 4-15(22%)
+
+  48-1: E=Broadway (1200 West) | W=Clark (1600 West) | N=Granville (6200 North) | S=Elmdale (6000 North)
+    Currently placed at: 1600 W-1200 W, 6000 N-6200 N
+    Overlaps with: 40-3(100%), 48-9(21%)
+
+  43-7: E=Stockton Drive (100 West) | W=Larrabee (600 West) | N=Armitage (2000 North) | S=North Avenue (1600 North)
+    Currently placed at: 600 W-100 W, 1600 N-2000 N
+    Overlaps with: 2-2(77%), 32-20(48%)
+
+  46-1: E=Magnolia (1235 West) | W=Clark (1500 West) | N=Wilson (4600 North) | S=Montrose (4400 North)
+    Currently placed at: 1500 W-1235 W, 4403 N-4600 N
+    Overlaps with: 47-5(49%), 47-7(38%)
+
+  27-5: E=Ashland (1600 West) | W=Western (2400 West) | N=Washington (100 North) | S=Roosevelt (1200 South)
+    Currently placed at: 2400 W-1600 W, 1200 S-100 N
+    Overlaps with: 28-3(67%), 34-7(20%)
+
+  9-27: E=Rhodes Ave (530 E) | W=Indiana Ave (130 E) | N=130th Street (12000 S) | S=134th Street (13400 S)
+    Currently placed at: 130 E-530 E, 13112 S-12000 S
+    Overlaps with: 10-18(57%), 9-22(29%)
+
+  20-13: E=Cottage Grove (800 East) | W=Washington Park Court (417 East) | N=49th Street (4900 South) | S=51st Street (5100 South)
+    Currently placed at: 417 E-800 E, 5100 S-4900 S
+    Overlaps with: 4-4(70%), 3-9(28%)
+
+  21-5: E=Vincennes Ave (162 West) | W=Aberdeen Street (1100 West) | N=111th Street (11100 South) | S=115th Street (11500 South)
+    Currently placed at: 1100 W-162 W, 11500 S-11100 S
+    Overlaps with: 21-6(100%), 9-16(46%)
+
+  40-16: E=Western (2400 West) | W=California (2800 West) | N=Foster (5200 North) | S=Argyle (5000 North)
+    Currently placed at: 2800 W-2400 W, 5000 N-5200 N
+    Overlaps with: 33-2(100%), 40-18(75%)
+
+  48-9: E=Lake Michigan (900 West) | W=Lakewood (1300 West) | N=Devon (6400 North) | S=Glenlake (6100 North)
+    Currently placed at: 1300 W-1138 W, 6100 N-6400 N
+    Overlaps with: 40-3(100%), 48-1(21%)
+
+  48-2: E=Broadway (1200 West) | W=Ridge (1700 West) | N=Elmdale (6000 North) | S=Bryn Mawr (5600 North)
+    Currently placed at: 1700 W-1200 W, 5600 N-6000 N
+    Overlaps with: 40-4(100%), 48-3(100%)
+
+  39-1: E=Ridgeway (3732 West) | W=Kedvale (4100 West) | N=Montrose (4400 North) | S=Irving Park (4000 North)
+    Currently placed at: 4100 W-3732 W, 4000 N-4400 N
+    Overlaps with: 45-1(31%), 33-6(30%)
+
+  49-3: E=Damen (2000 West) | W=Ridge (2200 West) | N=Howard (7600 North) | S=Touhy (7200 North)
+    Currently placed at: 2200 W-2000 W, 7200 N-7596 N
+    Overlaps with: 50-4(76%), 49-2(50%)
+
+  4-11: E=Vincennes (600 E) | W=Calumet (334 E) | N=35th St (3500 S) | S=39th St (3900 S)
+    Currently placed at: 334 E-600 E, 3900 S-3500 S
+    Overlaps with: 4-10(100%), 3-6(25%)
+
+  25-2: E=Sacramento (3000 West) | W=Kedzie (3200 West) | N=23rd Street (2300 South) | S=31st Street (3100 South)
+    Currently placed at: 3200 W-3000 W, 3033 S-2300 S
+    Overlaps with: 22-11(53%), 24-1(51%)
+
+  39-15: E=Cicero (4800 West) | W=Central (5500 West) | N=Devon (6400 North) | S=Caldwell (6100 North)
+    Currently placed at: 5500 W-4800 W, 6100 N-6400 N
+    Overlaps with: 39-17(56%), 45-24(38%)
+
+  6-25: E=Stewart Ave (400 W) | W=Halsted St (800 W) | N=Marquette Rd (6700 S) | S=71st St (7100 S)
+    Currently placed at: 800 W-400 W, 7100 S-6700 S
+    Overlaps with: 16-25(29%), 6-27(25%)
+
+  15-9: E=Marshfield (1632 West) | W=Damen (2000 West) Wolcott (1900 West) | N=56th Street (5600 South) | S=61st Street (6100 South)
+    Currently placed at: 2000 W-1632 W, 6100 S-5600 S
+    Overlaps with: 16-13(46%), 16-5(22%)
+
+  26-13: E=Washtenaw (2700 West) | W=Sacamento (3000 West) | N=Division (1200 North) | S=Walton (932 North)
+    Currently placed at: 3000 W-2700 W, 932 N-1200 N
+    Overlaps with: 36-10(64%), 36-11(27%)
+
+  33-1: E=Kimball (3400 West) | W=Pulaski (4000 West) | N=Argyle (5000 North) | S=Lawrence (4800 North)
+    Currently placed at: 4000 W-3400 W, 4800 N-5000 N
+    Overlaps with: 39-10(33%), 39-6(28%)
+
+  35-1: E=Pulaski (4000 West) | W=Kostner (4400 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+    Currently placed at: 4400 W-4000 W, 2000 N-2400 N
+    Overlaps with: 26-3(33%), 31-10(25%)
+
+  18-3: E=Bell (2232 West) | W=Rockwell (2600 West) | N=71st Street (7100 South) | S=77th Street (7700 South)
+    Currently placed at: 2600 W-2232 W, 7700 S-7100 S
+    Overlaps with: 17-23(100%), 18-2(21%)
+
+  27-10: E=Halsted (800 West) | W=Clark (1000 West) | N=North Ave (1600 North) | S=Chicago Ave (800 North)
+    Currently placed at: 1000 W-800 W, 800 N-1600 N
+    Overlaps with: 27-9(100%), 2-2(38%)
+
+  49-2: E=Ridge (2100 West) | W=Western (2400 West) | N=Howard (7600 North) | S=Touhy (7200 North)
+    Currently placed at: 2400 W-2100 W, 7200 N-7599 N
+    Overlaps with: 50-4(76%), 49-3(50%)
+
+  36-11: E=Western (2400 West) | W=California (2800 West) | N=Hadden (1132 North) | S=Iowa (900 North)
+    Currently placed at: 2800 W-2400 W, 900 N-1132 N
+    Overlaps with: 1-9(28%), 26-13(27%)
+
+  2-7: E=Lake Shore Drive 140 E | W=State St (0 West) | N=Chicago 800 N | S=Illinois 500 N
+    Currently placed at: 0 W-140 E, 500 N-800 N
+    Overlaps with: 42-3(67%), 42-4(33%)
+
+  7-1: E=Euclid (2130 E) | W=Merrill (2121 E) | N=73rd Street (7100) | S=75th Street (7500)
+    Currently placed at: 2121 E-2130 E, 7500 S-7100 S
+    Overlaps with: 7-7(100%), 5-7(50%)
+
+  39-10: E=Kedzie (3200 West) | W=Avers (3800 West) | N=Foster (5200 North) | S=Ainslie (4900 North)
+    Currently placed at: 3800 W-3200 W, 4900 N-5200 N
+    Overlaps with: 33-2(34%), 33-1(33%)
+
+  23-13: E=Hamlin Avenue (3800 West) | W=Pulaski Road (4432 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    Currently placed at: 4432 W-3800 W, 5500 S-5100 S
+    Overlaps with: 23-12(100%), 23-11(40%)
+
+  45-23: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Tonty (6150 North) | S=Loleta (5826 North)
+    Currently placed at: 5700 W-5606 W, 5826 N-6150 N
+    Overlaps with: 39-17(100%), 45-24(100%)
+
+  50-10: E=Ridge (1800 West) | W=Western (2400 West) | N=Loyola (6585 North) | S=Granville (6200 North)
+    Currently placed at: 2400 W-1800 W, 6200 N-6585 N
+    Overlaps with: 40-6(51%), 40-2(29%)
+
+  37-3: E=Laramie (5200 West) | W=Central (5600 West) | N=Potomac (1300 North) | S=Augusta (1000 North)
+    Currently placed at: 5600 W-5200 W, 1000 N-1300 N
+    Overlaps with: 36-8(100%), 37-1(100%)
+
+  34-3: E=Canal Street (500 West) | W=Halsted Street (800 West) | N=Madison Street (0 N/S) | S=Harrison Street (600 South)
+    Currently placed at: 800 W-500 W, 600 S-0 S
+    Overlaps with: 4-15(46%), 28-1(34%)
+
+  7-2: E=Bennett (1900 E) | W=Blackstone (1499 E) | N=71st Street (7100) | S=74th Street (7400)
+    Currently placed at: 1499 E-1900 E, 7400 S-7100 S
+    Overlaps with: 7-7(75%), 8-1(25%)
+
+  21-4: E=Vincennes Ave (162 West) | W=Halsted Street (800 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+    Currently placed at: 800 W-162 W, 11100 S-10700 S
+    Overlaps with: 21-3(100%), 9-15(51%)
+
+  44-1: E=Southport (1400 West) | W=Greenview (1500 West) | N=Byron (3900 North) | S=Belmont (3200 North)
+    Currently placed at: 1500 W-1400 W, 3200 N-3900 N
+    Overlaps with: 47-17(40%), 32-4(29%)
+
+  1-9: E=Leavitt (2200 West) | W=Rockwell (2600 West) | N=North Ave (1600 North) | S=Augusta (1000 North)
+    Currently placed at: 2600 W-2200 W, 1000 N-1600 N
+    Overlaps with: 26-12(50%), 36-11(28%)
+
+  23-12: E=Pulaski Road (4000 West) | W=Kolin Avenue (4432 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    Currently placed at: 4432 W-4000 W, 5500 S-5100 S
+    Overlaps with: 23-13(100%), 23-11(40%)
+
+  47-1: E=Chicago River (2359 West) | W=Western Ave (2400 West) | N=Leland (4700 North) | S=Montrose (4400 North)
+    Currently placed at: 2400 W-2359 W, 4400 N-4700 N
+    Overlaps with: 40-19(100%), 47-2(100%)
+
+  21-19: E=Eggleston Ave (432 West) | W=Aberdeen Street (1710 West) | N=87th Street (8700 South) | S=91st Street (9100 South)
+    Currently placed at: 1710 W-432 W, 9100 S-8700 S
+    Overlaps with: 21-18(57%), 18-20(29%)
+
+  16-23: E=Ashland (1600 West) | W=Hamilton (2100 West) | N=Marquette (6700 South) | S=69th Street (6900 South)
+    Currently placed at: 2100 W-1600 W, 6900 S-6700 S
+    Overlaps with: 17-21(33%), 17-22(27%)
+
+  5-18: E=Midway Plaisance E & W (5900 S) | W= | N=Cottage Grove (800 E) | S=Kimbark Ave (1300 E)
+    Currently placed at: 800 E-1300 E, 6000 S-5900 S
+    Overlaps with: 5-10(100%), 20-14(26%)
+
+  37-2: E=Laramie (5200 West) | W=Central (5600 West) | N=North Ave (1600 North) | S=Potomac (1300 North)
+    Currently placed at: 5600 W-5200 W, 1300 N-1600 N
+    Overlaps with: 36-8(100%), 37-1(100%)
+
+  3-9: E=Champlain (634 East) | W=King Drive (400 East) | N=45th St (4500 South) | S=50th St (5000 South)
+    Currently placed at: 400 E-634 E, 5000 S-4500 S
+    Overlaps with: 20-13(28%), 4-4(26%)
+
+  39-2: E=Keystone (4032 West) | W=Kenneth (4432 West) | N=Leland (4700 North) | S=Irving Park (4000 North)
+    Currently placed at: 4432 W-4032 W, 4000 N-4700 N
+    Overlaps with: 39-4(67%), 45-3(39%)
+
+  3-1: E=Calumet (340 East) | W=Clark (1000 West) | N=12th St (1200 South) | S=16th St (1600 South)
+    Currently placed at: 1000 W-340 E, 1600 S-1200 S
+    Overlaps with: 25-10(50%), 28-1(37%)
+
+  47-2: E=Leavitt (2200 West) | W=Western (2400 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+    Currently placed at: 2400 W-2200 W, 4400 N-4800 N
+    Overlaps with: 47-1(100%), 40-19(50%)
+
+  16-5: E=Loomis (1400 West) | W=Hermitage (1730 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+    Currently placed at: 1730 W-1400 W, 5900 S-5500 S
+    Overlaps with: 16-3(23%), 15-9(22%)
+
+  21-12: E=Parnell Ave (532 West) | W=Carpenter Street (1032 West) | N=99th street (9900 South) | S=103rd Street (10300 South)
+    Currently placed at: 1032 W-532 W, 10300 S-9900 S
+    Overlaps with: 21-13(100%), 9-9(49%)
+
+  16-13: E=Ashland (1600 West) | W=Damen (2000 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    Currently placed at: 2000 W-1600 W, 6300 S-5900 S
+    Overlaps with: 15-9(46%), 15-10(40%)
+
+  47-19: E=Chicago River (2359 West) | W=Western (2400 West) | N=Irving Park (4000 North) | S=Barry (3100 North)
+    Currently placed at: 2400 W-2359 W, 3100 N-4000 N
+    Overlaps with: 32-1(44%), 47-13(44%)
+
+  40-2: E=Ridge (1900 West) | W=Bell (2232 West) | N=Lunt (7000 North) | S=Devon (6400 North)
+    Currently placed at: 2232 W-1900 W, 6400 N-7000 N
+    Overlaps with: 49-8(39%), 50-10(29%)
+
+  25-1: E=Kedzie Ave (3200 West) | W=Homan Ave (3400 West) | N=23rd Street (2300 South) | S=27th Street (2700 South)
+    Currently placed at: 3400 W-3200 W, 2700 S-2300 S
+    Overlaps with: 22-11(75%), 22-10(25%)
+
+  48-3: E=Broadway (1200 West) | W=Ridge (1700 West) | N=Ardmore (5800 North) | S=Bryn Mawr (5600 North)
+    Currently placed at: 1700 W-1200 W, 5600 N-5800 N
+    Overlaps with: 40-4(100%), 48-2(100%)
+
+  1-8: E=Honore (1828 West) | W=Leavitt (2200 West) | N=North Ave (1600 North) | S=Augusta (1000 North)
+    Currently placed at: 2200 W-1828 W, 1000 N-1600 N
+    Overlaps with: 1-7(54%), 1-6(43%)
+
+  15-5: E=Hoyne (2100 West) | W=Rockwell (2600 West) | N=51st Street (5100 South) | S=59th Street (5900 South)
+    Currently placed at: 2600 W-2100 W, 5900 S-5100 S
+    Overlaps with: 16-11(100%), 16-1(75%)
+
+  42-5: E=Michigan (100 East) | W=State (0 West) | N=Cedar (1100 North) | S=Chicago (800 North)
+    Currently placed at: 0 W-100 E, 800 N-1100 N
+    Overlaps with: 2-5(100%), 42-3(33%)
+
+  31-10: E=Pulaski (4000 West) | W=Kilbourn (4500 West) | N=Diversey (2800 North) | S=Belden (2300 North)
+    Currently placed at: 4500 W-4000 W, 2300 N-2800 N
+    Overlaps with: 35-1(25%), 31-9(25%)
+
+  28-2: E=Racine (1200 West) | W=Ashland (1600 West) | N=Congress (400 South) | S=16th Street (1600 South)
+    Currently placed at: 1600 W-1200 W, 1600 S-400 S
+    Overlaps with: 34-7(40%), 25-10(30%)
+
+  3-8: E=Evans (732 East) | W=King Drive (400 East) | N=39th St (3900 South) | S=45th St (4500 South)
+    Currently placed at: 400 E-732 E, 4500 S-3900 S
+    Overlaps with: 4-9(44%), 4-5(27%)
+
+  5-1: E=Kimbark (1300 E) | W=Cottage Grove (400 E) | N=71st St (7100 S) | S=75th St (7500 S)
+    Currently placed at: 400 E-1300 E, 7500 S-7100 S
+    Overlaps with: 6-4(100%), 6-5(57%)
+
+  6-26: E=Lafayette Ave (30 W) | W=Union Ave (700 W) | N=64th St (6400 S) | S=Marquette Rd (6700 S)
+    Currently placed at: 700 W-30 W, 6700 S-6400 S
+    Overlaps with: 20-10(25%), 20-9(23%)
+
+  20-14: E=Ingleside (930 East) | W=Cottage Grove (800 East) | N=50th Street (5000 South) | S=60th Street (6000 South)
+    Currently placed at: 800 E-930 E, 6000 S-5000 S
+    Overlaps with: 5-10(50%), 5-18(26%)
+
+  25-11: E=Canal Street (500 West) | W=Halsted Street (800 West) | N=16th Street (1600 South) | S=Cermak Road (2200 South)
+    Currently placed at: 800 W-500 W, 2200 S-1600 S
+    Overlaps with: 11-5(100%), 3-2(100%)
+
+  9-9: E=Eggleston (430 W) | W=Lowe (630 W) | N=99th Place (9930 S) | S=103rd Street (10300 South)
+    Currently placed at: 630 W-430 W, 10300 S-9930 S
+    Overlaps with: 21-13(100%), 21-12(49%)
+
+  47-7: E=Southport Ave (1400 West) | W=Ashland (1600 West) | N=Wilson (4600 North) | S=Irving Park Road (4000 North)
+    Currently placed at: 1600 W-1400 W, 4000 N-4600 N
+    Overlaps with: 46-1(38%), 47-5(25%)
+
+  22-11: E=Spaulding (3000 West) | W=Drake (3532 West) | N=Cermak (2200 South) | S=26th Street (2600 South)
+    Currently placed at: 3532 W-3000 W, 2600 S-2200 S
+    Overlaps with: 25-1(75%), 25-2(53%)
+
+  37-5: E=Laramie (5200 West) | W=Central (5600 West) | N=Huron (700 North) | S=West End (200 North)
+    Currently placed at: 5600 W-5200 W, 200 N-700 N
+    Overlaps with: 37-1(40%), 36-8(40%)
+
+  1-6: E=Ashland (1600 West) | W=Damen (2000 West) | N=North Ave (1600 North) | S=Division (1200 North)
+    Currently placed at: 2000 W-1600 W, 1200 N-1600 N
+    Overlaps with: 1-7(100%), 1-8(43%)
+
+  43-6: E=Larrabee (600 West) | W=Racine (1200 West) | N=Armitage (2000 North) | S=North Avenue (1600 North)
+    Currently placed at: 1200 W-600 W, 1600 N-2000 N
+    Overlaps with: 32-20(100%), 2-2(75%)
+
+  39-7: E=Saint Louis (3500 West) | W=Lowell (4432 West) | N=Devon (6400 North) | S=Bryn Mawr (5600 North)
+    Currently placed at: 4432 W-3500 W, 5600 N-6371 N
+    Overlaps with: 39-12(100%), 50-14(39%)
+
+  25-3: E=Western Ave (2400 West) | W=California Avenue (2800 West) | N=18th Street (1800 South) | S=26th Street (2600 South)
+    Currently placed at: 2800 W-2400 W, 2600 S-1800 S
+    Overlaps with: 28-4(71%), 24-1(58%)
+
+  36-4: E=Moody (6132 West) | W=Normandy (6700 West) | N=Wellington (3000 North) | S=Grand (2400 North)
+    Currently placed at: 6700 W-6132 W, 2400 N-3000 N
+    Overlaps with: 30-12(34%), 30-15(27%)
+
+  47-6: E=Broadway (1200 West) | W=Ashland (1600 West) | N=Foster Ave (5200 North) | S=Lawrence (4800 North)
+    Currently placed at: 1600 W-1200 W, 4800 N-5200 N
+    Overlaps with: 40-8(50%), 33-2(25%)
+
+  23-11: E=Kolin Avenue (4332 West) | W=Cicero Avenue (4800 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    Currently placed at: 4723 W-4332 W, 5500 S-5100 S
+    Overlaps with: 23-13(40%), 23-12(40%)
+
+  38-1: E=Lavergne (5000 West) | W=Laramie (5200 West) | N=Berteau (4200 North) | S=Irving Park (4000 North)
+    Currently placed at: 5200 W-5000 W, 4000 N-4200 N
+    Overlaps with: 45-2(50%), 45-4(50%)
+
+  3-7: E=State (0 E/W) | W=Stewart (400 West) | N=39th St. (3900 South) | S=47th St (4700 South)
+    Currently placed at: 400 W-0 W, 4700 S-3900 S
+    Overlaps with: 20-6(41%), 3-12(38%)
+
+  4-4: E=Drexel (900 E) | W=Forrestville (532 E) | N=47th St (4700 S) | S=51st St (5100 S)
+    Currently placed at: 532 E-900 E, 5100 S-4700 S
+    Overlaps with: 20-13(70%), 3-9(26%)
+
+  28-7: E=Hamlin (3800 West) | W=Kenton (4600 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+    Currently placed at: 4600 W-3800 W, 0 S-800 N
+    Overlaps with: 37-15(67%), 37-12(40%)
+
+  2-5: E=Lake Shore Drive 140 E | W=State St (0 West) | N=Scott St 1230 N | S=Chicago 800 N
+    Currently placed at: 0 W-140 E, 800 N-1230 N
+    Overlaps with: 42-5(100%), 42-3(24%)
+
+  10-18: E=St. Lawrence (600 East) | W=Indiana (200 East) | N=130th Street (13000 S) | S=138th Street (13800 South)
+    Currently placed at: 437 E-600 E, 13112 S-13000 S
+    Overlaps with: 9-27(57%)
+
+  39-11: E=Chicago River (2910 West) | W=California (3800 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+    Currently placed at: 3744 W-2910 W, 5200 N-5600 N
+    Overlaps with: 39-9(100%)
+
+  48-4: E=Broadway (1200 West) | W=Clark (1600 West) | N=Bryn Mawr (5600 North) | S=Balmoral (5400 North)
+    Currently placed at: 1600 W-1200 W, 5400 N-5600 N
+    Overlaps with: 40-5(100%)
+
+  28-3: E=Ashland (1600 West) | W=Western (2400 West) | N=Congress (400 South) | S=16th Street (1600 South)
+    Currently placed at: 2400 W-1600 W, 1600 S-400 S
+    Overlaps with: 27-5(67%)
+
+  38-12: E=Narragansett (6400 West) | W=Oak Park (6800 West) | N=Addison (3600 North) | S=Belmont (3200 North)
+    Currently placed at: 6800 W-6400 W, 3200 N-3600 N
+    Overlaps with: 36-2(50%)
+
+  16-3: E=Bishiop (1430 West) | W=Hermitage (1730 West) | N=51st Street (5100 SOuth) | S=56th Street (5600 South)
+    Currently placed at: 1730 W-1430 W, 5600 S-5100 S
+    Overlaps with: 16-5(23%)
+
+  21-1: E=Vincennes Ave (162 West) | W=Halsted (800 West) | N=103rd Street (10300 South) | S=107th Street (10700 South)
+    Currently placed at: 800 W-162 W, 10700 S-10300 S
+    Overlaps with: 21-2(100%)
+
+  23-17: E=Central Park (3600 West) | W=Karlov Ave (4100 West) | N=59th Street (5900 South) | S=61st Street (6100 South)
+    Currently placed at: 4100 W-3600 W, 6100 S-5900 S
+    Overlaps with: 13-25(20%)
+
+  37-6: E=Laramie (5200 West) | W=Central (5600 West) | N=West End (200 North) | S=Madison (0 N/S)
+    Currently placed at: 5600 W-5200 W, 0 S-200 N
+    Overlaps with: 29-2(100%)
+
+  44-3: E=Halsted (800 West) | W=Racine (1200 West) | N=Irving Park (4000 North) | S=Addison (3600 North)
+    Currently placed at: 1200 W-800 W, 3600 N-4000 N
+    Overlaps with: 46-7(100%)
+
+  39-9: E=Kedzie (3200 West) | W=Saint Louis (3500 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+    Currently placed at: 3500 W-3200 W, 5200 N-5600 N
+    Overlaps with: 39-11(100%)
+
+  26-11: E=Rockwell (2600 West) | W=California (2800 West) | N=Bloomingdale (1800 North) | S=Hirsch (1400 North)
+    Currently placed at: 2800 W-2600 W, 1400 N-1800 N
+    Overlaps with: 1-10(50%)
+
+  7-9: E=Colfax (2600 E) | W=Paxton (2200 E) | N=80th Street (8000) | S=82nd Street (8200)
+    Currently placed at: 2200 E-2600 E, 8200 S-8000 S
+    Overlaps with: 8-9(27%)
+
+  1-10: E=Western (2400 West) | W=California (2800 West) | N=Armitage (2000 North) | S=North (1600 North)
+    Currently placed at: 2800 W-2400 W, 1600 N-2000 N
+    Overlaps with: 26-11(50%)
+
+  3-6: E=King Drive (400 East) | W=State St (0 E/W) | N=35th St (3500 South) | S=39th St (3900 South)
+    Currently placed at: 0 W-400 E, 3900 S-3500 S
+    Overlaps with: 4-11(25%)
+
+  43-5: E=Orchard (700 West) | W=Sheffield (1000 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+    Currently placed at: 1000 W-700 W, 2000 N-2400 N
+    Overlaps with: 32-20(100%)
+
+  46-4: E=Clarendon (800 West) | W=Clark (1500 West) | N=Montrose (4400 North) | S=Irving Park (4000 North)
+    Currently placed at: 1500 W-800 W, 4000 N-4400 N
+    Overlaps with: 46-5(50%)
+
+  39-4: E=Pulaski (4000 West) | W=Kenneth (4450 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+    Currently placed at: 4450 W-4000 W, 4400 N-4800 N
+    Overlaps with: 39-2(67%)
+
+  46-5: E=Marine Drive (610 West) | W=Sheridan (1000 West) | N=Wilson (4600 North) | S=Buena (4200 North)
+    Currently placed at: 1000 W-761 W, 4200 N-4600 N
+    Overlaps with: 46-4(50%)
+
+  47-8: E=Ashland (1600 West) | W=Ravenswood (1800 West) | N=Sunnyside (4500 North) | S=Irving Park Road (4000 North)
+    Currently placed at: 1800 W-1600 W, 4000 N-4500 N
+    Overlaps with: 47-5(26%)
+
+  49-7: E=Clark (1800 West) | W=Ridge (2100 West) | N=Touhy (7200 North) | S=Morse (6934 North)
+    Currently placed at: 2100 W-1800 W, 6934 N-7200 N
+    Overlaps with: 50-4(75%)
+
+  26-16: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=North Ave (1600 North) | S=Potomac (1300 North)
+    Currently placed at: 4000 W-3600 W, 1300 N-1600 N
+    Overlaps with: 36-9(100%)
+
+  20-5: E=Wallace (620 West) | W=Halsted (800 West) | N=49th Street (4900 South) | S=53rd Street (5300 South)
+    Currently placed at: 800 W-620 W, 5300 S-4900 S
+    Overlaps with: 20-6(22%)
+
+  12-2: E=Kedzie (3200 West) | W=Drake (3530 West) | N=44th Street (4400 South) | S=Archer Ave (4640 South)
+    Currently placed at: 3530 W-3200 W, 4640 S-4400 S
+    Overlaps with: 12-1(100%)
+
+  20-2: E=Halsted (800 West) | W=Loomis (1400 West) | N=47th Street (4700 South) | S=51st Street (5100 South)
+    Currently placed at: 1400 W-800 W, 5100 S-4700 S
+    Overlaps with: 20-4(50%)
+
+  7-20: E=Torrence (2632 E) | W=Clyde (2132 E) | N=99th St (9900) | S=102nd St (10200)
+    Currently placed at: 2560 E-2632 E, 10139 S-9900 S
+    Overlaps with: 7-21(94%)
+
+  47-17: E=Janssen (1434 West) | W=Ashland (1600 West) | N=Grace (3800 North) | S=Roscoe (3400 North)
+    Currently placed at: 1600 W-1434 W, 3400 N-3800 N
+    Overlaps with: 44-1(40%)
+
+  24-7: E=Homan (3400 West) Albany 3100 West) | W=Central Park (3600 West) | N=Roosevelt (1200 South), Douglas (1400 South) | S=16th Street (1600 South)
+    Currently placed at: 3600 W-3400 W, 1600 S-1200 S
+    Overlaps with: 24-2(40%)
+
+  9-22: E=State Street (0 E) | W=Front Street (430 E) | N=119th Street (11900 S) | S=123rd Street (12300 S)
+    Currently placed at: 0 W-430 E, 12078 S-11900 S
+    Overlaps with: 9-27(29%)
+
+  30-13: E=Austin (5600 West) | W=Parkside (5632 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+    Currently placed at: 5632 W-5600 W, 2800 N-3200 N
+    Overlaps with: 31-3(100%)
+
+  7-21: E=Torrence (2634 E) | W=Oglesby (2400 East) | N=100th St (10000) | S=101st St (10100)
+    Currently placed at: 2580 E-2634 E, 10100 S-10000 S
+    Overlaps with: 7-20(94%)
+
+  24-2: E=Albany (3100 West) | W=Central Park (3600 West) | N=Ogden (1544 South) | S=16th Street (1600 South)
+    Currently placed at: 3600 W-3100 W, 1600 S-1544 S
+    Overlaps with: 24-7(40%)
+
+  48-7: E=Sheridan (1000 West) | W=Broadway (1200 West) | N=Bryn Mawr (5600 North) | S=Foster Ave (5200 North)
+    Currently placed at: 1200 W-1000 W, 5200 N-5600 N
+    Overlaps with: 40-5(100%)
+
+  37-9: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Potomac (1300 North) | S=Augusta (1000 North)
+    Currently placed at: 5200 W-4800 W, 1000 N-1300 N
+    Overlaps with: 36-8(100%)
+
+  45-3: E=Keeler (4200 West) | W=Cicero (4800 West) | N=Montrose (4400 North) | S=Irving Park (4000 North)
+    Currently placed at: 4800 W-4200 W, 4000 N-4400 N
+    Overlaps with: 39-2(39%)
+
+  13-8: E=Central (5600 West) | W=Menard (5800 West) | N=55th Street (5500 South) | S=Railroad Tracks (5930 South)
+    Currently placed at: 5800 W-5600 W, 5930 S-5500 S
+    Overlaps with: 13-9(56%)
+
+  1-1: E=Racine (1200 West) | W=Ashland (1600 West) | N=Chicago (800 North) | S=Kinzie (400 North)
+    Currently placed at: 1600 W-1200 W, 400 N-800 N
+    Overlaps with: 27-9(27%)
+
+  41-5: E=Osceola (7432 West) | W=Overhill (7700 West) | N=Touhy (7200 North) | S=Pratt (6800 North)
+    Currently placed at: 7700 W-7432 W, 6800 N-7200 N
+    Overlaps with: 41-1(53%)
+
+  30-14: E=Central Ave (5600 West) | W=Moody (6132 West) | N=Diversey (2800 North) | S=Wrightwood (2500 North)
+    Currently placed at: 6132 W-5600 W, 2500 N-2800 N
+    Overlaps with: 30-15(33%)
+
+  18-2: E=Damen (2000 West) | W=Western (2400 West) | N=75th Street (7500 South) | S=83rd Street (8300 South)
+    Currently placed at: 2400 W-2000 W, 8300 S-7500 S
+    Overlaps with: 18-3(21%)
+
+  29-12: E=Oak Park (6800 West) | W=Harlem (7200 West) | N=Wrightwood (2600 North) | S=Armitage (2000 North)
+    Currently placed at: 7200 W-6800 W, 2000 N-2600 N
+    Overlaps with: 36-5(67%)
+
+  37-15: E=Avers (3832 West) | W=Pulaski (4000 West) | N=Thomas (1100 North) | S=Lake Street (200 North)
+    Currently placed at: 4000 W-3832 W, 200 N-1100 N
+    Overlaps with: 28-7(67%)
+
+  12-9: E=Western (2400 West) | W=Kedzie (3200 West) | N=35th Street (3500 South) | S=Pershing (3900 South)
+    Currently placed at: 3200 W-2400 W, 3900 S-3500 S
+    Overlaps with: 12-8(55%)
+
+  32-3: E=Ravenswood (1800 West) | W=Damen (2000 West) | N=Cornelia (3500 North) | S=Belmont (3200 North)
+    Currently placed at: 2000 W-1800 W, 3200 N-3500 N
+    Overlaps with: 47-18(33%)
+
+  22-7: E=Ridgeway (3732 West) | W=Pulaski (4000 West) | N=Cermak (2000 South) | S=26th Street (2600 South)
+    Currently placed at: 4000 W-3732 W, 2600 S-2000 S
+    Overlaps with: 24-3(33%)
+
+  14-6: E=Albany (3100 West) Kedzie (3200 West) | W=Pulaski Road (4000 West) Central Park (3600 West) | N=46th Street (4600 South) 47th Street (4700 South) | S=Archer Ave (4781 South) 51st Street (5100 South)
+    Currently placed at: 4000 W-3100 W, 4781 S-4600 S
+    Overlaps with: 14-5(64%)
+
+  35-4: E=Sacramento (3000 West) | W=Kimball (3400 West) | N=Wrightwood (2600 North) | S=Dickens (2100 North)
+    Currently placed at: 3400 W-3000 W, 2100 N-2600 N
+    Overlaps with: 1-13(38%)
+
+  14-1: E=Kostner (4400 West) Kilbourn (4500 West) | W=Cicero (4800 West) Knox (4632 West) | N=47th Street (4700 South) 49th Street (4900 South) | S=51st Street (5100 South)
+    Currently placed at: 4800 W-4400 W, 5100 S-4700 S
+    Overlaps with: 22-12(33%)
+
+  26-12: E=Western (2400 West) | W=California (2800 West) | N=Hirsch (1400 North) | S=Division (1200 North)
+    Currently placed at: 2800 W-2400 W, 1200 N-1400 N
+    Overlaps with: 1-9(50%)
+
+  47-18: E=Ashland (1600 West) | W=Seeley (2032 West) | N=Addison (3600 North) | S=Roscoe (3400 North)
+    Currently placed at: 2032 W-1600 W, 3400 N-3600 N
+    Overlaps with: 32-3(33%)
+
+  17-2: E=Morgan Street (1000 West) | W=Racine Ave (1200 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    Currently placed at: 1200 W-1000 W, 8700 S-8300 S
+    Overlaps with: 21-18(38%)
+
+  24-3: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=Ogden (1544 South) | S=Cermak (2200 South)
+    Currently placed at: 4000 W-3600 W, 2200 S-1544 S
+    Overlaps with: 22-7(33%)
+
+  37-13: E=Avers (3832 West) | W=Kostner (4400 West) | N=Kamerling (1332 North) | S=Thomas (1100 North)
+    Currently placed at: 4400 W-3832 W, 1100 N-1332 N
+    Overlaps with: 36-9(100%)
+
+  13-25: E=Pulaski (4000 West) | W=Kildare (4300 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    Currently placed at: 4300 W-4000 W, 6300 S-5900 S
+    Overlaps with: 23-17(20%)
+
+  19-2: E=Damen (2000 West) | W=Western (2400 West) | N=91st Street (9100 South) | S=95th Street (9500 South)
+    Currently placed at: 2400 W-2000 W, 9500 S-9100 S
+    Overlaps with: 19-1(100%)
+
+  32-1: E=Leavitt (2200 West) | W=Western (2400 West) | N=Addison (3600 North) | S=Belmont (3200 North)
+    Currently placed at: 2400 W-2200 W, 3200 N-3600 N
+    Overlaps with: 47-19(44%)
+
+  7-4: E=Yates (2600 E) | W=Colfax (2518 E) | N=71st Street (7100) | S=74th Street (7400)
+    Currently placed at: 2518 E-2600 E, 7400 S-7100 S
+    Overlaps with: 7-3(82%)
+
+  8-14: E=Cottage Grove (800 E) | W=King Drive (400 E) | N=87th St (8700 S) | S=91st St (9100 S)
+    Currently placed at: 400 E-800 E, 9100 S-8700 S
+    Overlaps with: 6-15(72%)
+
+  4-5: E=Drexel (900 E) | W=Forrestville (532 E) | N=43rd St (4300 S) | S=47th St (4700 S)
+    Currently placed at: 532 E-900 E, 4700 S-4300 S
+    Overlaps with: 3-8(27%)
+
+  8-1: E=Stony Island (1600 E) | W=Avalon (1232 E) | N=71st St (7100 S) | S=76th St (7600 S)
+    Currently placed at: 1232 E-1600 E, 7600 S-7100 S
+    Overlaps with: 7-2(25%)
+
+  39-12: E=Pulaski (4000 West) | W=Kostner (4400 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+    Currently placed at: 4400 W-4000 W, 6000 N-6369 N
+    Overlaps with: 39-7(100%)
+
+  7-15: E=Escanaba (2863 E) | W=Phillips (2401 E) | N=89th St (8900) | S=94th St (9400)
+    Currently placed at: 2401 E-2863 E, 9400 S-8900 S
+    Overlaps with: 10-15(31%)
+
+  11-11: E=Senour (930 W) | W=Pitney Ct (1530 W) | N=Eleanor Street (2430 S) | S=31st Street (3100 S)
+    Currently placed at: 1530 W-930 W, 3100 S-2430 S
+    Overlaps with: 11-9(77%)
+
+  21-2: E=Wentworth Ave (200 West) | W=Halsted Street (800 West) | N=103rd Street (10300 South) | S=107th Street (10700 South)
+    Currently placed at: 800 W-200 W, 10700 S-10300 S
+    Overlaps with: 21-1(100%)
+
+  45-25: E=Kinzua (5432 West) | W=Central (5600 West) | N=Lunt (7000 North) | S=Hiawatha (6500 North)
+    Currently placed at: 5600 W-5432 W, 6500 N-6979 N
+    Overlaps with: 45-22(100%)
+
+  49-4: E=Clark (1800 West) | W=Damen (2000 West) | N=Howard (7600 North) | S=Touhy (7200 North)
+    Currently placed at: 2000 W-1800 W, 7200 N-7600 N
+    Overlaps with: 50-4(76%)
+
+  7-5: E=Yates (2400 E) | W=Paxton (2200 E) | N=75th Street (7500) | S=79th Street (7900)
+    Currently placed at: 2200 E-2400 E, 7900 S-7500 S
+    Overlaps with: 7-8(100%)
+
+  42-4: E=McClurg (400 East) | W=LaSalle (150 West) | N=Ohio (600 North) | S=Kinzie (400 North)
+    Currently placed at: 150 W-400 E, 400 N-600 N
+    Overlaps with: 2-7(33%)
+
+  1-13: E=California (2800 West) | W=Kedzie (3200 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+    Currently placed at: 3200 W-2800 W, 2000 N-2400 N
+    Overlaps with: 35-4(38%)
+
+  17-3: E=Racine (1200 West) Ada Street (1342 West) | W=Loomis Blvd (1400 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+    Currently placed at: 1400 W-1200 W, 8700 S-8300 S
+    Overlaps with: 21-18(75%)
+
+  40-6: E=Ravenswood (1800 West) | W=Leavitt (2200 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+    Currently placed at: 2200 W-1800 W, 6000 N-6400 N
+    Overlaps with: 50-10(51%)
+
+  31-2: E=Laramie (5200 West) | W=Central Ave (5600 West) | N=Diversey (2800 North) | S=Fullerton (2400 North)
+    Currently placed at: 5600 W-5200 W, 2400 N-2800 N
+    Overlaps with: 30-15(25%)
+
+  16-11: E=Bell (2230 West) | W=Oakley (2300 West) Western (2400 West) | N=58th Street (5800 South) | S=59th Street (5900 South) 70th Street (7000 South)
+    Currently placed at: 2300 W-2230 W, 5900 S-5800 S
+    Overlaps with: 15-5(100%)
+
+  43-4: E=Stockton Drive (200 West) | W=Orchard (700 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+    Currently placed at: 700 W-246 W, 2000 N-2400 N
+    Overlaps with: 32-20(73%)
+
+  41-1: E=Oriole (7600 West) Ozanam (7600 West) | W=Overhill (7700 West) Ozanam (7600 West) | N=Howard (7600 North) | S=Northwest Highway (6800 North)
+    Currently placed at: 7700 W-7600 W, 6800 N-7562 N
+    Overlaps with: 41-5(53%)
+
+  1-5: E=Noble (1400 West) | W=Ashland (1600 West) | N=North Ave (1600 North) | S=Division (1200 North)
+    Currently placed at: 1600 W-1400 W, 1200 N-1600 N
+    Overlaps with: 27-9(50%)
+
+  4-10: E=Vincennes 600 E | W=Lake Park 428 E | N=35th St (3500 S) | S=39th St. (3900 S)
+    Currently placed at: 428 E-600 E, 3900 S-3500 S
+    Overlaps with: 4-11(100%)
+
+  15-10: E=Marshfield (1632 West) | W=Wolcott (1900 West) | N=61st Street (6100 South) | S=66th Street (6600 South)
+    Currently placed at: 1900 W-1632 W, 6600 S-6100 S
+    Overlaps with: 16-13(40%)
+
+  26-2: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Belden (2300 North) | S=Armitage (2000 North)
+    Currently placed at: 4800 W-4400 W, 2000 N-2300 N
+    Overlaps with: 36-8(100%)
+
+  45-1: E=Central Park (3600 West) | W=Keeler (4200 West) | N=Belle Plaine (4100 North) | S=Byron (3900 North)
+    Currently placed at: 4200 W-3600 W, 3900 N-4100 N
+    Overlaps with: 39-1(31%)
+
+  21-6: E=Princeton Ave (300 West) | W=Averdeen Street (1100 West) | N=111th Street (11100 South) | S=115th Street (11500 South)
+    Currently placed at: 1100 W-300 W, 11500 S-11100 S
+    Overlaps with: 21-5(100%)
+
+  45-9: E=Austin (6000 West) | W=Mobile (6300 West) | N=Foster (5200 North) | S=Gunnison (4832 North)
+    Currently placed at: 6300 W-6000 W, 4832 N-5200 N
+    Overlaps with: 41-25(100%)
+
+  41-25: E=Austin (6000 West) | W=Natchez (6434 West) Mobile (6300 West) | N=Foster (5200 North) Gunnison (4800 North) | S=Giddings (4732 North)
+    Currently placed at: 6434 W-6000 W, 4732 N-5200 N
+    Overlaps with: 45-9(100%)
+
+  16-20: E=Lowe (632 West) | W=Morgan (1000 West) | N=63rd Street (6300 South) | S=Marquette (6700 South)
+    Currently placed at: 1000 W-632 W, 6700 S-6300 S
+    Overlaps with: 20-9(23%)
+
+  14-5: E=Central Park (3600 West) | W=Pulaski Road (4000 West) | N=45th Street (4500 South) | S=Archer Avenue (4780 South / 4890 South
+    Currently placed at: 4000 W-3600 W, 4780 S-4500 S
+    Overlaps with: 14-6(64%)
+
+  40-12: E=Western (2400 West) | W=Richmond (2932 West) | N=Peterson (6000 North) | S=Ardmore (5800 North)
+    Currently placed at: 2932 W-2429 W, 5800 N-6000 N
+    Overlaps with: 50-13(34%)
+
+  48-10: E=Lakewood (1300 West) | W=Clark (1600 West) | N=Devon (6400 North) | S=Granville (6200 North)
+    Currently placed at: 1600 W-1300 W, 6200 N-6400 N
+    Overlaps with: 40-3(100%)
+
+  30-6: E=Lowell (4432 West) | W=Cicero (4800 West) | N=Irving Park (4000 North) | S=Addison (3600 North)
+    Currently placed at: 4800 W-4432 W, 3600 N-4000 N
+    Overlaps with: 45-2(27%)
+
+  21-8: E=Halsted (800 West) | W=Loomis (1400 West) | N=115th Street (11500 South) | S=119th Street (11900 South)
+    Currently placed at: 1378 W-800 W, 11692 S-11500 S
+    Overlaps with: 21-9(100%)
+
+  9-16: E=State Street (0 E) | W=Princeton Ave (300 W) | N=111th Street (11100 S) | S=115th Street (11500 S)
+    Currently placed at: 300 W-0 W, 11500 S-11100 S
+    Overlaps with: 21-5(46%)
+
+  33-10: E=California (2800 West) | W=Richmond (2932 West) | N=Wilson (4600 North) | S=Irving Park (4000 North)
+    Currently placed at: 2932 W-2800 W, 4000 N-4600 N
+    Overlaps with: 40-19(68%)
+
+  20-1: E=Loomis (1400 West) | W=Wolcott (1900 West) | N=47th Street (4700 South) | S=51st Street (5100 South)
+    Currently placed at: 1900 W-1400 W, 5100 S-4700 S
+    Overlaps with: 15-3(40%)
+
+  5-11: E=Blackstone Ave (1436 E) | W=Kimbark Ave (1300 E) | N=55th Street (5900 S) | S=61st Street (6100 S)
+    Currently placed at: 1300 E-1436 E, 6006 S-5900 S
+    Overlaps with: 5-19(95%)
+
+  18-19: E=Loomis Blvd (1400 West) | W=Damen (2000 West) | N=83rd Street (8300 South) | S=86th Street (8600 South)
+    Currently placed at: 2000 W-1400 W, 8600 S-8300 S
+    Overlaps with: 21-18(34%)
+
+  4-13: E=Lake Park (428 East) | W=Michigan (100 E) | N=26th St (2600 S) | S=31st St (3100 S)
+    Currently placed at: 100 E-428 E, 3100 S-2600 S
+    Overlaps with: 3-4(61%)
+
+  26-14: E=Kedzie (3200 West) | W=Central Park (3600 West) | N=Hirsch (1400 North) | S=Augusta (1000 North)
+    Currently placed at: 3600 W-3200 W, 1000 N-1400 N
+    Overlaps with: 36-10(53%)
+
+  21-3: E=Eggleston Ave (432 West) | W=Halsted Street (800 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+    Currently placed at: 800 W-432 W, 11100 S-10700 S
+    Overlaps with: 21-4(100%)
+
+  26-1: E=Cicero (4800 West) | W=Latrobe (5232 West) | N=Belden (2300 North) | S=Armitage (2000 North)
+    Currently placed at: 5232 W-4800 W, 2000 N-2300 N
+    Overlaps with: 36-8(100%)
+
+  17-23: E=Claremont (2332 West) | W=Rockwell Street (2600 West) California Ave (2800 West) | N=71st Street (7100 South) | S=74th Street (7400 South)
+    Currently placed at: 2600 W-2332 W, 7400 S-7280 S
+    Overlaps with: 18-3(100%)
+
+  12-8: E=California (2800 West) | W=Drake (3530 West) | N=37th Street (3700 South) | S=Pershing (3900 South)
+    Currently placed at: 3530 W-2800 W, 3900 S-3700 S
+    Overlaps with: 12-9(55%)
+
+  8-4: E=Bennett (1900 E) | W=Stony Island (1600 E) | N=74th St (7400 S) | S=79th St (7900S)
+    Currently placed at: 1600 E-1900 E, 7900 S-7400 S
+    Overlaps with: 7-8(80%)
+
+  5-14: E=Ridgewood Ct (1368 East) | W=University Ave (1144 East) | N=Hyde Park Blvd (5100 South) | S=55th Street (5500 South)
+    Currently placed at: 1144 E-1368 E, 5500 S-5100 S
+    Overlaps with: 4-1(56%)
+
+  2-3: E=Clark 100 W | W=Sedgwick 400 W | N=North Ave (1600 North) | S=Division (1200 North)
+    Currently placed at: 400 W-100 W, 1200 N-1600 N
+    Overlaps with: 2-2(75%)
+
+  6-15: E=St Lawrence Ave (600 E) | W=Indiana Ave (200 E) | N=87th St (8700 S) | S=91st St (9100 S)
+    Currently placed at: 200 E-600 E, 9100 S-8700 S
+    Overlaps with: 8-14(72%)
+
+  3-4: E=Giles (300 East) | W=State St (0 E/W) | N=26th St (2600 South) | S=35th St (3500 South)
+    Currently placed at: 0 W-300 E, 3500 S-2600 S
+    Overlaps with: 4-13(61%)
+
+  16-1: E=Damen (2000 West) | W=Western Ave (2400 W) | N=51st Street (5100 South) | S=55th Street (5500 South)
+    Currently placed at: 2400 W-2000 W, 5500 S-5100 S
+    Overlaps with: 15-5(75%)
+
+  24-8: E=Albany (3100 West) | W=Homan (3400 West) | N=Harrison (500 South) | S=Douglas (1400 South)
+    Currently placed at: 3400 W-3100 W, 1400 S-500 S
+    Overlaps with: 28-5(78%)
+
+  46-2: E=Sheridan (1000 West) | W=Magnolia (1235 West) | N=Ainslie (4900 North) | S=Montrose (4400 North)
+    Currently placed at: 1235 W-1000 W, 4400 N-4900 N
+    Overlaps with: 47-5(30%)
+
+  11-6: E=Tracks (400 W) | W=Halsted Street (800 W) | N=Pershing Road (3900 S) | S=43rd Place (4330 S)
+    Currently placed at: 800 W-400 W, 4330 S-3900 S
+    Overlaps with: 20-6(24%)
+
+  41-17: E=Sayre (6920 West) | W=Oriole (7600 West) | N=Talcott (5700 North) Bryn Mawr (5600 North) | S=Catalpa (5500 North)
+    Currently placed at: 7600 W-6920 W, 5500 N-5700 N
+    Overlaps with: 41-11(29%)
+
+  11-9: E=Halsted Street (800 W) | W=Loomis St (1400 W) | N=Archer Ave (2500 S) | S=31st Street (3100 S)
+    Currently placed at: 1400 W-800 W, 3100 S-2500 S
+    Overlaps with: 11-11(77%)
+
+  6-24: E=Stewart Ave (400 W) | W=Halsted St (800 W) | N=71st St (7100 S) | S=76th St (7600 S)
+    Currently placed at: 800 W-400 W, 7600 S-7100 S
+    Overlaps with: 17-14(40%)
+
+  21-17: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=91st Street (9100 South) | S=95th Street (9500 South)
+    Currently placed at: 1710 W-1100 W, 9500 S-9100 S
+    Overlaps with: 19-1(30%)
+
+  9-15: E=Lafayette Ave (30 W) | W=Princeton Ave (300 W) | N=107th Street (10700 S) | S=111th Street (11098 S)
+    Currently placed at: 300 W-30 W, 11098 S-10700 S
+    Overlaps with: 21-4(51%)
+
+  33-11: E=Kedzie (3200 West) | W=Kimball (3400 West) | N=Irving Park (4000 North) | S=Addison (3600 North)
+    Currently placed at: 3400 W-3200 W, 3600 N-4000 N
+    Overlaps with: 35-13(100%)
+
+  9-8: E=Lafayuette (30 W) | W=Princeton (300 W) | N=99th Place (9930 S) | S=103rd Street (10300 South)
+    Currently placed at: 300 W-30 W, 10300 S-9930 S
+    Overlaps with: 21-13(51%)
+
+  48-5: E=Broadway (1200 West) | W=Clark (1600 West) | N=Balmoral (5400 North) | S=Foster Ave (5200 North)
+    Currently placed at: 1600 W-1200 W, 5200 N-5400 N
+    Overlaps with: 40-5(100%)
+
+  27-2: E=Kedzie (3200 West) | W=Drake (3532 West) | N=Augusta (1000 North) | S=Governors Pkwy (400 North)
+    Currently placed at: 3532 W-3200 W, 400 N-1000 N
+    Overlaps with: 36-10(84%)
+
+  10-15: E=Baltimore (3234 E) | W=Muskegon (2734 E) | N=87th Street (8700 South) | S=95th Street (9500 South)
+    Currently placed at: 2734 E-3234 E, 9500 S-8700 S
+    Overlaps with: 7-15(31%)
+
+  4-9: E=Drexel (900 E) | W=Vincennes 600 E | N=39th St (3900 S) | S=43rd St (4300 S)
+    Currently placed at: 600 E-900 E, 4300 S-3900 S
+    Overlaps with: 3-8(44%)
+
+  40-11: E=Leavitt (2200 West) | W=Fairfield (2732 West) | N=Granville (6200 North) | S=Peterson (6000 North)
+    Currently placed at: 2732 W-2200 W, 6000 N-6200 N
+    Overlaps with: 50-11(63%)
+
+  31-12: E=Knox (4632 West) | W=Lockwood (5300 West) | N=Altgeld (2500 North) | S=Belden (2300 North)
+    Currently placed at: 5300 W-4632 W, 2300 N-2500 N
+    Overlaps with: 36-8(50%)
+
+  8-9: E=Crandon 2300 E) | W=Jeffery (2000 E) | N=79th St (7900 S) | S=83rd St (8300 S)
+    Currently placed at: 2000 E-2300 E, 8300 S-7900 S
+    Overlaps with: 7-9(27%)
+
+  27-4: E=Western (2400 West) | W=Kedzie (3200 West) | N=Lake (200 North) | S=Harrison (600 South)
+    Currently placed at: 3200 W-2400 W, 600 S-200 N
+    Overlaps with: 28-4(25%)
+
+  49-13: E=Sheridan (1200 West) | W=Clark (1630 West) | N=Arthur (6500 North) | S=Devon (6400 North)
+    Currently placed at: 1630 W-1200 W, 6400 N-6500 N
+    Overlaps with: 40-3(100%)
+
+  35-13: E=Kedzie (3200 West) | W=Central Park (3600 West) | N=Irving Park (4000 North) | S=Belmont (3200 North)
+    Currently placed at: 3600 W-3200 W, 3200 N-4000 N
+    Overlaps with: 33-11(100%)
+
+  6-27: E=Lafayette Ave (30 W) | W=Normal Blvd (500 W) | N=Marquette Rd (6700 S) | S=71st St (7100 S)
+    Currently placed at: 500 W-30 W, 7100 S-6700 S
+    Overlaps with: 6-25(25%)
+
+  9-20: E=State Street (0 E) | W=Princeton Ave (300 W) | N=115th Street (11500 S) | S=119th Street (11900 S)
+    Currently placed at: 300 W-0 W, 11900 S-11500 S
+    Overlaps with: 21-9(46%)
+
+  34-5: E=Morgan Street (1000 West) | W=Throop St. (1300 West) | N=Washington Blvd (100 North) | S=Van Buren Street (400 South)
+    Currently placed at: 1300 W-1000 W, 400 S-100 N
+    Overlaps with: 34-7(27%)
+
+  5-19: E=Midway Plaisance E & W (5900 S) | W= | N=Kimbark Ave (1300 E) | S=Stony Island Ave (1600 E)
+    Currently placed at: 1300 E-1600 E, 6000 S-5900 S
+    Overlaps with: 5-11(95%)
+
+  47-12: E=Chicago River (2359 West) | W=Western (2400 West) | N=Montrose (4400 North) | S=Irving Park Road (4000 North)
+    Currently placed at: 2400 W-2359 W, 4000 N-4400 N
+    Overlaps with: 47-11(100%)
+
+  20-10: E=59th Street (5900 South) | W=66th Street (6600 South) | N=State Streeet (0 E/W) | S=Yale (232 West)
+    Currently placed at: 232 W-0 W, 6600 S-5900 S
+    Overlaps with: 6-26(25%)
+
+  8-5: E=Paxton (2200 E) | W=Bennett (1900 E) | N=75th St (7500 S) | S=79th St (7900 S)
+    Currently placed at: 1900 E-2200 E, 7900 S-7500 S
+    Overlaps with: 7-8(100%)
+
+  11-13: E=Justine Street (1532 W) | W=Paulina Street (1700 W) | N=32nd Street (3200 S) | S=Pershing Road (3900 S)
+    Currently placed at: 1700 W-1532 W, 3900 S-3200 S
+    Overlaps with: 12-11(46%)
+
+  32-14: E=Leavitt (2200 West) | W=Western (2400 West) | N=Altgeld (2500 North) | S=Armitage (2000 North)
+    Currently placed at: 2400 W-2200 W, 2000 N-2500 N
+    Overlaps with: 32-13(20%)
+
+  50-14: E=Kedzie (3200 West) | W=Ridgeway (3700 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+    Currently placed at: 3700 W-3200 W, 6000 N-6400 N
+    Overlaps with: 39-7(39%)
+
+  31-3: E=Long (5400 West) | W=Major (5700 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+    Currently placed at: 5700 W-5400 W, 2800 N-3200 N
+    Overlaps with: 30-13(100%)
+
+  36-5: E=Normandy (6700 West) | W=Sayre (7000 West) | N=Wrightwood (2600 North) | S=Belden (2300 North)
+    Currently placed at: 7000 W-6700 W, 2300 N-2600 N
+    Overlaps with: 29-12(67%)
+
+  13-9: E=Central (5600 West) | W=Menard (5800 West) | N=Minuteman Park (5915 South) | S=63rd Street (6300 South)
+    Currently placed at: 5800 W-5600 W, 5944 S-5915 S
+    Overlaps with: 13-8(56%)
+
+  1-3: E=Noble (1400 West) | W=Ashland (1600 West) | N=Division (1200 North) | S=Chicago (800 North)
+    Currently placed at: 1600 W-1400 W, 800 N-1200 N
+    Overlaps with: 27-9(50%)
+
+  41-11: E=Harlem (7200 West) | W=Oriole (7600 West) | N=Everell (6128 North) | S=Bryn Mawr (5600 North)
+    Currently placed at: 7600 W-7200 W, 5600 N-6128 N
+    Overlaps with: 41-17(29%)
+
+  16-17: E=Wallace (600 West) | W=Morgan (1000 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+    Currently placed at: 1000 W-600 W, 6300 S-5900 S
+    Overlaps with: 20-9(50%)
+
+  32-7: E=Ravenswood (1800 West) | W=Damen (2000 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+    Currently placed at: 2000 W-1800 W, 2800 N-3200 N
+    Overlaps with: 32-8(50%)
+
+  32-18: E=Wood (1800 West) | W=Damen (2000 West) | N=Avondale (1928 North) | S=North Ave (1600 North)
+    Currently placed at: 2000 W-1800 W, 1600 N-1928 N
+    Overlaps with: 32-20(100%)
+
+  48-8: E=Sheridan (1000 West) | W=Broadway (1200 West) | N=Glenlake (6100 North) | S=Bryn Mawr (5600 North)
+    Currently placed at: 1200 W-1128 W, 5600 N-6100 N
+    Overlaps with: 40-4(81%)
+
+  20-17: E=Woodlawn (1200 East) | W=Cottage Grove (800 East) | N=60th Street (6000 South) | S=63rd Street (6300 South)
+    Currently placed at: 800 E-1200 E, 6300 S-6000 S
+    Overlaps with: 5-10(37%)
+
+  28-9: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Carroll (328 North) | S=Harrison (600 South)
+    Currently placed at: 4800 W-4400 W, 600 S-328 N
+    Overlaps with: 28-10(21%)
+
+  5-9: E=Cottage Grove (800 E) | W=Ellis Ave (600 E) | N=55th Street (5500 S) | S=61st Street (6100 S)
+    Currently placed at: 600 E-800 E, 6100 S-5500 S
+    Overlaps with: 5-10(100%)
+
+  18-16: E=Kostner (4400 West) | W=Cicero (4800 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    Currently placed at: 4667 W-4400 W, 8144 S-7900 S
+    Overlaps with: 18-17(100%)
+
+  6-5: E=Rhodes Ave (532 E) | W=Prairie Ave (300 E) | N=71st St (7100 S) | S=75th St (7500 S)
+    Currently placed at: 300 E-532 E, 7500 S-7100 S
+    Overlaps with: 5-1(57%)
+
+  45-26: E=Leona (5150 West) | W=Kinzua (5432 West) | N=Hiawatha (6500 North) | S=Devon (6400 North)
+    Currently placed at: 5432 W-5199 W, 6400 N-6500 N
+    Overlaps with: 45-22(21%)
+
+  45-4: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Sunnyside (4500 North) | S=Belle Plaine (4100 North)
+    Currently placed at: 5200 W-4800 W, 4100 N-4500 N
+    Overlaps with: 38-1(50%)
+
+  30-7: E=Cicero (4800 West) | W=Lockwood (5300 West) | N=Dakin (3932 North) | S=Addison (3600 North)
+    Currently placed at: 5300 W-4800 W, 3600 N-3932 N
+    Overlaps with: 45-2(40%)
+
+  18-17: E=Pulaski (4000 West) | W=Kostner (4800 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+    Currently placed at: 4667 W-4000 W, 8144 S-7900 S
+    Overlaps with: 18-16(100%)
+
+  21-7: E=Princeton Ave (300 West) | W=Halsted Street (800 West) | N=115th Street (11500 South) | S=119th Street (11900 South)
+    Currently placed at: 800 W-300 W, 11900 S-11500 S
+    Overlaps with: 21-9(100%)
+
+  12-5: E=Rockwell (2600 West) | W=California (2800 West) | N=Pershing (3900 South) | S=47th Street (4700 South)
+    Currently placed at: 2800 W-2600 W, 4700 S-3900 S
+    Overlaps with: 15-4(100%)
+
+  48-6: E=Marine Drive (800 West) | W=Broadway (1200 West) | N=Foster (5200 North) | S=Ainsle (4900 North)
+    Currently placed at: 1200 W-917 W, 4900 N-5200 N
+    Overlaps with: 40-8(55%)
+
+  22-10: E=Kedzie (3200 West) | W=St Louis (3500 West) | N=26th Street (2600 South) | S=31st Street (3100 South)
+    Currently placed at: 3500 W-3200 W, 2946 S-2600 S
+    Overlaps with: 25-1(25%)
+
+  12-1: E=Kedzie (3200 West) | W=Drake (3530 West) | N=43rd Street (4300 S) | S=Archer Ave (4640 South)
+    Currently placed at: 3530 W-3200 W, 4640 S-4300 S
+    Overlaps with: 12-2(100%)
+
+  17-22: E=Honore Street (1828 West) | W=Bell Ave (2232 West) | N=68th Street 6800 South) | S=71st Street (7100 South)
+    Currently placed at: 2232 W-1828 W, 7100 S-6800 S
+    Overlaps with: 16-23(27%)
+
+  47-13: E=Leavitt (2200 West) | W=Western (2400 West) | N=Irving Park (4000 North) | S=Addison (3600 North)
+    Currently placed at: 2400 W-2200 W, 3600 N-4000 N
+    Overlaps with: 47-19(44%)
+
+  36-1: E=Normandy (6700 West) | W=Sayer (7000 West) | N=School (3300 North) | S=Wellington (3000 North)
+    Currently placed at: 7000 W-6700 W, 3000 N-3300 N
+    Overlaps with: 38-13(25%)
+
+  49-8: E=Clark (1700 West) | W=Ridge (2100 West) | N=Morse (6934 North) | S=Albion (6600 North)
+    Currently placed at: 2100 W-1700 W, 6600 N-6934 N
+    Overlaps with: 40-2(39%)
+
+  41-8: E=Oriole (7600 West) | W=Canfield (7900 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+    Currently placed at: 7900 W-7600 W, 6000 N-6400 N
+    Overlaps with: 41-10(25%)
+
+  17-21: E=Ashland Ave (1600 West) | W=Honore Street (1828 West) | N=68th Street (6800 South) | S=71st Street (7100 South)
+    Currently placed at: 1828 W-1600 W, 7100 S-6800 S
+    Overlaps with: 16-23(33%)
+
+  8-10: E=Cottage Grove (800 E) | W=Ellis (600 E) | N=83rd St (8300 S) | S=87th St (8700 S)
+    Currently placed at: 600 E-800 E, 8700 S-8300 S
+    Overlaps with: 6-14(100%)
+
+  33-6: E=St. Louis (3500 West) | W=Avers (3832 West) | N=Montrose (4400 North) | S=Irving Park (4000 North)
+    Currently placed at: 3832 W-3500 W, 4000 N-4400 N
+    Overlaps with: 39-1(30%)
+
+  31-9: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Diversey (2800 North) | S=Fullerton (2400 North)
+    Currently placed at: 4800 W-4400 W, 2400 N-2800 N
+    Overlaps with: 31-10(25%)
+
+  20-4: E=Halsted (800 West) | W=Racine (1200 West) | N=49th Place (4900 South) | S=53rd Street (5300 South)
+    Currently placed at: 1200 W-800 W, 5300 S-4900 S
+    Overlaps with: 20-2(50%)
+
+  7-17: E=Merrill (2133 E) | W=Chappel (2020 E) | N=89th St (8900) | S=93rd St (9300)
+    Currently placed at: 2020 E-2133 E, 9083 S-8900 S
+    Overlaps with: 8-18(100%)
+
+  12-11: E=Ashland (1600 West) | W=Damen (2000 West) | N=35th Street (3500 South) | S=Pershing (3900 South)
+    Currently placed at: 1839 W-1600 W, 3900 S-3651 S
+    Overlaps with: 11-13(46%)
+
+  32-8: E=Ashland Ave (1600 West) | W=Wolcott (1900 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+    Currently placed at: 1900 W-1600 W, 2800 N-3200 N
+    Overlaps with: 32-7(50%)
+
+  36-2: E=Narragansett (6400 West) | W=Normandy (6700 West) | N=Roscoe (3400 North) | S=Wellington (3000 North)
+    Currently placed at: 6700 W-6400 W, 3000 N-3400 N
+    Overlaps with: 38-12(50%)
+
+  4-1: E=Lake Park (1500 E) | W=Woodlawn (1200 E) | N=51st St (5100 S) | S=53rd St (5300 S)
+    Currently placed at: 1200 E-1500 E, 5300 S-5100 S
+    Overlaps with: 5-14(56%)
+
+  25-9: E=Halsted Street (800 West) | W=Racine (1200 West) | N=18th Street (1800 South) | S=Cermak Road (2200 South)
+    Currently placed at: 1200 W-800 W, 2200 S-1817 S
+    Overlaps with: 3-2(51%)
+
+  22-12: E=Knox (4632 West) | W=Cicero (4800 West) | N=43rd Street (4300 South) | S=49th Street (4900 South)
+    Currently placed at: 4800 W-4632 W, 4900 S-4300 S
+    Overlaps with: 14-1(33%)
+
+  26-3: E=Pulaski (4000 West) | W=Kenton (4400 West) | N=Dickens (2100 North) | S=Bloomingdale (1800 North)
+    Currently placed at: 4400 W-4000 W, 1800 N-2100 N
+    Overlaps with: 35-1(33%)
+
+  7-12: E=Kingston Ave (2531 E) | W=Yates (2400 E) | N=84th St (8400) | S=86th St (8600)
+    Currently placed at: 2400 E-2531 E, 8600 S-8400 S
+    Overlaps with: 7-14(100%)
+
+  17-14: E=Wallace Street (600 West) | W=Halsted Street (800 West) | N=74th Street (7400 South) | S=79th Street (7900 South)
+    Currently placed at: 800 W-600 W, 7900 S-7400 S
+    Overlaps with: 6-24(40%)
+
+  39-6: E=Avers (3832 West) | W=Lowell (4332 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+    Currently placed at: 4332 W-3832 W, 4800 N-5174 N
+    Overlaps with: 33-1(28%)
+
+  47-11: E=Leavitt (2200 West) | W=Western Ave (2400 West) | N=Montrose (4400 North) | S=Irving Park Road (4000 North)
+    Currently placed at: 2400 W-2200 W, 4000 N-4400 N
+    Overlaps with: 47-12(100%)
+
+  29-2: E=Laramie (5200 West) | W=Central (5600 West) | N=Westend (200 North) | S=Jackson (300 South)
+    Currently placed at: 5600 W-5200 W, 300 S-200 N
+    Overlaps with: 37-6(100%)
+
+  45-12: E=Nagle (6400 West) | W=Nettleton (6800 West) | N=Imlay (6500 North) | S=Newburg (6400 North)
+    Currently placed at: 6800 W-6613 W, 6400 N-6500 N
+    Overlaps with: 41-32(65%)
+
+  3-3: E=Indiana (200 East) | W=Clark (1000 West) | N=Cermak (2200 South) | S=26th St (2600 South)
+    Currently placed at: 1000 W-200 E, 2600 S-2200 S
+    Overlaps with: 11-5(29%)
+
+  3-12: E=Michigan (100 East) | W=Federal (60 West) | N=43rd St (4300 South) | S=47th St (4700 South)
+    Currently placed at: 60 W-100 E, 4700 S-4300 S
+    Overlaps with: 3-7(38%)
+
+  32-13: E=Ashland (1600 West) | W=Western (2400 West) | N=Diversey (2800 North) | S=Fullerton (2400 North)
+    Currently placed at: 2400 W-1600 W, 2400 N-2800 N
+    Overlaps with: 32-14(20%)
+
+  28-5: E=California (2800 West) | W=Homan (3400 West) | N=Franklin (500 South) | S=Roosevelt (1200 South)
+    Currently placed at: 3400 W-2800 W, 1200 S-500 S
+    Overlaps with: 24-8(78%)
+
+  46-7: E=Clarendon (800 West) | W=Seminary (1100 West) | N=Irving Park Road (4000 North) | S=Waveland (3700 North)
+    Currently placed at: 1100 W-800 W, 3700 N-4000 N
+    Overlaps with: 44-3(100%)
+
+  2-1: E=Clifton 1130 W | W=Ashland (1600 West) | N=Fullerton 2400 N | S=Cortland 1900 N
+    Currently placed at: 1600 W-1130 W, 1900 N-2400 N
+    Overlaps with: 32-20(100%)
+
+  41-32: E=Newark (6700 West) | W=Harlem (7200 West) | N=Albion (6600 North) | S=Devon (6400 North)
+    Currently placed at: 7200 W-6700 W, 6400 N-6600 N
+    Overlaps with: 45-12(65%)
+
+  49-12: E=Lake Michigan (500 East) | W=Glenwood (1400 West) | N=Pratt (6800 North) | S=Arthur (6500 North)
+    Currently placed at: 1400 W-1146 W, 6500 N-6800 N
+    Overlaps with: 40-3(37%)
+
+  15-1: E=Stewart (400 West) Wallace (600 West) | W=Halsted (800 West) Canal (500 West) | N=43rd Street (4300 South) 45th Street (4500 South) | S=47th Street (4700 South) 49th Street (4900 South)
+    Currently placed at: 800 W-400 W, 4700 S-4300 S
+    Overlaps with: 20-6(75%)
+
+  50-11: E=Western (2400 West) | W=Francisco (2900 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+    Currently placed at: 2900 W-2400 W, 6000 N-6400 N
+    Overlaps with: 40-11(63%)
+
+  8-13: E=Yates (2400 E) | W=bennett (1900 E) | N=84th St (8400 S) | S=87th St (8700 S)
+    Currently placed at: 1900 E-2400 E, 8700 S-8400 S
+    Overlaps with: 7-14(80%)
+
+  32-4: E=Southport (1400 West) | W=Ravenswood (1800 West) | N=Roscoe (3400 North) | S=Belmont (3200 North)
+    Currently placed at: 1800 W-1400 W, 3200 N-3400 N
+    Overlaps with: 44-1(29%)
+
+  50-13: E=California (2800 West) | W=Virginia (3100 West) | N=Peterson (6000 North) | S=Bryn Mawr (5600 North)
+    Currently placed at: 3100 W-2800 W, 5600 N-6000 N
+    Overlaps with: 40-12(34%)
+
+  7-6: E=Escanaba (2800 E) | W=Essex (2464 E) | N=75th Street (7500) | S=79th Street (7900)
+    Currently placed at: 2464 E-2800 E, 7900 S-7500 S
+    Overlaps with: 7-8(40%)
+
+  6-14: E=Cottage Grove (800 E) | W=Rhodes Ave (532 E) | N=83rd St (8300 S) | S=87th St (8700 S)
+    Currently placed at: 532 E-800 E, 8700 S-8300 S
+    Overlaps with: 8-10(100%)
+
+  32-19: E=Bosworth (1532 West) | W=Wood (1800 West) | N=Armitage (2000 North) | S=North Ave (1600 North)
+    Currently placed at: 1800 W-1532 W, 1600 N-2000 N
+    Overlaps with: 32-20(100%)
+
+  7-16: E=Yates (2401 E) | W=Paxton (2201 E) | N=89th St (8900) | S=93rd St (9300)
+    Currently placed at: 2201 E-2401 E, 9300 S-8900 S
+    Overlaps with: 8-18(50%)
+
+  41-10: E=Oriole (7600 West) | W=Canfield (7900 West) | N=Glenlake (6100 North) | S=Bryn Mawr (5600 North)
+    Currently placed at: 7900 W-7600 W, 5600 N-6100 N
+    Overlaps with: 41-8(25%)
+
+  37-10: E=Cicero (4800 West) | W=Laramie (5200 West) | N=North Ave (1600 North) | S=Potomac (1300 North)
+    Currently placed at: 5200 W-4800 W, 1300 N-1600 N
+    Overlaps with: 36-8(100%)
+
+  15-3: E=Paulina (1700 West) Hermitage (1732 West) | W=Leavitt (2200 West) | N=47th Street (4700 South) 50th Place (5032 South) | S=48th Street (4800 South) 51st Street (5100 South)
+    Currently placed at: 2200 W-1700 W, 4800 S-4700 S
+    Overlaps with: 20-1(40%)
+
+  16-25: E=Emerald (720 West) | W=Morgan (1000 West) | N=Marquette (6700 South) | S=71st Street (7100 South)
+    Currently placed at: 1000 W-720 W, 7100 S-6700 S
+    Overlaps with: 6-25(29%)
+
+  15-4: E=Fairfield (2732 West) Oakley (2300 West) | W=California (2800 West) Artesian (2434 West) | N=43rd Street (4300 South) 50th Place (5032 South) | S=44th Street (4400 South) 50th Place (5032 South)
+    Currently placed at: 2800 W-2732 W, 4400 S-4300 S
+    Overlaps with: 12-5(100%)
+
+  7-13: E=Manistee (2729 E) | W=Colfax (2600 E) | N=84th St (8400) | S=86th St (8600)
+    Currently placed at: 2600 E-2729 E, 8600 S-8400 S
+    Overlaps with: 7-14(100%)
+
+  26-4: E=Pulaski (4000 West) | W=Kostner (4400 West) | N=Bloomingdale (1800 North) | S=Lemoyne (1500 North)
+    Currently placed at: 4400 W-4000 W, 1500 N-1800 N
+    Overlaps with: 36-9(67%)
+
+  6-4: E=Ellis Ave (1000 E) | W=Rhodes Ave (532 E) | N=71st St (7100 S) | S=75th St (7500 S)
+    Currently placed at: 532 E-1000 E, 7500 S-7100 S
+    Overlaps with: 5-1(100%)
+
+  30-12: E=Austin (6000 West) | W=Narragansett (6400 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+    Currently placed at: 6400 W-6000 W, 2800 N-3200 N
+    Overlaps with: 36-4(34%)
+
+  49-11: E=Glenwood (1400 West) | W=Clark (1650 West) | N=Pratt (6800 North) | S=Arthur (6500 North)
+    Currently placed at: 1650 W-1400 W, 6500 N-6800 N
+    Overlaps with: 40-3(33%)
+
+  26-6: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=Bloomingdale (1800 North) | S=North Ave (1600 North)
+    Currently placed at: 4000 W-3600 W, 1600 N-1800 N
+    Overlaps with: 36-9(50%)
+
+  38-13: E=Oak Park (6800 West) | W=Sayre (7000 West) | N=Addison (3600 North) | S=Belmont (3200 North) School Street
+    Currently placed at: 7000 W-6800 W, 3200 N-3600 N
+    Overlaps with: 36-1(25%)

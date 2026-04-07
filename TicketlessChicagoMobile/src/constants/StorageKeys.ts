@@ -60,6 +60,9 @@ export const StorageKeys = {
   SNOW_FORECAST_LAST_CHECK: 'snowForecastLastCheck', // ISO timestamp
   SNOW_FORECAST_NOTIFIED: 'snowForecastNotified', // 'true' if already warned about upcoming snow
 
+  // Parking Save Retry Queue
+  PARKING_SAVE_RETRY_QUEUE: 'parkingSaveRetryQueue', // JSON array of failed server saves awaiting retry
+
   // Diagnostic Log Upload
   LAST_LOG_UPLOAD_LINE_COUNT: 'lastLogUploadLineCount', // number of lines already uploaded (watermark)
   LAST_LOG_UPLOAD_TIME: 'lastLogUploadTime', // ISO timestamp of last successful upload
@@ -97,6 +100,7 @@ export const PERSISTENT_KEYS: StorageKey[] = [
   StorageKeys.SAVED_DESTINATIONS,
   StorageKeys.LAST_PARKING_LOCATION,
   StorageKeys.LAST_PARKED_COORDS,
+  StorageKeys.PARKING_SAVE_RETRY_QUEUE,
   StorageKeys.PHONE_CALL_ALERTS_ENABLED,
   StorageKeys.PHONE_NUMBER,
   StorageKeys.CALL_ALERT_PREFERENCES,

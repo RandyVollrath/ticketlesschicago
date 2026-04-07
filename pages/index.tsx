@@ -327,7 +327,17 @@ export default function LandingPage() {
           margin: '0 auto 40px',
           lineHeight: 1.6
         }}>
-          We fight back - automatically.
+          That&apos;s 3 tickets and $250 in fines per car. Every year.
+        </p>
+
+        <p style={{
+          fontSize: 'clamp(16px, 2.5vw, 18px)',
+          color: '#94A3B8',
+          maxWidth: '700px',
+          margin: '0 auto 40px',
+          lineHeight: 1.6
+        }}>
+          We fight back — automatically.
           <br/>
           Automatic ticket contesting for Chicago drivers, backed by our First Dismissal Guarantee.
         </p>
@@ -408,7 +418,17 @@ export default function LandingPage() {
           lineHeight: 1.6,
           maxWidth: '580px',
         }}>
+
           35.7 million parking tickets. 530,000 hearings. The data is clear: most people never fight back — and the ones who do win more than half the time.
+        </p>
+        <p style={{
+          margin: '16px 0 0',
+          color: '#F59E0B',
+          fontSize: '15px',
+          lineHeight: 1.6,
+          fontWeight: 600,
+        }}>
+          The average Chicago driver pays $250/year in tickets and late fees — more than double the cost of full protection.
         </p>
       </section>
 
