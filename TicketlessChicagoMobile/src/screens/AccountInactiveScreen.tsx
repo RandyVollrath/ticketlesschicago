@@ -88,9 +88,12 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
 
   const handlePurchase = async () => {
     if (!IAPService.isAvailable(billingPlan)) {
+      const errorDetail = IAPService.getLastError();
       Alert.alert(
         'Purchase Not Available',
-        'In-App Purchase is still loading. Please try again in a moment.',
+        errorDetail
+          ? `In-App Purchase failed to load.\n\nDiagnostic: ${errorDetail}`
+          : 'In-App Purchase is still loading. Please try again in a moment.',
       );
       return;
     }

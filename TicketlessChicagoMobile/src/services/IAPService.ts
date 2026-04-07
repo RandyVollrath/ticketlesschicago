@@ -44,6 +44,14 @@ class IAPService {
   private purchaseUpdateSubscription: ReturnType<typeof purchaseUpdatedListener> | null = null;
   private purchaseErrorSubscription: ReturnType<typeof purchaseErrorListener> | null = null;
   private pendingCallback: PurchaseCallback | null = null;
+  private lastInitError: string | null = null;
+
+  /**
+   * Get the last initialization error (if any) for diagnostics.
+   */
+  getLastError(): string | null {
+    return this.lastInitError;
+  }
 
   /**
    * Initialize IAP connection and fetch product info.
@@ -60,6 +68,9 @@ class IAPService {
       // Fetch both subscriptions
       try {
         const subs = await getSubscriptions({ skus: [PRODUCT_ID_ANNUAL, PRODUCT_ID_MONTHLY] });
+        log.info(`IAP getSubscriptions returned ${subs.length} products`, {
+          productIds: subs.map((s) => s.productId),
+        });
         for (const sub of subs) {
           if (sub.productId === PRODUCT_ID_ANNUAL) {
             this.annualSubscription = sub;
@@ -71,12 +82,17 @@ class IAPService {
         }
         if (!this.annualSubscription) {
           log.warn('IAP annual subscription not found in App Store');
+          this.lastInitError = `Annual subscription "${PRODUCT_ID_ANNUAL}" not found. getSubscriptions returned ${subs.length} products: [${subs.map((s) => s.productId).join(', ')}]`;
         }
         if (!this.monthlySubscription) {
           log.warn('IAP monthly subscription not found in App Store');
+          if (!this.lastInitError) {
+            this.lastInitError = `Monthly subscription "${PRODUCT_ID_MONTHLY}" not found. getSubscriptions returned ${subs.length} products: [${subs.map((s) => s.productId).join(', ')}]`;
+          }
         }
-      } catch (subError) {
+      } catch (subError: any) {
         log.warn('Failed to fetch subscriptions', subError);
+        this.lastInitError = `getSubscriptions threw: ${subError?.message || String(subError)}`;
       }
 
       // Listen for purchase events
@@ -97,8 +113,9 @@ class IAPService {
           this.pendingCallback = null;
         },
       );
-    } catch (error) {
+    } catch (error: any) {
       log.error('Failed to initialize IAP', error);
+      this.lastInitError = `initConnection failed: ${error?.message || String(error)}`;
     }
   }
 
