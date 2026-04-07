@@ -111,7 +111,7 @@ const SettingRow: React.FC<SettingRowProps> = ({
       onValueChange={onValueChange}
       disabled={disabled}
       trackColor={{ false: colors.border, true: colors.primaryLight }}
-      thumbColor={value ? colors.primary : colors.textTertiary}
+      thumbColor="#fff"
       accessibilityLabel={title}
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
@@ -206,7 +206,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [user, setUser] = useState<User | null>(AuthService.getUser());
-  const [cameraAlertsEnabled, setCameraAlertsEnabled] = useState(false);
   const [speedCameraAlertsEnabled, setSpeedCameraAlertsEnabled] = useState(false);
   const [redLightCameraAlertsEnabled, setRedLightCameraAlertsEnabled] = useState(false);
   const [cameraAlertVolume, setCameraAlertVolume] = useState(1.0);
@@ -318,7 +317,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       const cameraSettings = await CameraAlertService.getSettings();
       if (!isMountedRef.current) return;
-      setCameraAlertsEnabled(cameraSettings.enabled);
       setSpeedCameraAlertsEnabled(cameraSettings.speedEnabled);
       setRedLightCameraAlertsEnabled(cameraSettings.redLightEnabled);
       setCameraAlertVolume(cameraSettings.volume);
@@ -637,21 +635,6 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [showFeedback]);
 
-  const toggleCameraAlerts = useCallback(async (value: boolean) => {
-    try {
-      setCameraAlertsEnabled(value);
-      setSpeedCameraAlertsEnabled(value);
-      setRedLightCameraAlertsEnabled(value);
-      await CameraAlertService.setEnabled(value);
-      await loadCameraAlertSettings();
-      showFeedback(value ? 'Camera alerts enabled' : 'Camera alerts disabled');
-    } catch (error) {
-      log.error('Error updating camera alerts', error);
-      await loadCameraAlertSettings();
-      Alert.alert('Save failed', 'Could not save camera alert settings. Please try again.');
-    }
-  }, [loadCameraAlertSettings, showFeedback]);
-
   const toggleSpeedCameraAlerts = useCallback(async (value: boolean) => {
     try {
       setSpeedCameraAlertsEnabled(value);
@@ -862,26 +845,13 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.settingRow}>
                 <MaterialCommunityIcons name="camera" size={20} color={colors.info} style={styles.rowIcon} />
                 <View style={styles.settingInfo}>
-                  <Text style={styles.settingTitle}>Driving Camera Alerts</Text>
+                  <Text style={styles.settingTitle}>Camera Alerts</Text>
                   <Text style={styles.settingSubtitle}>Loading camera alert settings...</Text>
                 </View>
                 <ActivityIndicator size="small" color={colors.primary} />
               </View>
             ) : (
-              <SettingRow
-                icon="camera"
-                iconColor={colors.info}
-                title="Driving Camera Alerts"
-                subtitle={Platform.OS === 'ios'
-                  ? "Notification alerts when you approach speed or red-light cameras while driving"
-                  : "Spoken audio warnings when you approach speed or red-light cameras while driving"}
-                value={cameraAlertsEnabled}
-                onValueChange={toggleCameraAlerts}
-              />
-            )}
-            {cameraSettingsLoaded && cameraAlertsEnabled && (
               <>
-                <Divider />
                 <SettingRow
                   icon="speedometer"
                   iconColor={colors.info}
@@ -1182,7 +1152,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                         value={pref.enabled}
                         onValueChange={(value) => updateCallAlertPref(config.key, { enabled: value })}
                         trackColor={{ false: colors.border, true: colors.primaryLight }}
-                        thumbColor={pref.enabled ? colors.primary : colors.textTertiary}
+                        thumbColor="#fff"
                         accessibilityLabel={`${config.label} call alerts`}
                         accessibilityRole="switch"
                         accessibilityState={{ checked: pref.enabled }}
@@ -1275,7 +1245,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* About */}
         <Section title="About">
-          {/* Website link hidden on iOS — autopilotamerica.com shows $49/year pricing,
+          {/* Website link hidden on iOS — autopilotamerica.com shows $99/year pricing,
               which Apple flags as paid content not available via IAP (Guideline 3.1.1) */}
           {Platform.OS !== 'ios' && (
             <>
