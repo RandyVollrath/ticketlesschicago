@@ -9,596 +9,69 @@ See **[PRODUCT_DECISIONS.md](./PRODUCT_DECISIONS.md)** for finalized product dec
 - **Backend**: Supabase (auth, database, RLS policies)
 - **Domain**: autopilotamerica.com
 
-## Deployment Workflow — DO THIS AFTER EVERY CHANGE
-After completing any code/content/config change (feature, bug fix, copy update, styling tweak, migration wiring), always deploy everything:
-
-0. **No dirty working tree at handoff (mandatory)**:
-   - Before you report completion, run `git status --porcelain` and ensure it is empty.
-   - If not empty: finish the work (or revert partial edits), then **commit**, **pull --rebase**, **push**, and **deploy** in the same session.
-
-1. **Web app**: Run `npx vercel --prod --yes` from the repo root to deploy to Vercel.
-   - This is mandatory on every completed task in this repo.
-   - Do not stop at "changes made locally."
-   - Report the production deployment URL after each deploy.
-2. **Android APK**: Run `./gradlew assembleRelease` in `TicketlessChicagoMobile/android/`.
-3. **Install on connected devices**: Check via `adb devices`. Install on any connected device:
-   ```
-   adb -s ZT4224LFTZ install -r TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk
-   adb -s ZY326L2GKG install -r TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk
-   ```
-4. **Firebase App Distribution (OTA updates)**: ALWAYS upload after building the APK so the user can install remotely without being near the computer. Use the Firebase CLI:
-   ```
-   GOOGLE_APPLICATION_CREDENTIALS=/home/randy-vollrath/ticketless-chicago/firebase-admin-key.json \
-     firebase appdistribution:distribute \
-     /home/randy-vollrath/ticketless-chicago/TicketlessChicagoMobile/android/app/build/outputs/apk/release/app-release.apk \
-     --app 1:450290119882:android:16850ef983b271ea3ff033 \
-     --testers "hiautopilotamerica@gmail.com"
-   ```
-   - Service account: `firebase-admin-key.json` (has Firebase App Distribution Admin role)
-   - Tester: `hiautopilotamerica@gmail.com` (uses Firebase App Tester on phone)
-   - **IMPORTANT**: The version must be bumped (new versionCode) or Firebase will reject/deduplicate the upload
-5. **iOS**: user builds locally on Mac by pulling from git and building in Xcode.
-6. **Always push to GitHub after making changes** — the user expects all work deployed to production.
-7. **Completion rule**: A task is not complete until deployment has finished and deployment status/URL is reported.
-8. **No local leftovers**: Never leave a dirty working tree at handoff. Commit, push, and deploy in the same working session for every completed change.
-
-## Release Checklist — Verify After Every Deploy
-After deploying, verify these critical user flows work:
-1. **Web auto-login**: Visit `autopilotamerica.com/settings` in a browser where the user previously signed in. Confirm the session persists and the user is NOT asked to log in again. If session doesn't persist, check Supabase auth cookie/localStorage handling.
-2. **Alerts signup → settings redirect**: Complete a free alerts signup via email magic link. After clicking the link, confirm the user lands on `/settings` already authenticated (not on the login page).
-3. **Mobile WebView auth**: Open the settings page from the mobile app. Confirm the WebView auto-authenticates via URL query params (`mobile_access_token`, `mobile_refresh_token`).
-
-## Version Bumping
-**Only bump versions for actual releases** (new features, app store submissions, or when Firebase App Distribution needs a distinct build). Do NOT bump for every bug fix or deploy — rebuilding and reinstalling the same version is fine.
-
-When releasing, bump ALL THREE locations and keep them in sync:
-
-1. **Android**: `TicketlessChicagoMobile/android/app/build.gradle`
-   - `versionCode` (integer, e.g., 10)
-   - `versionName` (string, e.g., "1.0.9")
-
-2. **Config**: `TicketlessChicagoMobile/src/config/config.ts`
-   - `APP_VERSION` (e.g., '1.0.9')
-   - `BUILD_NUMBER` (e.g., '10')
-
-3. **iOS**: `TicketlessChicagoMobile/ios/TicketlessChicagoMobile.xcodeproj/project.pbxproj`
-   - `MARKETING_VERSION` (e.g., 1.0.9) — appears twice in the file
-   - `CURRENT_PROJECT_VERSION` (e.g., 10) — appears twice in the file
-   - Use `replace_all: true` when editing to update both occurrences
-
-**CRITICAL**: iOS versions are stored in `project.pbxproj`, NOT in `Info.plist` (which just references build variables). If you only update Android and config.ts, iOS will have stale version numbers and the user will have to manually fix it in Xcode.
-
-## Cross-Platform Development Rules
-
-**Every feature must work on BOTH iOS and Android.** Before considering any task done:
-
-1. **Think through iOS behavior separately from Android.** Even when using the same React Native component (WebView, Linking, etc.), the underlying native implementation can behave completely differently. Don't assume "it works on Android so it works on iOS."
-
-2. **Anything that touches native APIs needs platform verification:**
-   - WebView content injection, navigation, auth
-   - Push notifications and background tasks
-   - Permissions (different APIs, different plist/manifest entries)
-   - Deep linking and URL handling
-   - Biometrics (Face ID vs fingerprint)
-   - File system paths and storage behavior
-   - Font loading and asset bundling
-
-3. **When adding a native dependency or config:**
-   - Android: check `AndroidManifest.xml`, `build.gradle`, any native module setup
-   - iOS: check `Info.plist`, `Podfile`, entitlements, Xcode build settings
-   - Both need to be updated in the same commit
-
-4. **iOS is stricter than Android on almost everything.** If something "just works" on Android, assume iOS needs explicit configuration. Specific patterns:
-   - Android auto-discovers assets/fonts; iOS requires explicit plist registration
-   - Android WebView is more forgiving with JS injection; iOS WKWebView has strict ordering/timing requirements
-   - Android background tasks run more freely; iOS aggressively suspends/throttles
-   - Android deep links via intent filters; iOS needs both URL schemes AND Universal Links
-
-5. **Test mental model**: When writing any platform-touching code, ask: "What would WKWebView / iOS do differently here?" If uncertain, look it up before shipping.
-
-## iOS vs Android: Critical Differences
-
-### WebView (react-native-webview)
-These are hard-won lessons. Always account for these when writing WebView code:
-
-1. **`onMessage` handler is REQUIRED on iOS for `injectedJavaScript` to execute.**
-   Android runs `injectedJavaScript` regardless, but iOS WKWebView silently skips it if no `onMessage` prop is set on the WebView component. Always add `onMessage` even if you don't need to receive messages.
-
-2. **iOS WKWebView does NOT inherit device-width viewport.**
-   Android WebView automatically uses device width. iOS WKWebView renders at desktop width unless you explicitly inject a `<meta name="viewport">` tag. Always force the viewport in `injectedJavaScriptBeforeContentLoaded`.
-
-3. **iOS WKWebView can encode `#` as `%23` in URL fragments.**
-   Never pass auth tokens or data via URL hash fragments to a WebView. Use `localStorage` injection via `injectedJavaScriptBeforeContentLoaded` instead.
-
-4. **CSS injection timing differs between platforms.**
-   Android applies `injectedJavaScriptBeforeContentLoaded` CSS reliably. iOS may have it wiped during SPA hydration. Always inject CSS in BOTH `injectedJavaScriptBeforeContentLoaded` (early) AND `injectedJavaScript` (fallback after hydration), using an element ID for deduplication.
-
-5. **`injectedJavaScriptBeforeContentLoaded` runs at document start (before any page JS). `injectedJavaScript` runs at document end.** Use the former for auth and viewport, the latter for cleanup and fallback CSS.
-
-6. **`injectedJavaScriptBeforeContentLoaded` only runs ONCE per WebView instance lifetime.**
-   It does NOT re-run when React re-renders or when props change. If the data being injected can change (e.g. auth session after login), you MUST force a full WebView remount by changing the `key` prop. Pattern: use a counter state (`webViewKey`) that increments on auth transitions, then set `key={webViewKey}` on the WebView.
-
-7. **Supabase localStorage key depends on the URL used by the web app, not the mobile app.**
-   The Supabase JS client generates its storage key as `sb-{first segment of hostname}-auth-token`. If the web app uses a custom domain (e.g. `https://auth.autopilotamerica.com`), the key is `sb-auth-auth-token`. The mobile app uses the direct Supabase URL (`dzhqolbhuqdcpngdayuq.supabase.co`) but when injecting auth into a WebView that loads the WEB app, you must use the WEB app's storage key, not the mobile app's.
-
-8. **NEVER use localStorage injection for WebView auth. Use URL query params instead.**
-   `injectedJavaScriptBeforeContentLoaded` writing to localStorage is unreliable on iOS WKWebView. The Supabase client singleton initializes at import time and caches "no session" BEFORE the injection script runs — a race condition that cannot be fixed with timing hacks. The reliable approach: pass `mobile_access_token` and `mobile_refresh_token` as URL query params, and have the web page call `supabase.auth.setSession()` with them before checking `getSession()`. URL params are available synchronously to page JS — no race, no iOS-specific bugs.
-
-### Fonts / Icons
-- iOS requires `UIAppFonts` entries in `Info.plist` for custom fonts. Even if the font files are bundled via CocoaPods, iOS won't find them without this plist entry. Android auto-discovers fonts from the assets folder.
-- Current fonts: `MaterialCommunityIcons.ttf`, `Ionicons.ttf`
-
-### Deep Linking
-- iOS uses both custom URL schemes (`CFBundleURLSchemes` in Info.plist) and Universal Links (Associated Domains entitlement)
-- Android uses intent filters in AndroidManifest.xml
-
-## Android Bluetooth Detection — Critical Rules
-
-Android parking detection depends on Bluetooth Classic (ACL events). The system has multiple layers and race conditions that can silently break it. Follow these rules whenever touching BT code:
-
-### Architecture (3 layers)
-1. **Native foreground service** (`BluetoothMonitorService.kt`): Registers a `BroadcastReceiver` for `ACTION_ACL_CONNECTED/DISCONNECTED`. Survives app backgrounding. Writes `is_connected` to SharedPreferences. Notifies JS via `eventListener` callback or stores as pending event.
-2. **Native module bridge** (`BluetoothMonitorModule.kt`): Bridges service → JS. Sets `eventListener` on the service, emits `BtMonitorCarConnected/BtMonitorCarDisconnected` events to JS via `NativeEventEmitter`.
-3. **JS-side BluetoothService** (`BluetoothService.ts`): Maintains `connectedDeviceId` + `savedDeviceId` in-memory. `isConnectedToCar()` compares these. UI components subscribe via `addConnectionListener()`.
-
-### Race Conditions to Guard Against
-1. **`savedDeviceId` not loaded when `setCarConnected(true)` fires.**
-   `savedDeviceId` comes from AsyncStorage (async). If a native event fires before it's loaded, `setCarConnected()` can't match IDs. Fix: `setCarConnected()` uses `'__native_connected__'` placeholder and kicks off async load. `isConnectedToCar()` accepts the placeholder. `ensureSavedDeviceLoaded()` retroactively fixes it.
-
-2. **`checkInitialConnectionState()` profile proxy callback timing.**
-   `getProfileProxy()` in the native service is async (100-2000ms). The callback updates SharedPreferences and notifies the listener, but JS event listeners may not be subscribed yet. Fix: JS does immediate check + delayed re-checks at 2s and 5s.
-
-3. **JS `NativeEventEmitter` not subscribed when native emits.**
-   `startMonitoring()` starts the service and resolves the promise BEFORE JS subscribes to events. The initial connect event from `checkInitialConnectionState()` can be lost. Fix: rely on SharedPreferences fallback checks, not just events.
-
-4. **Stale `is_connected=true` in SharedPreferences after app restart (away from car).**
-   SharedPreferences persists across app restarts/installs. If the last session ended while connected to the car, `is_connected=true` stays forever. On next startup the app reads it and shows "Driving" even though the car BT is off. The profile proxy check finds 0 devices but that alone doesn't fix anything — you MUST explicitly call `handleDisconnect()` when all profiles report 0 devices. Fix: `checkInitialConnectionState()` uses `AtomicInteger` to track completed profile callbacks. When all complete and none found the target, it calls `handleDisconnect()` to clear the stale state. JS delayed re-checks (2s/5s) must also correct connected→disconnected, not just disconnected→connected.
-
-### Android Foreground Service Rules (CRITICAL)
-The `BluetoothMonitorService` is a foreground service. Android has strict rules about these that cause **instant app crashes** if violated:
-
-1. **NEVER call `startForeground()` in a STOP code path.** If the service calls `startForeground()` and then immediately `stopSelf()`, and another `startForegroundService()` START intent is queued, the STOP tears down the service before the START can fulfill its `startForeground()` contract → `ForegroundServiceDidNotStartInTimeException` → app crash → service dead forever until next app restart.
-2. **Use `stopService()` to stop the service, NOT `startService(ACTION_STOP)`.** Sending STOP via `startService` creates the same race: the service receives STOP, dies, but a pending START from `startForegroundService` has no service to attach to.
-3. **STOP must exit early in `onStartCommand`** — before the `startForeground()` call. Only START/null actions call `startForeground()`.
-4. **If the foreground service crashes, it stays dead.** Android does NOT auto-restart it (despite `START_STICKY`) after a `ForegroundServiceDidNotStartInTimeException`. The BT monitoring is silently gone until the user force-closes and reopens the app.
-
-### Rules for Any BT Code Change
-1. **Always call `ensureSavedDeviceLoaded()` before any code that calls `setCarConnected()`.**
-2. **Never remove the delayed re-check timers** (2s + 5s) in `startForegroundMonitoring` and `restartBluetoothMonitoring`. They catch async profile proxy results.
-3. **`saveCarDevice()` must eagerly set `savedDeviceId`** — don't rely on a separate async load.
-4. **`isConnectedToCar()` must accept the `'__native_connected__'` placeholder** as "connected" — this is the defense against the race window.
-5. **HomeScreen uses 3 fallback checks** (JS state → OS query → native SharedPrefs). Never reduce to fewer.
-6. **The 10-second debounce in disconnect handler** filters transient BT glitches. Don't remove it.
-7. **After any BT change, test on a real Android device** with: pair car → kill app → reopen → verify "Connected to [car]" shows within 5 seconds.
-8. **`checkInitialConnectionState()` must handle BOTH outcomes** — device found (handleConnect) AND device not found after all profiles checked (handleDisconnect). SharedPreferences persists across restarts, so "not found" is NOT the same as "no action needed."
-9. **JS delayed re-checks must be bidirectional.** They must correct state in BOTH directions: disconnected→connected AND connected→disconnected. A one-directional check leaves stale "Driving" state uncorrectable.
-
-### Testing Bluetooth Detection
-After any change to BT-related code, verify these scenarios on a physical Android device:
-- [ ] Select car in Settings → HomeScreen shows "Connected to [car]" within 5s (if car BT is on)
-- [ ] Car BT disconnects → after 10s debounce, parking check triggers
-- [ ] Car BT reconnects → departure tracking starts
-- [ ] Kill app while connected → reopen → still shows "Connected to [car]"
-- [ ] App in background → car disconnects → parking notification fires
-- [ ] Kill app while connected → walk away from car → reopen → should show "Waiting for..." (NOT "Driving") within 5s
-
-## iOS Parking/Driving Detection — Critical Rules
-
-iOS parking detection uses CoreMotion (M-series coprocessor) + CLLocationManager. The detection flow is: CoreMotion detects automotive → `isDriving = true` → GPS tracks position → CoreMotion detects stationary/walking → 5-second debounce → parking confirmed → `onParkingDetected` event fires.
-
-### Lesson #9: NEVER stop CoreMotion after parking confirmation
-CoreMotion (`CMMotionActivityManager`) uses the dedicated M-series coprocessor — it is near-zero battery cost. Stopping it after parking and relying on `significantLocationChange` (cell tower changes, ~100-500m) to restart it causes **TWO silent failures**:
-
-1. **Departure never captured**: `onDrivingStarted` never fires for the next drive because CoreMotion isn't running. The server never records that the user left their parking spot. This has been a recurring bug — the user reported it multiple times.
-2. **Second parking never detected**: If the user parks, drives somewhere else (e.g. home), and parks again — the second parking is never detected because `isDriving` is never set back to true (no CoreMotion to detect it).
-
-**Rule**: Keep CoreMotion running always. Keep GPS in low-frequency "keepalive" mode (50m, 100m accuracy) after parking — never fully stop it. Fully stopping GPS lets iOS kill the app process, which also kills CoreMotion callbacks. `significantLocationChange` alone is too unreliable for detecting the START of a new drive — it depends on cell tower geometry, can take minutes, and doesn't fire at all for short same-area trips.
-
-### Architecture
-- **Native module**: `BackgroundLocationModule.swift` — CLLocationManager + CMMotionActivityManager
-- **JS orchestrator**: `BackgroundTaskService.ts` — receives `onParkingDetected` and `onDrivingStarted` events, runs parking rule checks, handles departure tracking
-- **Departure flow**: `onDrivingStarted` → `handleCarReconnection()` → `markCarReconnected()` → `scheduleDepartureConfirmation()` (2-min delay to capture new GPS) → `confirmDeparture()`
-
-### Rules
-1. **CoreMotion AND keepalive GPS must stay active at all times while monitoring is on.** GPS drops to low-frequency (50m, 100m) after parking but is NEVER fully stopped — this prevents iOS from killing the process and provides enough updates to detect short drives via speed when CoreMotion misses them.
-2. **Departure depends on `onDrivingStarted`** firing when the user starts their next drive. If CoreMotion is stopped, this event never fires and departure is never recorded.
-3. **The `minDrivingDurationSec` (10s) check is enforced in `handlePotentialParking()` BEFORE the 8s debounce timer starts.** It rejects ALL stops — including walking-detected ones — if driving lasted less than 10 seconds. This is enforced unconditionally; no path bypasses it. (Bug: Mar 18 2026 — this check was missing, and a 3-4s alley stop on Sheffield 2300 confirmed as parking via `coremotion_walking`.)
-4. **Walking evidence reduces the GPS zero-speed requirement but does NOT eliminate it.** The `coremotion_walking` path requires 8 seconds of GPS speed ≈ 0 even when walking is detected. CoreMotion can misclassify phone jostling during slow turns/creeping as "walking." Without GPS confirmation, brief alley stops and yield-sign pauses trigger false positives. If GPS hasn't been zero long enough, the walking path defers to the `speedZeroTimer` (same as no-walking). (Bug: Mar 18 2026 — walking evidence was bypassing GPS entirely, causing the Sheffield alley false positive.)
-5. **The speed-based override (10s of zero speed)** catches cases where CoreMotion is slow to report stationary. Don't remove it.
-6. **After parking confirmation, `isDriving` resets to false.** The ONLY way it gets set back to true is via CoreMotion reporting automotive or GPS speed > 2.5 m/s. If neither is running, the app is permanently stuck in "parked" state.
-7. **GPS noise filter**: Require 2 consecutive above-threshold GPS readings before cancelling the parking timer. Reset `speedMovingConsecutiveCount = 0` in ALL paths where `speedSaysMoving` is set to false.
-8. **CLVisit monitoring must be started alongside significantLocationChange.** Visits are the ONLY way to get coordinates for stops that happened while the app was killed.
-9. **NEVER let ANY parking confirmation path bypass BOTH `minDrivingDurationSec` AND GPS zero-speed checks.** Every path through `handlePotentialParking()` → `confirmParking()` must pass at least: (a) 10s of driving, AND (b) some GPS zero-speed evidence. Walking evidence can reduce thresholds but cannot eliminate them. This rule exists because of repeated regressions where new code paths or refactors accidentally removed guards.
-
-### CLVisit Monitoring (Safety Net for App Kill)
-
-iOS's `CLLocationManager.startMonitoringVisits()` tracks places where the user dwells and delivers `CLVisit` objects with coordinates + arrival/departure times. Crucially, these are delivered even when the app was killed — they're queued by iOS and delivered on next launch.
-
-**How it works in our stack:**
-1. `startMonitoring()` calls `locationManager.startMonitoringVisits()` alongside significantLocationChange
-2. `didVisit()` receives visits with coordinates, stores them in a ring buffer for coordinate enrichment
-3. **When monitoring is active**: CLVisit ONLY stores visits — it does NOT independently emit parking events. The normal CoreMotion+GPS pipeline handles parking detection.
-4. **When monitoring is NOT active** (app was killed, visits delivered on cold relaunch): CLVisit emits `onParkingDetected` for visits that don't match recent confirmed parking.
-5. Visits are persisted to UserDefaults (`com.ticketless.visitHistory`) as a ring buffer (max 20, pruned at 24h)
-6. The CoreMotion recovery function (`checkForMissedParking`) calls `findVisitForTimestamp()` to match intermediate trips with CLVisit coordinates
-7. When a match is found, the parking event gets real coordinates → JS can check rules → user gets notified
-
-**CLVisit limitations:**
-- Minimum dwell time is typically 2-5 minutes (iOS decides, not configurable)
-- Accuracy varies (50-200m) — good enough for parking rule checks but not exact spot
-- Delivery can be delayed by minutes (iOS batches them)
-- Not all stops register as visits — short stops (<2 min) are unreliable
-- **CLVisit fires REPEATEDLY while dwelling** — iOS sends updates as accuracy improves or time passes. This caused false parking notifications when the user was sitting at a library.
-
-**Rules:**
-1. **Never remove `startMonitoringVisits()`** — it's the only fallback with coordinates when the app is killed
-2. **CLVisit must NOT emit parking events when `isMonitoring == true`** — the normal pipeline handles it. CLVisit only stores visits for `findVisitForTimestamp()` coordinate enrichment while monitoring is active. However, **CLVisit DEPARTURE events DO trigger a GPS boost** (see rule 9).
-9. **CLVisit departure triggers GPS boost when monitoring is active (added Mar 2026).** Even with 50m/100m keepalive, CoreMotion may miss a short drive entirely. CLVisit correctly detects the user left a dwelling location. On departure-confirmed visits (within 10 min, not already driving, GPS in keepalive), `startBootstrapGpsWindow("clvisit_departure")` boosts GPS to full accuracy for 75 seconds, giving the speed pipeline a chance to detect any ongoing driving. Conditions: `isDeparture && !isDriving && departureAge < 600 && gpsInKeepaliveMode`.
-3. **`findVisitForTimestamp()` uses 600s (10 min) tolerance** — CLVisit arrival times may not match CoreMotion timestamps exactly
-4. **Always check `lastConfirmedParkingLocation` before emitting a visit-based parking event** — prevents duplicates when the normal pipeline already caught the stop
-5. **Visit history is persisted to UserDefaults**, not just in-memory — must survive app kill + relaunch cycle
-6. **False positive hotspot checks** must be applied to CLVisit-based parking events (and recovery events). `hotspotBlockMinReports = 1` means one user "Not parked" tap permanently blocks that location.
-7. **CLVisit-only parking (when `isMonitoring == false`) bypasses ALL normal guards.** No speed check, no CoreMotion validation, no intersection check, no confidence scoring. It MUST have its own guards to prevent false positives:
-   - **Require departure confirmed** (not arrival-only visits) — arrival-only means iOS hasn't confirmed the user stayed
-   - **Require 3+ minute dwell** — shorter stops are traffic slowdowns, pickups, complex intersections
-   - **Reject visits older than 2 hours** — stale post-Jetsam visits should be handled by `checkForMissedParking` (which validates against CoreMotion history) instead
-   - **GPS speed sanity check** — if current GPS shows movement (speed > 2.5 m/s within last 30s), skip the visit
-8. **The cascading false positive problem**: Once parking is falsely confirmed, `isDriving = false` and `hasConfirmedParkingThisSession = true`. The app cannot detect new parking until departure is detected first. If the false positive location is close to the actual parking spot (<200m), departure detection may never trigger, causing the real parking to be silently missed.
-
-### `checkForMissedParking` Recovery — Deduplication Required
-
-`checkForMissedParking()` queries CoreMotion history (last 6 hours) on app startup/wake and re-emits parking events for drive→park transitions it finds. This runs on EVERY app restart, significantLocationChange wake, and app resume from suspension.
-
-**Critical rule: EVERY trip (intermediate AND last) MUST be deduplicated before emission.** Without this, recovery re-emits parking events the normal pipeline already caught, creating phantom records with drifted CLVisit coordinates (the "3857 N Lincoln Ave" bug — CLVisit GPS drifted 33m from Byron St, causing wrong address).
-
-**Deduplication uses a confirmed parking ring buffer** (`bg_confirmedParkingTimes_v1` in UserDefaults): a persisted array of up to 20 recent confirmed parking timestamps+coords (pruned at 24h). Every `confirmParking()`, `handleRecoveryGpsFix()`, and CLVisit parking path calls `recordConfirmedParkingTime()`. Before emitting any intermediate trip, `isAlreadyConfirmedParking()` checks the ring buffer (1h time tolerance + 500m distance tolerance). The old single-value `lastConfirmedParkingLocation` check is kept as a belt-and-suspenders guard for the last trip only.
-
-**Why `lastConfirmedParkingLocation` alone was insufficient:** It only stores ONE location. When recovery finds 2+ trips (Byron→Wolcott), the last trip (Wolcott at 9:21 PM) doesn't match `lastConfirmedParkingLocation` (Byron at 7:03 PM, timeDiff=2h18m > 1h threshold), so recovery proceeds and re-emits the already-confirmed Byron parking with drifted CLVisit coords.
-
-**JS-side guard for zero-coordinate recovery events (fixed Mar 2026):** Native sends `lat=0, lng=0, accuracy=-1` when no CLVisit match exists for a recovery trip. Previously `event.latitude && event.longitude` in JS treated 0 as falsy → `parkingCoords = undefined` → `triggerParkingCheck(undefined)` → used phone's current GPS (could be at home, hours later). Fix: explicitly check `event.latitude !== 0` and reject recovery events with no valid coordinates entirely (return early, don't create parking record).
-
-**Timestamp bug (fixed Feb 2026):** `handleRecoveryGpsFix()` was using `Date()` (current time) for the parking event timestamp instead of the CoreMotion `parkTime`. This caused parking records to show "parked now" instead of "parked 2 hours ago." Fix: store `recoveryParkTime` from the CoreMotion trip and use it in the event body.
-
-## Departure Matching — `findBestLocalHistoryItemId` Rules
-
-`findBestLocalHistoryItemId()` in `BackgroundTaskService.ts` matches a departure event to the correct parking record in local history. It finds the closest parking record (by timestamp) that doesn't already have departure data.
-
-### The Invariant
-**A departure can only be for a parking event that happened BEFORE the departure.** The function MUST only consider parking records with `timestamp <= departureTimestamp`. Never use `Math.abs()` for this — it allows matching a newer parking record, producing the impossible state `departure_confirmed_at < parked_at`.
-
-### How It Broke (Feb 2026)
-The original code used `Math.abs(item.timestamp - referenceTimestamp)` to find the "closest" parking record. When a false positive created two parking records close together in time, the departure from the second parking got matched to the first (which had the closer absolute distance), producing a departure time before the parking time.
-
-### Rules
-1. **Only consider parking records where `item.timestamp <= referenceTimestamp`** — a departure cannot precede its parking event.
-2. **Sort by `referenceTimestamp - item.timestamp` (ascending)** — prefer the most recent parking record that's still before the departure.
-3. **Cap at 24h** — don't match departures to parking events from days ago.
-4. **`pending.localHistoryItemId` takes priority** — it was matched when departure first started and is more reliable than re-matching later.
-5. **Prefer non-recovery records over recovery records (fixed Mar 2026):** When the closest candidate by time is from recovery (`locationSource` starts with `recovery_`) and a non-recovery candidate exists within 30 min, prefer the non-recovery one. Recovery records can have drifted CLVisit coords → wrong addresses, while normal pipeline records have accurate GPS.
-
-## iOS Camera Alerts — Background Reality (Critical)
-
-**Problem:** On iOS, JavaScript can be suspended while the app is in the background even if native location/motion continues. This means a JS-based camera alert pipeline (e.g. `CameraAlertService.onLocationUpdate`) can miss alerts even when departure/parking detection later looks correct.
-
-**Rule:** Camera alerts in background MUST use native Swift code, not JS. Two mechanisms:
-1. Local notifications (always work, even when process is briefly suspended)
-2. Native TTS via `AVSpeechSynthesizer` (speaks audibly when app is backgrounded)
-
-### Current Implementation (Feb 18, 2026)
-- Native implementation: `TicketlessChicagoMobile/ios/TicketlessChicagoMobile/BackgroundLocationModule.swift`
-  - Fires local notifications AND speaks TTS for nearby cameras when app is backgrounded.
-  - In foreground, only fires local notifications (JS `CameraAlertService` handles TTS via `SpeechModule.swift`).
-  - Only runs when driving/automotive is true (or GPS speed indicates movement).
-  - Camera dataset is embedded in Swift for guaranteed compilation.
-- JS settings sync:
-  - `TicketlessChicagoMobile/src/services/BackgroundLocationService.ts` exposes `setCameraAlertSettings(...)`.
-  - `TicketlessChicagoMobile/src/services/CameraAlertService.ts` calls it whenever camera settings change.
-  - `TicketlessChicagoMobile/src/services/BackgroundTaskService.ts` also pushes settings at startup for safety.
-
-### Background TTS Architecture (Critical — App Store 2.5.4)
-The `audio` UIBackgroundMode MUST be justified by actual background audio playback. Here's how it works:
-
-1. **JS TTS is foreground-only**: `SpeechModule.swift` (called from JS `CameraAlertService`) uses `AVSpeechSynthesizer` but JS is suspended in background. This does NOT justify the `audio` background mode.
-
-2. **Native TTS is background-capable**: `BackgroundLocationModule.swift` has its own `AVSpeechSynthesizer` that speaks directly from native location callbacks. This DOES justify the `audio` background mode because:
-   - `UIBackgroundModes` includes `audio`
-   - Audio session category is `.playback` with `.duckOthers`
-   - `AVSpeechSynthesizer.speak()` is called from native code (not JS)
-   - `beginBackgroundTask` prevents iOS from suspending mid-speech
-
-3. **Double-speak prevention**: Native TTS checks `UIApplication.shared.applicationState`. If `.active` (foreground), it skips — JS handles it. If `.background` or `.inactive`, native speaks.
-
-4. **Audio session lifecycle**:
-   - Configured eagerly at driving start (`configureSpeechAudioSession()` called at all 3 `isDriving = true` transitions)
-   - Activated just before each speech
-   - Deactivated in `speechSynthesizer(_:didFinish:)` delegate with `.notifyOthersOnDeactivation` to restore user's music
-   - Re-configured after audio interruptions (phone calls, Siri) via `AVAudioSession.interruptionNotification`
-
-### Rules for Background TTS
-1. **NEVER remove the `audio` UIBackgroundMode** — it's required for `AVSpeechSynthesizer` to work in background. Without it, Apple's audio framework silently fails to produce sound.
-2. **NEVER rely on JS for background audio** — iOS suspends JS. Any audio that must work in background MUST be invoked from native Swift/ObjC.
-3. **Always use `beginBackgroundTask`** before speaking — iOS gives ~30 seconds, but speech only needs 1-3s. Without it, iOS can suspend between `speak()` and `didFinish`.
-4. **Always dispatch to main thread** — `AVSpeechSynthesizer` is more reliable on the main thread for background playback.
-5. **Configure audio session BEFORE the app goes to background** — iOS may refuse `.setCategory()` changes in background. That's why `configureSpeechAudioSession()` runs at driving start.
-6. **Use `.duckOthers`** instead of no options — this lowers the user's music briefly instead of pausing it, which is less jarring for a 1-second alert.
-
-### Data Generation
-- Script: `scripts/generate_ios_camera_data.ts`
-- Inserts 510 Chicago camera entries into the Swift file between `// CAMERA_ENTRIES_BEGIN` and `// CAMERA_ENTRIES_END`.
-
-### Testing Checklist (iOS)
-- Install a build that includes the native camera code (pulling JS is not enough).
-- Ensure iOS notification permission is enabled for the app.
-- Enable camera alerts in app settings (this must sync native settings).
-- Background the app and drive past a known red-light camera.
-- Expect a banner local notification ("Red-light camera ahead") AND a spoken TTS alert even if JS is suspended.
-- Verify user's music/podcast resumes (at full volume) after the spoken alert finishes.
-
-## iOS CoreMotion Permission Handling & GPS-Only Fallback
-
-iOS only prompts the user ONCE for CoreMotion (Motion & Fitness) permission. If denied, the system will never re-prompt — the user must manually enable it in Settings > Privacy > Motion & Fitness.
-
-### Architecture (3 layers)
-
-1. **Pre-permission primer** (`BackgroundTaskService.ts`): Before the first CoreMotion access, if auth is `notDetermined`, shows an `Alert.alert()` explaining why motion sensors are needed. This appears RIGHT BEFORE the iOS system prompt.
-
-2. **GPS-only fallback** (`BackgroundLocationModule.swift`): When CoreMotion is denied/restricted/unavailable, `startMonitoring()` sets `gpsOnlyMode = true` and starts continuous GPS at low frequency (distanceFilter=20m, accuracy=100m) instead of waiting for CoreMotion to detect driving. The existing GPS speed fallback path (requires 4.2 m/s for 8s + 90m displacement) then detects driving from GPS speed alone.
-
-3. **Post-denial recovery banner** (`HomeScreen.tsx`): When `MotionActivityService.getAuthorizationStatus()` returns `denied` or `restricted`, a yellow warning banner appears: "Motion & Fitness disabled — Enable in Settings for best results" with an "Open Settings" button.
-
-### Key Behavior Differences in GPS-Only Mode
-- `gpsOnlyMode = true` is set on `BackgroundLocationModule`
-- `stopContinuousGps()` NEVER fully stops GPS — drops to keepalive mode (50m, 100m accuracy in normal mode; 20m, 100m in gpsOnly mode) to prevent iOS from killing the process and catch short drives
-- Driving detection requires higher speed threshold (4.2 m/s vs 2.5 m/s with CoreMotion) and sustained duration (8s + 90m)
-- Camera alerts still work via `speedSaysMoving` flag
-- More battery usage than CoreMotion (which runs on M-series coprocessor at near-zero cost)
-
-### Rules
-1. **Never remove the GPS speed fallback path** (lines ~1593-1660 in BackgroundLocationModule.swift). It's the ONLY driving detection when CoreMotion is denied.
-2. **`gpsOnlyMode` must be exposed in `getStatus()`** so JS can detect it and show appropriate UI.
-3. **The pre-permission primer must appear BEFORE `startMonitoring()`** — once startMonitoring calls `activityManager.startActivityUpdates()`, the system prompt fires immediately.
-4. **`MotionActivityModule.getAuthorizationStatus()`** is the canonical way to check CoreMotion permission from JS. Returns: `authorized`, `denied`, `restricted`, `notDetermined`, or `unknown`.
-5. **The recovery banner should NOT show if location is also denied** (location denied is more critical — show that banner instead).
-
-## Parking State Machine — Single Source of Truth
-
-The Android parking detection state machine (`ParkingDetectionStateMachine.ts`) is the **single source of truth** for whether the user is driving or parked. Departure tracking DEPENDS on this state machine being in the correct state.
-
-### The Invariant
-**Departure tracking ONLY works if the state machine transitions from PARKED → DRIVING.**
-
-If the state machine is in IDLE when the user drives away, departure is silently never recorded. The parking history record exists but has no departure timestamp.
-
-### What Triggers State Machine Transitions
-| Trigger | State Transition | Effect |
-|---------|-----------------|--------|
-| BT disconnect + 10s debounce | DRIVING → PARKING_PENDING → PARKED | `handleCarDisconnection()` |
-| BT connect while PARKED | PARKED → DRIVING | `handleCarReconnection()` → departure recorded |
-| BT connect while IDLE | IDLE → DRIVING | Camera alerts start, GPS caching starts, **NO departure** |
-| Manual parking check | No change (was broken) | Parking recorded to history but state machine untouched |
-
-### The Bug Pattern (Don't Repeat This)
-When adding ANY new way to record parking (manual check, server restore, periodic backup, etc.), you MUST also transition the state machine to PARKED. Otherwise:
-1. Parking shows in history ✓
-2. User drives away
-3. State machine is IDLE → DRIVING (not PARKED → DRIVING)
-4. `handleCarReconnection()` never called
-5. Departure never recorded
-6. User sees "Departure not recorded" in history
-
-### Rules for Any Parking-Related Code
-1. **ALL parking operations must go through the state machine.** Never write to parking history without also ensuring the state machine is in PARKED state.
-2. **Check the state machine before assuming departure will be tracked.** If `ParkingDetectionStateMachine.state !== 'PARKED'`, departure will NOT be captured.
-3. **New entry points for parking MUST call `manualParkingConfirmed()` or equivalent.** This includes: manual checks, server restore, periodic backups, any future "assume parked" logic.
-4. **The state machine persists to AsyncStorage.** On app restart, it restores to the last stable state (PARKED or DRIVING). If the parking record was from a code path that didn't update the state machine, the restored state will be wrong.
-
-### How to Test Departure Tracking
-After any parking-related code change, test ALL entry points:
-- [ ] **Auto-detected parking**: BT disconnect → parking check → drive away → departure recorded
-- [ ] **Manual parking check**: Tap "Check My Parking" → drive away → departure recorded
-- [ ] **App restart while parked**: Kill app → reopen → drive away → departure recorded
-
-## Parking History — Manual Checks Must NOT Save to History
-
-Only auto-detected parking (BT disconnect on Android, CoreMotion on iOS) should save to parking history. Manual "Check My Parking" checks must NOT save to history because they use the user's current phone GPS, which may be blocks away from the car — inaccurate locations invalidate ticket contest evidence.
-
-### Two Separate Paths (Don't Confuse Them)
-
-| Path | Saves to History? | Saves to Hero Card? | GPS Source |
-|------|-------------------|---------------------|------------|
-| **Auto-detect** (BT disconnect / CoreMotion) | YES — `persistParkingEvent=true` | YES | Car location (at moment of disconnect) |
-| **Manual "Check My Parking"** (HomeScreen button) | NO — `persistParkingEvent=false` | YES | Phone location (wherever user is standing) |
-
-### Why Manual Checks Don't Save
-Manual checks use `LocationService.checkParkingLocation()` which gets a fresh GPS fix from the phone. If the user walked 3 blocks from their car before tapping the button, the history would record the wrong address. Auto-detect captures GPS at the moment of BT disconnect (while still near the car) and is far more accurate. History records are used as evidence in ticket contests — they must be location-accurate.
-
-### Interference Between Paths
-These two paths are designed to NOT interfere with each other:
-1. **Throttle**: Only applies when `isRealParkingEvent=false`. Both manual and auto-detect pass `true`, so neither throttles the other.
-2. **Hero card**: Both write to `LAST_PARKING_LOCATION` (the hero card display). A manual check can overwrite the hero card, but that's cosmetic — history is unaffected.
-3. **Parked coords / rescan / snow monitoring**: Only saved when `persistParkingEvent=true` (auto-detect). Manual checks don't overwrite these.
-4. **State machine**: Manual check calls `ParkingDetectionStateMachine.manualParkingConfirmed()` (IDLE→PARKED) so departure tracking still works. Auto-detect goes through DRIVING→PARKING_PENDING→PARKED. These are separate transitions that don't conflict.
-
-### Rules
-1. **Manual checks: `persistParkingEvent=false`.** This skips history save, server save, and parked coords save.
-2. **Auto-detect checks: `persistParkingEvent=true`.** This is the ONLY path that writes to history.
-3. **Never add `ParkingHistoryService.addToHistory()` to the manual check path.** If auto-detect isn't working, fix auto-detect — don't paper over it with manual saves.
-4. **Both paths must still update the state machine.** Manual check uses `manualParkingConfirmed()`, auto-detect uses the normal BT disconnect flow. Without state machine updates, departure tracking breaks.
-
-### How to Test
-- [ ] **Auto-detect parking**: BT disconnect → open History tab → entry exists with accurate car location
-- [ ] **Manual "Check My Parking"**: Tap button → hero card shows result → History tab does NOT have a new entry
-- [ ] **Manual then auto-detect**: Tap button → BT disconnect fires → History has ONE entry (from auto-detect only)
-- [ ] **Departure after manual check**: Tap "Check My Parking" → drive away → departure recorded (state machine was set to PARKED)
-
-## React State Initialization — NEVER Default to Empty
-
-Async-loaded state (auth, user profile, feature flags, etc.) causes **intermittent bugs** when components initialize with empty defaults like `null`, `false`, or `[]` and rely on a subscription/callback to fill in the real value later. Whether the real value arrives before or after the first render is a race condition — it works sometimes and breaks sometimes, making these bugs extremely hard to reproduce.
-
-### The Rule
-**If a synchronous read exists, use it as the initial state.** Never default to "empty" when the service already has the value.
-
+## Deployment — MANDATORY after every change
+See **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** for full workflow. Summary:
+1. Commit, push to GitHub
+2. `npx vercel --prod --yes` (web)
+3. `./gradlew assembleRelease` → adb install → Firebase App Distribution upload (Android)
+4. iOS: user builds locally via Xcode
+5. **Task is NOT complete until deployed and URL reported**
+6. No dirty working tree at handoff
+
+Connected devices: Moto G 2025 (`ZT4224LFTZ`), Moto E5 Play (`ZY326L2GKG`)
+
+## Detailed Reference Docs
+Read these when working on the relevant subsystem:
+- **[docs/BLUETOOTH_DETECTION.md](./docs/BLUETOOTH_DETECTION.md)** — Android BT parking detection architecture, race conditions, foreground service rules
+- **[docs/IOS_PARKING_DETECTION.md](./docs/IOS_PARKING_DETECTION.md)** — CoreMotion + GPS detection, CLVisit monitoring, recovery, GPS-only fallback
+- **[docs/IOS_CAMERA_ALERTS.md](./docs/IOS_CAMERA_ALERTS.md)** — Native iOS camera alerts, background TTS, App Store compliance
+- **[docs/WEBVIEW_RULES.md](./docs/WEBVIEW_RULES.md)** — iOS vs Android WebView differences, embedded page rules, cross-platform dev rules
+- **[docs/PARKING_STATE_MACHINE.md](./docs/PARKING_STATE_MACHINE.md)** — State machine invariants, departure matching, manual vs auto-detect, address display
+- **[docs/CAMERA_ALERTS_RULES.md](./docs/CAMERA_ALERTS_RULES.md)** — Camera alert reliability, settings sync chain
+- **[CAMERA_ALERTS_RELIABILITY.md](./CAMERA_ALERTS_RELIABILITY.md)** — Full failure log and testing checklist
+
+## Critical Rules (Always Apply)
+
+### Every feature must work on BOTH iOS and Android
+Think through platform differences separately. iOS is stricter on almost everything. See [docs/WEBVIEW_RULES.md](./docs/WEBVIEW_RULES.md) for details.
+
+### React State — NEVER default to empty when sync read exists
 ```typescript
-// BAD — defaults to null, relies on subscribe callback to fix it later
+// BAD
 const [user, setUser] = useState<User | null>(null);
-
-// GOOD — reads current value immediately, subscribe handles future changes
+// GOOD
 const [user, setUser] = useState<User | null>(AuthService.getUser());
 ```
+Subscribe effects: `[]` dependency arrays, use refs for previous values.
 
-```typescript
-// BAD — defaults to false, may flash "Sign In" screen before subscribe fires
-const [isAuthenticated, setIsAuthenticated] = useState(false);
+### Camera Alerts — Default to ON
+Every camera alert flag must default to **enabled**. Never add a `Platform.OS` guard that disables alerts on either platform. See [docs/CAMERA_ALERTS_RULES.md](./docs/CAMERA_ALERTS_RULES.md).
 
-// GOOD — reads current auth state synchronously
-const [isAuthenticated, setIsAuthenticated] = useState(AuthService.isAuthenticated());
-```
+### `is_paid` Field — NEVER default to true
+Only the Stripe webhook `checkout.session.completed` sets `is_paid: true`. Free signups are free.
 
-### Where This Applies
-- **Auth state**: Always init from `AuthService.getUser()` / `AuthService.isAuthenticated()` / `AuthService.getAuthState()`
-- **Any singleton service** with a `getXxx()` method: read it at `useState` time, don't wait for a callback
-- **AsyncStorage values that were already loaded by App.tsx**: If the app startup loaded them, downstream screens can read the cached value
+### Manual "Check My Parking" — NEVER save to history
+Only auto-detected parking saves to history. Manual checks use phone GPS (inaccurate). Both paths must update the state machine. See [docs/PARKING_STATE_MACHINE.md](./docs/PARKING_STATE_MACHINE.md).
 
-### Additional Guards
-1. **Never gate critical UI (Sign Out, navigation) on auth state being non-null.** If the user got past the login screen, they're authenticated — show the button unconditionally.
-2. **Use refs (not closure captures) to track "previous" values in subscribe callbacks.** Closures over state in `useEffect` dependencies cause stale reads and infinite re-subscription loops.
-3. **Subscribe effects should have `[]` dependency arrays** (run once), not `[stateVariable]` — the subscribe callback already handles updates.
+### Address Display — NEVER show raw coordinates
+Always show human-readable addresses. Use `isCoordinateAddress()` guard + `ClientReverseGeocoder.ts` fallback chain.
 
-## Camera Alert Reliability — Critical Rules
-
-See **[CAMERA_ALERTS_RELIABILITY.md](./CAMERA_ALERTS_RELIABILITY.md)** for the full failure log, guard condition reference, and testing checklist.
-
-### The #1 Rule: Default to ON
-Every camera alert flag, on every layer, must default to **enabled**. The user explicitly disabling in Settings is the ONLY way to turn them off. History: multiple overlapping disabled-by-default flags caused zero alerts across both platforms (Mar 14, 2026).
-
-### Rules for Any Camera Alert Code Change
-1. **NEVER add a `Platform.OS` guard that disables camera alerts on either platform.** If App Store compliance requires removing TTS audio, disable TTS only — not the entire detection pipeline.
-2. **NEVER default any camera enable flag to `false`.** This includes: JS `isEnabled`, iOS `cameraAlertsEnabled`, Android `isEnabled`, and per-type flags.
-3. **NEVER add an early return to `startCameraAlerts()`** that skips an entire platform. Both platforms need the JS pipeline for diagnostics and pass tracking.
-4. **After any camera code change, check the startup notification.** It must say "Camera Alerts Armed" — if it says "CAMERA ALERTS DISABLED", the change broke something.
-5. **Test on BOTH platforms.** iOS and Android have independent native modules with independent bugs.
-6. **Check the decision log** (`parking_decisions.ndjson`) for `camera_check_skipped_disabled` entries — these mean alerts are silently blocked.
-7. **Update CAMERA_ALERTS_RELIABILITY.md** with what was changed, what broke, and what was learned. Every failure is a lesson that must be documented.
-
-### The Settings Sync Chain (must all be true)
-```
-AsyncStorage (JS) → CameraAlertService.isEnabled → syncNativeSettings() → Native module flag
-```
-If any link is false, alerts are dead. The startup self-test notification validates the JS side. The native decision log validates the native side.
-
-## Data Persistence Strategy
-- **Local-first**: AsyncStorage for immediate reads
-- **Server backup**: Supabase for durability across reinstalls/devices
-- Pattern: save locally first, fire-and-forget sync to server, restore from server when local is empty
-- Never block the UI waiting for server sync
-
-## Connected Devices
-- Moto G 2025: `ZT4224LFTZ` (primary test device)
-- Moto E5 Play: `ZY326L2GKG`
-
-## CHI PAY Portal Scraper — How It Works
-
-The portal scraper (`lib/chicago-portal-scraper.ts`) looks up parking tickets on the City of Chicago payment portal. It uses Playwright to automate a headless browser but **does NOT need any captcha solving service** (no API keys, $0 cost per lookup).
-
-### Key Technical Details
-- Portal URL: `https://webapps1.chicago.gov/payments-web/#/validatedFlow?cityServiceId=1`
-- Backend API endpoint: `POST /payments-web/api/searches`
-- The Angular SPA has an hCaptcha widget that disables the Search button, but the backend API does not validate captcha tokens
-- The scraper bypasses hCaptcha by: (1) filling form fields via native value setters + input/change events to trigger Angular change detection, (2) removing the `disabled` attribute from the Search button, (3) calling `.click()` via JavaScript
-- The scraper intercepts the API JSON response (not HTML) for structured ticket data
-- Lookup time: ~14 seconds per plate
-- No CAPTCHA_API_KEY or CAPSOLVER_API_KEY needed
-
-### API Response Format
-- **200**: Tickets found — response contains `searchResult.receivables` array
-- **422**: No open tickets — response has `searchResult.errorMessage: "No open receivables found"`
-- **500**: Server error (usually empty/invalid fields)
-- **401**: Session expired (shouldn't happen with fresh browser context)
-
-### Autopilot Schedule
-- Runs Mon/Thu via systemd user timers
-- Script: `scripts/autopilot-check-portal.ts`
-- Fetches monitored plates from Supabase, looks them up, creates contest letters, emails evidence requests
-
-## `is_paid` Field — NEVER Default to True
-
-The `user_profiles.is_paid` column tracks whether a user has an active paid subscription. Its DB column default is `false`.
-
-### Rules
-1. **NEVER set `is_paid: true` in any signup or profile creation flow.** Users start as free. The only code path that should set `is_paid: true` is the Stripe webhook's `checkout.session.completed` handler — i.e., when someone actually pays.
-2. **Free alert signups are NOT paid users.** The alerts/create.ts endpoint creates free accounts. Do not mark them as paid.
-3. **No triggers or defaults should set `is_paid` to true.** If you're writing a migration or trigger that touches `user_profiles`, ensure `is_paid` defaults to `false`.
-
-### History
-A bug in `pages/api/alerts/create.ts` (fixed Feb 2026) was setting `is_paid: true` for every free signup with the comment "Free users are considered 'paid' for alerts." This incorrectly marked ~20 users as paid when only 9 actually were. The bug was a single line — there's nothing ambiguous about it: free users are free.
-
-## Web Pages Embedded in Mobile WebView — Shared Components
-
-Some pages are loaded BOTH as standalone web pages AND inside the mobile app's WebView (or as iframes on the website). When adding mobile-specific CSS or behavior, you MUST ensure it doesn't break the page in other contexts.
-
-### `touch-action: none` Kills Iframe Interactions
-`touch-action: none` on `html`, `body`, or container elements prevents ALL pointer interactions (mouse clicks, touch taps, drag) when the page is loaded inside an iframe. Leaflet maps handle their own touch events — they don't need `touch-action: none`. This was added for the mobile WebView `destination-map.tsx` page but broke the map embedded as an iframe on `check-your-street.tsx`.
-
-**Rule:** Never set `touch-action: none` on html/body or map containers. Leaflet handles its own touch events. If you need to prevent scroll-bounce on mobile WebView, use more targeted approaches.
-
-### Decorative Overlays Need `pointerEvents: 'none'`
-Absolute-positioned decorative elements (grid backgrounds, gradient overlays) that cover their parent section will intercept clicks on form inputs below them. Always add `pointerEvents: 'none'` to purely decorative positioned overlays.
-
-### `isMobileWebView` Must Be Stable Across Re-renders
-If a page uses `router.replace()` or `router.push()` (which strips/changes URL params), any value derived from `window.location.search` will change on re-render. Use `useRef` initialized from URL params for values that must persist across the component lifetime. See `pages/settings.tsx` for the `isMobileWebViewRef` pattern.
-
-### WebView `onShouldStartLoadWithRequest` Cannot Catch SPA Navigations
-Next.js `router.push()` uses `history.pushState()` — a client-side navigation that does NOT trigger WebView's `onShouldStartLoadWithRequest` (which only fires for full page loads/link clicks). To intercept SPA navigations, use `onNavigationStateChange` as a fallback.
-
-### `loadData()` and Other Async Functions Must Have try-catch
-If a web page loaded in the mobile WebView throws an unhandled exception, Next.js shows a client-side error page that's impossible to recover from inside the WebView. All async data-loading functions on pages that can be loaded in a WebView MUST have try-catch wrappers. On error, post a `load_error` message to `ReactNativeWebView` so the native app can show a retry UI.
-
-## Address Display — NEVER Show Raw Coordinates
-
-Users must always see human-readable street addresses (e.g. "1234 N Western Ave"), never raw coordinates ("41.939123, -87.667456") or near-coordinate fallbacks ("Near 41.9391, -87.6675"). Raw coordinates are a bug.
-
-### Defense Layers (All Must Be Present)
-1. **Server-side geocoding** (`pages/api/mobile/check-my-parking.ts`): Nominatim → Google Maps → null. This handles 99% of cases.
-2. **Client-side fallback** (`ClientReverseGeocoder.ts`): If server returns coordinates or null, the mobile client retries via Nominatim directly. 5s timeout, returns `null` on failure.
-3. **Display-time guard** (`HistoryScreen.tsx`): `isCoordinateAddress()` checks every address before display. If it's coordinates, shows "Resolving address..." and triggers background resolution.
-4. **Startup backfill** (`HistoryScreen.tsx`): On mount, scans all history entries for coordinate-only addresses and resolves them via Nominatim with 1.1s rate limiting.
-5. **Deferred backfill** (`BackgroundTaskService.ts`): If a parking entry is saved with coordinates (API failure), schedules exponential-backoff retry at 60s/3min/9min.
-
-### Utility: `ClientReverseGeocoder.ts`
-- `isCoordinateAddress(address)`: Returns true if address is raw coords or "Near X, Y"
-- `formatCoordinateFallback(lat, lng)`: Returns user-friendly "Near X, Y" (last resort)
-- `resolveAddress(address, lat, lng)`: Full chain — if address is real, return it; else try client Nominatim; else return "Near X, Y"
-
-### Rules
-1. **Every code path that stores or displays an address MUST check `isCoordinateAddress()`.** If true, resolve it or show a loading state — never display coordinates to the user.
-2. **`ParkingHistoryService.addToHistory()` MUST use `formatCoordinateFallback()` instead of raw coordinate strings** when the address is null/undefined.
-3. **Server responses that contain coordinate-only addresses** (geocoding failure) MUST be caught and resolved client-side before storage.
-4. **The Nominatim User-Agent** must identify the app: `'TicketlessChicago/1.0 (parking app)'`. Nominatim blocks requests without a User-Agent.
-
-## Parking Pipeline Resilience — Health Tracking
-
-The parking pipeline can silently break (auth regression, API changes, network issues) and the user won't know until they get a ticket. The health tracking system detects this.
-
-### Architecture
-- **`BackgroundTaskService.ts`** tracks consecutive failures and last success time
-- State is persisted to AsyncStorage (`parking_pipeline_health_v1`) across app restarts
-- On success: resets failure count, updates last success timestamp
-- On failure: increments failure count, stores error reason
-- On app foreground: runs health check (auth token, failure count, staleness)
-
-### Warning Triggers
-1. **3+ consecutive failures**: Shows push notification "Parking checks have failed N times in a row"
-2. **No auth token on foreground**: Logs warning (parking will fail until re-login)
-3. **7+ days without success**: Logs staleness warning
-
-### Rules
-1. **Every `triggerParkingCheck()` outcome MUST call `recordParkingCheckOutcome()`** — success path AND catch block. Missing either breaks the tracking.
-2. **Health state MUST be persisted to AsyncStorage** — in-memory tracking alone loses state on app kill.
-3. **`runParkingHealthCheck()` MUST run on every app foreground** — this is the primary detection mechanism since failures happen in the background.
-4. **Warning notifications use `sendErrorNotification()` (persistent)**, not `sendDiagnosticNotification()` (debug-only) — the user MUST see these.
-5. **The `healthWarningShown` flag prevents notification spam** — only one warning per failure streak. Resets on success.
+### Data Persistence
+- Local-first (AsyncStorage), fire-and-forget sync to Supabase
+- Never block UI waiting for server sync
 
 ## Supabase Details
 - Project ref: `dzhqolbhuqdcpngdayuq`
-- localStorage key format: `sb-dzhqolbhuqdcpngdayuq-auth-token`
-- RLS is enabled on all tables - queries must include user_id filtering
+- localStorage key: `sb-dzhqolbhuqdcpngdayuq-auth-token`
+- RLS enabled on all tables — queries must include user_id filtering
+
+## CHI PAY Portal Scraper
+- `lib/chicago-portal-scraper.ts` — Playwright headless browser, bypasses hCaptcha (backend doesn't validate tokens)
+- No CAPTCHA API keys needed, ~14s per plate
+- Autopilot: Mon/Thu via systemd timers (`scripts/autopilot-check-portal.ts`)
+
+## Parking Pipeline Health
+- `BackgroundTaskService.ts` tracks consecutive failures + last success
+- Persisted to AsyncStorage (`parking_pipeline_health_v1`)
+- Warns after 3+ consecutive failures or 7+ days without success
+- Every `triggerParkingCheck()` outcome MUST call `recordParkingCheckOutcome()`

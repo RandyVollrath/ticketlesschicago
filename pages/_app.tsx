@@ -20,19 +20,19 @@ export default function App({ Component, pageProps }: AppProps) {
 
     if (!isMobileWebView) {
       // CRITICAL: Intercept OAuth redirects that land on wrong pages
-      // Supabase may redirect to homepage or /settings instead of /auth/callback
+      // Supabase may redirect to homepage or /settings instead of /oauth-return
       const currentPath = window.location.pathname
       const hash = window.location.hash
 
       // Check if we have OAuth tokens in the URL hash
       const hasOAuthTokens = hash.includes('access_token') || hash.includes('refresh_token')
 
-      if (hasOAuthTokens && currentPath !== '/auth/callback') {
+      if (hasOAuthTokens && currentPath !== '/oauth-return') {
         console.log('🚨 INTERCEPTED: OAuth tokens detected on wrong page:', currentPath)
-        console.log('🔄 FORCING redirect to /auth/callback with tokens')
+        console.log('🔄 FORCING redirect to /oauth-return with tokens')
 
         // Force redirect to callback page with tokens preserved
-        window.location.replace('/auth/callback' + hash)
+        window.location.replace('/oauth-return' + hash)
         return
       }
 

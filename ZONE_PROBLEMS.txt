@@ -1,0 +1,2206 @@
+OVERLAP REPORT
+====================================================================================================
+Each pair shows both zones' CSV boundaries and where they're currently placed on the map.
+One or both zones has wrong boundaries in the CSV.
+
+OVERLAP 100%: 40-3 ↔ 48-9
+  40-3 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Albion (6600 North) | S=Peterson (6000 North)
+  40-3 map: 1800 W-1106 W, 6000 N-6600 N
+  48-9 CSV: E=Lake Michigan (900 West) | W=Lakewood (1300 West) | N=Devon (6400 North) | S=Glenlake (6100 North)
+  48-9 map: 1300 W-1138 W, 6100 N-6400 N
+
+OVERLAP 100%: 26-1 ↔ 36-8
+  26-1 CSV: E=Cicero (4800 West) | W=Latrobe (5232 West) | N=Belden (2300 North) | S=Armitage (2000 North)
+  26-1 map: 5232 W-4800 W, 2000 N-2300 N
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+
+OVERLAP 100%: 27-7 ↔ 34-5
+  27-7 CSV: E=Halsted (800 West) | W=Ogden (1800 South) | N=Kinzie (400 North) | S=Van Buren (400 South)
+  27-7 map: 1400 W-800 W, 400 S-400 N
+  34-5 CSV: E=Morgan Street (1000 West) | W=Throop St. (1300 West) | N=Washington Blvd (100 North) | S=Van Buren Street (400 South)
+  34-5 map: 1300 W-1000 W, 400 S-100 N
+
+OVERLAP 100%: 39-17 ↔ 45-24
+  39-17 CSV: E=Forest Glen (5100 West) | W=Austin (6000 West) | N=Devon (6400 North) | S=Berwyn (5300 North)
+  39-17 map: 6000 W-5100 W, 5300 N-6400 N
+  45-24 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Devon (6400 North) | S=Loleta (5826 North)
+  45-24 map: 5700 W-5400 W, 5826 N-6400 N
+
+OVERLAP 100%: 45-19 ↔ 45-20
+  45-19 CSV: E=Leclaire (5100 West) | W=Milwaukee | N=Foster (5200 North) | S=Kennedy Expressway
+  45-19 map: 5100 W-4800 W, 4800 N-5200 N
+  45-20 CSV: E=Cicero (4800 West) | W=Leclaire (5100 West) | N=Foster (5200 North) | S=Kennedy Expressway
+  45-20 map: 5100 W-4800 W, 4800 N-5200 N
+
+OVERLAP 100%: 7-17 ↔ 8-18
+  7-17 CSV: E=Merrill (2133 E) | W=Chappel (2020 E) | N=89th St (8900) | S=93rd St (9300)
+  7-17 map: 2020 E-2133 E, 9083 S-8900 S
+  8-18 CSV: E=Yates (2400 E) | W=Jeffery (2000 E) | N=87th St (8700 S) | S=91st St (9100 S)
+  8-18 map: 2000 E-2400 E, 9100 S-8700 S
+
+OVERLAP 100%: 1-6 ↔ 1-7
+  1-6 CSV: E=Ashland (1600 West) | W=Damen (2000 West) | N=North Ave (1600 North) | S=Division (1200 North)
+  1-6 map: 2000 W-1600 W, 1200 N-1600 N
+  1-7 CSV: E=Ashland (1600 West) | W=Hoyne (2100 West) | N=North Ave (1600 North) | S=Division (1200 North)
+  1-7 map: 2100 W-1600 W, 1200 N-1600 N
+
+OVERLAP 100%: 11-10 ↔ 11-11
+  11-10 CSV: E=Keeley Street (1400 W) | W=River (1530 W) | N=Archer Ave (2800 S) | S=31st St (3100 S)
+  11-10 map: 1530 W-1400 W, 3100 S-2800 S
+  11-11 CSV: E=Senour (930 W) | W=Pitney Ct (1530 W) | N=Eleanor Street (2430 S) | S=31st Street (3100 S)
+  11-11 map: 1530 W-930 W, 3100 S-2430 S
+
+OVERLAP 100%: 11-5 ↔ 25-11
+  11-5 CSV: E=Wentworth Ave (200 W) | W=Halsted Street / River (800 W) | N=16th Street (1600 S) | S=24th Place (2430 S)
+  11-5 map: 800 W-200 W, 2430 S-1600 S
+  25-11 CSV: E=Canal Street (500 West) | W=Halsted Street (800 West) | N=16th Street (1600 South) | S=Cermak Road (2200 South)
+  25-11 map: 800 W-500 W, 2200 S-1600 S
+
+OVERLAP 100%: 12-1 ↔ 12-2
+  12-1 CSV: E=Kedzie (3200 West) | W=Drake (3530 West) | N=43rd Street (4300 S) | S=Archer Ave (4640 South)
+  12-1 map: 3530 W-3200 W, 4640 S-4300 S
+  12-2 CSV: E=Kedzie (3200 West) | W=Drake (3530 West) | N=44th Street (4400 South) | S=Archer Ave (4640 South)
+  12-2 map: 3530 W-3200 W, 4640 S-4400 S
+
+OVERLAP 100%: 12-5 ↔ 15-4
+  12-5 CSV: E=Rockwell (2600 West) | W=California (2800 West) | N=Pershing (3900 South) | S=47th Street (4700 South)
+  12-5 map: 2800 W-2600 W, 4700 S-3900 S
+  15-4 CSV: E=Fairfield (2732 West) Oakley (2300 West) | W=California (2800 West) Artesian (2434 West) | N=43rd Street (4300 South) 50th Place (5032 South) | S=44th Street (4400 South) 50th Place (5032 South)
+  15-4 map: 2800 W-2732 W, 4400 S-4300 S
+
+OVERLAP 100%: 15-5 ↔ 16-11
+  15-5 CSV: E=Hoyne (2100 West) | W=Rockwell (2600 West) | N=51st Street (5100 South) | S=59th Street (5900 South)
+  15-5 map: 2600 W-2100 W, 5900 S-5100 S
+  16-11 CSV: E=Bell (2230 West) | W=Oakley (2300 West) Western (2400 West) | N=58th Street (5800 South) | S=59th Street (5900 South) 70th Street (7000 South)
+  16-11 map: 2300 W-2230 W, 5900 S-5800 S
+
+OVERLAP 100%: 17-1 ↔ 21-20
+  17-1 CSV: E=Summit Street (800 West) Halsted Street (800 West) | W=Morgan Street (1000 West) | N=83rd Street (8300 South) | S=86th Place (8600 South) 87th Street (8700 South)
+  17-1 map: 1000 W-800 W, 8600 S-8300 S
+  21-20 CSV: E=State Street (0 E/W) | W=Vincennes Ave (1620 West) | N=83rd Street (8300 South) | S=90th Street (9000 South)
+  21-20 map: 1620 W-0 W, 9000 S-8300 S
+
+OVERLAP 100%: 17-2 ↔ 21-20
+  17-2 CSV: E=Morgan Street (1000 West) | W=Racine Ave (1200 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+  17-2 map: 1200 W-1000 W, 8700 S-8300 S
+  21-20 CSV: E=State Street (0 E/W) | W=Vincennes Ave (1620 West) | N=83rd Street (8300 South) | S=90th Street (9000 South)
+  21-20 map: 1620 W-0 W, 9000 S-8300 S
+
+OVERLAP 100%: 17-23 ↔ 18-3
+  17-23 CSV: E=Claremont (2332 West) | W=Rockwell Street (2600 West) California Ave (2800 West) | N=71st Street (7100 South) | S=74th Street (7400 South)
+  17-23 map: 2600 W-2332 W, 7400 S-7280 S
+  18-3 CSV: E=Bell (2232 West) | W=Rockwell (2600 West) | N=71st Street (7100 South) | S=77th Street (7700 South)
+  18-3 map: 2600 W-2232 W, 7700 S-7100 S
+
+OVERLAP 100%: 17-3 ↔ 21-20
+  17-3 CSV: E=Racine (1200 West) Ada Street (1342 West) | W=Loomis Blvd (1400 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+  17-3 map: 1400 W-1200 W, 8700 S-8300 S
+  21-20 CSV: E=State Street (0 E/W) | W=Vincennes Ave (1620 West) | N=83rd Street (8300 South) | S=90th Street (9000 South)
+  21-20 map: 1620 W-0 W, 9000 S-8300 S
+
+OVERLAP 100%: 19-1 ↔ 19-2
+  19-1 CSV: E=Charles (1530 West) Damen (2000 West) | W=Western (2400 West) | N=87th Street (8700 South) 91st Street (9100 South) | S=95th Street (9500 South)
+  19-1 map: 2400 W-1530 W, 9500 S-8700 S
+  19-2 CSV: E=Damen (2000 West) | W=Western (2400 West) | N=91st Street (9100 South) | S=95th Street (9500 South)
+  19-2 map: 2400 W-2000 W, 9500 S-9100 S
+
+OVERLAP 100%: 2-1 ↔ 32-20
+  2-1 CSV: E=Clifton 1130 W | W=Ashland (1600 West) | N=Fullerton 2400 N | S=Cortland 1900 N
+  2-1 map: 1600 W-1130 W, 1900 N-2400 N
+  32-20 CSV: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+  32-20 map: 2032 W-400 W, 1600 N-2400 N
+
+OVERLAP 100%: 2-3 ↔ 27-10
+  2-3 CSV: E=Clark 100 W | W=Sedgwick 400 W | N=North Ave (1600 North) | S=Division (1200 North)
+  2-3 map: 400 W-100 W, 1200 N-1600 N
+  27-10 CSV: E=Clark (100 West) | W=Halsted (800 West) | N=North Ave (1600 North) | S=Chicago Ave (800 North)
+  27-10 map: 800 W-100 W, 800 N-1600 N
+
+OVERLAP 100%: 2-5 ↔ 42-5
+  2-5 CSV: E=Lake Shore Drive 140 E | W=State St (0 West) | N=Scott St 1230 N | S=Chicago 800 N
+  2-5 map: 0 W-140 E, 800 N-1230 N
+  42-5 CSV: E=Michigan (100 East) | W=State (0 West) | N=Cedar (1100 North) | S=Chicago (800 North)
+  42-5 map: 0 W-100 E, 800 N-1100 N
+
+OVERLAP 100%: 23-12 ↔ 23-13
+  23-12 CSV: E=Pulaski Road (4000 West) | W=Kolin Avenue (4432 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+  23-12 map: 4432 W-4000 W, 5500 S-5100 S
+  23-13 CSV: E=Hamlin Avenue (3800 West) | W=Pulaski Road (4432 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+  23-13 map: 4432 W-3800 W, 5500 S-5100 S
+
+OVERLAP 100%: 23-8 ↔ 23-9
+  23-8 CSV: E=Laramie Ave (5200 West) | W=Luna Ave (5532 West) | N=51st Street (5100 South) | S=Archer Avenue
+  23-8 map: 5532 W-5525 W, 5500 S-5265 S
+  23-9 CSV: E=Laramie Ave (5200 West) | W=Luna Ave (5532 West) | N=Archer Avenue | S=55th Street (5500 South)
+  23-9 map: 5532 W-5525 W, 5500 S-5265 S
+
+OVERLAP 100%: 26-16 ↔ 36-9
+  26-16 CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=North Ave (1600 North) | S=Potomac (1300 North)
+  26-16 map: 4000 W-3600 W, 1300 N-1600 N
+  36-9 CSV: E=Central Park (3600 West) | W=Kostner (4400 West) | N=Wabansia (1700 North) | S=Thomas (1100 North)
+  36-9 map: 4400 W-3600 W, 1100 N-1700 N
+
+OVERLAP 100%: 26-2 ↔ 36-8
+  26-2 CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Belden (2300 North) | S=Armitage (2000 North)
+  26-2 map: 4800 W-4400 W, 2000 N-2300 N
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+
+OVERLAP 100%: 27-7 ↔ 34-4
+  27-7 CSV: E=Halsted (800 West) | W=Ogden (1800 South) | N=Kinzie (400 North) | S=Van Buren (400 South)
+  27-7 map: 1400 W-800 W, 400 S-400 N
+  34-4 CSV: E=Halsted Street (800 West) | W=Morgan Street (1000 West) | N=Washington Blvd (100 North) | S=Van Buren Street (400 South)
+  34-4 map: 1000 W-800 W, 400 S-100 N
+
+OVERLAP 100%: 28-1 ↔ 34-6
+  28-1 CSV: E=Canal (500 West) | W=Racine (1200 West) | N=Van Buren (400 South) | S=16th Street (1600 South)
+  28-1 map: 1200 W-500 W, 1600 S-400 S
+  34-6 CSV: E=Halsted Street (800 West) | W=Racine (1200 West) | N=Van Buren Street (400 South) | S=Roosevelt Road (1200 South)
+  34-6 map: 1200 W-800 W, 1200 S-400 S
+
+OVERLAP 100%: 29-2 ↔ 37-6
+  29-2 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Westend (200 North) | S=Jackson (300 South)
+  29-2 map: 5600 W-5200 W, 300 S-200 N
+  37-6 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=West End (200 North) | S=Madison (0 N/S)
+  37-6 map: 5600 W-5200 W, 0 S-200 N
+
+OVERLAP 100%: 30-13 ↔ 31-3
+  30-13 CSV: E=Austin (5600 West) | W=Parkside (5632 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+  30-13 map: 5632 W-5600 W, 2800 N-3200 N
+  31-3 CSV: E=Long (5400 West) | W=Major (5700 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+  31-3 map: 5700 W-5400 W, 2800 N-3200 N
+
+OVERLAP 100%: 32-18 ↔ 32-20
+  32-18 CSV: E=Wood (1800 West) | W=Damen (2000 West) | N=Avondale (1928 North) | S=North Ave (1600 North)
+  32-18 map: 2000 W-1800 W, 1600 N-1928 N
+  32-20 CSV: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+  32-20 map: 2032 W-400 W, 1600 N-2400 N
+
+OVERLAP 100%: 32-19 ↔ 32-20
+  32-19 CSV: E=Bosworth (1532 West) | W=Wood (1800 West) | N=Armitage (2000 North) | S=North Ave (1600 North)
+  32-19 map: 1800 W-1532 W, 1600 N-2000 N
+  32-20 CSV: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+  32-20 map: 2032 W-400 W, 1600 N-2400 N
+
+OVERLAP 100%: 32-20 ↔ 43-6
+  32-20 CSV: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+  32-20 map: 2032 W-400 W, 1600 N-2400 N
+  43-6 CSV: E=Larrabee (600 West) | W=Racine (1200 West) | N=Armitage (2000 North) | S=North Avenue (1600 North)
+  43-6 map: 1200 W-600 W, 1600 N-2000 N
+
+OVERLAP 100%: 32-20 ↔ 43-5
+  32-20 CSV: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+  32-20 map: 2032 W-400 W, 1600 N-2400 N
+  43-5 CSV: E=Orchard (700 West) | W=Sheffield (1000 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+  43-5 map: 1000 W-700 W, 2000 N-2400 N
+
+OVERLAP 100%: 33-11 ↔ 35-13
+  33-11 CSV: E=Kedzie (3200 West) | W=Kimball (3400 West) | N=Irving Park (4000 North) | S=Addison (3600 North)
+  33-11 map: 3400 W-3200 W, 3600 N-4000 N
+  35-13 CSV: E=Kedzie (3200 West) | W=Central Park (3600 West) | N=Irving Park (4000 North) | S=Belmont (3200 North)
+  35-13 map: 3600 W-3200 W, 3200 N-4000 N
+
+OVERLAP 100%: 33-2 ↔ 47-20
+  33-2 CSV: E=Chicago River (1500 West) | W=Kimball (3400 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+  33-2 map: 3400 W-1500 W, 4800 N-5200 N
+  47-20 CSV: E=Ravenswood (1800 West) | W=Western (2400 West) | N=Winnemac (5032 North) | S=Lawrence (4800 North)
+  47-20 map: 2400 W-1800 W, 4800 N-5032 N
+
+OVERLAP 100%: 33-2 ↔ 40-16
+  33-2 CSV: E=Chicago River (1500 West) | W=Kimball (3400 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+  33-2 map: 3400 W-1500 W, 4800 N-5200 N
+  40-16 CSV: E=Western (2400 West) | W=California (2800 West) | N=Foster (5200 North) | S=Argyle (5000 North)
+  40-16 map: 2800 W-2400 W, 5000 N-5200 N
+
+OVERLAP 100%: 33-2 ↔ 40-10
+  33-2 CSV: E=Chicago River (1500 West) | W=Kimball (3400 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+  33-2 map: 3400 W-1500 W, 4800 N-5200 N
+  40-10 CSV: E=Damen (2000 West) | W=Western (2400 West) | N=Foster (5200 North) | S=Ainsle (4900 North)
+  40-10 map: 2400 W-2000 W, 4900 N-5200 N
+
+OVERLAP 100%: 34-1 ↔ 4-14
+  34-1 CSV: E=Indiana Ave (200 East) | W=Wells Street (200 West) | N=Harrison Street (600 South) | S=13th Street (1300 South)
+  34-1 map: 200 W-200 E, 1300 S-600 S
+  4-14 CSV: E=Michigan (100 E) | W=Clark (100 W) | N=Polk (800 S) | S=12th St (1200 S)
+  4-14 map: 100 W-100 E, 1200 S-800 S
+
+OVERLAP 100%: 36-8 ↔ 37-12
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-12 CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Chicago Ave (800 North) | S=Grand Ave (500 North)
+  37-12 map: 4800 W-4400 W, 500 N-800 N
+
+OVERLAP 100%: 36-8 ↔ 37-3
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-3 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Potomac (1300 North) | S=Augusta (1000 North)
+  37-3 map: 5600 W-5200 W, 1000 N-1300 N
+
+OVERLAP 100%: 36-8 ↔ 37-9
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-9 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Potomac (1300 North) | S=Augusta (1000 North)
+  37-9 map: 5200 W-4800 W, 1000 N-1300 N
+
+OVERLAP 100%: 36-8 ↔ 37-2
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-2 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=North Ave (1600 North) | S=Potomac (1300 North)
+  37-2 map: 5600 W-5200 W, 1300 N-1600 N
+
+OVERLAP 100%: 36-8 ↔ 37-10
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-10 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=North Ave (1600 North) | S=Potomac (1300 North)
+  37-10 map: 5200 W-4800 W, 1300 N-1600 N
+
+OVERLAP 100%: 36-9 ↔ 37-13
+  36-9 CSV: E=Central Park (3600 West) | W=Kostner (4400 West) | N=Wabansia (1700 North) | S=Thomas (1100 North)
+  36-9 map: 4400 W-3600 W, 1100 N-1700 N
+  37-13 CSV: E=Avers (3832 West) | W=Kostner (4400 West) | N=Kamerling (1332 North) | S=Thomas (1100 North)
+  37-13 map: 4400 W-3832 W, 1100 N-1332 N
+
+OVERLAP 100%: 37-1 ↔ 37-3
+  37-1 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Grand Ave (500 North) | S=North Ave (1600 North)
+  37-1 map: 5600 W-5200 W, 500 N-1600 N
+  37-3 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Potomac (1300 North) | S=Augusta (1000 North)
+  37-3 map: 5600 W-5200 W, 1000 N-1300 N
+
+OVERLAP 100%: 37-1 ↔ 37-2
+  37-1 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Grand Ave (500 North) | S=North Ave (1600 North)
+  37-1 map: 5600 W-5200 W, 500 N-1600 N
+  37-2 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=North Ave (1600 North) | S=Potomac (1300 North)
+  37-2 map: 5600 W-5200 W, 1300 N-1600 N
+
+OVERLAP 100%: 39-11 ↔ 45-18
+  39-11 CSV: E=Chicago River (2910 West) | W=California (3800 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+  39-11 map: 3744 W-2910 W, 5200 N-5600 N
+  45-18 CSV: E=Milwaukee Ave | W=Elston (1132 West) | N=Ludlam (5470 North) | S=Foster Ave (5200 North)
+  45-18 map: 3200 W-3000 W, 5200 N-5470 N
+
+OVERLAP 100%: 39-11 ↔ 39-9
+  39-11 CSV: E=Chicago River (2910 West) | W=California (3800 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+  39-11 map: 3744 W-2910 W, 5200 N-5600 N
+  39-9 CSV: E=Kedzie (3200 West) | W=Saint Louis (3500 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+  39-9 map: 3500 W-3200 W, 5200 N-5600 N
+
+OVERLAP 100%: 39-12 ↔ 39-7
+  39-12 CSV: E=Pulaski (4000 West) | W=Kostner (4400 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+  39-12 map: 4400 W-4000 W, 6000 N-6369 N
+  39-7 CSV: E=Saint Louis (3500 West) | W=Lowell (4432 West) | N=Devon (6400 North) | S=Bryn Mawr (5600 North)
+  39-7 map: 4432 W-3500 W, 5600 N-6371 N
+
+OVERLAP 100%: 39-17 ↔ 45-16
+  39-17 CSV: E=Forest Glen (5100 West) | W=Austin (6000 West) | N=Devon (6400 North) | S=Berwyn (5300 North)
+  39-17 map: 6000 W-5100 W, 5300 N-6400 N
+  45-16 CSV: E=Central (5600 West) | W=Austin (6000 West) | N=Bryn Mawr (5600 North) | S=Northwest Highway
+  45-16 map: 6000 W-5600 W, 5400 N-5600 N
+
+OVERLAP 100%: 39-17 ↔ 45-15
+  39-17 CSV: E=Forest Glen (5100 West) | W=Austin (6000 West) | N=Devon (6400 North) | S=Berwyn (5300 North)
+  39-17 map: 6000 W-5100 W, 5300 N-6400 N
+  45-15 CSV: E=Central (5600 West) | W=Austin (6000 West) | N=Elston (1132 West) | S=Bryn Mawr (5600 North)
+  45-15 map: 6000 W-5600 W, 5600 N-5800 N
+
+OVERLAP 100%: 39-17 ↔ 45-23
+  39-17 CSV: E=Forest Glen (5100 West) | W=Austin (6000 West) | N=Devon (6400 North) | S=Berwyn (5300 North)
+  39-17 map: 6000 W-5100 W, 5300 N-6400 N
+  45-23 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Tonty (6150 North) | S=Loleta (5826 North)
+  45-23 map: 5700 W-5606 W, 5826 N-6150 N
+
+OVERLAP 100%: 4-10 ↔ 4-11
+  4-10 CSV: E=Vincennes 600 E | W=Lake Park 428 E | N=35th St (3500 S) | S=39th St. (3900 S)
+  4-10 map: 428 E-600 E, 3900 S-3500 S
+  4-11 CSV: E=Vincennes (600 E) | W=Calumet (334 E) | N=35th St (3500 S) | S=39th St (3900 S)
+  4-11 map: 334 E-600 E, 3900 S-3500 S
+
+OVERLAP 100%: 4-14 ↔ 4-15
+  4-14 CSV: E=Michigan (100 E) | W=Clark (100 W) | N=Polk (800 S) | S=12th St (1200 S)
+  4-14 map: 100 W-100 E, 1200 S-800 S
+  4-15 CSV: E=Michigan (100 E) | W=Clark (100 W) | N=Polk (800 S) | S=Jackson (3300 S)
+  4-15 map: 100 W-100 E, 3300 S-800 S
+
+OVERLAP 100%: 40-17 ↔ 40-18
+  40-17 CSV: E=Western (2400 West) | W=Washtenaw (2700 West) | N=Argyle (5000 North) | S=Leland (4700 North)
+  40-17 map: 2700 W-2400 W, 4700 N-5000 N
+  40-18 CSV: E=Chicago River (2300 West) | W=Washtenaw (2700 West) | N=Foster (5200 North) | S=Leland (4700 North)
+  40-18 map: 2700 W-2300 W, 4700 N-5200 N
+
+OVERLAP 100%: 40-19 ↔ 47-1
+  40-19 CSV: E=Chicago River (2300 West) | W=Sacramento (3000 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+  40-19 map: 3000 W-2300 W, 4400 N-4800 N
+  47-1 CSV: E=Chicago River (2359 West) | W=Western Ave (2400 West) | N=Leland (4700 North) | S=Montrose (4400 North)
+  47-1 map: 2400 W-2359 W, 4400 N-4700 N
+
+OVERLAP 100%: 40-3 ↔ 48-1
+  40-3 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Albion (6600 North) | S=Peterson (6000 North)
+  40-3 map: 1800 W-1106 W, 6000 N-6600 N
+  48-1 CSV: E=Broadway (1200 West) | W=Clark (1600 West) | N=Granville (6200 North) | S=Elmdale (6000 North)
+  48-1 map: 1600 W-1200 W, 6000 N-6200 N
+
+OVERLAP 100%: 40-3 ↔ 48-10
+  40-3 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Albion (6600 North) | S=Peterson (6000 North)
+  40-3 map: 1800 W-1106 W, 6000 N-6600 N
+  48-10 CSV: E=Lakewood (1300 West) | W=Clark (1600 West) | N=Devon (6400 North) | S=Granville (6200 North)
+  48-10 map: 1600 W-1300 W, 6200 N-6400 N
+
+OVERLAP 100%: 40-4 ↔ 48-3
+  40-4 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Peterson (6000 North) | S=Bryn Mawr (5600 North)
+  40-4 map: 1800 W-1128 W, 5600 N-6000 N
+  48-3 CSV: E=Broadway (1200 West) | W=Ridge (1700 West) | N=Ardmore (5800 North) | S=Bryn Mawr (5600 North)
+  48-3 map: 1700 W-1200 W, 5600 N-5800 N
+
+OVERLAP 100%: 40-4 ↔ 48-2
+  40-4 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Peterson (6000 North) | S=Bryn Mawr (5600 North)
+  40-4 map: 1800 W-1128 W, 5600 N-6000 N
+  48-2 CSV: E=Broadway (1200 West) | W=Ridge (1700 West) | N=Elmdale (6000 North) | S=Bryn Mawr (5600 North)
+  48-2 map: 1700 W-1200 W, 5600 N-6000 N
+
+OVERLAP 100%: 40-5 ↔ 48-5
+  40-5 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+  40-5 map: 1800 W-997 W, 5200 N-5600 N
+  48-5 CSV: E=Broadway (1200 West) | W=Clark (1600 West) | N=Balmoral (5400 North) | S=Foster Ave (5200 North)
+  48-5 map: 1600 W-1200 W, 5200 N-5400 N
+
+OVERLAP 100%: 40-5 ↔ 48-4
+  40-5 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+  40-5 map: 1800 W-997 W, 5200 N-5600 N
+  48-4 CSV: E=Broadway (1200 West) | W=Clark (1600 West) | N=Bryn Mawr (5600 North) | S=Balmoral (5400 North)
+  48-4 map: 1600 W-1200 W, 5400 N-5600 N
+
+OVERLAP 100%: 41-25 ↔ 45-9
+  41-25 CSV: E=Austin (6000 West) | W=Natchez (6434 West) Mobile (6300 West) | N=Foster (5200 North) Gunnison (4800 North) | S=Giddings (4732 North)
+  41-25 map: 6434 W-6000 W, 4732 N-5200 N
+  45-9 CSV: E=Austin (6000 West) | W=Mobile (6300 West) | N=Foster (5200 North) | S=Gunnison (4832 North)
+  45-9 map: 6300 W-6000 W, 4832 N-5200 N
+
+OVERLAP 100%: 44-3 ↔ 46-7
+  44-3 CSV: E=Halsted (800 West) | W=Racine (1200 West) | N=Irving Park (4000 North) | S=Addison (3600 North)
+  44-3 map: 1200 W-800 W, 3600 N-4000 N
+  46-7 CSV: E=Clarendon (800 West) | W=Seminary (1100 West) | N=Irving Park Road (4000 North) | S=Waveland (3700 North)
+  46-7 map: 1100 W-800 W, 3700 N-4000 N
+
+OVERLAP 100%: 47-1 ↔ 47-2
+  47-1 CSV: E=Chicago River (2359 West) | W=Western Ave (2400 West) | N=Leland (4700 North) | S=Montrose (4400 North)
+  47-1 map: 2400 W-2359 W, 4400 N-4700 N
+  47-2 CSV: E=Leavitt (2200 West) | W=Western (2400 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+  47-2 map: 2400 W-2200 W, 4400 N-4800 N
+
+OVERLAP 100%: 47-11 ↔ 47-12
+  47-11 CSV: E=Leavitt (2200 West) | W=Western Ave (2400 West) | N=Montrose (4400 North) | S=Irving Park Road (4000 North)
+  47-11 map: 2400 W-2200 W, 4000 N-4400 N
+  47-12 CSV: E=Chicago River (2359 West) | W=Western (2400 West) | N=Montrose (4400 North) | S=Irving Park Road (4000 North)
+  47-12 map: 2400 W-2359 W, 4000 N-4400 N
+
+OVERLAP 100%: 48-2 ↔ 48-3
+  48-2 CSV: E=Broadway (1200 West) | W=Ridge (1700 West) | N=Elmdale (6000 North) | S=Bryn Mawr (5600 North)
+  48-2 map: 1700 W-1200 W, 5600 N-6000 N
+  48-3 CSV: E=Broadway (1200 West) | W=Ridge (1700 West) | N=Ardmore (5800 North) | S=Bryn Mawr (5600 North)
+  48-3 map: 1700 W-1200 W, 5600 N-5800 N
+
+OVERLAP 100%: 5-1 ↔ 6-4
+  5-1 CSV: E=Kimbark (1300 E) | W=Cottage Grove (400 E) | N=71st St (7100 S) | S=75th St (7500 S)
+  5-1 map: 400 E-1300 E, 7500 S-7100 S
+  6-4 CSV: E=Ellis Ave (1000 E) | W=Rhodes Ave (532 E) | N=71st St (7100 S) | S=75th St (7500 S)
+  6-4 map: 532 E-1000 E, 7500 S-7100 S
+
+OVERLAP 100%: 5-10 ↔ 5-18
+  5-10 CSV: E=Kimbark Ave (1300 E) | W=Ellis Ave (600 E) | N=55th Street (5500 S) | S=61st Street (6100 S)
+  5-10 map: 600 E-1300 E, 6100 S-5500 S
+  5-18 CSV: E=Midway Plaisance E & W (5900 S) | W= | N=Cottage Grove (800 E) | S=Kimbark Ave (1300 E)
+  5-18 map: 800 E-1300 E, 6000 S-5900 S
+
+OVERLAP 100%: 6-14 ↔ 8-10
+  6-14 CSV: E=Cottage Grove (800 E) | W=Rhodes Ave (532 E) | N=83rd St (8300 S) | S=87th St (8700 S)
+  6-14 map: 532 E-800 E, 8700 S-8300 S
+  8-10 CSV: E=Cottage Grove (800 E) | W=Ellis (600 E) | N=83rd St (8300 S) | S=87th St (8700 S)
+  8-10 map: 600 E-800 E, 8700 S-8300 S
+
+OVERLAP 100%: 7-1 ↔ 7-7
+  7-1 CSV: E=Euclid (2130 E) | W=Merrill (2121 E) | N=73rd Street (7100) | S=75th Street (7500)
+  7-1 map: 2121 E-2130 E, 7500 S-7100 S
+  7-7 CSV: E=Exchange (2399 E) | W=Lake Front (1600 East) | N=71st Street (7100) | S=75th Street (7500)
+  7-7 map: 1600 E-2399 E, 7500 S-7100 S
+
+OVERLAP 100%: 7-12 ↔ 7-14
+  7-12 CSV: E=Kingston Ave (2531 E) | W=Yates (2400 E) | N=84th St (8400) | S=86th St (8600)
+  7-12 map: 2400 E-2531 E, 8600 S-8400 S
+  7-14 CSV: E=89th St (8900 E) | W=83rd St (8300 E) | N=Muskegon (2818 E) | S=Jeffery (2000 E)
+  7-14 map: 2000 E-2818 E, 8900 S-8300 S
+
+OVERLAP 100%: 7-13 ↔ 7-14
+  7-13 CSV: E=Manistee (2729 E) | W=Colfax (2600 E) | N=84th St (8400) | S=86th St (8600)
+  7-13 map: 2600 E-2729 E, 8600 S-8400 S
+  7-14 CSV: E=89th St (8900 E) | W=83rd St (8300 E) | N=Muskegon (2818 E) | S=Jeffery (2000 E)
+  7-14 map: 2000 E-2818 E, 8900 S-8300 S
+
+OVERLAP 100%: 7-5 ↔ 7-8
+  7-5 CSV: E=Yates (2400 E) | W=Paxton (2200 E) | N=75th Street (7500) | S=79th Street (7900)
+  7-5 map: 2200 E-2400 E, 7900 S-7500 S
+  7-8 CSV: E=Exchange (2600 E) | W=Lake Front (1600 East) | N=75th Street (7500) | S=79th Street (7900)
+  7-8 map: 1600 E-2600 E, 7900 S-7500 S
+
+OVERLAP 100%: 7-8 ↔ 8-5
+  7-8 CSV: E=Exchange (2600 E) | W=Lake Front (1600 East) | N=75th Street (7500) | S=79th Street (7900)
+  7-8 map: 1600 E-2600 E, 7900 S-7500 S
+  8-5 CSV: E=Paxton (2200 E) | W=Bennett (1900 E) | N=75th St (7500 S) | S=79th St (7900 S)
+  8-5 map: 1900 E-2200 E, 7900 S-7500 S
+
+OVERLAP 100%: 36-8 ↔ 37-1
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-1 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Grand Ave (500 North) | S=North Ave (1600 North)
+  37-1 map: 5600 W-5200 W, 500 N-1600 N
+
+OVERLAP 100%: 37-1 ↔ 37-4
+  37-1 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Grand Ave (500 North) | S=North Ave (1600 North)
+  37-1 map: 5600 W-5200 W, 500 N-1600 N
+  37-4 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Augusta (1000 North) | S=Huron (700 North)
+  37-4 map: 5600 W-5200 W, 700 N-1000 N
+
+OVERLAP 100%: 37-7 ↔ 37-8
+  37-7 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-7 map: 5200 W-4800 W, 200 N-700 N
+  37-8 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-8 map: 5200 W-4800 W, 200 N-700 N
+
+OVERLAP 100%: 41-26 ↔ 45-11
+  41-26 CSV: E=Mulligan (6332 West) | W=Neenah (6532 West) | N=Gregory (5532 North) | S=Foster (5200 North)
+  41-26 map: 6532 W-6332 W, 5200 N-5532 N
+  45-11 CSV: E=Austin (6000 West) | W=Mulligan (6632 West) | N=Avondale (1800 West - 2026 North) | S=Foster Ave (5200 North)
+  45-11 map: 6632 W-6000 W, 5200 N-5600 N
+
+OVERLAP 100%: 5-10 ↔ 5-9
+  5-10 CSV: E=Kimbark Ave (1300 E) | W=Ellis Ave (600 E) | N=55th Street (5500 S) | S=61st Street (6100 S)
+  5-10 map: 600 E-1300 E, 6100 S-5500 S
+  5-9 CSV: E=Cottage Grove (800 E) | W=Ellis Ave (600 E) | N=55th Street (5500 S) | S=61st Street (6100 S)
+  5-9 map: 600 E-800 E, 6100 S-5500 S
+
+OVERLAP 100%: 36-8 ↔ 37-4
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-4 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Augusta (1000 North) | S=Huron (700 North)
+  37-4 map: 5600 W-5200 W, 700 N-1000 N
+
+OVERLAP 100%: 40-3 ↔ 49-13
+  40-3 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Albion (6600 North) | S=Peterson (6000 North)
+  40-3 map: 1800 W-1106 W, 6000 N-6600 N
+  49-13 CSV: E=Sheridan (1200 West) | W=Clark (1630 West) | N=Arthur (6500 North) | S=Devon (6400 North)
+  49-13 map: 1630 W-1200 W, 6400 N-6500 N
+
+OVERLAP 100%: 45-22 ↔ 45-25
+  45-22 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Fitch (7132 North) | S=Tonty (6150 North)
+  45-22 map: 5700 W-5400 W, 6150 N-6980 N
+  45-25 CSV: E=Kinzua (5432 West) | W=Central (5600 West) | N=Lunt (7000 North) | S=Hiawatha (6500 North)
+  45-25 map: 5600 W-5432 W, 6500 N-6979 N
+
+OVERLAP 100%: 45-23 ↔ 45-24
+  45-23 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Tonty (6150 North) | S=Loleta (5826 North)
+  45-23 map: 5700 W-5606 W, 5826 N-6150 N
+  45-24 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Devon (6400 North) | S=Loleta (5826 North)
+  45-24 map: 5700 W-5400 W, 5826 N-6400 N
+
+OVERLAP 100%: 18-16 ↔ 18-17
+  18-16 CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+  18-16 map: 4667 W-4400 W, 8144 S-7900 S
+  18-17 CSV: E=Pulaski (4000 West) | W=Kostner (4800 West) | N=79th Street (7900 South) | S=83rd Street (8300 South)
+  18-17 map: 4667 W-4000 W, 8144 S-7900 S
+
+OVERLAP 100%: 36-8 ↔ 37-11
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-11 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Grand Ave (500 North) | S=Chicago Ave (800 North)
+  37-11 map: 5200 W-4800 W, 500 N-800 N
+
+OVERLAP 100%: 40-5 ↔ 48-7
+  40-5 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Bryn Mawr (5600 North) | S=Foster (5200 North)
+  40-5 map: 1800 W-997 W, 5200 N-5600 N
+  48-7 CSV: E=Sheridan (1000 West) | W=Broadway (1200 West) | N=Bryn Mawr (5600 North) | S=Foster Ave (5200 North)
+  48-7 map: 1200 W-1000 W, 5200 N-5600 N
+
+OVERLAP 100%: 5-7 ↔ 7-7
+  5-7 CSV: E=Yates Blvd (2400 E) | W=Bennett Ave (1900 E) | N=71st Street (7100 S) | S=73rd Street (7300 S)
+  5-7 map: 1900 E-2400 E, 7300 S-7100 S
+  7-7 CSV: E=Exchange (2399 E) | W=Lake Front (1600 East) | N=71st Street (7100) | S=75th Street (7500)
+  7-7 map: 1600 E-2399 E, 7500 S-7100 S
+
+OVERLAP 95%: 5-11 ↔ 5-19
+  5-11 CSV: E=Blackstone Ave (1436 E) | W=Kimbark Ave (1300 E) | N=55th Street (5900 S) | S=61st Street (6100 S)
+  5-11 map: 1300 E-1436 E, 6006 S-5900 S
+  5-19 CSV: E=Midway Plaisance E & W (5900 S) | W= | N=Kimbark Ave (1300 E) | S=Stony Island Ave (1600 E)
+  5-19 map: 1300 E-1600 E, 6000 S-5900 S
+
+OVERLAP 94%: 7-20 ↔ 7-21
+  7-20 CSV: E=Torrence (2632 E) | W=Clyde (2132 E) | N=99th St (9900) | S=102nd St (10200)
+  7-20 map: 2560 E-2632 E, 10139 S-9900 S
+  7-21 CSV: E=Torrence (2634 E) | W=Oglesby (2400 East) | N=100th St (10000) | S=101st St (10100)
+  7-21 map: 2580 E-2634 E, 10100 S-10000 S
+
+OVERLAP 86%: 45-22 ↔ 45-24
+  45-22 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Fitch (7132 North) | S=Tonty (6150 North)
+  45-22 map: 5700 W-5400 W, 6150 N-6980 N
+  45-24 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Devon (6400 North) | S=Loleta (5826 North)
+  45-24 map: 5700 W-5400 W, 5826 N-6400 N
+
+OVERLAP 84%: 45-10 ↔ 45-8
+  45-10 CSV: E=Central (5600 West) | W=Austin (6000 West) | N=Avondale | S=Higgins
+  45-10 map: 6000 W-5600 W, 4600 N-4800 N
+  45-8 CSV: E=Central (5600 West) | W=Melvina (6200 West) | N=Higgins | S=Eastwood (4632 North)
+  45-8 map: 6200 W-5600 W, 4632 N-5000 N
+
+OVERLAP 84%: 27-2 ↔ 36-10
+  27-2 CSV: E=Kedzie (3200 West) | W=Drake (3532 West) | N=Augusta (1000 North) | S=Governors Pkwy (400 North)
+  27-2 map: 3532 W-3200 W, 400 N-1000 N
+  36-10 CSV: E=California (2800 West) | W=Central Park (3600 West) | N=Division (1200 North) | S=Grand Ave (500 North)
+  36-10 map: 3600 W-2800 W, 500 N-1200 N
+
+OVERLAP 82%: 7-3 ↔ 7-4
+  7-3 CSV: E=Yates (2600 E) | W=Paxton (2198 E) | N=72nd Street (7200) | S=75th Street (7500)
+  7-3 map: 2198 E-2600 E, 7500 S-7200 S
+  7-4 CSV: E=Yates (2600 E) | W=Colfax (2518 E) | N=71st Street (7100) | S=74th Street (7400)
+  7-4 map: 2518 E-2600 E, 7400 S-7100 S
+
+OVERLAP 81%: 40-4 ↔ 48-8
+  40-4 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Peterson (6000 North) | S=Bryn Mawr (5600 North)
+  40-4 map: 1800 W-1128 W, 5600 N-6000 N
+  48-8 CSV: E=Sheridan (1000 West) | W=Broadway (1200 West) | N=Glenlake (6100 North) | S=Bryn Mawr (5600 North)
+  48-8 map: 1200 W-1128 W, 5600 N-6100 N
+
+OVERLAP 80%: 33-2 ↔ 40-18
+  33-2 CSV: E=Chicago River (1500 West) | W=Kimball (3400 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+  33-2 map: 3400 W-1500 W, 4800 N-5200 N
+  40-18 CSV: E=Chicago River (2300 West) | W=Washtenaw (2700 West) | N=Foster (5200 North) | S=Leland (4700 North)
+  40-18 map: 2700 W-2300 W, 4700 N-5200 N
+
+OVERLAP 80%: 7-8 ↔ 8-4
+  7-8 CSV: E=Exchange (2600 E) | W=Lake Front (1600 East) | N=75th Street (7500) | S=79th Street (7900)
+  7-8 map: 1600 E-2600 E, 7900 S-7500 S
+  8-4 CSV: E=Bennett (1900 E) | W=Stony Island (1600 E) | N=74th St (7400 S) | S=79th St (7900S)
+  8-4 map: 1600 E-1900 E, 7900 S-7400 S
+
+OVERLAP 80%: 7-14 ↔ 8-13
+  7-14 CSV: E=89th St (8900 E) | W=83rd St (8300 E) | N=Muskegon (2818 E) | S=Jeffery (2000 E)
+  7-14 map: 2000 E-2818 E, 8900 S-8300 S
+  8-13 CSV: E=Yates (2400 E) | W=bennett (1900 E) | N=84th St (8400 S) | S=87th St (8700 S)
+  8-13 map: 1900 E-2400 E, 8700 S-8400 S
+
+OVERLAP 80%: 35-11 ↔ 35-12
+  35-11 CSV: E=Kennedy Expressway | W=Elston Avenue | N=Belmont (3200 North) | S=Schubert (2700 North)
+  35-11 map: 3000 W-2600 W, 2700 N-3200 N
+  35-12 CSV: E=Albany (3100 West) | W=Chicago River | N=Irving Park (4000 North) | S=Diversey (2800 North)
+  35-12 map: 3100 W-2400 W, 2800 N-4000 N
+
+OVERLAP 78%: 24-8 ↔ 28-5
+  24-8 CSV: E=Albany (3100 West) | W=Homan (3400 West) | N=Harrison (500 South) | S=Douglas (1400 South)
+  24-8 map: 3400 W-3100 W, 1400 S-500 S
+  28-5 CSV: E=California (2800 West) | W=Homan (3400 West) | N=Franklin (500 South) | S=Roosevelt (1200 South)
+  28-5 map: 3400 W-2800 W, 1200 S-500 S
+
+OVERLAP 77%: 2-2 ↔ 43-7
+  2-2 CSV: E=Clark 100 W | W=Kingsbury 1400 W | N=Cortland 1900 N | S=Clybourn (1300 North)
+  2-2 map: 1400 W-100 W, 1300 N-1900 N
+  43-7 CSV: E=Stockton Drive (100 West) | W=Larrabee (600 West) | N=Armitage (2000 North) | S=North Avenue (1600 North)
+  43-7 map: 600 W-100 W, 1600 N-2000 N
+
+OVERLAP 77%: 11-11 ↔ 11-9
+  11-11 CSV: E=Senour (930 W) | W=Pitney Ct (1530 W) | N=Eleanor Street (2430 S) | S=31st Street (3100 S)
+  11-11 map: 1530 W-930 W, 3100 S-2430 S
+  11-9 CSV: E=Halsted Street (800 W) | W=Loomis St (1400 W) | N=Archer Ave (2500 S) | S=31st Street (3100 S)
+  11-9 map: 1400 W-800 W, 3100 S-2500 S
+
+OVERLAP 76%: 49-3 ↔ 50-4
+  49-3 CSV: E=Damen (2000 West) | W=Ridge (2200 West) | N=Howard (7600 North) | S=Touhy (7200 North)
+  49-3 map: 2200 W-2000 W, 7200 N-7596 N
+  50-4 CSV: E=Ridge (1800 West) | W=Western (2400 West) | N=Birchwood (7500 North) | S=Lunt (7000 North)
+  50-4 map: 2400 W-1800 W, 7000 N-7500 N
+
+OVERLAP 76%: 49-4 ↔ 50-4
+  49-4 CSV: E=Clark (1800 West) | W=Damen (2000 West) | N=Howard (7600 North) | S=Touhy (7200 North)
+  49-4 map: 2000 W-1800 W, 7200 N-7600 N
+  50-4 CSV: E=Ridge (1800 West) | W=Western (2400 West) | N=Birchwood (7500 North) | S=Lunt (7000 North)
+  50-4 map: 2400 W-1800 W, 7000 N-7500 N
+
+OVERLAP 76%: 49-2 ↔ 50-4
+  49-2 CSV: E=Ridge (2100 West) | W=Western (2400 West) | N=Howard (7600 North) | S=Touhy (7200 North)
+  49-2 map: 2400 W-2100 W, 7200 N-7599 N
+  50-4 CSV: E=Ridge (1800 West) | W=Western (2400 West) | N=Birchwood (7500 North) | S=Lunt (7000 North)
+  50-4 map: 2400 W-1800 W, 7000 N-7500 N
+
+OVERLAP 75%: 2-2 ↔ 2-3
+  2-2 CSV: E=Clark 100 W | W=Kingsbury 1400 W | N=Cortland 1900 N | S=Clybourn (1300 North)
+  2-2 map: 1400 W-100 W, 1300 N-1900 N
+  2-3 CSV: E=Clark 100 W | W=Sedgwick 400 W | N=North Ave (1600 North) | S=Division (1200 North)
+  2-3 map: 400 W-100 W, 1200 N-1600 N
+
+OVERLAP 75%: 49-7 ↔ 50-4
+  49-7 CSV: E=Clark (1800 West) | W=Ridge (2100 West) | N=Touhy (7200 North) | S=Morse (6934 North)
+  49-7 map: 2100 W-1800 W, 6934 N-7200 N
+  50-4 CSV: E=Ridge (1800 West) | W=Western (2400 West) | N=Birchwood (7500 North) | S=Lunt (7000 North)
+  50-4 map: 2400 W-1800 W, 7000 N-7500 N
+
+OVERLAP 75%: 15-5 ↔ 16-1
+  15-5 CSV: E=Hoyne (2100 West) | W=Rockwell (2600 West) | N=51st Street (5100 South) | S=59th Street (5900 South)
+  15-5 map: 2600 W-2100 W, 5900 S-5100 S
+  16-1 CSV: E=Damen (2000 West) | W=Western Ave (2400 W) | N=51st Street (5100 South) | S=55th Street (5500 South)
+  16-1 map: 2400 W-2000 W, 5500 S-5100 S
+
+OVERLAP 75%: 17-3 ↔ 21-18
+  17-3 CSV: E=Racine (1200 West) Ada Street (1342 West) | W=Loomis Blvd (1400 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+  17-3 map: 1400 W-1200 W, 8700 S-8300 S
+  21-18 CSV: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=84th Street (8400 South) | S=91st Street (9100 South)
+  21-18 map: 1710 W-1100 W, 9100 S-8400 S
+
+OVERLAP 75%: 2-6 ↔ 27-10
+  2-6 CSV: E=State St (0 West) | W=Sedgwick 400 W | N=Division 1200 N | S=Chicago 800 N
+  2-6 map: 400 W-0 W, 800 N-1200 N
+  27-10 CSV: E=Clark (100 West) | W=Halsted (800 West) | N=North Ave (1600 North) | S=Chicago Ave (800 North)
+  27-10 map: 800 W-100 W, 800 N-1600 N
+
+OVERLAP 75%: 40-16 ↔ 40-18
+  40-16 CSV: E=Western (2400 West) | W=California (2800 West) | N=Foster (5200 North) | S=Argyle (5000 North)
+  40-16 map: 2800 W-2400 W, 5000 N-5200 N
+  40-18 CSV: E=Chicago River (2300 West) | W=Washtenaw (2700 West) | N=Foster (5200 North) | S=Leland (4700 North)
+  40-18 map: 2700 W-2300 W, 4700 N-5200 N
+
+OVERLAP 75%: 18-20 ↔ 19-1
+  18-20 CSV: E=Justine (1532 West) | W=Damen (2000 West) | N=86th Street (8600 South) | S=90th Street (9000 South)
+  18-20 map: 2000 W-1532 W, 9000 S-8600 S
+  19-1 CSV: E=Charles (1530 West) Damen (2000 West) | W=Western (2400 West) | N=87th Street (8700 South) 91st Street (9100 South) | S=95th Street (9500 South)
+  19-1 map: 2400 W-1530 W, 9500 S-8700 S
+
+OVERLAP 75%: 15-1 ↔ 20-6
+  15-1 CSV: E=Stewart (400 West) Wallace (600 West) | W=Halsted (800 West) Canal (500 West) | N=43rd Street (4300 South) 45th Street (4500 South) | S=47th Street (4700 South) 49th Street (4900 South)
+  15-1 map: 800 W-400 W, 4700 S-4300 S
+  20-6 CSV: E=La Salle (140 West) | W=Union (700 West) | N=42nd Street (4200 South) | S=51st Street (5100 South)
+  20-6 map: 700 W-140 W, 5100 S-4200 S
+
+OVERLAP 75%: 33-13 ↔ 35-12
+  33-13 CSV: E=California (2800 West) | W=Kedzie (3200 West) | N=Addison (3600 North) | S=Belmont (3200 North)
+  33-13 map: 3200 W-2800 W, 3200 N-3600 N
+  35-12 CSV: E=Albany (3100 West) | W=Chicago River | N=Irving Park (4000 North) | S=Diversey (2800 North)
+  35-12 map: 3100 W-2400 W, 2800 N-4000 N
+
+OVERLAP 75%: 2-2 ↔ 43-6
+  2-2 CSV: E=Clark 100 W | W=Kingsbury 1400 W | N=Cortland 1900 N | S=Clybourn (1300 North)
+  2-2 map: 1400 W-100 W, 1300 N-1900 N
+  43-6 CSV: E=Larrabee (600 West) | W=Racine (1200 West) | N=Armitage (2000 North) | S=North Avenue (1600 North)
+  43-6 map: 1200 W-600 W, 1600 N-2000 N
+
+OVERLAP 75%: 22-11 ↔ 25-1
+  22-11 CSV: E=Spaulding (3000 West) | W=Drake (3532 West) | N=Cermak (2200 South) | S=26th Street (2600 South)
+  22-11 map: 3532 W-3000 W, 2600 S-2200 S
+  25-1 CSV: E=Kedzie Ave (3200 West) | W=Homan Ave (3400 West) | N=23rd Street (2300 South) | S=27th Street (2700 South)
+  25-1 map: 3400 W-3200 W, 2700 S-2300 S
+
+OVERLAP 75%: 7-2 ↔ 7-7
+  7-2 CSV: E=Bennett (1900 E) | W=Blackstone (1499 E) | N=71st Street (7100) | S=74th Street (7400)
+  7-2 map: 1499 E-1900 E, 7400 S-7100 S
+  7-7 CSV: E=Exchange (2399 E) | W=Lake Front (1600 East) | N=71st Street (7100) | S=75th Street (7500)
+  7-7 map: 1600 E-2399 E, 7500 S-7100 S
+
+OVERLAP 75%: 1-15 ↔ 35-10
+  1-15 CSV: E=Western (2400 West) | W=Albany (3100 West) | N=Diversey (2800 North) | S=Logan (2600 North)
+  1-15 map: 3100 W-2400 W, 2600 N-2800 N
+  35-10 CSV: E=Kennedy Expressway | W=Kedzie (3200 West) | N=Kennedy Expressway | S=Logan Blvd (2600 North)
+  35-10 map: 3200 W-2800 W, 2600 N-2800 N
+
+OVERLAP 73%: 21-18 ↔ 21-20
+  21-18 CSV: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=84th Street (8400 South) | S=91st Street (9100 South)
+  21-18 map: 1710 W-1100 W, 9100 S-8400 S
+  21-20 CSV: E=State Street (0 E/W) | W=Vincennes Ave (1620 West) | N=83rd Street (8300 South) | S=90th Street (9000 South)
+  21-20 map: 1620 W-0 W, 9000 S-8300 S
+
+OVERLAP 73%: 32-20 ↔ 43-4
+  32-20 CSV: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+  32-20 map: 2032 W-400 W, 1600 N-2400 N
+  43-4 CSV: E=Stockton Drive (200 West) | W=Orchard (700 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+  43-4 map: 700 W-246 W, 2000 N-2400 N
+
+OVERLAP 73%: 33-12 ↔ 35-12
+  33-12 CSV: E=Mozart (2832 West) | W=Kedzie (3200 West) | N=Irving Park (4000 North) | S=Addison (3600 North)
+  33-12 map: 3200 W-2832 W, 3600 N-4000 N
+  35-12 CSV: E=Albany (3100 West) | W=Chicago River | N=Irving Park (4000 North) | S=Diversey (2800 North)
+  35-12 map: 3100 W-2400 W, 2800 N-4000 N
+
+OVERLAP 72%: 6-15 ↔ 8-14
+  6-15 CSV: E=St Lawrence Ave (600 E) | W=Indiana Ave (200 E) | N=87th St (8700 S) | S=91st St (9100 S)
+  6-15 map: 200 E-600 E, 9100 S-8700 S
+  8-14 CSV: E=Cottage Grove (800 E) | W=King Drive (400 E) | N=87th St (8700 S) | S=91st St (9100 S)
+  8-14 map: 400 E-800 E, 9100 S-8700 S
+
+OVERLAP 71%: 25-3 ↔ 28-4
+  25-3 CSV: E=Western Ave (2400 West) | W=California Avenue (2800 West) | N=18th Street (1800 South) | S=26th Street (2600 South)
+  25-3 map: 2800 W-2400 W, 2600 S-1800 S
+  28-4 CSV: E=Western (2400 West) | W=California (2800 West) | N=Adams (200 South) | S=23rd Street (2300 South)
+  28-4 map: 2800 W-2400 W, 2300 S-200 S
+
+OVERLAP 70%: 25-10 ↔ 28-1
+  25-10 CSV: E=Canal Street (500 West) | W=Blue Island (1500 West) | N=14th Place (1432 South) | S=Viaduct (1500 South)
+  25-10 map: 1500 W-500 W, 1500 S-1432 S
+  28-1 CSV: E=Canal (500 West) | W=Racine (1200 West) | N=Van Buren (400 South) | S=16th Street (1600 South)
+  28-1 map: 1200 W-500 W, 1600 S-400 S
+
+OVERLAP 70%: 20-13 ↔ 4-4
+  20-13 CSV: E=Cottage Grove (800 East) | W=Washington Park Court (417 East) | N=49th Street (4900 South) | S=51st Street (5100 South)
+  20-13 map: 417 E-800 E, 5100 S-4900 S
+  4-4 CSV: E=Drexel (900 E) | W=Forrestville (532 E) | N=47th St (4700 S) | S=51st St (5100 S)
+  4-4 map: 532 E-900 E, 5100 S-4700 S
+
+OVERLAP 70%: 21-19 ↔ 21-20
+  21-19 CSV: E=Eggleston Ave (432 West) | W=Aberdeen Street (1710 West) | N=87th Street (8700 South) | S=91st Street (9100 South)
+  21-19 map: 1710 W-432 W, 9100 S-8700 S
+  21-20 CSV: E=State Street (0 E/W) | W=Vincennes Ave (1620 West) | N=83rd Street (8300 South) | S=90th Street (9000 South)
+  21-20 map: 1620 W-0 W, 9000 S-8300 S
+
+OVERLAP 68%: 33-10 ↔ 40-19
+  33-10 CSV: E=California (2800 West) | W=Richmond (2932 West) | N=Wilson (4600 North) | S=Irving Park (4000 North)
+  33-10 map: 2932 W-2800 W, 4000 N-4600 N
+  40-19 CSV: E=Chicago River (2300 West) | W=Sacramento (3000 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+  40-19 map: 3000 W-2300 W, 4400 N-4800 N
+
+OVERLAP 67%: 39-2 ↔ 39-4
+  39-2 CSV: E=Keystone (4032 West) | W=Kenneth (4432 West) | N=Leland (4700 North) | S=Irving Park (4000 North)
+  39-2 map: 4432 W-4032 W, 4000 N-4700 N
+  39-4 CSV: E=Pulaski (4000 West) | W=Kenneth (4450 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+  39-4 map: 4450 W-4000 W, 4400 N-4800 N
+
+OVERLAP 67%: 33-2 ↔ 40-17
+  33-2 CSV: E=Chicago River (1500 West) | W=Kimball (3400 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+  33-2 map: 3400 W-1500 W, 4800 N-5200 N
+  40-17 CSV: E=Western (2400 West) | W=Washtenaw (2700 West) | N=Argyle (5000 North) | S=Leland (4700 North)
+  40-17 map: 2700 W-2400 W, 4700 N-5000 N
+
+OVERLAP 67%: 2-7 ↔ 42-3
+  2-7 CSV: E=Lake Shore Drive 140 E | W=State St (0 West) | N=Chicago 800 N | S=Illinois 500 N
+  2-7 map: 0 W-140 E, 500 N-800 N
+  42-3 CSV: E=St. Clair (200 East) | W=LaSalle (150 West) | N=Walton (900 North) | S=Ohio (600 North)
+  42-3 map: 150 W-200 E, 600 N-900 N
+
+OVERLAP 67%: 3-3 ↔ 4-15
+  3-3 CSV: E=Indiana (200 East) | W=Clark (100 W) | N=Cermak (2200 South) | S=26th St (2600 South)
+  3-3 map: 100 W-200 E, 2600 S-2200 S
+  4-15 CSV: E=Michigan (100 E) | W=Clark (100 W) | N=Polk (800 S) | S=Jackson (3300 S)
+  4-15 map: 100 W-100 E, 3300 S-800 S
+
+OVERLAP 67%: 26-4 ↔ 36-9
+  26-4 CSV: E=Pulaski (4000 West) | W=Kostner (4400 West) | N=Bloomingdale (1800 North) | S=Lemoyne (1500 North)
+  26-4 map: 4400 W-4000 W, 1500 N-1800 N
+  36-9 CSV: E=Central Park (3600 West) | W=Kostner (4400 West) | N=Wabansia (1700 North) | S=Thomas (1100 North)
+  36-9 map: 4400 W-3600 W, 1100 N-1700 N
+
+OVERLAP 67%: 29-12 ↔ 36-5
+  29-12 CSV: E=Oak Park (6800 West) | W=Harlem (7200 West) | N=Wrightwood (2600 North) | S=Armitage (2000 North)
+  29-12 map: 7200 W-6800 W, 2000 N-2600 N
+  36-5 CSV: E=Normandy (6700 West) | W=Sayre (7000 West) | N=Wrightwood (2600 North) | S=Belden (2300 North)
+  36-5 map: 7000 W-6700 W, 2300 N-2600 N
+
+OVERLAP 67%: 28-7 ↔ 37-15
+  28-7 CSV: E=Hamlin (3800 West) | W=Kenton (4600 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+  28-7 map: 4600 W-3800 W, 0 S-800 N
+  37-15 CSV: E=Avers (3832 West) | W=Pulaski (4000 West) | N=Thomas (1100 North) | S=Lake Street (200 North)
+  37-15 map: 4000 W-3832 W, 200 N-1100 N
+
+OVERLAP 67%: 27-5 ↔ 28-3
+  27-5 CSV: E=Ashland (1600 West) | W=Western (2400 West) | N=Washington (100 North) | S=Roosevelt (1200 South)
+  27-5 map: 2400 W-1600 W, 1200 S-100 N
+  28-3 CSV: E=Ashland (1600 West) | W=Western (2400 West) | N=Congress (400 South) | S=16th Street (1600 South)
+  28-3 map: 2400 W-1600 W, 1600 S-400 S
+
+OVERLAP 67%: 37-11 ↔ 37-7
+  37-11 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Grand Ave (500 North) | S=Chicago Ave (800 North)
+  37-11 map: 5200 W-4800 W, 500 N-800 N
+  37-7 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-7 map: 5200 W-4800 W, 200 N-700 N
+
+OVERLAP 67%: 37-11 ↔ 37-8
+  37-11 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Grand Ave (500 North) | S=Chicago Ave (800 North)
+  37-11 map: 5200 W-4800 W, 500 N-800 N
+  37-8 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-8 map: 5200 W-4800 W, 200 N-700 N
+
+OVERLAP 66%: 35-8 ↔ 35-9
+  35-8 CSV: E=Kimball (3400 West) | W=Milwaukee Ave | N=Belmont (3200 North) | S=Milwaukee Ave
+  35-8 map: 3400 W-3000 W, 2800 N-3200 N
+  35-9 CSV: E=Kedzie (3200 West) | W=Kimball (3400 West) | N=Belmont (3200 North) | S=Wrightwood (2600 North)
+  35-9 map: 3400 W-3200 W, 2600 N-3200 N
+
+OVERLAP 65%: 41-32 ↔ 45-12
+  41-32 CSV: E=Newark (6700 West) | W=Harlem (7200 West) | N=Albion (6600 North) | S=Devon (6400 North)
+  41-32 map: 7200 W-6700 W, 6400 N-6600 N
+  45-12 CSV: E=Nagle (6400 West) | W=Nettleton (6800 West) | N=Imlay (6500 North) | S=Newburg (6400 North)
+  45-12 map: 6800 W-6613 W, 6400 N-6500 N
+
+OVERLAP 64%: 26-13 ↔ 36-10
+  26-13 CSV: E=Washtenaw (2700 West) | W=Sacamento (3000 West) | N=Division (1200 North) | S=Walton (932 North)
+  26-13 map: 3000 W-2700 W, 932 N-1200 N
+  36-10 CSV: E=California (2800 West) | W=Central Park (3600 West) | N=Division (1200 North) | S=Grand Ave (500 North)
+  36-10 map: 3600 W-2800 W, 500 N-1200 N
+
+OVERLAP 64%: 14-5 ↔ 14-6
+  14-5 CSV: E=Central Park (3600 West) | W=Pulaski Road (4000 West) | N=45th Street (4500 South) | S=Archer Avenue (4780 South / 4890 South
+  14-5 map: 4000 W-3600 W, 4780 S-4500 S
+  14-6 CSV: E=Albany (3100 West) Kedzie (3200 West) | W=Pulaski Road (4000 West) Central Park (3600 West) | N=46th Street (4600 South) 47th Street (4700 South) | S=Archer Ave (4781 South) 51st Street (5100 South)
+  14-6 map: 4000 W-3100 W, 4781 S-4600 S
+
+OVERLAP 63%: 40-8 ↔ 48-6
+  40-8 CSV: E=Clark (100 West) | W=Damen (2000 West) | N=Foster (5200 North) | S=Argyle (5000 North)
+  40-8 map: 2000 W-943 W, 5000 N-5200 N
+  48-6 CSV: E=Marine Drive (800 West) | W=Broadway (1200 West) | N=Foster (5200 North) | S=Ainsle (4900 North)
+  48-6 map: 1200 W-917 W, 4900 N-5200 N
+
+OVERLAP 63%: 40-11 ↔ 50-11
+  40-11 CSV: E=Leavitt (2200 West) | W=Fairfield (2732 West) | N=Granville (6200 North) | S=Peterson (6000 North)
+  40-11 map: 2732 W-2200 W, 6000 N-6200 N
+  50-11 CSV: E=Western (2400 West) | W=Francisco (2900 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+  50-11 map: 2900 W-2400 W, 6000 N-6400 N
+
+OVERLAP 61%: 3-4 ↔ 4-13
+  3-4 CSV: E=Giles (300 East) | W=State St (0 E/W) | N=26th St (2600 South) | S=35th St (3500 South)
+  3-4 map: 0 W-300 E, 3500 S-2600 S
+  4-13 CSV: E=Lake Park (428 East) | W=Michigan (100 E) | N=26th St (2600 S) | S=31st St (3100 S)
+  4-13 map: 100 E-428 E, 3100 S-2600 S
+
+OVERLAP 61%: 39-17 ↔ 45-17
+  39-17 CSV: E=Forest Glen (5100 West) | W=Austin (6000 West) | N=Devon (6400 North) | S=Berwyn (5300 North)
+  39-17 map: 6000 W-5100 W, 5300 N-6400 N
+  45-17 CSV: E=Elston (1132 West) | W=Farragut (5232 West) | N=Central (5600 West) | S=Ludlam (5470 North)
+  45-17 map: 5600 W-5232 W, 5200 N-5470 N
+
+OVERLAP 60%: 28-10 ↔ 37-12
+  28-10 CSV: E=Kenton (4600 West) | W=Lavergne (5000 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+  28-10 map: 5000 W-4600 W, 0 S-800 N
+  37-12 CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Chicago Ave (800 North) | S=Grand Ave (500 North)
+  37-12 map: 4800 W-4400 W, 500 N-800 N
+
+OVERLAP 59%: 41-27 ↔ 45-11
+  41-27 CSV: E=Neenah (6532 West) | W=Normandy (6700 West) | N=Gregory (5532 North) | S=Foster (5200 North)
+  41-27 map: 6700 W-6532 W, 5200 N-5532 N
+  45-11 CSV: E=Austin (6000 West) | W=Mulligan (6632 West) | N=Avondale (1800 West - 2026 North) | S=Foster Ave (5200 North)
+  45-11 map: 6632 W-6000 W, 5200 N-5600 N
+
+OVERLAP 58%: 24-1 ↔ 25-3
+  24-1 CSV: E=Rockwell (2600 West) | W=Albany (3100 West) | N=16th Street (1600 South) | S=31st Street (3100 South)
+  24-1 map: 3100 W-2600 W, 3100 S-1600 S
+  25-3 CSV: E=Western Ave (2400 West) | W=California Avenue (2800 West) | N=18th Street (1800 South) | S=26th Street (2600 South)
+  25-3 map: 2800 W-2400 W, 2600 S-1800 S
+
+OVERLAP 57%: 21-18 ↔ 21-19
+  21-18 CSV: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=84th Street (8400 South) | S=91st Street (9100 South)
+  21-18 map: 1710 W-1100 W, 9100 S-8400 S
+  21-19 CSV: E=Eggleston Ave (432 West) | W=Aberdeen Street (1710 West) | N=87th Street (8700 South) | S=91st Street (9100 South)
+  21-19 map: 1710 W-432 W, 9100 S-8700 S
+
+OVERLAP 57%: 10-18 ↔ 9-27
+  10-18 CSV: E=St. Lawrence (600 East) | W=Indiana (200 East) | N=130th Street (13000 S) | S=138th Street (13800 South)
+  10-18 map: 437 E-600 E, 13112 S-13000 S
+  9-27 CSV: E=Rhodes Ave (530 E) | W=Indiana Ave (130 E) | N=130th Street (12000 S) | S=134th Street (13400 S)
+  9-27 map: 130 E-530 E, 13112 S-12000 S
+
+OVERLAP 57%: 5-1 ↔ 6-5
+  5-1 CSV: E=Kimbark (1300 E) | W=Cottage Grove (400 E) | N=71st St (7100 S) | S=75th St (7500 S)
+  5-1 map: 400 E-1300 E, 7500 S-7100 S
+  6-5 CSV: E=Rhodes Ave (532 E) | W=Prairie Ave (300 E) | N=71st St (7100 S) | S=75th St (7500 S)
+  6-5 map: 300 E-532 E, 7500 S-7100 S
+
+OVERLAP 57%: 3-2 ↔ 4-15
+  3-2 CSV: E=Calumet (340 East) | W=Clark (100 W) | N=16th St (1600 South) | S=Cermak (2200 South)
+  3-2 map: 100 W-340 E, 2200 S-1600 S
+  4-15 CSV: E=Michigan (100 E) | W=Clark (100 W) | N=Polk (800 S) | S=Jackson (3300 S)
+  4-15 map: 100 W-100 E, 3300 S-800 S
+
+OVERLAP 56%: 13-8 ↔ 13-9
+  13-8 CSV: E=Central (5600 West) | W=Menard (5800 West) | N=55th Street (5500 South) | S=Railroad Tracks (5930 South)
+  13-8 map: 5800 W-5600 W, 5930 S-5500 S
+  13-9 CSV: E=Central (5600 West) | W=Menard (5800 West) | N=Minuteman Park (5915 South) | S=63rd Street (6300 South)
+  13-9 map: 5800 W-5600 W, 5944 S-5915 S
+
+OVERLAP 56%: 39-15 ↔ 39-17
+  39-15 CSV: E=Cicero (4800 West) | W=Central (5500 West) | N=Devon (6400 North) | S=Caldwell (6100 North)
+  39-15 map: 5500 W-4800 W, 6100 N-6400 N
+  39-17 CSV: E=Forest Glen (5100 West) | W=Austin (6000 West) | N=Devon (6400 North) | S=Berwyn (5300 North)
+  39-17 map: 6000 W-5100 W, 5300 N-6400 N
+
+OVERLAP 56%: 4-1 ↔ 5-14
+  4-1 CSV: E=Lake Park (1500 E) | W=Woodlawn (1200 E) | N=51st St (5100 S) | S=53rd St (5300 S)
+  4-1 map: 1200 E-1500 E, 5300 S-5100 S
+  5-14 CSV: E=Ridgewood Ct (1368 East) | W=University Ave (1144 East) | N=Hyde Park Blvd (5100 South) | S=55th Street (5500 South)
+  5-14 map: 1144 E-1368 E, 5500 S-5100 S
+
+OVERLAP 55%: 7-14 ↔ 8-18
+  7-14 CSV: E=89th St (8900 E) | W=83rd St (8300 E) | N=Muskegon (2818 E) | S=Jeffery (2000 E)
+  7-14 map: 2000 E-2818 E, 8900 S-8300 S
+  8-18 CSV: E=Yates (2400 E) | W=Jeffery (2000 E) | N=87th St (8700 S) | S=91st St (9100 S)
+  8-18 map: 2000 E-2400 E, 9100 S-8700 S
+
+OVERLAP 55%: 12-8 ↔ 12-9
+  12-8 CSV: E=California (2800 West) | W=Drake (3530 West) | N=37th Street (3700 South) | S=Pershing (3900 South)
+  12-8 map: 3530 W-2800 W, 3900 S-3700 S
+  12-9 CSV: E=Western (2400 West) | W=Kedzie (3200 West) | N=35th Street (3500 South) | S=Pershing (3900 South)
+  12-9 map: 3200 W-2400 W, 3900 S-3500 S
+
+OVERLAP 54%: 1-7 ↔ 1-8
+  1-7 CSV: E=Ashland (1600 West) | W=Hoyne (2100 West) | N=North Ave (1600 North) | S=Division (1200 North)
+  1-7 map: 2100 W-1600 W, 1200 N-1600 N
+  1-8 CSV: E=Honore (1828 West) | W=Leavitt (2200 West) | N=North Ave (1600 North) | S=Augusta (1000 North)
+  1-8 map: 2200 W-1828 W, 1000 N-1600 N
+
+OVERLAP 53%: 26-14 ↔ 36-10
+  26-14 CSV: E=Kedzie (3200 West) | W=Central Park (3600 West) | N=Hirsch (1400 North) | S=Augusta (1000 North)
+  26-14 map: 3600 W-3200 W, 1000 N-1400 N
+  36-10 CSV: E=California (2800 West) | W=Central Park (3600 West) | N=Division (1200 North) | S=Grand Ave (500 North)
+  36-10 map: 3600 W-2800 W, 500 N-1200 N
+
+OVERLAP 53%: 22-11 ↔ 25-2
+  22-11 CSV: E=Spaulding (3000 West) | W=Drake (3532 West) | N=Cermak (2200 South) | S=26th Street (2600 South)
+  22-11 map: 3532 W-3000 W, 2600 S-2200 S
+  25-2 CSV: E=Sacramento (3000 West) | W=Kedzie (3200 West) | N=23rd Street (2300 South) | S=31st Street (3100 South)
+  25-2 map: 3200 W-3000 W, 3033 S-2300 S
+
+OVERLAP 53%: 41-1 ↔ 41-5
+  41-1 CSV: E=Oriole (7600 West) Ozanam (7600 West) | W=Overhill (7700 West) Ozanam (7600 West) | N=Howard (7600 North) | S=Northwest Highway (6800 North)
+  41-1 map: 7700 W-7600 W, 6800 N-7562 N
+  41-5 CSV: E=Osceola (7432 West) | W=Overhill (7700 West) | N=Touhy (7200 North) | S=Pratt (6800 North)
+  41-5 map: 7700 W-7432 W, 6800 N-7200 N
+
+OVERLAP 51%: 27-8 ↔ 27-9
+  27-8 CSV: E=Jefferson (600 West) | W=Ogden (1800 South) | N=Division (1200 North) | S=Kinzie (400 North)
+  27-8 map: 1400 W-600 W, 400 N-1200 N
+  27-9 CSV: E=Halsted (800 West) | W=Armour (1500 West) | N=North Ave (1600 North) | S=Erie (658 North)
+  27-9 map: 1500 W-800 W, 658 N-1600 N
+
+OVERLAP 51%: 24-1 ↔ 25-2
+  24-1 CSV: E=Rockwell (2600 West) | W=Albany (3100 West) | N=16th Street (1600 South) | S=31st Street (3100 South)
+  24-1 map: 3100 W-2600 W, 3100 S-1600 S
+  25-2 CSV: E=Sacramento (3000 West) | W=Kedzie (3200 West) | N=23rd Street (2300 South) | S=31st Street (3100 South)
+  25-2 map: 3200 W-3000 W, 3033 S-2300 S
+
+OVERLAP 51%: 40-6 ↔ 50-10
+  40-6 CSV: E=Ravenswood (1800 West) | W=Leavitt (2200 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+  40-6 map: 2200 W-1800 W, 6000 N-6400 N
+  50-10 CSV: E=Ridge (1800 West) | W=Western (2400 West) | N=Loyola (6585 North) | S=Granville (6200 North)
+  50-10 map: 2400 W-1800 W, 6200 N-6585 N
+
+OVERLAP 50%: 7-16 ↔ 8-18
+  7-16 CSV: E=Yates (2401 E) | W=Paxton (2201 E) | N=89th St (8900) | S=93rd St (9300)
+  7-16 map: 2201 E-2401 E, 9300 S-8900 S
+  8-18 CSV: E=Yates (2400 E) | W=Jeffery (2000 E) | N=87th St (8700 S) | S=91st St (9100 S)
+  8-18 map: 2000 E-2400 E, 9100 S-8700 S
+
+OVERLAP 50%: 49-2 ↔ 49-3
+  49-2 CSV: E=Ridge (2100 West) | W=Western (2400 West) | N=Howard (7600 North) | S=Touhy (7200 North)
+  49-2 map: 2400 W-2100 W, 7200 N-7599 N
+  49-3 CSV: E=Damen (2000 West) | W=Ridge (2200 West) | N=Howard (7600 North) | S=Touhy (7200 North)
+  49-3 map: 2200 W-2000 W, 7200 N-7596 N
+
+OVERLAP 50%: 20-14 ↔ 5-10
+  20-14 CSV: E=Ingleside (930 East) | W=Cottage Grove (800 East) | N=50th Street (5000 South) | S=60th Street (6000 South)
+  20-14 map: 800 E-930 E, 6000 S-5000 S
+  5-10 CSV: E=Kimbark Ave (1300 E) | W=Ellis Ave (600 E) | N=55th Street (5500 S) | S=61st Street (6100 S)
+  5-10 map: 600 E-1300 E, 6100 S-5500 S
+
+OVERLAP 50%: 1-10 ↔ 26-11
+  1-10 CSV: E=Western (2400 West) | W=California (2800 West) | N=Armitage (2000 North) | S=North (1600 North)
+  1-10 map: 2800 W-2400 W, 1600 N-2000 N
+  26-11 CSV: E=Rockwell (2600 West) | W=California (2800 West) | N=Bloomingdale (1800 North) | S=Hirsch (1400 North)
+  26-11 map: 2800 W-2600 W, 1400 N-1800 N
+
+OVERLAP 50%: 31-12 ↔ 36-8
+  31-12 CSV: E=Knox (4632 West) | W=Lockwood (5300 West) | N=Altgeld (2500 North) | S=Belden (2300 North)
+  31-12 map: 5300 W-4632 W, 2300 N-2500 N
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+
+OVERLAP 50%: 28-10 ↔ 37-11
+  28-10 CSV: E=Kenton (4600 West) | W=Lavergne (5000 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+  28-10 map: 5000 W-4600 W, 0 S-800 N
+  37-11 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Grand Ave (500 North) | S=Chicago Ave (800 North)
+  37-11 map: 5200 W-4800 W, 500 N-800 N
+
+OVERLAP 50%: 28-10 ↔ 37-7
+  28-10 CSV: E=Kenton (4600 West) | W=Lavergne (5000 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+  28-10 map: 5000 W-4600 W, 0 S-800 N
+  37-7 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-7 map: 5200 W-4800 W, 200 N-700 N
+
+OVERLAP 50%: 28-10 ↔ 37-8
+  28-10 CSV: E=Kenton (4600 West) | W=Lavergne (5000 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+  28-10 map: 5000 W-4600 W, 0 S-800 N
+  37-8 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-8 map: 5200 W-4800 W, 200 N-700 N
+
+OVERLAP 50%: 1-3 ↔ 27-9
+  1-3 CSV: E=Noble (1400 West) | W=Ashland (1600 West) | N=Division (1200 North) | S=Chicago (800 North)
+  1-3 map: 1600 W-1400 W, 800 N-1200 N
+  27-9 CSV: E=Halsted (800 West) | W=Armour (1500 West) | N=North Ave (1600 North) | S=Erie (658 North)
+  27-9 map: 1500 W-800 W, 658 N-1600 N
+
+OVERLAP 50%: 38-1 ↔ 45-2
+  38-1 CSV: E=Lavergne (5000 West) | W=Laramie (5200 West) | N=Berteau (4200 North) | S=Irving Park (4000 North)
+  38-1 map: 5200 W-5000 W, 4000 N-4200 N
+  45-2 CSV: E=Kenton (4600 West) | W=Lockwood (5300 West) | N=Belle Plaine (4100 North) | S=Grace (3800 North)
+  45-2 map: 5300 W-4600 W, 3800 N-4100 N
+
+OVERLAP 50%: 1-5 ↔ 27-9
+  1-5 CSV: E=Noble (1400 West) | W=Ashland (1600 West) | N=North Ave (1600 North) | S=Division (1200 North)
+  1-5 map: 1600 W-1400 W, 1200 N-1600 N
+  27-9 CSV: E=Halsted (800 West) | W=Armour (1500 West) | N=North Ave (1600 North) | S=Erie (658 North)
+  27-9 map: 1500 W-800 W, 658 N-1600 N
+
+OVERLAP 50%: 16-17 ↔ 20-9
+  16-17 CSV: E=Wallace (600 West) | W=Morgan (1000 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+  16-17 map: 1000 W-600 W, 6300 S-5900 S
+  20-9 CSV: E=Wells (236 West) | W=Halsted (800 West) | N=59th Street (5900 South) | S=65th Street (6500 South)
+  20-9 map: 800 W-236 W, 6500 S-5900 S
+
+OVERLAP 50%: 20-2 ↔ 20-4
+  20-2 CSV: E=Halsted (800 West) | W=Loomis (1400 West) | N=47th Street (4700 South) | S=51st Street (5100 South)
+  20-2 map: 1400 W-800 W, 5100 S-4700 S
+  20-4 CSV: E=Halsted (800 West) | W=Racine (1200 West) | N=49th Place (4900 South) | S=53rd Street (5300 South)
+  20-4 map: 1200 W-800 W, 5300 S-4900 S
+
+OVERLAP 50%: 32-7 ↔ 32-8
+  32-7 CSV: E=Ravenswood (1800 West) | W=Damen (2000 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+  32-7 map: 2000 W-1800 W, 2800 N-3200 N
+  32-8 CSV: E=Ashland Ave (1600 West) | W=Wolcott (1900 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+  32-8 map: 1900 W-1600 W, 2800 N-3200 N
+
+OVERLAP 50%: 36-2 ↔ 38-12
+  36-2 CSV: E=Narragansett (6400 West) | W=Normandy (6700 West) | N=Roscoe (3400 North) | S=Wellington (3000 North)
+  36-2 map: 6700 W-6400 W, 3000 N-3400 N
+  38-12 CSV: E=Narragansett (6400 West) | W=Oak Park (6800 West) | N=Addison (3600 North) | S=Belmont (3200 North)
+  38-12 map: 6800 W-6400 W, 3200 N-3600 N
+
+OVERLAP 50%: 39-3 ↔ 45-5
+  39-3 CSV: E=Lowell (4432 West) | W=Cicero (4800 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+  39-3 map: 4800 W-4432 W, 4400 N-4800 N
+  45-5 CSV: E=Avondale | W=Milwaukee | N=Kennedy Expressway | S=Montrose (4400 North)
+  45-5 map: 5000 W-4600 W, 4400 N-4600 N
+
+OVERLAP 50%: 40-19 ↔ 47-2
+  40-19 CSV: E=Chicago River (2300 West) | W=Sacramento (3000 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+  40-19 map: 3000 W-2300 W, 4400 N-4800 N
+  47-2 CSV: E=Leavitt (2200 West) | W=Western (2400 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+  47-2 map: 2400 W-2200 W, 4400 N-4800 N
+
+OVERLAP 50%: 5-7 ↔ 7-1
+  5-7 CSV: E=Yates Blvd (2400 E) | W=Bennett Ave (1900 E) | N=71st Street (7100 S) | S=73rd Street (7300 S)
+  5-7 map: 1900 E-2400 E, 7300 S-7100 S
+  7-1 CSV: E=Euclid (2130 E) | W=Merrill (2121 E) | N=73rd Street (7100) | S=75th Street (7500)
+  7-1 map: 2121 E-2130 E, 7500 S-7100 S
+
+OVERLAP 50%: 7-3 ↔ 7-7
+  7-3 CSV: E=Yates (2600 E) | W=Paxton (2198 E) | N=72nd Street (7200) | S=75th Street (7500)
+  7-3 map: 2198 E-2600 E, 7500 S-7200 S
+  7-7 CSV: E=Exchange (2399 E) | W=Lake Front (1600 East) | N=71st Street (7100) | S=75th Street (7500)
+  7-7 map: 1600 E-2399 E, 7500 S-7100 S
+
+OVERLAP 50%: 40-8 ↔ 47-6
+  40-8 CSV: E=Clark (100 West) | W=Damen (2000 West) | N=Foster (5200 North) | S=Argyle (5000 North)
+  40-8 map: 2000 W-943 W, 5000 N-5200 N
+  47-6 CSV: E=Broadway (1200 West) | W=Ashland (1600 West) | N=Foster Ave (5200 North) | S=Lawrence (4800 North)
+  47-6 map: 1600 W-1200 W, 4800 N-5200 N
+
+OVERLAP 50%: 35-6 ↔ 35-7
+  35-6 CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=Diversey (2800 North) | S=Wrightwood (2600 North)
+  35-6 map: 4000 W-3600 W, 2600 N-2800 N
+  35-7 CSV: E=Kimball (3400 West) | W=Hamlin (3800 West) | N=Milwaukee Ave | S=Wrightwood (2600 North)
+  35-7 map: 3800 W-3400 W, 2600 N-3000 N
+
+OVERLAP 50%: 26-6 ↔ 36-9
+  26-6 CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=Bloomingdale (1800 North) | S=North Ave (1600 North)
+  26-6 map: 4000 W-3600 W, 1600 N-1800 N
+  36-9 CSV: E=Central Park (3600 West) | W=Kostner (4400 West) | N=Wabansia (1700 North) | S=Thomas (1100 North)
+  36-9 map: 4400 W-3600 W, 1100 N-1700 N
+
+OVERLAP 50%: 38-1 ↔ 45-4
+  38-1 CSV: E=Lavergne (5000 West) | W=Laramie (5200 West) | N=Berteau (4200 North) | S=Irving Park (4000 North)
+  38-1 map: 5200 W-5000 W, 4000 N-4200 N
+  45-4 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Sunnyside (4500 North) | S=Belle Plaine (4100 North)
+  45-4 map: 5200 W-4800 W, 4100 N-4500 N
+
+OVERLAP 50%: 1-1 ↔ 27-8
+  1-1 CSV: E=Racine (1200 West) | W=Ashland (1600 West) | N=Chicago (800 North) | S=Kinzie (400 North)
+  1-1 map: 1600 W-1200 W, 400 N-800 N
+  27-8 CSV: E=Jefferson (600 West) | W=Ogden (1800 South) | N=Division (1200 North) | S=Kinzie (400 North)
+  27-8 map: 1400 W-600 W, 400 N-1200 N
+
+OVERLAP 50%: 1-9 ↔ 26-12
+  1-9 CSV: E=Leavitt (2200 West) | W=Rockwell (2600 West) | N=North Ave (1600 North) | S=Augusta (1000 North)
+  1-9 map: 2600 W-2200 W, 1000 N-1600 N
+  26-12 CSV: E=Western (2400 West) | W=California (2800 West) | N=Hirsch (1400 North) | S=Division (1200 North)
+  26-12 map: 2800 W-2400 W, 1200 N-1400 N
+
+OVERLAP 50%: 46-4 ↔ 46-5
+  46-4 CSV: E=Clarendon (800 West) | W=Clark (1500 West) | N=Montrose (4400 North) | S=Irving Park (4000 North)
+  46-4 map: 1500 W-800 W, 4000 N-4400 N
+  46-5 CSV: E=Marine Drive (610 West) | W=Sheridan (1000 West) | N=Wilson (4600 North) | S=Buena (4200 North)
+  46-5 map: 1000 W-761 W, 4200 N-4600 N
+
+OVERLAP 49%: 21-12 ↔ 9-9
+  21-12 CSV: E=Parnell Ave (532 West) | W=Carpenter Street (1032 West) | N=99th street (9900 South) | S=103rd Street (10300 South)
+  21-12 map: 1032 W-532 W, 10300 S-9900 S
+  9-9 CSV: E=Eggleston (430 W) | W=Lowe (630 W) | N=99th Place (9930 S) | S=103rd Street (10300 South)
+  9-9 map: 630 W-430 W, 10300 S-9930 S
+
+OVERLAP 49%: 46-1 ↔ 47-5
+  46-1 CSV: E=Magnolia (1235 West) | W=Clark (1500 West) | N=Wilson (4600 North) | S=Montrose (4400 North)
+  46-1 map: 1500 W-1235 W, 4403 N-4600 N
+  47-5 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Sunnyside (4500 North) | S=Montrose (4400 North)
+  47-5 map: 1800 W-784 W, 4400 N-4500 N
+
+OVERLAP 49%: 33-2 ↔ 40-8
+  33-2 CSV: E=Chicago River (1500 West) | W=Kimball (3400 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+  33-2 map: 3400 W-1500 W, 4800 N-5200 N
+  40-8 CSV: E=Clark (100 West) | W=Damen (2000 West) | N=Foster (5200 North) | S=Argyle (5000 North)
+  40-8 map: 2000 W-943 W, 5000 N-5200 N
+
+OVERLAP 48%: 32-20 ↔ 43-7
+  32-20 CSV: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+  32-20 map: 2032 W-400 W, 1600 N-2400 N
+  43-7 CSV: E=Stockton Drive (100 West) | W=Larrabee (600 West) | N=Armitage (2000 North) | S=North Avenue (1600 North)
+  43-7 map: 600 W-100 W, 1600 N-2000 N
+
+OVERLAP 46%: 11-13 ↔ 12-11
+  11-13 CSV: E=Justine Street (1532 W) | W=Paulina Street (1700 W) | N=32nd Street (3200 S) | S=Pershing Road (3900 S)
+  11-13 map: 1700 W-1532 W, 3900 S-3200 S
+  12-11 CSV: E=Ashland (1600 West) | W=Damen (2000 West) | N=35th Street (3500 South) | S=Pershing (3900 South)
+  12-11 map: 1839 W-1600 W, 3900 S-3651 S
+
+OVERLAP 46%: 15-9 ↔ 16-13
+  15-9 CSV: E=Marshfield (1632 West) | W=Damen (2000 West) Wolcott (1900 West) | N=56th Street (5600 South) | S=61st Street (6100 South)
+  15-9 map: 2000 W-1632 W, 6100 S-5600 S
+  16-13 CSV: E=Ashland (1600 West) | W=Damen (2000 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+  16-13 map: 2000 W-1600 W, 6300 S-5900 S
+
+OVERLAP 45%: 3-1 ↔ 4-15
+  3-1 CSV: E=Calumet (340 East) | W=Clark (100 W) | N=12th St (1200 South) | S=16th St (1600 South)
+  3-1 map: 100 W-340 E, 1600 S-1200 S
+  4-15 CSV: E=Michigan (100 E) | W=Clark (100 W) | N=Polk (800 S) | S=Jackson (3300 S)
+  4-15 map: 100 W-100 E, 3300 S-800 S
+
+OVERLAP 44%: 32-1 ↔ 47-19
+  32-1 CSV: E=Leavitt (2200 West) | W=Western (2400 West) | N=Addison (3600 North) | S=Belmont (3200 North)
+  32-1 map: 2400 W-2200 W, 3200 N-3600 N
+  47-19 CSV: E=Chicago River (2359 West) | W=Western (2400 West) | N=Irving Park (4000 North) | S=Barry (3100 North)
+  47-19 map: 2400 W-2359 W, 3100 N-4000 N
+
+OVERLAP 44%: 47-13 ↔ 47-19
+  47-13 CSV: E=Leavitt (2200 West) | W=Western (2400 West) | N=Irving Park (4000 North) | S=Addison (3600 North)
+  47-13 map: 2400 W-2200 W, 3600 N-4000 N
+  47-19 CSV: E=Chicago River (2359 West) | W=Western (2400 West) | N=Irving Park (4000 North) | S=Barry (3100 North)
+  47-19 map: 2400 W-2359 W, 3100 N-4000 N
+
+OVERLAP 44%: 40-10 ↔ 47-20
+  40-10 CSV: E=Damen (2000 West) | W=Western (2400 West) | N=Foster (5200 North) | S=Ainsle (4900 North)
+  40-10 map: 2400 W-2000 W, 4900 N-5200 N
+  47-20 CSV: E=Ravenswood (1800 West) | W=Western (2400 West) | N=Winnemac (5032 North) | S=Lawrence (4800 North)
+  47-20 map: 2400 W-1800 W, 4800 N-5032 N
+
+OVERLAP 44%: 3-8 ↔ 4-9
+  3-8 CSV: E=Evans (732 East) | W=King Drive (400 East) | N=39th St (3900 South) | S=45th St (4500 South)
+  3-8 map: 400 E-732 E, 4500 S-3900 S
+  4-9 CSV: E=Drexel (900 E) | W=Vincennes 600 E | N=39th St (3900 S) | S=43rd St (4300 S)
+  4-9 map: 600 E-900 E, 4300 S-3900 S
+
+OVERLAP 43%: 1-6 ↔ 1-8
+  1-6 CSV: E=Ashland (1600 West) | W=Damen (2000 West) | N=North Ave (1600 North) | S=Division (1200 North)
+  1-6 map: 2000 W-1600 W, 1200 N-1600 N
+  1-8 CSV: E=Honore (1828 West) | W=Leavitt (2200 West) | N=North Ave (1600 North) | S=Augusta (1000 North)
+  1-8 map: 2200 W-1828 W, 1000 N-1600 N
+
+OVERLAP 41%: 20-6 ↔ 3-7
+  20-6 CSV: E=La Salle (140 West) | W=Union (700 West) | N=42nd Street (4200 South) | S=51st Street (5100 South)
+  20-6 map: 700 W-140 W, 5100 S-4200 S
+  3-7 CSV: E=State (0 E/W) | W=Stewart (400 West) | N=39th St. (3900 South) | S=47th St (4700 South)
+  3-7 map: 400 W-0 W, 4700 S-3900 S
+
+OVERLAP 40%: 7-6 ↔ 7-8
+  7-6 CSV: E=Escanaba (2800 E) | W=Essex (2464 E) | N=75th Street (7500) | S=79th Street (7900)
+  7-6 map: 2464 E-2800 E, 7900 S-7500 S
+  7-8 CSV: E=Exchange (2600 E) | W=Lake Front (1600 East) | N=75th Street (7500) | S=79th Street (7900)
+  7-8 map: 1600 E-2600 E, 7900 S-7500 S
+
+OVERLAP 40%: 28-11 ↔ 37-7
+  28-11 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Kinzie (400 North) | S=Van Buren 400 South)
+  28-11 map: 5200 W-4800 W, 400 S-400 N
+  37-7 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-7 map: 5200 W-4800 W, 200 N-700 N
+
+OVERLAP 40%: 28-11 ↔ 37-8
+  28-11 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Kinzie (400 North) | S=Van Buren 400 South)
+  28-11 map: 5200 W-4800 W, 400 S-400 N
+  37-8 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-8 map: 5200 W-4800 W, 200 N-700 N
+
+OVERLAP 40%: 15-3 ↔ 20-1
+  15-3 CSV: E=Paulina (1700 West) Hermitage (1732 West) | W=Leavitt (2200 West) | N=47th Street (4700 South) 50th Place (5032 South) | S=48th Street (4800 South) 51st Street (5100 South)
+  15-3 map: 2200 W-1700 W, 4800 S-4700 S
+  20-1 CSV: E=Loomis (1400 West) | W=Wolcott (1900 West) | N=47th Street (4700 South) | S=51st Street (5100 South)
+  20-1 map: 1900 W-1400 W, 5100 S-4700 S
+
+OVERLAP 40%: 15-10 ↔ 16-13
+  15-10 CSV: E=Marshfield (1632 West) | W=Wolcott (1900 West) | N=61st Street (6100 South) | S=66th Street (6600 South)
+  15-10 map: 1900 W-1632 W, 6600 S-6100 S
+  16-13 CSV: E=Ashland (1600 West) | W=Damen (2000 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+  16-13 map: 2000 W-1600 W, 6300 S-5900 S
+
+OVERLAP 40%: 17-14 ↔ 6-24
+  17-14 CSV: E=Wallace Street (600 West) | W=Halsted Street (800 West) | N=74th Street (7400 South) | S=79th Street (7900 South)
+  17-14 map: 800 W-600 W, 7900 S-7400 S
+  6-24 CSV: E=Stewart Ave (400 W) | W=Halsted St (800 W) | N=71st St (7100 S) | S=76th St (7600 S)
+  6-24 map: 800 W-400 W, 7600 S-7100 S
+
+OVERLAP 40%: 24-2 ↔ 24-7
+  24-2 CSV: E=Albany (3100 West) | W=Central Park (3600 West) | N=Ogden (1544 South) | S=16th Street (1600 South)
+  24-2 map: 3600 W-3100 W, 1600 S-1544 S
+  24-7 CSV: E=Homan (3400 West) Albany 3100 West) | W=Central Park (3600 West) | N=Roosevelt (1200 South), Douglas (1400 South) | S=16th Street (1600 South)
+  24-7 map: 3600 W-3400 W, 1600 S-1200 S
+
+OVERLAP 40%: 28-2 ↔ 34-7
+  28-2 CSV: E=Racine (1200 West) | W=Ashland (1600 West) | N=Congress (400 South) | S=16th Street (1600 South)
+  28-2 map: 1600 W-1200 W, 1600 S-400 S
+  34-7 CSV: E=Racine (1200 West) | W=Paulina Street (1700 West) | N=Madison Street (0 N/S) | S=Polk Street (800 South)
+  34-7 map: 1700 W-1200 W, 800 S-0 S
+
+OVERLAP 40%: 37-1 ↔ 37-5
+  37-1 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Grand Ave (500 North) | S=North Ave (1600 North)
+  37-1 map: 5600 W-5200 W, 500 N-1600 N
+  37-5 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Huron (700 North) | S=West End (200 North)
+  37-5 map: 5600 W-5200 W, 200 N-700 N
+
+OVERLAP 40%: 36-8 ↔ 37-5
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-5 CSV: E=Laramie (5200 West) | W=Central (5600 West) | N=Huron (700 North) | S=West End (200 North)
+  37-5 map: 5600 W-5200 W, 200 N-700 N
+
+OVERLAP 40%: 36-8 ↔ 37-7
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-7 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-7 map: 5200 W-4800 W, 200 N-700 N
+
+OVERLAP 40%: 36-8 ↔ 37-8
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+  37-8 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Huron (700 North) | S=Lake Street (200 North)
+  37-8 map: 5200 W-4800 W, 200 N-700 N
+
+OVERLAP 40%: 23-11 ↔ 23-13
+  23-11 CSV: E=Kolin Avenue (4332 West) | W=Cicero Avenue (4800 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+  23-11 map: 4723 W-4332 W, 5500 S-5100 S
+  23-13 CSV: E=Hamlin Avenue (3800 West) | W=Pulaski Road (4432 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+  23-13 map: 4432 W-3800 W, 5500 S-5100 S
+
+OVERLAP 40%: 23-11 ↔ 23-12
+  23-11 CSV: E=Kolin Avenue (4332 West) | W=Cicero Avenue (4800 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+  23-11 map: 4723 W-4332 W, 5500 S-5100 S
+  23-12 CSV: E=Pulaski Road (4000 West) | W=Kolin Avenue (4432 West) | N=51st Street (5100 South) | S=55th Street (5500 South)
+  23-12 map: 4432 W-4000 W, 5500 S-5100 S
+
+OVERLAP 40%: 28-7 ↔ 37-12
+  28-7 CSV: E=Hamlin (3800 West) | W=Kenton (4600 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+  28-7 map: 4600 W-3800 W, 0 S-800 N
+  37-12 CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Chicago Ave (800 North) | S=Grand Ave (500 North)
+  37-12 map: 4800 W-4400 W, 500 N-800 N
+
+OVERLAP 40%: 30-7 ↔ 45-2
+  30-7 CSV: E=Cicero (4800 West) | W=Lockwood (5300 West) | N=Dakin (3932 North) | S=Addison (3600 North)
+  30-7 map: 5300 W-4800 W, 3600 N-3932 N
+  45-2 CSV: E=Kenton (4600 West) | W=Lockwood (5300 West) | N=Belle Plaine (4100 North) | S=Grace (3800 North)
+  45-2 map: 5300 W-4600 W, 3800 N-4100 N
+
+OVERLAP 40%: 44-1 ↔ 47-17
+  44-1 CSV: E=Southport (1400 West) | W=Greenview (1500 West) | N=Byron (3900 North) | S=Belmont (3200 North)
+  44-1 map: 1500 W-1400 W, 3200 N-3900 N
+  47-17 CSV: E=Janssen (1434 West) | W=Ashland (1600 West) | N=Grace (3800 North) | S=Roscoe (3400 North)
+  47-17 map: 1600 W-1434 W, 3400 N-3800 N
+
+OVERLAP 40%: 2-2 ↔ 32-20
+  2-2 CSV: E=Clark 100 W | W=Kingsbury 1400 W | N=Cortland 1900 N | S=Clybourn (1300 North)
+  2-2 map: 1400 W-100 W, 1300 N-1900 N
+  32-20 CSV: E=Kingsbury (400 West) | W=Seeley (2032 West) | N=Fullerton (2400 North) | S=North Ave (1600 North)
+  32-20 map: 2032 W-400 W, 1600 N-2400 N
+
+OVERLAP 39%: 40-2 ↔ 49-8
+  40-2 CSV: E=Ridge (1900 West) | W=Bell (2232 West) | N=Lunt (7000 North) | S=Devon (6400 North)
+  40-2 map: 2232 W-1900 W, 6400 N-7000 N
+  49-8 CSV: E=Clark (1700 West) | W=Ridge (2100 West) | N=Morse (6934 North) | S=Albion (6600 North)
+  49-8 map: 2100 W-1700 W, 6600 N-6934 N
+
+OVERLAP 39%: 39-7 ↔ 50-14
+  39-7 CSV: E=Saint Louis (3500 West) | W=Lowell (4432 West) | N=Devon (6400 North) | S=Bryn Mawr (5600 North)
+  39-7 map: 4432 W-3500 W, 5600 N-6371 N
+  50-14 CSV: E=Kedzie (3200 West) | W=Ridgeway (3700 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+  50-14 map: 3700 W-3200 W, 6000 N-6400 N
+
+OVERLAP 39%: 39-2 ↔ 45-3
+  39-2 CSV: E=Keystone (4032 West) | W=Kenneth (4432 West) | N=Leland (4700 North) | S=Irving Park (4000 North)
+  39-2 map: 4432 W-4032 W, 4000 N-4700 N
+  45-3 CSV: E=Keeler (4200 West) | W=Cicero (4800 West) | N=Montrose (4400 North) | S=Irving Park (4000 North)
+  45-3 map: 4800 W-4200 W, 4000 N-4400 N
+
+OVERLAP 38%: 46-1 ↔ 47-7
+  46-1 CSV: E=Magnolia (1235 West) | W=Clark (1500 West) | N=Wilson (4600 North) | S=Montrose (4400 North)
+  46-1 map: 1500 W-1235 W, 4403 N-4600 N
+  47-7 CSV: E=Southport Ave (1400 West) | W=Ashland (1600 West) | N=Wilson (4600 North) | S=Irving Park Road (4000 North)
+  47-7 map: 1600 W-1400 W, 4000 N-4600 N
+
+OVERLAP 38%: 18-20 ↔ 21-18
+  18-20 CSV: E=Justine (1532 West) | W=Damen (2000 West) | N=86th Street (8600 South) | S=90th Street (9000 South)
+  18-20 map: 2000 W-1532 W, 9000 S-8600 S
+  21-18 CSV: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=84th Street (8400 South) | S=91st Street (9100 South)
+  21-18 map: 1710 W-1100 W, 9100 S-8400 S
+
+OVERLAP 38%: 39-15 ↔ 45-24
+  39-15 CSV: E=Cicero (4800 West) | W=Central (5500 West) | N=Devon (6400 North) | S=Caldwell (6100 North)
+  39-15 map: 5500 W-4800 W, 6100 N-6400 N
+  45-24 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Devon (6400 North) | S=Loleta (5826 North)
+  45-24 map: 5700 W-5400 W, 5826 N-6400 N
+
+OVERLAP 38%: 2-2 ↔ 27-10
+  2-2 CSV: E=Clark 100 W | W=Kingsbury 1400 W | N=Cortland 1900 N | S=Clybourn (1300 North)
+  2-2 map: 1400 W-100 W, 1300 N-1900 N
+  27-10 CSV: E=Clark (100 West) | W=Halsted (800 West) | N=North Ave (1600 North) | S=Chicago Ave (800 North)
+  27-10 map: 800 W-100 W, 800 N-1600 N
+
+OVERLAP 38%: 1-13 ↔ 35-4
+  1-13 CSV: E=California (2800 West) | W=Kedzie (3200 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+  1-13 map: 3200 W-2800 W, 2000 N-2400 N
+  35-4 CSV: E=Sacramento (3000 West) | W=Kimball (3400 West) | N=Wrightwood (2600 North) | S=Dickens (2100 North)
+  35-4 map: 3400 W-3000 W, 2100 N-2600 N
+
+OVERLAP 38%: 17-2 ↔ 21-18
+  17-2 CSV: E=Morgan Street (1000 West) | W=Racine Ave (1200 West) | N=83rd Street (8300 South) | S=87th Street (8700 South)
+  17-2 map: 1200 W-1000 W, 8700 S-8300 S
+  21-18 CSV: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=84th Street (8400 South) | S=91st Street (9100 South)
+  21-18 map: 1710 W-1100 W, 9100 S-8400 S
+
+OVERLAP 38%: 3-12 ↔ 3-7
+  3-12 CSV: E=Michigan (100 East) | W=Federal (60 West) | N=43rd St (4300 South) | S=47th St (4700 South)
+  3-12 map: 60 W-100 E, 4700 S-4300 S
+  3-7 CSV: E=State (0 E/W) | W=Stewart (400 West) | N=39th St. (3900 South) | S=47th St (4700 South)
+  3-7 map: 400 W-0 W, 4700 S-3900 S
+
+OVERLAP 37%: 40-3 ↔ 49-12
+  40-3 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Albion (6600 North) | S=Peterson (6000 North)
+  40-3 map: 1800 W-1106 W, 6000 N-6600 N
+  49-12 CSV: E=Lake Michigan (500 East) | W=Glenwood (1400 West) | N=Pratt (6800 North) | S=Arthur (6500 North)
+  49-12 map: 1400 W-1146 W, 6500 N-6800 N
+
+OVERLAP 37%: 28-10 ↔ 36-8
+  28-10 CSV: E=Kenton (4600 West) | W=Lavergne (5000 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+  28-10 map: 5000 W-4600 W, 0 S-800 N
+  36-8 CSV: E=Kostner (4400 West) | W=Central (5600 West) | N=Fullerton (2400 North) | S=Grand Ave (500 North)
+  36-8 map: 5600 W-4400 W, 500 N-2400 N
+
+OVERLAP 37%: 20-17 ↔ 5-10
+  20-17 CSV: E=Woodlawn (1200 East) | W=Cottage Grove (800 East) | N=60th Street (6000 South) | S=63rd Street (6300 South)
+  20-17 map: 800 E-1200 E, 6300 S-6000 S
+  5-10 CSV: E=Kimbark Ave (1300 E) | W=Ellis Ave (600 E) | N=55th Street (5500 S) | S=61st Street (6100 S)
+  5-10 map: 600 E-1300 E, 6100 S-5500 S
+
+OVERLAP 37%: 34-1 ↔ 4-15
+  34-1 CSV: E=Indiana Ave (200 East) | W=Wells Street (200 West) | N=Harrison Street (600 South) | S=13th Street (1300 South)
+  34-1 map: 200 W-200 E, 1300 S-600 S
+  4-15 CSV: E=Michigan (100 E) | W=Clark (100 W) | N=Polk (800 S) | S=Jackson (3300 S)
+  4-15 map: 100 W-100 E, 3300 S-800 S
+
+OVERLAP 37%: 18-19 ↔ 21-20
+  18-19 CSV: E=Loomis Blvd (1400 West) | W=Damen (2000 West) | N=83rd Street (8300 South) | S=86th Street (8600 South)
+  18-19 map: 2000 W-1400 W, 8600 S-8300 S
+  21-20 CSV: E=State Street (0 E/W) | W=Vincennes Ave (1620 West) | N=83rd Street (8300 South) | S=90th Street (9000 South)
+  21-20 map: 1620 W-0 W, 9000 S-8300 S
+
+OVERLAP 36%: 39-3 ↔ 45-7
+  39-3 CSV: E=Lowell (4432 West) | W=Cicero (4800 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+  39-3 map: 4800 W-4432 W, 4400 N-4800 N
+  45-7 CSV: E=Milwaukee Ave | W=Central (5600 West) | N=Kennedy Expressway | S=Windsor (4532 North)
+  45-7 map: 5600 W-4600 W, 4532 N-4800 N
+
+OVERLAP 35%: 41-31 ↔ 45-12
+  41-31 CSV: E=Milwaukee Avenue | W=Newark (6700 West) | N=Albion (6600 North) | S=Devon (6400 North)
+  41-31 map: 6700 W-5800 W, 6400 N-6600 N
+  45-12 CSV: E=Nagle (6400 West) | W=Nettleton (6800 West) | N=Imlay (6500 North) | S=Newburg (6400 North)
+  45-12 map: 6800 W-6613 W, 6400 N-6500 N
+
+OVERLAP 34%: 18-19 ↔ 21-18
+  18-19 CSV: E=Loomis Blvd (1400 West) | W=Damen (2000 West) | N=83rd Street (8300 South) | S=86th Street (8600 South)
+  18-19 map: 2000 W-1400 W, 8600 S-8300 S
+  21-18 CSV: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=84th Street (8400 South) | S=91st Street (9100 South)
+  21-18 map: 1710 W-1100 W, 9100 S-8400 S
+
+OVERLAP 34%: 40-12 ↔ 50-13
+  40-12 CSV: E=Western (2400 West) | W=Richmond (2932 West) | N=Peterson (6000 North) | S=Ardmore (5800 North)
+  40-12 map: 2932 W-2429 W, 5800 N-6000 N
+  50-13 CSV: E=California (2800 West) | W=Virginia (3100 West) | N=Peterson (6000 North) | S=Bryn Mawr (5600 North)
+  50-13 map: 3100 W-2800 W, 5600 N-6000 N
+
+OVERLAP 34%: 33-2 ↔ 39-10
+  33-2 CSV: E=Chicago River (1500 West) | W=Kimball (3400 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+  33-2 map: 3400 W-1500 W, 4800 N-5200 N
+  39-10 CSV: E=Kedzie (3200 West) | W=Avers (3800 West) | N=Foster (5200 North) | S=Ainslie (4900 North)
+  39-10 map: 3800 W-3200 W, 4900 N-5200 N
+
+OVERLAP 34%: 45-5 ↔ 45-7
+  45-5 CSV: E=Avondale | W=Milwaukee | N=Kennedy Expressway | S=Montrose (4400 North)
+  45-5 map: 5000 W-4600 W, 4400 N-4600 N
+  45-7 CSV: E=Milwaukee Ave | W=Central (5600 West) | N=Kennedy Expressway | S=Windsor (4532 North)
+  45-7 map: 5600 W-4600 W, 4532 N-4800 N
+
+OVERLAP 34%: 28-1 ↔ 34-3
+  28-1 CSV: E=Canal (500 West) | W=Racine (1200 West) | N=Van Buren (400 South) | S=16th Street (1600 South)
+  28-1 map: 1200 W-500 W, 1600 S-400 S
+  34-3 CSV: E=Canal Street (500 West) | W=Halsted Street (800 West) | N=Madison Street (0 N/S) | S=Harrison Street (600 South)
+  34-3 map: 800 W-500 W, 600 S-0 S
+
+OVERLAP 34%: 30-12 ↔ 36-4
+  30-12 CSV: E=Austin (6000 West) | W=Narragansett (6400 West) | N=Belmont (3200 North) | S=Diversey (2800 North)
+  30-12 map: 6400 W-6000 W, 2800 N-3200 N
+  36-4 CSV: E=Moody (6132 West) | W=Normandy (6700 West) | N=Wellington (3000 North) | S=Grand (2400 North)
+  36-4 map: 6700 W-6132 W, 2400 N-3000 N
+
+OVERLAP 33%: 30-14 ↔ 30-15
+  30-14 CSV: E=Central Ave (5600 West) | W=Moody (6132 West) | N=Diversey (2800 North) | S=Wrightwood (2500 North)
+  30-14 map: 6132 W-5600 W, 2500 N-2800 N
+  30-15 CSV: E=Long (5400 West) | W=Narragansett (6400 West) | N=Wrightwood (2600 North) | S=Fullerton (2400 North)
+  30-15 map: 6400 W-5400 W, 2400 N-2600 N
+
+OVERLAP 33%: 16-23 ↔ 17-21
+  16-23 CSV: E=Ashland (1600 West) | W=Hamilton (2100 West) | N=Marquette (6700 South) | S=69th Street (6900 South)
+  16-23 map: 2100 W-1600 W, 6900 S-6700 S
+  17-21 CSV: E=Ashland Ave (1600 West) | W=Honore Street (1828 West) | N=68th Street (6800 South) | S=71st Street (7100 South)
+  17-21 map: 1828 W-1600 W, 7100 S-6800 S
+
+OVERLAP 33%: 26-3 ↔ 35-1
+  26-3 CSV: E=Pulaski (4000 West) | W=Kenton (4400 West) | N=Dickens (2100 North) | S=Bloomingdale (1800 North)
+  26-3 map: 4400 W-4000 W, 1800 N-2100 N
+  35-1 CSV: E=Pulaski (4000 West) | W=Kostner (4400 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+  35-1 map: 4400 W-4000 W, 2000 N-2400 N
+
+OVERLAP 33%: 42-3 ↔ 42-5
+  42-3 CSV: E=St. Clair (200 East) | W=LaSalle (150 West) | N=Walton (900 North) | S=Ohio (600 North)
+  42-3 map: 150 W-200 E, 600 N-900 N
+  42-5 CSV: E=Michigan (100 East) | W=State (0 West) | N=Cedar (1100 North) | S=Chicago (800 North)
+  42-5 map: 0 W-100 E, 800 N-1100 N
+
+OVERLAP 33%: 22-7 ↔ 24-3
+  22-7 CSV: E=Ridgeway (3732 West) | W=Pulaski (4000 West) | N=Cermak (2000 South) | S=26th Street (2600 South)
+  22-7 map: 4000 W-3732 W, 2600 S-2000 S
+  24-3 CSV: E=Central Park (3600 West) | W=Pulaski (4000 West) | N=Ogden (1544 South) | S=Cermak (2200 South)
+  24-3 map: 4000 W-3600 W, 2200 S-1544 S
+
+OVERLAP 33%: 14-1 ↔ 22-12
+  14-1 CSV: E=Kostner (4400 West) Kilbourn (4500 West) | W=Cicero (4800 West) Knox (4632 West) | N=47th Street (4700 South) 49th Street (4900 South) | S=51st Street (5100 South)
+  14-1 map: 4800 W-4400 W, 5100 S-4700 S
+  22-12 CSV: E=Knox (4632 West) | W=Cicero (4800 West) | N=43rd Street (4300 South) | S=49th Street (4900 South)
+  22-12 map: 4800 W-4632 W, 4900 S-4300 S
+
+OVERLAP 33%: 2-7 ↔ 42-4
+  2-7 CSV: E=Lake Shore Drive 140 E | W=State St (0 West) | N=Chicago 800 N | S=Illinois 500 N
+  2-7 map: 0 W-140 E, 500 N-800 N
+  42-4 CSV: E=McClurg (400 East) | W=LaSalle (150 West) | N=Ohio (600 North) | S=Kinzie (400 North)
+  42-4 map: 150 W-400 E, 400 N-600 N
+
+OVERLAP 33%: 32-3 ↔ 47-18
+  32-3 CSV: E=Ravenswood (1800 West) | W=Damen (2000 West) | N=Cornelia (3500 North) | S=Belmont (3200 North)
+  32-3 map: 2000 W-1800 W, 3200 N-3500 N
+  47-18 CSV: E=Ashland (1600 West) | W=Seeley (2032 West) | N=Addison (3600 North) | S=Roscoe (3400 North)
+  47-18 map: 2032 W-1600 W, 3400 N-3600 N
+
+OVERLAP 33%: 40-3 ↔ 49-11
+  40-3 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Albion (6600 North) | S=Peterson (6000 North)
+  40-3 map: 1800 W-1106 W, 6000 N-6600 N
+  49-11 CSV: E=Glenwood (1400 West) | W=Clark (1650 West) | N=Pratt (6800 North) | S=Arthur (6500 North)
+  49-11 map: 1650 W-1400 W, 6500 N-6800 N
+
+OVERLAP 33%: 40-17 ↔ 40-19
+  40-17 CSV: E=Western (2400 West) | W=Washtenaw (2700 West) | N=Argyle (5000 North) | S=Leland (4700 North)
+  40-17 map: 2700 W-2400 W, 4700 N-5000 N
+  40-19 CSV: E=Chicago River (2300 West) | W=Sacramento (3000 West) | N=Lawrence (4800 North) | S=Montrose (4400 North)
+  40-19 map: 3000 W-2300 W, 4400 N-4800 N
+
+OVERLAP 33%: 33-1 ↔ 39-10
+  33-1 CSV: E=Kimball (3400 West) | W=Pulaski (4000 West) | N=Argyle (5000 North) | S=Lawrence (4800 North)
+  33-1 map: 4000 W-3400 W, 4800 N-5000 N
+  39-10 CSV: E=Kedzie (3200 West) | W=Avers (3800 West) | N=Foster (5200 North) | S=Ainslie (4900 North)
+  39-10 map: 3800 W-3200 W, 4900 N-5200 N
+
+OVERLAP 31%: 10-15 ↔ 7-15
+  10-15 CSV: E=Baltimore (3234 E) | W=Muskegon (2734 E) | N=87th Street (8700 South) | S=95th Street (9500 South)
+  10-15 map: 2734 E-3234 E, 9500 S-8700 S
+  7-15 CSV: E=Escanaba (2863 E) | W=Phillips (2401 E) | N=89th St (8900) | S=94th St (9400)
+  7-15 map: 2401 E-2863 E, 9400 S-8900 S
+
+OVERLAP 31%: 39-1 ↔ 45-1
+  39-1 CSV: E=Ridgeway (3732 West) | W=Kedvale (4100 West) | N=Montrose (4400 North) | S=Irving Park (4000 North)
+  39-1 map: 4100 W-3732 W, 4000 N-4400 N
+  45-1 CSV: E=Central Park (3600 West) | W=Keeler (4200 West) | N=Belle Plaine (4100 North) | S=Byron (3900 North)
+  45-1 map: 4200 W-3600 W, 3900 N-4100 N
+
+OVERLAP 30%: 45-8 ↔ 45-9
+  45-8 CSV: E=Central (5600 West) | W=Melvina (6200 West) | N=Higgins | S=Eastwood (4632 North)
+  45-8 map: 6200 W-5600 W, 4632 N-5000 N
+  45-9 CSV: E=Austin (6000 West) | W=Mobile (6300 West) | N=Foster (5200 North) | S=Gunnison (4832 North)
+  45-9 map: 6300 W-6000 W, 4832 N-5200 N
+
+OVERLAP 30%: 33-6 ↔ 39-1
+  33-6 CSV: E=St. Louis (3500 West) | W=Avers (3832 West) | N=Montrose (4400 North) | S=Irving Park (4000 North)
+  33-6 map: 3832 W-3500 W, 4000 N-4400 N
+  39-1 CSV: E=Ridgeway (3732 West) | W=Kedvale (4100 West) | N=Montrose (4400 North) | S=Irving Park (4000 North)
+  39-1 map: 4100 W-3732 W, 4000 N-4400 N
+
+OVERLAP 30%: 25-10 ↔ 28-2
+  25-10 CSV: E=Canal Street (500 West) | W=Blue Island (1500 West) | N=14th Place (1432 South) | S=Viaduct (1500 South)
+  25-10 map: 1500 W-500 W, 1500 S-1432 S
+  28-2 CSV: E=Racine (1200 West) | W=Ashland (1600 West) | N=Congress (400 South) | S=16th Street (1600 South)
+  28-2 map: 1600 W-1200 W, 1600 S-400 S
+
+OVERLAP 30%: 19-1 ↔ 21-17
+  19-1 CSV: E=Charles (1530 West) Damen (2000 West) | W=Western (2400 West) | N=87th Street (8700 South) 91st Street (9100 South) | S=95th Street (9500 South)
+  19-1 map: 2400 W-1530 W, 9500 S-8700 S
+  21-17 CSV: E=Aberdeen Street (1100 West) | W=Beverly Blvd (1710 West) | N=91st Street (9100 South) | S=95th Street (9500 South)
+  21-17 map: 1710 W-1100 W, 9500 S-9100 S
+
+OVERLAP 29%: 41-11 ↔ 41-17
+  41-11 CSV: E=Harlem (7200 West) | W=Oriole (7600 West) | N=Everell (6128 North) | S=Bryn Mawr (5600 North)
+  41-11 map: 7600 W-7200 W, 5600 N-6128 N
+  41-17 CSV: E=Sayre (6920 West) | W=Oriole (7600 West) | N=Talcott (5700 North) Bryn Mawr (5600 North) | S=Catalpa (5500 North)
+  41-17 map: 7600 W-6920 W, 5500 N-5700 N
+
+OVERLAP 29%: 19-7 ↔ 21-13
+  19-7 CSV: E=Malta (1506 West) | W=Longwood (1900 West) | N=99th Street (9900 South) | S=103rd Street (10300 South)
+  19-7 map: 1900 W-1506 W, 10300 S-9900 S
+  21-13 CSV: E=Carpenter Street (1032 West) | W=Vincennes Ave (1620 West) | N=99th Street (9900 South) | S=103rd Street (10300 South)
+  21-13 map: 1620 W-1032 W, 10300 S-9900 S
+
+OVERLAP 29%: 9-22 ↔ 9-27
+  9-22 CSV: E=State Street (0 E) | W=Front Street (430 E) | N=119th Street (11900 S) | S=123rd Street (12300 S)
+  9-22 map: 0 W-430 E, 12078 S-11900 S
+  9-27 CSV: E=Rhodes Ave (530 E) | W=Indiana Ave (130 E) | N=130th Street (12000 S) | S=134th Street (13400 S)
+  9-27 map: 130 E-530 E, 13112 S-12000 S
+
+OVERLAP 29%: 32-4 ↔ 44-1
+  32-4 CSV: E=Southport (1400 West) | W=Ravenswood (1800 West) | N=Roscoe (3400 North) | S=Belmont (3200 North)
+  32-4 map: 1800 W-1400 W, 3200 N-3400 N
+  44-1 CSV: E=Southport (1400 West) | W=Greenview (1500 West) | N=Byron (3900 North) | S=Belmont (3200 North)
+  44-1 map: 1500 W-1400 W, 3200 N-3900 N
+
+OVERLAP 29%: 16-25 ↔ 6-25
+  16-25 CSV: E=Emerald (720 West) | W=Morgan (1000 West) | N=Marquette (6700 South) | S=71st Street (7100 South)
+  16-25 map: 1000 W-720 W, 7100 S-6700 S
+  6-25 CSV: E=Stewart Ave (400 W) | W=Halsted St (800 W) | N=Marquette Rd (6700 S) | S=71st St (7100 S)
+  6-25 map: 800 W-400 W, 7100 S-6700 S
+
+OVERLAP 29%: 40-2 ↔ 50-10
+  40-2 CSV: E=Ridge (1900 West) | W=Bell (2232 West) | N=Lunt (7000 North) | S=Devon (6400 North)
+  40-2 map: 2232 W-1900 W, 6400 N-7000 N
+  50-10 CSV: E=Ridge (1800 West) | W=Western (2400 West) | N=Loyola (6585 North) | S=Granville (6200 North)
+  50-10 map: 2400 W-1800 W, 6200 N-6585 N
+
+OVERLAP 29%: 18-20 ↔ 21-19
+  18-20 CSV: E=Justine (1532 West) | W=Damen (2000 West) | N=86th Street (8600 South) | S=90th Street (9000 South)
+  18-20 map: 2000 W-1532 W, 9000 S-8600 S
+  21-19 CSV: E=Eggleston Ave (432 West) | W=Aberdeen Street (1710 West) | N=87th Street (8700 South) | S=91st Street (9100 South)
+  21-19 map: 1710 W-432 W, 9100 S-8700 S
+
+OVERLAP 28%: 1-9 ↔ 36-11
+  1-9 CSV: E=Leavitt (2200 West) | W=Rockwell (2600 West) | N=North Ave (1600 North) | S=Augusta (1000 North)
+  1-9 map: 2600 W-2200 W, 1000 N-1600 N
+  36-11 CSV: E=Western (2400 West) | W=California (2800 West) | N=Hadden (1132 North) | S=Iowa (900 North)
+  36-11 map: 2800 W-2400 W, 900 N-1132 N
+
+OVERLAP 28%: 20-13 ↔ 3-9
+  20-13 CSV: E=Cottage Grove (800 East) | W=Washington Park Court (417 East) | N=49th Street (4900 South) | S=51st Street (5100 South)
+  20-13 map: 417 E-800 E, 5100 S-4900 S
+  3-9 CSV: E=Champlain (634 East) | W=King Drive (400 East) | N=45th St (4500 South) | S=50th St (5000 South)
+  3-9 map: 400 E-634 E, 5000 S-4500 S
+
+OVERLAP 28%: 33-1 ↔ 39-6
+  33-1 CSV: E=Kimball (3400 West) | W=Pulaski (4000 West) | N=Argyle (5000 North) | S=Lawrence (4800 North)
+  33-1 map: 4000 W-3400 W, 4800 N-5000 N
+  39-6 CSV: E=Avers (3832 West) | W=Lowell (4332 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+  39-6 map: 4332 W-3832 W, 4800 N-5174 N
+
+OVERLAP 28%: 19-6 ↔ 21-1
+  19-6 CSV: E=Vincennes (1500 West) | W=Longwood (1932 West) | N=103rd Street (10300 South) | S=107th Street (10700 South0
+  19-6 map: 1932 W-1500 W, 10700 S-10300 S
+  21-1 CSV: E=Halsted (800 West) | W=Vincennes Ave (1620 West) | N=107th Street (10700 South) | S=103rd Street (10300 South)
+  21-1 map: 1620 W-800 W, 10700 S-10300 S
+
+OVERLAP 28%: 19-12 ↔ 21-4
+  19-12 CSV: E=Vincennes (1500 West) | W=Longwood (1932 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+  19-12 map: 1932 W-1500 W, 11100 S-10700 S
+  21-4 CSV: E=Halsted Street (800 West) | W=Vincennes Ave (1620 West) | N=107th Street (10700 South) | S=111th Street (11100 South)
+  21-4 map: 1620 W-800 W, 11100 S-10700 S
+
+OVERLAP 28%: 1-15 ↔ 35-11
+  1-15 CSV: E=Western (2400 West) | W=Albany (3100 West) | N=Diversey (2800 North) | S=Logan (2600 North)
+  1-15 map: 3100 W-2400 W, 2600 N-2800 N
+  35-11 CSV: E=Kennedy Expressway | W=Elston Avenue | N=Belmont (3200 North) | S=Schubert (2700 North)
+  35-11 map: 3000 W-2600 W, 2700 N-3200 N
+
+OVERLAP 27%: 2-2 ↔ 27-9
+  2-2 CSV: E=Clark 100 W | W=Kingsbury 1400 W | N=Cortland 1900 N | S=Clybourn (1300 North)
+  2-2 map: 1400 W-100 W, 1300 N-1900 N
+  27-9 CSV: E=Halsted (800 West) | W=Armour (1500 West) | N=North Ave (1600 North) | S=Erie (658 North)
+  27-9 map: 1500 W-800 W, 658 N-1600 N
+
+OVERLAP 27%: 16-23 ↔ 17-22
+  16-23 CSV: E=Ashland (1600 West) | W=Hamilton (2100 West) | N=Marquette (6700 South) | S=69th Street (6900 South)
+  16-23 map: 2100 W-1600 W, 6900 S-6700 S
+  17-22 CSV: E=Honore Street (1828 West) | W=Bell Ave (2232 West) | N=68th Street 6800 South) | S=71st Street (7100 South)
+  17-22 map: 2232 W-1828 W, 7100 S-6800 S
+
+OVERLAP 27%: 30-6 ↔ 45-2
+  30-6 CSV: E=Lowell (4432 West) | W=Cicero (4800 West) | N=Irving Park (4000 North) | S=Addison (3600 North)
+  30-6 map: 4800 W-4432 W, 3600 N-4000 N
+  45-2 CSV: E=Kenton (4600 West) | W=Lockwood (5300 West) | N=Belle Plaine (4100 North) | S=Grace (3800 North)
+  45-2 map: 5300 W-4600 W, 3800 N-4100 N
+
+OVERLAP 27%: 3-8 ↔ 4-5
+  3-8 CSV: E=Evans (732 East) | W=King Drive (400 East) | N=39th St (3900 South) | S=45th St (4500 South)
+  3-8 map: 400 E-732 E, 4500 S-3900 S
+  4-5 CSV: E=Drexel (900 E) | W=Forrestville (532 E) | N=43rd St (4300 S) | S=47th St (4700 S)
+  4-5 map: 532 E-900 E, 4700 S-4300 S
+
+OVERLAP 27%: 39-17 ↔ 45-22
+  39-17 CSV: E=Forest Glen (5100 West) | W=Austin (6000 West) | N=Devon (6400 North) | S=Berwyn (5300 North)
+  39-17 map: 6000 W-5100 W, 5300 N-6400 N
+  45-22 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Fitch (7132 North) | S=Tonty (6150 North)
+  45-22 map: 5700 W-5400 W, 6150 N-6980 N
+
+OVERLAP 27%: 30-15 ↔ 36-4
+  30-15 CSV: E=Long (5400 West) | W=Narragansett (6400 West) | N=Wrightwood (2600 North) | S=Fullerton (2400 North)
+  30-15 map: 6400 W-5400 W, 2400 N-2600 N
+  36-4 CSV: E=Moody (6132 West) | W=Normandy (6700 West) | N=Wellington (3000 North) | S=Grand (2400 North)
+  36-4 map: 6700 W-6132 W, 2400 N-3000 N
+
+OVERLAP 27%: 34-5 ↔ 34-7
+  34-5 CSV: E=Morgan Street (1000 West) | W=Throop St. (1300 West) | N=Washington Blvd (100 North) | S=Van Buren Street (400 South)
+  34-5 map: 1300 W-1000 W, 400 S-100 N
+  34-7 CSV: E=Racine (1200 West) | W=Paulina Street (1700 West) | N=Madison Street (0 N/S) | S=Polk Street (800 South)
+  34-7 map: 1700 W-1200 W, 800 S-0 S
+
+OVERLAP 27%: 1-1 ↔ 27-9
+  1-1 CSV: E=Racine (1200 West) | W=Ashland (1600 West) | N=Chicago (800 North) | S=Kinzie (400 North)
+  1-1 map: 1600 W-1200 W, 400 N-800 N
+  27-9 CSV: E=Halsted (800 West) | W=Armour (1500 West) | N=North Ave (1600 North) | S=Erie (658 North)
+  27-9 map: 1500 W-800 W, 658 N-1600 N
+
+OVERLAP 27%: 19-11 ↔ 21-5
+  19-11 CSV: E=Vincennes (1500 West) | W=Longwood (1932 West) | N=111th Street (11100 South) | S=119th Street (11900 South)
+  19-11 map: 1932 W-1500 W, 11379 S-11100 S
+  21-5 CSV: E=Aberdeen Street (1100 West) | W=Vincennes Ave (1620 West) | N=111th Street (11100 South) | S=115th Street (11500 South)
+  21-5 map: 1620 W-1100 W, 11500 S-11100 S
+
+OVERLAP 27%: 26-13 ↔ 36-11
+  26-13 CSV: E=Washtenaw (2700 West) | W=Sacamento (3000 West) | N=Division (1200 North) | S=Walton (932 North)
+  26-13 map: 3000 W-2700 W, 932 N-1200 N
+  36-11 CSV: E=Western (2400 West) | W=California (2800 West) | N=Hadden (1132 North) | S=Iowa (900 North)
+  36-11 map: 2800 W-2400 W, 900 N-1132 N
+
+OVERLAP 27%: 7-9 ↔ 8-9
+  7-9 CSV: E=Colfax (2600 E) | W=Paxton (2200 E) | N=80th Street (8000) | S=82nd Street (8200)
+  7-9 map: 2200 E-2600 E, 8200 S-8000 S
+  8-9 CSV: E=Crandon 2300 E) | W=Jeffery (2000 E) | N=79th St (7900 S) | S=83rd St (8300 S)
+  8-9 map: 2000 E-2300 E, 8300 S-7900 S
+
+OVERLAP 26%: 41-25 ↔ 45-8
+  41-25 CSV: E=Austin (6000 West) | W=Natchez (6434 West) Mobile (6300 West) | N=Foster (5200 North) Gunnison (4800 North) | S=Giddings (4732 North)
+  41-25 map: 6434 W-6000 W, 4732 N-5200 N
+  45-8 CSV: E=Central (5600 West) | W=Melvina (6200 West) | N=Higgins | S=Eastwood (4632 North)
+  45-8 map: 6200 W-5600 W, 4632 N-5000 N
+
+OVERLAP 26%: 3-9 ↔ 4-4
+  3-9 CSV: E=Champlain (634 East) | W=King Drive (400 East) | N=45th St (4500 South) | S=50th St (5000 South)
+  3-9 map: 400 E-634 E, 5000 S-4500 S
+  4-4 CSV: E=Drexel (900 E) | W=Forrestville (532 E) | N=47th St (4700 S) | S=51st St (5100 S)
+  4-4 map: 532 E-900 E, 5100 S-4700 S
+
+OVERLAP 26%: 20-14 ↔ 5-18
+  20-14 CSV: E=Ingleside (930 East) | W=Cottage Grove (800 East) | N=50th Street (5000 South) | S=60th Street (6000 South)
+  20-14 map: 800 E-930 E, 6000 S-5000 S
+  5-18 CSV: E=Midway Plaisance E & W (5900 S) | W= | N=Cottage Grove (800 E) | S=Kimbark Ave (1300 E)
+  5-18 map: 800 E-1300 E, 6000 S-5900 S
+
+OVERLAP 26%: 3-4 ↔ 4-15
+  3-4 CSV: E=Giles (300 East) | W=State St (0 E/W) | N=26th St (2600 South) | S=35th St (3500 South)
+  3-4 map: 0 W-300 E, 3500 S-2600 S
+  4-15 CSV: E=Michigan (100 E) | W=Clark (100 W) | N=Polk (800 S) | S=Jackson (3300 S)
+  4-15 map: 100 W-100 E, 3300 S-800 S
+
+OVERLAP 25%: 7-2 ↔ 8-1
+  7-2 CSV: E=Bennett (1900 E) | W=Blackstone (1499 E) | N=71st Street (7100) | S=74th Street (7400)
+  7-2 map: 1499 E-1900 E, 7400 S-7100 S
+  8-1 CSV: E=Stony Island (1600 E) | W=Avalon (1232 E) | N=71st St (7100 S) | S=76th St (7600 S)
+  8-1 map: 1232 E-1600 E, 7600 S-7100 S
+
+OVERLAP 25%: 28-10 ↔ 28-11
+  28-10 CSV: E=Kenton (4600 West) | W=Lavergne (5000 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+  28-10 map: 5000 W-4600 W, 0 S-800 N
+  28-11 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Kinzie (400 North) | S=Van Buren 400 South)
+  28-11 map: 5200 W-4800 W, 400 S-400 N
+
+OVERLAP 25%: 27-4 ↔ 28-4
+  27-4 CSV: E=Western (2400 West) | W=Kedzie (3200 West) | N=Lake (200 North) | S=Harrison (600 South)
+  27-4 map: 3200 W-2400 W, 600 S-200 N
+  28-4 CSV: E=Western (2400 West) | W=California (2800 West) | N=Adams (200 South) | S=23rd Street (2300 South)
+  28-4 map: 2800 W-2400 W, 2300 S-200 S
+
+OVERLAP 25%: 1-2 ↔ 27-6
+  1-2 CSV: E=Ashland (1600 West) | W=Wood (1800 West) | N=Chicago (800 North) | S=Kinzie (400 North)
+  1-2 map: 1800 W-1600 W, 400 N-800 N
+  27-6 CSV: E=Ogden (100 South) | W=Western (2400 West) | N=Grand (500 North) | S=Washington (100 North)
+  27-6 map: 2400 W-1600 W, 100 N-500 N
+
+OVERLAP 25%: 41-10 ↔ 41-8
+  41-10 CSV: E=Oriole (7600 West) | W=Canfield (7900 West) | N=Glenlake (6100 North) | S=Bryn Mawr (5600 North)
+  41-10 map: 7900 W-7600 W, 5600 N-6100 N
+  41-8 CSV: E=Oriole (7600 West) | W=Canfield (7900 West) | N=Devon (6400 North) | S=Peterson (6000 North)
+  41-8 map: 7900 W-7600 W, 6000 N-6400 N
+
+OVERLAP 25%: 22-10 ↔ 25-1
+  22-10 CSV: E=Kedzie (3200 West) | W=St Louis (3500 West) | N=26th Street (2600 South) | S=31st Street (3100 South)
+  22-10 map: 3500 W-3200 W, 2946 S-2600 S
+  25-1 CSV: E=Kedzie Ave (3200 West) | W=Homan Ave (3400 West) | N=23rd Street (2300 South) | S=27th Street (2700 South)
+  25-1 map: 3400 W-3200 W, 2700 S-2300 S
+
+OVERLAP 25%: 45-4 ↔ 45-5
+  45-4 CSV: E=Cicero (4800 West) | W=Laramie (5200 West) | N=Sunnyside (4500 North) | S=Belle Plaine (4100 North)
+  45-4 map: 5200 W-4800 W, 4100 N-4500 N
+  45-5 CSV: E=Avondale | W=Milwaukee | N=Kennedy Expressway | S=Montrose (4400 North)
+  45-5 map: 5000 W-4600 W, 4400 N-4600 N
+
+OVERLAP 25%: 33-2 ↔ 47-6
+  33-2 CSV: E=Chicago River (1500 West) | W=Kimball (3400 West) | N=Foster (5200 North) | S=Lawrence (4800 North)
+  33-2 map: 3400 W-1500 W, 4800 N-5200 N
+  47-6 CSV: E=Broadway (1200 West) | W=Ashland (1600 West) | N=Foster Ave (5200 North) | S=Lawrence (4800 North)
+  47-6 map: 1600 W-1200 W, 4800 N-5200 N
+
+OVERLAP 25%: 40-10 ↔ 40-18
+  40-10 CSV: E=Damen (2000 West) | W=Western (2400 West) | N=Foster (5200 North) | S=Ainsle (4900 North)
+  40-10 map: 2400 W-2000 W, 4900 N-5200 N
+  40-18 CSV: E=Chicago River (2300 West) | W=Washtenaw (2700 West) | N=Foster (5200 North) | S=Leland (4700 North)
+  40-18 map: 2700 W-2300 W, 4700 N-5200 N
+
+OVERLAP 25%: 31-10 ↔ 35-1
+  31-10 CSV: E=Pulaski (4000 West) | W=Kilbourn (4500 West) | N=Diversey (2800 North) | S=Belden (2300 North)
+  31-10 map: 4500 W-4000 W, 2300 N-2800 N
+  35-1 CSV: E=Pulaski (4000 West) | W=Kostner (4400 West) | N=Fullerton (2400 North) | S=Armitage (2000 North)
+  35-1 map: 4400 W-4000 W, 2000 N-2400 N
+
+OVERLAP 25%: 36-1 ↔ 38-13
+  36-1 CSV: E=Normandy (6700 West) | W=Sayer (7000 West) | N=School (3300 North) | S=Wellington (3000 North)
+  36-1 map: 7000 W-6700 W, 3000 N-3300 N
+  38-13 CSV: E=Oak Park (6800 West) | W=Sayre (7000 West) | N=Addison (3600 North) | S=Belmont (3200 North) School Street
+  38-13 map: 7000 W-6800 W, 3200 N-3600 N
+
+OVERLAP 25%: 31-10 ↔ 31-9
+  31-10 CSV: E=Pulaski (4000 West) | W=Kilbourn (4500 West) | N=Diversey (2800 North) | S=Belden (2300 North)
+  31-10 map: 4500 W-4000 W, 2300 N-2800 N
+  31-9 CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Diversey (2800 North) | S=Fullerton (2400 North)
+  31-9 map: 4800 W-4400 W, 2400 N-2800 N
+
+OVERLAP 25%: 6-25 ↔ 6-27
+  6-25 CSV: E=Stewart Ave (400 W) | W=Halsted St (800 W) | N=Marquette Rd (6700 S) | S=71st St (7100 S)
+  6-25 map: 800 W-400 W, 7100 S-6700 S
+  6-27 CSV: E=Lafayette Ave (30 W) | W=Normal Blvd (500 W) | N=Marquette Rd (6700 S) | S=71st St (7100 S)
+  6-27 map: 500 W-30 W, 7100 S-6700 S
+
+OVERLAP 25%: 30-15 ↔ 31-2
+  30-15 CSV: E=Long (5400 West) | W=Narragansett (6400 West) | N=Wrightwood (2600 North) | S=Fullerton (2400 North)
+  30-15 map: 6400 W-5400 W, 2400 N-2600 N
+  31-2 CSV: E=Laramie (5200 West) | W=Central Ave (5600 West) | N=Diversey (2800 North) | S=Fullerton (2400 North)
+  31-2 map: 5600 W-5200 W, 2400 N-2800 N
+
+OVERLAP 25%: 46-5 ↔ 47-5
+  46-5 CSV: E=Marine Drive (610 West) | W=Sheridan (1000 West) | N=Wilson (4600 North) | S=Buena (4200 North)
+  46-5 map: 1000 W-761 W, 4200 N-4600 N
+  47-5 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Sunnyside (4500 North) | S=Montrose (4400 North)
+  47-5 map: 1800 W-784 W, 4400 N-4500 N
+
+OVERLAP 25%: 20-10 ↔ 6-26
+  20-10 CSV: E=59th Street (5900 South) | W=66th Street (6600 South) | N=State Streeet (0 E/W) | S=Yale (232 West)
+  20-10 map: 232 W-0 W, 6600 S-5900 S
+  6-26 CSV: E=Lafayette Ave (30 W) | W=Union Ave (700 W) | N=64th St (6400 S) | S=Marquette Rd (6700 S)
+  6-26 map: 700 W-30 W, 6700 S-6400 S
+
+OVERLAP 25%: 3-6 ↔ 4-11
+  3-6 CSV: E=King Drive (400 East) | W=State St (0 E/W) | N=35th St (3500 South) | S=39th St (3900 South)
+  3-6 map: 0 W-400 E, 3900 S-3500 S
+  4-11 CSV: E=Vincennes (600 E) | W=Calumet (334 E) | N=35th St (3500 S) | S=39th St (3900 S)
+  4-11 map: 334 E-600 E, 3900 S-3500 S
+
+OVERLAP 25%: 47-5 ↔ 47-7
+  47-5 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Sunnyside (4500 North) | S=Montrose (4400 North)
+  47-5 map: 1800 W-784 W, 4400 N-4500 N
+  47-7 CSV: E=Southport Ave (1400 West) | W=Ashland (1600 West) | N=Wilson (4600 North) | S=Irving Park Road (4000 North)
+  47-7 map: 1600 W-1400 W, 4000 N-4600 N
+
+OVERLAP 24%: 11-6 ↔ 20-6
+  11-6 CSV: E=Tracks (400 W) | W=Halsted Street (800 W) | N=Pershing Road (3900 S) | S=43rd Place (4330 S)
+  11-6 map: 800 W-400 W, 4330 S-3900 S
+  20-6 CSV: E=La Salle (140 West) | W=Union (700 West) | N=42nd Street (4200 South) | S=51st Street (5100 South)
+  20-6 map: 700 W-140 W, 5100 S-4200 S
+
+OVERLAP 24%: 35-12 ↔ 35-8
+  35-12 CSV: E=Albany (3100 West) | W=Chicago River | N=Irving Park (4000 North) | S=Diversey (2800 North)
+  35-12 map: 3100 W-2400 W, 2800 N-4000 N
+  35-8 CSV: E=Kimball (3400 West) | W=Milwaukee Ave | N=Belmont (3200 North) | S=Milwaukee Ave
+  35-8 map: 3400 W-3000 W, 2800 N-3200 N
+
+OVERLAP 24%: 35-10 ↔ 35-11
+  35-10 CSV: E=Kennedy Expressway | W=Kedzie (3200 West) | N=Kennedy Expressway | S=Logan Blvd (2600 North)
+  35-10 map: 3200 W-2800 W, 2600 N-2800 N
+  35-11 CSV: E=Kennedy Expressway | W=Elston Avenue | N=Belmont (3200 North) | S=Schubert (2700 North)
+  35-11 map: 3000 W-2600 W, 2700 N-3200 N
+
+OVERLAP 24%: 2-5 ↔ 42-3
+  2-5 CSV: E=Lake Shore Drive 140 E | W=State St (0 West) | N=Scott St 1230 N | S=Chicago 800 N
+  2-5 map: 0 W-140 E, 800 N-1230 N
+  42-3 CSV: E=St. Clair (200 East) | W=LaSalle (150 West) | N=Walton (900 North) | S=Ohio (600 North)
+  42-3 map: 150 W-200 E, 600 N-900 N
+
+OVERLAP 23%: 46-2 ↔ 47-5
+  46-2 CSV: E=Sheridan (1000 West) | W=Magnolia (1235 West) | N=Ainslie (4900 North) | S=Montrose (4400 North)
+  46-2 map: 1235 W-1000 W, 4400 N-4900 N
+  47-5 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Sunnyside (4500 North) | S=Montrose (4400 North)
+  47-5 map: 1800 W-784 W, 4400 N-4500 N
+
+OVERLAP 23%: 20-9 ↔ 6-26
+  20-9 CSV: E=Wells (236 West) | W=Halsted (800 West) | N=59th Street (5900 South) | S=65th Street (6500 South)
+  20-9 map: 800 W-236 W, 6500 S-5900 S
+  6-26 CSV: E=Lafayette Ave (30 W) | W=Union Ave (700 W) | N=64th St (6400 S) | S=Marquette Rd (6700 S)
+  6-26 map: 700 W-30 W, 6700 S-6400 S
+
+OVERLAP 23%: 24-1 ↔ 28-4
+  24-1 CSV: E=Rockwell (2600 West) | W=Albany (3100 West) | N=16th Street (1600 South) | S=31st Street (3100 South)
+  24-1 map: 3100 W-2600 W, 3100 S-1600 S
+  28-4 CSV: E=Western (2400 West) | W=California (2800 West) | N=Adams (200 South) | S=23rd Street (2300 South)
+  28-4 map: 2800 W-2400 W, 2300 S-200 S
+
+OVERLAP 23%: 16-20 ↔ 20-9
+  16-20 CSV: E=Lowe (632 West) | W=Morgan (1000 West) | N=63rd Street (6300 South) | S=Marquette (6700 South)
+  16-20 map: 1000 W-632 W, 6700 S-6300 S
+  20-9 CSV: E=Wells (236 West) | W=Halsted (800 West) | N=59th Street (5900 South) | S=65th Street (6500 South)
+  20-9 map: 800 W-236 W, 6500 S-5900 S
+
+OVERLAP 23%: 16-3 ↔ 16-5
+  16-3 CSV: E=Bishiop (1430 West) | W=Hermitage (1730 West) | N=51st Street (5100 SOuth) | S=56th Street (5600 South)
+  16-3 map: 1730 W-1430 W, 5600 S-5100 S
+  16-5 CSV: E=Loomis (1400 West) | W=Hermitage (1730 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+  16-5 map: 1730 W-1400 W, 5900 S-5500 S
+
+OVERLAP 22%: 15-9 ↔ 16-5
+  15-9 CSV: E=Marshfield (1632 West) | W=Damen (2000 West) Wolcott (1900 West) | N=56th Street (5600 South) | S=61st Street (6100 South)
+  15-9 map: 2000 W-1632 W, 6100 S-5600 S
+  16-5 CSV: E=Loomis (1400 West) | W=Hermitage (1730 West) | N=55th Street (5500 South) | S=59th Street (5900 South)
+  16-5 map: 1730 W-1400 W, 5900 S-5500 S
+
+OVERLAP 22%: 20-5 ↔ 20-6
+  20-5 CSV: E=Wallace (620 West) | W=Halsted (800 West) | N=49th Street (4900 South) | S=53rd Street (5300 South)
+  20-5 map: 800 W-620 W, 5300 S-4900 S
+  20-6 CSV: E=La Salle (140 West) | W=Union (700 West) | N=42nd Street (4200 South) | S=51st Street (5100 South)
+  20-6 map: 700 W-140 W, 5100 S-4200 S
+
+OVERLAP 21%: 48-1 ↔ 48-9
+  48-1 CSV: E=Broadway (1200 West) | W=Clark (1600 West) | N=Granville (6200 North) | S=Elmdale (6000 North)
+  48-1 map: 1600 W-1200 W, 6000 N-6200 N
+  48-9 CSV: E=Lake Michigan (900 West) | W=Lakewood (1300 West) | N=Devon (6400 North) | S=Glenlake (6100 North)
+  48-9 map: 1300 W-1138 W, 6100 N-6400 N
+
+OVERLAP 21%: 39-16 ↔ 45-19
+  39-16 CSV: E=Cicero (4800 West) | W=Legett (5100 West) | N=Caldwell (6100 North) | S=Elston (5100 North)
+  39-16 map: 5100 W-4800 W, 5100 N-6100 N
+  45-19 CSV: E=Leclaire (5100 West) | W=Milwaukee | N=Foster (5200 North) | S=Kennedy Expressway
+  45-19 map: 5100 W-4800 W, 4800 N-5200 N
+
+OVERLAP 21%: 39-16 ↔ 45-20
+  39-16 CSV: E=Cicero (4800 West) | W=Legett (5100 West) | N=Caldwell (6100 North) | S=Elston (5100 North)
+  39-16 map: 5100 W-4800 W, 5100 N-6100 N
+  45-20 CSV: E=Cicero (4800 West) | W=Leclaire (5100 West) | N=Foster (5200 North) | S=Kennedy Expressway
+  45-20 map: 5100 W-4800 W, 4800 N-5200 N
+
+OVERLAP 21%: 18-2 ↔ 18-3
+  18-2 CSV: E=Damen (2000 West) | W=Western (2400 West) | N=75th Street (7500 South) | S=83rd Street (8300 South)
+  18-2 map: 2400 W-2000 W, 8300 S-7500 S
+  18-3 CSV: E=Bell (2232 West) | W=Rockwell (2600 West) | N=71st Street (7100 South) | S=77th Street (7700 South)
+  18-3 map: 2600 W-2232 W, 7700 S-7100 S
+
+OVERLAP 21%: 45-22 ↔ 45-26
+  45-22 CSV: E=Lehigh (5400 West) | W=Caldwell (5700 West) | N=Fitch (7132 North) | S=Tonty (6150 North)
+  45-22 map: 5700 W-5400 W, 6150 N-6980 N
+  45-26 CSV: E=Leona (5150 West) | W=Kinzua (5432 West) | N=Hiawatha (6500 North) | S=Devon (6400 North)
+  45-26 map: 5432 W-5199 W, 6400 N-6500 N
+
+OVERLAP 21%: 28-10 ↔ 28-9
+  28-10 CSV: E=Kenton (4600 West) | W=Lavergne (5000 West) | N=Madison (0 North) | S=Chicago Ave (800 North)
+  28-10 map: 5000 W-4600 W, 0 S-800 N
+  28-9 CSV: E=Kostner (4400 West) | W=Cicero (4800 West) | N=Carroll (328 North) | S=Harrison (600 South)
+  28-9 map: 4800 W-4400 W, 600 S-328 N
+
+OVERLAP 20%: 47-5 ↔ 47-8
+  47-5 CSV: E=Clark (100 West) | W=Ravenswood (1800 West) | N=Sunnyside (4500 North) | S=Montrose (4400 North)
+  47-5 map: 1800 W-784 W, 4400 N-4500 N
+  47-8 CSV: E=Ashland (1600 West) | W=Ravenswood (1800 West) | N=Sunnyside (4500 North) | S=Irving Park Road (4000 North)
+  47-8 map: 1800 W-1600 W, 4000 N-4500 N
+
+OVERLAP 20%: 5-7 ↔ 7-3
+  5-7 CSV: E=Yates Blvd (2400 E) | W=Bennett Ave (1900 E) | N=71st Street (7100 S) | S=73rd Street (7300 S)
+  5-7 map: 1900 E-2400 E, 7300 S-7100 S
+  7-3 CSV: E=Yates (2600 E) | W=Paxton (2198 E) | N=72nd Street (7200) | S=75th Street (7500)
+  7-3 map: 2198 E-2600 E, 7500 S-7200 S
+
+OVERLAP 20%: 21-20 ↔ 6-20
+  21-20 CSV: E=State Street (0 E/W) | W=Vincennes Ave (1620 West) | N=83rd Street (8300 South) | S=90th Street (9000 South)
+  21-20 map: 1620 W-0 W, 9000 S-8300 S
+  6-20 CSV: E=State St (0 E/W) | W=Vincennes Ave (400 W) | N=79th St (7900 S) | S=84th St (8400 S)
+  6-20 map: 400 W-0 W, 8400 S-7900 S
+
+OVERLAP 20%: 32-13 ↔ 32-14
+  32-13 CSV: E=Ashland (1600 West) | W=Western (2400 West) | N=Diversey (2800 North) | S=Fullerton (2400 North)
+  32-13 map: 2400 W-1600 W, 2400 N-2800 N
+  32-14 CSV: E=Leavitt (2200 West) | W=Western (2400 West) | N=Altgeld (2500 North) | S=Armitage (2000 North)
+  32-14 map: 2400 W-2200 W, 2000 N-2500 N
+
+OVERLAP 20%: 27-5 ↔ 34-7
+  27-5 CSV: E=Ashland (1600 West) | W=Western (2400 West) | N=Washington (100 North) | S=Roosevelt (1200 South)
+  27-5 map: 2400 W-1600 W, 1200 S-100 N
+  34-7 CSV: E=Racine (1200 West) | W=Paulina Street (1700 West) | N=Madison Street (0 N/S) | S=Polk Street (800 South)
+  34-7 map: 1700 W-1200 W, 800 S-0 S
+
+OVERLAP 20%: 13-25 ↔ 23-17
+  13-25 CSV: E=Pulaski (4000 West) | W=Kildare (4300 West) | N=59th Street (5900 South) | S=63rd Street (6300 South)
+  13-25 map: 4300 W-4000 W, 6300 S-5900 S
+  23-17 CSV: E=Central Park (3600 West) | W=Karlov Ave (4100 West) | N=59th Street (5900 South) | S=61st Street (6100 South)
+  23-17 map: 4100 W-3600 W, 6100 S-5900 S
+
+
+Total overlapping pairs (>20%): 329
+
+
+====================================================================================================
+GAP REPORT
+====================================================================================================
+Areas of Chicago with no zone coverage.
+
+GAP 1: center ~3405 S, ~2180 W
+  Map bbox: 9041 W-4028 E, 12424 S-7810 N
+  Adjacent zones: 10-15, 10-16, 11-1, 11-10, 11-11, 11-12, 11-13, 11-2, 11-3, 11-4
+
+GAP 2: center ~12698 S, ~1194 E
+  Map bbox: 298 E-2043 E, 13129 S-12222 S
+  Adjacent zones: 10-18, 9-27
+
+GAP 3: center ~12477 S, ~3365 E
+  Map bbox: 2845 E-3919 E, 13130 S-11871 S
+  Adjacent zones: 10-1, 10-3, 10-4
+
+GAP 4: center ~9738 S, ~3914 E
+  Map bbox: 3399 E-4270 E, 11153 S-8480 S
+  Adjacent zones: 10-10, 10-11, 10-12, 10-6, 10-7, 10-8
+
+GAP 5: center ~1900 S, ~3350 W
+  Map bbox: 3600 W-3100 W, 2200 S-1600 S
+  Adjacent zones: 22-11, 22-9, 24-1, 24-2, 24-3, 24-6, 24-7
+
+GAP 6: center ~6379 S, ~2254 W
+  Map bbox: 2400 W-2100 W, 6900 S-5900 S
+  Adjacent zones: 15-5, 16-10, 16-11, 16-12, 16-21, 16-22, 16-23, 17-22, 17-24
+
+GAP 7: center ~9699 S, ~180 W
+  Map bbox: 632 W-100 E, 10300 S-9000 S
+  Adjacent zones: 21-12, 21-15, 21-16, 21-19, 21-2, 21-20, 6-17, 6-18, 9-1, 9-10
+
+GAP 8: center ~8553 S, ~1119 E
+  Map bbox: 800 E-1400 E, 9100 S-8300 S
+  Adjacent zones: 6-10, 6-14, 8-10, 8-11, 8-14, 8-15, 8-16, 8-20, 8-21, 8-6
+
+GAP 9: center ~5470 S, ~561 E
+  Map bbox: 400 E-800 E, 6000 S-5000 S
+  Adjacent zones: 20-11, 20-12, 20-13, 20-14, 20-16, 3-13, 3-15, 3-9, 4-4, 5-10
+
+GAP 10: center ~6924 S, ~3202 W
+  Map bbox: 3600 W-2271 W, 7298 S-6694 S
+  Adjacent zones: 14-18, 15-8, 16-21, 16-22, 17-23, 17-24, 17-25, 18-3, 18-4, 23-20
+
+GAP 11: center ~7352 S, ~1888 W
+  Map bbox: 2232 W-1200 W, 7500 S-7100 S
+  Adjacent zones: 17-10, 17-11, 17-12, 17-17, 17-18, 17-20, 17-22, 17-24, 17-9, 18-2
+
+GAP 12: center ~1419 S, ~3029 W
+  Map bbox: 3400 W-2800 W, 1600 S-1200 S
+  Adjacent zones: 24-1, 24-2, 24-7, 24-8, 28-4, 28-5
+
+GAP 13: center ~6900 S, ~1000 E
+  Map bbox: 800 E-1220 E, 7100 S-6417 S
+  Adjacent zones: 20-15, 20-18, 20-19, 5-1, 5-2, 6-3, 6-4, 8-1
+
+GAP 14: center ~4200 N, ~2598 W
+  Map bbox: 2912 W-2400 W, 3979 N-4400 N
+  Adjacent zones: 33-10, 33-12, 33-7, 33-8, 33-9, 35-12, 40-19, 47-1, 47-11, 47-12
+
+GAP 15: center ~5666 N, ~6432 W
+  Map bbox: 6920 W-6000 W, 5532 N-5800 N
+  Adjacent zones: 39-17, 41-17, 41-18, 41-19, 41-20, 41-21, 41-27, 45-11, 45-13, 45-14
+
+GAP 16: center ~2188 N, ~6606 W
+  Map bbox: 6800 W-6400 W, 2000 N-2400 N
+  Adjacent zones: 29-10, 29-11, 29-12, 29-9, 30-15, 36-4, 36-5, 36-6
+
+GAP 17: center ~3000 N, ~5850 W
+  Map bbox: 6000 W-5700 W, 2800 N-3200 N
+  Adjacent zones: 30-10, 30-11, 30-12, 30-14, 31-3
+
+GAP 18: center ~4900 S, ~150 E
+  Map bbox: 100 E-200 E, 5500 S-4300 S
+  Adjacent zones: 20-11, 3-10, 3-11, 3-12, 3-13, 3-14, 3-15, 3-16
+
+GAP 19: center ~5766 N, ~2026 W
+  Map bbox: 2549 W-1800 W, 5290 N-6011 N
+  Adjacent zones: 40-11, 40-12, 40-13, 40-14, 40-15, 40-3, 40-4, 40-5, 40-6, 40-7
+
+GAP 20: center ~1688 S, ~2204 W
+  Map bbox: 2411 W-2000 W, 1800 S-324 S
+  Adjacent zones: 25-3, 25-5, 25-6, 27-4, 27-5, 28-3, 28-4
+
+GAP 21: center ~200 N, ~1500 W
+  Map bbox: 1600 W-1400 W, 0 S-400 N
+  Adjacent zones: 1-1, 1-2, 27-5, 27-6, 27-7, 27-8, 34-7
+
+GAP 22: center ~4662 N, ~1662 W
+  Map bbox: 1800 W-1500 W, 4500 N-4800 N
+  Adjacent zones: 33-2, 46-1, 46-10, 47-20, 47-4, 47-5, 47-6, 47-7, 47-8
+
+GAP 23: center ~3400 N, ~1300 W
+  Map bbox: 1400 W-1200 W, 3200 N-3600 N
+  Adjacent zones: 32-10, 32-4, 32-9, 44-1, 44-2, 44-3, 44-5, 44-6, 44-8, 47-17
+
+GAP 24: center ~6559 S, ~1873 W
+  Map bbox: 2000 W-1630 W, 6700 S-6300 S
+  Adjacent zones: 15-10, 16-12, 16-13, 16-14, 16-18, 16-23, 17-19
+
+GAP 25: center ~4959 S, ~67 W
+  Map bbox: 140 W-0 W, 5500 S-4700 S
+  Adjacent zones: 20-11, 20-6, 20-7, 20-8, 3-12, 3-14, 3-16, 3-7
+
+GAP 26: center ~3108 N, ~3552 W
+  Map bbox: 3960 W-3400 W, 3000 N-3972 N
+  Adjacent zones: 30-1, 30-2, 31-11, 33-6, 33-9, 35-13, 35-7, 35-8, 35-9, 39-1
+
+GAP 27: center ~1429 N, ~2966 W
+  Map bbox: 3265 W-2800 W, 1162 N-1600 N
+  Adjacent zones: 1-10, 26-10, 26-11, 26-12, 26-13, 26-14, 26-15, 26-8, 36-10
+
+GAP 28: center ~5700 S, ~3066 W
+  Map bbox: 3132 W-3000 W, 5900 S-5500 S
+  Adjacent zones: 14-10, 14-13, 14-15, 14-9, 15-6, 15-7
+
+GAP 29: center ~5400 N, ~2855 W
+  Map bbox: 2910 W-2800 W, 5200 N-5600 N
+  Adjacent zones: 33-2, 39-11, 40-14, 40-15, 40-16, 50-13
+
+GAP 30: center ~7689 S, ~1155 E
+  Map bbox: 1100 E-1232 E, 7900 S-7500 S
+  Adjacent zones: 5-1, 8-1, 8-2, 8-3, 8-6, 8-7
+
+GAP 31: center ~7800 S, ~2500 W
+  Map bbox: 2600 W-2400 W, 7900 S-7700 S
+  Adjacent zones: 18-10, 18-2, 18-3, 18-5
+
+GAP 32: center ~5800 N, ~3150 W
+  Map bbox: 3200 W-3100 W, 5600 N-6000 N
+  Adjacent zones: 39-11, 39-8, 39-9, 50-12, 50-13, 50-14
+
+GAP 33: center ~3800 N, ~4382 W
+  Map bbox: 4432 W-4332 W, 3600 N-4000 N
+  Adjacent zones: 30-3, 30-4, 30-5, 30-6, 39-2, 45-3
+
+GAP 34: center ~5700 S, ~2050 W
+  Map bbox: 2100 W-2000 W, 5900 S-5500 S
+  Adjacent zones: 15-5, 15-9, 16-1, 16-12, 16-13, 16-2
+
+GAP 35: center ~7250 S, ~15 W
+  Map bbox: 30 W-0 W, 7900 S-6600 S
+  Adjacent zones: 20-10, 20-12, 6-1, 6-12, 6-20, 6-22, 6-26, 6-27, 6-6, 6-7
+
+GAP 36: center ~6293 S, ~3093 W
+  Map bbox: 3499 W-2687 W, 6502 S-6083 S
+  Adjacent zones: 14-15, 14-16, 14-17, 14-18, 15-7, 15-8, 16-10, 16-21, 23-20
+
+GAP 37: center ~3950 N, ~1350 W
+  Map bbox: 1500 W-1200 W, 3900 N-4000 N
+  Adjacent zones: 44-1, 44-2, 44-3, 46-4, 46-9, 47-7
+
+GAP 38: center ~509 N, ~2827 W
+  Map bbox: 3248 W-2517 W, 309 N-904 N
+  Adjacent zones: 27-2, 27-3, 36-10, 36-16
+
+GAP 39: center ~2890 N, ~3078 W
+  Map bbox: 3477 W-2484 W, 2056 N-3173 N
+  Adjacent zones: 1-13, 1-14, 1-15, 26-7, 33-13, 35-10, 35-11, 35-12, 35-13, 35-3
+
+GAP 40: center ~623 N, ~4280 W
+  Map bbox: 4644 W-4041 W, 351 N-739 N
+  Adjacent zones: 28-10, 28-7, 36-8, 37-12, 37-15
+
+GAP 41: center ~9058 S, ~775 E
+  Map bbox: 565 E-1016 E, 9308 S-8833 S
+  Adjacent zones: 6-15, 8-14, 8-15, 8-19, 8-20
+
+GAP 42: center ~4225 N, ~1343 W
+  Map bbox: 1571 W-1166 W, 4001 N-4409 N
+  Adjacent zones: 44-3, 46-1, 46-2, 46-4, 47-5, 47-7, 47-8
+
+GAP 43: center ~4800 S, ~750 W
+  Map bbox: 800 W-700 W, 4900 S-4700 S
+  Adjacent zones: 15-1, 20-2, 20-4, 20-5, 20-6
+
+GAP 44: center ~5700 N, ~2750 W
+  Map bbox: 2800 W-2700 W, 5600 N-5800 N
+  Adjacent zones: 40-12, 40-13, 40-14, 50-13
+
+GAP 45: center ~3400 S, ~50 W
+  Map bbox: 100 W-0 W, 3500 S-3300 S
+  Adjacent zones: 11-2, 3-4, 3-5, 3-6, 4-15
+
+GAP 46: center ~6661 N, ~2395 W
+  Map bbox: 2565 W-2214 W, 6496 N-6803 N
+  Adjacent zones: 40-1, 40-2, 50-10, 50-6, 50-9
+
+GAP 47: center ~7067 N, ~1767 W
+  Map bbox: 1800 W-1734 W, 6934 N-7200 N
+  Adjacent zones: 49-4, 49-5, 49-7, 49-8, 49-9, 50-4
+
+GAP 48: center ~2168 N, ~5583 W
+  Map bbox: 5697 W-5389 W, 1983 N-2527 N
+  Adjacent zones: 29-8, 30-15, 31-2, 36-7, 36-8
+
+GAP 49: center ~5906 S, ~1194 W
+  Map bbox: 1297 W-1091 W, 6059 S-5754 S
+  Adjacent zones: 16-15, 16-16, 16-6, 16-7
+
+GAP 50: center ~6512 S, ~357 E
+  Map bbox: 58 E-885 E, 6828 S-5910 S
+  Adjacent zones: 20-11, 20-12, 20-14, 20-15, 20-16, 20-17, 5-10, 5-18, 5-9, 6-1
+
+GAP 51: center ~3000 N, ~4616 W
+  Map bbox: 4632 W-4600 W, 2800 N-3200 N
+  Adjacent zones: 30-5, 31-5, 31-8, 31-9
+
+GAP 52: center ~6609 N, ~2020 W
+  Map bbox: 2140 W-1944 W, 6408 N-6763 N
+  Adjacent zones: 40-2, 40-6, 49-8, 50-10
+
+GAP 53: center ~8909 S, ~2485 E
+  Map bbox: 2089 E-2604 E, 9017 S-8803 S
+  Adjacent zones: 7-14, 7-15, 7-16, 7-17, 8-18
+
+GAP 54: center ~2366 N, ~2116 W
+  Map bbox: 2200 W-2032 W, 2332 N-2400 N
+  Adjacent zones: 32-13, 32-14, 32-15, 32-20
+
+Total gap: 22.4% of Chicago
+Significant gap regions: 54

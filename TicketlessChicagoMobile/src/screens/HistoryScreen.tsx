@@ -57,7 +57,7 @@ export interface ParkingHistoryItem {
 }
 
 const HISTORY_KEY = StorageKeys.PARKING_HISTORY;
-const MAX_HISTORY_ITEMS = 50;
+const MAX_HISTORY_ITEMS = 10000; // Effectively unlimited — server is the authoritative store
 
 // ──────────────────────────────────────────────────────
 // Supabase sync helpers (fire-and-forget, never blocks UI)
@@ -219,7 +219,7 @@ const fetchFromServer = async (): Promise<ParkingHistoryItem[]> => {
       .from('parking_location_history')
       .select('*')
       .order('parked_at', { ascending: false })
-      .limit(MAX_HISTORY_ITEMS);
+      .limit(1000);
 
     if (error || !data || data.length === 0) return [];
     return data.map(serverRowToHistoryItem);
@@ -251,9 +251,9 @@ const mergeHistories = (local: ParkingHistoryItem[], server: ParkingHistoryItem[
     }
   }
 
-  // Sort by timestamp descending and cap at MAX_HISTORY_ITEMS
+  // Sort by timestamp descending
   merged.sort((a, b) => b.timestamp - a.timestamp);
-  return merged.slice(0, MAX_HISTORY_ITEMS);
+  return merged;
 };
 
 // ──────────────────────────────────────────────────────
@@ -486,88 +486,298 @@ const StatsHeader: React.FC<StatsProps> = ({ totalChecks, violationsFound, estim
   </View>
 );
 
-interface CameraSpeedRowProps {
-  item: CameraPassHistoryItem;
+
+// ──────────────────────────────────────────────────────
+// Unified Camera Event (Speed + Red Light combined)
+// ──────────────────────────────────────────────────────
+type UnifiedCameraEvent =
+  | { eventType: 'speed'; data: CameraPassHistoryItem }
+  | { eventType: 'redlight'; data: RedLightReceipt };
+
+const getEventTimestamp = (event: UnifiedCameraEvent): number =>
+  event.eventType === 'speed' ? event.data.timestamp : event.data.deviceTimestamp;
+
+const getEventId = (event: UnifiedCameraEvent): string => event.data.id;
+
+const formatRelativeTime = (timestamp: number): string => {
+  const diff = Date.now() - timestamp;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  if (hours < 48) return 'Yesterday';
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const getSpeedSeverity = (delta: number | null): { color: string; label: string } => {
+  if (delta == null || delta <= 0) return { color: '#34C759', label: 'ok' };
+  if (delta <= 10) return { color: '#FF9500', label: 'warning' };
+  return { color: '#FF3B30', label: 'danger' };
+};
+
+const getRedLightSeverity = (item: RedLightReceipt): { color: string; label: string } => {
+  if (item.fullStopDetected && item.fullStopDurationSec != null && item.fullStopDurationSec >= 1.0) {
+    return { color: '#34C759', label: 'ok' };
+  }
+  if (item.fullStopDetected) return { color: '#FF9500', label: 'warning' };
+  return { color: '#FF3B30', label: 'danger' };
+};
+
+interface CameraEventCardProps {
+  event: UnifiedCameraEvent;
+  isExpanded: boolean;
+  onToggle: () => void;
 }
 
-const CameraSpeedRow: React.FC<CameraSpeedRowProps> = ({ item }) => {
-  const speedText = item.userSpeedMph != null ? `${Math.round(item.userSpeedMph)} mph` : 'Unknown';
-  const expectedText = item.expectedSpeedMph != null ? `${Math.round(item.expectedSpeedMph)} mph` : 'N/A';
-  const overBy = item.speedDeltaMph != null ? Math.round(item.speedDeltaMph) : null;
-  const overColor =
-    overBy == null ? colors.textSecondary : overBy > 0 ? colors.error : colors.success;
+const CameraEventCard: React.FC<CameraEventCardProps> = ({ event, isExpanded, onToggle }) => {
+  const isSpeed = event.eventType === 'speed';
+  const timestamp = getEventTimestamp(event);
+  const address = event.data.cameraAddress;
+
+  // Severity
+  const severity = isSpeed
+    ? getSpeedSeverity((event.data as CameraPassHistoryItem).speedDeltaMph != null ? Math.round((event.data as CameraPassHistoryItem).speedDeltaMph!) : null)
+    : getRedLightSeverity(event.data as RedLightReceipt);
+
+  // Hero metric
+  let heroText: string;
+  let heroColor: string;
+  if (isSpeed) {
+    const spd = event.data as CameraPassHistoryItem;
+    const delta = spd.speedDeltaMph != null ? Math.round(spd.speedDeltaMph) : null;
+    if (delta == null) {
+      heroText = 'Unknown';
+      heroColor = colors.textSecondary;
+    } else if (delta <= 0) {
+      heroText = 'Under limit';
+      heroColor = '#34C759';
+    } else {
+      heroText = `${delta} over`;
+      heroColor = severity.color;
+    }
+  } else {
+    const rl = event.data as RedLightReceipt;
+    if (rl.fullStopDetected && rl.fullStopDurationSec != null) {
+      heroText = `Stopped ${rl.fullStopDurationSec.toFixed(1)}s`;
+      heroColor = severity.color;
+    } else {
+      heroText = 'No stop';
+      heroColor = '#FF3B30';
+    }
+  }
 
   return (
-    <View style={styles.cameraSpeedCard}>
-      <View style={styles.cameraSpeedHeader}>
-        <Text style={styles.cameraSpeedType}>
-          {item.cameraType === 'speed' ? 'Speed Camera' : 'Red Light Camera'}
-        </Text>
-        <Text style={styles.cameraSpeedTime}>
-          {formatDate(item.timestamp)} {formatTime(item.timestamp)}
-        </Text>
+    <TouchableOpacity
+      style={cameraCardStyles.container}
+      onPress={onToggle}
+      activeOpacity={0.7}
+    >
+      {/* Severity strip */}
+      <View style={[cameraCardStyles.severityStrip, { backgroundColor: severity.color }]} />
+
+      <View style={cameraCardStyles.content}>
+        {/* Collapsed row */}
+        <View style={cameraCardStyles.collapsedRow}>
+          <MaterialCommunityIcons
+            name={isSpeed ? 'speedometer' : 'traffic-light'}
+            size={18}
+            color={severity.color}
+            style={cameraCardStyles.icon}
+          />
+          <View style={cameraCardStyles.textCol}>
+            <Text style={cameraCardStyles.address} numberOfLines={1}>{address}</Text>
+            <Text style={[cameraCardStyles.hero, { color: heroColor }]}>{heroText}</Text>
+          </View>
+          <View style={cameraCardStyles.rightCol}>
+            <Text style={cameraCardStyles.relTime}>{formatRelativeTime(timestamp)}</Text>
+            <MaterialCommunityIcons
+              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={colors.textTertiary}
+            />
+          </View>
+        </View>
+
+        {/* Expanded details */}
+        {isExpanded && (
+          <View style={cameraCardStyles.expandedSection}>
+            <Text style={cameraCardStyles.fullTimestamp}>
+              {formatDate(timestamp)} {formatTime(timestamp)}
+            </Text>
+
+            {isSpeed ? (() => {
+              const spd = event.data as CameraPassHistoryItem;
+              const speedText = spd.userSpeedMph != null ? `${Math.round(spd.userSpeedMph)} mph` : 'N/A';
+              const limitText = spd.expectedSpeedMph != null ? `${Math.round(spd.expectedSpeedMph)} mph` : 'N/A';
+              const delta = spd.speedDeltaMph != null ? Math.round(spd.speedDeltaMph) : null;
+              const deltaText = delta == null ? 'N/A' : delta > 0 ? `+${delta} mph` : `${delta} mph`;
+              const deltaColor = delta == null ? colors.textSecondary : delta > 0 ? severity.color : '#34C759';
+              return (
+                <View style={cameraCardStyles.pillRow}>
+                  <View style={cameraCardStyles.pill}>
+                    <Text style={cameraCardStyles.pillLabel}>Your speed</Text>
+                    <Text style={cameraCardStyles.pillValue}>{speedText}</Text>
+                  </View>
+                  <View style={cameraCardStyles.pill}>
+                    <Text style={cameraCardStyles.pillLabel}>Limit</Text>
+                    <Text style={cameraCardStyles.pillValue}>{limitText}</Text>
+                  </View>
+                  <View style={cameraCardStyles.pill}>
+                    <Text style={cameraCardStyles.pillLabel}>Delta</Text>
+                    <Text style={[cameraCardStyles.pillValue, { color: deltaColor }]}>{deltaText}</Text>
+                  </View>
+                </View>
+              );
+            })() : (() => {
+              const rl = event.data as RedLightReceipt;
+              const approach = rl.approachSpeedMph != null ? `${Math.round(rl.approachSpeedMph)} mph` : 'N/A';
+              const minSpd = rl.minSpeedMph != null ? `${Math.round(rl.minSpeedMph)} mph` : 'N/A';
+              const accuracy = rl.estimatedSpeedAccuracyMph != null ? `\u00B1${rl.estimatedSpeedAccuracyMph.toFixed(1)} mph` : 'N/A';
+              const stopText = rl.fullStopDetected && rl.fullStopDurationSec != null
+                ? `Stopped ${rl.fullStopDurationSec.toFixed(1)}s`
+                : 'No full stop detected';
+              const timeline = RedLightReceiptService.buildTimelineSummary(rl);
+              return (
+                <>
+                  <View style={cameraCardStyles.pillRow}>
+                    <View style={cameraCardStyles.pill}>
+                      <Text style={cameraCardStyles.pillLabel}>Approach</Text>
+                      <Text style={cameraCardStyles.pillValue}>{approach}</Text>
+                    </View>
+                    <View style={cameraCardStyles.pill}>
+                      <Text style={cameraCardStyles.pillLabel}>Min speed</Text>
+                      <Text style={cameraCardStyles.pillValue}>{minSpd}</Text>
+                    </View>
+                    <View style={cameraCardStyles.pill}>
+                      <Text style={cameraCardStyles.pillLabel}>Accuracy</Text>
+                      <Text style={cameraCardStyles.pillValue}>{accuracy}</Text>
+                    </View>
+                  </View>
+                  <Text style={cameraCardStyles.stopText}>{stopText}</Text>
+                  <Text style={cameraCardStyles.timelineText}>{timeline}</Text>
+                </>
+              );
+            })()}
+          </View>
+        )}
       </View>
-      <Text style={styles.cameraSpeedAddress}>{item.cameraAddress}</Text>
-      <View style={styles.cameraSpeedMetrics}>
-        <View style={styles.cameraSpeedMetric}>
-          <Text style={styles.cameraSpeedMetricLabel}>Your speed</Text>
-          <Text style={styles.cameraSpeedMetricValue}>{speedText}</Text>
-        </View>
-        <View style={styles.cameraSpeedMetric}>
-          <Text style={styles.cameraSpeedMetricLabel}>Expected</Text>
-          <Text style={styles.cameraSpeedMetricValue}>{expectedText}</Text>
-        </View>
-        <View style={styles.cameraSpeedMetric}>
-          <Text style={styles.cameraSpeedMetricLabel}>Delta</Text>
-          <Text style={[styles.cameraSpeedMetricValue, { color: overColor }]}>
-            {overBy == null ? 'N/A' : overBy > 0 ? `+${overBy} mph` : `${overBy} mph`}
-          </Text>
-        </View>
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
-interface RedLightReceiptRowProps {
-  item: RedLightReceipt;
+const cameraCardStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: colors.cardBg,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  severityStrip: {
+    width: 4,
+  },
+  content: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  collapsedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  icon: {
+    marginRight: spacing.sm,
+  },
+  textCol: {
+    flex: 1,
+  },
+  address: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+  },
+  hero: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    marginTop: 2,
+  },
+  rightCol: {
+    alignItems: 'flex-end',
+    marginLeft: spacing.sm,
+  },
+  relTime: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginBottom: 2,
+  },
+  expandedSection: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  fullTimestamp: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginBottom: spacing.sm,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  pill: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.sm,
+    padding: spacing.sm,
+    alignItems: 'center',
+  },
+  pillLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginBottom: 2,
+  },
+  pillValue: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.semibold,
+  },
+  stopText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+    marginTop: spacing.sm,
+  },
+  timelineText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
+  },
+});
+
+interface UnifiedCameraSection {
+  title: string;
+  data: UnifiedCameraEvent[];
 }
 
-const RedLightReceiptRow: React.FC<RedLightReceiptRowProps> = ({ item }) => {
-  const approach = item.approachSpeedMph != null ? `${Math.round(item.approachSpeedMph)} mph` : 'Unknown';
-  const minSpeed = item.minSpeedMph != null ? `${Math.round(item.minSpeedMph)} mph` : 'Unknown';
-  const uncertainty = item.estimatedSpeedAccuracyMph != null ? `±${item.estimatedSpeedAccuracyMph.toFixed(1)} mph` : 'N/A';
-  const stopText = item.fullStopDetected && item.fullStopDurationSec != null
-    ? `Stopped ${item.fullStopDurationSec.toFixed(1)}s`
-    : 'No full stop detected';
-  const timeline = RedLightReceiptService.buildTimelineSummary(item);
-
-  return (
-    <View style={styles.cameraSpeedCard}>
-      <View style={styles.cameraSpeedHeader}>
-        <Text style={styles.cameraSpeedType}>Red Light Receipt</Text>
-        <Text style={styles.cameraSpeedTime}>
-          {formatDate(item.deviceTimestamp)} {formatTime(item.deviceTimestamp)}
-        </Text>
-      </View>
-      <Text style={styles.cameraSpeedAddress}>{item.cameraAddress}</Text>
-      <Text style={styles.redLightTimelineText}>{timeline}</Text>
-      <View style={styles.cameraSpeedMetrics}>
-        <View style={styles.cameraSpeedMetric}>
-          <Text style={styles.cameraSpeedMetricLabel}>Approach</Text>
-          <Text style={styles.cameraSpeedMetricValue}>{approach}</Text>
-        </View>
-        <View style={styles.cameraSpeedMetric}>
-          <Text style={styles.cameraSpeedMetricLabel}>Min speed</Text>
-          <Text style={styles.cameraSpeedMetricValue}>{minSpeed}</Text>
-        </View>
-        <View style={styles.cameraSpeedMetric}>
-          <Text style={styles.cameraSpeedMetricLabel}>Accuracy</Text>
-          <Text style={styles.cameraSpeedMetricValue}>{uncertainty}</Text>
-        </View>
-      </View>
-      <Text style={styles.redLightStopText}>{stopText}</Text>
-    </View>
-  );
+const groupUnifiedCameraByDate = (events: UnifiedCameraEvent[]): UnifiedCameraSection[] => {
+  const map = new Map<string, UnifiedCameraEvent[]>();
+  for (const ev of events) {
+    const key = getDateKey(getEventTimestamp(ev));
+    const group = map.get(key);
+    if (group) {
+      group.push(ev);
+    } else {
+      map.set(key, [ev]);
+    }
+  }
+  return Array.from(map.entries()).map(([, grouped]) => ({
+    title: formatSectionDate(getEventTimestamp(grouped[0])),
+    data: grouped,
+  }));
 };
 
 // ──────────────────────────────────────────────────────
@@ -796,16 +1006,6 @@ interface HistorySection {
   data: ParkingHistoryItem[];
 }
 
-interface CameraPassSection {
-  title: string;
-  data: CameraPassHistoryItem[];
-}
-
-interface RedLightReceiptSection {
-  title: string;
-  data: RedLightReceipt[];
-}
-
 /** Group a flat history array into sections by date */
 const groupByDate = (items: ParkingHistoryItem[]): HistorySection[] => {
   const map = new Map<string, ParkingHistoryItem[]>();
@@ -826,39 +1026,6 @@ const groupByDate = (items: ParkingHistoryItem[]): HistorySection[] => {
   }));
 };
 
-const groupCameraPassesByDate = (items: CameraPassHistoryItem[]): CameraPassSection[] => {
-  const map = new Map<string, CameraPassHistoryItem[]>();
-  for (const item of items) {
-    const key = getDateKey(item.timestamp);
-    const group = map.get(key);
-    if (group) {
-      group.push(item);
-    } else {
-      map.set(key, [item]);
-    }
-  }
-  return Array.from(map.entries()).map(([, grouped]) => ({
-    title: formatSectionDate(grouped[0].timestamp),
-    data: grouped,
-  }));
-};
-
-const groupRedLightReceiptsByDate = (items: RedLightReceipt[]): RedLightReceiptSection[] => {
-  const map = new Map<string, RedLightReceipt[]>();
-  for (const item of items) {
-    const key = getDateKey(item.deviceTimestamp);
-    const group = map.get(key);
-    if (group) {
-      group.push(item);
-    } else {
-      map.set(key, [item]);
-    }
-  }
-  return Array.from(map.entries()).map(([, grouped]) => ({
-    title: formatSectionDate(grouped[0].deviceTimestamp),
-    data: grouped,
-  }));
-};
 
 // ──────────────────────────────────────────────────────
 // Main Screen
@@ -871,7 +1038,9 @@ const HistoryScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'parking' | 'camera' | 'redlight'>('parking');
+  const [activeView, setActiveView] = useState<'parking' | 'cameras'>('parking');
+  const [cameraSubTab, setCameraSubTab] = useState<'speed' | 'redlight'>('speed');
+  const [expandedCameraId, setExpandedCameraId] = useState<string | null>(null);
   const [, setIsDeleting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -930,6 +1099,11 @@ const HistoryScreen: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    // Process any queued parking saves before refreshing history
+    try {
+      const ParkingSaveQueue = require('../services/ParkingSaveQueue').default;
+      await ParkingSaveQueue.processQueue();
+    } catch { /* non-fatal */ }
     await loadHistory(true); // Force server refresh on pull-to-refresh
     if (isMountedRef.current) setRefreshing(false);
   }, [loadHistory]);
@@ -937,14 +1111,10 @@ const HistoryScreen: React.FC = () => {
   const clearAllHistory = useCallback(() => {
     if (clearingRef.current) return;
     const isParkingView = activeView === 'parking';
-    const isCameraView = activeView === 'camera';
+    const label = isParkingView ? 'Parking' : cameraSubTab === 'speed' ? 'Speed Camera' : 'Red Light Camera';
     Alert.alert(
-      isParkingView ? 'Clear Parking History' : isCameraView ? 'Clear Camera Speeds' : 'Clear Red Light Receipts',
-      isParkingView
-        ? 'Are you sure you want to clear all parking history?'
-        : isCameraView
-          ? 'Are you sure you want to clear all camera speed pass history?'
-          : 'Are you sure you want to clear all red-light receipt history?',
+      `Clear ${label} History`,
+      `Are you sure you want to clear all ${label.toLowerCase()} history?`,
       [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -956,7 +1126,7 @@ const HistoryScreen: React.FC = () => {
             if (isParkingView) {
               await ParkingHistoryService.clearHistory();
               if (isMountedRef.current) setHistory([]);
-            } else if (isCameraView) {
+            } else if (cameraSubTab === 'speed') {
               await CameraPassHistoryService.clearHistory();
               if (isMountedRef.current) setCameraPassHistory([]);
             } else {
@@ -973,7 +1143,7 @@ const HistoryScreen: React.FC = () => {
         },
       },
     ]);
-  }, [activeView]);
+  }, [activeView, cameraSubTab]);
 
   const deleteItem = useCallback((id: string) => {
     if (deletingIdRef.current !== null) return;
@@ -1009,35 +1179,26 @@ const HistoryScreen: React.FC = () => {
     };
   }, [history]);
 
-  const renderCameraEmptyState = useCallback(() => (
-    <View style={styles.emptyState}>
-      <MaterialCommunityIcons name="speedometer-slow" size={48} color={colors.textTertiary} />
-      <Text style={styles.emptyTitle}>No camera passes yet</Text>
-      <Text style={styles.emptyText}>
-        Drive with camera alerts enabled and we&apos;ll capture your speed when you pass camera locations.
-      </Text>
-    </View>
-  ), []);
-
-  const renderRedLightEmptyState = useCallback(() => (
-    <View style={styles.emptyState}>
-      <MaterialCommunityIcons name="traffic-light-outline" size={48} color={colors.textTertiary} />
-      <Text style={styles.emptyTitle}>No red-light receipts yet</Text>
-      <Text style={styles.emptyText}>
-        Drive with camera alerts enabled and we&apos;ll build a receipt timeline near red-light camera intersections.
-      </Text>
-    </View>
-  ), []);
-
   // Group history items into date sections
   const sections = useMemo(() => groupByDate(history), [history]);
-  const cameraSections = useMemo(
-    () => groupCameraPassesByDate(cameraPassHistory),
+
+  // Separate camera events by type for sub-tabs
+  const speedCameraEvents = useMemo((): UnifiedCameraEvent[] =>
+    cameraPassHistory.map(item => ({ eventType: 'speed' as const, data: item })),
     [cameraPassHistory]
   );
-  const redLightSections = useMemo(
-    () => groupRedLightReceiptsByDate(redLightReceipts),
+  const redLightCameraEvents = useMemo((): UnifiedCameraEvent[] =>
+    redLightReceipts.map(item => ({ eventType: 'redlight' as const, data: item })),
     [redLightReceipts]
+  );
+
+  const speedCameraSections = useMemo(
+    () => groupUnifiedCameraByDate(speedCameraEvents),
+    [speedCameraEvents]
+  );
+  const redLightCameraSections = useMemo(
+    () => groupUnifiedCameraByDate(redLightCameraEvents),
+    [redLightCameraEvents]
   );
 
   const renderTimelineItem = useCallback(({ item, index, section }: {
@@ -1095,8 +1256,8 @@ const HistoryScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.title}>History</Text>
         {((activeView === 'parking' && history.length > 0) ||
-          (activeView === 'camera' && cameraPassHistory.length > 0) ||
-          (activeView === 'redlight' && redLightReceipts.length > 0)) && (
+          (activeView === 'cameras' && cameraSubTab === 'speed' && cameraPassHistory.length > 0) ||
+          (activeView === 'cameras' && cameraSubTab === 'redlight' && redLightReceipts.length > 0)) && (
           <TouchableOpacity
             onPress={clearAllHistory}
             disabled={isClearing}
@@ -1115,26 +1276,18 @@ const HistoryScreen: React.FC = () => {
       <View style={styles.viewToggleRow}>
         <TouchableOpacity
           style={[styles.viewToggleBtn, activeView === 'parking' && styles.viewToggleBtnActive]}
-          onPress={() => setActiveView('parking')}
+          onPress={() => { setActiveView('parking'); setExpandedCameraId(null); }}
         >
           <Text style={[styles.viewToggleText, activeView === 'parking' && styles.viewToggleTextActive]}>
             Parking
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.viewToggleBtn, activeView === 'camera' && styles.viewToggleBtnActive]}
-          onPress={() => setActiveView('camera')}
+          style={[styles.viewToggleBtn, activeView === 'cameras' && styles.viewToggleBtnActive]}
+          onPress={() => { setActiveView('cameras'); setExpandedId(null); }}
         >
-          <Text style={[styles.viewToggleText, activeView === 'camera' && styles.viewToggleTextActive]}>
-            Camera Speeds
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.viewToggleBtn, activeView === 'redlight' && styles.viewToggleBtnActive]}
-          onPress={() => setActiveView('redlight')}
-        >
-          <Text style={[styles.viewToggleText, activeView === 'redlight' && styles.viewToggleTextActive]}>
-            Red Light
+          <Text style={[styles.viewToggleText, activeView === 'cameras' && styles.viewToggleTextActive]}>
+            Cameras
           </Text>
         </TouchableOpacity>
       </View>
@@ -1158,44 +1311,94 @@ const HistoryScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
         />
-      ) : activeView === 'camera' && cameraPassHistory.length === 0 ? (
-        renderCameraEmptyState()
-      ) : activeView === 'camera' ? (
-        <SectionList
-          sections={cameraSections}
-          renderItem={({ item }) => <CameraSpeedRow item={item} />}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderText}>{section.title}</Text>
-            </View>
-          )}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-          }
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
-        />
-      ) : redLightReceipts.length === 0 ? (
-        renderRedLightEmptyState()
       ) : (
-        <SectionList
-          sections={redLightSections}
-          renderItem={({ item }) => <RedLightReceiptRow item={item} />}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderText}>{section.title}</Text>
+        <>
+          {/* Camera sub-tabs: Speed | Red Light */}
+          <View style={styles.cameraSubTabRow}>
+            <TouchableOpacity
+              style={[styles.cameraSubTabBtn, cameraSubTab === 'speed' && styles.cameraSubTabBtnActive]}
+              onPress={() => { setCameraSubTab('speed'); setExpandedCameraId(null); }}
+            >
+              <MaterialCommunityIcons name="speedometer" size={14} color={cameraSubTab === 'speed' ? colors.white : colors.textSecondary} style={{ marginRight: 4 }} />
+              <Text style={[styles.cameraSubTabText, cameraSubTab === 'speed' && styles.cameraSubTabTextActive]}>
+                Speed
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.cameraSubTabBtn, cameraSubTab === 'redlight' && styles.cameraSubTabBtnActive]}
+              onPress={() => { setCameraSubTab('redlight'); setExpandedCameraId(null); }}
+            >
+              <MaterialCommunityIcons name="traffic-light" size={14} color={cameraSubTab === 'redlight' ? colors.white : colors.textSecondary} style={{ marginRight: 4 }} />
+              <Text style={[styles.cameraSubTabText, cameraSubTab === 'redlight' && styles.cameraSubTabTextActive]}>
+                Red Light
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {cameraSubTab === 'speed' && speedCameraEvents.length === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="speedometer" size={48} color={colors.textTertiary} />
+              <Text style={styles.emptyTitle}>No speed camera events yet</Text>
+              <Text style={styles.emptyText}>
+                Drive with camera alerts enabled and we&apos;ll record your speed when you pass speed camera locations.
+              </Text>
             </View>
+          ) : cameraSubTab === 'speed' ? (
+            <SectionList
+              sections={speedCameraSections}
+              renderItem={({ item }) => (
+                <CameraEventCard
+                  event={item}
+                  isExpanded={expandedCameraId === getEventId(item)}
+                  onToggle={() => setExpandedCameraId(expandedCameraId === getEventId(item) ? null : getEventId(item))}
+                />
+              )}
+              renderSectionHeader={({ section }) => (
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                </View>
+              )}
+              keyExtractor={(item) => getEventId(item)}
+              contentContainerStyle={styles.listContent}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+              }
+              showsVerticalScrollIndicator={false}
+              stickySectionHeadersEnabled={false}
+            />
+          ) : redLightCameraEvents.length === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="traffic-light" size={48} color={colors.textTertiary} />
+              <Text style={styles.emptyTitle}>No red light camera events yet</Text>
+              <Text style={styles.emptyText}>
+                Drive with camera alerts enabled and we&apos;ll record your stop data when you pass red light camera locations.
+              </Text>
+            </View>
+          ) : (
+            <SectionList
+              sections={redLightCameraSections}
+              renderItem={({ item }) => (
+                <CameraEventCard
+                  event={item}
+                  isExpanded={expandedCameraId === getEventId(item)}
+                  onToggle={() => setExpandedCameraId(expandedCameraId === getEventId(item) ? null : getEventId(item))}
+                />
+              )}
+              renderSectionHeader={({ section }) => (
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                </View>
+              )}
+              keyExtractor={(item) => getEventId(item)}
+              contentContainerStyle={styles.listContent}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+              }
+              showsVerticalScrollIndicator={false}
+              stickySectionHeadersEnabled={false}
+            />
           )}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-          }
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
-        />
+        </>
       )}
     </SafeAreaView>
   );
@@ -1252,6 +1455,32 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.medium,
   },
   viewToggleTextActive: {
+    color: colors.white,
+  },
+  cameraSubTabRow: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.base,
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  cameraSubTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.cardBg,
+  },
+  cameraSubTabBtnActive: {
+    backgroundColor: colors.primary,
+  },
+  cameraSubTabText: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
+  },
+  cameraSubTabTextActive: {
     color: colors.white,
   },
   listContent: {
@@ -1491,63 +1720,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: typography.sizes.base * typography.lineHeights.relaxed,
-  },
-  cameraSpeedCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.sm,
-  },
-  cameraSpeedHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  cameraSpeedType: {
-    fontSize: typography.sizes.sm,
-    color: colors.primary,
-    fontWeight: typography.weights.semibold,
-  },
-  cameraSpeedTime: {
-    fontSize: typography.sizes.xs,
-    color: colors.textTertiary,
-  },
-  cameraSpeedAddress: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  cameraSpeedMetrics: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  cameraSpeedMetric: {
-    flex: 1,
-  },
-  cameraSpeedMetricLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.textTertiary,
-    marginBottom: 2,
-  },
-  cameraSpeedMetricValue: {
-    fontSize: typography.sizes.sm,
-    color: colors.textPrimary,
-    fontWeight: typography.weights.semibold,
-  },
-  redLightTimelineText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
-  },
-  redLightStopText: {
-    marginTop: spacing.sm,
-    fontSize: typography.sizes.sm,
-    color: colors.textPrimary,
-    fontWeight: typography.weights.medium,
   },
 });
 

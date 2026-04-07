@@ -8,7 +8,17 @@ const nextConfig = {
   },
   env: {
     SITE_URL: process.env.SITE_URL || 'http://localhost:3000',
-  }
+  },
+  // Serve the OAuth callback at /oauth-return so the Android app's
+  // /auth/* universal-link intent filter (in v2.0.1 and earlier) does NOT
+  // intercept it. Browser URL stays /oauth-return; Next.js internally
+  // serves the existing /auth/callback page. Once enough Android users
+  // upgrade past 2.0.1, this rewrite can be removed.
+  async rewrites() {
+    return [
+      { source: '/oauth-return', destination: '/auth/callback' },
+    ];
+  },
 };
 
 const sentryWebpackPluginOptions = {

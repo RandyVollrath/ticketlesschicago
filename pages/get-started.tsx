@@ -207,11 +207,26 @@ export default function GetStarted() {
           {/* Plan Header */}
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <h1 style={{ fontSize: 28, fontWeight: 700, color: COLORS.deepHarbor, margin: '0 0 8px' }}>
-              Autopilot Protection
+              The parking app Chicago drivers need
             </h1>
             <p style={{ fontSize: 16, color: COLORS.slate, margin: 0 }}>
-              Complete protection - alerts and automatic contesting
+              Address alerts. Car location alerts. Automatic ticket contesting.
             </p>
+          </div>
+
+          {/* Savings context */}
+          <div style={{
+            maxWidth: 500,
+            margin: '0 auto 16px',
+            padding: '12px 18px',
+            borderRadius: 10,
+            borderLeft: `4px solid ${COLORS.signal}`,
+            backgroundColor: '#F0FDF4',
+            fontSize: 14,
+            color: COLORS.graphite,
+            lineHeight: 1.6,
+          }}>
+            Chicago drivers average <strong>$250/yr</strong> in parking tickets and late fees. Full protection: <strong>$99/yr</strong>.
           </div>
 
           {/* Single Plan Card */}
@@ -244,39 +259,42 @@ export default function GetStarted() {
                   <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$99</span>
                   <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
                 </div>
-                <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 16px 0' }}>
+                <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 4px 0' }}>
                   Founding Member Rate locks while your membership stays active
+                </p>
+                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 16px 0' }}>
+                  Pays for itself in 1.2 tickets
                 </p>
                 <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    New ticket alerts
+                    Street cleaning &amp; snow ban alerts for your address
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    Street cleaning &amp; snow ban reminders
+                    Real-time car location alerts via mobile app
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    Renewal deadline alerts
+                    <strong>Twice-weekly</strong> plate monitoring for new tickets
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    <strong>Twice-weekly</strong> plate monitoring
+                    <strong>Automatic</strong> contest letters drafted, printed, and mailed
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    <strong>Automatic</strong> contest letters mailed
+                    Registration renewal deadline reminders
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
@@ -302,7 +320,7 @@ export default function GetStarted() {
                   {authMode === 'signup' ? 'Get Started with Autopilot America!' : 'Welcome Back!'}
                 </h2>
                 <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 24px 0' }}>
-                  {authMode === 'signup' ? 'Stop paying unfair parking tickets. We\'ll contest them for you automatically.' : 'Sign in to continue protecting your wallet from parking tickets.'}
+                  {authMode === 'signup' ? 'Alerts before you get a ticket. Automatic contesting when you do. All in one app.' : 'Sign in to continue protecting your wallet from parking tickets.'}
                 </p>
 
                 {/* Google Sign-In Button */}

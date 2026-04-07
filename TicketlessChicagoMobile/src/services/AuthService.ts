@@ -455,8 +455,10 @@ class AuthServiceClass {
     const refreshed = await this.refreshToken();
 
     if (!refreshed) {
-      log.warn('Token refresh failed, signing out user');
-      await this.signOut();
+      // Do NOT sign out here — a transient refresh failure (e.g. iOS background
+      // with suspended JS) shouldn't destroy the user's session. The refresh
+      // token in AsyncStorage may still be valid on the next attempt.
+      log.warn('Token refresh failed, NOT signing out (refresh token may still be valid)');
       return false;
     }
 

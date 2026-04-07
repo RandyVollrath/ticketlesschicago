@@ -19,6 +19,7 @@ import ParkingDetectionStateMachine from './ParkingDetectionStateMachine';
 import MotionActivityService from './MotionActivityService';
 import BackgroundLocationService, { ParkingDetectedEvent } from './BackgroundLocationService';
 import LocationService from './LocationService';
+import ParkingSaveQueue from './ParkingSaveQueue';
 import LocalNotificationService, { ParkingRestriction } from './LocalNotificationService';
 import PushNotificationService from './PushNotificationService';
 import AuthService from './AuthService';
@@ -1770,18 +1771,17 @@ class BackgroundTaskServiceClass {
         try {
           const fcmToken = await PushNotificationService.getToken();
           if (fcmToken) {
-            // If not authenticated, attempt a proactive token refresh before giving up.
-            // Background sessions on iOS can lose auth state when the Supabase auto-refresh
-            // doesn't fire (JS suspended). The refresh token in AsyncStorage may still be valid
-            // even when the in-memory session has expired.
-            if (!AuthService.isAuthenticated()) {
-              log.info('Server save: not authenticated, attempting proactive token refresh');
-              const refreshed = await AuthService.refreshToken();
-              if (refreshed) {
-                log.info('Server save: token refresh succeeded, proceeding with save');
-              } else {
-                log.warn('Server save: token refresh failed, skipping server save (local save intact)');
-              }
+            // Always attempt a proactive token refresh before server save.
+            // Even when isAuthenticated() returns true, the in-memory access token
+            // may be expired (Supabase auto-refresh doesn't fire when JS is suspended
+            // in iOS background). Without this, authPost sends an expired token → 401
+            // → refresh fails → user was being signed out, breaking all future saves.
+            log.info('Server save: proactively refreshing auth token');
+            const refreshed = await AuthService.refreshToken();
+            if (refreshed) {
+              log.info('Server save: token refresh succeeded');
+            } else if (!AuthService.isAuthenticated()) {
+              log.warn('Server save: not authenticated and refresh failed, skipping server save (local save intact)');
             }
 
             if (AuthService.isAuthenticated()) {
@@ -1791,18 +1791,46 @@ class BackgroundTaskServiceClass {
               if (saveResult.success && saveResult.id) {
                 parkingSessionId = saveResult.id;
               } else {
-                log.warn('Server save returned failure (API may have returned 401, authPost will have attempted refresh)');
+                // Server save failed — queue for retry so we never lose history
+                log.warn('Server save failed, queuing for retry');
+                const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, fcmToken);
+                await ParkingSaveQueue.enqueue(payload);
               }
+            } else {
+              // Not authenticated even after refresh — queue the save for when auth returns
+              log.warn('Server save: not authenticated, queuing for retry when auth returns');
+              const rawData = result.rawApiData || await this.getRawParkingData(result);
+              const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, fcmToken);
+              await ParkingSaveQueue.enqueue(payload);
             }
           } else {
             log.debug('Skipping server save: no FCM token');
           }
         } catch (serverSaveError) {
-          // Non-fatal — local notifications still work without server save
-          log.warn('Failed to save parked location to server (non-fatal):', serverSaveError);
+          // Non-fatal — queue for retry, local notifications still work
+          log.warn('Failed to save parked location to server, queuing for retry:', serverSaveError);
+          try {
+            const fcmToken = await PushNotificationService.getToken();
+            if (fcmToken) {
+              const rawData = result.rawApiData || await this.getRawParkingData(result);
+              const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, fcmToken);
+              await ParkingSaveQueue.enqueue(payload);
+            }
+          } catch { /* best-effort queue */ }
         }
       } else {
         log.info('Manual check: skipped server parked-location save');
+      }
+
+      // Process any previously queued server saves (from earlier failures).
+      // We do this after a successful parking check because auth is likely fresh.
+      try {
+        const queueSaved = await ParkingSaveQueue.processQueue();
+        if (queueSaved > 0) {
+          log.info(`Retry queue: recovered ${queueSaved} previously failed parking saves`);
+        }
+      } catch (queueError) {
+        log.debug('Retry queue processing failed (non-fatal):', queueError);
       }
 
       // Update last check time
@@ -3487,6 +3515,8 @@ class BackgroundTaskServiceClass {
       void this.uploadDiagnosticLogs('app-foreground');
       // Run parking pipeline health check on foreground
       void this.runParkingHealthCheck();
+      // Process any queued parking saves that failed while backgrounded
+      void ParkingSaveQueue.processQueue();
       // Check for camera evidence captured natively while JS was suspended
       if (Platform.OS === 'ios') {
         void this.ingestPendingNativeRedLightEvidence();

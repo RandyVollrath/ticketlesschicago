@@ -188,6 +188,18 @@ class CameraPassHistoryServiceClass {
       log.error('Error clearing camera pass history', error);
     }
   }
+
+  async clearByType(cameraType: 'speed' | 'redlight'): Promise<void> {
+    try {
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      const history: CameraPassHistoryItem[] = stored ? JSON.parse(stored) : [];
+      const filtered = history.filter(item => item.cameraType !== cameraType);
+      await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(filtered));
+      AppEvents.emit('camera-pass-history-updated');
+    } catch (error) {
+      log.error(`Error clearing ${cameraType} camera pass history`, error);
+    }
+  }
 }
 
 export default new CameraPassHistoryServiceClass();

@@ -161,18 +161,6 @@ const PARKING_PROTECTIONS: ProtectionItem[] = [
     sheetAction: { label: 'Set Up Advance Alerts', target: 'manage' },
   },
   {
-    icon: 'snowflake',
-    label: 'Winter Overnight Ban',
-    sheetTitle: 'Winter Overnight Ban',
-    sheetBody: 'From Dec 1 to Apr 1, parking is prohibited on designated main streets between 3 AM and 7 AM, regardless of snow. We alert you if you park on one of these routes.',
-  },
-  {
-    icon: 'weather-snowy-heavy',
-    label: '2-Inch Snow Ban',
-    sheetTitle: '2-Inch Snow Emergency',
-    sheetBody: 'When 2+ inches of snow falls, the city activates a ban on 500 miles of arterial streets. We monitor the city\'s official declaration and alert you immediately.',
-  },
-  {
     icon: 'parking',
     label: 'Residential Permits',
     sheetTitle: 'Residential Permit Zones',
@@ -184,6 +172,18 @@ const PARKING_PROTECTIONS: ProtectionItem[] = [
     label: 'Temporary No Parking',
     sheetTitle: 'Temporary Restrictions',
     sheetBody: 'We check for temporary no-parking zones from block parties, construction, filming, and other events. Always double-check for orange paper signs on poles.',
+  },
+  {
+    icon: 'snowflake',
+    label: 'Winter Overnight Ban',
+    sheetTitle: 'Winter Overnight Ban',
+    sheetBody: 'From Dec 1 to Apr 1, parking is prohibited on designated main streets between 3 AM and 7 AM, regardless of snow. We alert you if you park on one of these routes.',
+  },
+  {
+    icon: 'weather-snowy-heavy',
+    label: '2-Inch Snow Ban',
+    sheetTitle: '2-Inch Snow Emergency',
+    sheetBody: 'When 2+ inches of snow falls, the city activates a ban on 500 miles of arterial streets. We monitor the city\'s official declaration and alert you immediately.',
   },
 ];
 

@@ -24,16 +24,16 @@ interface ViolationStat {
   color: string;
 }
 
-// Hardcoded from FOIA data (these are real numbers from Chicago's records)
+// From FOIA F129773 — full year 2025, City of Chicago tickets table
 const VIOLATION_STATS: ViolationStat[] = [
-  { name: 'Expired Meter', count: 287432, color: '#F59E0B' },
-  { name: 'Street Cleaning', count: 201847, color: '#10B981' },
-  { name: 'No City Sticker', count: 156293, color: '#EF4444' },
-  { name: 'Residential Permit', count: 89721, color: '#8B5CF6' },
-  { name: 'Expired Plates', count: 73456, color: '#3B82F6' },
-  { name: 'Red Light Camera', count: 62819, color: '#DC2626' },
-  { name: 'Speed Camera', count: 54203, color: '#E11D48' },
-  { name: 'Loading Zone', count: 31247, color: '#06B6D4' },
+  { name: 'Speed Camera', count: 1673375, color: '#E11D48' },
+  { name: 'Expired Meter', count: 688132, color: '#F59E0B' },
+  { name: 'Red Light Camera', count: 493218, color: '#DC2626' },
+  { name: 'Expired Plates', count: 443272, color: '#3B82F6' },
+  { name: 'Street Cleaning', count: 323144, color: '#10B981' },
+  { name: 'No City Sticker', count: 180441, color: '#EF4444' },
+  { name: 'Residential Permit', count: 168499, color: '#8B5CF6' },
+  { name: 'Prohibited / Time Restricted', count: 260235, color: '#06B6D4' },
 ];
 
 const TOTAL_TICKETS = VIOLATION_STATS.reduce((sum, v) => sum + v.count, 0);
@@ -98,7 +98,7 @@ export default function CityTicketStats({ compact = false }: { compact?: boolean
             marginRight: 'auto',
             lineHeight: 1.6,
           }}>
-            Data from over 1.2 million Chicago parking and traffic citations, obtained via Freedom of Information Act requests.
+            5.25 million parking and traffic citations issued in 2025, obtained via Freedom of Information Act requests.
           </p>
         </div>
       )}
@@ -112,26 +112,26 @@ export default function CityTicketStats({ compact = false }: { compact?: boolean
       }}>
         <StatBox
           label="Total Tickets"
-          value={TOTAL_TICKETS.toLocaleString()}
-          subtext="Jan 2024 - Oct 2025"
+          value="5.25M"
+          subtext="2025 full year"
           color={COLORS.regulatory}
         />
         <StatBox
           label="Avg Per Day"
-          value={Math.round(TOTAL_TICKETS / 660).toLocaleString()}
+          value="14,384"
           subtext="tickets issued daily"
           color={COLORS.warning}
         />
         <StatBox
           label="Avg Ticket"
-          value="$75"
-          subtext="average fine amount"
+          value="$83"
+          subtext="with late fees"
           color={COLORS.danger}
         />
         <StatBox
           label="Contest Win Rate"
-          value="55%"
-          subtext="decided cases, 1.18M FOIA records"
+          value="67%"
+          subtext="decided parking ticket cases, FOIA data"
           color={COLORS.signal}
         />
       </div>
