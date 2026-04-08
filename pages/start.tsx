@@ -385,7 +385,7 @@ export default function StartFunnel() {
       email_on_approval_needed: emailNotifications,
     });
     setSavingSettings(false);
-    router.push('/settings');
+    router.push('/welcome');
   };
 
   const toggleTicketType = (key: string) => {
@@ -505,8 +505,30 @@ export default function StartFunnel() {
           {/* ── Step 1: Sign In ── */}
           {step === 'signin' && (
             <StepContainer>
-              <StepLabel>The parking app Chicago drivers need</StepLabel>
-              <StepSubtext>Address-based alerts before you get a ticket. Real-time warnings when your car is at risk. And if you do get a ticket, we contest it automatically. Sign in to get started — takes about 2 minutes.</StepSubtext>
+              <StepLabel>Stop paying Chicago $280 million a year.</StepLabel>
+              <StepSubtext>
+                That&apos;s what Chicago drivers pay every year in parking tickets and late fees.
+                A single ticket with late fees can run over $200. Ticketless protects your car
+                three ways so you don&apos;t.
+              </StepSubtext>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+                <ValueItem
+                  icon="&#128205;"
+                  title="Address alerts"
+                  desc="Street cleaning, snow ban, and winter overnight alerts for your home block — the night before, so you can move your car."
+                />
+                <ValueItem
+                  icon="&#128663;"
+                  title="Live car-location alerts"
+                  desc="Install the mobile app and we'll detect where you parked and warn you before your car is at risk — wherever you park."
+                />
+                <ValueItem
+                  icon="&#9993;&#65039;"
+                  title="Automatic ticket contesting"
+                  desc="We check your plate twice a week. When we find a ticket we draft a contest letter, gather supporting evidence, and mail it to the City for you."
+                />
+              </div>
 
               <button
                 type="button"
@@ -608,6 +630,11 @@ export default function StartFunnel() {
                 />
               </div>
               {error && <ErrorText>{error}</ErrorText>}
+              <ValueCallout>
+                We&apos;ll watch this plate for new tickets twice a week and automatically file
+                contests with supporting evidence. A single missed-payment ticket plus late fee
+                can run <strong>$200+</strong>.
+              </ValueCallout>
               <ContinueButton onClick={handlePlateSubmit}>Continue</ContinueButton>
             </StepContainer>
           )}
@@ -672,6 +699,11 @@ export default function StartFunnel() {
                 </div>
               </div>
               {error && <ErrorText>{error}</ErrorText>}
+              <ValueCallout>
+                You&apos;ll get the night-before alert for every street cleaning at this address
+                so you can move your car. A street cleaning ticket is <strong>$75</strong>, and
+                doubles to <strong>$150</strong> with the late fee.
+              </ValueCallout>
               <ContinueButton onClick={handleAddressSubmit}>Continue</ContinueButton>
             </StepContainer>
           )}
@@ -760,10 +792,10 @@ export default function StartFunnel() {
                 <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: 6, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                   What Chicago drivers pay without protection
                 </div>
-                <div><strong style={{ color: COLORS.text }}>3 tickets/year</strong> average per car</div>
-                <div><strong style={{ color: COLORS.text }}>$83</strong> per ticket with late fees</div>
-                <div><strong style={{ color: COLORS.text }}>$250/year</strong> in fines and late fees per car</div>
-                <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>Source: City of Chicago FOIA data, 2025</div>
+                <div><strong style={{ color: COLORS.text }}>$280 million/year</strong> in tickets and late fees citywide</div>
+                <div><strong style={{ color: COLORS.text }}>$200+</strong> for a single no-sticker ticket with late fee</div>
+                <div><strong style={{ color: COLORS.text }}>$150</strong> for a street cleaning ticket with late fee</div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>Source: City of Chicago FOIA data</div>
               </div>
 
               {/* Billing toggle */}
@@ -850,7 +882,7 @@ export default function StartFunnel() {
                       Price locked for life while your membership stays active.
                     </div>
                     <div style={{ fontSize: 14, color: COLORS.success, fontWeight: 600, marginTop: 6 }}>
-                      Pays for itself in 1.2 tickets. Average driver saves $151/year.
+                      Less than a single no-sticker ticket with a late fee.
                     </div>
                   </>
                 ) : (
@@ -1001,6 +1033,12 @@ export default function StartFunnel() {
                 </div>
               </div>
 
+              <ValueCallout>
+                A no-city-sticker ticket is <strong>$200</strong> — <strong>$400</strong> with the
+                late fee. Knowing your renewal dates lets us warn you before they expire and
+                strengthens contest letters if you ever do get one.
+              </ValueCallout>
+
               <ContinueButton onClick={handleSaveRegistration} disabled={savingSettings}>
                 {savingSettings ? 'Saving...' : 'Continue'}
               </ContinueButton>
@@ -1024,6 +1062,13 @@ export default function StartFunnel() {
                   userEmail={user.email}
                 />
               )}
+
+              <ValueCallout>
+                Forward your sticker receipts once and we automatically attach them as proof for
+                any future city sticker (<strong>$200</strong>, <strong>$400</strong> with late
+                fee) or plate sticker ticket. Sticker contests with proof of purchase win
+                <strong> ~70% </strong>of the time.
+              </ValueCallout>
 
               <div style={{ marginTop: 20 }}>
                 <ContinueButton onClick={goNext}>Continue</ContinueButton>
@@ -1218,6 +1263,33 @@ function ErrorText({ children }: { children: React.ReactNode }) {
       borderRadius: 8,
       marginTop: 12,
     }}>
+      {children}
+    </div>
+  );
+}
+
+function ValueCallout({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      marginTop: 14,
+      padding: '14px 16px',
+      borderRadius: 12,
+      border: `1px solid ${COLORS.border}`,
+      backgroundColor: COLORS.successBg,
+      fontSize: 13,
+      color: COLORS.textSecondary,
+      lineHeight: 1.55,
+    }}>
+      <div style={{
+        fontSize: 11,
+        fontWeight: 700,
+        color: COLORS.success,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        marginBottom: 4,
+      }}>
+        Why this saves you money
+      </div>
       {children}
     </div>
   );
