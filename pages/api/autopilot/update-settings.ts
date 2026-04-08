@@ -59,6 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone',
         'no_standing_time_restricted', 'parking_prohibited', 'residential_permit',
         'missing_plate', 'commercial_loading', 'fire_hydrant', 'street_cleaning', 'bus_lane',
+        'red_light', 'speed_camera',
       ];
       settingsUpdates.allowed_ticket_types = allowed_ticket_types.filter((t: string) => VALID_TYPES.includes(t));
     }
