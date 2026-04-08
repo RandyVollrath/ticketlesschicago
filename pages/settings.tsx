@@ -1093,6 +1093,15 @@ function SettingsPageInner() {
       const plateData = plateResult.data;
       const settingsData = settingsResult.data;
 
+      // ── Gate: unpaid browser users get routed to the /start funnel ──
+      // Mobile WebView stays put — the native app handles its own unpaid UI.
+      // This prevents new signups from landing on Settings with no clear next
+      // step (the confusing "click Dashboard → activate" dead end).
+      if (!isMobileWebViewRef.current && profileData && profileData.is_paid !== true) {
+        router.replace('/start');
+        return;
+      }
+
       // ── Apply profile data ──
       setIsPaidUser(profileData?.has_contesting === true);
 
