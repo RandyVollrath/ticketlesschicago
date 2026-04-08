@@ -2270,7 +2270,7 @@ async function processTicket(ticket: DetectedTicket): Promise<{ success: boolean
   const userSettings: UserSettings = {
     auto_mail_enabled: settings?.auto_mail_enabled ?? false,
     require_approval: settings?.require_approval ?? true,
-    allowed_ticket_types: settings?.allowed_ticket_types || ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone', 'no_standing_time_restricted', 'parking_prohibited', 'residential_permit', 'missing_plate', 'commercial_loading', 'bus_lane'],
+    allowed_ticket_types: settings?.allowed_ticket_types || ['expired_plates', 'no_city_sticker', 'expired_meter', 'disabled_zone', 'no_standing_time_restricted', 'parking_prohibited', 'residential_permit', 'missing_plate', 'commercial_loading', 'bus_lane', 'red_light', 'speed_camera'],
     never_auto_mail_unknown: settings?.never_auto_mail_unknown ?? true,
     foia_wait_preference: profile.foia_wait_preference || 'wait_for_foia',
   };

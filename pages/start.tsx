@@ -50,6 +50,8 @@ const TICKET_TYPES = [
   { key: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44, defaultOn: false },
   { key: 'street_cleaning', label: 'Street Cleaning', winRate: 34, defaultOn: false },
   { key: 'bus_lane', label: 'Bus Lane / Smart Streets', winRate: 25, defaultOn: false },
+  { key: 'red_light', label: 'Red Light Camera', winRate: 32, defaultOn: true },
+  { key: 'speed_camera', label: 'Speed Camera', winRate: 28, defaultOn: true },
 ];
 
 export default function StartFunnel() {
@@ -631,9 +633,11 @@ export default function StartFunnel() {
               </div>
               {error && <ErrorText>{error}</ErrorText>}
               <ValueCallout>
-                We&apos;ll watch this plate for new tickets twice a week and automatically file
-                contests with supporting evidence. A single missed-payment ticket plus late fee
-                can run <strong>$200+</strong>.
+                We&apos;ll watch this plate for new tickets every Monday and Thursday and
+                automatically file contests with supporting evidence. <strong>94% of Chicago
+                parking tickets are never contested</strong> — people just pay. When we do
+                contest, sticker tickets with proof of purchase win about <strong>70%</strong>
+                of the time. A single missed ticket plus late fee can run <strong>$200+</strong>.
               </ValueCallout>
               <ContinueButton onClick={handlePlateSubmit}>Continue</ContinueButton>
             </StepContainer>
