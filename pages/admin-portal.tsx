@@ -1749,6 +1749,26 @@ export default function AdminPortal() {
           >
             FOIA Tracker &#8599;
           </a>
+          <a
+            href="/flyer-routes"
+            style={{
+              padding: '16px 24px',
+              border: 'none',
+              background: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#10b981',
+              borderBottom: '2px solid transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              whiteSpace: 'nowrap',
+              textDecoration: 'none',
+            }}
+          >
+            Flyer Routes &#8599;
+          </a>
         </div>
       </div>
 
