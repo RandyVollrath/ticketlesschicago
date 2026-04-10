@@ -415,11 +415,14 @@ export default async function handler(
     // Nominatim disagreed on which street the user was on.
     const result = await checkAllParkingRestrictions(checkLat, checkLng, snapResult?.streetName || undefined);
 
-    // Step 2b: Metered parking check uses the shared parsed address from step 2
+    // Step 2b: Metered parking check uses the shared parsed address from step 2.
+    // Pass heading so the checker can determine which side of the street the user
+    // is on and suppress meter warnings when parked on the non-metered side.
     const meteredParkingResult = await checkMeteredParking(
       checkLat,
       checkLng,
       result.location.parsedAddress,  // Pass shared address — no second geocode call
+      hasHeading ? headingDeg : undefined,
     );
 
     // Step 3: Compute enforcement risk score from FOIA ticket data.
