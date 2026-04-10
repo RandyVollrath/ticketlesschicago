@@ -282,6 +282,92 @@ export default function Login() {
                 {loading && authMethod === 'google' ? 'Signing in...' : 'Continue with Google'}
               </button>
 
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '8px 0 16px' }}>
+                <div style={{ flex: 1, height: '1px', backgroundColor: COLORS.border }} />
+                <span style={{ fontSize: '13px', color: COLORS.slate, fontWeight: '500' }}>or sign in with email</span>
+                <div style={{ flex: 1, height: '1px', backgroundColor: COLORS.border }} />
+              </div>
+
+              {/* Email + Password Form */}
+              <form onSubmit={handlePasswordAuth}>
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    marginBottom: '10px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    color: COLORS.graphite,
+                    backgroundColor: loading ? COLORS.concrete : 'white'
+                  }}
+                />
+                <div style={{ position: 'relative', marginBottom: '12px' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    style={{
+                      width: '100%',
+                      padding: '12px 44px 12px 14px',
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '10px',
+                      fontSize: '15px',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      color: COLORS.graphite,
+                      backgroundColor: loading ? COLORS.concrete : 'white'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: COLORS.slate,
+                      fontSize: '13px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    border: 'none',
+                    borderRadius: '10px',
+                    backgroundColor: loading && authMethod === 'password' ? COLORS.regulatoryDark : COLORS.regulatory,
+                    color: 'white',
+                    fontWeight: '600',
+                    fontSize: '15px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading && authMethod !== 'password' ? 0.5 : 1
+                  }}
+                >
+                  {loading && authMethod === 'password' ? 'Signing in...' : 'Sign In'}
+                </button>
+              </form>
+
             </div>
 
             {message && (
