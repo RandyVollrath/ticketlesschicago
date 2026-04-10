@@ -772,7 +772,7 @@ export default function StartFunnel() {
                   color: COLORS.textSecondary,
                   lineHeight: 1.6,
                 }}>
-                  The average Chicago car gets 3 tickets a year — $250 in fines and late fees. The top culprits: camera tickets, expired meters, and street cleaning. That&apos;s exactly what Autopilot protects against.
+                  A single red light camera ticket averages $156 with late fees. A street cleaning ticket: $79. Autopilot is $99/year — avoid one ticket and it&apos;s paid for.
                 </div>
               )}
               <ContinueButton onClick={goNext}>See pricing</ContinueButton>
@@ -794,12 +794,12 @@ export default function StartFunnel() {
                 color: COLORS.textSecondary,
               }}>
                 <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: 6, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                  What Chicago drivers pay without protection
+                  What one ticket actually costs
                 </div>
-                <div><strong style={{ color: COLORS.text }}>$280 million/year</strong> in tickets and late fees citywide</div>
-                <div><strong style={{ color: COLORS.text }}>$200+</strong> for a single no-sticker ticket with late fee</div>
-                <div><strong style={{ color: COLORS.text }}>$150</strong> for a street cleaning ticket with late fee</div>
-                <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>Source: City of Chicago FOIA data</div>
+                <div><strong style={{ color: COLORS.text }}>Red light camera:</strong> $100 base — averages $156 with late fees</div>
+                <div><strong style={{ color: COLORS.text }}>Street cleaning:</strong> $60 base — averages $79 with late fees</div>
+                <div><strong style={{ color: COLORS.text }}>Expired meter:</strong> $50–$70 base — averages $62–$88 with late fees</div>
+                <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>Source: City of Chicago FOIA data, 2025. 48% of red light tickets incur late fees.</div>
               </div>
 
               {/* Billing toggle */}

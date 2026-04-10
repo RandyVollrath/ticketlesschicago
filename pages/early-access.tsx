@@ -449,7 +449,7 @@ export default function EarlyAccessPage() {
           letterSpacing: '-0.5px',
         }}>
           <div>Chicago charged drivers $420M in 2025.</div>
-          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>67% of contested parking tickets win.</div>
+          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>66% of contested parking tickets win.</div>
         </div>
         <p style={{
           margin: '24px 0 0',
@@ -511,7 +511,7 @@ export default function EarlyAccessPage() {
             },
             {
               title: 'Auto-Contest Letters',
-              text: 'We generate and mail contest letters backed by FOIA data. 67% of contested parking tickets get dismissed.',
+              text: 'We generate and mail contest letters backed by FOIA data. 66% of contested parking tickets get dismissed.',
               icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#818CF8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>),
             },
           ].map((feature, i) => (
@@ -598,7 +598,7 @@ export default function EarlyAccessPage() {
               { step: '1', title: 'Add your plate', desc: 'Enter your license plate number once. Takes 30 seconds.' },
               { step: '2', title: 'We monitor', desc: 'Our system checks Chicago\'s database for new violations twice a week.' },
               { step: '3', title: 'We contest', desc: 'When we find a ticket, we build a code-specific defense and mail it for you.' },
-              { step: '4', title: 'You save money', desc: 'Track results and outcomes. 67% of contested parking tickets get dismissed.' },
+              { step: '4', title: 'You save money', desc: 'Track results and outcomes. 66% of contested parking tickets get dismissed.' },
             ].map((item, i) => (
               <div key={i}>
                 <div style={{
