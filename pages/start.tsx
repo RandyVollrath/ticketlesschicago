@@ -48,7 +48,7 @@ const TICKET_TYPES = [
   { key: 'missing_plate', label: 'Missing / Noncompliant Plate', winRate: 54, defaultOn: true },
   { key: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 59, defaultOn: true },
   { key: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44, defaultOn: false },
-  { key: 'street_cleaning', label: 'Street Cleaning', winRate: 34, defaultOn: false },
+  { key: 'street_cleaning', label: 'Street Cleaning', winRate: 34, defaultOn: true },
   { key: 'bus_lane', label: 'Bus Lane / Smart Streets', winRate: 25, defaultOn: false },
   { key: 'red_light', label: 'Red Light Camera', winRate: 32, defaultOn: true },
   { key: 'speed_camera', label: 'Speed Camera', winRate: 28, defaultOn: true },
@@ -565,7 +565,7 @@ export default function StartFunnel() {
 
               {error && <ErrorText>{error}</ErrorText>}
 
-              <Reassurance>$99/year. Pays for itself with one avoided ticket. No payment until the last step.</Reassurance>
+              <Reassurance>$99/year. Full protection. No payment until the last step.</Reassurance>
             </StepContainer>
           )}
 
@@ -886,7 +886,7 @@ export default function StartFunnel() {
                       Price locked for life while your membership stays active.
                     </div>
                     <div style={{ fontSize: 14, color: COLORS.success, fontWeight: 600, marginTop: 6 }}>
-                      Less than a single no-sticker ticket with a late fee.
+                      Founding Member rate. Covers alerts, monitoring, and contesting.
                     </div>
                   </>
                 ) : (
