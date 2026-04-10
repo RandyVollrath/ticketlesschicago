@@ -57,6 +57,42 @@ const TOP_BLOCKS: HotBlock[] = [
   { block: '2300 S Marshall Blvd', tickets: 268, daysTicketed: 93, lat: 41.8497, lng: -87.6983, neighborhood: 'Little Village', ward: '24' },
 ];
 
+// Top blocks for SEIZURE-level street cleaning tickets (boot/tow eligible)
+// notice_level='SEIZ' = the city has issued a seizure notice = car will be booted/towed
+// These drivers are actively losing their cars. They will pay anything to make it stop.
+const TOW_BLOCKS: HotBlock[] = [
+  { block: '1700 E 67th St', tickets: 335, daysTicketed: 65, lat: 41.7736, lng: -87.5850, neighborhood: 'Woodlawn / South Shore', ward: '5' },
+  { block: '1000 W Granville Ave', tickets: 288, daysTicketed: 129, lat: 41.9940, lng: -87.6580, neighborhood: 'Edgewater', ward: '48' },
+  { block: '2300 E 67th St', tickets: 187, daysTicketed: 54, lat: 41.7736, lng: -87.5760, neighborhood: 'South Shore', ward: '5' },
+  { block: '2100 W 18th St', tickets: 184, daysTicketed: 198, lat: 41.8579, lng: -87.6780, neighborhood: 'Pilsen', ward: '25' },
+  { block: '2000 W Devon Ave', tickets: 168, daysTicketed: 128, lat: 41.9979, lng: -87.6790, neighborhood: 'West Rogers Park', ward: '50' },
+  { block: '2900 S State St', tickets: 163, daysTicketed: 0, lat: 41.8420, lng: -87.6270, neighborhood: 'Bronzeville', ward: '3' },
+  { block: '400 E 35th St', tickets: 157, daysTicketed: 0, lat: 41.8313, lng: -87.6190, neighborhood: 'Bronzeville / IIT', ward: '3' },
+  { block: '800 W 31st St', tickets: 151, daysTicketed: 61, lat: 41.8385, lng: -87.6500, neighborhood: 'Bridgeport', ward: '11' },
+  { block: '2200 W 18th St', tickets: 151, daysTicketed: 183, lat: 41.8579, lng: -87.6805, neighborhood: 'Pilsen', ward: '25' },
+  { block: '1600 E 67th St', tickets: 151, daysTicketed: 0, lat: 41.7736, lng: -87.5860, neighborhood: 'Woodlawn', ward: '5' },
+  { block: '2300 E 71st St', tickets: 147, daysTicketed: 36, lat: 41.7647, lng: -87.5760, neighborhood: 'South Shore', ward: '5' },
+  { block: '4200 N Broadway', tickets: 145, daysTicketed: 65, lat: 41.9595, lng: -87.6483, neighborhood: 'Uptown', ward: '46' },
+  { block: '2200 E 67th St', tickets: 140, daysTicketed: 0, lat: 41.7736, lng: -87.5775, neighborhood: 'South Shore', ward: '5' },
+  { block: '2600 N Laramie Ave', tickets: 138, daysTicketed: 81, lat: 41.9296, lng: -87.7543, neighborhood: 'Belmont Cragin', ward: '31' },
+  { block: '2100 W Devon Ave', tickets: 136, daysTicketed: 126, lat: 41.9979, lng: -87.6803, neighborhood: 'West Rogers Park', ward: '50' },
+  { block: '1100 W Granville Ave', tickets: 134, daysTicketed: 112, lat: 41.9940, lng: -87.6600, neighborhood: 'Edgewater', ward: '48' },
+  { block: '1800 W Cermak Rd', tickets: 133, daysTicketed: 191, lat: 41.8522, lng: -87.6680, neighborhood: 'Pilsen', ward: '25' },
+  { block: '3600 S Indiana Ave', tickets: 131, daysTicketed: 0, lat: 41.8275, lng: -87.6217, neighborhood: 'Bronzeville', ward: '3' },
+  { block: '800 W Lawrence Ave', tickets: 129, daysTicketed: 49, lat: 41.9690, lng: -87.6500, neighborhood: 'Uptown', ward: '46' },
+  { block: '4200 S Michigan Ave', tickets: 129, daysTicketed: 27, lat: 41.8175, lng: -87.6225, neighborhood: 'Bronzeville', ward: '3' },
+  { block: '4400 N Ashland Ave', tickets: 127, daysTicketed: 82, lat: 41.9620, lng: -87.6691, neighborhood: 'Uptown', ward: '46' },
+  { block: '2300 W 18th St', tickets: 127, daysTicketed: 150, lat: 41.8579, lng: -87.6830, neighborhood: 'Pilsen', ward: '25' },
+  { block: '1900 W Cermak Rd', tickets: 118, daysTicketed: 170, lat: 41.8522, lng: -87.6700, neighborhood: 'Pilsen', ward: '25' },
+  { block: '2000 W 18th St', tickets: 116, daysTicketed: 162, lat: 41.8579, lng: -87.6755, neighborhood: 'Pilsen', ward: '25' },
+  { block: '3900 S Indiana Ave', tickets: 114, daysTicketed: 0, lat: 41.8245, lng: -87.6217, neighborhood: 'Bronzeville', ward: '3' },
+  { block: '1000 W 18th St', tickets: 114, daysTicketed: 156, lat: 41.8579, lng: -87.6550, neighborhood: 'Pilsen', ward: '25' },
+  { block: '8700 S Burley Ave', tickets: 113, daysTicketed: 0, lat: 41.7370, lng: -87.5510, neighborhood: 'South Chicago', ward: '10' },
+  { block: '2300 S Marshall Blvd', tickets: 113, daysTicketed: 93, lat: 41.8497, lng: -87.6983, neighborhood: 'Little Village', ward: '24' },
+  { block: '1700 W Cermak Rd', tickets: 113, daysTicketed: 133, lat: 41.8522, lng: -87.6680, neighborhood: 'Pilsen', ward: '25' },
+  { block: '1800 W 18th St', tickets: 111, daysTicketed: 181, lat: 41.8579, lng: -87.6710, neighborhood: 'Pilsen', ward: '25' },
+];
+
 // Neighborhood priority rankings — aggregate ticket data tells us where to spend time
 // Score = total tickets per block in neighborhood (higher = more people getting ticketed = more potential customers)
 const NEIGHBORHOOD_RANKINGS: NeighborhoodRank[] = [
@@ -265,6 +301,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       tomorrowCount: tomorrowZones.length,
       // Block-level hotspots with FOIA data
       hotBlocks: TOP_BLOCKS,
+      // Tow/seizure-eligible blocks (cars actively being booted/towed)
+      towBlocks: TOW_BLOCKS,
       // Neighborhood intelligence
       neighborhoods: NEIGHBORHOOD_RANKINGS,
       startingPoint: { lat: startLat, lng: startLng },

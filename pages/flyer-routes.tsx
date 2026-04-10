@@ -57,11 +57,12 @@ interface RouteData {
   tomorrowZones: Zone[]
   tomorrowCount: number
   hotBlocks: HotBlock[]
+  towBlocks: HotBlock[]
   neighborhoods: Neighborhood[]
   startingPoint: { lat: number; lng: number }
 }
 
-type Tab = 'just-ticketed' | 'flyer-tomorrow' | 'hotblocks' | 'neighborhoods'
+type Tab = 'just-ticketed' | 'flyer-tomorrow' | 'hotblocks' | 'towblocks' | 'neighborhoods'
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00Z')
@@ -224,11 +225,12 @@ export default function FlyerRoutes() {
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, fontSize: 12 }}>
+          <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, fontSize: 12, flexWrap: 'wrap' }}>
             {([
+              { id: 'flyer-tomorrow' as Tab, label: 'Schedule', count: data?.tomorrowCount, color: COLORS.warning },
               { id: 'just-ticketed' as Tab, label: 'Just Ticketed', count: data?.justCleanedCount, color: COLORS.danger },
-              { id: 'flyer-tomorrow' as Tab, label: 'Flyer Tonight', count: data?.tomorrowCount, color: COLORS.warning },
-              { id: 'hotblocks' as Tab, label: 'Hot Blocks', count: data?.hotBlocks.length, color: COLORS.purple },
+              { id: 'hotblocks' as Tab, label: 'Top Tickets', count: data?.hotBlocks.length, color: COLORS.purple },
+              { id: 'towblocks' as Tab, label: 'Getting Towed', count: data?.towBlocks?.length, color: COLORS.deepHarbor },
               { id: 'neighborhoods' as Tab, label: 'Strategy', count: data?.neighborhoods.length, color: COLORS.signal },
             ]).map(tab => {
               const active = activeTab === tab.id
@@ -387,6 +389,72 @@ export default function FlyerRoutes() {
                   The &quot;days ticketed&quot; number shows how consistently that block gets hit.
                   Blocks with high tickets AND high days ticketed (like 18th St in Pilsen: 150-198 days!) get ticketed
                   on nearly every single cleaning day. The people parked there <strong>will</strong> get ticketed again.
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* ============ TOW BLOCKS TAB ============ */}
+          {!loading && !error && data && activeTab === 'towblocks' && data.towBlocks && (
+            <>
+              <div style={{ background: 'white', borderRadius: 10, padding: 14, marginBottom: 12, border: `1px solid ${COLORS.border}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: COLORS.deepHarbor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Cars Actively Getting Booted / Towed
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.graphite, marginTop: 2 }}>
+                      {data.towBlocks.length} blocks &middot; Seizure-level tickets
+                    </div>
+                    <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 4, marginBottom: 0 }}>
+                      These blocks have the most tickets that escalated to <strong>SEIZURE notices</strong> — the city
+                      is actively booting and towing cars here. Drivers are paying $260+ in boot fees plus the original
+                      ticket. They will pay anything to make it stop. <strong>Highest possible conversion rate.</strong>
+                    </p>
+                  </div>
+                  <a href={mapsRouteUrl(data.towBlocks.slice(0, 15), start)} target="_blank" rel="noopener noreferrer"
+                    style={{ padding: '10px 16px', borderRadius: 8, background: COLORS.deepHarbor, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                    Top 15 Route
+                  </a>
+                </div>
+              </div>
+
+              {data.towBlocks.map((block, idx) => (
+                <div key={block.block} style={{ background: 'white', borderRadius: 10, padding: '10px 14px', marginBottom: 6, border: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: idx < 5 ? COLORS.deepHarbor : idx < 15 ? COLORS.danger : COLORS.slate,
+                    color: 'white', fontWeight: 700, fontSize: 11, flexShrink: 0,
+                  }}>
+                    {idx + 1}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.graphite }}>{block.block}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
+                      <span style={{ fontSize: 12, color: COLORS.deepHarbor, fontWeight: 700 }}>{block.tickets} seizure tickets</span>
+                      <span style={{ fontSize: 11, color: COLORS.slate }}>
+                        Ward {block.ward} &middot; {block.neighborhood}
+                      </span>
+                    </div>
+                    <div style={{ marginTop: 4 }}>
+                      <TicketBar value={block.tickets} max={350} />
+                    </div>
+                  </div>
+                  <a href={mapsUrl(block.lat, block.lng)} target="_blank" rel="noopener noreferrer"
+                    style={{ padding: '5px 10px', borderRadius: 6, background: COLORS.regulatory, color: 'white', fontSize: 11, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>
+                    Go
+                  </a>
+                </div>
+              ))}
+
+              <div style={{ background: '#FEF2F2', borderRadius: 10, padding: 14, marginTop: 12, border: '1px solid #FECACA' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.graphite }}>Why this tab beats the others</div>
+                <p style={{ fontSize: 12, color: COLORS.slate, margin: '4px 0 0', lineHeight: 1.5 }}>
+                  A regular ticket is annoying ($75). A seizure means the city is taking your car. Once a driver hits
+                  scofflaw status (3+ unpaid tickets) or gets booted, they&apos;re desperate. The same blocks show up
+                  here as in the Top Tickets tab — but the people there have already escalated. <strong>Lead your
+                  flyer with: &quot;Stop the boots. Never miss street cleaning again.&quot;</strong> 67th St in
+                  South Shore and Granville in Edgewater are the two highest-conversion blocks in Chicago.
                 </p>
               </div>
             </>
