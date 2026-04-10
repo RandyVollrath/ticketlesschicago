@@ -34,7 +34,7 @@ const T = {
   s1: 255,   // 8.5s — $420M hook
   s2: 345,   // 11.5s — stats machine
   s3: 240,   // 8s — are you next
-  s4: 420,   // 14s — opportunity (94%/67%)
+  s4: 420,   // 14s — opportunity (94%/66%)
   s5: 300,   // 10s — reveal
   s6: 420,   // 14s — value stack
   s7: 420,   // 14s — offer
@@ -253,7 +253,7 @@ const Scene3: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════
-// SCENE 4: THE OPPORTUNITY — 94% / 67% (14s)
+// SCENE 4: THE OPPORTUNITY — 94% / 66% (14s)
 // ═══════════════════════════════════════════════
 const Scene4: React.FC = () => {
   const frame = useCurrentFrame();
@@ -279,12 +279,12 @@ const Scene4: React.FC = () => {
             </div>
           </div>
 
-          {/* 67% */}
+          {/* 66% */}
           <div style={{ opacity: l2, transform: `translateY(${(1 - l2) * 40}px)`, marginBottom: 50 }}>
             <div style={{ fontSize: 34, fontWeight: 700, color: C.gray, fontFamily: font, textTransform: "uppercase", letterSpacing: 4, marginBottom: 15 }}>
               But when you actually fight back
             </div>
-            <div style={{ fontSize: 160, fontWeight: 900, color: C.green, fontFamily: font, lineHeight: 1 }}>67%</div>
+            <div style={{ fontSize: 160, fontWeight: 900, color: C.green, fontFamily: font, lineHeight: 1 }}>66%</div>
             <div style={{ fontSize: 42, fontWeight: 700, color: C.white, fontFamily: font, marginTop: 10 }}>
               get dismissed
             </div>

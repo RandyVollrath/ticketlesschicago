@@ -196,8 +196,8 @@ export default function MyTickets() {
   }
   const sortedYears = Object.entries(yearGroups).sort(([a], [b]) => a.localeCompare(b));
 
-  // Potential savings (67% of parking tickets get dismissed when contested)
-  const potentialSavings = Math.round(totalFines * 0.67);
+  // Potential savings (66% of parking tickets get dismissed when contested)
+  const potentialSavings = Math.round(totalFines * 0.66);
   const autopilotCost = sortedYears.length > 0 ? sortedYears.length * 99 : 99;
 
   const animatedFines = useAnimatedNumber(totalFines);
@@ -714,7 +714,7 @@ export default function MyTickets() {
                   {fmtMoney(potentialSavings)}
                 </div>
                 <p style={{ fontSize: '15px', color: '#94A3B8', margin: '0 0 8px 0', lineHeight: 1.6 }}>
-                  Based on the 67% parking ticket dismissal rate from our FOIA data.
+                  Based on the 66% parking ticket dismissal rate from our FOIA data.
                 </p>
                 <p style={{ fontSize: '14px', color: '#64748B', margin: '0 0 24px 0' }}>
                   Autopilot would have cost {fmtMoney(autopilotCost)} ({sortedYears.length || 1} year{(sortedYears.length || 1) !== 1 ? 's' : ''} @ $99/yr) and potentially saved you <strong style={{ color: COLORS.signal }}>{fmtMoney(potentialSavings)}</strong>.
@@ -814,7 +814,7 @@ export default function MyTickets() {
               </div>
             )}
 
-            {/* 67% callout */}
+            {/* 66% callout */}
             <div style={{
               background: `linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)`,
               borderRadius: '16px',
@@ -824,7 +824,7 @@ export default function MyTickets() {
               textAlign: 'center',
             }}>
               <div style={{ fontSize: '40px', fontWeight: 800, color: '#166534', fontFamily: '"Space Grotesk", sans-serif', margin: '0 0 8px 0' }}>
-                67%
+                66%
               </div>
               <p style={{ fontSize: '16px', fontWeight: 600, color: '#166534', margin: '0 0 8px 0' }}>
                 of contested parking tickets get dismissed

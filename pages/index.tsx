@@ -150,7 +150,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "67% of contested parking tickets get dismissed — based on 35.7M ticket records from Chicago FOIA data (2018-2025). By category: expired plates 88%, city sticker 85%, handicapped zone 72%, expired meter 67-68%, residential permit 54%. Camera tickets are harder at 19-26%. These are real rates from actual hearings — not estimates."
+      a: "66% of contested parking tickets get dismissed — based on 35.7M ticket records from Chicago FOIA data (2018-2025). By category: expired plates 88%, city sticker 85%, handicapped zone 72%, expired meter 67-68%, residential permit 54%. Camera tickets are harder at 19-26%. These are real rates from actual hearings — not estimates."
     },
     {
       q: "Can I review letters before they're sent?",
@@ -327,7 +327,7 @@ export default function LandingPage() {
           margin: '0 auto 40px',
           lineHeight: 1.6
         }}>
-          That&apos;s 3 tickets and $250 in fines per car. Every year.
+          One red light camera ticket averages $156 with late fees. One street cleaning ticket: $79. Autopilot is $99/year.
         </p>
 
         <p style={{
@@ -409,7 +409,7 @@ export default function LandingPage() {
           letterSpacing: '-0.5px',
         }}>
           <div>94% of tickets go uncontested.</div>
-          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 67% of contested parking tickets win.</div>
+          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 66% of contested parking tickets win.</div>
         </div>
         <p style={{
           margin: '24px 0 0',
@@ -428,7 +428,7 @@ export default function LandingPage() {
           lineHeight: 1.6,
           fontWeight: 600,
         }}>
-          The average Chicago driver pays $250/year in tickets and late fees — more than double the cost of full protection.
+          A single red light camera ticket averages $156 with late fees. Autopilot is $99/year — one avoided ticket and it&apos;s paid for.
         </p>
       </section>
 

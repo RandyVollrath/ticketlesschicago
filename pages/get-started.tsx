@@ -226,7 +226,7 @@ export default function GetStarted() {
             color: COLORS.graphite,
             lineHeight: 1.6,
           }}>
-            Chicago drivers average <strong>$250/yr</strong> in parking tickets and late fees. Full protection: <strong>$99/yr</strong>.
+            One red light camera ticket averages <strong>$156</strong> with late fees. Full year of protection: <strong>$99</strong>.
           </div>
 
           {/* Single Plan Card */}
