@@ -9,6 +9,7 @@
 
 import { supabaseAdmin } from './supabase';
 import { reverseGeocode } from './reverse-geocoder';
+import type { SnapGeometry } from './chicago-grid-estimator';
 import { parseChicagoAddress, ParsedAddress } from './address-parser';
 import { validatePermitZone } from './permit-zone-time-validator';
 import { getChicagoDateISO, getChicagoTime } from './chicago-timezone-utils';
@@ -94,7 +95,10 @@ export interface UnifiedParkingResult {
 export async function checkAllParkingRestrictions(
   latitude: number,
   longitude: number,
-  overrideStreetName?: string
+  overrideStreetName?: string,
+  snapGeometry?: SnapGeometry | null,
+  rawLat?: number,
+  rawLng?: number,
 ): Promise<UnifiedParkingResult> {
   const timestamp = new Date().toISOString();
 
@@ -166,7 +170,7 @@ export async function checkAllParkingRestrictions(
     // ==========================================
     // STEP 1: ONE reverse geocode call
     // ==========================================
-    const geocodeResult = await reverseGeocode(latitude, longitude).catch(() => null);
+    const geocodeResult = await reverseGeocode(latitude, longitude, snapGeometry, rawLat, rawLng).catch(() => null);
 
     if (geocodeResult) {
       result.location.address = geocodeResult.formatted_address || result.location.address;
