@@ -13,7 +13,7 @@
  * metered parking checker used Nominatim independently.
  */
 
-import { estimateAddressFromGps } from './chicago-grid-estimator';
+import { estimateAddressFromGps, type SnapGeometry } from './chicago-grid-estimator';
 
 // ---------------------------------------------------------------------------
 // Shared result type (used by all consumers)
@@ -235,10 +235,20 @@ async function reverseGeocodeGoogle(
  *   2. Try Nominatim (free, accurate street identification)
  *   3. If Nominatim has no house number, estimate via Chicago grid
  *   4. If Nominatim fails entirely, fall back to Google Maps
+ *
+ * @param snapGeometry  Optional snap-to-street geometry for side-of-street
+ *   parity forcing. When provided (along with rawLat/rawLng), the grid estimator
+ *   uses the GPS point's position relative to the street centerline to force the
+ *   house number to the correct odd/even — preventing side-of-street misidentification.
+ * @param rawLat/rawLng  Original un-snapped GPS coordinates. Needed when the
+ *   primary lat/lng have been snapped to the centerline.
  */
 export async function reverseGeocode(
   latitude: number,
   longitude: number,
+  snapGeometry?: SnapGeometry | null,
+  rawLat?: number,
+  rawLng?: number,
 ): Promise<GeocodeResult | null> {
   // Check cache first
   const cached = getCached(latitude, longitude);
@@ -263,6 +273,9 @@ export async function reverseGeocode(
         longitude,
         nominatim.road,
         direction,
+        snapGeometry,
+        rawLat,
+        rawLng,
       );
       if (gridEstimate) {
         streetNumber = String(gridEstimate.houseNumber);

@@ -11,6 +11,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { checkAllParkingRestrictions, UnifiedParkingResult } from '../../../lib/unified-parking-checker';
 import { checkMeteredParking, MeteredParkingStatus } from '../../../lib/metered-parking-checker';
+import type { SnapGeometry } from '../../../lib/chicago-grid-estimator';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
 import { supabaseAdmin } from '../../../lib/supabase';
@@ -192,7 +193,7 @@ export default async function handler(
   const headingDeg = parseFloat(
     (req.method === 'GET' ? req.query.heading : req.body.heading) as string
   );
-  const hasHeading = !isNaN(headingDeg) && headingDeg >= 0 && headingDeg < 360;
+  let hasHeading = !isNaN(headingDeg) && headingDeg >= 0 && headingDeg < 360;
 
   try {
     // Step 1: Attempt to snap GPS coordinate to nearest known street segment.
@@ -205,6 +206,7 @@ export default async function handler(
       snapDistanceMeters: number;
       streetName: string | null;
       snapSource: string | null;
+      streetBearing?: number;
     } | null = null;
 
     const shouldSnap = !accuracyMeters || accuracyMeters <= 75;
@@ -314,8 +316,9 @@ export default async function handler(
                 snapDistanceMeters: bestCandidate.snap_distance_meters,
                 streetName: bestCandidate.street_name,
                 snapSource: bestCandidate.snap_source,
+                streetBearing: bestCandidate.street_bearing,
               };
-              console.log(`[check-parking] Snapped ${bestCandidate.snap_distance_meters.toFixed(1)}m to ${bestCandidate.street_name} (${bestCandidate.snap_source})`);
+              console.log(`[check-parking] Snapped ${bestCandidate.snap_distance_meters.toFixed(1)}m to ${bestCandidate.street_name} (${bestCandidate.snap_source}, bearing=${bestCandidate.street_bearing?.toFixed(0) ?? 'none'}°)`);
             }
           }
         }
@@ -352,6 +355,7 @@ export default async function handler(
                   snapDistanceMeters: headingMatch.snap_distance_meters,
                   streetName: headingMatch.street_name,
                   snapSource: `${headingMatch.snap_source}+heading_extended`,
+                  streetBearing: headingMatch.street_bearing,
                 };
                 console.log(`[check-parking] Extended heading search found: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${headingDeg.toFixed(0)}° → ${headingDir})`);
               } else {
@@ -391,7 +395,15 @@ export default async function handler(
                   snapDistanceMeters: 0,
                   streetName: nominatimResult.street_name,
                   snapSource: 'nominatim_override',
+                  // No streetBearing — snap was for a different street
                 };
+                // Heading is provably stale: it matched the snapped street's orientation
+                // but Nominatim says we're on a different street. Discard heading so the
+                // metered parking checker uses address parity instead of a wrong heading.
+                if (hasHeading) {
+                  console.log(`[check-parking] Discarding heading ${headingDeg.toFixed(0)}° — stale after Nominatim override`);
+                  hasHeading = false;
+                }
               } else if (snapOrientation && nominatimOrientation) {
                 console.log(`[check-parking] Nominatim cross-reference confirms snap: both say ${snapOrientation} orientation (snap=${snapResult.streetName}, nominatim=${nominatimResult.street_name})`);
               } else {
@@ -413,7 +425,17 @@ export default async function handler(
     // We then pass the parsed address to the metered parking checker so it uses the
     // SAME street identification — eliminating the dual-geocoder bug where Google and
     // Nominatim disagreed on which street the user was on.
-    const result = await checkAllParkingRestrictions(checkLat, checkLng, snapResult?.streetName || undefined);
+    // Build snap geometry for side-of-street parity forcing.
+    // The grid estimator uses this to determine which side of the street centerline
+    // the raw GPS point is on, preventing the ±1 rounding that flips odd↔even.
+    const snapGeometry: SnapGeometry | null = (snapResult?.wasSnapped && snapResult.streetBearing != null && snapResult.streetBearing >= 0)
+      ? { snappedLat: checkLat, snappedLng: checkLng, streetBearing: snapResult.streetBearing }
+      : null;
+
+    const result = await checkAllParkingRestrictions(
+      checkLat, checkLng, snapResult?.streetName || undefined,
+      snapGeometry, latitude, longitude,
+    );
 
     // Step 2b: Metered parking check uses the shared parsed address from step 2.
     // Pass heading so the checker can determine which side of the street the user
