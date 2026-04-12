@@ -2546,6 +2546,46 @@ async function processFoundTicket(
     }
   }
 
+  // Send push notification to user's mobile app
+  if (process.env.FCM_SERVER_KEY) {
+    try {
+      const { data: tokens } = await supabaseAdmin.rpc('get_user_push_tokens', { p_user_id: user_id });
+      if (tokens && Array.isArray(tokens) && tokens.length > 0) {
+        const violationLabel = violationType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        for (const t of tokens) {
+          await fetch('https://fcm.googleapis.com/fcm/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `key=${process.env.FCM_SERVER_KEY}`,
+            },
+            body: JSON.stringify({
+              to: t.token,
+              notification: {
+                title: `🎫 New Ticket Found: ${violationLabel}`,
+                body: `$${amount?.toFixed(2) || '0'} ticket on ${plate.toUpperCase()}. We're already building your defense.`,
+                sound: 'default',
+                badge: 1,
+              },
+              data: {
+                type: 'ticket_detected',
+                ticket_id: newTicket.id,
+                ticket_number: ticket.ticket_number,
+                violation_type: violationType,
+                amount: String(amount || 0),
+              },
+              priority: 'high',
+              content_available: true,
+            }),
+          });
+        }
+        console.log(`      Sent push notification to ${tokens.length} device(s)`);
+      }
+    } catch (pushErr: any) {
+      console.warn(`      Push notification failed: ${pushErr.message}`);
+    }
+  }
+
   // Audit log
   await supabaseAdmin
     .from('ticket_audit_log')

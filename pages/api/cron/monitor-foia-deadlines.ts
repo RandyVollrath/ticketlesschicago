@@ -161,12 +161,152 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
+  // ── Auto-send follow-up for overdue FOIAs (6+ business days, no extension) ──
+  // Illinois FOIA law requires response within 5 business days.
+  // If no response, we send a polite follow-up citing 5 ILCS 140/11(d).
+  let followUpsSent = 0;
+  const RESEND_API_KEY = process.env.RESEND_API_KEY;
+
+  if (RESEND_API_KEY) {
+    // Re-query for recently-marked overdue evidence FOIAs that haven't been followed up yet
+    const { data: overdueForFollowUp } = await supabaseAdmin
+      .from('ticket_foia_requests')
+      .select('id, ticket_id, reference_id, sent_at, notes, request_payload')
+      .eq('status', 'overdue')
+      .order('sent_at', { ascending: true })
+      .limit(10); // Max 10 follow-ups per day to avoid flooding
+
+    for (const req of (overdueForFollowUp || []) as any[]) {
+      // Skip if already followed up
+      if (req.notes?.includes('FOLLOW-UP SENT')) continue;
+
+      const bDays = businessDaysBetween(new Date(req.sent_at), now);
+      // Only follow up after 6 business days (give 1 day grace after 5-day deadline)
+      if (bDays < 6) continue;
+
+      const ticketNumber = req.request_payload?.ticket_number || 'Unknown';
+      const requesterName = req.request_payload?.requester_name || 'Autopilot America';
+
+      try {
+        const emailRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+          },
+          body: JSON.stringify({
+            from: 'Autopilot America <foia@autopilotamerica.com>',
+            to: 'DOFfoia@cityofchicago.org',
+            subject: `Follow-Up: FOIA Request ${req.reference_id} — ${bDays} Business Days Without Response`,
+            text: `Dear FOIA Officer,
+
+This is a follow-up regarding my Freedom of Information Act request submitted on ${new Date(req.sent_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+
+Reference ID: ${req.reference_id}
+Ticket Number: ${ticketNumber}
+Requester: ${requesterName}
+
+Per 5 ILCS 140/3, the City is required to respond within five (5) business days of receipt. It has now been ${bDays} business days since this request was submitted, and no response or extension notice has been received.
+
+Under 5 ILCS 140/11(d), failure to respond within the statutory timeframe constitutes a denial of the request, and the requester may seek judicial review.
+
+I respectfully request that responsive records be produced promptly.
+
+Sincerely,
+${requesterName}
+On behalf of Autopilot America
+foia@autopilotamerica.com`,
+          }),
+        });
+
+        if (emailRes.ok) {
+          followUpsSent++;
+          console.log(`  Follow-up sent for ${req.reference_id} (${bDays} business days overdue)`);
+
+          // Update notes so we don't follow up again
+          await supabaseAdmin
+            .from('ticket_foia_requests')
+            .update({
+              notes: `${req.notes || ''}\nFOLLOW-UP SENT: ${new Date().toISOString()} (${bDays} business days since original request)`,
+              updated_at: new Date().toISOString(),
+            } as any)
+            .eq('id', req.id);
+        }
+      } catch (err: any) {
+        console.error(`  Follow-up email failed for ${req.reference_id}: ${err.message}`);
+      }
+    }
+
+    // Same for history FOIAs
+    const { data: overdueHistoryFollowUp } = await supabaseAdmin
+      .from('foia_history_requests')
+      .select('id, license_plate, license_state, reference_id, foia_sent_at, notes, name, email')
+      .eq('status', 'overdue')
+      .order('foia_sent_at', { ascending: true })
+      .limit(10);
+
+    for (const req of (overdueHistoryFollowUp || []) as any[]) {
+      if (req.notes?.includes('FOLLOW-UP SENT')) continue;
+
+      const bDays = businessDaysBetween(new Date(req.foia_sent_at), now);
+      if (bDays < 6) continue;
+
+      try {
+        const emailRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+          },
+          body: JSON.stringify({
+            from: 'Autopilot America <foia@autopilotamerica.com>',
+            to: 'DOFfoia@cityofchicago.org',
+            subject: `Follow-Up: FOIA Request ${req.reference_id} — ${bDays} Business Days Without Response`,
+            text: `Dear FOIA Officer,
+
+This is a follow-up regarding my Freedom of Information Act request submitted on ${new Date(req.foia_sent_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+
+Reference ID: ${req.reference_id}
+License Plate: ${req.license_state} ${req.license_plate}
+Requester: ${req.name || 'Autopilot America'}
+
+Per 5 ILCS 140/3, the City is required to respond within five (5) business days of receipt. It has now been ${bDays} business days since this request was submitted, and no response or extension notice has been received.
+
+Under 5 ILCS 140/11(d), failure to respond within the statutory timeframe constitutes a denial of the request, and the requester may seek judicial review.
+
+I respectfully request that responsive records be produced promptly.
+
+Sincerely,
+${req.name || 'Autopilot America'}
+foia@autopilotamerica.com`,
+          }),
+        });
+
+        if (emailRes.ok) {
+          followUpsSent++;
+          console.log(`  Follow-up sent for history FOIA ${req.reference_id} (${bDays} business days overdue)`);
+
+          await supabaseAdmin
+            .from('foia_history_requests')
+            .update({
+              notes: `${req.notes || ''}\nFOLLOW-UP SENT: ${new Date().toISOString()} (${bDays} business days since original request)`,
+              updated_at: new Date().toISOString(),
+            } as any)
+            .eq('id', req.id);
+        }
+      } catch (err: any) {
+        console.error(`  Follow-up email failed for history ${req.reference_id}: ${err.message}`);
+      }
+    }
+  }
+
   const summary = {
     overdueEvidence,
     overdueHistory,
     extensionOverdueEvidence,
     extensionOverdueHistory,
     totalOverdue: overdueEvidence + overdueHistory + extensionOverdueEvidence + extensionOverdueHistory,
+    followUpsSent,
   };
 
   console.log('FOIA deadline monitoring complete:', summary);
