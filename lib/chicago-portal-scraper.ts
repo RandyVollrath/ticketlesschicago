@@ -1006,6 +1006,90 @@ export async function lookupMultiplePlates(
 }
 
 /**
+ * Run multiple browser instances in parallel, each processing a slice of plates.
+ *
+ * Instead of 1 browser doing 1,000 plates sequentially (6+ hours),
+ * we run e.g. 3 browsers doing 333 plates each (~2 hours).
+ *
+ * @param concurrency Number of parallel browser instances (default 3, max 5)
+ */
+export async function lookupMultiplePlatesParallel(
+  plates: Array<{ plate: string; state: string; lastName: string }>,
+  options?: {
+    screenshotDir?: string;
+    delayBetweenMs?: number;
+    maxPlates?: number;
+    concurrency?: number;
+  }
+): Promise<LookupResult[]> {
+  const concurrency = Math.min(options?.concurrency ?? 3, 5);
+  const maxPlates = options?.maxPlates ?? plates.length;
+  const platesToCheck = plates.slice(0, maxPlates);
+
+  if (platesToCheck.length === 0) return [];
+
+  if (platesToCheck.length <= 10 || concurrency <= 1) {
+    return lookupMultiplePlates(platesToCheck, options);
+  }
+
+  const chunks: Array<Array<{ plate: string; state: string; lastName: string }>> = [];
+  const chunkSize = Math.ceil(platesToCheck.length / concurrency);
+  for (let i = 0; i < platesToCheck.length; i += chunkSize) {
+    chunks.push(platesToCheck.slice(i, i + chunkSize));
+  }
+
+  console.log(`\n=== PARALLEL SCRAPER: ${platesToCheck.length} plates across ${chunks.length} browser instances ===`);
+  for (let i = 0; i < chunks.length; i++) {
+    console.log(`  Worker ${i + 1}: ${chunks[i].length} plates`);
+  }
+
+  const workerPromises = chunks.map((chunk, index) => {
+    return new Promise<LookupResult[]>(async (resolve) => {
+      // Stagger browser launches by 2s
+      if (index > 0) {
+        await new Promise(r => setTimeout(r, index * 2000));
+      }
+      console.log(`  Worker ${index + 1} starting (${chunk.length} plates)...`);
+      try {
+        const results = await lookupMultiplePlates(chunk, {
+          ...options,
+          maxPlates: chunk.length,
+        });
+        console.log(`  Worker ${index + 1} finished: ${results.filter(r => !r.error).length}/${results.length} succeeded`);
+        resolve(results);
+      } catch (err: any) {
+        console.error(`  Worker ${index + 1} crashed: ${err.message}`);
+        resolve(chunk.map(p => ({
+          plate: p.plate,
+          state: p.state,
+          last_name: p.lastName,
+          tickets: [],
+          error: `Worker crashed: ${err.message}`,
+          screenshot_path: null,
+          captcha_cost: 0,
+          lookup_duration_ms: 0,
+          format_warnings: [],
+        })));
+      }
+    });
+  });
+
+  const allResults = await Promise.all(workerPromises);
+  const flatResults = allResults.flat();
+
+  const totalTickets = flatResults.reduce((sum, r) => sum + r.tickets.length, 0);
+  const failures = flatResults.filter(r => r.error).length;
+
+  console.log(`\n=== PARALLEL SCRAPER COMPLETE ===`);
+  console.log(`  Total plates: ${flatResults.length}`);
+  console.log(`  Tickets found: ${totalTickets}`);
+  console.log(`  Failures: ${failures}`);
+  console.log(`  Workers used: ${chunks.length}`);
+
+  return flatResults;
+}
+
+/**
  * Send an admin email alert when the portal API response format appears to have changed.
  * Uses Resend API directly (no import needed — this module runs outside Vercel).
  */

@@ -759,13 +759,151 @@ export function extractReferenceId(subject: string, body: string): string | null
 }
 
 /**
- * Process a FOIA response email with 3-layer matching:
+ * Layer 4: AI-powered fuzzy matching for FOIA responses.
+ *
+ * When layers 1-3 fail, we ask Gemini to extract identifying info from the email
+ * (ticket numbers, plate numbers, dates, names) and match against all pending FOIAs.
+ * Only auto-matches if confidence >= 90%. Returns null if no confident match.
+ */
+async function tryAiFoiaMatch(
+  supabase: SupabaseClient,
+  fromEmail: string,
+  subject: string,
+  body: string,
+  attachments: { filename: string; content_type: string; url?: string }[],
+  foiaType: 'evidence' | 'history' | 'unknown',
+): Promise<{
+  type: 'evidence' | 'history';
+  request: any;
+  ticketNumber: string | null;
+  confidence: number;
+} | null> {
+  try {
+    // Only attempt if we have a Gemini key (cheapest option for extraction)
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+    if (!geminiKey) return null;
+
+    // Get all pending evidence + history FOIAs to match against
+    const [{ data: pendingEvidence }, { data: pendingHistory }] = await Promise.all([
+      supabase
+        .from('ticket_foia_requests')
+        .select('id, reference_id, status, request_payload, detected_tickets!inner(ticket_number, user_id)')
+        .in('status', ['sent', 'extension_requested']),
+      supabase
+        .from('foia_history_requests')
+        .select('id, reference_id, status, license_plate, license_state, name, email')
+        .in('status', ['sent', 'extension_requested']),
+    ]);
+
+    if ((!pendingEvidence || pendingEvidence.length === 0) && (!pendingHistory || pendingHistory.length === 0)) {
+      return null;
+    }
+
+    // Build a summary of pending FOIAs for the AI
+    const pendingSummary = [
+      ...(pendingEvidence || []).map((r: any) => ({
+        id: r.id,
+        type: 'evidence',
+        ref: r.reference_id,
+        ticket: r.detected_tickets?.ticket_number,
+        plate: r.request_payload?.plate,
+        name: r.request_payload?.requester_name,
+      })),
+      ...(pendingHistory || []).map((r: any) => ({
+        id: r.id,
+        type: 'history',
+        ref: r.reference_id,
+        plate: r.license_plate,
+        state: r.license_state,
+        name: r.name,
+      })),
+    ];
+
+    if (pendingSummary.length === 0) return null;
+
+    // Ask Gemini to extract identifiers and find the best match
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(geminiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+    const prompt = `You are matching a FOIA response email to a pending FOIA request.
+
+EMAIL:
+From: ${fromEmail}
+Subject: ${subject}
+Body (first 2000 chars): ${body.substring(0, 2000)}
+Attachments: ${attachments.map(a => a.filename).join(', ') || 'none'}
+
+PENDING FOIA REQUESTS:
+${JSON.stringify(pendingSummary, null, 2)}
+
+Extract any ticket numbers (10+ digits), license plates, reference IDs (APE-xxx or APH-xxx), or person names from the email. Then determine which pending FOIA request (if any) this email is responding to.
+
+Respond in JSON only:
+{
+  "extracted_ticket_numbers": ["..."],
+  "extracted_plates": ["..."],
+  "extracted_reference_ids": ["..."],
+  "extracted_names": ["..."],
+  "best_match_id": "id of matching request or null",
+  "match_type": "evidence or history",
+  "confidence": 0-100,
+  "reasoning": "one sentence explanation"
+}`;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+
+    // Parse JSON from response (handle markdown code blocks)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    if (!parsed.best_match_id || parsed.confidence < 90) {
+      console.log(`  Layer 4 AI: ${parsed.confidence}% confidence — below 90% threshold. Reason: ${parsed.reasoning}`);
+      return null;
+    }
+
+    // Find the matching request
+    if (parsed.match_type === 'evidence') {
+      const match = (pendingEvidence || []).find((r: any) => r.id === parsed.best_match_id);
+      if (match) {
+        return {
+          type: 'evidence',
+          request: match,
+          ticketNumber: (match as any).detected_tickets?.ticket_number || null,
+          confidence: parsed.confidence,
+        };
+      }
+    } else {
+      const match = (pendingHistory || []).find((r: any) => r.id === parsed.best_match_id);
+      if (match) {
+        return {
+          type: 'history',
+          request: match,
+          ticketNumber: null,
+          confidence: parsed.confidence,
+        };
+      }
+    }
+
+    return null;
+  } catch (err: any) {
+    console.log(`  Layer 4 AI match failed: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Process a FOIA response email with 4-layer matching:
  *
  * Layer 1: Reference ID (APE-xxx / APH-xxx) — most reliable
  * Layer 2: In-Reply-To / References header → resend_message_id
  * Layer 3: Ticket number regex + single-pending fallback
+ * Layer 4: AI-powered fuzzy matching (Gemini) — catches everything else at 90%+ confidence
  *
- * If no match after all 3 layers → insert into foia_unmatched_responses for admin review.
+ * If no match after all 4 layers → insert into foia_unmatched_responses for admin review.
  */
 export async function processFoiaResponse(
   supabase: SupabaseClient,
@@ -900,8 +1038,27 @@ export async function processFoiaResponse(
     }
   }
 
+  // ── Layer 4: AI-powered fuzzy matching ──
+  // Use Claude to extract identifying info from the email and match against all pending FOIAs
+  const aiMatch = await tryAiFoiaMatch(supabase, fromEmail, subject, body, attachments, foiaType);
+  if (aiMatch) {
+    if (aiMatch.type === 'evidence') {
+      console.log(`  Layer 4 AI match (evidence): ticket ${aiMatch.ticketNumber}, confidence ${aiMatch.confidence}%`);
+      return processEvidenceFoiaMatch(supabase, aiMatch.request, fromEmail, subject, body, attachments, 'ai_fuzzy_match');
+    } else {
+      console.log(`  Layer 4 AI match (history): request ${aiMatch.request.id}, confidence ${aiMatch.confidence}%`);
+      return {
+        matched: true,
+        requestId: aiMatch.request.id,
+        ticketNumber: null,
+        foiaType: 'history',
+        action: 'history_foia_matched_by_ai',
+      };
+    }
+  }
+
   // ── No match — insert into unmatched queue for admin review ──
-  console.log(`  No FOIA match found — queuing for admin review`);
+  console.log(`  No FOIA match found after all 4 layers — queuing for admin review`);
   try {
     await supabase
       .from('foia_unmatched_responses' as any)
@@ -921,6 +1078,7 @@ export async function processFoiaResponse(
           layer1_reference_id: referenceId || 'none',
           layer2_headers: messageIds.length > 0 ? messageIds : 'none',
           layer3_ticket_regex: body.match(/\d{10,}/)?.[0] || 'none',
+          layer4_ai: aiMatch === null ? 'no_match' : 'below_threshold',
         },
         status: 'pending',
       });
