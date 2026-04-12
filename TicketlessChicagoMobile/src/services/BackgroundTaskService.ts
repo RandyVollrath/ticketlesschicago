@@ -2103,8 +2103,23 @@ class BackgroundTaskServiceClass {
         return;
       }
 
-      // --- Position differs significantly: re-run parking check ---
-      log.info(`[GPS Phase 2] Position shifted ${distM.toFixed(0)}m — re-checking parking rules...`);
+      // WALK-AWAY GUARD: If the burst position is far from the initial fix,
+      // the user likely walked away during the burst sampling window.
+      // The initial fix (captured at/near park time) is closer to the car.
+      // Only trust burst if it has MUCH better accuracy (3x improvement).
+      const initialAcc = initialCoords.accuracy || 30;
+      const burstAcc = burstCoords.accuracy || 30;
+      if (distM >= REFINEMENT_THRESHOLD_M && burstAcc >= initialAcc * 0.33) {
+        log.warn(
+          `[GPS Phase 2] WALK-AWAY GUARD: Burst shifted ${distM.toFixed(0)}m from initial fix but ` +
+          `accuracy didn't improve enough (initial=${initialAcc.toFixed(0)}m, burst=${burstAcc.toFixed(0)}m). ` +
+          `Keeping initial fix — user likely walked away during burst sampling.`
+        );
+        return;
+      }
+
+      // --- Position differs AND burst is dramatically more accurate: re-run parking check ---
+      log.info(`[GPS Phase 2] Position shifted ${distM.toFixed(0)}m with 3x accuracy improvement (initial=${initialAcc.toFixed(0)}m, burst=${burstAcc.toFixed(0)}m) — re-checking parking rules...`);
 
       const result = await LocationService.checkParkingLocation(burstCoords);
       const filteredResult = await this.filterOwnPermitZone(result);
