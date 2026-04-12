@@ -5638,18 +5638,27 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     if let candidate = parkingLocation {
       let candidateAgeSec = Date().timeIntervalSince(candidate.timestamp)
       let candidateAcc = candidate.horizontalAccuracy
-      let candidateWeak = candidateAgeSec > parkingCandidateMaxAgeSec ||
+      // A stop candidate is "weak" only if it's genuinely too old/inaccurate
+      // AND the user is NOT walking. If walking, the candidate is the best we have
+      // because the car hasn't moved — only the phone has.
+      let candidateWeak = !isWalking && (
+        candidateAgeSec > parkingCandidateMaxAgeSec ||
         (candidateAcc > 0 && candidateAcc > parkingCandidatePreferredAccuracyMeters)
+      )
 
       if candidateWeak, let current = currentLocation {
         let currentAgeSec = Date().timeIntervalSince(current.timestamp)
         let currentAcc = current.horizontalAccuracy
         let currentSpeed = current.speed
+        // Proximity guard: only refine if current GPS is within 20m of the candidate.
+        // If it's farther, the user has likely walked away.
+        let distFromCandidate = current.distance(from: candidate)
         // WALK-AWAY GUARD: If CoreMotion says user is walking, NEVER replace the
         // stop candidate with currentLocation. The car is where we stopped,
         // not where the user walked to. This is the #1 cause of wrong-street errors.
         let isWalking = coreMotionWalkingSince != nil
         let currentUsable = !isWalking &&
+          distFromCandidate <= 20.0 &&  // Must be within 20m of stop candidate
           currentAgeSec >= 0 &&
           currentAgeSec <= parkingCandidateFreshReplacementAgeSec &&
           currentAcc > 0 &&

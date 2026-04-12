@@ -141,6 +141,21 @@ class BackgroundTaskServiceClass {
    *  the parked GPS fix has no heading (speed ≈ 0 → heading unreliable).
    *  iOS native already captures last driving heading in ParkingDetectedEvent. */
   private lastDrivingHeading: number | null = null;
+
+  /** Ring buffer of recent driving GPS fixes. Used at park time to determine
+   *  where the car actually is, instead of requesting a fresh (potentially
+   *  walked-away) fix. The median of the last 10 driving fixes IS where the car
+   *  is — this is fundamentally more reliable than any post-parking GPS. */
+  private drivingGpsBuffer: Array<{
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+    heading: number;
+    speed: number;
+    timestamp: number;
+  }> = [];
+  private readonly DRIVING_GPS_BUFFER_MAX = 10;
+  private readonly DRIVING_GPS_BUFFER_MAX_AGE_MS = 120000; // 2 min — discard stale fixes
   // Native BT monitor service event subscriptions (Android only)
   private nativeBtDisconnectSub: any = null;
   private nativeBtConnectSub: any = null;
@@ -1094,6 +1109,7 @@ class BackgroundTaskServiceClass {
     // Reset last driving heading — stale heading from a previous drive session
     // could cause incorrect street disambiguation if the new drive is on a different street.
     this.lastDrivingHeading = null;
+    this.drivingGpsBuffer = [];
     void AnalyticsService.logDrivingStarted(Platform.OS === 'ios' ? 'ios_coremotion' : 'android_bluetooth');
     void BackgroundLocationService.appendToDecisionLog('js_car_reconnection', {
       nativeDrivingTimestamp: nativeDrivingTimestamp ? new Date(nativeDrivingTimestamp).toISOString() : null,
@@ -1418,6 +1434,22 @@ class BackgroundTaskServiceClass {
           if (heading >= 0 && heading < 360 && (position.coords.speed ?? 0) > 1.0) {
             this.lastDrivingHeading = heading;
           }
+          // Save driving GPS fix to ring buffer for park-time location.
+          // Only buffer fixes while actually moving (speed > 1 m/s).
+          const speed = position.coords.speed ?? 0;
+          if (speed > 1.0) {
+            this.drivingGpsBuffer.push({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy ?? 30,
+              heading,
+              speed,
+              timestamp: position.timestamp,
+            });
+            if (this.drivingGpsBuffer.length > this.DRIVING_GPS_BUFFER_MAX) {
+              this.drivingGpsBuffer.shift();
+            }
+          }
           CameraAlertService.onLocationUpdate(
             position.coords.latitude,
             position.coords.longitude,
@@ -1581,6 +1613,66 @@ class BackgroundTaskServiceClass {
    * @param isRealParkingEvent - If true, this was triggered by an actual BT disconnect
    *   or iOS parking detection. If false (periodic check), failures are silent.
    */
+
+  /**
+   * Compute parking location from the driving GPS ring buffer.
+   * Uses inverse-variance weighted average of recent driving fixes.
+   * Returns null if buffer is empty or all fixes are stale.
+   *
+   * This is fundamentally more reliable than a post-parking GPS fix because:
+   * 1. These fixes were captured while the car was MOVING (speed > 1 m/s)
+   * 2. They cluster around the car's actual path/stopping point
+   * 3. They predate any walking the user does after parking
+   */
+  private computeParkingLocationFromDrivingBuffer(): {
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+    heading: number;
+    sampleCount: number;
+  } | null {
+    const now = Date.now();
+    // Filter to recent fixes only
+    const recentFixes = this.drivingGpsBuffer.filter(
+      f => (now - f.timestamp) <= this.DRIVING_GPS_BUFFER_MAX_AGE_MS
+    );
+
+    if (recentFixes.length < 2) return null;
+
+    // Inverse-variance weighted average (same as iOS)
+    let totalWeight = 0;
+    let wLat = 0;
+    let wLng = 0;
+    let bestHeading = recentFixes[recentFixes.length - 1].heading; // most recent
+
+    for (const fix of recentFixes) {
+      const acc = Math.max(fix.accuracy, 1);
+      const weight = 1.0 / (acc * acc);
+      totalWeight += weight;
+      wLat += fix.latitude * weight;
+      wLng += fix.longitude * weight;
+    }
+
+    const avgLat = wLat / totalWeight;
+    const avgLng = wLng / totalWeight;
+    const effectiveAccuracy = 1.0 / Math.sqrt(totalWeight);
+
+    log.info(
+      `[Driving Buffer] Computed parking location from ${recentFixes.length} driving fixes: ` +
+      `${avgLat.toFixed(6)}, ${avgLng.toFixed(6)} ±${effectiveAccuracy.toFixed(1)}m ` +
+      `(newest: ${Math.round((now - recentFixes[recentFixes.length - 1].timestamp) / 1000)}s ago, ` +
+      `oldest: ${Math.round((now - recentFixes[0].timestamp) / 1000)}s ago)`
+    );
+
+    return {
+      latitude: avgLat,
+      longitude: avgLng,
+      accuracy: effectiveAccuracy,
+      heading: bestHeading,
+      sampleCount: recentFixes.length,
+    };
+  }
+
   private async triggerParkingCheck(presetCoords?: {
     latitude: number;
     longitude: number;
@@ -1650,6 +1742,33 @@ class BackgroundTaskServiceClass {
         // accuracy for history and server records.
         log.info(`Getting GPS location... (Platform: ${Platform.OS}, appState: ${AppState.currentState})`);
 
+
+        // Phase 0: Use driving GPS ring buffer if available (Android).
+        // These fixes were captured while the car was MOVING — they cluster
+        // around the actual parking spot. Much more reliable than a fresh GPS
+        // fix which may be from a walked-away position.
+        if (Platform.OS === 'android') {
+          const bufferLocation = this.computeParkingLocationFromDrivingBuffer();
+          if (bufferLocation) {
+            coords = {
+              latitude: bufferLocation.latitude,
+              longitude: bufferLocation.longitude,
+              accuracy: bufferLocation.accuracy,
+              heading: bufferLocation.heading,
+            };
+            resolvedCoords = coords;
+            gpsSource = `driving-buffer (${bufferLocation.sampleCount} fixes, ±${bufferLocation.accuracy.toFixed(1)}m)`;
+            log.info(`Using driving GPS buffer for parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
+            // Clear buffer after use
+            this.drivingGpsBuffer = [];
+            // Still kick off burst refinement but with walk-away guard
+            const initialCoords = { ...coords };
+            this.backgroundBurstRefine(initialCoords, nativeTimestamp, persistParkingEvent);
+          }
+        }
+
+        // Phase 1: Fresh GPS fix — only if driving buffer was empty/unavailable
+        if (!resolvedCoords) {
         // Phase 1: Fast single GPS fix (1-3 seconds)
         try {
           // Force a fresh GPS fix (forceNoCache=true) on both platforms.
@@ -1709,6 +1828,7 @@ class BackgroundTaskServiceClass {
           }
         }
 
+        } // end if (!resolvedCoords) — driving buffer not available
         // Phase 2: Kick off burst-sampling in the background.
         // If the refined location differs significantly (>25m), re-run the
         // parking check and update the notification + history silently.
