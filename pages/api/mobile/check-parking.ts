@@ -400,28 +400,48 @@ export default async function handler(
               const nominatimOrientation = getChicagoStreetOrientation(nominatimResult.street_name);
 
               if (snapOrientation && nominatimOrientation && snapOrientation !== nominatimOrientation) {
-                console.log(`[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). Preferring Nominatim — it identifies the road from GPS position directly.`);
-                // Use original coords (not snapped) since Nominatim identified a different street.
-                // The unified checker will use its own geocoding with the original coordinates.
-                checkLat = latitude;
-                checkLng = longitude;
-                snapResult = {
-                  wasSnapped: false,
-                  snapDistanceMeters: 0,
-                  streetName: nominatimResult.street_name,
-                  snapSource: 'nominatim_override',
-                  // No streetBearing — snap was for a different street
-                };
-                // Heading is provably stale: it matched the snapped street's orientation
-                // but Nominatim says we're on a different street. Discard heading so the
-                // metered parking checker uses address parity instead of a wrong heading.
-                // GPS heading is provably stale — discard it. But compass heading
-                // is fresh (captured at park time), so keep it.
-                if (hasHeading && !hasCompass) {
-                  console.log(`[check-parking] Discarding GPS heading ${headingDeg.toFixed(0)}° — stale after Nominatim override`);
-                  hasHeading = false;
-                } else if (hasHeading && hasCompass) {
-                  console.log(`[check-parking] Nominatim override but keeping compass heading ${compassHeadingDeg.toFixed(0)}° (fresh)`);
+                // Snap and Nominatim disagree on which street we're on.
+                // Key question: did heading CONFIRM the snap's orientation?
+                // If heading matched the snap (e.g., heading=89° E-W, snap=Belden E-W),
+                // that's strong evidence the snap was correct and Nominatim is looking
+                // at a walked-away GPS position. DON'T override in that case.
+                const headingConfirmedSnap = hasEffectiveHeading && (
+                  (snapOrientation === 'N-S' && isHeadingNorthSouth(effectiveHeading)) ||
+                  (snapOrientation === 'E-W' && !isHeadingNorthSouth(effectiveHeading))
+                );
+
+                if (headingConfirmedSnap) {
+                  // Heading agrees with snap but Nominatim disagrees.
+                  // This is likely walk-away drift: the raw GPS point has moved toward
+                  // a cross street, making Nominatim identify the wrong road.
+                  // Trust snap + heading over Nominatim.
+                  console.log(
+                    `[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), ` +
+                    `Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). ` +
+                    `BUT heading ${effectiveHeading.toFixed(0)}° confirms snap orientation — ` +
+                    `keeping snap (likely walk-away drift on raw GPS).`
+                  );
+                  // Keep snapResult as-is — don't override
+                } else {
+                  console.log(`[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). Heading does NOT confirm snap — preferring Nominatim.`);
+                  // Use original coords (not snapped) since Nominatim identified a different street.
+                  checkLat = latitude;
+                  checkLng = longitude;
+                  snapResult = {
+                    wasSnapped: false,
+                    snapDistanceMeters: 0,
+                    streetName: nominatimResult.street_name,
+                    snapSource: 'nominatim_override',
+                    // No streetBearing — snap was for a different street
+                  };
+                  // GPS heading is provably stale — discard it. But compass heading
+                  // is fresh (captured at park time), so keep it.
+                  if (hasHeading && !hasCompass) {
+                    console.log(`[check-parking] Discarding GPS heading ${headingDeg.toFixed(0)}° — stale after Nominatim override`);
+                    hasHeading = false;
+                  } else if (hasHeading && hasCompass) {
+                    console.log(`[check-parking] Nominatim override but keeping compass heading ${compassHeadingDeg.toFixed(0)}° (fresh)`);
+                  }
                 }
               } else if (snapOrientation && nominatimOrientation) {
                 console.log(`[check-parking] Nominatim cross-reference confirms snap: both say ${snapOrientation} orientation (snap=${snapResult.streetName}, nominatim=${nominatimResult.street_name})`);
