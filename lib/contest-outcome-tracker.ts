@@ -1253,6 +1253,62 @@ async function processEvidenceFoiaMatch(
     performed_by: null,
   });
 
+  // ── Auto-set FOIA integration flags on the contest letter ──
+  // This removes the manual step of flipping finance_foia_integrated in admin.
+  // Both fulfillments AND denials are useful:
+  //   - Fulfillment: actual evidence to cite in letter
+  //   - Denial: "no responsive records" strengthens due process argument
+  if (ticketId) {
+    try {
+      // Determine which flag to set based on request type
+      const requestType = matchedRequest.request_payload?.request_type || matchedRequest.request_type;
+      const isCdot = requestType === 'cdot' ||
+        fromEmail.toLowerCase().includes('cdot') ||
+        matchedRequest.reference_id?.startsWith('APH-');
+      const isFinance = !isCdot; // Default to finance
+
+      const integrationUpdate: Record<string, any> = {};
+      if (isCdot) {
+        integrationUpdate.cdot_foia_integrated = true;
+        integrationUpdate.cdot_foia_integrated_at = new Date().toISOString();
+        integrationUpdate.cdot_foia_notes = isDenial
+          ? 'Auto-integrated: City produced no records (strengthens due process defense)'
+          : `Auto-integrated: City produced ${attachments.length} document(s)`;
+      } else {
+        integrationUpdate.finance_foia_integrated = true;
+        integrationUpdate.finance_foia_integrated_at = new Date().toISOString();
+        integrationUpdate.finance_foia_notes = isDenial
+          ? 'Auto-integrated: City produced no records (strengthens due process defense)'
+          : `Auto-integrated: City produced ${attachments.length} document(s)`;
+      }
+
+      const { error: letterUpdateErr } = await supabase
+        .from('contest_letters')
+        .update(integrationUpdate)
+        .eq('ticket_id', ticketId);
+
+      if (letterUpdateErr) {
+        console.log(`  Could not auto-set FOIA integration flag: ${letterUpdateErr.message}`);
+      } else {
+        console.log(`  ✅ Auto-set ${isCdot ? 'cdot' : 'finance'}_foia_integrated on contest letter`);
+      }
+
+      await supabase.from('ticket_audit_log').insert({
+        ticket_id: ticketId,
+        action: 'foia_auto_integrated',
+        details: {
+          flag: isCdot ? 'cdot_foia_integrated' : 'finance_foia_integrated',
+          is_denial: isDenial,
+          attachment_count: attachments.length,
+          match_method: matchMethod,
+        },
+        performed_by: null,
+      });
+    } catch (integrationErr: any) {
+      console.log(`  FOIA auto-integration error (non-blocking): ${integrationErr.message}`);
+    }
+  }
+
   const ticketNumber = matchedRequest.detected_tickets?.ticket_number || null;
   return {
     matched: true,

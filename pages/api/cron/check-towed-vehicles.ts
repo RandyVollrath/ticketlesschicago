@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../../lib/supabase';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { createTowAlert, markAlertNotified } from '../../../lib/contest-intelligence';
+import { pushService } from '../../../lib/push-service';
 
 // Checks if any user's car was towed recently
 // Sends immediate SMS/email alerts
@@ -171,6 +172,27 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
         } catch (emailError) {
           console.error(`Error sending email to ${user.email}:`, emailError);
         }
+      }
+
+      // Send push notification (most urgent — user's car is impounded)
+      try {
+        await pushService.sendToUser(user.user_id, {
+          title: '🚨 Your Car Was Towed!',
+          body: `${tow.color} ${tow.make} (${plate}) towed to ${tow.towed_to_address}. Call ${tow.tow_facility_phone} immediately.`,
+          data: {
+            type: 'tow_alert',
+            plate,
+            impound_address: tow.towed_to_address || '',
+            impound_phone: tow.tow_facility_phone || '',
+            inventory_number: tow.inventory_number || '',
+          },
+          userId: user.user_id,
+          category: 'tow_alert',
+        });
+        console.log(`✓ Push notification sent for tow alert (${plate})`);
+        notificationsSent++;
+      } catch (pushError) {
+        console.error(`Push notification failed for tow alert:`, pushError);
       }
 
       // Create tow alert in the intelligence system
