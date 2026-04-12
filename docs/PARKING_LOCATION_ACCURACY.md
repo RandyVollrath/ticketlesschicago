@@ -14,7 +14,9 @@ GPS must be captured at the moment the car stops — never after walking begins.
 
 The phone captures GPS after the user has already started walking away from the car. The coordinates are accurate for the phone's position but wrong for the car.
 
-**Real example (2026-04-11):** User parked on Belden near Kenmore. Walked south toward Sheffield. GPS captured after walking = "2320 N Sheffield." The snap-to-street correctly found Belden at 6.6m, but Nominatim saw the walked-to position and overrode to Sheffield.
+**Real example (2026-04-11):** User parked on Belden near Kenmore. Walked east on Belden toward Sheffield, then turned south on Sheffield. GPS captured after walking = near Sheffield. Snap correctly found Belden at 6.6m, heading (89° E-W) confirmed Belden. But Nominatim saw the walked-to GPS position near Sheffield and OVERRODE the correct snap result. Two bugs: (1) GPS captured too late (walk-away), (2) Nominatim overrode a heading-confirmed snap.
+
+**Fix (2026-04-12):** When heading confirms the snap's orientation (snap=E-W street + heading=E-W), Nominatim is no longer allowed to override. The agreement between two independent signals (snap geometry + heading direction) outweighs Nominatim looking at a potentially walked-away GPS point.
 
 **Real example (2026-04-12):** User parked on Wolcott near Lawrence. Walked toward Lawrence. GPS captured after walking = "2047 W Lawrence." Both snap AND Nominatim agreed on Lawrence because the phone was already 5.5m from Lawrence's centerline.
 
@@ -115,3 +117,4 @@ See `/home/randy-vollrath/.claude/plans/magical-hugging-quail.md` for the full p
 | 2026-04-12 | iOS compass heading (CLLocationManager) | Fresh heading at zero speed, eliminates stale heading |
 | 2026-04-12 | Server compass heading preference | Compass used as primary heading signal when available |
 | 2026-04-12 | Walk-away drift fix | Freeze location at stop-detection, reject post-walking GPS |
+| 2026-04-12 | Nominatim override guard | Don't let Nominatim override snap when heading confirms snap orientation |
