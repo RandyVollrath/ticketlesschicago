@@ -327,7 +327,7 @@ export default function LandingPage() {
           margin: '0 auto 40px',
           lineHeight: 1.6
         }}>
-          One red light camera ticket averages $156 with late fees. One street cleaning ticket: $79. Autopilot is $99/year.
+          One red light camera ticket averages $156 with late fees. The average Chicago driver gets 2–3 a year. Full year of Autopilot protection: $99.
         </p>
 
         <p style={{
