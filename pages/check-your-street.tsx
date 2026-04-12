@@ -951,12 +951,13 @@ export default function CheckYourStreet() {
                               We automatically contest every ticket on your plate. $99/yr.
                             </div>
                           </div>
-                          <button onClick={() => router.push('/get-started')} style={{
-                            backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '8px',
+                          <a href="/get-started" style={{
+                            display: 'inline-block', backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '8px',
                             padding: '12px 24px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
+                            textDecoration: 'none', touchAction: 'manipulation',
                           }}>
                             Start Auto-Contesting
-                          </button>
+                          </a>
                         </div>
                       )}
 
@@ -1094,12 +1095,13 @@ export default function CheckYourStreet() {
             Never worry about parking tickets again
           </h3>
           <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 66% get dismissed. $99/yr.</p>
-          <button onClick={() => router.push('/get-started')} style={{
-            backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '10px',
-            padding: '12px 24px', fontSize: '15px', fontWeight: '700', cursor: 'pointer',
+          <a href="/get-started" style={{
+            display: 'inline-block', backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '10px',
+            padding: '12px 24px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none',
+            touchAction: 'manipulation',
           }}>
             Start Auto-Contesting
-          </button>
+          </a>
         </div>
       </section>
 
