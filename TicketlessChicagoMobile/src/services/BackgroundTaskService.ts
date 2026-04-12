@@ -667,7 +667,7 @@ class BackgroundTaskServiceClass {
               // at where the CAR is, not where the user walked to.
               // Prefer averaged coordinates (multiple low-speed GPS fixes) when available
               // for better accuracy near intersections. Include heading for street disambiguation.
-              let parkingCoords: { latitude: number; longitude: number; accuracy?: number; heading?: number } | undefined;
+              let parkingCoords: { latitude: number; longitude: number; accuracy?: number; heading?: number; compassHeading?: number; compassConfidence?: number } | undefined;
               if (event.averagedLatitude && event.averagedLongitude && event.averagedFixCount >= 3) {
                 // Use averaged GPS position (more accurate than single fix)
                 parkingCoords = {
@@ -675,6 +675,8 @@ class BackgroundTaskServiceClass {
                   longitude: event.averagedLongitude,
                   accuracy: event.averagedAccuracy || event.accuracy,
                   heading: event.heading,
+                  compassHeading: event.compassHeading,
+                  compassConfidence: event.compassConfidence,
                 };
                 log.info(`Using averaged GPS (${event.averagedFixCount} fixes) for parking location`);
               } else if (
@@ -692,6 +694,8 @@ class BackgroundTaskServiceClass {
                   longitude: event.longitude,
                   accuracy: event.accuracy,
                   heading: event.heading,
+                  compassHeading: event.compassHeading,
+                  compassConfidence: event.compassConfidence,
                 };
               }
 
@@ -1582,6 +1586,8 @@ class BackgroundTaskServiceClass {
     longitude: number;
     accuracy?: number;
     heading?: number;
+    compassHeading?: number;
+    compassConfidence?: number;
   }, isRealParkingEvent: boolean = true, nativeTimestamp?: number, persistParkingEvent: boolean = true, detectionMeta?: {
     detectionSource?: string;
     locationSource?: string;
