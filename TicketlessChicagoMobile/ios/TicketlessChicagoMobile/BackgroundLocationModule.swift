@@ -5645,13 +5645,17 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         let currentAgeSec = Date().timeIntervalSince(current.timestamp)
         let currentAcc = current.horizontalAccuracy
         let currentSpeed = current.speed
-        let currentUsable =
+        // WALK-AWAY GUARD: If CoreMotion says user is walking, NEVER replace the
+        // stop candidate with currentLocation. The car is where we stopped,
+        // not where the user walked to. This is the #1 cause of wrong-street errors.
+        let isWalking = coreMotionWalkingSince != nil
+        let currentUsable = !isWalking &&
           currentAgeSec >= 0 &&
           currentAgeSec <= parkingCandidateFreshReplacementAgeSec &&
           currentAcc > 0 &&
           currentAcc <= parkingCandidatePreferredAccuracyMeters &&
           currentSpeed >= 0 &&
-          currentSpeed < 1.4
+          currentSpeed < 1.0  // Tightened from 1.4: filter slow walking
 
         if currentUsable {
           parkingLocation = current
@@ -5664,6 +5668,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             "currentAgeSec": currentAgeSec,
             "currentAccuracy": currentAcc,
             "currentSpeed": currentSpeed,
+          ])
+        }
+        if isWalking && candidateWeak {
+          self.log("Walk-away guard: NOT refining to current GPS — user is walking. Keeping \(parkingLocationSource) candidate.")
+          decision("parking_location_walkaway_blocked", [
+            "source": source,
+            "candidateAgeSec": candidateAgeSec,
+            "candidateAccuracy": candidateAcc,
+            "isWalking": true,
           ])
         }
       }

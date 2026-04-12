@@ -22,6 +22,7 @@ Connected devices: Moto G 2025 (`ZT4224LFTZ`), Moto E5 Play (`ZY326L2GKG`)
 
 ## Detailed Reference Docs
 Read these when working on the relevant subsystem:
+- **[docs/PARKING_LOCATION_ACCURACY.md](./docs/PARKING_LOCATION_ACCURACY.md)** — **READ FIRST** before ANY parking location changes. Failure modes, architecture, rules, change log
 - **[docs/BLUETOOTH_DETECTION.md](./docs/BLUETOOTH_DETECTION.md)** — Android BT parking detection architecture, race conditions, foreground service rules
 - **[docs/IOS_PARKING_DETECTION.md](./docs/IOS_PARKING_DETECTION.md)** — CoreMotion + GPS detection, CLVisit monitoring, recovery, GPS-only fallback
 - **[docs/IOS_CAMERA_ALERTS.md](./docs/IOS_CAMERA_ALERTS.md)** — Native iOS camera alerts, background TTS, App Store compliance
