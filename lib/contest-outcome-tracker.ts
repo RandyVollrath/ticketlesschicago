@@ -729,6 +729,7 @@ export function classifyFoiaResponseType(
 
   // Check for reference ID prefixes (strongest signal)
   if (/\bAPE-[A-Za-z0-9_-]+\b/.test(subjectOnly)) return 'evidence';
+  if (/\bCDOT-[A-Za-z0-9_-]+\b/.test(subjectOnly)) return 'evidence'; // CDOT signal timing is evidence
   if (/\bAPH-[A-Za-z0-9_-]+\b/.test(subjectOnly)) return 'history';
 
   // Check for evidence-specific keywords
@@ -744,15 +745,15 @@ export function classifyFoiaResponseType(
 
 /**
  * Extract reference IDs from email subject or body.
- * Returns APE-xxx or APH-xxx if found.
+ * Returns APE-xxx, APH-xxx, or CDOT-xxx if found.
  */
 export function extractReferenceId(subject: string, body: string): string | null {
   // Check subject first (most reliable — we put it there)
-  const subjectMatch = subject.match(/\b(AP[EH]-[A-Za-z0-9_-]{6,})\b/);
+  const subjectMatch = subject.match(/\b((?:AP[EH]|CDOT)-[A-Za-z0-9_-]{6,})\b/);
   if (subjectMatch) return subjectMatch[1];
 
   // Check body (city might quote our reference)
-  const bodyMatch = body.match(/\b(AP[EH]-[A-Za-z0-9_-]{6,})\b/);
+  const bodyMatch = body.match(/\b((?:AP[EH]|CDOT)-[A-Za-z0-9_-]{6,})\b/);
   if (bodyMatch) return bodyMatch[1];
 
   return null;
@@ -837,7 +838,7 @@ Attachments: ${attachments.map(a => a.filename).join(', ') || 'none'}
 PENDING FOIA REQUESTS:
 ${JSON.stringify(pendingSummary, null, 2)}
 
-Extract any ticket numbers (10+ digits), license plates, reference IDs (APE-xxx or APH-xxx), or person names from the email. Then determine which pending FOIA request (if any) this email is responding to.
+Extract any ticket numbers (10+ digits), license plates, reference IDs (APE-xxx, APH-xxx, or CDOT-xxx), or person names from the email. Then determine which pending FOIA request (if any) this email is responding to.
 
 Respond in JSON only:
 {
@@ -927,7 +928,7 @@ export async function processFoiaResponse(
 
   // ── Layer 1: Match by reference ID ──
   if (referenceId) {
-    if (referenceId.startsWith('APE-')) {
+    if (referenceId.startsWith('APE-') || referenceId.startsWith('CDOT-')) {
       const { data: match } = await supabase
         .from('ticket_foia_requests')
         .select('*, detected_tickets!inner(ticket_number, user_id)')
@@ -935,7 +936,7 @@ export async function processFoiaResponse(
         .maybeSingle();
 
       if (match) {
-        console.log(`  Layer 1 match (evidence ref): ${referenceId}`);
+        console.log(`  Layer 1 match (${referenceId.startsWith('CDOT-') ? 'CDOT' : 'evidence'} ref): ${referenceId}`);
         return processEvidenceFoiaMatch(supabase, match, fromEmail, subject, body, attachments, 'reference_id');
       }
     } else if (referenceId.startsWith('APH-')) {
@@ -1261,10 +1262,12 @@ async function processEvidenceFoiaMatch(
   if (ticketId) {
     try {
       // Determine which flag to set based on request type
+      // Finance FOIAs: request_type='ticket_evidence_packet', ref=APE-xxx, sent to DOFfoia@
+      // CDOT FOIAs: request_type='signal_timing', ref=CDOT-xxx, sent to cdotfoia@
       const requestType = matchedRequest.request_payload?.request_type || matchedRequest.request_type;
-      const isCdot = requestType === 'cdot' ||
+      const isCdot = requestType === 'signal_timing' ||
         fromEmail.toLowerCase().includes('cdot') ||
-        matchedRequest.reference_id?.startsWith('APH-');
+        matchedRequest.reference_id?.startsWith('CDOT-');
       const isFinance = !isCdot; // Default to finance
 
       const integrationUpdate: Record<string, any> = {};
