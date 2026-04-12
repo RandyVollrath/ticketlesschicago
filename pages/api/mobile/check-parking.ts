@@ -195,6 +195,25 @@ export default async function handler(
   );
   let hasHeading = !isNaN(headingDeg) && headingDeg >= 0 && headingDeg < 360;
 
+  // Compass heading from device magnetometer — works at zero speed (unlike GPS heading).
+  // More reliable than GPS heading at park time because it's captured when the car is
+  // freshly stopped, not stale from the last driving moment.
+  const compassHeadingDeg = parseFloat(
+    (req.method === 'GET' ? req.query.compass_heading : req.body.compass_heading) as string
+  );
+  const compassConfidenceDeg = parseFloat(
+    (req.method === 'GET' ? req.query.compass_confidence : req.body.compass_confidence) as string
+  );
+  const hasCompass = !isNaN(compassHeadingDeg) && compassHeadingDeg >= 0 && compassHeadingDeg < 360
+    && !isNaN(compassConfidenceDeg) && compassConfidenceDeg < 40; // only trust if std < 40°
+
+  // When compass heading is available, use it as the primary heading signal.
+  const effectiveHeading = hasCompass ? compassHeadingDeg : (hasHeading ? headingDeg : NaN);
+  const hasEffectiveHeading = !isNaN(effectiveHeading);
+  if (hasCompass) {
+    console.log(`[check-parking] Compass heading: ${compassHeadingDeg.toFixed(1)}° ±${compassConfidenceDeg.toFixed(1)}° — using as primary heading`);
+  }
+
   try {
     // Step 1: Attempt to snap GPS coordinate to nearest known street segment.
     // This corrects for urban canyon drift (10-30m) that can put you on the wrong block.
@@ -245,9 +264,10 @@ export default async function handler(
             //
             // Example: User parked on Wolcott (N-S) near Lawrence (E-W).
             // If heading is ~0°/180° (N/S), prefer the N/S street.
-            if (hasHeading && candidates.length > 1) {
-              const headingIsNS = isHeadingNorthSouth(headingDeg);
+            if (hasEffectiveHeading && candidates.length > 1) {
+              const headingIsNS = isHeadingNorthSouth(effectiveHeading);
               const headingDir = headingIsNS ? 'N-S' : 'E-W';
+              const hdgSrc = hasCompass ? ', compass' : '';
 
               // First look within distance-filtered candidates
               let found = false;
@@ -255,7 +275,7 @@ export default async function handler(
                 const streetDir = getChicagoStreetOrientation(c.street_name);
                 if (streetDir === headingDir) {
                   bestCandidate = c;
-                  console.log(`[check-parking] Heading disambiguation: ${headingDeg.toFixed(0)}° (${headingDir}) → chose ${c.street_name} over ${candidates[0].street_name}`);
+                  console.log(`[check-parking] Heading disambiguation: ${effectiveHeading.toFixed(0)}° (${headingDir}${hdgSrc}) → chose ${c.street_name} over ${candidates[0].street_name}`);
                   found = true;
                   break;
                 }
@@ -270,23 +290,18 @@ export default async function handler(
                   const cDir = getChicagoStreetOrientation(c.street_name);
                   if (cDir === headingDir && c.snap_distance_meters <= 50) {
                     bestCandidate = c;
-                    console.log(`[check-parking] Heading disambiguation (extended search): ${headingDeg.toFixed(0)}° (${headingDir}) → chose ${c.street_name} at ${c.snap_distance_meters.toFixed(1)}m`);
+                    console.log(`[check-parking] Heading disambiguation (extended search): ${effectiveHeading.toFixed(0)}° (${headingDir}${hdgSrc}) → chose ${c.street_name} at ${c.snap_distance_meters.toFixed(1)}m`);
                     found = true;
                     break;
                   }
                 }
               }
-            } else if (hasHeading && candidates.length === 1) {
+            } else if (hasEffectiveHeading && candidates.length === 1) {
               // Single candidate — verify heading alignment. If mismatched, search ALL
               // snap candidates (including those beyond max distance) for a heading match.
-              // This handles the case where the heading-matching street is slightly farther
-              // away but still a valid snap target (e.g., Byron at 16m when Lawrence at 3m
-              // was the only distance-qualifying candidate).
-              //
-              // Fallback: if no heading match in allCandidates, skip snap entirely and use
-              // original coordinates for reverse geocode.
               const streetDir = getChicagoStreetOrientation(candidates[0].street_name);
-              const headingDir = isHeadingNorthSouth(headingDeg) ? 'N-S' : 'E-W';
+              const headingDir = isHeadingNorthSouth(effectiveHeading) ? 'N-S' : 'E-W';
+              const hdgSrc = hasCompass ? ', compass' : '';
               if (streetDir && streetDir !== headingDir) {
                 // Search ALL candidates (not just distance-filtered) for heading match
                 let headingMatch = null;
@@ -299,10 +314,10 @@ export default async function handler(
                 }
 
                 if (headingMatch) {
-                  console.log(`[check-parking] Heading mismatch with closest (${candidates[0].street_name}, ${streetDir}), but found heading-matching candidate: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${headingDeg.toFixed(0)}° → ${headingDir})`);
+                  console.log(`[check-parking] Heading mismatch with closest (${candidates[0].street_name}, ${streetDir}), but found heading-matching candidate: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${effectiveHeading.toFixed(0)}° → ${headingDir}${hdgSrc})`);
                   bestCandidate = headingMatch;
                 } else {
-                  console.log(`[check-parking] Heading mismatch: heading ${headingDeg.toFixed(0)}° (${headingDir}) but snap target is ${candidates[0].street_name} (${streetDir}). No heading-matching candidate found. Skipping snap — using original coordinates for reverse geocode.`);
+                  console.log(`[check-parking] Heading mismatch: heading ${effectiveHeading.toFixed(0)}° (${headingDir}${hdgSrc}) but snap target is ${candidates[0].street_name} (${streetDir}). No heading-matching candidate found. Skipping snap — using original coordinates for reverse geocode.`);
                   bestCandidate = null as any;
                 }
               }
@@ -327,9 +342,9 @@ export default async function handler(
         // the correct street may be beyond the initial search radius (e.g., GPS drifted
         // 100-170m north of Belden onto Kenmore's centerline). Do a wider search (150m)
         // specifically to find a heading-matching street.
-        if (hasHeading && !snapResult) {
+        if (hasEffectiveHeading && !snapResult) {
           try {
-            const headingDir = isHeadingNorthSouth(headingDeg) ? 'N-S' : 'E-W';
+            const headingDir = isHeadingNorthSouth(effectiveHeading) ? 'N-S' : 'E-W';
             console.log(`[check-parking] No heading-matching snap candidate within initial radius. Trying extended search (150m) for ${headingDir} street...`);
 
             const { data: extendedData, error: extendedError } = await supabaseAdmin.rpc(
@@ -357,7 +372,7 @@ export default async function handler(
                   snapSource: `${headingMatch.snap_source}+heading_extended`,
                   streetBearing: headingMatch.street_bearing,
                 };
-                console.log(`[check-parking] Extended heading search found: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${headingDeg.toFixed(0)}° → ${headingDir})`);
+                console.log(`[check-parking] Extended heading search found: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${effectiveHeading.toFixed(0)}° → ${headingDir}${hasCompass ? ', compass' : ''})`);
               } else {
                 console.log(`[check-parking] Extended heading search: no ${headingDir} street found within 150m`);
               }
@@ -400,9 +415,13 @@ export default async function handler(
                 // Heading is provably stale: it matched the snapped street's orientation
                 // but Nominatim says we're on a different street. Discard heading so the
                 // metered parking checker uses address parity instead of a wrong heading.
-                if (hasHeading) {
-                  console.log(`[check-parking] Discarding heading ${headingDeg.toFixed(0)}° — stale after Nominatim override`);
+                // GPS heading is provably stale — discard it. But compass heading
+                // is fresh (captured at park time), so keep it.
+                if (hasHeading && !hasCompass) {
+                  console.log(`[check-parking] Discarding GPS heading ${headingDeg.toFixed(0)}° — stale after Nominatim override`);
                   hasHeading = false;
+                } else if (hasHeading && hasCompass) {
+                  console.log(`[check-parking] Nominatim override but keeping compass heading ${compassHeadingDeg.toFixed(0)}° (fresh)`);
                 }
               } else if (snapOrientation && nominatimOrientation) {
                 console.log(`[check-parking] Nominatim cross-reference confirms snap: both say ${snapOrientation} orientation (snap=${snapResult.streetName}, nominatim=${nominatimResult.street_name})`);
@@ -444,7 +463,7 @@ export default async function handler(
       checkLat,
       checkLng,
       result.location.parsedAddress,  // Pass shared address — no second geocode call
-      hasHeading ? headingDeg : undefined,
+      hasEffectiveHeading ? effectiveHeading : undefined,
     );
 
     // Step 3: Compute enforcement risk score from FOIA ticket data.

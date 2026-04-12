@@ -890,6 +890,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var queuedParkingSource: String? = nil
   private var queuedParkingAt: Date? = nil
 
+  // Compass heading collection at park time — magnetometer works at zero speed
+  // unlike GPS heading which requires movement. Eliminates stale-heading-after-turn.
+  private var compassHeadingSamples: [Double] = []
+  private let compassTargetSamples = 10
+  private var compassCollectionTimer: Timer? = nil
+
   // After parking, require GPS confirmation before restarting driving (prevents CoreMotion flicker)
   private var hasConfirmedParkingThisSession = false
 
@@ -2685,8 +2691,63 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     self.log("CoreMotion activity updates STOPPED (parked, saving power)")
   }
 
+
+  // MARK: - Compass Heading Collection
+
+  /// Start collecting magnetometer heading samples for side-of-street determination.
+  private func startCompassCollection() {
+    compassHeadingSamples.removeAll()
+    locationManager.headingFilter = 1.0
+    locationManager.startUpdatingHeading()
+    compassCollectionTimer?.invalidate()
+    compassCollectionTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+      self?.stopCompassCollection()
+    }
+    self.log("Compass: started heading collection (target \(compassTargetSamples) samples)")
+  }
+
+  private func stopCompassCollection() {
+    compassCollectionTimer?.invalidate()
+    compassCollectionTimer = nil
+    locationManager.stopUpdatingHeading()
+    if compassHeadingSamples.count > 0 {
+      self.log("Compass: stopped collection with \(compassHeadingSamples.count) samples")
+    }
+  }
+
+  /// Compute circular mean and standard deviation of collected heading samples.
+  private func computeCircularMeanHeading() -> (heading: Double, confidence: Double)? {
+    guard compassHeadingSamples.count >= 3 else { return nil }
+    var sumSin = 0.0
+    var sumCos = 0.0
+    for h in compassHeadingSamples {
+      let rad = h * .pi / 180.0
+      sumSin += sin(rad)
+      sumCos += cos(rad)
+    }
+    let n = Double(compassHeadingSamples.count)
+    let avgSin = sumSin / n
+    let avgCos = sumCos / n
+    let R = sqrt(avgSin * avgSin + avgCos * avgCos)
+    var meanRad = atan2(avgSin, avgCos)
+    if meanRad < 0 { meanRad += 2 * .pi }
+    let meanDeg = meanRad * 180.0 / .pi
+    let circularStdDeg = R > 0 ? sqrt(-2.0 * log(R)) * 180.0 / .pi : 180.0
+    self.log("Compass: circular mean = \(String(format: "%.1f", meanDeg))° ±\(String(format: "%.1f", circularStdDeg))° from \(compassHeadingSamples.count) samples (R=\(String(format: "%.3f", R)))")
+    return (heading: meanDeg, confidence: circularStdDeg)
+  }
+
   // MARK: - CLLocationManagerDelegate
 
+
+  func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+    guard parkingFinalizationPending else { return }
+    guard newHeading.trueHeading >= 0 else { return }
+    compassHeadingSamples.append(newHeading.trueHeading)
+    if compassHeadingSamples.count >= compassTargetSamples {
+      stopCompassCollection()
+    }
+  }
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     guard let location = locations.last else { return }
     if vehicleSignalMonitoringActive {
@@ -5787,22 +5848,26 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         let coherentFixes = recentFixes.filter { $0.distance(from: medianLoc) <= 100 }
 
         if coherentFixes.count >= 2 {
+          // Inverse-variance weighted averaging: a 5m-accuracy fix gets 25x more
+          // weight than a 25m fix. Dramatically improves position in urban canyons.
           var avgLat = 0.0
           var avgLng = 0.0
-          var avgAcc = 0.0
+          var totalWeight = 0.0
           for fix in coherentFixes {
-            avgLat += fix.coordinate.latitude
-            avgLng += fix.coordinate.longitude
-            avgAcc += fix.horizontalAccuracy
+            let acc = max(fix.horizontalAccuracy, 1.0)
+            let weight = 1.0 / (acc * acc)
+            totalWeight += weight
+            avgLat += fix.coordinate.latitude * weight
+            avgLng += fix.coordinate.longitude * weight
           }
-          avgLat /= Double(coherentFixes.count)
-          avgLng /= Double(coherentFixes.count)
-          avgAcc /= Double(coherentFixes.count)
+          avgLat /= totalWeight
+          avgLng /= totalWeight
+          let avgAcc = 1.0 / sqrt(totalWeight)
           body["averagedLatitude"] = avgLat
           body["averagedLongitude"] = avgLng
           body["averagedAccuracy"] = avgAcc
           body["averagedFixCount"] = coherentFixes.count
-          self.log("GPS averaging: \(coherentFixes.count)/\(recentLowSpeedLocations.count) recent coherent fixes → (\(String(format: "%.6f", avgLat)), \(String(format: "%.6f", avgLng))) ±\(String(format: "%.0f", avgAcc))m")
+          self.log("GPS averaging (inverse-variance): \(coherentFixes.count)/\(recentLowSpeedLocations.count) coherent fixes → (\(String(format: "%.6f", avgLat)), \(String(format: "%.6f", avgLng))) ±\(String(format: "%.1f", avgAcc))m")
         } else {
           self.log("GPS averaging: skipped — only \(coherentFixes.count) spatially coherent fixes (need 2+)")
         }
@@ -5827,6 +5892,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let candidateLocation = parkingLocation
 
     parkingFinalizationPending = true
+    startCompassCollection() // Capture magnetometer heading while car is freshly stopped
     pendingParkingLocation = candidateLocation
     pendingParkingConfidenceScore = confidenceScore
     pendingParkingNearIntersectionRisk = nearIntersectionRisk
@@ -6220,6 +6286,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     parkingFinalizationTimer?.invalidate()
     parkingFinalizationTimer = nil
     parkingFinalizationPending = false
+    stopCompassCollection()
     pendingParkingLocation = nil
     pendingParkingConfidenceScore = -1
     pendingParkingNearIntersectionRisk = false
@@ -6258,9 +6325,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     lastConfirmedParkingNearIntersectionRisk = finalizedNearIntersectionRisk
     persistParkingState()  // Survive app kills (Clybourn bug fix)
 
+    // Inject compass heading into payload if collected during finalization hold.
+    stopCompassCollection()
+    if let compass = computeCircularMeanHeading(), compass.confidence < 40.0 {
+      self.log("Compass heading injected: \(String(format: "%.1f", compass.heading))° ±\(String(format: "%.1f", compass.confidence))°")
+    }
+
     // Emit through the single gateway — handles ring buffer, dedup, persist.
     var payload = body
     payload["detectionSource"] = source
+    // Add compass heading to payload for server-side street disambiguation
+    if let compass = computeCircularMeanHeading(), compass.confidence < 40.0 {
+      payload["compassHeading"] = compass.heading
+      payload["compassConfidence"] = compass.confidence
+    }
     let lat = finalizedLocation?.coordinate.latitude ?? 0
     let lng = finalizedLocation?.coordinate.longitude ?? 0
     let acc = body["accuracy"] as? Double ?? -1

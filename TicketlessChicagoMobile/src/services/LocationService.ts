@@ -60,8 +60,8 @@ export type LocationAccuracy = 'high' | 'balanced' | 'low';
 
 // Constants for burst sampling
 const BURST_MIN_SAMPLES = 3;
-const BURST_TARGET_SAMPLES = 5;
-const BURST_MAX_WAIT_MS = 6000; // shorter window to avoid walk-away drift
+const BURST_TARGET_SAMPLES = 8;  // More samples = better averaging in urban canyons
+const BURST_MAX_WAIT_MS = 10000; // 10s window — user is still in car at park time
 const BURST_OUTLIER_THRESHOLD_METERS = 50; // discard samples >50m from median
 
 // Watch subscription ID for continuous tracking
@@ -834,7 +834,10 @@ class LocationServiceClass {
       ? `&confidence=${(coords as EnhancedCoordinates).confidence}`
       : '';
     const headingParam = (coords.heading != null && coords.heading >= 0) ? `&heading=${coords.heading.toFixed(1)}` : '';
-    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}`;
+    const compassParam = ((coords as any).compassHeading != null && (coords as any).compassConfidence != null)
+      ? `&compass_heading=${(coords as any).compassHeading.toFixed(1)}&compass_confidence=${(coords as any).compassConfidence.toFixed(1)}`
+      : '';
+    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}`;
 
     // Use rate-limited request with caching
     const response = await RateLimiter.rateLimitedRequest(
