@@ -50,6 +50,23 @@ Buildings deflect GPS signals systematically. A 25m drift near an intersection c
 
 **Mitigation:** Snap-to-street corrects for this. Future: per-block GPS correction model learned from parking history (Phase 4 of accuracy plan).
 
+## Working Thesis (as of April 2026)
+
+**The parking location should come from the LAST DRIVING GPS fixes, not from any post-parking GPS.**
+
+The most reliable parking location is the inverse-variance weighted average of GPS fixes captured while the car was still moving (speed > 1 m/s). These fixes:
+1. Were captured when GPS heading was valid (moving = reliable heading)
+2. Cluster around the car's actual path and stopping point
+3. Predate any walking the user does after parking
+4. Are immune to walk-away drift (the #1 accuracy problem)
+
+**Implementation:**
+- **iOS:** `recentLowSpeedLocations` buffer (up to 10 CLLocation fixes at speed < 3 m/s), inverse-variance weighted average, emitted as `averagedLatitude`/`averagedLongitude`
+- **Android:** `drivingGpsBuffer` ring buffer (up to 10 fixes at speed > 1 m/s from watchPosition), inverse-variance weighted average, used as PRIMARY parking location before any fresh GPS fix
+- **Both platforms:** The stop-detection GPS (iOS `locationAtStopStart`, Android cached driving position) is the fallback. Fresh GPS (`getCurrentLocation`) is the LAST resort, and is blocked when walking evidence exists or when the fresh fix is >20m from the stop candidate.
+
+**Never override a driving-buffer or stop-candidate location with a "more accurate" post-walking fix.** A 30m-accuracy fix at the car beats a 5m-accuracy fix at the coffee shop 50m away.
+
 ## Architecture: How Parking Location Is Captured
 
 ### iOS (`BackgroundLocationModule.swift`)
@@ -118,3 +135,5 @@ See `/home/randy-vollrath/.claude/plans/magical-hugging-quail.md` for the full p
 | 2026-04-12 | Server compass heading preference | Compass used as primary heading signal when available |
 | 2026-04-12 | Walk-away drift fix | Freeze location at stop-detection, reject post-walking GPS |
 | 2026-04-12 | Nominatim override guard | Don't let Nominatim override snap when heading confirms snap orientation |
+| 2026-04-12 | Android driving GPS ring buffer | Use last 10 driving fixes (weighted avg) as PRIMARY parking location instead of post-parking fresh GPS |
+| 2026-04-12 | iOS stop-candidate protection | Never consider stop candidate "weak" when walking. Add 20m proximity guard for refinement. |
