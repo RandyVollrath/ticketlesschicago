@@ -66,9 +66,10 @@ export async function createRewardfulAffiliate(
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${REWARDFUL_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -135,8 +136,9 @@ export async function getRewardfulAffiliate(
     const response = await fetch(`${REWARDFUL_API_URL}/affiliates/${affiliateId}`, {
       headers: {
         'Authorization': `Bearer ${REWARDFUL_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -165,8 +167,9 @@ export async function findAffiliateByEmail(
     const response = await fetch(`${REWARDFUL_API_URL}/affiliates?email=${encodeURIComponent(email)}`, {
       headers: {
         'Authorization': `Bearer ${REWARDFUL_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {

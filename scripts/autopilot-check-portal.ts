@@ -29,7 +29,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { lookupMultiplePlates, LookupResult, PortalTicket } from '../lib/chicago-portal-scraper';
+import { lookupMultiplePlates, lookupMultiplePlatesParallel, LookupResult, PortalTicket } from '../lib/chicago-portal-scraper';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../lib/contest-kits/evidence-guidance';
 import { getStreetViewEvidence, getStreetViewEvidenceWithAnalysis, StreetViewResult, StreetViewEvidencePackage, SignageAnalysis } from '../lib/street-view-service';
 import {
@@ -2822,15 +2822,19 @@ async function main() {
 
   console.log(`Checking ${lookupPlates.length} plates...\n`);
 
-  // Run the portal lookups with adaptive delay
-  const results = await lookupMultiplePlates(
-    lookupPlates.map(p => ({ plate: p.plate, state: p.state, lastName: p.lastName })),
-    {
-      screenshotDir: SCREENSHOT_DIR,
-      delayBetweenMs: pacing.delayMs,
-      maxPlates: pacing.maxPlates,
-    }
-  );
+  // Run the portal lookups — use parallel mode when we have enough plates
+  const concurrency = parseInt(process.env.PORTAL_CHECK_CONCURRENCY || '3', 10);
+  const plateArgs = lookupPlates.map(p => ({ plate: p.plate, state: p.state, lastName: p.lastName }));
+  const scraperOptions = {
+    screenshotDir: SCREENSHOT_DIR,
+    delayBetweenMs: pacing.delayMs,
+    maxPlates: pacing.maxPlates,
+    concurrency,
+  };
+
+  const results = lookupPlates.length > 20
+    ? await lookupMultiplePlatesParallel(plateArgs, scraperOptions)
+    : await lookupMultiplePlates(plateArgs, scraperOptions);
 
   // Process results - create tickets in DB
   let totalCreated = 0;

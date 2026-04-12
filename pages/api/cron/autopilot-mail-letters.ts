@@ -415,6 +415,141 @@ async function aiQualityReview(
 }
 
 /**
+ * Second-opinion persuasiveness review.
+ *
+ * The first AI review (aiQualityReview) checks for structural correctness —
+ * placeholders, dates, defense coherence. This second pass checks whether
+ * the letter actually makes the STRONGEST possible case:
+ *
+ * - Does it cite the specific legal basis for dismissal?
+ * - Does it reference all available evidence (FOIA, street view, weather)?
+ * - Is the argument structured to maximize persuasion with the hearing officer?
+ * - Could the defense be stronger with a different angle?
+ *
+ * Returns an improved letter if it finds ways to strengthen the case,
+ * or null if the letter is already strong.
+ */
+async function persuasivenessReview(
+  letterContent: string,
+  ticketData: { ticket_number: string; violation_date: string; violation_description: string; violation_type: string; amount: number; location: string },
+  userName: string,
+  availableEvidence: {
+    hasStreetView: boolean;
+    hasFoiaResponse: boolean;
+    hasWeatherData: boolean;
+    hasUserPhotos: boolean;
+    foiaWinRate: number | null;
+  },
+): Promise<{
+  score: number;
+  improved: boolean;
+  improvedLetter: string | null;
+  suggestions: string[];
+  provider: string;
+}> {
+  const prompt = `You are an expert Chicago parking ticket defense attorney reviewing a contest letter before it is mailed. Your job is NOT to check for errors (that's already done) — your job is to make this letter WIN.
+
+LETTER:
+---
+${letterContent}
+---
+
+TICKET FACTS:
+- Ticket: ${ticketData.ticket_number}
+- Violation: ${ticketData.violation_description} (${ticketData.violation_type})
+- Date: ${ticketData.violation_date}
+- Amount: $${ticketData.amount}
+- Location: ${ticketData.location || 'Unknown'}
+- Respondent: ${userName}
+
+AVAILABLE EVIDENCE:
+- Street View imagery: ${availableEvidence.hasStreetView ? 'YES (attached as exhibit)' : 'NO'}
+- FOIA response from city: ${availableEvidence.hasFoiaResponse ? 'YES' : 'NO'}
+- Weather data: ${availableEvidence.hasWeatherData ? 'YES' : 'NO'}
+- User photos: ${availableEvidence.hasUserPhotos ? 'YES' : 'NO'}
+${availableEvidence.foiaWinRate !== null ? `- FOIA win rate for this violation: ${availableEvidence.foiaWinRate}% of similar tickets were dismissed` : ''}
+
+EVALUATE ON THESE CRITERIA (score 0-100):
+
+1. LEGAL SPECIFICITY (25 pts): Does it cite specific Municipal Code sections, Illinois Vehicle Code provisions, or relevant case law? Generic "I believe this ticket was issued in error" scores low. Citing "MCC 9-64-170(a)" scores high.
+
+2. EVIDENCE UTILIZATION (25 pts): Does it reference ALL available evidence? If street view is available, does it discuss what the images show? If weather data exists, is it mentioned? Missing available evidence is a wasted opportunity.
+
+3. ARGUMENT STRUCTURE (25 pts): Is the strongest argument presented first? Is there a clear theory of defense? Does it address likely counterarguments? A scattered letter with 5 weak arguments loses to a focused letter with 2 strong ones.
+
+4. PERSUASIVE TONE (25 pts): Does it read like a confident legal brief, or a timid complaint? Does it assert rights firmly without being aggressive? Would a hearing officer take this seriously?
+
+RESPOND WITH JSON ONLY:
+{
+  "persuasivenessScore": <0-100>,
+  "suggestions": ["specific improvement 1", "specific improvement 2"],
+  "canStrengthen": true/false,
+  "strengthenedLetter": "<if canStrengthen, provide the COMPLETE improved letter. Keep the same facts and evidence — just make the argument stronger. Do NOT invent evidence or cite codes you aren't certain about. Preserve the exact ticket number, dates, and respondent name.>"
+}`;
+
+  // Try Claude first (best at legal writing), then Gemini, then OpenAI
+  const providers = [
+    { name: 'anthropic', run: async () => {
+      if (!anthropic) throw new Error('No Anthropic key');
+      const resp = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      return resp.content[0].type === 'text' ? resp.content[0].text : '';
+    }},
+    { name: 'gemini', run: async () => {
+      if (!gemini) throw new Error('No Gemini key');
+      const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    }},
+    { name: 'openai', run: async () => {
+      if (!openai) throw new Error('No OpenAI key');
+      const resp = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 4096,
+      });
+      return resp.choices[0].message?.content || '';
+    }},
+  ];
+
+  for (const provider of providers) {
+    try {
+      const text = await provider.run();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) continue;
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      const score = typeof parsed.persuasivenessScore === 'number' ? parsed.persuasivenessScore : 50;
+      const suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions.map(String) : [];
+      const strengthened = parsed.canStrengthen && typeof parsed.strengthenedLetter === 'string' && parsed.strengthenedLetter.length > 200
+        ? parsed.strengthenedLetter
+        : null;
+
+      console.log(`    Persuasiveness (${provider.name}): ${score}/100${strengthened ? ' — improved version available' : ''}`);
+      if (suggestions.length > 0) {
+        console.log(`    Suggestions: ${suggestions.join('; ')}`);
+      }
+
+      return {
+        score,
+        improved: strengthened !== null,
+        improvedLetter: strengthened,
+        suggestions,
+        provider: provider.name,
+      };
+    } catch (err: any) {
+      console.log(`    Persuasiveness review failed (${provider.name}): ${err.message}`);
+    }
+  }
+
+  // All providers failed — don't block, just return neutral score
+  return { score: 75, improved: false, improvedLetter: null, suggestions: [], provider: 'none' };
+}
+
+/**
  * Mail a single letter via Lob
  */
 async function mailLetter(
@@ -1343,6 +1478,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           console.log(`    ✅ Quality check passed (AI score: ${aiReview.qualityScore}/100)`);
+
+          // ── PERSUASIVENESS REVIEW (second opinion) ──
+          // QA passed — now check if the letter makes the strongest possible case.
+          // If the AI can strengthen it, save the improved version.
+          try {
+            const ticketObj = ticket as any;
+            const userEvidence = ticketObj?.user_evidence || {};
+            const persuasion = await persuasivenessReview(letterText, {
+              ticket_number: ticketNumber,
+              violation_date: ticketObj?.violation_date || '',
+              violation_description: ticketObj?.violation_description || '',
+              violation_type: ticketObj?.violation_type || '',
+              amount: ticketObj?.amount || 0,
+              location: ticketObj?.location || '',
+            }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(), {
+              hasStreetView: !!(letter.street_view_exhibit_urls && letter.street_view_exhibit_urls.length > 0),
+              hasFoiaResponse: !!((letter as any).finance_foia_integrated || (letter as any).cdot_foia_integrated),
+              hasWeatherData: !!userEvidence?.weather_data,
+              hasUserPhotos: !!(userEvidence?.attachment_urls?.length > 0),
+              foiaWinRate: null, // Could query win_rate_statistics here in future
+            });
+
+            if (persuasion.improved && persuasion.improvedLetter) {
+              console.log(`    ✍️ Persuasiveness improved (${persuasion.score}/100 → stronger version saved)`);
+              await supabaseAdmin.from('contest_letters')
+                .update({ letter_content: persuasion.improvedLetter })
+                .eq('id', letter.id);
+
+              await supabaseAdmin.from('ticket_audit_log').insert({
+                ticket_id: letter.ticket_id, user_id: letter.user_id,
+                action: 'letter_persuasiveness_improved',
+                details: {
+                  original_score: persuasion.score,
+                  suggestions: persuasion.suggestions,
+                  provider: persuasion.provider,
+                  performed_by_system: 'autopilot_cron',
+                },
+                performed_by: null,
+              });
+            } else {
+              console.log(`    ✅ Persuasiveness OK (${persuasion.score}/100)`);
+            }
+          } catch (persuasionErr: any) {
+            // Non-blocking — if persuasiveness review fails, letter still proceeds
+            console.log(`    ⚠️ Persuasiveness review error (non-blocking): ${persuasionErr.message}`);
+          }
         }
       }
 

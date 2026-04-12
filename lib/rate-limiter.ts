@@ -1,11 +1,50 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from './supabase';
 
+// ── In-memory rate limit cache ──
+// Avoids hitting Supabase on every single request during traffic surges.
+// Each Vercel function instance gets its own cache — that's fine, it just
+// means limits are per-instance which is MORE lenient, not less.
+// Entries auto-expire when their window passes.
+const rateLimitCache = new Map<string, number[]>();
+
+function getCacheKey(identifier: string, action: string): string {
+  return `${action}:${identifier}`;
+}
+
+function cleanExpiredEntries(key: string, windowMs: number): number[] {
+  const entries = rateLimitCache.get(key) || [];
+  const cutoff = Date.now() - windowMs;
+  const valid = entries.filter(ts => ts > cutoff);
+  if (valid.length === 0) {
+    rateLimitCache.delete(key);
+  } else {
+    rateLimitCache.set(key, valid);
+  }
+  return valid;
+}
+
+// Periodically clean the entire cache to prevent memory leaks
+let lastCacheClean = 0;
+function maybeCleanCache() {
+  const now = Date.now();
+  if (now - lastCacheClean < 60_000) return;
+  lastCacheClean = now;
+  for (const [key, entries] of rateLimitCache) {
+    const valid = entries.filter(ts => ts > now - 3_600_000);
+    if (valid.length === 0) {
+      rateLimitCache.delete(key);
+    } else {
+      rateLimitCache.set(key, valid);
+    }
+  }
+}
+
 // Rate limit configurations
 export const RATE_LIMITS = {
-  magic_link: { limit: 3, windowMs: 60 * 60 * 1000 }, // 3 per hour
-  auth: { limit: 10, windowMs: 15 * 60 * 1000 }, // 10 per 15 minutes
-  checkout: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour
+  magic_link: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour (raised from 3 for signup surges)
+  auth: { limit: 50, windowMs: 15 * 60 * 1000 }, // 50 per 15 minutes (raised from 10 for signup surges)
+  checkout: { limit: 50, windowMs: 60 * 60 * 1000 }, // 50 per hour (raised from 10 — Stripe handles the real throttling)
   api: { limit: 100, windowMs: 60 * 1000 }, // 100 per minute
   vision_api: { limit: 20, windowMs: 60 * 60 * 1000 }, // 20 per hour (expensive GPT-4V calls)
   geocoding: { limit: 50, windowMs: 60 * 60 * 1000 }, // 50 per hour (Google Maps API)
@@ -43,69 +82,48 @@ export function getClientIP(req: NextApiRequest): string {
 }
 
 /**
- * Check if action is rate limited
+ * Check if action is rate limited.
+ * Uses in-memory cache (no DB hit per request).
  */
 export async function checkRateLimit(
   identifier: string,
   action: RateLimitAction
 ): Promise<RateLimitResult> {
   const config = RATE_LIMITS[action];
-  const windowStart = new Date(Date.now() - config.windowMs).toISOString();
+  const key = getCacheKey(identifier, action);
 
-  try {
-    // Count actions in window
-    const { count, error } = await supabaseAdmin
-      .from('rate_limits')
-      .select('*', { count: 'exact', head: true })
-      .eq('identifier', identifier)
-      .eq('action', action)
-      .gte('created_at', windowStart);
+  maybeCleanCache();
 
-    if (error) {
-      console.error('Rate limit check error:', error);
-      // Allow on error to not block legitimate users
-      return { allowed: true, remaining: config.limit, resetIn: 0, limit: config.limit };
-    }
+  const cached = cleanExpiredEntries(key, config.windowMs);
+  const currentCount = cached.length;
+  const remaining = Math.max(0, config.limit - currentCount);
+  const allowed = currentCount < config.limit;
 
-    const currentCount = count || 0;
-    const remaining = Math.max(0, config.limit - currentCount);
-    const allowed = currentCount < config.limit;
-
-    // Calculate reset time
-    let resetIn = 0;
-    if (!allowed) {
-      const { data: oldestEntry } = await supabaseAdmin
-        .from('rate_limits')
-        .select('created_at')
-        .eq('identifier', identifier)
-        .eq('action', action)
-        .gte('created_at', windowStart)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (oldestEntry) {
-        const oldestTime = new Date((oldestEntry as { created_at: string }).created_at).getTime();
-        resetIn = Math.max(0, oldestTime + config.windowMs - Date.now());
-      }
-    }
-
-    return { allowed, remaining, resetIn, limit: config.limit };
-  } catch (error) {
-    console.error('Rate limit check exception:', error);
-    return { allowed: true, remaining: config.limit, resetIn: 0, limit: config.limit };
+  let resetIn = 0;
+  if (!allowed && cached.length > 0) {
+    const oldest = Math.min(...cached);
+    resetIn = Math.max(0, oldest + config.windowMs - Date.now());
   }
+
+  return { allowed, remaining, resetIn, limit: config.limit };
 }
 
 /**
- * Record a rate-limited action
+ * Record a rate-limited action.
+ * Writes to in-memory cache immediately, fire-and-forgets DB insert.
  */
 export async function recordRateLimitAction(
   identifier: string,
   action: RateLimitAction
 ): Promise<void> {
+  // Record in memory first (instant)
+  const key = getCacheKey(identifier, action);
+  const entries = rateLimitCache.get(key) || [];
+  entries.push(Date.now());
+  rateLimitCache.set(key, entries);
+
+  // Fire-and-forget DB insert
   try {
-    // Note: rate_limits table may not be in generated types, using type assertion
     const { error } = await supabaseAdmin
       .from('rate_limits')
       .insert({
