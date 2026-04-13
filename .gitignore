@@ -47,7 +47,7 @@ firebase-admin-key.json
 *.key
 
 # Mobile secrets
-TicketlessChicagoMobile/android/app/google-services.json
+# google-services.json is public config, not a secret — must be in repo for EAS builds
 TicketlessChicagoMobile/android/app/ticketless-release.keystore
 TicketlessChicagoMobile/credentials/
 TicketlessChicagoMobile/logs/
