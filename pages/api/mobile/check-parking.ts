@@ -374,8 +374,14 @@ export default async function handler(
                 if (headingMatch) {
                   console.log(`[check-parking] Heading mismatch with closest (${candidates[0].street_name}, ${streetDir}), but found heading-matching candidate: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${effectiveHeading.toFixed(0)}° → ${headingDir}${hdgSrc})`);
                   bestCandidate = headingMatch;
+                } else if (candidates[0].snap_distance_meters <= 15) {
+                  // Close snap (< 15m) is strong geometric evidence even if heading disagrees.
+                  // Heading can be stale after a turn (e.g., drove west on Webster, turned onto
+                  // Clifton, heading still says west). A 6.8m snap to Clifton beats stale heading.
+                  console.log(`[check-parking] Heading mismatch but closest snap is very close (${candidates[0].snap_distance_meters.toFixed(1)}m to ${candidates[0].street_name}). Keeping close snap — heading likely stale after turn.`);
+                  bestCandidate = candidates[0];
                 } else {
-                  console.log(`[check-parking] Heading mismatch: heading ${effectiveHeading.toFixed(0)}° (${headingDir}${hdgSrc}) but snap target is ${candidates[0].street_name} (${streetDir}). No heading-matching candidate found. Skipping snap — using original coordinates for reverse geocode.`);
+                  console.log(`[check-parking] Heading mismatch: heading ${effectiveHeading.toFixed(0)}° (${headingDir}${hdgSrc}) but snap target is ${candidates[0].street_name} (${streetDir}) at ${candidates[0].snap_distance_meters.toFixed(1)}m. No heading-matching candidate found. Skipping snap — using original coordinates for reverse geocode.`);
                   bestCandidate = null as any;
                 }
               }
@@ -469,15 +475,21 @@ export default async function handler(
                   (snapOrientation === 'E-W' && !isHeadingNorthSouth(effectiveHeading))
                 );
 
-                if (headingConfirmedSnap) {
-                  // Heading agrees with snap but Nominatim disagrees.
+                // Was this snap from the extended heading search (far away, heading-driven)?
+                // If so, Nominatim disagreeing is strong evidence the heading was stale.
+                // Extended search snaps are 30-150m away — much weaker than a close initial snap.
+                const snapWasExtended = snapResult.snapSource?.includes('heading_extended') ||
+                  (snapResult.snapDistanceMeters > 25);
+
+                if (headingConfirmedSnap && !snapWasExtended) {
+                  // Close snap + heading agree, Nominatim disagrees.
                   // This is likely walk-away drift: the raw GPS point has moved toward
                   // a cross street, making Nominatim identify the wrong road.
-                  // Trust snap + heading over Nominatim.
+                  // Trust close snap + heading over Nominatim.
                   console.log(
                     `[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), ` +
                     `Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). ` +
-                    `BUT heading ${effectiveHeading.toFixed(0)}° confirms snap orientation — ` +
+                    `BUT heading ${effectiveHeading.toFixed(0)}° confirms close snap (${snapResult.snapDistanceMeters?.toFixed(1)}m) — ` +
                     `keeping snap (likely walk-away drift on raw GPS).`
                   );
                   diag.nominatim_street = nominatimResult.street_name;
@@ -486,6 +498,33 @@ export default async function handler(
                   diag.nominatim_overrode = false;
                   diag.heading_confirmed_snap = true;
                   // Keep snapResult as-is — don't override
+                } else if (headingConfirmedSnap && snapWasExtended) {
+                  // Extended/far snap + heading agree, but Nominatim disagrees.
+                  // The heading likely drove the extended search to the WRONG street
+                  // (stale heading from before a turn). Nominatim is more reliable here.
+                  console.log(
+                    `[check-parking] Nominatim cross-reference: extended snap says ${snapResult.streetName} (${snapOrientation}, ${snapResult.snapDistanceMeters?.toFixed(1)}m), ` +
+                    `Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). ` +
+                    `Heading ${effectiveHeading.toFixed(0)}° confirmed snap but snap was far/extended — ` +
+                    `preferring Nominatim (heading likely stale after turn).`
+                  );
+                  diag.nominatim_street = nominatimResult.street_name;
+                  diag.nominatim_orientation = nominatimOrientation;
+                  diag.nominatim_agreed = false;
+                  diag.nominatim_overrode = true;
+                  diag.heading_confirmed_snap = false;
+                  checkLat = latitude;
+                  checkLng = longitude;
+                  snapResult = {
+                    wasSnapped: false,
+                    snapDistanceMeters: 0,
+                    streetName: nominatimResult.street_name,
+                    snapSource: 'nominatim_override_extended',
+                  };
+                  if (hasHeading && !hasCompass) {
+                    console.log(`[check-parking] Discarding GPS heading ${headingDeg.toFixed(0)}° — stale (extended snap overridden)`);
+                    hasHeading = false;
+                  }
                 } else {
                   console.log(`[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). Heading does NOT confirm snap — preferring Nominatim.`);
                   diag.nominatim_street = nominatimResult.street_name;
