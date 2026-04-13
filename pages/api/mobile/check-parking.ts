@@ -215,6 +215,19 @@ export default async function handler(
   }
 
   try {
+    // Diagnostic accumulator — captures the full decision chain for accuracy tracking.
+    // Inserted into parking_diagnostics table at the end (non-blocking).
+    const diag: Record<string, any> = {
+      raw_lat: latitude,
+      raw_lng: longitude,
+      raw_accuracy_meters: accuracyMeters || null,
+      gps_heading: hasHeading ? headingDeg : null,
+      compass_heading: hasCompass ? compassHeadingDeg : null,
+      compass_confidence: hasCompass ? compassConfidenceDeg : null,
+      heading_source: hasCompass ? 'compass' : (hasHeading ? 'gps' : 'none'),
+      effective_heading: hasEffectiveHeading ? effectiveHeading : null,
+    };
+
     // Step 1: Attempt to snap GPS coordinate to nearest known street segment.
     // This corrects for urban canyon drift (10-30m) that can put you on the wrong block.
     // Only snap if accuracy is reasonable (under 75m) - very poor GPS shouldn't be "corrected".
@@ -334,6 +347,7 @@ export default async function handler(
                 streetBearing: bestCandidate.street_bearing,
               };
               console.log(`[check-parking] Snapped ${bestCandidate.snap_distance_meters.toFixed(1)}m to ${bestCandidate.street_name} (${bestCandidate.snap_source}, bearing=${bestCandidate.street_bearing?.toFixed(0) ?? 'none'}°)`);
+              diag.snap_candidates_count = allCandidates?.length || 0;
             }
           }
         }
@@ -421,9 +435,19 @@ export default async function handler(
                     `BUT heading ${effectiveHeading.toFixed(0)}° confirms snap orientation — ` +
                     `keeping snap (likely walk-away drift on raw GPS).`
                   );
+                  diag.nominatim_street = nominatimResult.street_name;
+                  diag.nominatim_orientation = nominatimOrientation;
+                  diag.nominatim_agreed = false;
+                  diag.nominatim_overrode = false;
+                  diag.heading_confirmed_snap = true;
                   // Keep snapResult as-is — don't override
                 } else {
                   console.log(`[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). Heading does NOT confirm snap — preferring Nominatim.`);
+                  diag.nominatim_street = nominatimResult.street_name;
+                  diag.nominatim_orientation = nominatimOrientation;
+                  diag.nominatim_agreed = false;
+                  diag.nominatim_overrode = true;
+                  diag.heading_confirmed_snap = false;
                   // Use original coords (not snapped) since Nominatim identified a different street.
                   checkLat = latitude;
                   checkLng = longitude;
@@ -445,6 +469,10 @@ export default async function handler(
                 }
               } else if (snapOrientation && nominatimOrientation) {
                 console.log(`[check-parking] Nominatim cross-reference confirms snap: both say ${snapOrientation} orientation (snap=${snapResult.streetName}, nominatim=${nominatimResult.street_name})`);
+                diag.nominatim_street = nominatimResult.street_name;
+                diag.nominatim_orientation = nominatimOrientation;
+                diag.nominatim_agreed = true;
+                diag.nominatim_overrode = false;
               } else {
                 console.log(`[check-parking] Nominatim cross-reference: could not determine orientation (snap=${snapResult.streetName}/${snapOrientation}, nominatim=${nominatimResult.street_name}/${nominatimOrientation})`);
               }
@@ -690,6 +718,53 @@ export default async function handler(
 
       timestamp: result.timestamp,
     };
+
+    // --- Log diagnostic row (non-blocking, fire-and-forget) ---
+    if (supabaseAdmin) {
+      const pa = result.location.parsedAddress;
+      supabaseAdmin.from('parking_diagnostics').insert({
+        user_id: user?.id || null,
+        raw_lat: latitude,
+        raw_lng: longitude,
+        raw_accuracy_meters: accuracyMeters || null,
+        gps_heading: hasHeading ? headingDeg : null,
+        compass_heading: hasCompass ? compassHeadingDeg : null,
+        compass_confidence: hasCompass ? compassConfidenceDeg : null,
+        gps_source: diag.gps_source || null,
+        snap_street_name: snapResult?.streetName || null,
+        snap_distance_meters: snapResult?.snapDistanceMeters || null,
+        snap_source: snapResult?.snapSource || null,
+        snap_bearing: snapResult?.streetBearing || null,
+        snapped_lat: snapResult?.wasSnapped ? checkLat : null,
+        snapped_lng: snapResult?.wasSnapped ? checkLng : null,
+        heading_source: hasCompass ? 'compass' : (hasHeading ? 'gps' : 'none'),
+        effective_heading: hasEffectiveHeading ? effectiveHeading : null,
+        heading_orientation: hasEffectiveHeading ? (isHeadingNorthSouth(effectiveHeading) ? 'N-S' : 'E-W') : null,
+        nominatim_street: diag.nominatim_street || null,
+        nominatim_orientation: diag.nominatim_orientation || null,
+        nominatim_agreed: diag.nominatim_agreed ?? null,
+        nominatim_overrode: diag.nominatim_overrode ?? false,
+        heading_confirmed_snap: diag.heading_confirmed_snap ?? null,
+        resolved_address: result.location.address || null,
+        resolved_street_name: pa?.name || null,
+        resolved_street_direction: pa?.direction || null,
+        resolved_house_number: pa?.number || null,
+        resolved_side: diag.resolved_side || null,
+        side_source: diag.side_source || null,
+        walkaway_guard_fired: diag.walkaway_guard_fired ?? false,
+        walkaway_details: diag.walkaway_details || null,
+        parity_forced: diag.parity_forced ?? false,
+        forced_parity: diag.forced_parity || null,
+        metered_block: meteredParkingResult.inMeteredZone,
+        meters_on_user_side: diag.meters_on_user_side ?? null,
+        meters_on_opposite_side: diag.meters_on_opposite_side ?? null,
+        near_intersection: diag.near_intersection ?? false,
+        snap_candidates_count: diag.snap_candidates_count ?? null,
+      }).then(({ error }) => {
+        if (error) console.warn('[diagnostics] Insert failed (non-fatal):', error.message);
+        else console.log('[diagnostics] Parking diagnostic logged');
+      });
+    }
 
     return res.status(200).json(response);
 
