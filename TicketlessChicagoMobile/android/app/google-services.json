@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "450290119882",
+    "project_id": "autopilotamerica-bf97a",
+    "storage_bucket": "autopilotamerica-bf97a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:450290119882:android:16850ef983b271ea3ff033",
+        "android_client_info": {
+          "package_name": "fyi.ticketless.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDH1k1TclpbjMcbHTmu49AmO5UjcDDeE4o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
