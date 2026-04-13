@@ -2732,7 +2732,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     var meanRad = atan2(avgSin, avgCos)
     if meanRad < 0 { meanRad += 2 * .pi }
     let meanDeg = meanRad * 180.0 / .pi
-    let circularStdDeg = R > 0 ? sqrt(-2.0 * log(R)) * 180.0 / .pi : 180.0
+    let circularStdDeg = R > 0 ? sqrt(-2.0 * Darwin.log(R)) * 180.0 / .pi : 180.0
     self.log("Compass: circular mean = \(String(format: "%.1f", meanDeg))° ±\(String(format: "%.1f", circularStdDeg))° from \(compassHeadingSamples.count) samples (R=\(String(format: "%.3f", R)))")
     return (heading: meanDeg, confidence: circularStdDeg)
   }
@@ -5635,6 +5635,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     var parkingLocation = locationAtStopStart ?? lastDrivingLocation
     var parkingLocationSource = locationAtStopStart != nil ? "stop_start" : "last_driving"
     let currentLocation = locationManager.location
+    let isWalking = coreMotionWalkingSince != nil
     if let candidate = parkingLocation {
       let candidateAgeSec = Date().timeIntervalSince(candidate.timestamp)
       let candidateAcc = candidate.horizontalAccuracy
@@ -5656,7 +5657,6 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         // WALK-AWAY GUARD: If CoreMotion says user is walking, NEVER replace the
         // stop candidate with currentLocation. The car is where we stopped,
         // not where the user walked to. This is the #1 cause of wrong-street errors.
-        let isWalking = coreMotionWalkingSince != nil
         let currentUsable = !isWalking &&
           distFromCandidate <= 20.0 &&  // Must be within 20m of stop candidate
           currentAgeSec >= 0 &&
