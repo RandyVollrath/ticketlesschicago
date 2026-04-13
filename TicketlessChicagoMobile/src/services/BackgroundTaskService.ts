@@ -36,6 +36,7 @@ import { distanceMeters as haversineDistance } from '../utils/geo';
 import { isCoordinateAddress, resolveAddress, formatCoordinateFallback } from '../utils/ClientReverseGeocoder';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
+import { ParkingFeedbackService } from './ParkingFeedbackService';
 
 // Native module for persistent Android BT monitoring foreground service
 const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
@@ -1864,6 +1865,22 @@ class BackgroundTaskServiceClass {
       // Save the result (overwrites LAST_PARKING_LOCATION for HomeScreen hero card)
       await LocationService.saveParkingCheckResult(result);
       AppEvents.emit('parking-check-updated');
+
+      // Record parking event for user feedback (Layer 2 accuracy measurement).
+      // The feedback card will appear on HomeScreen asking 3 questions.
+      try {
+        const pa = result.parsedAddress || result.rawData?.parsedAddress;
+        if (pa?.name) {
+          await ParkingFeedbackService.recordParkingEvent({
+            address: result.address || 'Unknown',
+            streetName: pa.name || '',
+            streetDirection: pa.direction || '',
+            resolvedSide: result.rawData?.meteredParking?.resolvedSide || '',
+          });
+        }
+      } catch (fbErr) {
+        log.warn('Parking feedback recording failed (non-fatal):', fbErr);
+      }
 
       // Save to parking history so it shows up in the History tab.
       // This includes all-clear results — the user should see a record of

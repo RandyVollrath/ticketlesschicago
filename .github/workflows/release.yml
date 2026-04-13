@@ -34,7 +34,7 @@ jobs:
         run: npm ci
 
       - name: Write Google Play service account key
-        run: mkdir -p credentials && echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY }}' > credentials/play-store-key.json
+        run: mkdir -p credentials && echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY_BASE64 }}' | base64 -d > credentials/play-store-key.json
 
       - name: Build and submit Android
         run: eas build --platform android --profile production --auto-submit --non-interactive
