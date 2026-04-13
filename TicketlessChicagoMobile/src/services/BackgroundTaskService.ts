@@ -1922,53 +1922,57 @@ class BackgroundTaskServiceClass {
       let parkingSessionId: string | undefined;
       if (persistParkingEvent) {
         try {
+          // FCM token is used for push reminders but MUST NOT gate history saving.
+          // History is the most valuable data we have — it must be saved regardless
+          // of push notification state.
           const fcmToken = await PushNotificationService.getToken();
-          if (fcmToken) {
-            // Always attempt a proactive token refresh before server save.
-            // Even when isAuthenticated() returns true, the in-memory access token
-            // may be expired (Supabase auto-refresh doesn't fire when JS is suspended
-            // in iOS background). Without this, authPost sends an expired token → 401
-            // → refresh fails → user was being signed out, breaking all future saves.
-            log.info('Server save: proactively refreshing auth token');
-            const refreshed = await AuthService.refreshToken();
-            if (refreshed) {
-              log.info('Server save: token refresh succeeded');
-            } else if (!AuthService.isAuthenticated()) {
-              log.warn('Server save: not authenticated and refresh failed, skipping server save (local save intact)');
-            }
+          if (!fcmToken) {
+            log.warn('Server save: no FCM token available — will save history with placeholder token');
+          }
+          const tokenForSave = fcmToken || 'no-fcm-token';
 
-            if (AuthService.isAuthenticated()) {
-              // Use raw API response data for mapping to server fields
-              const rawData = result.rawApiData || await this.getRawParkingData(result);
-              const saveResult = await LocationService.saveParkedLocationToServer(coords, rawData, result.address, fcmToken);
-              if (saveResult.success && saveResult.id) {
-                parkingSessionId = saveResult.id;
-              } else {
-                // Server save failed — queue for retry so we never lose history
-                log.warn('Server save failed, queuing for retry');
-                const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, fcmToken);
-                await ParkingSaveQueue.enqueue(payload);
-              }
+          // Always attempt a proactive token refresh before server save.
+          // Even when isAuthenticated() returns true, the in-memory access token
+          // may be expired (Supabase auto-refresh doesn't fire when JS is suspended
+          // in iOS background). Without this, authPost sends an expired token → 401
+          // → refresh fails → user was being signed out, breaking all future saves.
+          log.info('Server save: proactively refreshing auth token');
+          const refreshed = await AuthService.refreshToken();
+          if (refreshed) {
+            log.info('Server save: token refresh succeeded');
+          } else if (!AuthService.isAuthenticated()) {
+            log.warn('Server save: not authenticated and refresh failed, queuing for retry');
+          }
+
+          if (AuthService.isAuthenticated()) {
+            // Use raw API response data for mapping to server fields
+            const rawData = result.rawApiData || await this.getRawParkingData(result);
+            const saveResult = await LocationService.saveParkedLocationToServer(coords, rawData, result.address, tokenForSave);
+            if (saveResult.success && saveResult.id) {
+              parkingSessionId = saveResult.id;
+              log.info(`Server save succeeded: id=${saveResult.id}, fcmToken=${fcmToken ? 'present' : 'MISSING'}`);
             } else {
-              // Not authenticated even after refresh — queue the save for when auth returns
-              log.warn('Server save: not authenticated, queuing for retry when auth returns');
-              const rawData = result.rawApiData || await this.getRawParkingData(result);
-              const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, fcmToken);
+              // Server save failed — queue for retry so we never lose history
+              log.warn('Server save failed, queuing for retry');
+              const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, tokenForSave);
               await ParkingSaveQueue.enqueue(payload);
             }
           } else {
-            log.debug('Skipping server save: no FCM token');
+            // Not authenticated even after refresh — queue the save for when auth returns
+            log.warn('Server save: not authenticated, queuing for retry when auth returns');
+            const rawData = result.rawApiData || await this.getRawParkingData(result);
+            const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, tokenForSave);
+            await ParkingSaveQueue.enqueue(payload);
           }
         } catch (serverSaveError) {
           // Non-fatal — queue for retry, local notifications still work
           log.warn('Failed to save parked location to server, queuing for retry:', serverSaveError);
           try {
             const fcmToken = await PushNotificationService.getToken();
-            if (fcmToken) {
-              const rawData = result.rawApiData || await this.getRawParkingData(result);
-              const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, fcmToken);
-              await ParkingSaveQueue.enqueue(payload);
-            }
+            const tokenForSave = fcmToken || 'no-fcm-token';
+            const rawData = result.rawApiData || await this.getRawParkingData(result);
+            const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, tokenForSave);
+            await ParkingSaveQueue.enqueue(payload);
           } catch { /* best-effort queue */ }
         }
       } else {
@@ -2034,11 +2038,18 @@ class BackgroundTaskServiceClass {
         }
       }
 
+      // Log history health so we can catch silent save failures
+      const histDiag = await ParkingHistoryService.getDiagnosticSummary();
+      const queueSize = await ParkingSaveQueue.getQueueSize();
+
       log.info('=== PARKING CHECK COMPLETE ===', {
         rulesFound: result.rules.length,
         address: result.address,
         gpsSource,
         accuracy: coords.accuracy ? `${coords.accuracy.toFixed(1)}m` : 'unknown',
+        serverSaveId: parkingSessionId || 'NONE',
+        retryQueueSize: queueSize,
+        localHistory: histDiag,
       });
 
       // Record successful parking check for health monitoring
