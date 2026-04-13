@@ -63,12 +63,18 @@ const MAX_HISTORY_ITEMS = 10000; // Effectively unlimited — server is the auth
 // Supabase sync helpers (fire-and-forget, never blocks UI)
 // ──────────────────────────────────────────────────────
 
-/** Push a new history item to Supabase. Fails silently. */
+/** Push a new history item directly to Supabase (belt-and-suspenders fallback). */
 const syncAddToServer = async (item: ParkingHistoryItem): Promise<void> => {
   try {
-    if (!AuthService.isAuthenticated()) return;
+    if (!AuthService.isAuthenticated()) {
+      log.warn('syncAddToServer: not authenticated, cannot sync to server');
+      return;
+    }
     const userId = AuthService.getUser()?.id;
-    if (!userId) return;
+    if (!userId) {
+      log.warn('syncAddToServer: no user ID');
+      return;
+    }
 
     const supabase = AuthService.getSupabaseClient();
     const { error } = await supabase.from('parking_location_history').insert({
@@ -88,10 +94,10 @@ const syncAddToServer = async (item: ParkingHistoryItem): Promise<void> => {
       permit_zone: item.rules.find(r => r.type === 'permit_zone')?.zone || null,
       permit_restriction_schedule: item.rules.find(r => r.type === 'permit_zone')?.schedule || null,
     });
-    if (error) log.debug('Sync add failed (non-fatal)', error.message);
-    else log.debug('History synced to server');
+    if (error) log.warn('syncAddToServer: Supabase insert failed', error.message);
+    else log.info(`syncAddToServer: history synced to server for "${item.address}"`);
   } catch (e) {
-    log.debug('Sync add exception (non-fatal)', e);
+    log.warn('syncAddToServer: exception', e);
   }
 };
 
@@ -256,6 +262,49 @@ const mergeHistories = (local: ParkingHistoryItem[], server: ParkingHistoryItem[
   return merged;
 };
 
+/**
+ * Bulk-sync all local history items to the server.
+ * The server deduplicates by timestamp + location proximity, so this is
+ * safe to call repeatedly. Runs on every app open to guarantee local
+ * history always reaches the database.
+ */
+const bulkSyncToServer = async (items: ParkingHistoryItem[]): Promise<void> => {
+  try {
+    if (!AuthService.isAuthenticated() || items.length === 0) return;
+
+    const payload = items.map(item => ({
+      latitude: item.coords.latitude,
+      longitude: item.coords.longitude,
+      address: item.address || undefined,
+      timestamp: item.timestamp,
+      rules: item.rules.map(r => ({ type: r.type, message: r.message, severity: r.severity })),
+      departure: item.departure ? {
+        confirmedAt: item.departure.confirmedAt,
+        distanceMeters: item.departure.distanceMeters,
+        isConclusive: item.departure.isConclusive,
+        latitude: item.departure.latitude,
+        longitude: item.departure.longitude,
+      } : undefined,
+    }));
+
+    const { default: ApiClient } = require('../utils/ApiClient');
+    const response = await ApiClient.authPost('/api/mobile/sync-parking-history', {
+      items: payload,
+    }, { retries: 2, timeout: 30000, showErrorAlert: false });
+
+    if (response.success && response.data) {
+      log.info(`Bulk sync complete: ${response.data.synced} synced, ${response.data.skipped} skipped (${items.length} local items)`);
+    } else {
+      log.warn('Bulk sync failed', response.error);
+    }
+  } catch (e) {
+    log.warn('Bulk sync exception (non-fatal)', e);
+  }
+};
+
+// Track whether we've already synced this session
+let _bulkSyncCompleted = false;
+
 // ──────────────────────────────────────────────────────
 // Service to manage parking history (local-first + server sync)
 // ──────────────────────────────────────────────────────
@@ -286,9 +335,27 @@ export const ParkingHistoryService = {
             await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(merged));
             log.info(`Merged history: ${local.length} local + ${serverItems.length} server → ${merged.length} total`);
           }
+
+          // Bulk-sync local history to server (once per session, non-blocking).
+          // This is how local-only history reaches the database. The server
+          // deduplicates, so this is safe to call on every app open.
+          if (!_bulkSyncCompleted) {
+            _bulkSyncCompleted = true;
+            void bulkSyncToServer(merged);
+          }
+
           return merged;
         }
       }
+
+      // Even if server fetch was skipped or returned empty, still bulk-sync
+      // local items to server. This covers users who have local history but
+      // nothing on the server (the exact bug that lost months of history).
+      if (!_bulkSyncCompleted && local.length > 0 && AuthService.isAuthenticated()) {
+        _bulkSyncCompleted = true;
+        void bulkSyncToServer(local);
+      }
+
       return local;
     } catch (error) {
       log.error('Error getting parking history', error);
@@ -338,10 +405,12 @@ export const ParkingHistoryService = {
       AppEvents.emit('parking-history-updated');
       log.info(`Saved to parking history: "${newItem.address}" (${rules.length} rules, ${updated.length} total items)`);
 
-      // NOTE: Do NOT call syncAddToServer here. BackgroundTaskService already
-      // saves to the server via LocationService.saveParkedLocationToServer()
-      // which inserts into parking_location_history. Calling syncAddToServer
-      // here creates duplicate server records with the same parked_at timestamp.
+      // Direct-to-Supabase fallback: BackgroundTaskService.saveParkedLocationToServer
+      // is SUPPOSED to handle server saves, but it has repeatedly failed silently
+      // (FCM gate, auth expiry, queuing to AsyncStorage that gets lost on app delete).
+      // This is our belt-and-suspenders guarantee that history is NEVER lost.
+      // The server-side dedup (5-min window + 200m proximity) handles duplicates.
+      void syncAddToServer(newItem);
     } catch (error) {
       log.error('Error adding to parking history', error);
     }
@@ -449,6 +518,23 @@ export const ParkingHistoryService = {
       }
     } catch (error) {
       log.error('Address backfill failed (non-fatal)', error);
+    }
+  },
+
+  /** Get diagnostic summary of local history state (for log collection). */
+  async getDiagnosticSummary(): Promise<string> {
+    try {
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      const history: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
+      if (history.length === 0) return 'Local history: EMPTY';
+
+      const newest = history[0];
+      const oldest = history[history.length - 1];
+      const newestDate = new Date(newest.timestamp).toISOString();
+      const oldestDate = new Date(oldest.timestamp).toISOString();
+      return `Local history: ${history.length} items, newest=${newestDate} (${newest.address}), oldest=${oldestDate}`;
+    } catch (e) {
+      return `Local history: ERROR reading (${e})`;
     }
   },
 };
