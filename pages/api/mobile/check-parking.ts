@@ -228,11 +228,56 @@ export default async function handler(
       effective_heading: hasEffectiveHeading ? effectiveHeading : null,
     };
 
+    // Step 0: Apply per-block GPS correction if available (Layer 4).
+    // The correction model learns systematic GPS offset per block from meter locations
+    // and user feedback. Applied before snap-to-street to shift the GPS point closer
+    // to the actual street, making snap more reliable.
+    let correctedLat = latitude;
+    let correctedLng = longitude;
+    if (supabaseAdmin) {
+      try {
+        // Quick lookup: find correction for any block near this GPS point.
+        // We don't know the block yet, so we look up by proximity.
+        const { data: corrections } = await supabaseAdmin
+          .from('gps_block_corrections')
+          .select('offset_lat, offset_lng, sample_count, street_direction, street_name, block_number')
+          .gte('sample_count', 3); // Only use corrections with enough data
+
+        if (corrections && corrections.length > 0) {
+          // Find the nearest block correction by estimating which block we're on
+          // Use a simple grid estimate to narrow down candidates
+          let bestCorr = null;
+          let bestDist = Infinity;
+          for (const c of corrections) {
+            // Rough distance check using grid math
+            const blockLat = 41.88185 + (c.street_direction === 'N' ? 1 : c.street_direction === 'S' ? -1 : 0) * (c.block_number + 50) / 55700;
+            const blockLng = -87.62755 - (c.street_direction === 'W' ? 1 : c.street_direction === 'E' ? -1 : 0) * (c.block_number + 50) / 42200;
+            const dist = Math.sqrt(Math.pow((latitude - blockLat) * 111000, 2) + Math.pow((longitude - blockLng) * 85000, 2));
+            if (dist < 200 && dist < bestDist) { // Within 200m
+              bestDist = dist;
+              bestCorr = c;
+            }
+          }
+          if (bestCorr) {
+            correctedLat = latitude + bestCorr.offset_lat;
+            correctedLng = longitude + bestCorr.offset_lng;
+            const correctionM = Math.sqrt(Math.pow(bestCorr.offset_lat * 111000, 2) + Math.pow(bestCorr.offset_lng * 85000, 2));
+            console.log(`[check-parking] GPS correction applied: ${bestCorr.street_direction} ${bestCorr.street_name} ${bestCorr.block_number} block, ${correctionM.toFixed(1)}m shift (${bestCorr.sample_count} samples)`);
+            diag.gps_correction_applied = true;
+            diag.gps_correction_meters = correctionM;
+          }
+        }
+      } catch (corrErr) {
+        // Correction is optional — don't block parking check
+        console.warn('[check-parking] GPS correction lookup failed (non-fatal):', corrErr);
+      }
+    }
+
     // Step 1: Attempt to snap GPS coordinate to nearest known street segment.
     // This corrects for urban canyon drift (10-30m) that can put you on the wrong block.
     // Only snap if accuracy is reasonable (under 75m) - very poor GPS shouldn't be "corrected".
-    let checkLat = latitude;
-    let checkLng = longitude;
+    let checkLat = correctedLat;
+    let checkLng = correctedLng;
     let snapResult: {
       wasSnapped: boolean;
       snapDistanceMeters: number;
@@ -253,8 +298,8 @@ export default async function handler(
         const { data: snapData, error: snapError } = await supabaseAdmin.rpc(
           'snap_to_nearest_street',
           {
-            user_lat: latitude,
-            user_lng: longitude,
+            user_lat: correctedLat,
+            user_lng: correctedLng,
             search_radius_meters: searchRadius,
           }
         );
@@ -364,8 +409,8 @@ export default async function handler(
             const { data: extendedData, error: extendedError } = await supabaseAdmin.rpc(
               'snap_to_nearest_street',
               {
-                user_lat: latitude,
-                user_lng: longitude,
+                user_lat: correctedLat,
+                user_lng: correctedLng,
                 search_radius_meters: 150,
               }
             );
