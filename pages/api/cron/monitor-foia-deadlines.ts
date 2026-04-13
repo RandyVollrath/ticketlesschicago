@@ -173,47 +173,62 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
   if (RESEND_API_KEY) {
-    // ── Pre-check: Scan inbox for responses we may have missed ──
-    // Fetch recent received emails from Resend and extract any FOIA reference IDs
-    const inboxReferenceIds = new Set<string>();
-    try {
-      const inboxRes = await fetch('https://api.resend.com/emails/receiving?limit=100', {
-        headers: { 'Authorization': `Bearer ${RESEND_API_KEY}` },
-      });
-      if (inboxRes.ok) {
-        const inboxData = await inboxRes.json();
-        const emails = inboxData.data || inboxData || [];
+    // ── Helper: Check if a specific FOIA reference ID has a response in our inbox ──
+    // Paginates through Resend received emails looking for the reference ID in the subject.
+    // Stops as soon as it finds a match or exhausts the inbox. Max 5 pages to stay within
+    // the 60s function timeout (each page = 100 emails, so checks up to 500 most recent).
+    async function hasResponseInInbox(referenceId: string): Promise<boolean> {
+      const MAX_PAGES = 5;
+      let cursor: string | undefined;
+
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const url = cursor
+          ? `https://api.resend.com/emails/receiving?limit=100&before=${cursor}`
+          : 'https://api.resend.com/emails/receiving?limit=100';
+
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${RESEND_API_KEY}` },
+        });
+        if (!res.ok) return false;
+
+        const data = await res.json();
+        const emails = data.data || data || [];
+        if (!Array.isArray(emails) || emails.length === 0) break;
+
         for (const email of emails) {
-          const subj = email.subject || '';
-          // Extract APE-/APH-/CDOT- reference IDs from subject lines
-          const refs = subj.match(/\bAP[EH]-[A-Za-z0-9_-]{6,}\b/g) || [];
-          for (const ref of refs) inboxReferenceIds.add(ref);
-          const cdotRefs = subj.match(/\bCDOT-[A-Za-z0-9_-]{6,}\b/g) || [];
-          for (const ref of cdotRefs) inboxReferenceIds.add(ref);
+          if ((email.subject || '').includes(referenceId)) {
+            return true;
+          }
         }
-        console.log(`  Inbox scan: found ${inboxReferenceIds.size} FOIA reference IDs in ${Array.isArray(emails) ? emails.length : 0} recent emails`);
-      } else {
-        console.warn(`  Inbox scan failed (${inboxRes.status}) — will rely on DB checks only`);
+
+        // Use last email ID as cursor for next page
+        cursor = emails[emails.length - 1]?.id;
+        if (!cursor) break;
       }
-    } catch (err: any) {
-      console.warn(`  Inbox scan error: ${err.message} — will rely on DB checks only`);
+
+      return false;
     }
 
-    // Also fetch reference IDs from unmatched responses table (webhook fired but matching failed)
-    const unmatchedReferenceIds = new Set<string>();
-    try {
-      const { data: unmatchedResponses } = await supabaseAdmin
+    // ── Helper: Check if a reference ID exists in unmatched responses ──
+    // (webhook fired but 4-layer matching failed)
+    async function hasUnmatchedResponse(referenceId: string): Promise<boolean> {
+      const { data } = await supabaseAdmin
         .from('foia_unmatched_responses' as any)
-        .select('extracted_reference_id')
-        .not('extracted_reference_id', 'is', null);
-      for (const row of (unmatchedResponses || []) as any[]) {
-        if (row.extracted_reference_id) unmatchedReferenceIds.add(row.extracted_reference_id);
+        .select('id')
+        .eq('extracted_reference_id', referenceId)
+        .limit(1);
+      return (data && data.length > 0) || false;
+    }
+
+    // ── Helper: Combined check — DB first (cheap), then inbox (API calls) ──
+    async function responseAlreadyReceived(referenceId: string): Promise<boolean> {
+      try {
+        if (await hasUnmatchedResponse(referenceId)) return true;
+        if (await hasResponseInInbox(referenceId)) return true;
+      } catch (err: any) {
+        console.warn(`  Response check failed for ${referenceId}: ${err.message}`);
       }
-      if (unmatchedReferenceIds.size > 0) {
-        console.log(`  Unmatched responses: found ${unmatchedReferenceIds.size} reference IDs`);
-      }
-    } catch (err: any) {
-      console.warn(`  Unmatched responses check error: ${err.message}`);
+      return false;
     }
 
     // Re-query for recently-marked overdue evidence FOIAs that haven't been followed up yet
@@ -228,11 +243,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Skip if already followed up
       if (req.notes?.includes('FOLLOW-UP SENT')) continue;
 
-      // Skip if inbox or unmatched queue shows a response was already received
-      if (req.reference_id && (inboxReferenceIds.has(req.reference_id) || unmatchedReferenceIds.has(req.reference_id))) {
-        console.log(`  Skipping follow-up for ${req.reference_id} — response already received (inbox or unmatched queue)`);
+      // Skip if we already received a response (DB check + inbox scan for this specific FOIA)
+      if (req.reference_id && await responseAlreadyReceived(req.reference_id)) {
+        console.log(`  Skipping follow-up for ${req.reference_id} — response found in inbox or unmatched queue`);
         followUpsSkipped++;
-        // Mark as fulfilled so we don't keep re-checking
         await supabaseAdmin
           .from('ticket_foia_requests')
           .update({
@@ -312,9 +326,9 @@ foia@autopilotamerica.com`,
     for (const req of (overdueHistoryFollowUp || []) as any[]) {
       if (req.notes?.includes('FOLLOW-UP SENT')) continue;
 
-      // Skip if inbox or unmatched queue shows a response was already received
-      if (req.reference_id && (inboxReferenceIds.has(req.reference_id) || unmatchedReferenceIds.has(req.reference_id))) {
-        console.log(`  Skipping follow-up for history ${req.reference_id} — response already received (inbox or unmatched queue)`);
+      // Skip if we already received a response (DB check + inbox scan for this specific FOIA)
+      if (req.reference_id && await responseAlreadyReceived(req.reference_id)) {
+        console.log(`  Skipping follow-up for history ${req.reference_id} — response found in inbox or unmatched queue`);
         followUpsSkipped++;
         await supabaseAdmin
           .from('foia_history_requests')
