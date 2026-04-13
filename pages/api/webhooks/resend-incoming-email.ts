@@ -26,6 +26,7 @@ import {
  */
 
 export const config = {
+  maxDuration: 120, // Large FOIA attachments + Gemini parsing can take time
   api: {
     // Disable body parsing so we can read the raw body for Svix signature verification.
     // Svix signs the exact bytes sent — JSON.stringify(req.body) may differ.
@@ -252,6 +253,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           } catch (histErr: any) {
             console.error('  History FOIA processing failed:', histErr.message);
+            // Re-throw so the outer catch returns 500 and Resend retries
+            throw histErr;
           }
 
           return res.status(200).json({
@@ -510,6 +513,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       } catch (foiaErr: any) {
         console.error('FOIA response processing failed:', foiaErr.message);
+        // Return 500 so Resend retries the webhook — the FOIA status update is critical.
+        // Retry is safe: Layer 1 matching is idempotent, and processHistoryFoiaResponse/
+        // processEvidenceFoiaMatch have terminal status guards that prevent double-processing.
+        return res.status(500).json({
+          error: 'FOIA response processing failed — will retry',
+          detail: sanitizeErrorMessage(foiaErr),
+        });
       }
     }
 
