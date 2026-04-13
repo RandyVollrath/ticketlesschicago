@@ -36,23 +36,10 @@ const STATE_LNG = -87.62755;
 const NS_SCALE = 55700;
 const EW_SCALE = 42200;
 
-function estimateBlockCenter(
-  direction: string,
-  blockNumber: number
-): { lat: number; lng: number } {
-  // Estimate the lat/lng for the CENTER of a block (midpoint of block range)
-  const blockMid = blockNumber + 50; // e.g., 4700 block → use 4750
-
-  if (direction === 'N') {
-    return { lat: MADISON_LAT + blockMid / NS_SCALE, lng: STATE_LNG }; // lng is approximate
-  } else if (direction === 'S') {
-    return { lat: MADISON_LAT - blockMid / NS_SCALE, lng: STATE_LNG };
-  } else if (direction === 'W') {
-    return { lat: MADISON_LAT, lng: STATE_LNG - blockMid / EW_SCALE };
-  } else {
-    return { lat: MADISON_LAT, lng: STATE_LNG + blockMid / EW_SCALE };
-  }
-}
+// Note: We do NOT try to estimate block center from the grid for offset calculation.
+// That approach fails because the grid only gives one axis (lat OR lng), not both.
+// Instead, meter positions ARE the ground truth. Offsets are computed later when we
+// have parking diagnostic data (raw GPS vs snapped position) to compare against.
 
 async function bootstrapFromMeters() {
   console.log('=== Phase 1: Bootstrap from metered parking locations ===\n');
@@ -109,17 +96,12 @@ async function bootstrapFromMeters() {
   // Compute corrections per block
   let upserted = 0;
   for (const [, block] of blockMap) {
-    // Average meter position = ground truth for this block
-    const avgLat = block.lats.reduce((a, b) => a + b, 0) / block.lats.length;
-    const avgLng = block.lngs.reduce((a, b) => a + b, 0) / block.lngs.length;
-
-    // Grid-estimated center of block
-    const center = estimateBlockCenter(block.direction, block.blockNumber);
-
-    // Offset = ground truth - grid estimate
-    // This is what we'd ADD to a raw GPS position to correct it toward the street
-    const offsetLat = avgLat - center.lat;
-    const offsetLng = avgLng - center.lng;
+    // Average meter position = ground truth for this block.
+    // Offsets are initialized to 0 — they'll be computed later from parking
+    // diagnostics (raw GPS vs snapped position). For now, we're just seeding
+    // the block records with side-of-street counts from meter data.
+    const offsetLat = 0;
+    const offsetLng = 0;
 
     // Count sides
     const sideCounts = { N: 0, S: 0, E: 0, W: 0 };
