@@ -174,14 +174,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (RESEND_API_KEY) {
     // ── Helper: Check if a specific FOIA reference ID has a response in our inbox ──
-    // Paginates through Resend received emails looking for the reference ID in the subject.
-    // Stops as soon as it finds a match or exhausts the inbox. Max 5 pages to stay within
-    // the 60s function timeout (each page = 100 emails, so checks up to 500 most recent).
+    // Paginates through all Resend received emails looking for the reference ID in the subject.
+    // Stops as soon as it finds a match or exhausts the entire inbox.
     async function hasResponseInInbox(referenceId: string): Promise<boolean> {
-      const MAX_PAGES = 5;
       let cursor: string | undefined;
 
-      for (let page = 0; page < MAX_PAGES; page++) {
+      for (;;) {
         const url = cursor
           ? `https://api.resend.com/emails/receiving?limit=100&before=${cursor}`
           : 'https://api.resend.com/emails/receiving?limit=100';
