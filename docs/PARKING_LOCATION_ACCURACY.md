@@ -137,3 +137,5 @@ See `/home/randy-vollrath/.claude/plans/magical-hugging-quail.md` for the full p
 | 2026-04-12 | Nominatim override guard | Don't let Nominatim override snap when heading confirms snap orientation |
 | 2026-04-12 | Android driving GPS ring buffer | Use last 10 driving fixes (weighted avg) as PRIMARY parking location instead of post-parking fresh GPS |
 | 2026-04-12 | iOS stop-candidate protection | Never consider stop candidate "weak" when walking. Add 20m proximity guard for refinement. |
+| 2026-04-13 | Keep close snap even if heading disagrees | Snap < 15m is strong geometric evidence; stale heading after a turn should not override it |
+| 2026-04-13 | Don't let heading protect extended/far snaps from Nominatim | Extended search (>25m) driven by stale heading can find wrong street; Nominatim overrides these |
