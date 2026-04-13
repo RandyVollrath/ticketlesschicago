@@ -39,7 +39,12 @@ jobs:
       - name: Build and submit Android
         run: eas build --platform android --profile production --auto-submit --non-interactive
 
-      - name: Build and submit iOS
-        run: eas build --platform ios --profile production --auto-submit --non-interactive
-        env:
-          EXPO_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.EXPO_APPLE_APP_SPECIFIC_PASSWORD }}
+      - name: Build iOS
+        id: ios-build
+        run: |
+          OUTPUT=$(eas build --platform ios --profile production --non-interactive --json 2>&1 | tail -1)
+          BUILD_ID=$(echo "$OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['id'])")
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Submit iOS to App Store
+        run: eas submit --platform ios --id ${{ steps.ios-build.outputs.build_id }} --non-interactive
