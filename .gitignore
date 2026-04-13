@@ -48,6 +48,8 @@ firebase-admin-key.json
 
 # Mobile secrets
 TicketlessChicagoMobile/android/app/google-services.json
+TicketlessChicagoMobile/android/app/ticketless-release.keystore
+TicketlessChicagoMobile/credentials/
 TicketlessChicagoMobile/logs/
 TicketlessChicagoMobile/release-artifacts/
 debug-screenshots/
