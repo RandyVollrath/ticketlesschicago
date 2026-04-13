@@ -164,10 +164,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // ── Auto-send follow-up for overdue FOIAs (6+ business days, no extension) ──
   // Illinois FOIA law requires response within 5 business days.
   // If no response, we send a polite follow-up citing 5 ILCS 140/11(d).
+  //
+  // IMPORTANT: Before sending any follow-up, check if the city already responded.
+  // The Resend incoming-email webhook may have failed to process the response,
+  // leaving the DB status stale while the response sits in our inbox.
   let followUpsSent = 0;
+  let followUpsSkipped = 0;
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
   if (RESEND_API_KEY) {
+    // ── Pre-check: Scan inbox for responses we may have missed ──
+    // Fetch recent received emails from Resend and extract any FOIA reference IDs
+    const inboxReferenceIds = new Set<string>();
+    try {
+      const inboxRes = await fetch('https://api.resend.com/emails/receiving?limit=100', {
+        headers: { 'Authorization': `Bearer ${RESEND_API_KEY}` },
+      });
+      if (inboxRes.ok) {
+        const inboxData = await inboxRes.json();
+        const emails = inboxData.data || inboxData || [];
+        for (const email of emails) {
+          const subj = email.subject || '';
+          // Extract APE-/APH-/CDOT- reference IDs from subject lines
+          const refs = subj.match(/\bAP[EH]-[A-Za-z0-9_-]{6,}\b/g) || [];
+          for (const ref of refs) inboxReferenceIds.add(ref);
+          const cdotRefs = subj.match(/\bCDOT-[A-Za-z0-9_-]{6,}\b/g) || [];
+          for (const ref of cdotRefs) inboxReferenceIds.add(ref);
+        }
+        console.log(`  Inbox scan: found ${inboxReferenceIds.size} FOIA reference IDs in ${Array.isArray(emails) ? emails.length : 0} recent emails`);
+      } else {
+        console.warn(`  Inbox scan failed (${inboxRes.status}) — will rely on DB checks only`);
+      }
+    } catch (err: any) {
+      console.warn(`  Inbox scan error: ${err.message} — will rely on DB checks only`);
+    }
+
+    // Also fetch reference IDs from unmatched responses table (webhook fired but matching failed)
+    const unmatchedReferenceIds = new Set<string>();
+    try {
+      const { data: unmatchedResponses } = await supabaseAdmin
+        .from('foia_unmatched_responses' as any)
+        .select('extracted_reference_id')
+        .not('extracted_reference_id', 'is', null);
+      for (const row of (unmatchedResponses || []) as any[]) {
+        if (row.extracted_reference_id) unmatchedReferenceIds.add(row.extracted_reference_id);
+      }
+      if (unmatchedReferenceIds.size > 0) {
+        console.log(`  Unmatched responses: found ${unmatchedReferenceIds.size} reference IDs`);
+      }
+    } catch (err: any) {
+      console.warn(`  Unmatched responses check error: ${err.message}`);
+    }
+
     // Re-query for recently-marked overdue evidence FOIAs that haven't been followed up yet
     const { data: overdueForFollowUp } = await supabaseAdmin
       .from('ticket_foia_requests')
@@ -179,6 +227,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (const req of (overdueForFollowUp || []) as any[]) {
       // Skip if already followed up
       if (req.notes?.includes('FOLLOW-UP SENT')) continue;
+
+      // Skip if inbox or unmatched queue shows a response was already received
+      if (req.reference_id && (inboxReferenceIds.has(req.reference_id) || unmatchedReferenceIds.has(req.reference_id))) {
+        console.log(`  Skipping follow-up for ${req.reference_id} — response already received (inbox or unmatched queue)`);
+        followUpsSkipped++;
+        // Mark as fulfilled so we don't keep re-checking
+        await supabaseAdmin
+          .from('ticket_foia_requests')
+          .update({
+            status: 'fulfilled',
+            notes: `${req.notes || ''}\nRESPONSE DETECTED IN INBOX — follow-up suppressed ${new Date().toISOString()}`,
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq('id', req.id);
+        continue;
+      }
 
       const bDays = businessDaysBetween(new Date(req.sent_at), now);
       // Only follow up after 6 business days (give 1 day grace after 5-day deadline)
@@ -248,6 +312,21 @@ foia@autopilotamerica.com`,
     for (const req of (overdueHistoryFollowUp || []) as any[]) {
       if (req.notes?.includes('FOLLOW-UP SENT')) continue;
 
+      // Skip if inbox or unmatched queue shows a response was already received
+      if (req.reference_id && (inboxReferenceIds.has(req.reference_id) || unmatchedReferenceIds.has(req.reference_id))) {
+        console.log(`  Skipping follow-up for history ${req.reference_id} — response already received (inbox or unmatched queue)`);
+        followUpsSkipped++;
+        await supabaseAdmin
+          .from('foia_history_requests')
+          .update({
+            status: 'fulfilled',
+            notes: `${req.notes || ''}\nRESPONSE DETECTED IN INBOX — follow-up suppressed ${new Date().toISOString()}`,
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq('id', req.id);
+        continue;
+      }
+
       const bDays = businessDaysBetween(new Date(req.foia_sent_at), now);
       if (bDays < 6) continue;
 
@@ -307,6 +386,7 @@ foia@autopilotamerica.com`,
     extensionOverdueHistory,
     totalOverdue: overdueEvidence + overdueHistory + extensionOverdueEvidence + extensionOverdueHistory,
     followUpsSent,
+    followUpsSkipped,
   };
 
   console.log('FOIA deadline monitoring complete:', summary);
