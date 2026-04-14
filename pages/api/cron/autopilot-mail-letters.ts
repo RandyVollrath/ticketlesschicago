@@ -21,6 +21,18 @@ const supabaseAdmin = createClient(
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+/**
+ * Admin alert recipients. Configure via ADMIN_ALERT_EMAILS env var
+ * (comma-separated). Defaults to the historical single recipient so
+ * behavior is unchanged when the env var is unset.
+ */
+function getAdminAlertEmails(): string[] {
+  const raw = process.env.ADMIN_ALERT_EMAILS;
+  if (!raw) return ['randyvollrath@gmail.com'];
+  const list = raw.split(',').map(e => e.trim()).filter(Boolean);
+  return list.length > 0 ? list : ['randyvollrath@gmail.com'];
+}
+
 interface LetterToMail {
   id: string;
   ticket_id: string;
@@ -396,20 +408,23 @@ async function aiQualityReview(
     }
   }
 
-  if (options?.allowHeuristicPass) {
-    console.log('    ⚠️ All AI reviewers unavailable; deterministic validation passed, deferring final judgment to admin review');
-    return {
-      pass: true,
-      issues: providerErrors.length > 0 ? [`AI review unavailable; deterministic validation passed. ${providerErrors.join(' | ')}`] : ['AI review unavailable; deterministic validation passed'],
-      qualityScore: 70,
-      provider: 'heuristic',
-    };
-  }
-
+  // All AI providers failed. Never silently pass a letter through to Lob
+  // without real AI review — route it to admin review instead. The
+  // previous behavior (pass:true, qualityScore:70 == threshold) meant a
+  // full AI outage silently mailed unreviewed letters.
+  //
+  // The `allowHeuristicPass` option is kept for backward compatibility
+  // but no longer short-circuits review. Regardless of its value, a
+  // heuristic result now indicates "AI unavailable, hold for human".
+  const issuesText = providerErrors.length > 0 ? `AI review unavailable: ${providerErrors.join(' | ')}` : 'AI review unavailable';
+  console.error(`    ❌ AI cascade exhausted — letter held for admin review. ${issuesText}`);
   return {
     pass: false,
-    issues: providerErrors.length > 0 ? [`AI review unavailable: ${providerErrors.join(' | ')}`] : ['AI review unavailable'],
-    qualityScore: 0,
+    issues: [issuesText],
+    // Below 70 threshold so existing needs_admin_review branch kicks in
+    // at the callsite. Distinct from 0 so we can tell "AI totally missing"
+    // apart from "AI ran and judged the letter unfit".
+    qualityScore: 50,
     provider: 'heuristic',
   };
 }
@@ -751,7 +766,7 @@ async function mailLetter(
       try {
         await resend.emails.send({
           from: 'Autopilot America <alerts@autopilotamerica.com>',
-          to: ['randyvollrath@gmail.com'],
+          to: getAdminAlertEmails(),
           subject: `🚨 Lob Mailing FAILED — Ticket ${ticketNumber}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -1455,7 +1470,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }, profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(), { allowHeuristicPass: true });
 
           if (!aiReview.pass && aiReview.qualityScore < 70) {
-            console.log(`    ⚠️ AI review flagged issues (score: ${aiReview.qualityScore}/100): ${aiReview.issues.join('; ')}`);
+            const aiDown = aiReview.provider === 'heuristic';
+            if (aiDown) {
+              console.error(`    🚨 AI cascade exhausted for letter ${letter.id} — all three providers failed. Holding for admin review. Issues: ${aiReview.issues.join('; ')}`);
+            } else {
+              console.log(`    ⚠️ AI review flagged issues (score: ${aiReview.qualityScore}/100): ${aiReview.issues.join('; ')}`);
+            }
 
             if (aiReview.correctedLetter && aiReview.correctedLetter.length > 200) {
               // Save corrected version, still require admin review
@@ -1470,10 +1490,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             await supabaseAdmin.from('ticket_audit_log').insert({
               ticket_id: letter.ticket_id, user_id: letter.user_id,
-              action: 'letter_ai_review_flagged',
-              details: { ai_issues: aiReview.issues, ai_quality_score: aiReview.qualityScore, performed_by_system: 'autopilot_cron' },
+              action: aiDown ? 'letter_ai_cascade_exhausted' : 'letter_ai_review_flagged',
+              details: { ai_issues: aiReview.issues, ai_quality_score: aiReview.qualityScore, ai_provider: aiReview.provider, performed_by_system: 'autopilot_cron' },
               performed_by: null,
             });
+
+            // Loud admin alert when AI cascade is fully down — otherwise
+            // letters silently pile up in the needs_admin_review queue
+            // with no one notified.
+            if (aiDown && process.env.RESEND_API_KEY) {
+              try {
+                await fetch('https://api.resend.com/emails', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    from: 'Autopilot America <alerts@autopilotamerica.com>',
+                    to: getAdminAlertEmails(),
+                    subject: `🚨 AI review cascade exhausted — letter ${letter.id} held for admin`,
+                    html: `
+                      <p><strong>All three AI providers failed</strong> during quality review.</p>
+                      <p>Letter <code>${letter.id}</code> for ticket <code>${ticketNumber}</code> (user <code>${letter.user_id}</code>) has been moved to <code>needs_admin_review</code>.</p>
+                      <p>Previous behavior would have silently mailed this letter without review. It is now blocked until an admin approves or Anthropic/Gemini/OpenAI come back online.</p>
+                      <p><strong>Provider errors:</strong></p>
+                      <pre style="background:#f3f4f6;padding:12px;border-radius:6px;font-size:12px;overflow:auto;">${aiReview.issues.join('\n')}</pre>
+                      <p>Check API keys, rate limits, and provider status pages.</p>
+                    `,
+                  }),
+                });
+              } catch (alertErr: any) {
+                console.error(`    Admin AI-cascade alert failed: ${alertErr.message}`);
+              }
+            }
             continue;
           }
 
@@ -1856,7 +1906,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               },
               body: JSON.stringify({
                 from: 'Autopilot America <alerts@autopilotamerica.com>',
-                to: ['randyvollrath@gmail.com'],
+                to: getAdminAlertEmails(),
                 subject: `Contest Letter Mailed: ${ticketNumber} — ${violationType} (${userName})`,
                 html: `
                   <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
@@ -1957,7 +2007,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               },
               body: JSON.stringify({
                 from: 'Autopilot America <alerts@autopilotamerica.com>',
-                to: ['randyvollrath@gmail.com'],
+                to: getAdminAlertEmails(),
                 subject: `Letter Mailing FAILED: ${ticketNumber} (Letter ${letter.id})`,
                 html: `<p>Letter ${letter.id} for ticket ${ticketNumber} failed to mail.</p><p>Error: ${result.error || 'Unknown'}</p><p>User: ${letter.user_id}</p>`,
               }),
