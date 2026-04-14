@@ -133,6 +133,24 @@ interface DashboardTicket {
   found_at: string;
 }
 
+interface ContestLetterTracking {
+  id: string;
+  ticket_id: string;
+  ticket_number: string | null;
+  violation_type: string | null;
+  amount: number | null;
+  status: string;
+  delivery_status: string | null;
+  lob_letter_id: string | null;
+  letter_pdf_url: string | null;
+  mailed_at: string | null;
+  expected_delivery_date: string | null;
+  delivered_at: string | null;
+  returned_at: string | null;
+  failed_at: string | null;
+  created_at: string;
+}
+
 interface AutopilotSubscription {
   status: string;
   current_period_end: string | null;
@@ -253,6 +271,85 @@ const StatCard = React.memo(function StatCard({ label, value, subtext, color }: 
   );
 });
 
+const DELIVERY_STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  created: { label: 'Processing', color: '#6B7280', bg: '#F3F4F6' },
+  processing: { label: 'Processing', color: '#6B7280', bg: '#F3F4F6' },
+  in_transit: { label: 'In Transit', color: '#2563EB', bg: '#DBEAFE' },
+  in_local_area: { label: 'In Local Area', color: '#2563EB', bg: '#DBEAFE' },
+  out_for_delivery: { label: 'Out for Delivery', color: '#7C3AED', bg: '#EDE9FE' },
+  re_routed: { label: 'Re-routed', color: '#D97706', bg: '#FEF3C7' },
+  delivered: { label: 'Delivered', color: '#059669', bg: '#D1FAE5' },
+  returned: { label: 'Returned', color: '#DC2626', bg: '#FEE2E2' },
+  failed: { label: 'Failed', color: '#DC2626', bg: '#FEE2E2' },
+};
+
+function LetterTimeline({ letter }: { letter: ContestLetterTracking }) {
+  const steps: { label: string; date: string | null; done: boolean; active: boolean; error?: boolean }[] = [];
+
+  steps.push({ label: 'Letter generated', date: letter.created_at, done: true, active: false });
+  steps.push({ label: 'Mailed via USPS', date: letter.mailed_at, done: !!letter.mailed_at, active: !letter.mailed_at });
+
+  const isInTransit = letter.delivery_status === 'in_transit' || letter.delivery_status === 'in_local_area' || letter.delivery_status === 'out_for_delivery';
+  const pastTransit = letter.delivery_status === 'delivered' || letter.delivery_status === 'returned' || letter.delivery_status === 'failed';
+  if (letter.delivery_status && letter.delivery_status !== 'created' && letter.delivery_status !== 'processing') {
+    const transitLabel = letter.delivery_status === 'in_local_area' ? 'In local area' : letter.delivery_status === 'out_for_delivery' ? 'Out for delivery' : 'In transit';
+    steps.push({ label: transitLabel, date: null, done: isInTransit || pastTransit, active: isInTransit && !pastTransit });
+  }
+
+  if (letter.returned_at || letter.delivery_status === 'returned') {
+    steps.push({ label: 'Returned to sender', date: letter.returned_at, done: true, active: false, error: true });
+  } else if (letter.failed_at || letter.delivery_status === 'failed') {
+    steps.push({ label: 'Failed', date: letter.failed_at, done: true, active: false, error: true });
+  } else {
+    steps.push({ label: 'Delivered', date: letter.delivered_at, done: !!letter.delivered_at, active: false });
+  }
+
+  if (letter.delivered_at && !letter.returned_at && !letter.failed_at) {
+    steps.push({ label: 'Awaiting city decision', date: null, done: false, active: true });
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {steps.map((step, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 20 }}>
+            <div style={{
+              width: 16, height: 16, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+              backgroundColor: step.error ? COLORS.danger : step.done ? COLORS.accent : step.active ? '#DBEAFE' : COLORS.border,
+              border: step.active && !step.error ? '3px solid #2563EB' : 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {step.done && !step.error && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              )}
+              {step.error && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              )}
+            </div>
+            {i < steps.length - 1 && (
+              <div style={{ width: 2, height: 20, backgroundColor: step.done ? COLORS.accent : COLORS.border }} />
+            )}
+          </div>
+          <div style={{ paddingBottom: i < steps.length - 1 ? 4 : 0 }}>
+            <span style={{
+              fontSize: 13,
+              fontWeight: step.active ? 600 : 400,
+              color: step.error ? COLORS.danger : step.done ? COLORS.primary : step.active ? '#2563EB' : COLORS.textMuted,
+            }}>
+              {step.label}
+            </span>
+            {step.date && (
+              <span style={{ fontSize: 12, color: COLORS.textMuted, marginLeft: 8 }}>
+                {new Date(step.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const DashboardContent = React.memo(function DashboardContent({
   tickets,
   platesMonitored,
@@ -260,6 +357,7 @@ const DashboardContent = React.memo(function DashboardContent({
   subscription,
   isPaidUser,
   foiaHistoryRequests,
+  contestLetters,
 }: {
   tickets: DashboardTicket[];
   platesMonitored: number;
@@ -267,6 +365,7 @@ const DashboardContent = React.memo(function DashboardContent({
   subscription: AutopilotSubscription | null;
   isPaidUser: boolean;
   foiaHistoryRequests: any[];
+  contestLetters: ContestLetterTracking[];
 }) {
   const ticketsFound = tickets.length;
   const lettersMailed = tickets.filter(t => t.status === 'mailed').length;
@@ -527,6 +626,69 @@ const DashboardContent = React.memo(function DashboardContent({
           </div>
         )}
       </Card>
+
+      {/* Contest Letter Tracking */}
+      {contestLetters.length > 0 && (
+        <Card title="Contest Letters" badge={
+          <span style={{ fontSize: 12, color: COLORS.textMuted }}>{contestLetters.length} mailed</span>
+        }>
+          <div>
+            {contestLetters.map((letter, index) => {
+              const deliveryInfo = DELIVERY_STATUS_LABELS[letter.delivery_status || ''] || DELIVERY_STATUS_LABELS.processing;
+              return (
+                <div key={letter.id} style={{
+                  padding: '20px 0',
+                  borderBottom: index < contestLetters.length - 1 ? `1px solid ${COLORS.border}` : 'none',
+                }}>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                    marginBottom: 16, flexWrap: 'wrap', gap: 8,
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        {letter.ticket_number && (
+                          <span style={{
+                            fontFamily: 'monospace', fontSize: 14, fontWeight: 700,
+                            color: COLORS.primary, backgroundColor: COLORS.bgSection,
+                            padding: '3px 8px', borderRadius: 4,
+                          }}>
+                            #{letter.ticket_number}
+                          </span>
+                        )}
+                        <span style={{
+                          padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                          backgroundColor: deliveryInfo.bg, color: deliveryInfo.color,
+                        }}>
+                          {deliveryInfo.label}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 13, color: COLORS.textMuted }}>
+                        {letter.violation_type ? (VIOLATION_LABELS[letter.violation_type] || letter.violation_type) : ''}
+                        {letter.amount ? <span style={{ fontWeight: 600 }}> &middot; ${letter.amount}</span> : ''}
+                      </div>
+                    </div>
+                    {letter.letter_pdf_url && (
+                      <a href={letter.letter_pdf_url} target="_blank" rel="noopener noreferrer" style={{
+                        padding: '6px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`,
+                        backgroundColor: 'transparent', color: COLORS.textDark,
+                        fontSize: 12, fontWeight: 600, textDecoration: 'none',
+                      }}>
+                        View Letter PDF
+                      </a>
+                    )}
+                  </div>
+                  <LetterTimeline letter={letter} />
+                  {letter.expected_delivery_date && !letter.delivered_at && !letter.returned_at && !letter.failed_at && (
+                    <div style={{ marginTop: 12, fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic' }}>
+                      Expected delivery by {new Date(letter.expected_delivery_date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Your Ticket History (FOIA) */}
       <Card title="Your Ticket History" badge={
@@ -915,6 +1077,7 @@ function SettingsPageInner() {
   const [nextCheckDate, setNextCheckDate] = useState('');
   const [autopilotSubscription, setAutopilotSubscription] = useState<AutopilotSubscription | null>(null);
   const [foiaHistoryRequests, setFoiaHistoryRequests] = useState<any[]>([]);
+  const [contestLetters, setContestLetters] = useState<ContestLetterTracking[]>([]);
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialLoadRef = useRef(true);
@@ -1194,16 +1357,22 @@ function SettingsPageInner() {
       }
       setReceiptCount((receiptResult as any)?.count ?? 0);
 
-      // ── Second parallel batch: tickets + subscription (depend on plates) ──
+      // ── Second parallel batch: tickets + subscription + contest letters ──
       if (plateData && plateData.length > 0) {
         setPlatesMonitored(plateData.length);
 
-        const [ticketResult, subResult] = await Promise.all([
+        const [ticketResult, subResult, lettersResult] = await Promise.all([
           supabase.from('detected_tickets')
             .select('id, ticket_number, violation_type, violation_code, violation_date, amount, location, status, skip_reason, created_at, user_id')
             .eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
           supabase.from('subscriptions')
             .select('status, current_period_end').eq('user_id', uid).maybeSingle(),
+          (supabase.from as any)('contest_letters')
+            .select('id, ticket_id, status, delivery_status, lob_letter_id, letter_pdf_url, mailed_at, expected_delivery_date, delivered_at, returned_at, failed_at, created_at')
+            .eq('user_id', uid)
+            .not('mailed_at', 'is', null)
+            .order('mailed_at', { ascending: false })
+            .limit(20),
         ]);
 
         if (ticketResult.data) {
@@ -1221,6 +1390,25 @@ function SettingsPageInner() {
             found_at: t.created_at,
           }));
           setDashboardTickets(formattedTickets);
+
+          // Join contest letters with ticket info
+          if (lettersResult?.data?.length > 0) {
+            const ticketMap = new Map(formattedTickets.map((t: DashboardTicket) => [t.id, t]));
+            setContestLetters(lettersResult.data.map((l: any) => {
+              const ticket = ticketMap.get(l.ticket_id);
+              return {
+                ...l,
+                ticket_number: ticket?.ticket_number || null,
+                violation_type: ticket?.violation_type || null,
+                amount: ticket?.amount || null,
+              };
+            }));
+          }
+        } else if (lettersResult?.data?.length > 0) {
+          // Letters exist but no tickets matched
+          setContestLetters(lettersResult.data.map((l: any) => ({
+            ...l, ticket_number: null, violation_type: null, amount: null,
+          })));
         }
 
         // Set next check date (daily at 9 AM Central / 14:00 UTC)
@@ -1932,6 +2120,7 @@ function SettingsPageInner() {
             subscription={autopilotSubscription}
             isPaidUser={isPaidUser}
             foiaHistoryRequests={foiaHistoryRequests}
+            contestLetters={contestLetters}
           />
         )}
 

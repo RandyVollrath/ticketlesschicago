@@ -281,7 +281,7 @@ async function checkIsPaidIntegrity(): Promise<CheckResult> {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabaseAdmin!
       .from('user_profiles')
-      .select('user_id, email, is_paid, created_at, stripe_customer_id')
+      .select('user_id, email, is_paid, created_at, stripe_customer_id, payment_source')
       .eq('is_paid', true)
       .gte('created_at', sevenDaysAgo);
 
@@ -298,8 +298,14 @@ async function checkIsPaidIntegrity(): Promise<CheckResult> {
       .in('user_id', userIds);
     const iapUserIds = new Set((iapRows || []).map(r => r.user_id));
 
-    // Unverified = no Stripe customer AND no IAP transaction
-    const unverified = data.filter(u => !u.stripe_customer_id && !iapUserIds.has(u.user_id));
+    // Exclude known test/review accounts (Google Play review, payment_source='test_account')
+    const testEmailPatterns = ['playreview@', 'testreview@'];
+    const isTestAccount = (u: any) =>
+      testEmailPatterns.some(p => u.email?.toLowerCase().startsWith(p)) ||
+      u.payment_source === 'test_account';
+
+    // Unverified = no Stripe customer AND no IAP transaction AND not a test account
+    const unverified = data.filter(u => !u.stripe_customer_id && !iapUserIds.has(u.user_id) && !isTestAccount(u));
 
     if (unverified.length === 0) {
       return { name, category: 'Users', status: 'pass', detail: `${data.length} new paid users in 7 days, all verified (Stripe or Apple IAP)`, severity: 'high' };
