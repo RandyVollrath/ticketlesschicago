@@ -8,6 +8,7 @@ import {
   Linking,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -22,6 +23,29 @@ interface AccountInactiveScreenProps {
   onSignOut: () => void;
   onRetryCheck: () => void;
 }
+
+const VALUE_PROPS = [
+  {
+    icon: 'car-brake-alert' as const,
+    title: 'Automatic Parking Violation Detection',
+    desc: 'Knows when and where you park — alerts you before you get a ticket.',
+  },
+  {
+    icon: 'broom' as const,
+    title: 'Street Cleaning Alerts',
+    desc: 'Get notified before sweepers arrive so you can move your car in time.',
+  },
+  {
+    icon: 'camera' as const,
+    title: 'Speed & Red Light Camera Alerts',
+    desc: 'Audio warnings when you approach enforcement cameras.',
+  },
+  {
+    icon: 'gavel' as const,
+    title: 'Automatic Ticket Contesting',
+    desc: 'We check for new tickets and file contests on your behalf.',
+  },
+];
 
 /**
  * Shown when a user logs in but doesn't have an active account.
@@ -117,154 +141,167 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Icon */}
-        <View style={styles.iconContainer}>
-          <MaterialCommunityIcons
-            name="shield-lock-outline"
-            size={64}
-            color={colors.primary}
-          />
-        </View>
-
-        {/* Title */}
-        <Text style={styles.title}>Activate Your Account</Text>
-
-        {/* Message */}
-        <Text style={styles.message}>
-          {Platform.OS === 'ios'
-            ? `Automatic parking violation detection, street cleaning alerts, and ticket contesting — all in one app.`
-            : `An active Autopilot account is required to use this app.\n\nVisit autopilotamerica.com to set up your account.`}
-        </Text>
-
-        {/* Email display */}
-        {user?.email && (
-          <View style={styles.emailBadge}>
-            <MaterialCommunityIcons name="email-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.emailText}>{user.email}</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* Hero */}
+          <View style={styles.iconContainer}>
+            <MaterialCommunityIcons
+              name="shield-car"
+              size={64}
+              color={colors.primary}
+            />
           </View>
-        )}
 
-        {/* iOS: Billing toggle + In-App Purchase button */}
-        {Platform.OS === 'ios' && (
-          <>
-            {/* Billing plan toggle */}
-            <View style={styles.billingToggle}>
-              <TouchableOpacity
-                style={[styles.toggleOption, billingPlan === 'annual' && styles.toggleOptionActive]}
-                onPress={() => setBillingPlan('annual')}
-              >
-                <Text style={[styles.toggleText, billingPlan === 'annual' && styles.toggleTextActive]}>
-                  Annual
+          <Text style={styles.title}>Stop Getting Chicago Parking Tickets</Text>
+
+          <Text style={styles.subtitle}>
+            The average Chicago driver pays $300+/year in parking tickets. Autopilot pays for itself with a single avoided ticket.
+          </Text>
+
+          {/* Value props */}
+          <View style={styles.valuePropsList}>
+            {VALUE_PROPS.map((prop) => (
+              <View key={prop.title} style={styles.valuePropRow}>
+                <View style={styles.valuePropIcon}>
+                  <MaterialCommunityIcons name={prop.icon} size={22} color={colors.primary} />
+                </View>
+                <View style={styles.valuePropText}>
+                  <Text style={styles.valuePropTitle}>{prop.title}</Text>
+                  <Text style={styles.valuePropDesc}>{prop.desc}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Email display */}
+          {user?.email && (
+            <View style={styles.emailBadge}>
+              <MaterialCommunityIcons name="email-outline" size={16} color={colors.textSecondary} />
+              <Text style={styles.emailText}>{user.email}</Text>
+            </View>
+          )}
+
+          {/* iOS: Billing toggle + In-App Purchase button */}
+          {Platform.OS === 'ios' && (
+            <>
+              {/* Billing plan toggle */}
+              <View style={styles.billingToggle}>
+                <TouchableOpacity
+                  style={[styles.toggleOption, billingPlan === 'annual' && styles.toggleOptionActive]}
+                  onPress={() => setBillingPlan('annual')}
+                >
+                  <Text style={[styles.toggleText, billingPlan === 'annual' && styles.toggleTextActive]}>
+                    Annual
+                  </Text>
+                  {billingPlan === 'annual' && (
+                    <Text style={styles.toggleSavings}>Save 45%</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toggleOption, billingPlan === 'monthly' && styles.toggleOptionActive]}
+                  onPress={() => setBillingPlan('monthly')}
+                >
+                  <Text style={[styles.toggleText, billingPlan === 'monthly' && styles.toggleTextActive]}>
+                    Monthly
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Price display */}
+              <Text style={styles.priceText}>
+                {billingPlan === 'annual'
+                  ? (annualPrice || '$119.99') + '/year'
+                  : (monthlyPrice || '$14.99') + '/month'}
+              </Text>
+              {billingPlan === 'monthly' && (
+                <Text style={styles.savingsHint}>
+                  $179.88/year — save 45% with annual
                 </Text>
-                {billingPlan === 'annual' && (
-                  <Text style={styles.toggleSavings}>Save 45%</Text>
+              )}
+
+              <TouchableOpacity
+                style={[styles.primaryButton, purchasing && styles.buttonDisabled]}
+                onPress={handlePurchase}
+                disabled={purchasing}
+              >
+                {purchasing ? (
+                  <ActivityIndicator size="small" color={colors.textInverse} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
+                    <Text style={styles.primaryButtonText}>
+                      Subscribe — {billingPlan === 'annual'
+                        ? (annualPrice || '$119.99') + '/year'
+                        : (monthlyPrice || '$14.99') + '/month'}
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleOption, billingPlan === 'monthly' && styles.toggleOptionActive]}
-                onPress={() => setBillingPlan('monthly')}
-              >
-                <Text style={[styles.toggleText, billingPlan === 'monthly' && styles.toggleTextActive]}>
-                  Monthly
-                </Text>
-              </TouchableOpacity>
-            </View>
 
-            {/* Price display */}
-            <Text style={styles.priceText}>
-              {billingPlan === 'annual'
-                ? (annualPrice || '$119.99') + '/year'
-                : (monthlyPrice || '$14.99') + '/month'}
-            </Text>
-            {billingPlan === 'monthly' && (
-              <Text style={styles.savingsHint}>
-                $179.88/year — save 45% with annual
+              {/* Subscription details required by App Store Guideline 3.1.2(c) */}
+              <Text style={styles.subscriptionDisclosure}>
+                {billingPlan === 'annual'
+                  ? 'Auto-renewable yearly subscription. '
+                  : 'Auto-renewable monthly subscription. '}
+                Payment will be charged to your Apple ID account at confirmation of purchase.
+                Subscription automatically renews unless canceled at least 24 hours before the end of the current period.
+                Manage subscriptions in Settings {'>'} Apple ID {'>'} Subscriptions.
               </Text>
-            )}
-
-            <TouchableOpacity
-              style={[styles.primaryButton, purchasing && styles.buttonDisabled]}
-              onPress={handlePurchase}
-              disabled={purchasing}
-            >
-              {purchasing ? (
-                <ActivityIndicator size="small" color={colors.textInverse} />
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
-                  <Text style={styles.primaryButtonText}>
-                    Subscribe — {billingPlan === 'annual'
-                      ? (annualPrice || '$119.99') + '/year'
-                      : (monthlyPrice || '$14.99') + '/month'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* Subscription details required by App Store Guideline 3.1.2(c) */}
-            <Text style={styles.subscriptionDisclosure}>
-              {billingPlan === 'annual'
-                ? 'Auto-renewable yearly subscription. '
-                : 'Auto-renewable monthly subscription. '}
-              Payment will be charged to your Apple ID account at confirmation of purchase.
-              Subscription automatically renews unless canceled at least 24 hours before the end of the current period.
-              Manage subscriptions in Settings {'>'} Apple ID {'>'} Subscriptions.
-            </Text>
-            <View style={styles.legalLinks}>
-              <TouchableOpacity onPress={() => Linking.openURL('https://autopilotamerica.com/terms')}>
-                <Text style={styles.legalLinkText}>Terms of Use</Text>
-              </TouchableOpacity>
-              <Text style={styles.legalSeparator}>|</Text>
-              <TouchableOpacity onPress={() => Linking.openURL('https://autopilotamerica.com/privacy')}>
-                <Text style={styles.legalLinkText}>Privacy Policy</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-
-        {/* Android: Open website button */}
-        {Platform.OS !== 'ios' && (
-          <TouchableOpacity style={styles.primaryButton} onPress={handleOpenWebsite}>
-            <MaterialCommunityIcons name="web" size={20} color={colors.textInverse} />
-            <Text style={styles.primaryButtonText}>Set Up on Website</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* iOS: "Already have an account?" for users who purchased on the web */}
-        {Platform.OS === 'ios' && (
-          <Text style={styles.existingAccountHint}>
-            Already purchased on autopilotamerica.com? Tap below to refresh.
-          </Text>
-        )}
-
-        {/* Refresh / retry button */}
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleRetryCheck}
-          disabled={checking}
-        >
-          {checking ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <>
-              <MaterialCommunityIcons name="refresh" size={20} color={colors.primary} />
-              <Text style={styles.secondaryButtonText}>I've already set up my account</Text>
+              <View style={styles.legalLinks}>
+                <TouchableOpacity onPress={() => Linking.openURL('https://autopilotamerica.com/terms')}>
+                  <Text style={styles.legalLinkText}>Terms of Use</Text>
+                </TouchableOpacity>
+                <Text style={styles.legalSeparator}>|</Text>
+                <TouchableOpacity onPress={() => Linking.openURL('https://autopilotamerica.com/privacy')}>
+                  <Text style={styles.legalLinkText}>Privacy Policy</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
-        </TouchableOpacity>
 
-        {/* Sign out */}
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={handleSignOut}
-          disabled={signingOut}
-        >
-          <Text style={styles.signOutText}>
-            {signingOut ? 'Signing out...' : 'Sign in with a different account'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+          {/* Android: Open website button */}
+          {Platform.OS !== 'ios' && (
+            <TouchableOpacity style={styles.primaryButton} onPress={handleOpenWebsite}>
+              <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
+              <Text style={styles.primaryButtonText}>Get Started — From $9.99/mo</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* iOS: "Already have an account?" for users who purchased on the web */}
+          {Platform.OS === 'ios' && (
+            <Text style={styles.existingAccountHint}>
+              Already purchased on autopilotamerica.com? Tap below to refresh.
+            </Text>
+          )}
+
+          {/* Refresh / retry button */}
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={handleRetryCheck}
+            disabled={checking}
+          >
+            {checking ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="refresh" size={20} color={colors.primary} />
+                <Text style={styles.secondaryButtonText}>I've already set up my account</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Sign out */}
+          <TouchableOpacity
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+            disabled={signingOut}
+          >
+            <Text style={styles.signOutText}>
+              {signingOut ? 'Signing out...' : 'Sign in with a different account'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -274,35 +311,72 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
   },
   iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: colors.primaryTint,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   title: {
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
-  message: {
-    fontSize: typography.sizes.base,
+  subtitle: {
+    fontSize: typography.sizes.sm,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: typography.sizes.base * typography.lineHeights.relaxed,
+    lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
     marginBottom: spacing.lg,
-    paddingHorizontal: spacing.base,
+    paddingHorizontal: spacing.sm,
+  },
+  valuePropsList: {
+    width: '100%',
+    marginBottom: spacing.lg,
+  },
+  valuePropRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  valuePropIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryTint,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.base,
+    flexShrink: 0,
+  },
+  valuePropText: {
+    flex: 1,
+  },
+  valuePropTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  valuePropDesc: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    lineHeight: typography.sizes.xs * typography.lineHeights.relaxed,
   },
   emailBadge: {
     flexDirection: 'row',
