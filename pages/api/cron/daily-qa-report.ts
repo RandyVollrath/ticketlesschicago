@@ -466,6 +466,211 @@ async function checkContestTicketData(): Promise<CheckResult> {
   }
 }
 
+// ─── USER-OUTCOME CHECKS ──────────────────────────────────────────────
+// These measure whether real users are being served, not just whether
+// crons fired. A "did it happen" check can pass while a "did it work"
+// check fails — that's where silent failures hide.
+
+async function checkLettersStuckInAdminReview(): Promise<CheckResult> {
+  const name = 'User Outcomes — Letters Stuck in Admin Review';
+  try {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const { count, error } = await supabaseAdmin!
+      .from('contest_letters')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'needs_admin_review')
+      .lt('updated_at', threeDaysAgo);
+
+    if (error) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${error.message}`, severity: 'high' };
+    const n = count ?? 0;
+    if (n === 0) return { name, category: 'User Outcomes', status: 'pass', detail: 'No letters stuck in admin review >3 days', severity: 'high' };
+    if (n >= 5) return { name, category: 'User Outcomes', status: 'fail', detail: `${n} letters stuck in admin review for >3 days — users are waiting`, severity: 'high' };
+    return { name, category: 'User Outcomes', status: 'warn', detail: `${n} letters stuck in admin review for >3 days`, severity: 'high' };
+  } catch (e: any) {
+    return { name, category: 'User Outcomes', status: 'fail', detail: e.message, severity: 'high' };
+  }
+}
+
+async function checkSilentUsers(): Promise<CheckResult> {
+  // Users who signed up, have a saved home address (so we SHOULD be
+  // sending them alerts), but received nothing in 30 days. Either they're
+  // disabled their notifications (OK) or our pipeline is silently
+  // skipping them (not OK).
+  const name = 'User Outcomes — Silent Users (no notifications 30d)';
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Users with a home address who signed up >30 days ago (so we've had
+    // ample time to notify them)
+    const { data: eligibleUsers, error: e1 } = await supabaseAdmin!
+      .from('user_profiles')
+      .select('user_id')
+      .not('home_address_full', 'is', null)
+      .lt('created_at', thirtyDaysAgo)
+      .gt('created_at', sixtyDaysAgo); // Only look at last 60 days to cap scan size
+
+    if (e1) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${e1.message}`, severity: 'high' };
+    if (!eligibleUsers || eligibleUsers.length === 0) {
+      return { name, category: 'User Outcomes', status: 'pass', detail: 'No eligible users in sample window', severity: 'high' };
+    }
+
+    // Users who DID receive at least one notification in last 30d
+    const { data: notifiedRows, error: e2 } = await supabaseAdmin!
+      .from('message_audit_log')
+      .select('user_id')
+      .gte('timestamp', thirtyDaysAgo)
+      .eq('result', 'sent')
+      .in('user_id', eligibleUsers.map(u => u.user_id).filter(Boolean) as string[]);
+
+    if (e2) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${e2.message}`, severity: 'high' };
+
+    const notified = new Set((notifiedRows || []).map(r => r.user_id));
+    const silent = eligibleUsers.filter(u => !notified.has(u.user_id));
+    const silentCount = silent.length;
+    const pctSilent = Math.round((silentCount / eligibleUsers.length) * 100);
+
+    if (silentCount === 0) {
+      return { name, category: 'User Outcomes', status: 'pass', detail: `All ${eligibleUsers.length} eligible users heard from us in 30d`, severity: 'high' };
+    }
+    if (pctSilent >= 30) {
+      return { name, category: 'User Outcomes', status: 'fail', detail: `${silentCount}/${eligibleUsers.length} (${pctSilent}%) eligible users got ZERO notifications in 30 days — pipeline skip bug?`, severity: 'high' };
+    }
+    return { name, category: 'User Outcomes', status: 'warn', detail: `${silentCount}/${eligibleUsers.length} (${pctSilent}%) eligible users silent for 30 days`, severity: 'high' };
+  } catch (e: any) {
+    return { name, category: 'User Outcomes', status: 'fail', detail: e.message, severity: 'high' };
+  }
+}
+
+async function checkAiCascadeExhaustion(): Promise<CheckResult> {
+  // Query ticket_audit_log for letter_ai_cascade_exhausted events in
+  // last 24h. Any is bad — means letters piled up in admin review
+  // because Anthropic + Gemini + OpenAI all failed.
+  const name = 'User Outcomes — AI Cascade Exhaustion (24h)';
+  try {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count, error } = await supabaseAdmin!
+      .from('ticket_audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('action', 'letter_ai_cascade_exhausted')
+      .gte('performed_at', oneDayAgo);
+
+    if (error) {
+      // Fall back to created_at if performed_at isn't the timestamp column
+      const { count: count2, error: e2 } = await supabaseAdmin!
+        .from('ticket_audit_log')
+        .select('*', { count: 'exact', head: true })
+        .eq('action', 'letter_ai_cascade_exhausted')
+        .gte('created_at', oneDayAgo);
+      if (e2) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${e2.message}`, severity: 'high' };
+      const n = count2 ?? 0;
+      if (n === 0) return { name, category: 'User Outcomes', status: 'pass', detail: 'AI review cascade healthy (24h)', severity: 'high' };
+      return { name, category: 'User Outcomes', status: 'fail', detail: `${n} letters hit AI cascade exhaustion in 24h — check provider status`, severity: 'high' };
+    }
+    const n = count ?? 0;
+    if (n === 0) return { name, category: 'User Outcomes', status: 'pass', detail: 'AI review cascade healthy (24h)', severity: 'high' };
+    return { name, category: 'User Outcomes', status: 'fail', detail: `${n} letters hit AI cascade exhaustion in 24h — check provider status`, severity: 'high' };
+  } catch (e: any) {
+    return { name, category: 'User Outcomes', status: 'fail', detail: e.message, severity: 'high' };
+  }
+}
+
+async function checkLobReconciliationNeeded(): Promise<CheckResult> {
+  // Any reconciliation records means letters physically mailed but DB
+  // didn't update — manual fix required.
+  const name = 'User Outcomes — Lob Reconciliation Needed';
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { count, error } = await supabaseAdmin!
+      .from('ticket_audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('action', 'letter_mail_reconciliation_needed')
+      .gte('created_at', sevenDaysAgo);
+
+    if (error) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${error.message}`, severity: 'critical' };
+    const n = count ?? 0;
+    if (n === 0) return { name, category: 'User Outcomes', status: 'pass', detail: 'No pending Lob/DB reconciliations', severity: 'critical' };
+    return { name, category: 'User Outcomes', status: 'fail', detail: `${n} letters physically mailed but DB state drifted — manual SQL fix needed`, severity: 'critical' };
+  } catch (e: any) {
+    return { name, category: 'User Outcomes', status: 'fail', detail: e.message, severity: 'critical' };
+  }
+}
+
+async function checkTicketsStuckInDraft(): Promise<CheckResult> {
+  // Tickets in 'draft' status for >72 hours suggest the generation cron
+  // is stuck or the ticket is malformed.
+  const name = 'User Outcomes — Tickets Stuck in Draft (72h+)';
+  try {
+    const threeDaysAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+    const { count, error } = await supabaseAdmin!
+      .from('detected_tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'draft')
+      .lt('created_at', threeDaysAgo);
+
+    if (error) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${error.message}`, severity: 'high' };
+    const n = count ?? 0;
+    if (n === 0) return { name, category: 'User Outcomes', status: 'pass', detail: 'No tickets stuck in draft >72h', severity: 'high' };
+    if (n >= 10) return { name, category: 'User Outcomes', status: 'fail', detail: `${n} tickets stuck in draft >72h — generation cron not keeping up`, severity: 'high' };
+    return { name, category: 'User Outcomes', status: 'warn', detail: `${n} tickets stuck in draft >72h`, severity: 'high' };
+  } catch (e: any) {
+    return { name, category: 'User Outcomes', status: 'fail', detail: e.message, severity: 'high' };
+  }
+}
+
+async function checkMailCronBudgetSaturation(): Promise<CheckResult> {
+  // Proxy signal: letters in 'ready_to_mail' status older than 3 days
+  // mean the cron isn't keeping up with queue.
+  const name = 'User Outcomes — Mail Cron Queue Depth';
+  try {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const { count, error } = await supabaseAdmin!
+      .from('contest_letters')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['ready_to_mail', 'draft', 'approved'])
+      .lt('created_at', threeDaysAgo);
+
+    if (error) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${error.message}`, severity: 'high' };
+    const n = count ?? 0;
+    if (n === 0) return { name, category: 'User Outcomes', status: 'pass', detail: 'No letters waiting in queue >3 days', severity: 'high' };
+    if (n >= 20) return { name, category: 'User Outcomes', status: 'fail', detail: `${n} letters waiting in queue >3 days — mail cron saturating budget`, severity: 'high' };
+    return { name, category: 'User Outcomes', status: 'warn', detail: `${n} letters waiting in queue >3 days`, severity: 'high' };
+  } catch (e: any) {
+    return { name, category: 'User Outcomes', status: 'fail', detail: e.message, severity: 'high' };
+  }
+}
+
+async function checkEmailRetryRate(): Promise<CheckResult> {
+  // High retry rate on Resend means we're hitting rate limits
+  // aggressively. Not fatal (retries work) but a leading indicator of
+  // user-visible delay.
+  const name = 'User Outcomes — Email Retry Rate (24h)';
+  try {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabaseAdmin!
+      .from('message_audit_log')
+      .select('context_data')
+      .eq('message_channel', 'email')
+      .eq('result', 'sent')
+      .gte('timestamp', oneDayAgo)
+      .limit(1000);
+
+    if (error) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${error.message}`, severity: 'low' };
+    if (!data || data.length === 0) {
+      return { name, category: 'User Outcomes', status: 'pass', detail: 'No email sends in last 24h to analyze', severity: 'low' };
+    }
+    const retried = data.filter((r: any) => {
+      const retries = r.context_data?.retries;
+      return typeof retries === 'number' && retries > 0;
+    }).length;
+    const pct = Math.round((retried / data.length) * 100);
+    if (pct >= 25) return { name, category: 'User Outcomes', status: 'warn', detail: `${retried}/${data.length} (${pct}%) emails required retry — Resend rate-limit pressure`, severity: 'low' };
+    return { name, category: 'User Outcomes', status: 'pass', detail: `${retried}/${data.length} (${pct}%) emails required retry — healthy`, severity: 'low' };
+  } catch (e: any) {
+    return { name, category: 'User Outcomes', status: 'fail', detail: e.message, severity: 'low' };
+  }
+}
+
 // ─── Email Report Builder ─────────────────────────────────────────────
 
 function buildEmailHtml(results: CheckResult[], runTime: number): string {
@@ -617,6 +822,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Settings
       checkSettingsIntegrity(),
+
+      // User Outcomes — measures whether users are being served,
+      // not just whether crons fired. These are the checks that
+      // surface silent-failure modes.
+      checkLettersStuckInAdminReview(),
+      checkSilentUsers(),
+      checkAiCascadeExhaustion(),
+      checkLobReconciliationNeeded(),
+      checkTicketsStuckInDraft(),
+      checkMailCronBudgetSaturation(),
+      checkEmailRetryRate(),
     ]);
 
     // Unwrap results (turn rejected promises into fail results)
