@@ -688,14 +688,16 @@ export class NotificationScheduler {
                         console.log('✅ Email sent successfully:', data);
                         results.successful++;
 
-                        // Log successful email send
+                        // Log successful email send — stash the retry count
+                        // into contextData so we can query "how many sends
+                        // required a retry" from message_audit_log.
                         await logMessageSent({
                           userId: user.user_id,
                           userEmail: user.email,
                           userPhone: user.phone_number,
                           messageKey: emailMessageKey,
                           messageChannel: 'email',
-                          contextData,
+                          contextData: { ...contextData, retries: sendResult.retries ?? 0 },
                           messagePreview: emailSubject, // Use subject as preview
                           externalMessageId: data?.id,
                           costCents: 0 // Email typically costs ~0.1 cents but we'll round to 0
