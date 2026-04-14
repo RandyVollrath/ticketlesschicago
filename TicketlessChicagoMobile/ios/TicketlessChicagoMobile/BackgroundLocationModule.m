@@ -44,6 +44,10 @@ RCT_EXTERN_METHOD(clearDecisionLogs:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(getDecisionLogInfo:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(getDebugLogBundle:(nonnull NSNumber *)maxBytesPerFile
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(exportDecisionLog:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 

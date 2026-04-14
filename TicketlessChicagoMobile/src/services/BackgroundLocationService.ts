@@ -605,6 +605,22 @@ class BackgroundLocationServiceClass {
   }
 
   /**
+   * Get all debug log files (detection + decisions, current + .prev) as a
+   * single dict. Values are raw file contents truncated from the END to stay
+   * under maxBytesPerFile. Used by "Send Debug Report" to ship logs off-device.
+   */
+  async getDebugLogBundle(maxBytesPerFile: number = 2_000_000): Promise<Record<string, string>> {
+    if (!this.isAvailable() || !BackgroundLocationModule.getDebugLogBundle) return {};
+    try {
+      const result = await BackgroundLocationModule.getDebugLogBundle(maxBytesPerFile);
+      return result || {};
+    } catch (error) {
+      log.error('Error getting debug log bundle', error);
+      return {};
+    }
+  }
+
+  /**
    * Metadata for native parking-decision trace.
    */
   async getDecisionLogInfo(): Promise<{ exists: boolean; path: string | null; sizeBytes: number }> {

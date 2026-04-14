@@ -2096,6 +2096,48 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     resolve(true)
   }
 
+  /// Get ALL debug log files (detection + decisions, current + .prev) as a single dict.
+  /// Used by the "Send Debug Report" feature so JS can POST everything to the server
+  /// without needing a cable. Each value is the raw file contents as a String.
+  @objc func getDebugLogBundle(_ maxBytesPerFile: NSNumber, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    guard let documentsDirectory = paths.first else {
+      resolve([String: String]())
+      return
+    }
+
+    let maxBytes = maxBytesPerFile.intValue > 0 ? maxBytesPerFile.intValue : 2_000_000 // 2MB default
+    let fileNames = [
+      "parking_detection.log",
+      "parking_detection.log.prev",
+      "parking_decisions.ndjson",
+      "parking_decisions.ndjson.prev",
+    ]
+
+    var result: [String: String] = [:]
+    for name in fileNames {
+      let url = documentsDirectory.appendingPathComponent(name)
+      guard FileManager.default.fileExists(atPath: url.path) else {
+        result[name] = ""
+        continue
+      }
+      // Read and truncate from the END (most recent data) to keep under maxBytes
+      if let data = try? Data(contentsOf: url) {
+        let truncated: Data
+        if data.count > maxBytes {
+          truncated = data.suffix(maxBytes)
+        } else {
+          truncated = data
+        }
+        result[name] = String(data: truncated, encoding: .utf8) ?? ""
+      } else {
+        result[name] = ""
+      }
+    }
+
+    resolve(result)
+  }
+
   /// Get decision log path + existence/size for diagnostics.
   @objc func getDecisionLogInfo(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     guard let decisionURL = self.decisionLogFileURL else {
