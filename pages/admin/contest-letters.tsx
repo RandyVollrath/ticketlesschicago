@@ -24,6 +24,12 @@ interface ContestLetter {
   lob_letter_id: string | null;
   lob_status: string | null;
   lob_expected_delivery: string | null;
+  delivery_status: string | null;
+  expected_delivery_date: string | null;
+  delivered_at: string | null;
+  returned_at: string | null;
+  failed_at: string | null;
+  last_tracking_update: string | null;
   defense_type: string;
   evidence_integrated: boolean;
   evidence_integrated_at: string | null;
@@ -138,6 +144,23 @@ export default function AdminContestLetters() {
       other: 'Other'
     };
     return labels[defense] || defense;
+  }
+
+  function getDeliveryStatusColor(ds: string | null): string {
+    const colors: Record<string, string> = {
+      in_transit: '#3b82f6', in_local_area: '#3b82f6', out_for_delivery: '#7c3aed',
+      re_routed: '#d97706', delivered: '#059669', returned: '#dc2626', failed: '#dc2626',
+    };
+    return (ds && colors[ds]) || '#9ca3af';
+  }
+
+  function getDeliveryStatusLabel(ds: string | null): string {
+    const labels: Record<string, string> = {
+      created: 'Processing', processing: 'Processing', in_transit: 'In Transit',
+      in_local_area: 'In Local Area', out_for_delivery: 'Out for Delivery',
+      re_routed: 'Re-routed', delivered: 'Delivered', returned: 'Returned', failed: 'Failed',
+    };
+    return (ds && labels[ds]) || 'Pending';
   }
 
   if (loading) {
@@ -507,11 +530,26 @@ export default function AdminContestLetters() {
                   {letter.evidence_integrated_at && (
                     <span>AI integrated: {new Date(letter.evidence_integrated_at).toLocaleString()}</span>
                   )}
-                  {letter.lob_status && (
-                    <span>Lob: {letter.lob_status}</span>
-                  )}
                   {letter.mailed_at && (
                     <span>Mailed: {new Date(letter.mailed_at).toLocaleDateString()}</span>
+                  )}
+                  {letter.delivery_status && (
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 10, fontSize: '12px', fontWeight: 600,
+                      backgroundColor: getDeliveryStatusColor(letter.delivery_status) + '20',
+                      color: getDeliveryStatusColor(letter.delivery_status),
+                    }}>
+                      {getDeliveryStatusLabel(letter.delivery_status)}
+                    </span>
+                  )}
+                  {letter.delivered_at && (
+                    <span style={{ color: '#059669' }}>Delivered: {new Date(letter.delivered_at).toLocaleDateString()}</span>
+                  )}
+                  {letter.returned_at && (
+                    <span style={{ color: '#dc2626' }}>Returned: {new Date(letter.returned_at).toLocaleDateString()}</span>
+                  )}
+                  {letter.expected_delivery_date && !letter.delivered_at && !letter.returned_at && (
+                    <span>ETA: {new Date(letter.expected_delivery_date).toLocaleDateString()}</span>
                   )}
                 </div>
               </div>
@@ -792,41 +830,79 @@ export default function AdminContestLetters() {
               </div>
             </div>
 
-            {/* Lob Status */}
+            {/* Mailing & Delivery Tracking */}
             {selectedLetter.lob_letter_id && (
               <div style={{ marginTop: '24px' }}>
-                <h3 style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '12px'
-                }}>
-                  Mailing Status (Lob)
+                <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+                  Mailing & Delivery Tracking
                 </h3>
                 <div style={{
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 1fr',
-                  gap: '16px'
+                  backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px',
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px',
                 }}>
                   <div>
-                    <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Letter ID</p>
-                    <p style={{ fontSize: '14px', color: '#111827' }}>{selectedLetter.lob_letter_id}</p>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Lob Letter ID</p>
+                    <p style={{ fontSize: '12px', color: '#111827', fontFamily: 'monospace' }}>{selectedLetter.lob_letter_id}</p>
                   </div>
                   <div>
-                    <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Status</p>
-                    <p style={{ fontSize: '14px', color: '#111827' }}>{selectedLetter.lob_status || 'N/A'}</p>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Delivery Status</p>
+                    <span style={{
+                      display: 'inline-block', padding: '3px 10px', borderRadius: '12px',
+                      fontSize: '13px', fontWeight: 600,
+                      backgroundColor: getDeliveryStatusColor(selectedLetter.delivery_status) + '20',
+                      color: getDeliveryStatusColor(selectedLetter.delivery_status),
+                    }}>
+                      {getDeliveryStatusLabel(selectedLetter.delivery_status)}
+                    </span>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Mailed At</p>
+                    <p style={{ fontSize: '14px', color: '#111827' }}>
+                      {selectedLetter.mailed_at ? new Date(selectedLetter.mailed_at).toLocaleDateString() : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Expected Delivery</p>
                     <p style={{ fontSize: '14px', color: '#111827' }}>
-                      {selectedLetter.lob_expected_delivery
+                      {selectedLetter.expected_delivery_date
+                        ? new Date(selectedLetter.expected_delivery_date).toLocaleDateString()
+                        : selectedLetter.lob_expected_delivery
                         ? new Date(selectedLetter.lob_expected_delivery).toLocaleDateString()
                         : 'N/A'}
                     </p>
                   </div>
+                  {selectedLetter.delivered_at && (
+                    <div>
+                      <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Delivered</p>
+                      <p style={{ fontSize: '14px', color: '#059669', fontWeight: 600 }}>
+                        {new Date(selectedLetter.delivered_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                  {selectedLetter.returned_at && (
+                    <div>
+                      <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Returned</p>
+                      <p style={{ fontSize: '14px', color: '#dc2626', fontWeight: 600 }}>
+                        {new Date(selectedLetter.returned_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                  {selectedLetter.failed_at && (
+                    <div>
+                      <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Failed</p>
+                      <p style={{ fontSize: '14px', color: '#dc2626', fontWeight: 600 }}>
+                        {new Date(selectedLetter.failed_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                  {selectedLetter.last_tracking_update && (
+                    <div>
+                      <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>Last Tracking Update</p>
+                      <p style={{ fontSize: '14px', color: '#111827' }}>
+                        {new Date(selectedLetter.last_tracking_update).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
