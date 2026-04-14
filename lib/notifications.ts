@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabase';
 import { sendClickSendSMS, sendClickSendVoiceCall } from './sms-service';
 import { Resend } from 'resend';
+import { sendEmailWithRetry } from './resend-with-retry';
 import {
   logMessageSent,
   logMessageSkipped,
@@ -89,7 +90,10 @@ export class NotificationService {
         subject: notification.subject
       });
 
-      const { data, error } = await this.resend.emails.send({
+      // Route through sendEmailWithRetry so we survive Resend's 2 req/sec
+      // rate limit and transient 429s. Previously a single 429 on a
+      // street-cleaning alert was a silent missed notification.
+      const result = await sendEmailWithRetry(this.resend, {
         from: fromAddress,
         to: [notification.to],
         subject: notification.subject,
@@ -99,15 +103,19 @@ export class NotificationService {
           'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
           'X-Entity-Ref-ID': crypto.randomUUID(),
         },
-        replyTo: EMAIL.REPLY_TO
+        replyTo: EMAIL.REPLY_TO,
       });
 
-      if (error) {
-        console.error('Resend error:', error);
+      if (!result.success) {
+        console.error(`❌ Resend error after ${result.retries ?? 0} retries:`, result.error);
         return false;
       }
 
-      console.log('✅ Email sent successfully:', data);
+      if (result.retries && result.retries > 0) {
+        console.log(`✅ Email sent successfully after ${result.retries} retries:`, result.data);
+      } else {
+        console.log('✅ Email sent successfully:', result.data);
+      }
       return true;
     } catch (error) {
       console.error('Email sending failed:', error);
@@ -641,7 +649,7 @@ export class NotificationScheduler {
                       // LIVE MODE: Actually send email
                       console.log(`📧 Sending email to ${user.email}: ${emailSubject}`);
 
-                      const { data, error: emailError } = await this.resend.emails.send({
+                      const sendResult = await sendEmailWithRetry(this.resend, {
                         from: fromAddress,
                         to: [user.email],
                         subject: emailSubject,
@@ -650,11 +658,19 @@ export class NotificationScheduler {
                         headers: {
                           'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
                         },
-                        replyTo: EMAIL.REPLY_TO
+                        replyTo: EMAIL.REPLY_TO,
                       });
 
+                      // Preserve the previous shape so downstream logging
+                      // keeps working unchanged.
+                      const data = sendResult.data;
+                      const emailError = sendResult.success ? null : (sendResult.error || 'send failed');
+                      if (sendResult.retries && sendResult.retries > 0) {
+                        console.log(`  (recovered after ${sendResult.retries} retries)`);
+                      }
+
                       if (emailError) {
-                        console.error('❌ Email failed:', emailError);
+                        console.error(`❌ Email failed after ${sendResult.retries ?? 0} retries:`, emailError);
                         results.failed++;
 
                         // Log email error
@@ -666,7 +682,7 @@ export class NotificationScheduler {
                           messageChannel: 'email',
                           contextData,
                           reason: 'api_error',
-                          errorDetails: { error: emailError }
+                          errorDetails: { error: emailError, retries: sendResult.retries ?? 0 }
                         });
                       } else {
                         console.log('✅ Email sent successfully:', data);
