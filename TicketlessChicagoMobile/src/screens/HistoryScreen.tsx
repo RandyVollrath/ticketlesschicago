@@ -101,6 +101,45 @@ const syncAddToServer = async (item: ParkingHistoryItem): Promise<void> => {
   }
 };
 
+/**
+ * Sync any field update (address backfill, etc.) to the server.
+ * Matches the server row by user_id + parked_at timestamp.
+ * Non-fatal on failure; bulk sync will eventually catch missed updates.
+ */
+const syncUpdateToServer = async (
+  item: ParkingHistoryItem,
+  updates: Partial<Pick<ParkingHistoryItem, 'address'>>
+): Promise<void> => {
+  try {
+    if (!AuthService.isAuthenticated()) return;
+    const userId = AuthService.getUser()?.id;
+    if (!userId) return;
+    if (!updates.address) return; // nothing server-relevant
+
+    const supabase = AuthService.getSupabaseClient();
+    const parkedAtIso = new Date(item.timestamp).toISOString();
+
+    // Match by parked_at within a 10-minute window (in case of ms drift)
+    const rangeStart = new Date(item.timestamp - 10 * 60 * 1000).toISOString();
+    const rangeEnd = new Date(item.timestamp + 10 * 60 * 1000).toISOString();
+
+    const { error } = await supabase
+      .from('parking_location_history')
+      .update({ address: updates.address })
+      .eq('user_id', userId)
+      .gte('parked_at', rangeStart)
+      .lte('parked_at', rangeEnd);
+
+    if (error) {
+      log.warn('syncUpdateToServer: address update failed', error.message);
+    } else {
+      log.info(`syncUpdateToServer: address updated to "${updates.address}" on server`);
+    }
+  } catch (e) {
+    log.warn('syncUpdateToServer: exception', e);
+  }
+};
+
 /** Push departure data update to Supabase. Fails silently. */
 const syncDepartureToServer = async (item: ParkingHistoryItem): Promise<void> => {
   try {
@@ -268,37 +307,71 @@ const mergeHistories = (local: ParkingHistoryItem[], server: ParkingHistoryItem[
  * safe to call repeatedly. Runs on every app open to guarantee local
  * history always reaches the database.
  */
+const BULK_SYNC_BATCH_SIZE = 500; // items per request
+
 const bulkSyncToServer = async (items: ParkingHistoryItem[]): Promise<void> => {
   try {
     if (!AuthService.isAuthenticated() || items.length === 0) return;
 
-    const payload = items.map(item => ({
-      latitude: item.coords.latitude,
-      longitude: item.coords.longitude,
-      address: item.address || undefined,
-      timestamp: item.timestamp,
-      rules: item.rules.map(r => ({ type: r.type, message: r.message, severity: r.severity })),
-      departure: item.departure ? {
-        confirmedAt: item.departure.confirmedAt,
-        distanceMeters: item.departure.distanceMeters,
-        isConclusive: item.departure.isConclusive,
-        latitude: item.departure.latitude,
-        longitude: item.departure.longitude,
-      } : undefined,
-    }));
-
     const { default: ApiClient } = require('../utils/ApiClient');
-    const response = await ApiClient.authPost('/api/mobile/sync-parking-history', {
-      items: payload,
-    }, { retries: 2, timeout: 30000, showErrorAlert: false });
 
-    if (response.success && response.data) {
-      log.info(`Bulk sync complete: ${response.data.synced} synced, ${response.data.skipped} skipped (${items.length} local items)`);
-    } else {
-      log.warn('Bulk sync failed', response.error);
+    let totalSynced = 0;
+    let totalSkipped = 0;
+    let batchesFailed = 0;
+
+    // Chunk items to avoid hitting body size limits or timing out on large histories
+    for (let i = 0; i < items.length; i += BULK_SYNC_BATCH_SIZE) {
+      const batch = items.slice(i, i + BULK_SYNC_BATCH_SIZE);
+      const payload = batch.map(item => ({
+        latitude: item.coords.latitude,
+        longitude: item.coords.longitude,
+        address: item.address || undefined,
+        timestamp: item.timestamp,
+        rules: item.rules.map(r => ({ type: r.type, message: r.message, severity: r.severity })),
+        departure: item.departure ? {
+          confirmedAt: item.departure.confirmedAt,
+          distanceMeters: item.departure.distanceMeters,
+          isConclusive: item.departure.isConclusive,
+          latitude: item.departure.latitude,
+          longitude: item.departure.longitude,
+        } : undefined,
+      }));
+
+      try {
+        const response = await ApiClient.authPost('/api/mobile/sync-parking-history', {
+          items: payload,
+        }, { retries: 2, timeout: 30000, showErrorAlert: false });
+
+        if (response.success && response.data) {
+          totalSynced += response.data.synced || 0;
+          totalSkipped += response.data.skipped || 0;
+        } else {
+          batchesFailed++;
+          log.warn(`Bulk sync batch ${i / BULK_SYNC_BATCH_SIZE + 1} failed`, response.error);
+          // Don't bail out — try the next batch. Server dedupes so re-running is safe.
+        }
+      } catch (batchErr) {
+        batchesFailed++;
+        log.warn(`Bulk sync batch ${i / BULK_SYNC_BATCH_SIZE + 1} exception`, batchErr);
+      }
+    }
+
+    log.info(`Bulk sync complete: ${totalSynced} synced, ${totalSkipped} skipped, ${batchesFailed} batches failed (${items.length} local items)`);
+
+    // Record last successful sync for health monitoring
+    if (totalSynced > 0 || batchesFailed === 0) {
+      try {
+        await AsyncStorage.setItem('parking_history_last_bulk_sync', new Date().toISOString());
+      } catch { /* non-fatal */ }
+    }
+
+    // If any batch failed, reset the session flag so a retry happens next session
+    if (batchesFailed > 0) {
+      _bulkSyncCompleted = false;
     }
   } catch (e) {
     log.warn('Bulk sync exception (non-fatal)', e);
+    _bulkSyncCompleted = false;
   }
 };
 
@@ -418,6 +491,21 @@ export const ParkingHistoryService = {
 
   async clearHistory(): Promise<void> {
     try {
+      // Safety: push any unsynced local items to server BEFORE wiping.
+      // Server has dedup so this is safe. This prevents local-only data
+      // (e.g. something saved in the last minute) from being lost if the
+      // user clears before bulk sync runs.
+      try {
+        const stored = await AsyncStorage.getItem(HISTORY_KEY);
+        const local: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
+        if (local.length > 0 && AuthService.isAuthenticated()) {
+          log.info(`clearHistory: flushing ${local.length} items to server before wipe`);
+          await bulkSyncToServer(local);
+        }
+      } catch (flushErr) {
+        log.warn('clearHistory: flush-before-wipe failed, continuing anyway', flushErr);
+      }
+
       await AsyncStorage.removeItem(HISTORY_KEY);
       AppEvents.emit('parking-history-updated');
     } catch (error) {
@@ -447,10 +535,16 @@ export const ParkingHistoryService = {
       await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
       AppEvents.emit('parking-history-updated');
 
-      // If departure data was added, sync it to server
+      const updatedItem = updated.find(item => item.id === id);
+      if (!updatedItem) return;
+
+      // Sync ALL server-relevant updates so server doesn't fall behind local.
+      // Data protection: every local improvement must reach the DB.
+      if (updates.address) {
+        void syncUpdateToServer(updatedItem, { address: updates.address });
+      }
       if (updates.departure) {
-        const updatedItem = updated.find(item => item.id === id);
-        if (updatedItem) syncDepartureToServer(updatedItem);
+        void syncDepartureToServer(updatedItem);
       }
     } catch (error) {
       log.error('Error updating history item', error);
