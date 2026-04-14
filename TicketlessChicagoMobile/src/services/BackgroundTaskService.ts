@@ -749,7 +749,13 @@ class BackgroundTaskServiceClass {
               log.info('DRIVING STARTED - user departing', {
                 nativeTimestamp: drivingTimestamp ? new Date(drivingTimestamp).toISOString() : 'none',
               });
-              // Camera alerts disabled on iOS for App Store compliance (2.5.4)
+              // iOS: native BackgroundLocationModule.swift fires camera alerts
+              // directly via its own proximity detection + AVSpeechSynthesizer
+              // (see docs/IOS_CAMERA_ALERTS.md). JS-side CameraAlertService is
+              // a secondary/diagnostic layer; we skip its audio prewarm on iOS
+              // because the native TTS pipeline handles audio session setup.
+              // DO NOT add a platform gate around startCameraAlerts() — the JS
+              // layer still records decisions and updates state on both OSes.
               if (Platform.OS !== 'ios') {
                 void CameraAlertService.prewarmAudio('onDrivingStarted');
               }
@@ -763,7 +769,9 @@ class BackgroundTaskServiceClass {
             () => {
               void this.captureIosHealthSnapshot('onPossibleDriving');
               log.info('POSSIBLE DRIVING - CoreMotion automotive detected, starting camera alerts early');
-              // Camera alerts disabled on iOS for App Store compliance (2.5.4)
+              // iOS: native layer fires alerts (see comment in onDrivingStarted
+              // above). Skip JS audio prewarm only; always start the JS alert
+              // service so decisions are logged on both platforms.
               if (Platform.OS !== 'ios') {
                 void CameraAlertService.prewarmAudio('onPossibleDriving');
               }
