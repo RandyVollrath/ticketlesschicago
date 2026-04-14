@@ -19,8 +19,8 @@ import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('ParkingSaveQueue');
 
-const MAX_RETRIES = 10;
-const MAX_QUEUE_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — don't retry ancient items
+const MAX_RETRIES = 50; // Way more retries — history is gold, keep trying
+const MAX_QUEUE_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 1 year — don't lose history data even if user has extended connectivity issues
 
 export interface QueuedParkingSave {
   id: string;
