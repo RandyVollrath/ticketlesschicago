@@ -1,7 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { Resend } from 'resend';
 import { supabaseAdmin } from '../../lib/supabase';
 import { getUsersOnSnowRoutes } from '../../lib/snow-route-matcher';
 import { sendClickSendSMS } from '../../lib/sms-service';
+import { sendEmailWithRetry } from '../../lib/resend-with-retry';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, steps, esc } from '../../lib/email-template';
 import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
@@ -12,26 +14,28 @@ const BRAND = {
   emailFrom: process.env.RESEND_FROM || 'Autopilot America <noreply@autopilotamerica.com>',
 };
 
-async function sendEmail(to: string, subject: string, html: string) {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      from: BRAND.emailFrom,
-      to: [to],
-      subject,
-      html
-    })
-  });
+const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(`Resend ${response.status}: ${JSON.stringify(data)}`);
+// Snow-ban alerts are time-sensitive — a single Resend 429 during a
+// snowstorm used to mean a silently missed notification. Route through
+// sendEmailWithRetry (exponential backoff on 429s) for resilience.
+async function sendEmail(to: string, subject: string, html: string) {
+  if (!resendClient) {
+    throw new Error('RESEND_API_KEY not configured');
   }
-  return data;
+  const result = await sendEmailWithRetry(resendClient, {
+    from: BRAND.emailFrom,
+    to: [to],
+    subject,
+    html,
+  });
+  if (!result.success) {
+    throw new Error(`Resend send failed after ${result.retries ?? 0} retries: ${result.error ?? 'unknown error'}`);
+  }
+  if (result.retries && result.retries > 0) {
+    console.log(`  Snow-ban email to ${to} recovered after ${result.retries} retries`);
+  }
+  return result.data;
 }
 
 // SMS via centralized service with retry (lib/sms-service.ts)
