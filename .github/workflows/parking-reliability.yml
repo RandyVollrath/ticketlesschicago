@@ -1,0 +1,56 @@
+name: Parking & Camera Reliability
+
+# Runs the reliability release gate (camera-drive-harness + log-replay
+# assertions) on every push touching parking/camera code. Fails the
+# build if parking miss-rate, unwind rate, or camera fallback-per-alert
+# exceed thresholds. This is the closest thing we have to an E2E test
+# for the mobile detection pipeline — replays a known-good parking
+# log and asserts the expected shape of detection events.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'TicketlessChicagoMobile/src/services/BackgroundTaskService.ts'
+      - 'TicketlessChicagoMobile/src/services/BackgroundLocationService.ts'
+      - 'TicketlessChicagoMobile/src/services/CameraAlertService.ts'
+      - 'TicketlessChicagoMobile/src/services/ParkingDetectionStateMachine.ts'
+      - 'TicketlessChicagoMobile/ios/TicketlessChicagoMobile/BackgroundLocationModule.swift'
+      - 'TicketlessChicagoMobile/ios/TicketlessChicagoMobile/BackgroundLocationModule.m'
+      - 'TicketlessChicagoMobile/android/**/BackgroundLocation*.kt'
+      - 'TicketlessChicagoMobile/android/**/CameraAlert*.kt'
+      - 'TicketlessChicagoMobile/logs/parking_detection.log'
+      - 'scripts/reliability-release-gate.js'
+      - 'scripts/replay-parking-camera-log.js'
+      - 'scripts/camera-drive-harness.js'
+      - '.github/workflows/parking-reliability.yml'
+  pull_request:
+    paths:
+      - 'TicketlessChicagoMobile/src/services/BackgroundTaskService.ts'
+      - 'TicketlessChicagoMobile/src/services/BackgroundLocationService.ts'
+      - 'TicketlessChicagoMobile/src/services/CameraAlertService.ts'
+      - 'TicketlessChicagoMobile/src/services/ParkingDetectionStateMachine.ts'
+      - 'TicketlessChicagoMobile/ios/TicketlessChicagoMobile/BackgroundLocationModule.swift'
+      - 'TicketlessChicagoMobile/ios/TicketlessChicagoMobile/BackgroundLocationModule.m'
+      - 'TicketlessChicagoMobile/android/**/BackgroundLocation*.kt'
+      - 'TicketlessChicagoMobile/android/**/CameraAlert*.kt'
+      - 'TicketlessChicagoMobile/logs/parking_detection.log'
+      - 'scripts/reliability-release-gate.js'
+      - 'scripts/replay-parking-camera-log.js'
+      - 'scripts/camera-drive-harness.js'
+  workflow_dispatch: {}
+
+jobs:
+  reliability-gate:
+    name: Reliability Release Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run reliability release gate
+        run: npm run gate:reliability
+      - name: Run strict replay against committed baseline
+        run: node scripts/replay-parking-camera-log.js TicketlessChicagoMobile/logs/parking_detection.log --strict
