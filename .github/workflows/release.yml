@@ -1,4 +1,4 @@
-name: Build & Submit to App Stores
+name: Build & Submit Android
 
 on:
   push:
@@ -6,25 +6,8 @@ on:
       - 'v*'
 
 jobs:
-  setup:
-    name: Setup
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: TicketlessChicagoMobile
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: TicketlessChicagoMobile/package-lock.json
-      - run: npm ci
-      - run: mkdir -p credentials && echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY_BASE64 }}' | base64 -d > credentials/play-store-key.json
-
   android:
     name: Android Build & Submit
-    needs: setup
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -45,31 +28,3 @@ jobs:
         run: mkdir -p credentials && echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY_BASE64 }}' | base64 -d > credentials/play-store-key.json
       - name: Build and submit
         run: eas build --platform android --profile production --auto-submit --non-interactive
-
-  ios:
-    name: iOS Build & Submit
-    needs: setup
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: TicketlessChicagoMobile
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: TicketlessChicagoMobile/package-lock.json
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      - run: npm ci
-      - name: Build
-        id: build
-        run: |
-          OUTPUT=$(eas build --platform ios --profile production --non-interactive --json 2>&1 | tail -1)
-          BUILD_ID=$(echo "$OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['id'])")
-          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
-      - name: Submit to App Store
-        run: eas submit --platform ios --id ${{ steps.build.outputs.build_id }} --non-interactive
