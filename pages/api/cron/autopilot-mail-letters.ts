@@ -687,33 +687,92 @@ async function mailLetter(
 
     console.log(`    Mailed! Lob ID: ${result.id}`);
 
-    // Update letter record
-    const { error: letterUpdateErr } = await supabaseAdmin
-      .from('contest_letters')
-      .update({
-        status: 'sent',
-        lob_letter_id: result.id,
-        letter_pdf_url: result.url,
-        tracking_number: result.tracking_number || null,
-        mailed_at: new Date().toISOString(),
-        sent_at: new Date().toISOString(),
-      })
-      .eq('id', letter.id);
-
+    // ─── Post-Lob DB consistency: the letter has physically mailed.
+    // If these DB updates fail we risk:
+    //   a) Re-mailing (next cron sees draft status) — mitigated by Lob's
+    //      24h idempotency key on `letter_${letter.id}`, but only 24h.
+    //   b) Permanent drift — letter mailed but UI shows draft forever.
+    // So retry up to 3x with backoff. If that still fails, file a
+    // reconciliation record in ticket_audit_log with enough data to
+    // repair by hand, and alert admin loudly.
+    const letterUpdatePayload = {
+      status: 'sent',
+      lob_letter_id: result.id,
+      letter_pdf_url: result.url,
+      tracking_number: result.tracking_number || null,
+      mailed_at: new Date().toISOString(),
+      sent_at: new Date().toISOString(),
+    };
+    let letterUpdateErr: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const { error } = await supabaseAdmin
+        .from('contest_letters')
+        .update(letterUpdatePayload)
+        .eq('id', letter.id);
+      if (!error) { letterUpdateErr = null; break; }
+      letterUpdateErr = error;
+      console.error(`    ⚠️ contest_letters update attempt ${attempt}/3 failed: ${error.message}`);
+      if (attempt < 3) await new Promise(r => setTimeout(r, 500 * attempt));
+    }
     if (letterUpdateErr) {
-      console.error(`    ❌ Failed to update contest_letters after mailing:`, letterUpdateErr.message);
+      console.error(`    🚨 contest_letters update PERMANENTLY FAILED after 3 attempts. Letter physically mailed but DB state is draft. Filing reconciliation.`);
+      // Reconciliation record — admin can replay this to fix the DB.
+      await supabaseAdmin
+        .from('ticket_audit_log')
+        .insert({
+          ticket_id: letter.ticket_id,
+          user_id: letter.user_id,
+          action: 'letter_mail_reconciliation_needed',
+          details: {
+            letter_id: letter.id,
+            lob_letter_id: result.id,
+            letter_pdf_url: result.url,
+            tracking_number: result.tracking_number || null,
+            expected_delivery: result.expected_delivery_date,
+            error: letterUpdateErr.message,
+            performed_by_system: 'autopilot_cron',
+          },
+          performed_by: null,
+        });
+      // Admin alert
+      if (process.env.RESEND_API_KEY) {
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              from: 'Autopilot America <alerts@autopilotamerica.com>',
+              to: getAdminAlertEmails(),
+              subject: `🚨 Contest letter DB reconciliation needed — letter ${letter.id}`,
+              html: `
+                <p>Letter <code>${letter.id}</code> was physically mailed via Lob (<code>${result.id}</code>) but the contest_letters UPDATE failed 3 times.</p>
+                <p>The letter exists in the real world but the DB still shows it as draft. Next cron could attempt to re-mail (protected by Lob's 24h idempotency window, which will lapse).</p>
+                <p><strong>Manual fix:</strong> run <code>UPDATE contest_letters SET status='sent', lob_letter_id='${result.id}', letter_pdf_url='${result.url ?? ''}', mailed_at=now(), sent_at=now() WHERE id='${letter.id}';</code></p>
+                <p>Reconciliation row filed in ticket_audit_log with action=letter_mail_reconciliation_needed.</p>
+                <p>DB error: <code>${letterUpdateErr.message}</code></p>
+              `,
+            }),
+          });
+        } catch {}
+      }
     } else {
       console.log(`    ✅ Updated contest_letters ${letter.id} to 'sent'`);
     }
 
-    // Update ticket status
-    const { error: ticketUpdateErr } = await supabaseAdmin
-      .from('detected_tickets')
-      .update({ status: 'mailed' })
-      .eq('id', letter.ticket_id);
-
+    // Update ticket status (same retry pattern — less critical but still
+    // important for user-facing status)
+    let ticketUpdateErr: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const { error } = await supabaseAdmin
+        .from('detected_tickets')
+        .update({ status: 'mailed' })
+        .eq('id', letter.ticket_id);
+      if (!error) { ticketUpdateErr = null; break; }
+      ticketUpdateErr = error;
+      if (attempt < 3) await new Promise(r => setTimeout(r, 500 * attempt));
+    }
     if (ticketUpdateErr) {
-      console.error(`    ❌ Failed to update detected_tickets status:`, ticketUpdateErr.message);
+      console.error(`    ❌ Failed to update detected_tickets status after 3 attempts: ${ticketUpdateErr.message}`);
     }
 
     // Log to audit (performed_by is null for system actions)
@@ -1261,15 +1320,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let lettersMailed = 0;
     let errors = 0;
+    let timedOutBeforeCompletion = false;
+    let lettersSkippedDueToTimeout = 0;
     const cronStartTime = Date.now();
     const CRON_TIMEOUT_BUFFER_MS = 15_000; // Stop 15s before maxDuration to avoid mid-operation timeout
     const CRON_MAX_MS = 120_000; // maxDuration from config
 
-    for (const letter of readyLetters) {
+    for (let i = 0; i < readyLetters.length; i++) {
+      const letter = readyLetters[i];
       // Elapsed time guard: stop processing before cron timeout kills us mid-operation
       const elapsedMs = Date.now() - cronStartTime;
       if (elapsedMs > CRON_MAX_MS - CRON_TIMEOUT_BUFFER_MS) {
-        console.warn(`  ⏱️ Approaching cron timeout (${Math.round(elapsedMs / 1000)}s elapsed), stopping with ${readyLetters.length - lettersMailed - errors} letters remaining`);
+        lettersSkippedDueToTimeout = readyLetters.length - i;
+        timedOutBeforeCompletion = true;
+        console.warn(`  ⏱️ Approaching cron timeout (${Math.round(elapsedMs / 1000)}s elapsed / ${CRON_MAX_MS / 1000}s budget), stopping with ${lettersSkippedDueToTimeout} letters remaining`);
         break;
       }
 
@@ -2022,12 +2086,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    console.log(`✅ Complete: ${lettersMailed} mailed, ${errors} errors`);
+    const totalElapsedMs = Date.now() - cronStartTime;
+    const budgetUsedPct = Math.round((totalElapsedMs / CRON_MAX_MS) * 100);
+    console.log(
+      `✅ Complete: ${lettersMailed} mailed, ${errors} errors, ${lettersSkippedDueToTimeout} skipped-timeout. ` +
+      `Budget: ${Math.round(totalElapsedMs / 1000)}s / ${CRON_MAX_MS / 1000}s (${budgetUsedPct}%).` +
+      (timedOutBeforeCompletion ? ' ⚠️ TIMEOUT PRESSURE' : '')
+    );
+
+    // Alert admin if we're consistently saturating the budget — otherwise
+    // letters stay in the queue longer each day and eventually users see
+    // weeks-old unmailed letters.
+    if (timedOutBeforeCompletion && lettersSkippedDueToTimeout >= 3 && process.env.RESEND_API_KEY) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: 'Autopilot America <alerts@autopilotamerica.com>',
+            to: getAdminAlertEmails(),
+            subject: `⚠️ Contest mail cron budget saturated — ${lettersSkippedDueToTimeout} letters skipped`,
+            html: `
+              <p>The contest mail cron hit its ${CRON_MAX_MS / 1000}s timeout with <strong>${lettersSkippedDueToTimeout} letters still in queue</strong>.</p>
+              <p>Stats: ${lettersMailed} mailed, ${errors} errors, ${budgetUsedPct}% of budget used before cutoff.</p>
+              <p>If this persists, queue depth will grow. Options:</p>
+              <ul>
+                <li>Increase <code>maxDuration</code> in the cron config (currently 120s)</li>
+                <li>Reduce the per-letter Lob rate-limit sleep (currently 1s between calls)</li>
+                <li>Run the cron more frequently (currently daily)</li>
+                <li>Batch-ify letter generation further upstream</li>
+              </ul>
+            `,
+          }),
+        });
+      } catch {}
+    }
 
     return res.status(200).json({
       success: true,
       lettersMailed,
       errors,
+      lettersSkippedDueToTimeout,
+      timedOutBeforeCompletion,
+      budgetUsedMs: totalElapsedMs,
+      budgetMaxMs: CRON_MAX_MS,
+      budgetUsedPct,
       timestamp: new Date().toISOString(),
     });
 
