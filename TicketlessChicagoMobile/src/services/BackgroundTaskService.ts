@@ -4567,9 +4567,15 @@ class BackgroundTaskServiceClass {
 
   /**
    * Save the parked coordinates so periodic rescan can re-check later.
+   *
+   * IMPORTANT: We persist heading + accuracy from the original parking
+   * confirmation. Rescans re-use these so the server can disambiguate
+   * intersections the same way it did at park time. Without them, the
+   * server falls back to Nominatim which picks the wrong cross street
+   * (e.g. Wolcott/Lawrence → snapped to Lawrence → false metered alert).
    */
   private async saveParkedCoords(
-    coords: { latitude: number; longitude: number },
+    coords: { latitude: number; longitude: number; heading?: number | null; accuracy?: number },
     address: string,
     rawApiData?: any
   ): Promise<void> {
@@ -4577,6 +4583,8 @@ class BackgroundTaskServiceClass {
       await AsyncStorage.setItem(StorageKeys.LAST_PARKED_COORDS, JSON.stringify({
         lat: coords.latitude,
         lng: coords.longitude,
+        heading: coords.heading ?? null,
+        accuracy: coords.accuracy ?? null,
         address,
         parkedAt: new Date().toISOString(),
         onSnowRoute: !!(rawApiData?.twoInchSnowBan || rawApiData?.snowRoute),
@@ -4634,13 +4642,20 @@ class BackgroundTaskServiceClass {
       log.info('Performing periodic rescan at last parked location', {
         lat: parked.lat.toFixed(4),
         lng: parked.lng.toFixed(4),
+        heading: parked.heading,
+        accuracy: parked.accuracy,
         parkedAt: parked.parkedAt,
       });
 
-      // Re-call the parking API with the saved coordinates
+      // Re-call the parking API with the saved coordinates PLUS the original
+      // heading and accuracy from park time. Without these, the server can't
+      // disambiguate intersections and Nominatim override picks the wrong
+      // cross street (see Wolcott/Lawrence false metered alert bug).
       const result = await LocationService.checkParkingLocation({
         latitude: parked.lat,
         longitude: parked.lng,
+        heading: parked.heading ?? undefined,
+        accuracy: parked.accuracy ?? undefined,
       });
 
       // Save updated result
