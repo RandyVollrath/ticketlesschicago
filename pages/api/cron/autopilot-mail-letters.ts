@@ -7,6 +7,8 @@ import OpenAI from 'openai';
 import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS, RedLightEvidenceExhibit } from '../../../lib/lob-service';
 import { computeEvidenceHash } from '../../../lib/red-light-evidence-report';
 import { analyzeRedLightDefense, type AnalysisInput } from '../../../lib/red-light-defense-analysis';
+import { getAdminAlertEmails } from '../../../lib/admin-alert-emails';
+import * as Sentry from '@sentry/nextjs';
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 }) : null;
 const gemini = (process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY)
@@ -20,18 +22,6 @@ const supabaseAdmin = createClient(
 );
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-
-/**
- * Admin alert recipients. Configure via ADMIN_ALERT_EMAILS env var
- * (comma-separated). Defaults to the historical single recipient so
- * behavior is unchanged when the env var is unset.
- */
-function getAdminAlertEmails(): string[] {
-  const raw = process.env.ADMIN_ALERT_EMAILS;
-  if (!raw) return ['randyvollrath@gmail.com'];
-  const list = raw.split(',').map(e => e.trim()).filter(Boolean);
-  return list.length > 0 ? list : ['randyvollrath@gmail.com'];
-}
 
 interface LetterToMail {
   id: string;
@@ -2136,6 +2126,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('❌ Letter mailing error:', error);
+    // Forward to Sentry — otherwise top-level cron failures are only
+    // visible in Vercel logs, which nobody reads reactively.
+    Sentry.captureException(error, { tags: { cron: 'autopilot-mail-letters' } });
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

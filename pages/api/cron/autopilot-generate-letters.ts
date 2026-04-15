@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
+import { Resend } from 'resend';
 import jwt from 'jsonwebtoken';
+import { sendEmailWithRetry } from '../../../lib/resend-with-retry';
+import { getAdminAlertEmails } from '../../../lib/admin-alert-emails';
+import * as Sentry from '@sentry/nextjs';
 import { getHistoricalWeather, HistoricalWeatherData } from '../../../lib/weather-service';
 import { getOrdinanceByCode } from '../../../lib/chicago-ordinances';
 import { verifySweeperVisit, type SweeperVerification } from '../../../lib/sweeper-tracker';
@@ -46,6 +50,8 @@ const supabaseAdmin = createClient(
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 })
   : null;
+
+const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // SECURITY: Never fall back to SUPABASE_SERVICE_ROLE_KEY — it would expose the
 // service role key in JWTs sent via email links. Fail hard if not configured.
@@ -363,28 +369,30 @@ async function sendApprovalEmail(
     </div>
   `;
 
+  if (!resendClient) {
+    console.error('    Failed to send approval email: Resend not configured');
+    return false;
+  }
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Autopilot America <alerts@autopilotamerica.com>',
-        to: [userEmail],
-        subject: `Action Required: Approve contest letter for ticket #${ticket.ticket_number}`,
-        html,
-      }),
+    // Route through sendEmailWithRetry so a single 429 doesn't silently
+    // strand the user's letter in needs_approval with no approval email.
+    const result = await sendEmailWithRetry(resendClient, {
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
+      to: [userEmail],
+      subject: `Action Required: Approve contest letter for ticket #${ticket.ticket_number}`,
+      html,
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('    Failed to send approval email:', error);
+    if (!result.success) {
+      console.error(`    Failed to send approval email after ${result.retries ?? 0} retries:`, result.error);
       return false;
     }
 
-    console.log(`    Sent approval email to ${userEmail}`);
+    if (result.retries && result.retries > 0) {
+      console.log(`    Sent approval email to ${userEmail} (recovered after ${result.retries} retries)`);
+    } else {
+      console.log(`    Sent approval email to ${userEmail}`);
+    }
     return true;
   } catch (error) {
     console.error('    Error sending approval email:', error);
@@ -2666,14 +2674,65 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
         throw new Error('Unexpected response type from Claude');
       }
     } catch (error) {
-      console.error('    Claude AI failed, using fallback:', error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error('    🚨 Claude AI failed, using template fallback:', errMsg);
       letterContent = generateFallbackLetter(ticket, profile as UserProfile, evidence, violationCode);
       defenseType = 'ai_fallback';
+
+      // Audit row — queryable by the daily QA report via
+      // checkAiCascadeExhaustion-style check (different action tag).
+      await supabaseAdmin
+        .from('ticket_audit_log')
+        .insert({
+          ticket_id: ticket.id,
+          user_id: ticket.user_id,
+          action: 'letter_generation_ai_fallback',
+          details: {
+            error: errMsg,
+            defense_type: 'ai_fallback',
+            performed_by_system: 'autopilot_cron',
+          },
+          performed_by: null,
+        });
+
+      // Immediate admin alert so Anthropic outages surface in real time
+      // instead of waiting for mail cron to pile up needs_admin_review.
+      // The letter WILL proceed (template fallback is intentional) but
+      // admin should know quality is degraded.
+      if (resendClient) {
+        try {
+          await sendEmailWithRetry(resendClient, {
+            from: 'Autopilot America <alerts@autopilotamerica.com>',
+            to: getAdminAlertEmails(),
+            subject: `⚠️ Claude AI failed during letter generation — ticket ${ticket.ticket_number || ticket.id}`,
+            html: `
+              <p>Letter generation for ticket <code>${ticket.ticket_number || ticket.id}</code> (user <code>${ticket.user_id}</code>) fell back to the deterministic template because Anthropic threw:</p>
+              <pre style="background:#f3f4f6;padding:12px;border-radius:6px;font-size:12px;overflow:auto;">${errMsg}</pre>
+              <p>The letter is proceeding with <code>defense_type='ai_fallback'</code>. The mail cron's AI review (Anthropic → Gemini → OpenAI cascade) will still gate final quality; this alert is so you know the primary AI path is degraded NOW, not later when letters pile up in needs_admin_review.</p>
+              <p>Action: check Anthropic status, API key, and rate limits. If persistent, consider pausing the generation cron via autopilot_admin_settings.</p>
+            `,
+          });
+        } catch {}
+      }
     }
   } else {
-    console.log('    ANTHROPIC_API_KEY not configured, using fallback letter');
+    console.log('    ⚠️ ANTHROPIC_API_KEY not configured, using template fallback');
     letterContent = generateFallbackLetter(ticket, profile as UserProfile, evidence, violationCode);
     defenseType = 'template_fallback';
+
+    await supabaseAdmin
+      .from('ticket_audit_log')
+      .insert({
+        ticket_id: ticket.id,
+        user_id: ticket.user_id,
+        action: 'letter_generation_ai_fallback',
+        details: {
+          error: 'ANTHROPIC_API_KEY not configured',
+          defense_type: 'template_fallback',
+          performed_by_system: 'autopilot_cron',
+        },
+        performed_by: null,
+      });
   }
 
   // ── Validate letter content before saving ──
@@ -2898,8 +2957,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let needsApproval = 0;
     let waitingForFoia = 0;
     let errors = 0;
+    let ticketsSkippedDueToTimeout = 0;
+    let timedOutBeforeCompletion = false;
+    const cronStartTime = Date.now();
+    // Generation cron has maxDuration: 300s. Each ticket does 10+ evidence
+    // lookups + Claude + possible Street View + photo vision passes, so a
+    // single ticket can take 15-30s. Stop 30s before budget to leave room
+    // for the final Supabase writes.
+    const CRON_TIMEOUT_BUFFER_MS = 30_000;
+    const CRON_MAX_MS = 300_000;
 
-    for (const ticket of tickets) {
+    for (let i = 0; i < tickets.length; i++) {
+      const elapsedMs = Date.now() - cronStartTime;
+      if (elapsedMs > CRON_MAX_MS - CRON_TIMEOUT_BUFFER_MS) {
+        ticketsSkippedDueToTimeout = tickets.length - i;
+        timedOutBeforeCompletion = true;
+        console.warn(`⏱️ Approaching cron timeout (${Math.round(elapsedMs / 1000)}s / ${CRON_MAX_MS / 1000}s budget), stopping with ${ticketsSkippedDueToTimeout} tickets remaining`);
+        break;
+      }
+
+      const ticket = tickets[i];
       const result = await processTicket(ticket as DetectedTicket);
       if (result.success) {
         if (result.status === 'waiting_for_foia') {
@@ -2918,7 +2995,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    console.log(`Complete: ${lettersGenerated} AI letters, ${needsApproval} need approval, ${waitingForFoia} waiting for FOIA, ${errors} errors`);
+    const totalElapsedMs = Date.now() - cronStartTime;
+    const budgetUsedPct = Math.round((totalElapsedMs / CRON_MAX_MS) * 100);
+    console.log(
+      `Complete: ${lettersGenerated} AI letters, ${needsApproval} need approval, ${waitingForFoia} waiting for FOIA, ${errors} errors, ${ticketsSkippedDueToTimeout} skipped-timeout. ` +
+      `Budget: ${Math.round(totalElapsedMs / 1000)}s / ${CRON_MAX_MS / 1000}s (${budgetUsedPct}%).` +
+      (timedOutBeforeCompletion ? ' ⚠️ TIMEOUT PRESSURE' : '')
+    );
+
+    if (timedOutBeforeCompletion && ticketsSkippedDueToTimeout >= 3 && resendClient) {
+      try {
+        await sendEmailWithRetry(resendClient, {
+          from: 'Autopilot America <alerts@autopilotamerica.com>',
+          to: getAdminAlertEmails(),
+          subject: `⚠️ Letter generation cron budget saturated — ${ticketsSkippedDueToTimeout} tickets skipped`,
+          html: `
+            <p>The letter-generation cron hit its ${CRON_MAX_MS / 1000}s timeout with <strong>${ticketsSkippedDueToTimeout} tickets still in 'found' status</strong>.</p>
+            <p>Stats: ${lettersGenerated} generated, ${needsApproval} need user approval, ${waitingForFoia} waiting for FOIA, ${errors} errors, ${budgetUsedPct}% of budget used.</p>
+            <p>If this persists, queue depth will grow. Options: lower per-ticket Claude timeout, drop optional evidence lookups, or split the cron into faster shards.</p>
+          `,
+        });
+      } catch {}
+    }
 
     return res.status(200).json({
       success: true,
@@ -2926,11 +3024,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       needsApproval,
       waitingForFoia,
       errors,
+      ticketsSkippedDueToTimeout,
+      timedOutBeforeCompletion,
+      budgetUsedMs: totalElapsedMs,
+      budgetMaxMs: CRON_MAX_MS,
+      budgetUsedPct,
       timestamp: new Date().toISOString(),
     });
 
   } catch (error) {
     console.error('Letter generation error:', error);
+    Sentry.captureException(error, { tags: { cron: 'autopilot-generate-letters' } });
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
