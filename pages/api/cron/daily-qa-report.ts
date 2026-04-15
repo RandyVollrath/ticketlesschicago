@@ -542,6 +542,29 @@ async function checkSilentUsers(): Promise<CheckResult> {
   }
 }
 
+async function checkGenerationAiFallback(): Promise<CheckResult> {
+  // Letter generation falls back to a deterministic template when
+  // Anthropic fails. The letter still mails (mail cron's AI review
+  // gates final quality) but we want to see degradation.
+  const name = 'User Outcomes — Letter Generation AI Fallback (24h)';
+  try {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count, error } = await supabaseAdmin!
+      .from('ticket_audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('action', 'letter_generation_ai_fallback')
+      .gte('created_at', oneDayAgo);
+
+    if (error) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${error.message}`, severity: 'medium' };
+    const n = count ?? 0;
+    if (n === 0) return { name, category: 'User Outcomes', status: 'pass', detail: 'No AI generation fallbacks in 24h', severity: 'medium' };
+    if (n >= 5) return { name, category: 'User Outcomes', status: 'fail', detail: `${n} letters used template fallback in 24h — Anthropic may be down or misconfigured`, severity: 'medium' };
+    return { name, category: 'User Outcomes', status: 'warn', detail: `${n} letters used template fallback in 24h`, severity: 'medium' };
+  } catch (e: any) {
+    return { name, category: 'User Outcomes', status: 'fail', detail: e.message, severity: 'medium' };
+  }
+}
+
 async function checkAiCascadeExhaustion(): Promise<CheckResult> {
   // Query ticket_audit_log for letter_ai_cascade_exhausted events in
   // last 24h. Any is bad — means letters piled up in admin review
@@ -828,6 +851,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // surface silent-failure modes.
       checkLettersStuckInAdminReview(),
       checkSilentUsers(),
+      checkGenerationAiFallback(),
       checkAiCascadeExhaustion(),
       checkLobReconciliationNeeded(),
       checkTicketsStuckInDraft(),
