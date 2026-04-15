@@ -52,6 +52,19 @@ TicketlessChicagoMobile/android/app/ticketless-release.keystore
 TicketlessChicagoMobile/credentials/
 TicketlessChicagoMobile/logs/
 TicketlessChicagoMobile/release-artifacts/
+
+# Signing keystores — NEVER commit. These unlock Play Store uploads.
+# Covers forgotten backups like @org__name.bak.jks sitting in working tree.
+*.jks
+*.bak.jks
+*.keystore
+
+# Build artifacts that churn with every tsc run
+tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
+
+# Supabase CLI scratch state
+supabase/.temp/
 debug-screenshots/
 trigger-tow-cron.sh
 
