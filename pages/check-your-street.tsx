@@ -861,8 +861,8 @@ export default function CheckYourStreet() {
               const yearsLabel = blockStats.by_year?.length > 0
                 ? `${Math.min(...blockStats.by_year.map((y: any) => y.year))}-${Math.max(...blockStats.by_year.map((y: any) => y.year))}`
                 : '2019-2024';
-              const avgFines = blockStats.avg_fines_per_year ? Math.round(blockStats.avg_fines_per_year) : 0;
-              const potentialSavings = Math.round(avgFines * 0.66);
+              const avgTicketsPerYear = blockStats.avg_tickets_per_year || 0;
+              const isActiveBlock = avgTicketsPerYear >= 5; // 5+ tickets/yr on the block = active enforcement
 
               return (
                 <>
@@ -904,36 +904,28 @@ export default function CheckYourStreet() {
                         </div>
                       </div>
 
-                      {/* Three stat boxes */}
-                      <div className="stat-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                        <div style={{
-                          backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center',
-                        }}>
-                          <div style={{ fontSize: '24px', fontWeight: '700', color: '#FCA5A5', fontFamily: '"Space Grotesk", sans-serif' }}>
-                            ~${avgFines > 0 ? avgFines.toLocaleString() : '0'}
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>fines per year</div>
-                        </div>
+                      {/* Two stat boxes — total block facts only, no per-driver claims */}
+                      <div className="stat-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
                         <div style={{
                           backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center',
                         }}>
                           <div style={{ fontSize: '24px', fontWeight: '700', color: 'white', fontFamily: '"Space Grotesk", sans-serif' }}>
-                            ~{blockStats.avg_tickets_per_year?.toLocaleString() || '0'}
+                            ~{Math.round(avgTicketsPerYear).toLocaleString()}
                           </div>
-                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>tickets per year</div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>tickets/yr on this block</div>
                         </div>
                         <div style={{
                           backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center',
                         }}>
                           <div style={{ fontSize: '24px', fontWeight: '700', color: '#6EE7B7', fontFamily: '"Space Grotesk", sans-serif' }}>
-                            {potentialSavings > 0 ? `$${potentialSavings.toLocaleString()}` : '--'}
+                            68.5%
                           </div>
-                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>potential savings</div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>dismissed when contested</div>
                         </div>
                       </div>
 
-                      {/* Savings CTA — only if meaningful fines */}
-                      {avgFines >= 50 && (
+                      {/* CTA — show on active blocks */}
+                      {isActiveBlock && (
                         <div className="savings-cta-row" style={{
                           backgroundColor: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',
                           borderRadius: '10px', padding: '14px 18px', marginBottom: '16px',
@@ -942,13 +934,10 @@ export default function CheckYourStreet() {
                         }}>
                           <div>
                             <div style={{ fontSize: '15px', color: 'white', fontWeight: '600', lineHeight: '1.4' }}>
-                              {avgFines >= 200
-                                ? <>This block averages <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines. We could save you up to <span style={{ color: '#6EE7B7' }}>${potentialSavings.toLocaleString()}/yr</span>.</>
-                                : <>66% of contested tickets get dismissed. At <span style={{ color: '#FCA5A5' }}>${avgFines.toLocaleString()}/yr</span> in fines, one win pays for itself.</>
-                              }
+                              This block is actively ticketed. One <span style={{ color: '#FCA5A5' }}>$65-$200 ticket</span> costs more than a full year of Autopilot.
                             </div>
                             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
-                              We automatically contest every ticket on your plate. $99/yr.
+                              We contest every ticket on your plate automatically. 68.5% get dismissed. $99/yr.
                             </div>
                           </div>
                           <a href="/get-started" style={{
@@ -1094,7 +1083,7 @@ export default function CheckYourStreet() {
           <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', margin: '0 0 8px', fontFamily: '"Space Grotesk", sans-serif' }}>
             Never worry about parking tickets again
           </h3>
-          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 66% get dismissed. $99/yr.</p>
+          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 68.5% get dismissed. $99/yr.</p>
           <a href="/get-started" style={{
             display: 'inline-block', backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '10px',
             padding: '12px 24px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none',
