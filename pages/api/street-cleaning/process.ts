@@ -477,6 +477,18 @@ async function sendNotification(
   // 2-day cycle. The only source of truth is the posted sign on the block.
   const splitDisclaimer = 'Check your posted sign for your block\'s exact day.';
 
+  // Locate today within the cycle (for split-cycle same-day messaging).
+  const todayISO = (() => {
+    const n = new Date();
+    const y = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric' }).format(n);
+    const mo = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: '2-digit' }).format(n);
+    const d = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', day: '2-digit' }).format(n);
+    return `${y}-${mo}-${d}`;
+  })();
+  const todayIdxInCycle = cycleDates.indexOf(todayISO);
+  const isFirstCycleDay = todayIdxInCycle === 0;
+  const isFinalCycleDay = todayIdxInCycle === cycleDates.length - 1 && todayIdxInCycle >= 0;
+
   let message = '';
   let subject = '';
 
@@ -486,11 +498,16 @@ async function sendNotification(
   switch (type) {
     case 'morning_reminder':
       if (isSplitCycle) {
-        if (daysUntil === 0) {
-          message = `Street cleaning in your zone is TODAY or TOMORROW (${cycleListText}) at 9am at ${addressText}. ${splitDisclaimer} Move your car if today is your day! - Autopilot America`;
+        if (daysUntil === 0 && isFinalCycleDay && !isFirstCycleDay) {
+          // Day 2 (final day) of cycle: no "tomorrow" applies.
+          message = `Street cleaning TODAY at 9am in your zone at ${addressText}. This is day 2 of a 2-day cycle (${cycleListText}). If your block was cleaned yesterday you're fine — otherwise move your car now. ${splitDisclaimer} - Autopilot America`;
+          subject = 'Street Cleaning TODAY (Day 2)';
+        } else if (daysUntil === 0) {
+          // Day 1 of cycle: today and tomorrow both apply.
+          message = `Street cleaning in your zone TODAY or TOMORROW (${cycleListText}) at 9am at ${addressText}. ${splitDisclaimer} Move your car if today is your day! - Autopilot America`;
           subject = 'Street Cleaning Today or Tomorrow';
         } else if (daysUntil === 1) {
-          message = `Street cleaning in your zone begins TOMORROW and may run ${cycleListText} at 9am at ${addressText}. ${splitDisclaimer} - Autopilot America`;
+          message = `Street cleaning in your zone begins TOMORROW and runs ${cycleListText} at 9am at ${addressText}. ${splitDisclaimer} - Autopilot America`;
           subject = 'Street Cleaning Starts Tomorrow';
         } else {
           message = `Street cleaning in your zone in ${daysUntil} days: ${cycleListText} at 9am at ${addressText}. ${splitDisclaimer} - Autopilot America`;
@@ -512,7 +529,7 @@ async function sendNotification(
 
     case 'evening_reminder':
       if (isSplitCycle && daysUntil === 1) {
-        message = `Street cleaning begins TOMORROW in your zone and may run ${cycleListText} at 9am at ${addressText}. ${splitDisclaimer} Don't forget to move your car tonight! - Autopilot America`;
+        message = `Street cleaning begins TOMORROW in your zone and runs ${cycleListText} at 9am at ${addressText}. ${splitDisclaimer} Don't forget to move your car tonight! - Autopilot America`;
         subject = 'Street Cleaning Starts Tomorrow';
       } else if (daysUntil === 1) {
         message = `Street cleaning TOMORROW at 9am at ${addressText}. Don't forget to move your car tonight! - Autopilot America`;
