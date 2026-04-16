@@ -4677,10 +4677,19 @@ class BackgroundTaskServiceClass {
       const filteredResult = await this.filterOwnPermitZone(result);
       const rawData = result.rawApiData || await this.getRawParkingData(result);
 
-      // Only notify if restrictions actually changed since last rescan.
-      // Without this check, the user gets the same notification every 4 hours.
-      if (filteredResult.rules.length > 0) {
-        const currentRulesSummary = filteredResult.rules
+      // Rescan only notifies for weather-driven restrictions that can become
+      // active while parked — specifically the 2-inch snow ban (type
+      // 'snow_route'). All other restriction types (permit_zone, street_cleaning,
+      // winter_ban, metered_parking, dot_permit) have predictable schedules and
+      // are already covered by scheduleRestrictionReminders() with a 30-min
+      // advance notification, so including them in the rescan produced
+      // duplicate spam every 4 hours — and the server's time-sensitive message
+      // text (e.g., permit zone "required" → "starts soon" at the 3h threshold)
+      // also broke the dedup key.
+      const rescanRules = filteredResult.rules.filter((r: any) => r.type === 'snow_route');
+
+      if (rescanRules.length > 0) {
+        const currentRulesSummary = rescanRules
           .map((r: any) => `${r.type}:${r.message}`)
           .sort()
           .join('|');
@@ -4689,7 +4698,7 @@ class BackgroundTaskServiceClass {
         if (currentRulesSummary !== prevRulesSummary) {
           await notifee.displayNotification({
             title: '⚠️ Parking Restriction Reminder',
-            body: `${filteredResult.address}\n${filteredResult.rules.map((r: any) => r.message).join('\n')}`,
+            body: `${filteredResult.address}\n${rescanRules.map((r: any) => r.message).join('\n')}`,
             android: {
               channelId: 'parking-monitoring',
               importance: AndroidImportance.HIGH,
