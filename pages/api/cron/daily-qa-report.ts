@@ -492,51 +492,101 @@ async function checkLettersStuckInAdminReview(): Promise<CheckResult> {
 }
 
 async function checkSilentUsers(): Promise<CheckResult> {
-  // Users who signed up, have a saved home address (so we SHOULD be
-  // sending them alerts), but received nothing in 30 days. Either they're
-  // disabled their notifications (OK) or our pipeline is silently
-  // skipping them (not OK).
+  // A pipeline skip bug looks like: user's zone had a cleaning event, their
+  // notify_days_array covered today, but we sent them nothing. Users whose
+  // zones simply had no cleanings in the window (e.g. early-season April
+  // signups in a zone that starts cleaning in May) are expected to be silent.
+  //
+  // We check BOTH message_audit_log (renewals, process pipeline) AND
+  // user_notifications (street cleaning, the primary alert type) so we
+  // don't blame a user as "silent" when they actually heard from us via
+  // the street-cleaning cron.
   const name = 'User Outcomes — Silent Users (no notifications 30d)';
   try {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+    const today = new Date().toISOString().slice(0, 10);
+    const thirtyDaysAgoDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-    // Users with a home address who signed up >30 days ago (so we've had
-    // ample time to notify them)
     const { data: eligibleUsers, error: e1 } = await supabaseAdmin!
       .from('user_profiles')
-      .select('user_id')
+      .select('user_id, home_address_ward, home_address_section')
       .not('home_address_full', 'is', null)
       .lt('created_at', thirtyDaysAgo)
-      .gt('created_at', sixtyDaysAgo); // Only look at last 60 days to cap scan size
+      .gt('created_at', sixtyDaysAgo);
 
     if (e1) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${e1.message}`, severity: 'high' };
     if (!eligibleUsers || eligibleUsers.length === 0) {
       return { name, category: 'User Outcomes', status: 'pass', detail: 'No eligible users in sample window', severity: 'high' };
     }
 
-    // Users who DID receive at least one notification in last 30d
-    const { data: notifiedRows, error: e2 } = await supabaseAdmin!
-      .from('message_audit_log')
-      .select('user_id')
-      .gte('timestamp', thirtyDaysAgo)
-      .eq('result', 'sent')
-      .in('user_id', eligibleUsers.map(u => u.user_id).filter(Boolean) as string[]);
+    const userIds = eligibleUsers.map(u => u.user_id).filter(Boolean) as string[];
 
-    if (e2) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${e2.message}`, severity: 'high' };
+    const [mal, un] = await Promise.all([
+      supabaseAdmin!
+        .from('message_audit_log')
+        .select('user_id')
+        .gte('timestamp', thirtyDaysAgo)
+        .eq('result', 'sent')
+        .in('user_id', userIds),
+      supabaseAdmin!
+        .from('user_notifications')
+        .select('user_id')
+        .gte('sent_at', thirtyDaysAgo)
+        .eq('status', 'sent')
+        .in('user_id', userIds),
+    ]);
 
-    const notified = new Set((notifiedRows || []).map(r => r.user_id));
-    const silent = eligibleUsers.filter(u => !notified.has(u.user_id));
-    const silentCount = silent.length;
-    const pctSilent = Math.round((silentCount / eligibleUsers.length) * 100);
+    if (mal.error) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${mal.error.message}`, severity: 'high' };
+    if (un.error) return { name, category: 'User Outcomes', status: 'fail', detail: `Query error: ${un.error.message}`, severity: 'high' };
 
-    if (silentCount === 0) {
+    const notified = new Set<string>();
+    for (const r of mal.data || []) notified.add(r.user_id as string);
+    for (const r of un.data || []) notified.add(r.user_id as string);
+
+    // Users who got nothing across either log table — candidates.
+    const candidates = eligibleUsers.filter(u => !notified.has(u.user_id));
+    if (candidates.length === 0) {
       return { name, category: 'User Outcomes', status: 'pass', detail: `All ${eligibleUsers.length} eligible users heard from us in 30d`, severity: 'high' };
     }
-    if (pctSilent >= 30) {
-      return { name, category: 'User Outcomes', status: 'fail', detail: `${silentCount}/${eligibleUsers.length} (${pctSilent}%) eligible users got ZERO notifications in 30 days — pipeline skip bug?`, severity: 'high' };
+
+    // Filter candidates down to ones where silence is *unexpected*: their
+    // zone had a cleaning event in the window. Zones with no cleanings in
+    // the last 30d produce no alerts by design.
+    const zoneKeys = Array.from(new Set(
+      candidates
+        .filter(u => u.home_address_ward && u.home_address_section)
+        .map(u => `${u.home_address_ward}|${u.home_address_section}`)
+    ));
+
+    const zonesWithRecentCleaning = new Set<string>();
+    if (zoneKeys.length > 0) {
+      const { data: sched, error: e3 } = await supabaseAdmin!
+        .from('street_cleaning_schedule')
+        .select('ward, section, cleaning_date')
+        .gte('cleaning_date', thirtyDaysAgoDate)
+        .lte('cleaning_date', today);
+      if (e3) return { name, category: 'User Outcomes', status: 'fail', detail: `Schedule query error: ${e3.message}`, severity: 'high' };
+      for (const r of sched || []) zonesWithRecentCleaning.add(`${r.ward}|${r.section}`);
     }
-    return { name, category: 'User Outcomes', status: 'warn', detail: `${silentCount}/${eligibleUsers.length} (${pctSilent}%) eligible users silent for 30 days`, severity: 'high' };
+
+    const unexpectedSilent = candidates.filter(u => {
+      if (!u.home_address_ward || !u.home_address_section) return false;
+      return zonesWithRecentCleaning.has(`${u.home_address_ward}|${u.home_address_section}`);
+    });
+
+    const unexpectedCount = unexpectedSilent.length;
+    const expectedCount = candidates.length - unexpectedCount;
+    const pct = Math.round((unexpectedCount / eligibleUsers.length) * 100);
+
+    if (unexpectedCount === 0) {
+      const suffix = expectedCount > 0 ? ` (${expectedCount} silent but zone had no cleanings in window — expected)` : '';
+      return { name, category: 'User Outcomes', status: 'pass', detail: `No unexpected silent users in ${eligibleUsers.length}-user sample${suffix}`, severity: 'high' };
+    }
+    if (pct >= 30) {
+      return { name, category: 'User Outcomes', status: 'fail', detail: `${unexpectedCount}/${eligibleUsers.length} (${pct}%) users silent despite zone having cleaning events in last 30d — pipeline skip bug?`, severity: 'high' };
+    }
+    return { name, category: 'User Outcomes', status: 'warn', detail: `${unexpectedCount}/${eligibleUsers.length} (${pct}%) users silent despite zone having cleaning events`, severity: 'high' };
   } catch (e: any) {
     return { name, category: 'User Outcomes', status: 'fail', detail: e.message, severity: 'high' };
   }
