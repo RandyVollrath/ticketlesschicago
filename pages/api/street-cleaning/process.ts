@@ -134,6 +134,15 @@ export default async function handler(
   }
 }
 
+// Whole-day difference between two YYYY-MM-DD strings (b - a), in Chicago local days.
+function daysBetween(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number);
+  const [by, bm, bd] = b.split('-').map(Number);
+  const aMs = new Date(ay, am - 1, ad).getTime();
+  const bMs = new Date(by, bm - 1, bd).getTime();
+  return Math.round((bMs - aMs) / (1000 * 60 * 60 * 24));
+}
+
 async function processStreetCleaningReminders(type: string, chicagoDateISO: string) {
   // BUG FIX: Use Chicago date, not UTC date.
   // When this runs at 7pm CDT (midnight UTC), UTC date is already tomorrow.
@@ -213,49 +222,54 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
       try {
         processed++;
 
-        let cleaningDateStr: string; // YYYY-MM-DD format
+        let cleaningDateStr: string; // YYYY-MM-DD key date for dedup + display
         let daysUntil = 0;
+        let cycleDates: string[] = [];
+        let isSplitCycle = false;
+        let shouldSend = false;
 
-        // Canary users always get notifications (simulate next weekday cleaning)
         if (user.is_canary) {
-          // Parse Chicago date to get day of week
+          // Canary: simulate the next weekday; never a split cycle.
           const [y, m, d] = todayStr.split('-').map(Number);
-          const chicagoToday = new Date(y, m - 1, d); // Local date object for day-of-week calc
-          const dayOfWeek = chicagoToday.getDay(); // 0=Sunday, 6=Saturday
+          const chicagoToday = new Date(y, m - 1, d);
+          const dayOfWeek = chicagoToday.getDay();
           let daysToAdd = 0;
-
-          if (dayOfWeek === 0) daysToAdd = 1; // Sunday -> Monday
-          else if (dayOfWeek === 6) daysToAdd = 2; // Saturday -> Monday
+          if (dayOfWeek === 0) daysToAdd = 1;
+          else if (dayOfWeek === 6) daysToAdd = 2;
 
           const simDate = new Date(chicagoToday);
           simDate.setDate(simDate.getDate() + daysToAdd);
-
-          if (type === 'morning_reminder') {
-            daysUntil = daysToAdd;
-          } else if (type === 'evening_reminder') {
+          if (type === 'evening_reminder') {
             simDate.setDate(simDate.getDate() + 1);
             daysUntil = daysToAdd + 1;
           } else {
             daysUntil = daysToAdd;
           }
-
           cleaningDateStr = `${simDate.getFullYear()}-${String(simDate.getMonth() + 1).padStart(2, '0')}-${String(simDate.getDate()).padStart(2, '0')}`;
-          console.log(`Canary ${user.email}: simulating cleaning ${cleaningDateStr} (${daysUntil}d) for ${type}`);
+          cycleDates = [cleaningDateStr];
+          shouldSend = true;
+          console.log(`Canary ${user.email}: simulating ${cleaningDateStr} (${daysUntil}d) for ${type}`);
         } else {
-          // Regular users: Get next cleaning date from schedule
-          // For evening reminders (7pm), look for tomorrow or later
-          // For morning reminders (7am), look for today or later
-          let minDate = todayStr;
+          // Regular users: fetch the current cleaning CYCLE (usually 1–2 consecutive days).
+          // DSS does not publish side-of-street data. When a zone cleans two
+          // consecutive days (one side each day), both days apply to every user
+          // in the zone; they must check posted signs for their block.
+          //
+          // We look back 1 day so that on day-2 of a split cycle we still see
+          // day-1 and know this is a mid-cycle day (so we send a day-of alert
+          // even though the notify-days-before check has already fired).
+          const [ty, tm, td] = todayStr.split('-').map(Number);
+          const yesterday = new Date(ty, tm - 1, td);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+          let minDate = yesterdayStr;
           if (type === 'evening_reminder') {
-            // Calculate tomorrow's date string
-            const [y, m, d] = todayStr.split('-').map(Number);
-            const tomorrow = new Date(y, m - 1, d);
+            const tomorrow = new Date(ty, tm - 1, td);
             tomorrow.setDate(tomorrow.getDate() + 1);
             minDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
           }
 
-          // BUG FIX: Compare date strings (YYYY-MM-DD) not ISO datetimes.
-          // The cleaning_date column stores date-only values like '2026-04-01'.
           const { data: schedule, error: scheduleError } = await supabaseAdmin
             .from('street_cleaning_schedule')
             .select('cleaning_date')
@@ -263,33 +277,66 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
             .eq('section', user.home_address_section)
             .gte('cleaning_date', minDate)
             .order('cleaning_date', { ascending: true })
-            .limit(1)
-            .maybeSingle();
+            .limit(5);
 
-          if (scheduleError || !schedule) {
-            // No upcoming cleaning — skip silently (this is normal for most users on most days)
-            continue;
+          if (scheduleError || !schedule || schedule.length === 0) continue;
+
+          // Group consecutive dates into a single cycle.
+          const allCycleDates: string[] = [schedule[0].cleaning_date];
+          for (let i = 1; i < schedule.length; i++) {
+            const prev = allCycleDates[allCycleDates.length - 1];
+            if (daysBetween(prev, schedule[i].cleaning_date) === 1) {
+              allCycleDates.push(schedule[i].cleaning_date);
+            } else break;
           }
 
-          cleaningDateStr = schedule.cleaning_date; // Already YYYY-MM-DD
+          // If the cycle starts in the past (yesterday), we're mid-cycle.
+          // Keep the full cycle for display context; behaviour below decides
+          // whether we should send anything today.
+          cycleDates = allCycleDates;
+          const firstDate = cycleDates[0];
+          const lastDate = cycleDates[cycleDates.length - 1];
+          isSplitCycle = cycleDates.length > 1;
+          const daysUntilFirst = daysBetween(todayStr, firstDate);
+          const daysUntilLast = daysBetween(todayStr, lastDate);
 
-          // Calculate daysUntil using date strings to avoid timezone math
-          const [ty, tm, td] = todayStr.split('-').map(Number);
-          const [cy, cm, cd] = cleaningDateStr.split('-').map(Number);
-          const todayMs = new Date(ty, tm - 1, td).getTime();
-          const cleaningMs = new Date(cy, cm - 1, cd).getTime();
-          daysUntil = Math.round((cleaningMs - todayMs) / (1000 * 60 * 60 * 24));
+          cleaningDateStr = firstDate;
+          daysUntil = daysUntilFirst;
+
+          const notifyDays: number[] = user.notify_days_array || [0];
+
+          if (type === 'morning_reminder') {
+            // Normal "X days before" alert, relative to the first cycle day.
+            // Only applies when the cycle hasn't started yet.
+            if (daysUntilFirst >= 0 && notifyDays.includes(daysUntilFirst)) {
+              shouldSend = true;
+            }
+            // Split-cycle insurance: on every day IN the cycle (including
+            // mid-cycle when firstDate is in the past), send a same-day alert
+            // so users whose block is day-2 aren't missed. Key the record to
+            // today so per-day dedup works.
+            if (isSplitCycle && daysUntilFirst <= 0 && daysUntilLast >= 0) {
+              shouldSend = true;
+              cleaningDateStr = todayStr;
+              daysUntil = 0;
+            }
+          } else if (type === 'evening_reminder') {
+            if (user.notify_evening_before && daysUntilFirst === 1) shouldSend = true;
+          } else if (type === 'follow_up') {
+            // Only send follow-up on the FINAL day of the cycle. Otherwise we'd
+            // tell users "cleaning completed today" while their block is still
+            // scheduled for tomorrow.
+            if (user.follow_up_sms && daysUntilLast === 0) {
+              shouldSend = true;
+              cleaningDateStr = lastDate;
+              daysUntil = 0;
+            }
+          }
         }
 
-        // Check if we should send notification based on user preferences
-        const shouldSend = user.is_canary || shouldSendNotification(user, type, daysUntil);
+        if (!shouldSend) continue;
 
-        if (!shouldSend) {
-          continue;
-        }
-
-        // BUG FIX: Use supabaseAdmin for dedup check (bypasses RLS).
-        // BUG FIX: Compare cleaning_date as date string, not ISO datetime.
+        // Dedup per (user, keyed cleaning_date, type, today).
         const { data: existingNotification } = await supabaseAdmin
           .from('user_notifications')
           .select('id')
@@ -306,26 +353,18 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
           continue;
         }
 
-        // Build a Date object for display formatting (use noon to avoid timezone shifts)
         const cleaningDateForDisplay = new Date(cleaningDateStr + 'T12:00:00');
-
-        // Send notifications
-        console.log(`Sending ${type} to ${user.email} for cleaning ${cleaningDateStr} (${daysUntil}d)`);
-        const result = await sendNotification(user, type, cleaningDateForDisplay, daysUntil);
+        console.log(`Sending ${type} to ${user.email} for ${isSplitCycle ? `split cycle [${cycleDates.join(', ')}]` : cleaningDateStr} (keyed ${cleaningDateStr}, ${daysUntil}d)`);
+        const result = await sendNotification(user, type, cleaningDateForDisplay, daysUntil, { cycleDates, isSplitCycle });
 
         if (result.sent) {
           successful++;
-          // BUG FIX: Use supabaseAdmin for logging (bypasses RLS).
-          // BUG FIX: Store cleaning_date as date string, not ISO datetime.
           await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.channels, 'sent');
-
-          // Also log any partial failures (some channels succeeded, some failed)
           if (result.failedChannels.length > 0) {
             await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.failedChannels, 'partial_failure', result.errors.join('; '));
           }
         } else {
           failed++;
-          // Log complete failure with error details
           await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.failedChannels, 'failed', result.errors.join('; '));
         }
 
@@ -403,7 +442,13 @@ function shouldSendNotification(user: any, type: string, daysUntil: number): boo
   }
 }
 
-async function sendNotification(user: any, type: string, cleaningDate: Date, daysUntil: number): Promise<{ sent: boolean; channels: string[]; failedChannels: string[]; errors: string[] }> {
+async function sendNotification(
+  user: any,
+  type: string,
+  cleaningDate: Date,
+  daysUntil: number,
+  cycle?: { cycleDates: string[]; isSplitCycle: boolean }
+): Promise<{ sent: boolean; channels: string[]; failedChannels: string[]; errors: string[] }> {
   const channelsSent: string[] = [];
   const channelsFailed: string[] = [];
   const channelErrors: string[] = [];
@@ -420,6 +465,18 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
     day: 'numeric'
   });
 
+  // Pretty-print each cycle date (e.g. "Thu Apr 9") for split-zone messages.
+  const cycleDates = cycle?.cycleDates ?? [];
+  const isSplitCycle = !!cycle?.isSplitCycle;
+  const cycleDateStrs = cycleDates.map(ds => {
+    const d = new Date(ds + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  });
+  const cycleListText = cycleDateStrs.join(' AND ');
+  // DSS does not publish which side of the street cleans on which day in a
+  // 2-day cycle. The only source of truth is the posted sign on the block.
+  const splitDisclaimer = 'Check your posted sign for your block\'s exact day.';
+
   let message = '';
   let subject = '';
 
@@ -428,20 +485,36 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
 
   switch (type) {
     case 'morning_reminder':
-      if (daysUntil === 0) {
-        message = `Street cleaning TODAY at 9am at ${addressText}. Move your car NOW to avoid a ticket! - Autopilot America`;
-        subject = 'Street Cleaning TODAY - Move Your Car!';
-      } else if (daysUntil === 1) {
-        message = `Street cleaning TOMORROW (${formattedDate}) at 9am at ${addressText}. Don't forget to move your car! - Autopilot America`;
-        subject = 'Street Cleaning Tomorrow';
+      if (isSplitCycle) {
+        if (daysUntil === 0) {
+          message = `Street cleaning in your zone is TODAY or TOMORROW (${cycleListText}) at 9am at ${addressText}. ${splitDisclaimer} Move your car if today is your day! - Autopilot America`;
+          subject = 'Street Cleaning Today or Tomorrow';
+        } else if (daysUntil === 1) {
+          message = `Street cleaning in your zone begins TOMORROW and may run ${cycleListText} at 9am at ${addressText}. ${splitDisclaimer} - Autopilot America`;
+          subject = 'Street Cleaning Starts Tomorrow';
+        } else {
+          message = `Street cleaning in your zone in ${daysUntil} days: ${cycleListText} at 9am at ${addressText}. ${splitDisclaimer} - Autopilot America`;
+          subject = `Street Cleaning in ${daysUntil} Days`;
+        }
       } else {
-        message = `Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. Remember to move your car! - Autopilot America`;
-        subject = `Street Cleaning in ${daysUntil} Days`;
+        if (daysUntil === 0) {
+          message = `Street cleaning TODAY at 9am at ${addressText}. Move your car NOW to avoid a ticket! - Autopilot America`;
+          subject = 'Street Cleaning TODAY - Move Your Car!';
+        } else if (daysUntil === 1) {
+          message = `Street cleaning TOMORROW (${formattedDate}) at 9am at ${addressText}. Don't forget to move your car! - Autopilot America`;
+          subject = 'Street Cleaning Tomorrow';
+        } else {
+          message = `Street cleaning in ${daysUntil} days (${formattedDate}) at 9am at ${addressText}. Remember to move your car! - Autopilot America`;
+          subject = `Street Cleaning in ${daysUntil} Days`;
+        }
       }
       break;
 
     case 'evening_reminder':
-      if (daysUntil === 1) {
+      if (isSplitCycle && daysUntil === 1) {
+        message = `Street cleaning begins TOMORROW in your zone and may run ${cycleListText} at 9am at ${addressText}. ${splitDisclaimer} Don't forget to move your car tonight! - Autopilot America`;
+        subject = 'Street Cleaning Starts Tomorrow';
+      } else if (daysUntil === 1) {
         message = `Street cleaning TOMORROW at 9am at ${addressText}. Don't forget to move your car tonight! - Autopilot America`;
         subject = 'Street Cleaning Tomorrow Morning';
       } else {
@@ -451,6 +524,7 @@ async function sendNotification(user: any, type: string, cleaningDate: Date, day
       break;
 
     case 'follow_up':
+      // Only fires on the final day of a cycle (see processStreetCleaningReminders).
       message = `Street cleaning completed in your area today. You can park normally now. Did you move your car and avoid a ticket? Reply and let us know! - Autopilot America`;
       subject = 'Street Cleaning Complete - Safe to Park';
       break;
