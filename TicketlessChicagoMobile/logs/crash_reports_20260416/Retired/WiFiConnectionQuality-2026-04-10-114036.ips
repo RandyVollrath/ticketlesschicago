@@ -1,0 +1,63 @@
+{"bug_type":"233","timestamp":"2026-04-10 11:40:36.00 -0500","os_version":"iPhone OS 26.4 (23E246)","roots_installed":0,"incident_id":"A487D429-54A0-41FA-8544-25E9B8C25F1F"}
+<GEOLogMsgEvent: 0xcb0971400> {
+    "event_type" = "WIFI_CONNECTION_QUALITY_PROBE";
+    "log_msg_state" =     (
+                {
+            "device_identifier" =             {
+                "device_hw_identifier" = "iPhone14,4";
+                "device_os_version" = "26.4.23E246";
+                "is_internal_install" = 0;
+                "is_internal_tool" = 0;
+            };
+            "state_type" = "DEVICE_IDENTIFIER";
+        }
+    );
+    "wifi_connection_quality_probe_event" =     {
+        "wifi_connection_quality" =         {
+            apMode = INFRA;
+            associationLength = "TIME_BUCKET_LT_ONE_HOUR";
+            associationReason = AUTOMATIC;
+            authTraits =             (
+                WPA
+            );
+            band = 0;
+            bytesInTotal = 0;
+            bytesOutTotal = 510;
+            captiveDetermination = "NOT_CAPTIVE";
+            cca = 0;
+            channel = 1;
+            channelWidth = 20;
+            dataStalls = 0;
+            disassociationReason = "BEACON_LOSS";
+            failedConnections = 18;
+            faultyStay = 0;
+            hotspot20 = 0;
+            isEdgeBSS = 0;
+            isKnownGood = 1;
+            location =             {
+                latLng =                 {
+                    lat = "41.96665035060569";
+                    lng = "-87.6938903893473";
+                };
+            };
+            lowLQMStay = 0;
+            networkOrigin = "UNKNOWN_ORIGINATOR_TYPE";
+            networkType = "PRIVATE_NETWORK_TYPE";
+            overAllStay = 65;
+            packetsIn = 0;
+            packetsOut = 0;
+            phyMode = 912;
+            responsivenessScore = 0;
+            roundTripTimeAvg = 0;
+            roundTripTimeMin = inf;
+            roundTripTimeVar = 0;
+            rssi = 0;
+            snr = 0;
+            sslConnectionCount = 34;
+            sslErrorCount = 0;
+            successfulConnections = 16;
+            timeOfDay = 797529328;
+            uniqueID = "ea:86:14:6f:e2:88";
+        };
+    };
+}

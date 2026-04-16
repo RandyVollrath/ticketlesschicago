@@ -1,0 +1,1014 @@
+{"duration_ms":"59287692","share_with_app_devs":1,"roots_installed":0,"bug_type":"145","os_version":"iPhone OS 26.4 (23E246)","slice_uuid":"0B30E9AB-2F45-3CCA-9811-AF290CE798DF","is_first_party":0,"incident_id":"FB4442C9-D4FC-4FFB-8621-AC6775E50362","timestamp":"2026-04-10 09:22:52.00 -0500","app_name":"installd","name":"installd"}
+Date/Time:        2026-04-09 16:53:44.415 -0500
+End time:         2026-04-10 09:21:52.107 -0500
+OS Version:       iPhone OS 26.4 (Build 23E246)
+Architecture:     arm64e
+Report Version:   72
+Incident Identifier: FB4442C9-D4FC-4FFB-8621-AC6775E50362
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     05C1520F-C298-3E49-A5BB-F63C835ACB81 slid base address 0x19f2b8000, slide 0x1f2b8000
+
+Command:          installd
+Path:             /usr/libexec/installd
+Resource Coalition: 409
+On Behalf Of:     101 samples installcoordinationd [234] (101 samples originated by nsurlsessiond [201])
+Architecture:     arm64
+PID:              10455
+
+Event:            disk writes
+Action taken:     none
+Writes:           1073.74 MB of file backed memory dirtied over 59288 seconds (18.11 KB per second average), exceeding limit of 12.43 KB per second over 86400 seconds
+Writes limit:     1073.74 MB
+Limit duration:   86400s
+Writes caused:    1073.74 MB
+Writes duration:  59288s
+Duration:         59287.69s
+Duration Sampled: 59256.85s (event starts 30.44s before samples, event ends 0.40s after samples)
+Steps:            2389 (12 samples lost, 10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+
+Models:           UNKNOWN
+
+OS Cryptex File Extents: 7324
+
+Heaviest stack for the target process:
+  100  ??? (libsystem_pthread.dylib + 2240) [0x2015d78c0]
+  100  ??? (libsystem_pthread.dylib + 4980) [0x2015d8374]
+  100  ??? (libdispatch.dylib + 82072) [0x1dc9e9098]
+  100  ??? (libdispatch.dylib + 80476) [0x1dc9e8a5c]
+  100  ??? (libdispatch.dylib + 231308) [0x1dca0d78c]
+  100  ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+  100  ??? (libdispatch.dylib + 6568) [0x1dc9d69a8]
+  100  ??? (installd + 91732) [0x100c8e654]
+  100  ??? (installd + 90188) [0x100c8e04c]
+  100  ??? (installd + 172808) [0x100ca2308]
+  99   ??? (installd + 167932) [0x100ca0ffc]
+  99   ??? (installd + 283280) [0x100cbd290]
+  99   ??? (installd + 270736) [0x100cba190]
+  99   ??? (installd + 286496) [0x100cbdf20]
+  99   ??? (installd + 270316) [0x100cb9fec]
+  99   ??? (installd + 269152) [0x100cb9b60]
+  99   ??? (libParallelCompression.dylib + 55712) [0x2c095d9a0]
+  99   ??? (libParallelCompression.dylib + 84916) [0x2c0964bb4]
+  99   ??? (libParallelCompression.dylib + 280784) [0x2c09948d0]
+  91   ??? (libParallelCompression.dylib + 88212) [0x2c0965894]
+  90   ??? (libParallelCompression.dylib + 57852) [0x2c095e1fc]
+  90   ??? (libParallelCompression.dylib + 159524) [0x2c0976f24]
+  76   ??? (libParallelCompression.dylib + 157960) [0x2c0976908]
+  76   ??? (libParallelCompression.dylib + 133516) [0x2c097098c]
+  76   ??? (libParallelCompression.dylib + 280472) [0x2c0994798]
+  76   ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+
+
+Powerstats for:   installd [10455]
+UUID:             0B30E9AB-2F45-3CCA-9811-AF290CE798DF
+Path:             /usr/libexec/installd
+Resource Coalition: 101 samples 409
+On Behalf Of:     101 samples installcoordinationd [234] (101 samples originated by nsurlsessiond [201])
+Architecture:     arm64
+Sudden Term:      Tracked (allows idle exit)
+Footprint:        7328 KB -> 23.39 MB (+16.23 MB)
+Pageins:          2876 pages
+Start time:       2026-04-10 09:19:26.285 -0500
+End time:         2026-04-10 09:21:51.710 -0500
+Num samples:      101 (4%)
+Energy:           2889.54 uWh
+Num threads:      7
+Primary state:    100 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Utility, Requested Thread QoS Utility, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 101 samples Active
+Power Source:     0 samples on Battery, 101 samples on AC
+  100  ??? (libsystem_pthread.dylib + 2240) [0x2015d78c0]
+    100  ??? (libsystem_pthread.dylib + 4980) [0x2015d8374]
+      100  ??? (libdispatch.dylib + 82072) [0x1dc9e9098]
+        100  ??? (libdispatch.dylib + 80476) [0x1dc9e8a5c]
+          100  ??? (libdispatch.dylib + 231308) [0x1dca0d78c]
+            100  ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+              100  ??? (libdispatch.dylib + 6568) [0x1dc9d69a8]
+                100  ??? (installd + 91732) [0x100c8e654]
+                  100  ??? (installd + 90188) [0x100c8e04c]
+                    100  ??? (installd + 172808) [0x100ca2308]
+                      99   ??? (installd + 167932) [0x100ca0ffc]
+                        99   ??? (installd + 283280) [0x100cbd290]
+                          99   ??? (installd + 270736) [0x100cba190]
+                            99   ??? (installd + 286496) [0x100cbdf20]
+                              99   ??? (installd + 270316) [0x100cb9fec]
+                                99   ??? (installd + 269152) [0x100cb9b60]
+                                  99   ??? (libParallelCompression.dylib + 55712) [0x2c095d9a0]
+                                    99   ??? (libParallelCompression.dylib + 84916) [0x2c0964bb4]
+                                      99   ??? (libParallelCompression.dylib + 280784) [0x2c09948d0]
+                                        91   ??? (libParallelCompression.dylib + 88212) [0x2c0965894]
+                                          90   ??? (libParallelCompression.dylib + 57852) [0x2c095e1fc]
+                                            90   ??? (libParallelCompression.dylib + 159524) [0x2c0976f24]
+                                              76   ??? (libParallelCompression.dylib + 157960) [0x2c0976908]
+                                                76   ??? (libParallelCompression.dylib + 133516) [0x2c097098c]
+                                                  76   ??? (libParallelCompression.dylib + 280472) [0x2c0994798]
+                                                    76   ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                      76   <on behalf of installcoordinationd [234] (originated by nsurlsessiond [201])>
+                                              12   ??? (libParallelCompression.dylib + 158080) [0x2c0976980]
+                                                12   ??? (libParallelCompression.dylib + 133516) [0x2c097098c]
+                                                  12   ??? (libParallelCompression.dylib + 280472) [0x2c0994798]
+                                                    12   ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                      12   <on behalf of installcoordinationd [234] (originated by nsurlsessiond [201])>
+                                              2    ??? (libParallelCompression.dylib + 158140) [0x2c09769bc]
+                                                2    ??? (libParallelCompression.dylib + 133360) [0x2c09708f0]
+                                                  2    ??? (libParallelCompression.dylib + 280472) [0x2c0994798]
+                                                    2    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                      2    <on behalf of installcoordinationd [234] (originated by nsurlsessiond [201])>
+                                          1    ??? (libParallelCompression.dylib + 57944) [0x2c095e258]
+                                            1    ??? (libsystem_kernel.dylib + 4832) [0x2512592e0]
+                                              1    <on behalf of installcoordinationd [234] (originated by nsurlsessiond [201])>
+                                        8    ??? (libParallelCompression.dylib + 88056) [0x2c09657f8]
+                                          7    ??? (libsystem_kernel.dylib + 84192) [0x25126c8e0]
+                                            7    <on behalf of installcoordinationd [234] (originated by nsurlsessiond [201])>
+                                          1    ??? (libsystem_kernel.dylib + 25648) [0x25125e430]
+                                            1    <on behalf of installcoordinationd [234] (originated by nsurlsessiond [201])>
+                      1    ??? (installd + 169092) [0x100ca1484]
+                        1    ??? (installd + 332344) [0x100cc9238]
+                          1    ??? (installd + 40608) [0x100c81ea0]
+                            1    ??? (StreamingZip + 74524) [0x29495831c]
+                              1    ??? (libsystem_c.dylib + 39420) [0x1ae2a39fc]
+                                1    ??? (libsystem_c.dylib + 43284) [0x1ae2a4914]
+                                  1    ??? (libsystem_c.dylib + 44192) [0x1ae2a4ca0]
+                                    1    ??? (libsystem_kernel.dylib + 29600) [0x25125f3a0]
+                                      1    <on behalf of installcoordinationd [234] (originated by nsurlsessiond [201]), Effective Thread QoS Background>
+  1    ??? (libsystem_pthread.dylib + 2252) [0x2015d78cc]
+    1    ??? (libsystem_pthread.dylib + 17464) [0x2015db438]
+      1    ??? (libParallelCompression.dylib + 71536) [0x2c0961770]
+        1    ??? (libdispatch.dylib + 26260) [0x1dc9db694]
+          1    ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+            1    ??? (libParallelCompression.dylib + 165288) [0x2c09785a8]
+              1    ??? (libParallelCompression.dylib + 168640) [0x2c09792c0]
+                1    ??? (libParallelCompression.dylib + 169176) [0x2c09794d8]
+                  1    ??? (libParallelCompression.dylib + 88140) [0x2c096584c]
+                    1    ??? (libParallelCompression.dylib + 58768) [0x2c095e590]
+                      1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                        1    <on behalf of installcoordinationd [234] (originated by nsurlsessiond [201])>
+
+  Binary Images:
+           0x100c78000 -                ???  installd                     <0B30E9AB-2F45-3CCA-9811-AF290CE798DF>  /usr/libexec/installd
+           0x1ae29a000 -        0x1ae31930f  libsystem_c.dylib            <08196A2F-B3FA-3D0B-B151-AD50A6D0A0B4>  /usr/lib/system/libsystem_c.dylib
+           0x1dc9d5000 -        0x1dca1b5ff  libdispatch.dylib            <5FCAC52F-01E9-3BF0-8AAC-42C442C53560>  /usr/lib/system/libdispatch.dylib
+           0x2015d7000 -        0x2015e34ef  libsystem_pthread.dylib      <6C9BCDE9-819D-345D-9D71-B60AD47E5159>  /usr/lib/system/libsystem_pthread.dylib
+           0x251258000 -        0x251293ac7  libsystem_kernel.dylib       <5F4E68E1-021C-3A8F-A6F6-2C4C077D0676>  /usr/lib/system/libsystem_kernel.dylib
+           0x294946000 -        0x294961f1f  StreamingZip                 <1310C7CE-3E5D-3A19-8340-FE37FF2FB06E>  /System/Library/PrivateFrameworks/StreamingZip.framework/StreamingZip
+           0x2c0950000 -        0x2c09b6b17  libParallelCompression.dylib <FC6A537F-101C-3650-832A-9D8224CDC2A2>  /usr/lib/libParallelCompression.dylib
+
+
+Powerstats for:   locationd
+UUID:             ED24EBBF-CC27-3F86-9098-05F9BFBCE022
+Path:             /usr/libexec/locationd
+Resource Coalition: 135 samples 93
+On Behalf Of:     27 samples UNKNOWN [34, 149, 417, 1317, 4556, 8537] (25 samples originated by UNKNOWN [32, 132, 149, 417, 569, 4556], 2 samples originated by SpringBoard [35]), 21 samples Autopilot [419, 6175] (21 samples originated by Autopilot [419, 6175]), 14 samples CommCenter [100] (14 samples originated by CommCenter [100]), 14 samples maps (Google Maps) [418, 8902, 10004] (14 samples originated by maps (Google Maps) [418, 8902, 10004]), 4 samples findmydeviced [5040] (4 samples originated by findmydeviced [5040]), 2 samples routined [38] (2 samples originated by routined [38]), 1 sample dasd [83] (1 sample originated by dasd [83]), 1 sample healthd [3149] (1 sample originated by UNKNOWN [32])
+Architecture:     arm64
+Pageins:          78609 pages
+Start time:       2026-04-09 16:54:24.838 -0500
+End time:         2026-04-10 09:21:35.405 -0500
+Num samples:      135 (6%)
+Energy:           30.25 mWh
+Primary state:    54 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Default, Requested Thread QoS Default, Override Thread QoS Unspecified, e-core
+User Activity:    62 samples Idle, 73 samples Active
+Power Source:     115 samples on Battery, 20 samples on AC
+  133  ??? (libsystem_pthread.dylib + 2240) [0x2015d78c0]
+    133  ??? (libsystem_pthread.dylib + 5040) [0x2015d83b0]
+      133  ??? (libdispatch.dylib + 83628) [0x1dc9e96ac]
+        133  ??? (libdispatch.dylib + 85420) [0x1dc9e9dac]
+          133  ??? (libdispatch.dylib + 43692) [0x1dc9dfaac]
+            133  ??? (libdispatch.dylib + 40472) [0x1dc9dee18]
+              133  ??? (libdispatch.dylib + 43748) [0x1dc9dfae4]
+                117  ??? (libdispatch.dylib + 40880) [0x1dc9defb0]
+                  117  ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                    117  ??? (libdispatch.dylib + 6568) [0x1dc9d69a8]
+                      116  ??? (LocationSupport + 5572) [0x201cd85c4]
+                        60   ??? (CoreFoundation + 495196) [0x1a280fe5c]
+                          60   ??? (CoreFoundation + 406232) [0x1a27fa2d8]
+                            60   ??? (CoreFoundation + 406612) [0x1a27fa454]
+                              21   ??? (locationd + 6220732) [0x105262bbc]
+                                21   ??? (locationd + 19400608) [0x105ef47a0]
+                                  21   ??? (locationd + 816644) [0x104d3b604]
+                                    21   ??? (locationd + 5750664) [0x1051eff88]
+                                      21   ??? (locationd + 5842172) [0x1052064fc]
+                                        21   ??? (locationd + 5393512) [0x105198c68]
+                                          21   ??? (locationd + 5392688) [0x105198930]
+                                            21   ??? (Foundation + 659944) [0x19facf1e8]
+                                              21   ??? (Foundation + 661024) [0x19facf620]
+                                                19   ??? (Foundation + 679744) [0x19fad3f40]
+                                                  19   ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                    14   <on behalf of Autopilot [6175] (originated by Autopilot [6175]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                                                    5    <on behalf of Autopilot [419] (originated by Autopilot [419]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                                                1    ??? (Foundation + 680372) [0x19fad41b4]
+                                                  1    ??? (Foundation + 5633704) [0x19ff8d6a8]
+                                                    1    ??? (Foundation + 668240) [0x19fad1250]
+                                                      1    ??? (libsystem_kernel.dylib + 21680) [0x25125d4b0]
+                                                        1    <on behalf of Autopilot [6175] (originated by Autopilot [6175]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                                                1    ??? (Foundation + 678280) [0x19fad3988]
+                                                  1    ??? (Foundation + 688640) [0x19fad6200]
+                                                    1    ??? (Foundation + 735840) [0x19fae1a60]
+                                                      1    ??? (Foundation + 728436) [0x19fadfd74]
+                                                        1    ??? (Foundation + 699620) [0x19fad8ce4]
+                                                          1    ??? (Foundation + 702936) [0x19fad99d8]
+                                                            1    ??? (libsystem_kernel.dylib + 25648) [0x25125e430]
+                                                              1    <on behalf of Autopilot [419] (originated by Autopilot [419]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                              14   ??? (locationd + 158324) [0x104c9aa74]
+                                5    ??? (locationd + 2306764) [0x104ea72cc]
+                                  5    ??? (locationd + 2320596) [0x104eaa8d4]
+                                    5    ??? (locationd + 2538360) [0x104edfb78]
+                                      5    ??? (locationd + 2482028) [0x104ed1f6c]
+                                        5    ??? (locationd + 2539376) [0x104edff70]
+                                          5    ??? (locationd + 2541772) [0x104ee08cc]
+                                            5    ??? (locationd + 2542208) [0x104ee0a80]
+                                              5    ??? (locationd + 15872352) [0x105b97160]
+                                                5    ??? (locationd + 5393156) [0x105198b04]
+                                                  5    ??? (locationd + 5392688) [0x105198930]
+                                                    5    ??? (Foundation + 659944) [0x19facf1e8]
+                                                      5    ??? (Foundation + 661024) [0x19facf620]
+                                                        5    ??? (Foundation + 679744) [0x19fad3f40]
+                                                          5    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                            2    <Effective Thread QoS User Initiated>
+                                                            1    <on behalf of CommCenter [100] (originated by CommCenter [100]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+                                5    ??? (locationd + 1043012) [0x104d72a44]
+                                  5    ??? (locationd + 1043504) [0x104d72c30]
+                                    5    ??? (locationd + 1062048) [0x104d774a0]
+                                      5    ??? (locationd + 1101704) [0x104d80f88]
+                                        5    ??? (locationd + 1079880) [0x104d7ba48]
+                                          5    ??? (locationd + 1044080) [0x104d72e70]
+                                            5    ??? (locationd + 1045560) [0x104d73438]
+                                              5    ??? (locationd + 2428660) [0x104ec4ef4]
+                                                5    ??? (locationd + 1716932) [0x104e172c4]
+                                                  3    ??? (locationd + 2480624) [0x104ed19f0]
+                                                    3    ??? (locationd + 2480748) [0x104ed1a6c]
+                                                      3    ??? (locationd + 2481112) [0x104ed1bd8]
+                                                        3    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                                          3    ??? (libsqlite3.dylib + 234208) [0x1a0be72e0]
+                                                            3    ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                                              3    ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                                                3    ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                                                  3    ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                                    3    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                                      3    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                                        3    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                                          3    <on behalf of CommCenter [100] (originated by CommCenter [100]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                                                  2    ??? (locationd + 2480692) [0x104ed1a34]
+                                                    2    ??? (locationd + 1842496) [0x104e35d40]
+                                                      2    ??? (locationd + 1844408) [0x104e364b8]
+                                                        2    ??? (locationd + 1795076) [0x104e2a404]
+                                                          2    ??? (libsqlite3.dylib + 192308) [0x1a0bdcf34]
+                                                            2    ??? (libsqlite3.dylib + 329752) [0x1a0bfe818]
+                                                              2    ??? (libsqlite3.dylib + 564516) [0x1a0c37d24]
+                                                                2    ??? (libsqlite3.dylib + 1166892) [0x1a0ccae2c]
+                                                                  2    ??? (libsqlite3.dylib + 408828) [0x1a0c11cfc]
+                                                                    2    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                                      2    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                                        2    <on behalf of CommCenter [100] (originated by CommCenter [100]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+                                4    ??? (locationd + 2289808) [0x104ea3090]
+                                  4    ??? (locationd + 2360752) [0x104eb45b0]
+                                    4    ??? (locationd + 478412) [0x104ce8ccc]
+                                      4    ??? (locationd + 2456600) [0x104ecbc18]
+                                        4    ??? (locationd + 2456824) [0x104ecbcf8]
+                                          4    ??? (locationd + 2427584) [0x104ec4ac0]
+                                            4    ??? (CoreFoundation + 120012) [0x1a27b44cc]
+                                              4    ??? (CoreFoundation + 120808) [0x1a27b47e8]
+                                                4    ??? (locationd + 2424052) [0x104ec3cf4]
+                                                  3    ??? (locationd + 2425220) [0x104ec4184]
+                                                    3    ??? (Foundation + 378144) [0x19fa8a520]
+                                                      3    ??? (Foundation + 378552) [0x19fa8a6b8]
+                                                        3    ??? (Foundation + 41344) [0x19fa38180]
+                                                          3    ??? (Foundation + 379272) [0x19fa8a988]
+                                                            3    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                              2    <on behalf of CommCenter [100] (originated by CommCenter [100]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                                                  1    ??? (locationd + 2425548) [0x104ec42cc]
+                                                    1    ??? (locationd + 2423248) [0x104ec39d0]
+                                                      1    ??? (Foundation + 2025256) [0x19fc1c728]
+                                                        1    ??? (Foundation + 2007936) [0x19fc18380]
+                                                          1    ??? (Foundation + 2011640) [0x19fc191f8]
+                                                            1    ??? (Foundation + 2010620) [0x19fc18dfc]
+                                                              1    ??? (Foundation + 2013072) [0x19fc19790]
+                                                                1    ??? (Foundation + 2012820) [0x19fc19694]
+                                                                  1    ??? (Foundation + 2011640) [0x19fc191f8]
+                                                                    1    ??? (Foundation + 2010620) [0x19fc18dfc]
+                                                                      1    ??? (Foundation + 2013108) [0x19fc197b4]
+                                                                        1    ??? (Foundation + 2019740) [0x19fc1b19c]
+                                                                          1    ??? (libsystem_kernel.dylib + 21680) [0x25125d4b0]
+                              12   ??? (locationd + 683764) [0x104d1aef4]
+                                12   ??? (locationd + 695768) [0x104d1ddd8]
+                                  12   ??? (locationd + 696192) [0x104d1df80]
+                                    12   ??? (locationd + 93512) [0x104c8ad48]
+                                      10   ??? (locationd + 96808) [0x104c8ba28]
+                                        10   ??? (locationd + 97568) [0x104c8bd20]
+                                          10   ??? (locationd + 698856) [0x104d1e9e8]
+                                            10   ??? (locationd + 702464) [0x104d1f800]
+                                              10   ??? (locationd + 703560) [0x104d1fc48]
+                                                10   ??? (locationd + 1343672) [0x104dbc0b8]
+                                                  10   ??? (locationd + 1342596) [0x104dbbc84]
+                                                    10   ??? (locationd + 1344868) [0x104dbc564]
+                                                      10   ??? (locationd + 1348232) [0x104dbd288]
+                                                        10   ??? (libsqlite3.dylib + 33260) [0x1a0bb61ec]
+                                                          10   ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                                            10   ??? (libsqlite3.dylib + 234280) [0x1a0be7328]
+                                                              10   ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                                                10   ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                                                  10   ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                                                    10   ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                                      9    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                                        9    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                                          9    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                                      1    ??? (libsqlite3.dylib + 700860) [0x1a0c591bc]
+                                                                        1    ??? (libsqlite3.dylib + 702932) [0x1a0c599d4]
+                                                                          1    ??? (libsystem_kernel.dylib + 33604) [0x251260344]
+                                      2    ??? (locationd + 97284) [0x104c8bc04]
+                                        2    ??? (locationd + 9602096) [0x10559c430]
+                                          2    ??? (locationd + 684852) [0x104d1b334]
+                                            2    ??? (locationd + 687904) [0x104d1bf20]
+                                              2    ??? (locationd + 685292) [0x104d1b4ec]
+                                                2    ??? (locationd + 5750664) [0x1051eff88]
+                                                  2    ??? (locationd + 5842172) [0x1052064fc]
+                                                    2    ??? (locationd + 5393512) [0x105198c68]
+                                                      2    ??? (locationd + 5392688) [0x105198930]
+                                                        2    ??? (Foundation + 659944) [0x19facf1e8]
+                                                          2    ??? (Foundation + 661024) [0x19facf620]
+                                                            1    ??? (Foundation + 680372) [0x19fad41b4]
+                                                              1    ??? (Foundation + 5633704) [0x19ff8d6a8]
+                                                                1    ??? (Foundation + 668240) [0x19fad1250]
+                                                                  1    ??? (libsystem_kernel.dylib + 21680) [0x25125d4b0]
+                                                            1    ??? (Foundation + 679744) [0x19fad3f40]
+                                                              1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                              5    ??? (locationd + 6985028) [0x10531d544]
+                                5    ??? (locationd + 1672276) [0x104e0c454]
+                                  5    ??? (locationd + 1062048) [0x104d774a0]
+                                    5    ??? (locationd + 1102420) [0x104d81254]
+                                      5    ??? (locationd + 1073248) [0x104d7a060]
+                                        5    ??? (locationd + 1773984) [0x104e251a0]
+                                          5    ??? (locationd + 1776844) [0x104e25ccc]
+                                            5    ??? (locationd + 1795476) [0x104e2a594]
+                                              5    ??? (locationd + 1716932) [0x104e172c4]
+                                                5    ??? (locationd + 2480624) [0x104ed19f0]
+                                                  5    ??? (locationd + 2480748) [0x104ed1a6c]
+                                                    5    ??? (locationd + 2481112) [0x104ed1bd8]
+                                                      4    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                                        4    ??? (libsqlite3.dylib + 234208) [0x1a0be72e0]
+                                                          4    ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                                            4    ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                                              4    ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                                                4    ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                                  4    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                                    4    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                                      4    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                                        3    <on behalf of CommCenter [100] (originated by CommCenter [100]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                                                                        1    <on behalf of CommCenter [100] (originated by CommCenter [100]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+                                                      1    ??? (libsqlite3.dylib + 192308) [0x1a0bdcf34]
+                                                        1    ??? (libsqlite3.dylib + 329752) [0x1a0bfe818]
+                                                          1    ??? (libsqlite3.dylib + 564516) [0x1a0c37d24]
+                                                            1    ??? (libsqlite3.dylib + 1166892) [0x1a0ccae2c]
+                                                              1    ??? (libsqlite3.dylib + 408828) [0x1a0c11cfc]
+                                                                1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                                  1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                                    1    <on behalf of CommCenter [100] (originated by CommCenter [100]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+                              4    ??? (locationd + 2626524) [0x104ef53dc]
+                                4    ??? (locationd + 2669348) [0x104effb24]
+                                  4    ??? (locationd + 2665372) [0x104efeb9c]
+                                    4    ??? (locationd + 1216036) [0x104d9ce24]
+                                      4    ??? (locationd + 20399604) [0x105fe85f4]
+                                        4    ??? (locationd + 5750664) [0x1051eff88]
+                                          4    ??? (locationd + 5842172) [0x1052064fc]
+                                            4    ??? (locationd + 5393512) [0x105198c68]
+                                              4    ??? (locationd + 5392688) [0x105198930]
+                                                4    ??? (Foundation + 659944) [0x19facf1e8]
+                                                  4    ??? (Foundation + 661024) [0x19facf620]
+                                                    4    ??? (Foundation + 679744) [0x19fad3f40]
+                                                      4    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                              1    ??? (locationd + 13466308) [0x10594bac4]
+                                1    ??? (locationd + 9371688) [0x105564028]
+                                  1    ??? (locationd + 9391636) [0x105568e14]
+                                    1    ??? (locationd + 9542356) [0x10558dad4]
+                                      1    ??? (locationd + 1795076) [0x104e2a404]
+                                        1    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                          1    ??? (libsqlite3.dylib + 234208) [0x1a0be72e0]
+                                            1    ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                              1    ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                                1    ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                                  1    ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                    1    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                      1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                        1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                          1    <on behalf of UNKNOWN [149] (originated by UNKNOWN [149])>
+                              1    ??? (locationd + 9361292) [0x10556178c]
+                                1    ??? (locationd + 9361660) [0x1055618fc]
+                                  1    ??? (locationd + 13499236) [0x105953b64]
+                                    1    ??? (locationd + 9505948) [0x105584c9c]
+                                      1    ??? (locationd + 1795076) [0x104e2a404]
+                                        1    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                          1    ??? (libsqlite3.dylib + 234208) [0x1a0be72e0]
+                                            1    ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                              1    ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                                1    ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                                  1    ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                    1    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                      1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                        1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                          1    <on behalf of maps (Google Maps) [8902] (originated by maps (Google Maps) [8902]), Effective Thread QoS Utility, Requested Thread QoS Utility>
+                              1    ??? (locationd + 313860) [0x104cc0a04]
+                                1    ??? (locationd + 2504968) [0x104ed7908]
+                                  1    ??? (locationd + 314484) [0x104cc0c74]
+                                    1    ??? (locationd + 2505792) [0x104ed7c40]
+                                      1    ??? (locationd + 2584972) [0x104eeb18c]
+                                        1    ??? (locationd + 2585072) [0x104eeb1f0]
+                                          1    ??? (locationd + 1905540) [0x104e45384]
+                                            1    ??? (locationd + 1895880) [0x104e42dc8]
+                                              1    ??? (locationd + 8577104) [0x1054a2050]
+                                                1    ??? (locationd + 24041444) [0x1063617e4]
+                                                  1    ??? (locationd + 24044780) [0x1063624ec]
+                                                    1    ??? (locationd + 24054532) [0x106364b04]
+                                                      1    ??? (locationd + 5750664) [0x1051eff88]
+                                                        1    ??? (locationd + 5842172) [0x1052064fc]
+                                                          1    ??? (locationd + 5393512) [0x105198c68]
+                                                            1    ??? (locationd + 5392688) [0x105198930]
+                                                              1    ??? (Foundation + 659944) [0x19facf1e8]
+                                                                1    ??? (Foundation + 661024) [0x19facf620]
+                                                                  1    ??? (Foundation + 679744) [0x19fad3f40]
+                                                                    1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                                      1    <on behalf of maps (Google Maps) [8902] (originated by maps (Google Maps) [8902]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                              1    ??? (locationd + 297612) [0x104cbca8c]
+                                1    ??? (locationd + 297440) [0x104cbc9e0]
+                                  1    ??? (locationd + 296828) [0x104cbc77c]
+                                    1    ??? (locationd + 1669588) [0x104e0b9d4]
+                                      1    ??? (locationd + 1062076) [0x104d774bc]
+                                        1    ??? (locationd + 1065152) [0x104d780c0]
+                                          1    ??? (locationd + 1672276) [0x104e0c454]
+                                            1    ??? (locationd + 1062048) [0x104d774a0]
+                                              1    ??? (locationd + 1102420) [0x104d81254]
+                                                1    ??? (locationd + 1073248) [0x104d7a060]
+                                                  1    ??? (locationd + 1773984) [0x104e251a0]
+                                                    1    ??? (locationd + 1776844) [0x104e25ccc]
+                                                      1    ??? (locationd + 1795476) [0x104e2a594]
+                                                        1    ??? (locationd + 1716624) [0x104e17190]
+                                                          1    ??? (locationd + 1842496) [0x104e35d40]
+                                                            1    ??? (locationd + 1844408) [0x104e364b8]
+                                                              1    ??? (locationd + 1795076) [0x104e2a404]
+                                                                1    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                                                  1    ??? (libsqlite3.dylib + 234208) [0x1a0be72e0]
+                                                                    1    ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                                                      1    ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                                                        1    ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                                                          1    ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                                            1    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                                              1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                                                1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                                                  1    <on behalf of routined [38] (originated by routined [38])>
+                        44   ??? (locationd + 7291936) [0x105368420]
+                          44   ??? (locationd + 7367968) [0x10537ad20]
+                            42   ??? (locationd + 19552088) [0x105f19758]
+                              42   ??? (locationd + 1755616) [0x104e209e0]
+                                42   ??? (locationd + 1755824) [0x104e20ab0]
+                                  42   ??? (libsqlite3.dylib + 33260) [0x1a0bb61ec]
+                                    22   ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                      22   ??? (libsqlite3.dylib + 234280) [0x1a0be7328]
+                                        22   ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                          22   ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                            22   ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                              22   ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                22   ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                  22   ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                    22   ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                      4    <on behalf of UNKNOWN [149] (originated by UNKNOWN [149])>
+                                                      3    <on behalf of maps (Google Maps) [8902] (originated by maps (Google Maps) [8902]), Effective Thread QoS Utility, Requested Thread QoS Utility>
+                                                      3    <Effective Thread QoS User Initiated>
+                                                      2    <on behalf of maps (Google Maps) [418] (originated by maps (Google Maps) [418]), Effective Thread QoS User Initiated, Requested Thread QoS Utility, p-core>
+                                                      2    <on behalf of maps (Google Maps) [8902] (originated by maps (Google Maps) [8902]), Effective Thread QoS User Initiated, Requested Thread QoS Utility, p-core>
+                                                      2    <on behalf of UNKNOWN [34] (originated by SpringBoard [35]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+                                                      1    <on behalf of maps (Google Maps) [10004] (originated by maps (Google Maps) [10004]), Requested Thread QoS Utility, p-core>
+                                                      1    <on behalf of UNKNOWN [417] (originated by UNKNOWN [417]), Effective Thread QoS User Initiated, p-core>
+                                                      1    <on behalf of maps (Google Maps) [10004] (originated by maps (Google Maps) [10004]), Effective Thread QoS Utility, Requested Thread QoS Utility>
+                                                      1    <on behalf of routined [38] (originated by routined [38])>
+                                                      1    <on behalf of findmydeviced [5040] (originated by findmydeviced [5040])>
+                                                      1    <on behalf of UNKNOWN [149] (originated by UNKNOWN [149]), Effective Thread QoS User Initiated>
+                                    20   ??? (libsqlite3.dylib + 192308) [0x1a0bdcf34]
+                                      20   ??? (libsqlite3.dylib + 329752) [0x1a0bfe818]
+                                        20   ??? (libsqlite3.dylib + 564516) [0x1a0c37d24]
+                                          20   ??? (libsqlite3.dylib + 1166892) [0x1a0ccae2c]
+                                            19   ??? (libsqlite3.dylib + 408828) [0x1a0c11cfc]
+                                              19   ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                19   ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                  5    <on behalf of UNKNOWN [149] (originated by UNKNOWN [149]), Effective Thread QoS User Initiated>
+                                                  3    <on behalf of UNKNOWN [149] (originated by UNKNOWN [149])>
+                                                  3    <Effective Thread QoS User Initiated>
+                                                  2    <on behalf of maps (Google Maps) [418] (originated by maps (Google Maps) [418]), Effective Thread QoS User Initiated, Requested Thread QoS Utility, p-core>
+                                                  2    <on behalf of UNKNOWN [4556] (originated by UNKNOWN [4556])>
+                                                  1    <on behalf of UNKNOWN [34] (originated by UNKNOWN [569]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+                                                  1    <on behalf of maps (Google Maps) [10004] (originated by maps (Google Maps) [10004]), Effective Thread QoS Utility, Requested Thread QoS Utility>
+                                                  1    <on behalf of findmydeviced [5040] (originated by findmydeviced [5040])>
+                                            1    ??? (libsqlite3.dylib + 407900) [0x1a0c1195c]
+                                              1    ??? (libsqlite3.dylib + 329152) [0x1a0bfe5c0]
+                                                1    ??? (libsystem_kernel.dylib + 23928) [0x25125dd78]
+                                                  1    <on behalf of UNKNOWN [34] (originated by UNKNOWN [569]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                            2    ??? (locationd + 19551836) [0x105f1965c]
+                              2    ??? (locationd + 7252476) [0x10535e9fc]
+                                2    ??? (locationd + 1795076) [0x104e2a404]
+                                  2    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                    1    ??? (libsqlite3.dylib + 221684) [0x1a0be41f4]
+                                      1    ??? (libsqlite3.dylib + 757464) [0x1a0c66ed8]
+                                        1    ??? (libsqlite3.dylib + 695404) [0x1a0c57c6c]
+                                          1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                            1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                              1    <on behalf of UNKNOWN [417] (originated by UNKNOWN [417]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, p-core>
+                                    1    ??? (libsqlite3.dylib + 209488) [0x1a0be1250]
+                                      1    ??? (libsqlite3.dylib + 310640) [0x1a0bf9d70]
+                                        1    ??? (libsqlite3.dylib + 695404) [0x1a0c57c6c]
+                                          1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                            1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                              1    <Effective Thread QoS User Initiated>
+                        7    ??? (locationd + 9813796) [0x1055cff24]
+                          7    ??? (locationd + 9814068) [0x1055d0034]
+                            7    ??? (locationd + 7297872) [0x105369b50]
+                              7    ??? (locationd + 7298176) [0x105369c80]
+                                7    ??? (locationd + 7377392) [0x10537d1f0]
+                                  7    ??? (locationd + 19556296) [0x105f1a7c8]
+                                    7    ??? (locationd + 13724576) [0x10598aba0]
+                                      7    ??? (locationd + 1846148) [0x104e36b84]
+                                        6    ??? (locationd + 1847372) [0x104e3704c]
+                                          6    ??? (locationd + 1795076) [0x104e2a404]
+                                            4    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                              4    ??? (libsqlite3.dylib + 204292) [0x1a0bdfe04]
+                                                4    ??? (libsqlite3.dylib + 733792) [0x1a0c61260]
+                                                  4    ??? (libsqlite3.dylib + 749828) [0x1a0c65104]
+                                                    4    ??? (libsqlite3.dylib + 686772) [0x1a0c55ab4]
+                                                      4    ??? (libsqlite3.dylib + 753852) [0x1a0c660bc]
+                                                        3    ??? (libsqlite3.dylib + 699188) [0x1a0c58b34]
+                                                          3    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                            3    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                              3    <Effective Thread QoS User Initiated>
+                                                        1    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                          1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                            1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                              1    <Effective Thread QoS User Initiated>
+                                            2    ??? (libsqlite3.dylib + 192308) [0x1a0bdcf34]
+                                              2    ??? (libsqlite3.dylib + 329752) [0x1a0bfe818]
+                                                2    ??? (libsqlite3.dylib + 564516) [0x1a0c37d24]
+                                                  2    ??? (libsqlite3.dylib + 1166892) [0x1a0ccae2c]
+                                                    2    ??? (libsqlite3.dylib + 408828) [0x1a0c11cfc]
+                                                      2    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                        2    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                          2    <Effective Thread QoS User Initiated>
+                                        1    ??? (locationd + 1847620) [0x104e37144]
+                                          1    ??? (locationd + 1850288) [0x104e37bb0]
+                                            1    ??? (locationd + 6565368) [0x1052b6df8]
+                                              1    ??? (locationd + 6564256) [0x1052b69a0]
+                                                1    ??? (libsqlite3.dylib + 33260) [0x1a0bb61ec]
+                                                  1    ??? (libsqlite3.dylib + 192308) [0x1a0bdcf34]
+                                                    1    ??? (libsqlite3.dylib + 329752) [0x1a0bfe818]
+                                                      1    ??? (libsqlite3.dylib + 564516) [0x1a0c37d24]
+                                                        1    ??? (libsqlite3.dylib + 1166892) [0x1a0ccae2c]
+                                                          1    ??? (libsqlite3.dylib + 408828) [0x1a0c11cfc]
+                                                            1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                              1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                                1    <Effective Thread QoS User Initiated>
+                        2    ??? (locationd + 15045692) [0x105acd43c]
+                          2    ??? (locationd + 12497428) [0x10585f214]
+                            2    ??? (locationd + 14188328) [0x1059fbf28]
+                              2    ??? (locationd + 14193024) [0x1059fd180]
+                                2    ??? (locationd + 1795076) [0x104e2a404]
+                                  1    ??? (libsqlite3.dylib + 192308) [0x1a0bdcf34]
+                                    1    ??? (libsqlite3.dylib + 329752) [0x1a0bfe818]
+                                      1    ??? (libsqlite3.dylib + 564516) [0x1a0c37d24]
+                                        1    ??? (libsqlite3.dylib + 1166892) [0x1a0ccae2c]
+                                          1    ??? (libsqlite3.dylib + 408828) [0x1a0c11cfc]
+                                            1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                              1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                  1    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                    1    ??? (libsqlite3.dylib + 234208) [0x1a0be72e0]
+                                      1    ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                        1    ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                          1    ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                            1    ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                              1    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                  1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                        1    ??? (CoreFoundation + 626104) [0x1a282fdb8]
+                          1    ??? (CoreFoundation + 406232) [0x1a27fa2d8]
+                            1    ??? (CoreFoundation + 406612) [0x1a27fa454]
+                              1    ??? (locationd + 15400740) [0x105b23f24]
+                                1    ??? (locationd + 2425220) [0x104ec4184]
+                                  1    ??? (Foundation + 378144) [0x19fa8a520]
+                                    1    ??? (Foundation + 378552) [0x19fa8a6b8]
+                                      1    ??? (Foundation + 41344) [0x19fa38180]
+                                        1    ??? (Foundation + 379272) [0x19fa8a988]
+                                          1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                            1    <on behalf of CommCenter [100] (originated by CommCenter [100]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                        1    ??? (locationd + 17873024) [0x105d7f880]
+                          1    ??? (locationd + 17864640) [0x105d7d7c0]
+                            1    ??? (locationd + 17867340) [0x105d7e24c]
+                              1    ??? (locationd + 17871888) [0x105d7f410]
+                                1    ??? (locationd + 19553532) [0x105f19cfc]
+                                  1    ??? (locationd + 17535564) [0x105d2d24c]
+                                    1    ??? (locationd + 1755616) [0x104e209e0]
+                                      1    ??? (locationd + 1755824) [0x104e20ab0]
+                                        1    ??? (libsqlite3.dylib + 33260) [0x1a0bb61ec]
+                                          1    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                            1    ??? (libsqlite3.dylib + 234280) [0x1a0be7328]
+                                              1    ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                                1    ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                                  1    ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                                    1    ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                      1    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                        1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                          1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                            1    <on behalf of UNKNOWN [1317] (originated by UNKNOWN [32]), p-core>
+                        1    ??? (locationd + 15055644) [0x105acfb1c]
+                          1    ??? (locationd + 15056872) [0x105acffe8]
+                            1    ??? (locationd + 19971896) [0x105f7ff38]
+                              1    ??? (locationd + 19972196) [0x105f80064]
+                                1    ??? (locationd + 19977144) [0x105f813b8]
+                                  1    ??? (locationd + 1795076) [0x104e2a404]
+                                    1    ??? (libsqlite3.dylib + 192308) [0x1a0bdcf34]
+                                      1    ??? (libsqlite3.dylib + 329752) [0x1a0bfe818]
+                                        1    ??? (libsqlite3.dylib + 564516) [0x1a0c37d24]
+                                          1    ??? (libsqlite3.dylib + 1166892) [0x1a0ccae2c]
+                                            1    ??? (libsqlite3.dylib + 408828) [0x1a0c11cfc]
+                                              1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                  1    <on behalf of healthd [3149] (originated by UNKNOWN [32]), p-core>
+                      1    ??? (locationd + 7410044) [0x10538517c]
+                        1    ??? (locationd + 1222504) [0x104d9e768]
+                          1    ??? (locationd + 20396388) [0x105fe7964]
+                            1    ??? (locationd + 5750664) [0x1051eff88]
+                              1    ??? (locationd + 5842172) [0x1052064fc]
+                                1    ??? (locationd + 5393512) [0x105198c68]
+                                  1    ??? (locationd + 5392688) [0x105198930]
+                                    1    ??? (Foundation + 659944) [0x19facf1e8]
+                                      1    ??? (Foundation + 661024) [0x19facf620]
+                                        1    ??? (Foundation + 679744) [0x19fad3f40]
+                                          1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                            1    <on behalf of dasd [83] (originated by dasd [83]), Effective Thread QoS Background, Requested Thread QoS Background>
+                16   ??? (libdispatch.dylib + 40472) [0x1dc9dee18]
+                  10   ??? (libdispatch.dylib + 97208) [0x1dc9ecbb8]
+                    10   ??? (libdispatch.dylib + 102116) [0x1dc9edee4]
+                      10   ??? (libdispatch.dylib + 24904) [0x1dc9db148]
+                        10   ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                          7    ??? (LocationSupport + 19408) [0x201cdbbd0]
+                            7    ??? (LocationSupport + 19524) [0x201cdbc44]
+                              7    ??? (LocationSupport + 19688) [0x201cdbce8]
+                                4    ??? (locationd + 1215480) [0x104d9cbf8]
+                                  4    ??? (locationd + 1216036) [0x104d9ce24]
+                                    4    ??? (locationd + 20399604) [0x105fe85f4]
+                                      4    ??? (locationd + 5750664) [0x1051eff88]
+                                        4    ??? (locationd + 5842172) [0x1052064fc]
+                                          4    ??? (locationd + 5393512) [0x105198c68]
+                                            4    ??? (locationd + 5392688) [0x105198930]
+                                              4    ??? (Foundation + 659944) [0x19facf1e8]
+                                                4    ??? (Foundation + 661024) [0x19facf620]
+                                                  2    ??? (Foundation + 680372) [0x19fad41b4]
+                                                    2    ??? (Foundation + 5633704) [0x19ff8d6a8]
+                                                      2    ??? (Foundation + 668240) [0x19fad1250]
+                                                        2    ??? (libsystem_kernel.dylib + 21680) [0x25125d4b0]
+                                                  2    ??? (Foundation + 679744) [0x19fad3f40]
+                                                    2    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                2    ??? (locationd + 2735140) [0x104f0fc24]
+                                  2    ??? (locationd + 1062076) [0x104d774bc]
+                                    2    ??? (locationd + 1065152) [0x104d780c0]
+                                      2    ??? (locationd + 1672276) [0x104e0c454]
+                                        2    ??? (locationd + 1062048) [0x104d774a0]
+                                          2    ??? (locationd + 1102420) [0x104d81254]
+                                            2    ??? (locationd + 1073248) [0x104d7a060]
+                                              2    ??? (locationd + 1773984) [0x104e251a0]
+                                                2    ??? (locationd + 1776844) [0x104e25ccc]
+                                                  2    ??? (locationd + 1795476) [0x104e2a594]
+                                                    2    ??? (locationd + 1716932) [0x104e172c4]
+                                                      2    ??? (locationd + 2480624) [0x104ed19f0]
+                                                        2    ??? (locationd + 2480748) [0x104ed1a6c]
+                                                          2    ??? (locationd + 2481112) [0x104ed1bd8]
+                                                            1    ??? (libsqlite3.dylib + 192308) [0x1a0bdcf34]
+                                                              1    ??? (libsqlite3.dylib + 329752) [0x1a0bfe818]
+                                                                1    ??? (libsqlite3.dylib + 564516) [0x1a0c37d24]
+                                                                  1    ??? (libsqlite3.dylib + 1166892) [0x1a0ccae2c]
+                                                                    1    ??? (libsqlite3.dylib + 408828) [0x1a0c11cfc]
+                                                                      1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                                        1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                            1    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                                              1    ??? (libsqlite3.dylib + 234208) [0x1a0be72e0]
+                                                                1    ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                                                  1    ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                                                    1    ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                                                      1    ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                                        1    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                                          1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                                            1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                1    ??? (locationd + 14547736) [0x105a53b18]
+                                  1    ??? (locationd + 14548604) [0x105a53e7c]
+                                    1    ??? (locationd + 857300) [0x104d454d4]
+                                      1    ??? (locationd + 10283560) [0x105642a28]
+                                        1    ??? (locationd + 5750664) [0x1051eff88]
+                                          1    ??? (locationd + 5842172) [0x1052064fc]
+                                            1    ??? (locationd + 5393512) [0x105198c68]
+                                              1    ??? (locationd + 5392688) [0x105198930]
+                                                1    ??? (Foundation + 659944) [0x19facf1e8]
+                                                  1    ??? (Foundation + 661024) [0x19facf620]
+                                                    1    ??? (Foundation + 679744) [0x19fad3f40]
+                                                      1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                          3    ??? (locationd + 13662428) [0x10597b8dc]
+                            3    ??? (locationd + 13660720) [0x10597b230]
+                              3    ??? (locationd + 20410704) [0x105feb150]
+                                3    ??? (locationd + 12748992) [0x10589c8c0]
+                                  3    ??? (locationd + 19555680) [0x105f1a560]
+                                    3    ??? (locationd + 13724516) [0x10598ab64]
+                                      3    ??? (locationd + 7259932) [0x10536071c]
+                                        2    ??? (libsqlite3.dylib + 192308) [0x1a0bdcf34]
+                                          2    ??? (libsqlite3.dylib + 329752) [0x1a0bfe818]
+                                            2    ??? (libsqlite3.dylib + 564516) [0x1a0c37d24]
+                                              2    ??? (libsqlite3.dylib + 1166892) [0x1a0ccae2c]
+                                                2    ??? (libsqlite3.dylib + 408828) [0x1a0c11cfc]
+                                                  2    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                    2    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                        1    ??? (libsqlite3.dylib + 191556) [0x1a0bdcc44]
+                                          1    ??? (libsqlite3.dylib + 234208) [0x1a0be72e0]
+                                            1    ??? (libsqlite3.dylib + 92900) [0x1a0bc4ae4]
+                                              1    ??? (libsqlite3.dylib + 260340) [0x1a0bed8f4]
+                                                1    ??? (libsqlite3.dylib + 261460) [0x1a0bedd54]
+                                                  1    ??? (libsqlite3.dylib + 327836) [0x1a0bfe09c]
+                                                    1    ??? (libsqlite3.dylib + 699044) [0x1a0c58aa4]
+                                                      1    ??? (libsqlite3.dylib + 328740) [0x1a0bfe424]
+                                                        1    ??? (libsystem_kernel.dylib + 27724) [0x25125ec4c]
+                                                          1    <Effective Thread QoS User Initiated>
+                  6    ??? (libdispatch.dylib + 125176) [0x1dc9f38f8]
+                    6    ??? (libdispatch.dylib + 40472) [0x1dc9dee18]
+                      6    ??? (libdispatch.dylib + 121764) [0x1dc9f2ba4]
+                        6    ??? (libdispatch.dylib + 111148) [0x1dc9f022c]
+                          6    ??? (libxpc.dylib + 84456) [0x1b71819e8]
+                            6    ??? (libxpc.dylib + 76916) [0x1b717fc74]
+                              6    ??? (LocationSupport + 23324) [0x201cdcb1c]
+                                6    ??? (LocationSupport + 24416) [0x201cdcf60]
+                                  6    ??? (LocationSupport + 25024) [0x201cdd1c0]
+                                    5    ??? (locationd + 376120) [0x104ccfd38]
+                                      5    ??? (locationd + 377424) [0x104cd0250]
+                                        5    ??? (locationd + 377580) [0x104cd02ec]
+                                          3    ??? (locationd + 11950864) [0x1057d9b10]
+                                            3    ??? (locationd + 11951336) [0x1057d9ce8]
+                                              3    ??? (locationd + 20238956) [0x105fc126c]
+                                                2    ??? (locationd + 20231016) [0x105fbf368]
+                                                  2    ??? (locationd + 20236392) [0x105fc0868]
+                                                    2    ??? (locationd + 959284) [0x104d5e334]
+                                                      2    ??? (locationd + 959928) [0x104d5e5b8]
+                                                        2    ??? (Foundation + 659944) [0x19facf1e8]
+                                                          2    ??? (Foundation + 661024) [0x19facf620]
+                                                            2    ??? (Foundation + 679744) [0x19fad3f40]
+                                                              2    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                                2    <on behalf of UNKNOWN [149] (originated by UNKNOWN [149])>
+                                                1    ??? (locationd + 20230776) [0x105fbf278]
+                                                  1    ??? (locationd + 20236392) [0x105fc0868]
+                                                    1    ??? (locationd + 959284) [0x104d5e334]
+                                                      1    ??? (locationd + 959928) [0x104d5e5b8]
+                                                        1    ??? (Foundation + 659944) [0x19facf1e8]
+                                                          1    ??? (Foundation + 661024) [0x19facf620]
+                                                            1    ??? (Foundation + 679744) [0x19fad3f40]
+                                                              1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                                1    <on behalf of findmydeviced [5040] (originated by findmydeviced [5040])>
+                                          2    ??? (locationd + 11949100) [0x1057d942c]
+                                            2    ??? (locationd + 975448) [0x104d62258]
+                                              2    ??? (locationd + 16235144) [0x105befa88]
+                                                2    ??? (locationd + 980132) [0x104d634a4]
+                                                  2    ??? (locationd + 959284) [0x104d5e334]
+                                                    2    ??? (locationd + 959928) [0x104d5e5b8]
+                                                      2    ??? (Foundation + 659944) [0x19facf1e8]
+                                                        2    ??? (Foundation + 661024) [0x19facf620]
+                                                          2    ??? (Foundation + 679744) [0x19fad3f40]
+                                                            2    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                              1    <on behalf of findmydeviced [5040] (originated by findmydeviced [5040])>
+                                                              1    <on behalf of UNKNOWN [149] (originated by UNKNOWN [149]), Effective Thread QoS User Initiated>
+                                    1    ??? (LocationSupport + 47704) [0x201ce2a58]
+                                      1    ??? (LocationSupport + 47824) [0x201ce2ad0]
+                                        1    ??? (LocationSupport + 48016) [0x201ce2b90]
+                                          1    ??? (locationd + 8188652) [0x1054432ec]
+                                            1    ??? (locationd + 362132) [0x104ccc694]
+                                              1    ??? (locationd + 7982952) [0x105410f68]
+                                                1    ??? (locationd + 8002380) [0x105415b4c]
+                                                  1    ??? (locationd + 959928) [0x104d5e5b8]
+                                                    1    ??? (Foundation + 659944) [0x19facf1e8]
+                                                      1    ??? (Foundation + 661024) [0x19facf620]
+                                                        1    ??? (Foundation + 679744) [0x19fad3f40]
+                                                          1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                            1    <on behalf of UNKNOWN [8537] (originated by UNKNOWN [132])>
+  2    ??? (dyld + 19484) [0x19f3d9c1c]
+    2    ??? (locationd + 25182204) [0x106477ffc]
+      2    ??? (locationd + 25162676) [0x1064733b4]
+        2    ??? (locationd + 25159048) [0x106472588]
+          2    ??? (CoreFoundation + 911256) [0x1a2875798]
+            2    ??? (CoreFoundation + 188880) [0x1a27c51d0]
+              2    ??? (CoreFoundation + 193160) [0x1a27c6288]
+                2    ??? (CoreFoundation + 662116) [0x1a2838a64]
+                  2    ??? (libdispatch.dylib + 67748) [0x1dc9e58a4]
+                    2    ??? (libdispatch.dylib + 67940) [0x1dc9e5964]
+                      2    ??? (libdispatch.dylib + 232756) [0x1dca0dd34]
+                        2    ??? (libdispatch.dylib + 97208) [0x1dc9ecbb8]
+                          2    ??? (libdispatch.dylib + 102116) [0x1dc9edee4]
+                            2    ??? (libdispatch.dylib + 24904) [0x1dc9db148]
+                              2    ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                                2    ??? (LocationSupport + 19408) [0x201cdbbd0]
+                                  2    ??? (LocationSupport + 19524) [0x201cdbc44]
+                                    2    ??? (LocationSupport + 19688) [0x201cdbce8]
+                                      2    ??? (locationd + 5751596) [0x1051f032c]
+                                        2    ??? (locationd + 5843244) [0x10520692c]
+                                          2    ??? (locationd + 5750664) [0x1051eff88]
+                                            2    ??? (locationd + 5842172) [0x1052064fc]
+                                              2    ??? (locationd + 5393512) [0x105198c68]
+                                                2    ??? (locationd + 5392688) [0x105198930]
+                                                  2    ??? (Foundation + 659944) [0x19facf1e8]
+                                                    2    ??? (Foundation + 661024) [0x19facf620]
+                                                      1    ??? (Foundation + 679744) [0x19fad3f40]
+                                                        1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                      1    ??? (Foundation + 678280) [0x19fad3988]
+                                                        1    ??? (Foundation + 688640) [0x19fad6200]
+                                                          1    ??? (Foundation + 735840) [0x19fae1a60]
+                                                            1    ??? (Foundation + 728436) [0x19fadfd74]
+                                                              1    ??? (Foundation + 699620) [0x19fad8ce4]
+                                                                1    ??? (Foundation + 702936) [0x19fad99d8]
+                                                                  1    ??? (libsystem_kernel.dylib + 25648) [0x25125e430]
+                                                                    1    <Effective Thread QoS User Initiated>
+
+  Binary Images:
+           0x104c74000 -                ???  locationd               <ED24EBBF-CC27-3F86-9098-05F9BFBCE022>  /usr/libexec/locationd
+           0x19f3d5000 -        0x19f479ebf  dyld                    <80DD1800-F68D-354F-8106-8CB5EA621ACA>  /usr/lib/dyld
+           0x19fa2e000 -        0x1a08b645f  Foundation              <66BF417C-1D00-3457-A302-196BBAEC23D0>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x1a0bae000 -        0x1a0d57853  libsqlite3.dylib        <AFBB4016-E509-3F02-9C36-DFE15D54C8D0>  /usr/lib/libsqlite3.dylib
+           0x1a2797000 -        0x1a2d330ff  CoreFoundation          <11F13078-E01B-343B-A020-8D60BAE7BBB6>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x1b716d000 -        0x1b71be61f  libxpc.dylib            <A08D6F00-102F-31A3-92D5-E65AC7B776DF>  /usr/lib/system/libxpc.dylib
+           0x1dc9d5000 -        0x1dca1b5ff  libdispatch.dylib       <5FCAC52F-01E9-3BF0-8AAC-42C442C53560>  /usr/lib/system/libdispatch.dylib
+           0x2015d7000 -        0x2015e34ef  libsystem_pthread.dylib <6C9BCDE9-819D-345D-9D71-B60AD47E5159>  /usr/lib/system/libsystem_pthread.dylib
+           0x201cd7000 -        0x201d0de9f  LocationSupport         <A1308B89-4CAB-3E81-9AD2-4F935C65156E>  /System/Library/PrivateFrameworks/LocationSupport.framework/LocationSupport
+           0x251258000 -        0x251293ac7  libsystem_kernel.dylib  <5F4E68E1-021C-3A8F-A6F6-2C4C077D0676>  /usr/lib/system/libsystem_kernel.dylib
+
+
+Powerstats for:   cfprefsd
+UUID:             D2655FD0-3BD4-3D4B-8C48-C24D3FA06B87
+Path:             /usr/sbin/cfprefsd
+Resource Coalition: 116 samples 157, 11 samples 155
+On Behalf Of:     1 sample wifid [53] (1 sample originated by wifid [53])
+Architecture:     arm64
+Pageins:          176 pages
+Start time:       2026-04-09 16:54:17.668 -0500
+End time:         2026-04-10 09:21:17.411 -0500
+Num samples:      127 (5%)
+Energy:           4582.23 uWh
+Primary state:    104 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Background, Requested Thread QoS Default, Override Thread QoS Unspecified, e-core
+User Activity:    34 samples Idle, 93 samples Active
+Power Source:     109 samples on Battery, 18 samples on AC
+  127  ??? (libsystem_pthread.dylib + 2240) [0x2015d78c0]
+    127  ??? (libsystem_pthread.dylib + 5040) [0x2015d83b0]
+      127  ??? (libdispatch.dylib + 83628) [0x1dc9e96ac]
+        127  ??? (libdispatch.dylib + 85420) [0x1dc9e9dac]
+          126  ??? (libdispatch.dylib + 43692) [0x1dc9dfaac]
+            126  ??? (libdispatch.dylib + 40472) [0x1dc9dee18]
+              126  ??? (libdispatch.dylib + 97208) [0x1dc9ecbb8]
+                126  ??? (libdispatch.dylib + 102116) [0x1dc9edee4]
+                  126  ??? (libdispatch.dylib + 24904) [0x1dc9db148]
+                    126  ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                      126  ??? (CoreFoundation + 620960) [0x1a282e9a0]
+                        126  ??? (CoreFoundation + 218500) [0x1a27cc584]
+                          126  ??? (CoreFoundation + 209392) [0x1a27ca1f0]
+                            126  ??? (CoreFoundation + 209236) [0x1a27ca154]
+                              119  ??? (CoreFoundation + 455752) [0x1a2806448]
+                                119  ??? (CoreFoundation + 455356) [0x1a28062bc]
+                                  109  ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                    22   <Effective Thread QoS Default>
+                                  8    ??? (CoreFoundation + 442772) [0x1a2803194]
+                                    8    ??? (libsystem_kernel.dylib + 36820) [0x251260fd4]
+                                  2    ??? (libsystem_kernel.dylib + 33364) [0x251260254]
+                              7    ??? (CoreFoundation + 455728) [0x1a2806430]
+                                7    ??? (CoreFoundation + 444344) [0x1a28037b8]
+                                  7    ??? (CoreFoundation + 456268) [0x1a280664c]
+                                    7    ??? (CoreFoundation + 457000) [0x1a2806928]
+                                      7    ??? (CoreFoundation + 457888) [0x1a2806ca0]
+                                        7    ??? (libsystem_c.dylib + 68876) [0x1ae2aad0c]
+                                          7    ??? (libsystem_c.dylib + 72864) [0x1ae2abca0]
+                                            7    ??? (libsystem_c.dylib + 75884) [0x1ae2ac86c]
+                                              7    ??? (libsystem_kernel.dylib + 36248) [0x251260d98]
+          1    ??? (libdispatch.dylib + 43748) [0x1dc9dfae4]
+            1    ??? (libdispatch.dylib + 40472) [0x1dc9dee18]
+              1    ??? (libdispatch.dylib + 125176) [0x1dc9f38f8]
+                1    ??? (libdispatch.dylib + 40472) [0x1dc9dee18]
+                  1    ??? (libdispatch.dylib + 121764) [0x1dc9f2ba4]
+                    1    ??? (libdispatch.dylib + 111148) [0x1dc9f022c]
+                      1    ??? (libxpc.dylib + 84456) [0x1b71819e8]
+                        1    ??? (libxpc.dylib + 76916) [0x1b717fc74]
+                          1    ??? (CoreFoundation + 514748) [0x1a2814abc]
+                            1    ??? (CoreFoundation + 514960) [0x1a2814b90]
+                              1    ??? (CoreFoundation + 517572) [0x1a28155c4]
+                                1    ??? (CoreFoundation + 523948) [0x1a2816eac]
+                                  1    ??? (CoreFoundation + 444344) [0x1a28037b8]
+                                    1    ??? (CoreFoundation + 529552) [0x1a2818490]
+                                      1    ??? (CoreFoundation + 530028) [0x1a281866c]
+                                        1    ??? (CoreFoundation + 532632) [0x1a2819098]
+                                          1    ??? (CoreFoundation + 1694084) [0x1a2934984]
+                                            1    ??? (CoreFoundation + 826792) [0x1a2860da8]
+                                              1    ??? (CoreFoundation + 455356) [0x1a28062bc]
+                                                1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                                  1    <on behalf of wifid [53] (originated by wifid [53]), Effective Thread QoS User Initiated>
+
+  Binary Images:
+           0x10082c000 -                ???  cfprefsd                <D2655FD0-3BD4-3D4B-8C48-C24D3FA06B87>  /usr/sbin/cfprefsd
+           0x1a2797000 -        0x1a2d330ff  CoreFoundation          <11F13078-E01B-343B-A020-8D60BAE7BBB6>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x1ae29a000 -        0x1ae31930f  libsystem_c.dylib       <08196A2F-B3FA-3D0B-B151-AD50A6D0A0B4>  /usr/lib/system/libsystem_c.dylib
+           0x1b716d000 -        0x1b71be61f  libxpc.dylib            <A08D6F00-102F-31A3-92D5-E65AC7B776DF>  /usr/lib/system/libxpc.dylib
+           0x1dc9d5000 -        0x1dca1b5ff  libdispatch.dylib       <5FCAC52F-01E9-3BF0-8AAC-42C442C53560>  /usr/lib/system/libdispatch.dylib
+           0x2015d7000 -        0x2015e34ef  libsystem_pthread.dylib <6C9BCDE9-819D-345D-9D71-B60AD47E5159>  /usr/lib/system/libsystem_pthread.dylib
+           0x251258000 -        0x251293ac7  libsystem_kernel.dylib  <5F4E68E1-021C-3A8F-A6F6-2C4C077D0676>  /usr/lib/system/libsystem_kernel.dylib
+
+
+Powerstats for:   logd
+UUID:             5B65F1B7-AF53-33D5-B765-F067F659DA58
+Path:             /usr/libexec/logd
+Resource Coalition: 120 samples 7
+On Behalf Of:     11 samples UNKNOWN [34, 2910, 5634] (10 samples originated by UNKNOWN [32], 1 sample originated by Gmail [4151])
+Architecture:     arm64
+Pageins:          156093 pages
+Start time:       2026-04-09 16:54:14.856 -0500
+End time:         2026-04-10 09:20:08.596 -0500
+Num samples:      120 (5%)
+Energy:           5129.28 uWh
+Primary state:    90 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Utility, Requested Thread QoS Utility, Override Thread QoS Unspecified, e-core
+User Activity:    51 samples Idle, 69 samples Active
+Power Source:     83 samples on Battery, 37 samples on AC
+  120  ??? (libsystem_pthread.dylib + 2240) [0x2015d78c0]
+    120  ??? (libsystem_pthread.dylib + 5040) [0x2015d83b0]
+      120  ??? (libdispatch.dylib + 83628) [0x1dc9e96ac]
+        120  ??? (libdispatch.dylib + 85420) [0x1dc9e9dac]
+          120  ??? (libdispatch.dylib + 43748) [0x1dc9dfae4]
+            117  ??? (libdispatch.dylib + 40880) [0x1dc9defb0]
+              117  ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                117  ??? (libdispatch.dylib + 69252) [0x1dc9e5e84]
+                  107  ??? (logd + 23464) [0x100351ba8]
+                    107  ??? (logd + 27132) [0x1003529fc]
+                      106  ??? (logd + 40332) [0x100355d8c]
+                        106  ??? (libsystem_kernel.dylib + 29364) [0x25125f2b4]
+                          10   <Effective Thread QoS Default>
+                          4    <Effective Thread QoS Default, Requested Thread QoS Default>
+                          3    <Effective Thread QoS User Initiated>
+                          1    <on behalf of UNKNOWN [34] (originated by Gmail [4151]), Effective Thread QoS User Initiated, Requested Thread QoS Default, p-core>
+                      1    ??? (logd + 40580) [0x100355e84]
+                        1    ??? (logd + 60096) [0x10035aac0]
+                          1    ??? (libsystem_kernel.dylib + 25912) [0x25125e538]
+                            1    <Effective Thread QoS User Initiated>
+                  9    ??? (CacheDelete + 210852) [0x1dbbcc7a4]
+                    9    ??? (logd + 130240) [0x10036bcc0]
+                      9    ??? (libsystem_kernel.dylib + 29364) [0x25125f2b4]
+                        9    <on behalf of UNKNOWN [2910] (originated by UNKNOWN [32]), Effective Thread QoS Background, Requested Thread QoS Background>
+                  1    ??? (logd + 23684) [0x100351c84]
+                    1    ??? (logd + 24144) [0x100351e50]
+                      1    ??? (logd + 18896) [0x1003509d0]
+                        1    ??? (logd + 22292) [0x100351714]
+                          1    ??? (logd + 86784) [0x100361300]
+                            1    ??? (libdispatch.dylib + 70368) [0x1dc9e62e0]
+                              1    ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                                1    ??? (logd + 87140) [0x100361464]
+                                  1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+            2    ??? (libdispatch.dylib + 40472) [0x1dc9dee18]
+              2    ??? (libdispatch.dylib + 97208) [0x1dc9ecbb8]
+                2    ??? (libdispatch.dylib + 102116) [0x1dc9edee4]
+                  2    ??? (libdispatch.dylib + 24904) [0x1dc9db148]
+                    2    ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                      2    ??? (logd + 4192) [0x10034d060]
+                        2    ??? (logd + 6212) [0x10034d844]
+                          2    ??? (logd + 6848) [0x10034dac0]
+                            2    ??? (logd + 9384) [0x10034e4a8]
+                              2    ??? (logd + 10064) [0x10034e750]
+                                2    ??? (logd + 11980) [0x10034eecc]
+                                  2    ??? (logd + 19872) [0x100350da0]
+                                    1    ??? (logd + 23684) [0x100351c84]
+                                      1    ??? (logd + 24144) [0x100351e50]
+                                        1    ??? (logd + 18896) [0x1003509d0]
+                                          1    ??? (logd + 22292) [0x100351714]
+                                            1    ??? (logd + 86784) [0x100361300]
+                                              1    ??? (libdispatch.dylib + 70368) [0x1dc9e62e0]
+                                                1    ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                                                  1    ??? (logd + 87140) [0x100361464]
+                                                    1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                    1    ??? (logd + 23464) [0x100351ba8]
+                                      1    ??? (logd + 27196) [0x100352a3c]
+                                        1    ??? (logd + 49884) [0x1003582dc]
+                                          1    ??? (logd + 51820) [0x100358a6c]
+                                            1    ??? (libsystem_kernel.dylib + 20528) [0x25125d030]
+                                              1    <Effective Thread QoS User Initiated>
+            1    ??? (libdispatch.dylib + 41084) [0x1dc9df07c]
+              1    ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                1    ??? (libdispatch.dylib + 6568) [0x1dc9d69a8]
+                  1    ??? (logd + 64648) [0x10035bc88]
+                    1    ??? (logd + 64528) [0x10035bc10]
+                      1    ??? (libdispatch.dylib + 70368) [0x1dc9e62e0]
+                        1    ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                          1    ??? (logd + 64920) [0x10035bd98]
+                            1    ??? (libdispatch.dylib + 70368) [0x1dc9e62e0]
+                              1    ??? (libdispatch.dylib + 111076) [0x1dc9f01e4]
+                                1    ??? (logd + 65132) [0x10035be6c]
+                                  1    ??? (logd + 40332) [0x100355d8c]
+                                    1    ??? (libsystem_kernel.dylib + 29364) [0x25125f2b4]
+                                      1    <on behalf of UNKNOWN [5634] (originated by UNKNOWN [32]), Effective Thread QoS Background, Requested Thread QoS Background>
+
+  Binary Images:
+           0x10034c000 -                ???  logd                    <5B65F1B7-AF53-33D5-B765-F067F659DA58>  /usr/libexec/logd
+           0x1dbb99000 -        0x1dbbe5fdf  CacheDelete             <50A10F1A-6DAB-32DE-A005-20637A4C1973>  /System/Library/PrivateFrameworks/CacheDelete.framework/CacheDelete
+           0x1dc9d5000 -        0x1dca1b5ff  libdispatch.dylib       <5FCAC52F-01E9-3BF0-8AAC-42C442C53560>  /usr/lib/system/libdispatch.dylib
+           0x2015d7000 -        0x2015e34ef  libsystem_pthread.dylib <6C9BCDE9-819D-345D-9D71-B60AD47E5159>  /usr/lib/system/libsystem_pthread.dylib
+           0x251258000 -        0x251293ac7  libsystem_kernel.dylib  <5F4E68E1-021C-3A8F-A6F6-2C4C077D0676>  /usr/lib/system/libsystem_kernel.dylib

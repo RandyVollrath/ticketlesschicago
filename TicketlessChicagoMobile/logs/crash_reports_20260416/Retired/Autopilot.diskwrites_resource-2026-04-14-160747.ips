@@ -1,0 +1,298 @@
+{"roots_installed":0,"app_name":"Autopilot","timestamp":"2026-04-14 16:07:47.00 -0500","app_version":"2.0.4","slice_uuid":"EEB80ADC-B48B-3401-B81E-8B8C2FC60BE9","adam_id":"6758504333","build_version":"5","bundleID":"fyi.ticketless.app","duration_ms":"76830229","is_first_party":0,"share_with_app_devs":1,"bug_type":"145","os_version":"iPhone OS 26.4.1 (23E254)","distributor_id":"com.apple.AppStore","name":"Autopilot","incident_id":"42C24EBA-B092-4FCF-B0B5-AA09B82ED012"}
+Date/Time:        2026-04-13 18:47:14.204 -0500
+End time:         2026-04-14 16:07:44.433 -0500
+OS Version:       iPhone OS 26.4.1 (Build 23E254)
+Architecture:     arm64e
+Report Version:   72
+Incident Identifier: 42C24EBA-B092-4FCF-B0B5-AA09B82ED012
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     1AEDC53D-EB06-317A-8A1E-C8C22F3401CA slid base address 0x180054000, slide 0x54000
+
+Command:          Autopilot
+Path:             /private/var/containers/Bundle/Application/9305DA31-604D-4739-84B2-F39DBFA58CBA/Autopilot.app/Autopilot
+Identifier:       fyi.ticketless.app
+Version:          2.0.4 (5)
+Adam ID:          6758504333
+Is First Party:   No
+Beta Identifier:  9B4537BD-7F52-48F2-B5DF-200E63A1B82D
+Resource Coalition: "fyi.ticketless.app"(2403)
+On Behalf Of:     96 samples UNKNOWN [32138] (96 samples originated by UNKNOWN [32138])
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+PID:              32149
+
+Event:            disk writes
+Action taken:     none
+Writes:           1073.76 MB of file backed memory dirtied over 76830 seconds (13.98 KB per second average), exceeding limit of 12.43 KB per second over 86400 seconds
+Writes limit:     1073.74 MB
+Limit duration:   86400s
+Writes caused:    1073.76 MB
+Writes duration:  76830s
+Duration:         76830.23s
+Duration Sampled: 76687.54s (event starts 124.22s before samples, event ends 18.47s after samples)
+Steps:            109 (5567 samples lost, 10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 5.19% (308.48 MB / 5938.83 MB)
+
+Time Since Boot:  106331s
+Time Awake Since Boot: 103393s
+Time Since Wake:  100049s
+
+Total CPU Time:   110.184s
+Advisory levels:  Battery -> 3, User -> 3, ThermalPressure -> 10, Combined -> 1
+Free disk space:  14.21 GB/238.29 GB, low space threshold 150 MB
+Vnodes Available: 56.44% (11287/20000, 10000 allocated, 10000 soft limit)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+Keyboards:        en_US QWERTY
+OS Cryptex File Extents: 21640
+
+Heaviest stack for the target process:
+  96  ??? (dyld + 19484) [0x180175c1c]
+  96  ??? (Autopilot + 21212) [0x1024652dc]
+  96  ??? (UIKitCore + 2721432) [0x18939c698]
+  96  ??? (UIKitCore + 573784) [0x189190158]
+  96  ??? (UIKitCore + 1184452) [0x1892252c4]
+  96  ??? (GraphicsServices + 5272) [0x228a87498]
+  96  ??? (CoreFoundation + 188880) [0x1835611d0]
+  96  ??? (CoreFoundation + 193160) [0x183562288]
+  96  ??? (CoreFoundation + 662116) [0x1835d4a64]
+  96  ??? (libdispatch.dylib + 67748) [0x1bd78b8a4]
+  96  ??? (libdispatch.dylib + 67940) [0x1bd78b964]
+  96  ??? (libdispatch.dylib + 232976) [0x1bd7b3e10]
+  96  ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+  96  ??? (libdispatch.dylib + 69252) [0x1bd78be84]
+  96  ??? (Foundation + 145704) [0x1807ed928]
+  96  ??? (Foundation + 149360) [0x1807ee770]
+  96  ??? (Foundation + 148628) [0x1807ee494]
+  96  ??? (Foundation + 149752) [0x1807ee8f8]
+  96  ??? (Foundation + 149456) [0x1807ee7d0]
+  96  ??? (Foundation + 150468) [0x1807eebc4]
+  96  ??? (Autopilot + 137396) [0x1024818b4]
+  32  ??? (Autopilot + 127852) [0x10247f36c]
+  18  ??? (Autopilot + 57304) [0x10246dfd8]
+  18  ??? (Autopilot + 47044) [0x10246b7c4]
+  18  ??? (Foundation + 378552) [0x1808266b8]
+  18  ??? (Foundation + 41344) [0x1807d4180]
+  18  ??? (Foundation + 379272) [0x180826988]
+  18  ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+
+
+Powerstats for:   Autopilot [32149]
+UUID:             EEB80ADC-B48B-3401-B81E-8B8C2FC60BE9
+Path:             /private/var/containers/Bundle/Application/9305DA31-604D-4739-84B2-F39DBFA58CBA/Autopilot.app/Autopilot
+Identifier:       fyi.ticketless.app
+Version:          2.0.4 (5)
+Adam ID:          6758504333
+Is First Party:   No
+Beta Identifier:  9B4537BD-7F52-48F2-B5DF-200E63A1B82D
+Resource Coalition: 109 samples "fyi.ticketless.app"(2403)
+On Behalf Of:     96 samples UNKNOWN [32138] (96 samples originated by UNKNOWN [32138])
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+UID:              501
+Footprint:        39.91 MB -> 72.16 MB (+32.25 MB)
+Pageins:          91179 pages
+Start time:       2026-04-13 18:49:18.422 -0500
+End time:         2026-04-14 16:07:25.961 -0500
+Num samples:      109 (100%)
+Energy:           13.65 mWh
+Num threads:      13
+Primary state:    97 samples Non-Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS Default, Requested Thread QoS User Interactive, Override Thread QoS Unspecified, e-core
+User Activity:    32 samples Idle, 77 samples Active
+Power Source:     99 samples on Battery, 10 samples on AC
+  96   ??? (dyld + 19484) [0x180175c1c]
+    96   ??? (Autopilot + 21212) [0x1024652dc]
+      96   ??? (UIKitCore + 2721432) [0x18939c698]
+        96   ??? (UIKitCore + 573784) [0x189190158]
+          96   ??? (UIKitCore + 1184452) [0x1892252c4]
+            96   ??? (GraphicsServices + 5272) [0x228a87498]
+              96   ??? (CoreFoundation + 188880) [0x1835611d0]
+                96   ??? (CoreFoundation + 193160) [0x183562288]
+                  96   ??? (CoreFoundation + 662116) [0x1835d4a64]
+                    96   ??? (libdispatch.dylib + 67748) [0x1bd78b8a4]
+                      96   ??? (libdispatch.dylib + 67940) [0x1bd78b964]
+                        96   ??? (libdispatch.dylib + 232976) [0x1bd7b3e10]
+                          96   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                            96   ??? (libdispatch.dylib + 69252) [0x1bd78be84]
+                              96   ??? (Foundation + 145704) [0x1807ed928]
+                                96   ??? (Foundation + 149360) [0x1807ee770]
+                                  96   ??? (Foundation + 148628) [0x1807ee494]
+                                    96   ??? (Foundation + 149752) [0x1807ee8f8]
+                                      96   ??? (Foundation + 149456) [0x1807ee7d0]
+                                        96   ??? (Foundation + 150468) [0x1807eebc4]
+                                          96   ??? (Autopilot + 137396) [0x1024818b4]
+                                            32   ??? (Autopilot + 127852) [0x10247f36c]
+                                              18   ??? (Autopilot + 57304) [0x10246dfd8]
+                                                18   ??? (Autopilot + 47044) [0x10246b7c4]
+                                                  18   ??? (Foundation + 378552) [0x1808266b8]
+                                                    18   ??? (Foundation + 41344) [0x1807d4180]
+                                                      18   ??? (Foundation + 379272) [0x180826988]
+                                                        18   ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                                          18   <on behalf of UNKNOWN [32138] (originated by UNKNOWN [32138])>
+                                              14   ??? (Autopilot + 57260) [0x10246dfac]
+                                                14   ??? (Autopilot + 55812) [0x10246da04]
+                                                  14   ??? (Foundation + 378552) [0x1808266b8]
+                                                    14   ??? (Foundation + 41344) [0x1807d4180]
+                                                      14   ??? (Foundation + 379272) [0x180826988]
+                                                        14   ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                                          14   <on behalf of UNKNOWN [32138] (originated by UNKNOWN [32138])>
+                                            26   ??? (Autopilot + 126784) [0x10247ef40]
+                                              26   ??? (Autopilot + 47044) [0x10246b7c4]
+                                                26   ??? (Foundation + 378552) [0x1808266b8]
+                                                  26   ??? (Foundation + 41344) [0x1807d4180]
+                                                    26   ??? (Foundation + 379272) [0x180826988]
+                                                      26   ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                                        26   <on behalf of UNKNOWN [32138] (originated by UNKNOWN [32138])>
+                                            23   ??? (Autopilot + 137016) [0x102481738]
+                                              14   ??? (Autopilot + 57304) [0x10246dfd8]
+                                                14   ??? (Autopilot + 47044) [0x10246b7c4]
+                                                  14   ??? (Foundation + 378552) [0x1808266b8]
+                                                    14   ??? (Foundation + 41344) [0x1807d4180]
+                                                      14   ??? (Foundation + 379272) [0x180826988]
+                                                        14   ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                                          13   <on behalf of UNKNOWN [32138] (originated by UNKNOWN [32138])>
+                                                          1    <on behalf of UNKNOWN [32138] (originated by UNKNOWN [32138]), Frontmost App, Effective Thread QoS User Interactive>
+                                              9    ??? (Autopilot + 57260) [0x10246dfac]
+                                                9    ??? (Autopilot + 55812) [0x10246da04]
+                                                  9    ??? (Foundation + 378552) [0x1808266b8]
+                                                    9    ??? (Foundation + 41344) [0x1807d4180]
+                                                      9    ??? (Foundation + 379272) [0x180826988]
+                                                        9    ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                                          9    <on behalf of UNKNOWN [32138] (originated by UNKNOWN [32138])>
+                                            14   ??? (Autopilot + 137048) [0x102481758]
+                                              14   ??? (Autopilot + 47044) [0x10246b7c4]
+                                                14   ??? (Foundation + 378552) [0x1808266b8]
+                                                  14   ??? (Foundation + 41344) [0x1807d4180]
+                                                    14   ??? (Foundation + 379272) [0x180826988]
+                                                      14   ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                                        14   <on behalf of UNKNOWN [32138] (originated by UNKNOWN [32138])>
+                                            1    ??? (Autopilot + 129760) [0x10247fae0]
+                                              1    ??? (Autopilot + 47044) [0x10246b7c4]
+                                                1    ??? (Foundation + 378552) [0x1808266b8]
+                                                  1    ??? (Foundation + 41344) [0x1807d4180]
+                                                    1    ??? (Foundation + 379272) [0x180826988]
+                                                      1    ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                                        1    <on behalf of UNKNOWN [32138] (originated by UNKNOWN [32138])>
+  11   ??? (libsystem_pthread.dylib + 2240) [0x1e237b8c0]
+    11   ??? (libsystem_pthread.dylib + 5040) [0x1e237c3b0]
+      11   ??? (libdispatch.dylib + 83628) [0x1bd78f6ac]
+        11   ??? (libdispatch.dylib + 85420) [0x1bd78fdac]
+          9    ??? (libdispatch.dylib + 43692) [0x1bd785aac]
+            9    ??? (libdispatch.dylib + 40880) [0x1bd784fb0]
+              9    ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                6    ??? (libdispatch.dylib + 69252) [0x1bd78be84]
+                  6    ??? (CFNetwork + 866504) [0x1989ef8c8]
+                    6    ??? (libsqlite3.dylib + 191556) [0x181978c44]
+                      6    ??? (libsqlite3.dylib + 234208) [0x1819832e0]
+                        6    ??? (libsqlite3.dylib + 92900) [0x181960ae4]
+                          6    ??? (libsqlite3.dylib + 260340) [0x1819898f4]
+                            6    ??? (libsqlite3.dylib + 261460) [0x181989d54]
+                              6    ??? (libsqlite3.dylib + 327836) [0x18199a09c]
+                                4    ??? (libsqlite3.dylib + 699044) [0x1819f4aa4]
+                                  4    ??? (libsqlite3.dylib + 328740) [0x18199a424]
+                                    4    ??? (libsystem_kernel.dylib + 27724) [0x232002c4c]
+                                      4    <Effective Thread QoS Utility, Requested Thread QoS Utility>
+                                2    ??? (libsqlite3.dylib + 700904) [0x1819f51e8]
+                                  2    ??? (libsqlite3.dylib + 108912) [0x181964970]
+                                    2    <Effective Thread QoS Utility, Requested Thread QoS Utility>
+                3    ??? (libdispatch.dylib + 6568) [0x1bd77c9a8]
+                  3    ??? (Autopilot + 5275248) [0x102967e70]
+                    3    ??? (Autopilot + 5253980) [0x102962b5c]
+                      3    ??? (CoreFoundation + 495196) [0x1835abe5c]
+                        3    ??? (CoreFoundation + 406232) [0x1835962d8]
+                          3    ??? (CoreFoundation + 406612) [0x183596454]
+                            3    ??? (Autopilot + 2777616) [0x102706210]
+                              3    ??? (Autopilot + 2773904) [0x102705390]
+                                3    ??? (Foundation + 10651812) [0x1811f28a4]
+                                  3    ??? (Foundation + 5632916) [0x180d29394]
+                                    3    ??? (Foundation + 5651584) [0x180d2dc80]
+                                      2    ??? (Foundation + 679744) [0x18086ff40]
+                                        2    ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                          1    <Requested Thread QoS User Initiated>
+                                          1    <Frontmost App, Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+                                      1    ??? (Foundation + 680372) [0x1808701b4]
+                                        1    ??? (Foundation + 5633704) [0x180d296a8]
+                                          1    ??? (Foundation + 668240) [0x18086d250]
+                                            1    ??? (libsystem_kernel.dylib + 21680) [0x2320014b0]
+                                              1    <Requested Thread QoS User Initiated>
+          1    ??? (libdispatch.dylib + 48712) [0x1bd786e48]
+            1    ??? (libdispatch.dylib + 43748) [0x1bd785ae4]
+              1    ??? (libdispatch.dylib + 40880) [0x1bd784fb0]
+                1    ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                  1    ??? (libdispatch.dylib + 6568) [0x1bd77c9a8]
+                    1    ??? (CFNetwork + 38612) [0x1989256d4]
+                      1    ??? (CFNetwork + 214068) [0x198950434]
+                        1    ??? (CFNetwork + 214244) [0x1989504e4]
+                          1    ??? (CFNetwork + 232332) [0x198954b8c]
+                            1    ??? (CFNetwork + 43728) [0x198926ad0]
+                              1    ??? (CFNetwork + 236120) [0x198955a58]
+                                1    ??? (CFNetwork + 242476) [0x19895732c]
+                                  1    ??? (CFNetwork + 238248) [0x1989562a8]
+                                    1    ??? (libdispatch.dylib + 70368) [0x1bd78c2e0]
+                                      1    ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                                        1    ??? (CFNetwork + 247192) [0x198958598]
+                                          1    ??? (libsqlite3.dylib + 191556) [0x181978c44]
+                                            1    ??? (libsqlite3.dylib + 207552) [0x18197cac0]
+                                              1    ??? (libsqlite3.dylib + 682464) [0x1819f09e0]
+                                                1    ??? (libsqlite3.dylib + 94676) [0x1819611d4]
+                                                  1    ??? (libsqlite3.dylib + 98556) [0x1819620fc]
+                                                    1    <Requested Thread QoS User Initiated>
+          1    ??? (libdispatch.dylib + 43748) [0x1bd785ae4]
+            1    ??? (libdispatch.dylib + 40880) [0x1bd784fb0]
+              1    ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                1    ??? (libdispatch.dylib + 69252) [0x1bd78be84]
+                  1    ??? (CFNetwork + 360860) [0x19897419c]
+                    1    ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                      1    <Effective Thread QoS Utility, Requested Thread QoS Utility>
+  2    ??? (libsystem_pthread.dylib + 2252) [0x1e237b8cc]
+    2    ??? (libsystem_pthread.dylib + 17464) [0x1e237f438]
+      2    ??? (Foundation + 583684) [0x180858804]
+        2    ??? (Autopilot + 6033832) [0x102a211a8]
+          2    ??? (CoreFoundation + 188880) [0x1835611d0]
+            2    ??? (CoreFoundation + 193572) [0x183562424]
+              2    ??? (CoreFoundation + 185372) [0x18356041c]
+                2    ??? (CoreFoundation + 186192) [0x183560750]
+                  2    ??? (LocationSupport + 5572) [0x1e2a7c5c4]
+                    2    ??? (CoreLocation + 16936) [0x19c5e7228]
+                      2    ??? (CoreLocation + 15504) [0x19c5e6c90]
+                        2    ??? (CoreLocation + 56984) [0x19c5f0e98]
+                          2    ??? (Autopilot + 151832) [0x102485118]
+                            2    ??? (Autopilot + 329340) [0x1024b067c]
+                              2    ??? (Autopilot + 277908) [0x1024a3d94]
+                                1    ??? (Autopilot + 57304) [0x10246dfd8]
+                                  1    ??? (Autopilot + 47044) [0x10246b7c4]
+                                    1    ??? (Foundation + 378552) [0x1808266b8]
+                                      1    ??? (Foundation + 41344) [0x1807d4180]
+                                        1    ??? (Foundation + 379272) [0x180826988]
+                                          1    ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                1    ??? (Autopilot + 57260) [0x10246dfac]
+                                  1    ??? (Autopilot + 55812) [0x10246da04]
+                                    1    ??? (Foundation + 378552) [0x1808266b8]
+                                      1    ??? (Foundation + 41344) [0x1807d4180]
+                                        1    ??? (Foundation + 379272) [0x180826988]
+                                          1    ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+
+  Binary Images:
+           0x102460000 -                ???  fyi.ticketless.app 2.0.4 (5) <EEB80ADC-B48B-3401-B81E-8B8C2FC60BE9>  /private/var/containers/Bundle/Application/9305DA31-604D-4739-84B2-F39DBFA58CBA/Autopilot.app/Autopilot
+           0x180171000 -        0x180215ebf  dyld                         <80DD1800-F68D-354F-8106-8CB5EA621ACA>  /usr/lib/dyld
+           0x1807ca000 -        0x18165245f  Foundation                   <66BF417C-1D00-3457-A302-196BBAEC23D0>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x18194a000 -        0x181af3853  libsqlite3.dylib             <AFBB4016-E509-3F02-9C36-DFE15D54C8D0>  /usr/lib/libsqlite3.dylib
+           0x183533000 -        0x183acf0ff  CoreFoundation               <11F13078-E01B-343B-A020-8D60BAE7BBB6>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x189104000 -        0x18b6433bf  UIKitCore                    <32C1B300-A601-3E14-8B53-3419A2D2F234>  /System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore
+           0x19891c000 -        0x198ccc63f  CFNetwork                    <81DEFE11-08D1-377B-92D1-434C9F74FB3D>  /System/Library/Frameworks/CFNetwork.framework/CFNetwork
+           0x19c5e3000 -        0x19c8a9cbf  CoreLocation                 <C574F640-C127-3AB6-8EA8-646A32E8D94F>  /System/Library/Frameworks/CoreLocation.framework/CoreLocation
+           0x1bd77b000 -        0x1bd7c15ff  libdispatch.dylib            <5FCAC52F-01E9-3BF0-8AAC-42C442C53560>  /usr/lib/system/libdispatch.dylib
+           0x1e237b000 -        0x1e23874ef  libsystem_pthread.dylib      <6C9BCDE9-819D-345D-9D71-B60AD47E5159>  /usr/lib/system/libsystem_pthread.dylib
+           0x1e2a7b000 -        0x1e2ab1e9f  LocationSupport              <A1308B89-4CAB-3E81-9AD2-4F935C65156E>  /System/Library/PrivateFrameworks/LocationSupport.framework/LocationSupport
+           0x228a86000 -        0x228a8e7bf  GraphicsServices             <4E01D837-D392-3B40-ABD3-FF5755B93327>  /System/Library/PrivateFrameworks/GraphicsServices.framework/GraphicsServices
+           0x231ffc000 -        0x232037ac7  libsystem_kernel.dylib       <5F4E68E1-021C-3A8F-A6F6-2C4C077D0676>  /usr/lib/system/libsystem_kernel.dylib
