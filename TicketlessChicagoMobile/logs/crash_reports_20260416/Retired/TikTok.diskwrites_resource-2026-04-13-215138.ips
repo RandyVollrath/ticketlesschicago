@@ -1,0 +1,397 @@
+{"roots_installed":0,"app_name":"TikTok","timestamp":"2026-04-13 21:51:38.00 -0500","app_version":"44.5.0","slice_uuid":"B1EAB881-F55C-3F41-B1AF-57ED4C598275","adam_id":"835599320","build_version":"445048","bundleID":"com.zhiliaoapp.musically","duration_ms":"50701828","is_first_party":0,"share_with_app_devs":1,"bug_type":"145","os_version":"iPhone OS 26.4.1 (23E254)","distributor_id":"com.apple.AppStore","name":"TikTok","incident_id":"D9CB85F0-43D8-41E9-9DA6-B6270E36FFCB"}
+Date/Time:        2026-04-13 07:46:25.369 -0500
+End time:         2026-04-13 21:51:27.197 -0500
+OS Version:       iPhone OS 26.4.1 (Build 23E254)
+Architecture:     arm64e
+Report Version:   72
+Incident Identifier: D9CB85F0-43D8-41E9-9DA6-B6270E36FFCB
+Share With Devs:  Yes
+
+Data Source:      Microstackshots
+Shared Cache:     1AEDC53D-EB06-317A-8A1E-C8C22F3401CA slid base address 0x180054000, slide 0x54000
+
+Command:          TikTok
+Path:             /private/var/containers/Bundle/Application/B9F2437F-9E58-47F5-BA85-338A079A62BD/TikTok.app/TikTok
+Identifier:       com.zhiliaoapp.musically
+Version:          44.5.0 (445048)
+Adam ID:          835599320
+Is First Party:   No
+Beta Identifier:  F5087EF4-CFC8-47DC-8689-D84E00CE0130
+Resource Coalition: "com.zhiliaoapp.musically"(901)
+On Behalf Of:     2 samples UNKNOWN [37] (1 sample originated by TikTok [35085], 1 sample originated by UNKNOWN [37])
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+PID:              35085
+
+Event:            disk writes
+Action taken:     none
+Writes:           4294.98 MB of file backed memory dirtied over 50702 seconds (84.71 KB per second average), exceeding limit of 49.71 KB per second over 86400 seconds
+Writes limit:     4294.97 MB
+Limit duration:   86400s
+Writes caused:    4294.98 MB
+Writes duration:  50702s
+Duration:         50701.83s
+Duration Sampled: 23.17s (event starts 50664.48s before samples, event ends 14.17s after samples)
+Steps:            18 (4 samples lost, 10.49 MB/step)
+
+Hardware model:   iPhone14,4
+Active cpus:      6
+Memory size:      3.59 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 6.38% (378.61 MB / 5938.83 MB)
+
+Time Since Boot:  117223s
+Time Awake Since Boot: 114285s
+Time Since Wake:  110941s
+
+Total CPU Time:   6.809s
+Advisory levels:  Battery -> 1, User -> 3, ThermalPressure -> 0, Combined -> 1
+Free disk space:  15.60 GB/238.29 GB, low space threshold 150 MB
+Vnodes Available: 62.22% (12443/20000, 10000 allocated, 10000 soft limit)
+Models:           none
+
+Preferred User Language: en-US
+Country Code:     US
+Keyboards:        en_US QWERTY
+OS Cryptex File Extents: 21640
+
+Heaviest stack for the target process:
+  16  ??? (libsystem_pthread.dylib + 2240) [0x1e237b8c0]
+  13  ??? (libsystem_pthread.dylib + 5040) [0x1e237c3b0]
+  13  ??? (libdispatch.dylib + 83628) [0x1bd78f6ac]
+  13  ??? (libdispatch.dylib + 85420) [0x1bd78fdac]
+  12  ??? (libdispatch.dylib + 43692) [0x1bd785aac]
+  12  ??? (libdispatch.dylib + 40880) [0x1bd784fb0]
+  12  ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+  11  ??? (libdispatch.dylib + 6568) [0x1bd77c9a8]
+  10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 656045544) [0x1292075e8]
+  10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 234839580) [0x110055e1c]
+  10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652853844) [0x128efc254]
+  10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652854240) [0x128efc3e0]
+  10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652855308) [0x128efc80c]
+  7   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 589372) [0x12a5dfe3c]
+  5   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 585980) [0x12a5df0fc]
+  5   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 602436) [0x12a5e3144]
+  5   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 423224) [0x12a5b7538]
+  5   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 424132) [0x12a5b78c4]
+  4   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 640356) [0x12a5ec564]
+  4   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 641996) [0x12a5ecbcc]
+  4   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x12a5b0048]
+  4   ??? (libsystem_kernel.dylib + 27984) [0x232002d50]
+
+
+Powerstats for:   TikTok [35085]
+UUID:             B1EAB881-F55C-3F41-B1AF-57ED4C598275
+Path:             /private/var/containers/Bundle/Application/B9F2437F-9E58-47F5-BA85-338A079A62BD/TikTok.app/TikTok
+Identifier:       com.zhiliaoapp.musically
+Version:          44.5.0 (445048)
+Adam ID:          835599320
+Is First Party:   No
+Beta Identifier:  F5087EF4-CFC8-47DC-8689-D84E00CE0130
+Resource Coalition: 18 samples "com.zhiliaoapp.musically"(901)
+On Behalf Of:     2 samples UNKNOWN [37] (1 sample originated by TikTok [35085], 1 sample originated by UNKNOWN [37])
+Architecture:     arm64
+Parent:           UNKNOWN [1]
+UID:              501
+Footprint:        120.75 MB -> 499.70 MB (+378.95 MB)
+Pageins:          22116 pages
+Start time:       2026-04-13 21:50:49.853 -0500
+End time:         2026-04-13 21:51:13.023 -0500
+Num samples:      18 (100%)
+Energy:           5406.35 uWh
+Num threads:      10
+Primary state:    11 samples Frontmost App, Non-Suppressed, Kernel mode, Effective Thread QoS User Initiated, Requested Thread QoS User Initiated, Override Thread QoS Unspecified, p-core
+User Activity:    0 samples Idle, 18 samples Active
+Power Source:     18 samples on Battery, 0 samples on AC
+  16  ??? (libsystem_pthread.dylib + 2240) [0x1e237b8c0]
+    13  ??? (libsystem_pthread.dylib + 5040) [0x1e237c3b0]
+      13  ??? (libdispatch.dylib + 83628) [0x1bd78f6ac]
+        13  ??? (libdispatch.dylib + 85420) [0x1bd78fdac]
+          12  ??? (libdispatch.dylib + 43692) [0x1bd785aac]
+            12  ??? (libdispatch.dylib + 40880) [0x1bd784fb0]
+              12  ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                11  ??? (libdispatch.dylib + 6568) [0x1bd77c9a8]
+                  10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 656045544) [0x1292075e8]
+                    10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 234839580) [0x110055e1c]
+                      10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652853844) [0x128efc254]
+                        10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652854240) [0x128efc3e0]
+                          10  ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652855308) [0x128efc80c]
+                            7   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 589372) [0x12a5dfe3c]
+                              5   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 585980) [0x12a5df0fc]
+                                5   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 602436) [0x12a5e3144]
+                                  5   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 423224) [0x12a5b7538]
+                                    5   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 424132) [0x12a5b78c4]
+                                      4   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 640356) [0x12a5ec564]
+                                        4   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 641996) [0x12a5ecbcc]
+                                          4   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x12a5b0048]
+                                            4   ??? (libsystem_kernel.dylib + 27984) [0x232002d50]
+                                      1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 641076) [0x12a5ec834]
+                                        1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x12a5b0048]
+                                          1   ??? (libsystem_kernel.dylib + 27984) [0x232002d50]
+                              2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 577804) [0x12a5dd10c]
+                                2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 52476) [0x12a55ccfc]
+                                  2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 72520) [0x12a561b48]
+                                    2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 73856) [0x12a562080]
+                                      2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 47336) [0x12a55b8e8]
+                                        2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 420120) [0x12a5b6918]
+                                          2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 441724) [0x12a5bbd7c]
+                                            2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 415244) [0x12a5b560c]
+                                              2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 424132) [0x12a5b78c4]
+                                                2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 640356) [0x12a5ec564]
+                                                  2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 641996) [0x12a5ecbcc]
+                                                    2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x12a5b0048]
+                                                      2   ??? (libsystem_kernel.dylib + 27984) [0x232002d50]
+                            3   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 589520) [0x12a5dfed0]
+                              3   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652855560) [0x128efc908]
+                                2   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652856036) [0x128efcae4]
+                                  2   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 655526140) [0x1291888fc]
+                                    2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 372412) [0x12a5aaebc]
+                                      2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 372592) [0x12a5aaf70]
+                                        2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 428960) [0x12a5b8ba0]
+                                          2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 637052) [0x12a5eb87c]
+                                            2   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x12a5b0048]
+                                              2   ??? (libsystem_kernel.dylib + 27984) [0x232002d50]
+                                                1   <on behalf of UNKNOWN [37] (originated by UNKNOWN [37]), Non-Frontmost App, Effective Thread QoS Default>
+                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652855684) [0x128efc984]
+                                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 655526140) [0x1291888fc]
+                                    1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 372412) [0x12a5aaebc]
+                                      1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 372592) [0x12a5aaf70]
+                                        1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 428960) [0x12a5b8ba0]
+                                          1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 637052) [0x12a5eb87c]
+                                            1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x12a5b0048]
+                                              1   ??? (libsystem_kernel.dylib + 27984) [0x232002d50]
+                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652920568) [0x128f0c6f8]
+                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652924024) [0x128f0d478]
+                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652927232) [0x128f0e100]
+                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652927320) [0x128f0e158]
+                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652928244) [0x128f0e4f4]
+                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653729864) [0x128fd2048]
+                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644468384) [0x1286fcea0]
+                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644469108) [0x1286fd174]
+                                  1   ??? (libdispatch.dylib + 70368) [0x1bd78c2e0]
+                                    1   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644469560) [0x1286fd338]
+                                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644488484) [0x128701d24]
+                                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644470640) [0x1286fd770]
+                                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644470532) [0x1286fd704]
+                                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644472504) [0x1286fdeb8]
+                                                1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 589372) [0x12a5dfe3c]
+                                                  1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 586068) [0x12a5df154]
+                                                    1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 602436) [0x12a5e3144]
+                                                      1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 423224) [0x12a5b7538]
+                                                        1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 424132) [0x12a5b78c4]
+                                                          1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 640356) [0x12a5ec564]
+                                                            1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 641996) [0x12a5ecbcc]
+                                                              1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x12a5b0048]
+                                                                1   ??? (libsystem_kernel.dylib + 27984) [0x232002d50]
+                                                                  1   <Effective Thread QoS Default, Requested Thread QoS Default, e-core>
+                1   ??? (libdispatch.dylib + 69252) [0x1bd78be84]
+                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 419435724) [0x11b0614cc]
+                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 419433344) [0x11b060b80]
+                      1   ??? (libdispatch.dylib + 26260) [0x1bd781694]
+                        1   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 419433632) [0x11b060ca0]
+                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 539740888) [0x12231cad8]
+                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 539744020) [0x12231d714]
+                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 539750392) [0x12231eff8]
+                                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 539749840) [0x12231edd0]
+                                    1   ??? (Foundation + 659944) [0x18086b1e8]
+                                      1   ??? (Foundation + 660956) [0x18086b5dc]
+                                        1   ??? (Foundation + 1458752) [0x18092e240]
+                                          1   ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+          1   ??? (libdispatch.dylib + 43748) [0x1bd785ae4]
+            1   ??? (libdispatch.dylib + 40880) [0x1bd784fb0]
+              1   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                1   ??? (libdispatch.dylib + 6568) [0x1bd77c9a8]
+                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 655704752) [0x1291b42b0]
+                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 648497068) [0x128ad47ac]
+                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 646135824) [0x128894010]
+                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 655578956) [0x12919574c]
+                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 642791080) [0x1285636a8]
+                            1   ??? (CoreFoundation + 102344) [0x18354bfc8]
+                              1   ??? (CoreFoundation + 102652) [0x18354c0fc]
+                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 655579328) [0x1291958c0]
+                                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 655579592) [0x1291959c8]
+                                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 655580144) [0x129195bf0]
+                                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 654706048) [0x1290c0580]
+                                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 655580460) [0x129195d2c]
+                                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 654709696) [0x1290c13c0]
+                                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 654710216) [0x1290c15c8]
+                                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 654699732) [0x1290becd4]
+                                                1   ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                                                  1   <Effective Thread QoS Default, Requested Thread QoS Default>
+    3   ??? (libsystem_pthread.dylib + 4980) [0x1e237c374]
+      3   ??? (libdispatch.dylib + 82072) [0x1bd78f098]
+        2   ??? (libdispatch.dylib + 80128) [0x1bd78e900]
+          1   ??? (libdispatch.dylib + 24032) [0x1bd780de0]
+            1   ??? (libdispatch.dylib + 227940) [0x1bd7b2a64]
+              1   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                1   ??? (libdispatch.dylib + 6568) [0x1bd77c9a8]
+                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653616624) [0x128fb65f0]
+                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 650710504) [0x128cf0de8]
+                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644450496) [0x1286f88c0]
+                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644452128) [0x1286f8f20]
+                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644452832) [0x1286f91e0]
+                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644493988) [0x1287032a4]
+                              1   <on behalf of UNKNOWN [37] (originated by TikTok [35085])>
+          1   ??? (libdispatch.dylib + 22652) [0x1bd78087c]
+            1   ??? (libdispatch.dylib + 24904) [0x1bd781148]
+              1   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                1   ??? (libdispatch.dylib + 6568) [0x1bd77c9a8]
+                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 635832964) [0x127ec0a84]
+                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 636558592) [0x127f71d00]
+                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 636556248) [0x127f713d8]
+                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 636569844) [0x127f748f4]
+                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 636084840) [0x127efe268]
+                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 636519052) [0x127f6828c]
+                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 657874820) [0x1293c5f84]
+                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 657875264) [0x1293c6140]
+                                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 657875484) [0x1293c621c]
+                                    1   ??? (libdispatch.dylib + 70368) [0x1bd78c2e0]
+                                      1   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 635832876) [0x127ec0a2c]
+                                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 636517052) [0x127f67abc]
+                                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 636523904) [0x127f69580]
+                                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 636515300) [0x127f673e4]
+                                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 657876272) [0x1293c6530]
+                                                  1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 363212) [0x12a5a8acc]
+                                                    1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 589372) [0x12a5dfe3c]
+                                                      1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 586068) [0x12a5df154]
+                                                        1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 602436) [0x12a5e3144]
+                                                          1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 423224) [0x12a5b7538]
+                                                            1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 424132) [0x12a5b78c4]
+                                                              1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 640356) [0x12a5ec564]
+                                                                1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 641996) [0x12a5ecbcc]
+                                                                  1   ??? (<081FDB8B-C21C-39B2-8591-578057CE2ED5> + 393288) [0x12a5b0048]
+                                                                    1   ??? (libsystem_kernel.dylib + 27984) [0x232002d50]
+                                                                      1   <Effective Thread QoS Default, Requested Thread QoS Default>
+        1   ??? (libdispatch.dylib + 80476) [0x1bd78ea5c]
+          1   ??? (libdispatch.dylib + 231308) [0x1bd7b378c]
+            1   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+              1   ??? (libdispatch.dylib + 69252) [0x1bd78be84]
+                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 419823340) [0x11b0bfeec]
+                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 287557820) [0x11329c8bc]
+                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 287558020) [0x11329c984]
+                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 652162468) [0x128e535a4]
+                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 646871608) [0x128947a38]
+                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 646855168) [0x128943a00]
+                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 656801556) [0x1292bff14]
+                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 646855484) [0x128943b3c]
+                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644493408) [0x128703060]
+                                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 646857096) [0x128944188]
+                                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644492484) [0x128702cc4]
+                                      1   ??? (libsystem_platform.dylib + 2472) [0x2a314b9a8]
+                                        1   <Effective Thread QoS Default, Requested Thread QoS Default>
+  2   ??? (libsystem_pthread.dylib + 2252) [0x1e237b8cc]
+    2   ??? (libsystem_pthread.dylib + 17464) [0x1e237f438]
+      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653654216) [0x128fbf8c8]
+        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653654740) [0x128fbfad4]
+          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653656812) [0x128fc02ec]
+            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653657828) [0x128fc06e4]
+              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 553427492) [0x12302a224]
+                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 553427416) [0x12302a1d8]
+                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 553422720) [0x123028f80]
+                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 654817120) [0x1290db760]
+                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 656724956) [0x1292ad3dc]
+                        1   ??? (libsystem_kernel.dylib + 20528) [0x232001030]
+                          1   <Effective Thread QoS Default, Requested Thread QoS Default, e-core>
+      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653243104) [0x128f5b2e0]
+        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653281868) [0x128f64a4c]
+          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653336168) [0x128f71e68]
+            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653342172) [0x128f735dc]
+              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653393012) [0x128f7fc74]
+                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653410044) [0x128f83efc]
+                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653411188) [0x128f84374]
+                    1   ??? (Foundation + 44272) [0x1807d4cf0]
+                      1   ??? (CoreFoundation + 188880) [0x1835611d0]
+                        1   ??? (CoreFoundation + 192036) [0x183561e24]
+                          1   ??? (CoreFoundation + 413960) [0x183598108]
+                            1   ??? (CoreFoundation + 654592) [0x1835d2d00]
+                              1   ??? (CoreFoundation + 654732) [0x1835d2d8c]
+                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653422832) [0x128f870f0]
+                                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653423884) [0x128f8750c]
+                                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653424180) [0x128f87634]
+                                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653424988) [0x128f8795c]
+                                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 653437856) [0x128f8aba0]
+                                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658408932) [0x1294485e4]
+                                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658409200) [0x1294486f0]
+                                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658409376) [0x1294487a0]
+                                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658410156) [0x129448aac]
+                                                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658411596) [0x12944904c]
+                                                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658412272) [0x1294492f0]
+                                                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658412548) [0x129449404]
+                                                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658413268) [0x1294496d4]
+                                                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658421184) [0x12944b5c0]
+                                                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658422156) [0x12944b98c]
+                                                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 658422516) [0x12944baf4]
+                                                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 654232856) [0x12904cd18]
+                                                                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644777772) [0x12874872c]
+                                                                    1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644778724) [0x128748ae4]
+                                                                      1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 644790172) [0x12874b79c]
+                                                                        1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 654235296) [0x12904d6a0]
+                                                                          1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 527663672) [0x121798238]
+                                                                            1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 340064940) [0x1164afaac]
+                                                                              1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 527735720) [0x1217a9ba8]
+                                                                                1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 527738240) [0x1217aa580]
+                                                                                  1   ??? (<CA288AD0-A4D9-3CCF-8893-3F42C13BB00D> + 527738492) [0x1217aa67c]
+                                                                                    1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 37140) [0x10086d114]
+                                                                                      1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 36144) [0x10086cd30]
+                                                                                        1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 113340) [0x10087fabc]
+                                                                                          1   ??? (libdispatch.dylib + 72112) [0x1bd78c9b0]
+                                                                                            1   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                                                                                              1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 113708) [0x10087fc2c]
+                                                                                                1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 117244) [0x1008809fc]
+                                                                                                  1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 113612) [0x10087fbcc]
+                                                                                                    1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 1330284) [0x1009a8c6c]
+                                                                                                      1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 1325740) [0x1009a7aac]
+                                                                                                        1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 963632) [0x10094f430]
+                                                                                                          1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 961936) [0x10094ed90]
+                                                                                                            1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 1133500) [0x100978bbc]
+                                                                                                              1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 1132848) [0x100978930]
+                                                                                                                1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 1365908) [0x1009b1794]
+                                                                                                                  1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 1364472) [0x1009b11f8]
+                                                                                                                    1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 532776) [0x1008e6128]
+                                                                                                                      1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 531748) [0x1008e5d24]
+                                                                                                                        1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 529644) [0x1008e54ec]
+                                                                                                                          1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 499660) [0x1008ddfcc]
+                                                                                                                            1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 495088) [0x1008dcdf0]
+                                                                                                                              1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 887036) [0x10093c8fc]
+                                                                                                                                1   ??? (libswiftDispatch.dylib + 5528) [0x193f35598]
+                                                                                                                                  1   ??? (libswiftDispatch.dylib + 6796) [0x193f35a8c]
+                                                                                                                                    1   ??? (libswiftDispatch.dylib + 6256) [0x193f35870]
+                                                                                                                                      1   ??? (libswiftDispatch.dylib + 6920) [0x193f35b08]
+                                                                                                                                        1   ??? (libswiftDispatch.dylib + 7124) [0x193f35bd4]
+                                                                                                                                          1   ??? (libdispatch.dylib + 70368) [0x1bd78c2e0]
+                                                                                                                                            1   ??? (libdispatch.dylib + 111076) [0x1bd7961e4]
+                                                                                                                                              1   ??? (libswiftDispatch.dylib + 7336) [0x193f35ca8]
+                                                                                                                                                1   ??? (libswiftDispatch.dylib + 6644) [0x193f359f4]
+                                                                                                                                                  1   ??? (libswiftDispatch.dylib + 5728) [0x193f35660]
+                                                                                                                                                    1   ??? (libswiftDispatch.dylib + 42948) [0x193f3e7c4]
+                                                                                                                                                      1   ??? (libswiftDispatch.dylib + 6604) [0x193f359cc]
+                                                                                                                                                        1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 900632) [0x10093fe18]
+                                                                                                                                                          1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 887492) [0x10093cac4]
+                                                                                                                                                            1   ??? (<650B81ED-B704-3907-8394-9792D2324EE0> + 597760) [0x1008f5f00]
+                                                                                                                                                              1   ??? (libsqlite3.dylib + 191556) [0x181978c44]
+                                                                                                                                                                1   ??? (libsqlite3.dylib + 234208) [0x1819832e0]
+                                                                                                                                                                  1   ??? (libsqlite3.dylib + 92900) [0x181960ae4]
+                                                                                                                                                                    1   ??? (libsqlite3.dylib + 260340) [0x1819898f4]
+                                                                                                                                                                      1   ??? (libsqlite3.dylib + 261460) [0x181989d54]
+                                                                                                                                                                        1   ??? (libsqlite3.dylib + 327916) [0x18199a0ec]
+                                                                                                                                                                          1   ??? (libsqlite3.dylib + 370348) [0x1819a46ac]
+                                                                                                                                                                            1   ??? (libsystem_kernel.dylib + 33364) [0x232004254]
+                                                                                                                                                                              1   <Effective Thread QoS Unspecified, Requested Thread QoS Unspecified>
+
+  Binary Images:
+           0x1006fc000 -                ???  com.zhiliaoapp.musically 44.5.0 (445048) <B1EAB881-F55C-3F41-B1AF-57ED4C598275>  /private/var/containers/Bundle/Application/B9F2437F-9E58-47F5-BA85-338A079A62BD/TikTok.app/TikTok
+           0x100864000 -                ???  ???                                      <650B81ED-B704-3907-8394-9792D2324EE0>
+           0x102060000 -                ???  ???                                      <CA288AD0-A4D9-3CCF-8893-3F42C13BB00D>
+           0x12a550000 -                ???  ???                                      <081FDB8B-C21C-39B2-8591-578057CE2ED5>
+           0x1807ca000 -        0x18165245f  Foundation                               <66BF417C-1D00-3457-A302-196BBAEC23D0>  /System/Library/Frameworks/Foundation.framework/Foundation
+           0x18194a000 -        0x181af3853  libsqlite3.dylib                         <AFBB4016-E509-3F02-9C36-DFE15D54C8D0>  /usr/lib/libsqlite3.dylib
+           0x183533000 -        0x183acf0ff  CoreFoundation                           <11F13078-E01B-343B-A020-8D60BAE7BBB6>  /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+           0x193f34000 -        0x193f4a6a0  libswiftDispatch.dylib                   <67B43890-C919-336A-803D-718FD340F781>  /usr/lib/swift/libswiftDispatch.dylib
+           0x1bd77b000 -        0x1bd7c15ff  libdispatch.dylib                        <5FCAC52F-01E9-3BF0-8AAC-42C442C53560>  /usr/lib/system/libdispatch.dylib
+           0x1e237b000 -        0x1e23874ef  libsystem_pthread.dylib                  <6C9BCDE9-819D-345D-9D71-B60AD47E5159>  /usr/lib/system/libsystem_pthread.dylib
+           0x231ffc000 -        0x232037ac7  libsystem_kernel.dylib                   <5F4E68E1-021C-3A8F-A6F6-2C4C077D0676>  /usr/lib/system/libsystem_kernel.dylib
+           0x2a314b000 -        0x2a31533a3  libsystem_platform.dylib                 <56427AC9-A3B8-3C26-B7AB-941348E1FAEA>  /usr/lib/system/libsystem_platform.dylib

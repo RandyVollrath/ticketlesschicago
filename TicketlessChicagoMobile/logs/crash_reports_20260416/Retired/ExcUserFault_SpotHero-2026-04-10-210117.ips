@@ -1,0 +1,91 @@
+{"is_simulated":1,"app_name":"SpotHero","timestamp":"2026-04-10 21:01:17.00 -0500","app_version":"8.5.0","slice_uuid":"2446eb62-3a74-375f-ad94-c73a9ad80812","adam_id":"499097243","build_version":"29683","platform":2,"bundleID":"com.spothero.spothero","share_with_app_devs":0,"is_first_party":0,"bug_type":"308","os_version":"iPhone OS 26.4 (23E246)","incident_id":"6DDC966D-976E-42F9-AA43-281A9DB0174B","name":"SpotHero","roots_installed":0}
+{
+  "uptime" : 100000,
+  "procRole" : "Unspecified",
+  "version" : 2,
+  "userID" : 501,
+  "deployVersion" : 210,
+  "modelCode" : "iPhone14,4",
+  "coalitionID" : 2070,
+  "osVersion" : {
+    "isEmbedded" : true,
+    "train" : "iPhone OS 26.4",
+    "releaseType" : "User",
+    "build" : "23E246"
+  },
+  "captureTime" : "2026-04-10 21:01:17.5727 -0500",
+  "codeSigningMonitor" : 2,
+  "incident" : "6DDC966D-976E-42F9-AA43-281A9DB0174B",
+  "pid" : 19465,
+  "translated" : false,
+  "cpuType" : "ARM-64",
+  "procStartAbsTime" : 2430508248925,
+  "procName" : "SpotHero",
+  "procPath" : "\/private\/var\/containers\/Bundle\/Application\/8B28B8D9-29AC-4E6E-BC9C-DF69A217642C\/SpotHero.app\/SpotHero",
+  "bundleInfo" : {"CFBundleShortVersionString":"8.5.0","CFBundleVersion":"29683","CFBundleIdentifier":"com.spothero.spothero","DTAppStoreToolsBuild":"17E187"},
+  "storeInfo" : {"itemID":"499097243","storeCohortMetadata":"10|date=1775872800000&sf=143441&rapp=com.apple.Spotlight&happ=com.apple.Spotlight&app=&ctxt=com.apple.Spotlight","distributorID":"com.apple.AppStore","deviceIdentifierForVendor":"A8AABB3A-8B8B-4F45-BB65-E6D67722B214","softwareVersionExternalIdentifier":"883810104","applicationVariant":"1:iPhone14,4:18","thirdParty":true},
+  "parentPid" : 1,
+  "coalitionName" : "com.spothero.spothero",
+  "crashReporterKey" : "b0e9f08a5956528e8634b098a25bc4a464ad97ab",
+  "developerMode" : 1,
+  "bootProgressRegister" : "0x20800004",
+  "wasUnlockedSinceBoot" : 1,
+  "isLocked" : 0,
+  "codeSigningValidationCategory" : 0,
+  "codeSigningTrustLevel" : 0,
+  "bootSessionUUID" : "431B7431-C80D-4BDD-A035-F176ED1375E7",
+  "basebandVersion" : "5.51.03",
+  "isLightWeightCorpse" : 1,
+  "exception" : {"codes":"0x6000000000000007, 0x0000000000000009","reason":9,"message":"namespc 7 reason_code 0x0000000000000009","subtype":"GUARD_TYPE_USER","type":"EXC_GUARD","rawCodes":[6917529027641081863,9],"namespc":7},
+  "termination" : {"flags":518,"code":9,"namespace":"LIBXPC","indicator":"XPC_EXIT_REASON_FAULT"},
+  "faultingThread" : 0,
+  "threads" : [{"id":793750,"frames":[{"imageOffset":2985974140,"imageIndex":0},{"imageOffset":401316020,"imageIndex":0},{"imageOffset":401362436,"imageIndex":0},{"imageOffset":401366688,"imageIndex":0},{"imageOffset":275168696,"imageIndex":0},{"imageOffset":275167592,"imageIndex":0},{"imageOffset":459020708,"imageIndex":0},{"imageOffset":459078188,"imageIndex":0},{"imageOffset":459077688,"imageIndex":0},{"imageOffset":401374324,"imageIndex":0},{"imageOffset":401381660,"imageIndex":0},{"imageOffset":1030980140,"imageIndex":0},{"imageOffset":1030990756,"imageIndex":0},{"imageOffset":1030909464,"imageIndex":0},{"imageOffset":1030994168,"imageIndex":0},{"imageOffset":1030909464,"imageIndex":0},{"imageOffset":1030912740,"imageIndex":0},{"imageOffset":1030954412,"imageIndex":0},{"imageOffset":1030952620,"imageIndex":0},{"imageOffset":1647444912,"imageIndex":0},{"imageOffset":1647442112,"imageIndex":0}],"threadState":{"x":[{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0}],"flavor":"ARM_THREAD_STATE64","lr":{"value":0},"cpsr":{"value":0},"fp":{"value":0},"sp":{"value":0},"esr":{"value":0},"pc":{"value":0,"matchesCrashFrame":0},"far":{"value":0}}}],
+  "usedImages" : [
+  {
+    "size" : 5022824000,
+    "source" : "S",
+    "base" : 6442450944,
+    "uuid" : "05c1520f-c298-3e49-a5bb-f63c835acb81"
+  }
+],
+  "legacyInfo" : {
+  "threadTriggered" : {
+
+  }
+},
+  "bug_type" : "308",
+  "roots_installed" : 0,
+  "trialInfo" : {
+  "rollouts" : [
+    {
+      "rolloutId" : "6425c75e4327780c10cc4252",
+      "factorPackIds" : [
+        "642600a457e7664b1698eb32"
+      ],
+      "deploymentId" : 240000004
+    },
+    {
+      "rolloutId" : "6761d0c9df60af01adb250fb",
+      "factorPackIds" : [
+
+      ],
+      "deploymentId" : 240000009
+    }
+  ],
+  "experiments" : [
+    {
+      "treatmentId" : "582596be-1d4a-408d-901b-5b311c006a4a",
+      "experimentId" : "65f31ccb74b6f500a45abda4",
+      "deploymentId" : 400000026
+    },
+    {
+      "treatmentId" : "c2e2c4d1-bc93-47ec-b433-5a21317aad4b",
+      "experimentId" : "67e32776f470dc0e83d9e147",
+      "deploymentId" : 400000009
+    }
+  ]
+},
+  "reportNotes" : [
+  "PC register does not match crashing frame (0x0 vs 0x231FA597C)"
+]
+}

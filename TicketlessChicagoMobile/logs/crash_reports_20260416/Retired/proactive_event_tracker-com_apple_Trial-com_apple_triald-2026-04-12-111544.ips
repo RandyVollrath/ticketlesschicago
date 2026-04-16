@@ -1,0 +1,4924 @@
+{"bug_type":"303","timestamp":"2026-04-12 11:15:44.00 -0500","os_version":"iPhone OS 26.4 (23E246)","roots_installed":0,"incident_id":"5FA98A7E-0D0C-4465-BD05-7459DF5359E1"}
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922567
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 2
+}
+2: "1346FBBB-44E7-49DB-944B-F288ECB47F66"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    6: "TRIRetargetAllTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922677
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 3
+}
+2: "BC51321B-951D-4D7D-9212-F0D6B24D4925"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 1
+  }
+  6 {
+    6: "TRIMaintenanceTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922678
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 4
+}
+2: "EEBF383F-F44A-4610-A86E-9E0925C025E8"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    6: "TRIRetargetAllTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922678
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 5
+}
+2: "1FC84F14-4F28-4894-B8CA-71DCA44B429D"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    6: "TRIScheduleFetchExperimentNotificationsTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922678
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 6
+}
+2: "BBBFF9FA-4051-4677-A647-BA3BB2CBEF82"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    6: "TRIScheduleFetchExperimentNotificationsTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922681
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 7
+}
+2: "4EB4220F-A720-4B44-A9B2-512029F195B1"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69c585aa241d486045070b9d"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922681
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 8
+}
+2: "B59FEED0-0C91-42EB-9DE6-F94A33281690"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69c58eb14d251d40d202ec4a"
+    }
+    6: "TRITargetingTask"
+    11: "400000008"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922681
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 9
+}
+2: "78B8E468-16B3-43B0-A908-81471962635F"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69c58cc2a1c8055a26cc2a27"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922681
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 10
+}
+2: "09527EAE-6C39-47B0-904F-B8C9FD12121E"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69bc423f7856540bea5e9183"
+    }
+    6: "TRITargetingTask"
+    11: "400000002"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922681
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 11
+}
+2: "A1F9A740-A63E-4887-A3D2-DC4FD5C99468"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69bc44a10d826e46e80b0b95"
+    }
+    6: "TRITargetingTask"
+    11: "400000002"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922681
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 12
+}
+2: "2F6E0CA0-A362-455F-84C2-11BD1FBD6EC8"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69b42b8f805ff76412633e13"
+    }
+    6: "TRITargetingTask"
+    11: "4"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922682
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 13
+}
+2: "0B3B14D3-4AFA-44B2-860E-69F2FE13B388"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69a0952a093e85422dc87498"
+    }
+    6: "TRITargetingTask"
+    11: "400000002"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922682
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 14
+}
+2: "581D840A-5373-4C80-BE33-D2C0A748A8C2"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "687ad3eb2c0a4d3b710c5dcd"
+    }
+    6: "TRITargetingTask"
+    11: "400000014"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922682
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 15
+}
+2: "4DE1D67B-6B10-401E-B46E-145973D05A20"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "687ad2ca8f9e335c1a6d97b8"
+    }
+    6: "TRITargetingTask"
+    11: "400000014"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922682
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 16
+}
+2: "BC5D5D70-73D7-4713-A729-CE62ED67DB28"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "699f84c9b3c59721f0815ff7"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922682
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 17
+}
+2: "9EBE86C3-C183-491D-B3C0-68C44D8BF95C"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69b42b8f805ff76412633e13"
+    }
+    6: "TRITargetingTask"
+    11: "1"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922682
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 18
+}
+2: "55E43DB9-2DC6-4282-9F7F-65649463993D"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "68f7ea85fb844b65bdae7ead"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922683
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 19
+}
+2: "100AF2E5-4AD3-4F3D-8C40-52E687F25614"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69698a917d9963029e1ab12c"
+    }
+    6: "TRITargetingTask"
+    11: "400000004"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922683
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 20
+}
+2: "0B4AC6E1-E1B0-49C6-8BE4-4261EB8C9E88"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "67e5bc8c47871153a94d6706"
+    }
+    6: "TRITargetingTask"
+    11: "400000021"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922683
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 21
+}
+2: "652546F0-D725-4F85-9B4D-812C2832FEA9"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "6875936a6d639f3abb9387e0"
+    }
+    6: "TRITargetingTask"
+    11: "400000001"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922683
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 22
+}
+2: "5B30E676-74C2-4EC6-A649-58FACCC5C0A0"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "685f0520e1874a7adc676319"
+    }
+    6: "TRITargetingTask"
+    11: "400000003"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922683
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 23
+}
+2: "BAC1E090-F9F3-40C0-845C-08372D5D746F"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "654a99b51c6fd434e2089331"
+    }
+    6: "TRITargetingTask"
+    11: "400000013"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922683
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 24
+}
+2: "BE851175-25F5-4AB5-85FB-042B22137113"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "650b33afe0eb850b39e956f3"
+    }
+    6: "TRITargetingTask"
+    11: "400000009"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922694
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 25
+}
+2: "B3FECA38-5870-4485-A686-EE3428A41F50"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    6: "TRIFetchExperimentsTask"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922698
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 26
+}
+2: "1C2E6769-3698-476F-9A97-93C12FB7E33C"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    6: "TRISelectRolloutNotificationListTask"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922698
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 27
+}
+2: "A072F74D-20E7-4536-AB73-F78725CA7C56"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    6: "TRIFetchExperimentsTask"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922700
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 28
+}
+2: "A8FE8B0E-57C0-43F1-B800-2F3441F99D38"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    6: "TRISelectRolloutNotificationListTask"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922704
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 29
+}
+2: "AB6657B6-E203-4F7B-84F0-1F1B4C572C90"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    4 {
+      1: "5ffde50ce2aacd000d47a95f"
+      2: "empty"
+      4: "69c6e1089f254b04167ef9cf"
+    }
+    6: "TRIFetchFactorPackSetTask"
+    11: "240000512"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "F67FD827-AD41-4993-AC2C-82EFD972C494"
+  3 {
+    1: 1775922705
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922180
+    2: -18000
+    3: 60
+  }
+  5: 30
+}
+2: "846D8612-DD84-4D0E-81C0-4DC87D3368D7"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    4 {
+      1: "648cada15dbc71671bb3aa1b"
+      2: "ea0ca16e-8dd9-43cf-b655-2c4c61196501"
+      4: "65aaec0c0263a721d8d07ebd"
+      5: 1
+    }
+    6: "TRIFetchFactorPackSetTask"
+    11: "240000116"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 31
+}
+2: "E0CD5934-3E01-43A8-84F7-2893DE52FB66"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    6: "TRIRetargetAllTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 32
+}
+2: "22DEB880-8112-47E7-B4D9-4442C0EFD64B"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "650b33afe0eb850b39e956f3"
+    }
+    6: "TRITargetingTask"
+    11: "400000009"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 33
+}
+2: "18A32FAF-A745-4D72-B2ED-A2F697C3D651"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "654a99b51c6fd434e2089331"
+    }
+    6: "TRITargetingTask"
+    11: "400000013"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 34
+}
+2: "840691A3-2D78-4755-B67E-F073097435C8"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "685f0520e1874a7adc676319"
+    }
+    6: "TRITargetingTask"
+    11: "400000003"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 35
+}
+2: "863E58A1-91EA-4A23-B68C-EF45FA0E9509"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "6875936a6d639f3abb9387e0"
+    }
+    6: "TRITargetingTask"
+    11: "400000001"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 36
+}
+2: "F198FAA8-89FF-4C27-87D2-3C9C824CBDDF"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "67e5bc8c47871153a94d6706"
+    }
+    6: "TRITargetingTask"
+    11: "400000021"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 37
+}
+2: "AC5C0C66-AD5B-46D9-9927-16BABBB6735D"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69698a917d9963029e1ab12c"
+    }
+    6: "TRITargetingTask"
+    11: "400000004"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 38
+}
+2: "3957BF5E-772D-4B7F-8081-FC843FD3D4AC"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "68f7ea85fb844b65bdae7ead"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 39
+}
+2: "18AAC231-6E19-4295-AE3F-7CB5FB2F22EF"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69b42b8f805ff76412633e13"
+    }
+    6: "TRITargetingTask"
+    11: "1"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 40
+}
+2: "149CF1BF-21CB-451D-94AA-4762A6C5DA79"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "699f84c9b3c59721f0815ff7"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 41
+}
+2: "8FF849A1-C839-4235-9935-D1D584075C2F"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "687ad2ca8f9e335c1a6d97b8"
+    }
+    6: "TRITargetingTask"
+    11: "400000014"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 42
+}
+2: "33F29F41-0753-4384-AD04-8C642A7A415A"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "687ad3eb2c0a4d3b710c5dcd"
+    }
+    6: "TRITargetingTask"
+    11: "400000014"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 43
+}
+2: "309E4570-7D14-4485-8C88-B39BDF2E20E5"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69a0952a093e85422dc87498"
+    }
+    6: "TRITargetingTask"
+    11: "400000002"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 44
+}
+2: "EFA80D4E-FA2C-46D9-A95D-C0A928BA8285"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69b42b8f805ff76412633e13"
+    }
+    6: "TRITargetingTask"
+    11: "4"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 45
+}
+2: "F140DC21-0A54-499F-887E-2CE3DE8DAEA0"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69bc44a10d826e46e80b0b95"
+    }
+    6: "TRITargetingTask"
+    11: "400000002"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 46
+}
+2: "493BEA21-3CF0-4C41-A25C-696807935DE6"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69bc423f7856540bea5e9183"
+    }
+    6: "TRITargetingTask"
+    11: "400000002"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 47
+}
+2: "DD940200-3CB9-47EF-ABD4-EDB4B8CE2ABD"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69c58cc2a1c8055a26cc2a27"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923017
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 48
+}
+2: "2164E7E9-6D04-42A4-A37A-DC28BFFEAC88"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69c58eb14d251d40d202ec4a"
+    }
+    6: "TRITargetingTask"
+    11: "400000008"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "76F820EB-FAC3-411D-A27C-1BA6A5CC656A"
+  3 {
+    1: 1775923018
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775922708
+    2: -18000
+    3: 60
+  }
+  5: 49
+}
+2: "AC72B6B4-78C7-45E1-A4BA-447D207D2F5B"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69c585aa241d486045070b9d"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 1
+}
+2: "D6840475-4930-4CC3-82D2-4AE73B75846C"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    4 {
+      1: "601074e4af9bef000c169ea8"
+      4: "69da7a7a59b29e26f812e99b"
+    }
+    6: "TRIFetchSingleRolloutNotificationTask"
+    11: "240004927"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 2
+}
+2: "53017EBD-1DD3-4695-9B4B-07F31E6DB8A6"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    4 {
+      1: "6081ed9716bb6d61d81d5014"
+      4: "69da7985996f614fd8fe5dd3"
+    }
+    6: "TRIFetchSingleRolloutNotificationTask"
+    11: "240004016"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 3
+}
+2: "2A0052C1-0130-49A1-839E-E416A50C2E18"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_AL_O"
+  }
+  6 {
+    4 {
+      1: "601074e4af9bef000c169ea8"
+      2: "dc90443e-cbcf-482c-a09a-01841630ab39"
+      4: "69d7cffd59b29e26f812e951"
+    }
+    11: "240004923"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 4
+}
+2: "1CA67495-C906-47E1-A2DD-5FE7E6CC184A"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_AL"
+  }
+  6 {
+    4 {
+      1: "601074e4af9bef000c169ea8"
+      2: "6e9ed186-5f16-41e1-a5c4-cb1f27abfb88"
+      4: "69da7a7a59b29e26f812e99b"
+    }
+    11: "240004927"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 5
+}
+2: "F75A9EAD-5C29-416D-8C98-F5835F902C5E"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "trigger_event"
+    4: "hotfix"
+  }
+  6 {
+    4 {
+      1: "601074e4af9bef000c169ea8"
+      2: "6e9ed186-5f16-41e1-a5c4-cb1f27abfb88"
+      4: "69da7a7a59b29e26f812e99b"
+      5: 0
+    }
+    6: "TRIRolloutTargetingTask"
+    11: "240004927"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 6
+}
+2: "3E4019CC-1C8F-4578-A94B-8F30D0E34AE7"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_AL_O"
+  }
+  6 {
+    4 {
+      1: "6081ed9716bb6d61d81d5014"
+      2: "a0ac7567-140b-479a-b07b-e09c7750027d"
+      4: "69d7cf083f2ffb38516cf809"
+    }
+    11: "240004012"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 7
+}
+2: "EC93743A-7381-4949-8549-56DD70750E87"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_AL"
+  }
+  6 {
+    4 {
+      1: "6081ed9716bb6d61d81d5014"
+      2: "b3799365-8658-4256-9299-b206fada434e"
+      4: "69da7985996f614fd8fe5dd3"
+    }
+    11: "240004016"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 8
+}
+2: "F134895C-6199-4C90-81D2-604C38F0FD76"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "trigger_event"
+    4: "hotfix"
+  }
+  6 {
+    4 {
+      1: "6081ed9716bb6d61d81d5014"
+      2: "b3799365-8658-4256-9299-b206fada434e"
+      4: "69da7985996f614fd8fe5dd3"
+      5: 0
+    }
+    6: "TRIRolloutTargetingTask"
+    11: "240004016"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 9
+}
+2: "A16AB440-01A9-4C7E-93FB-A06ABB42FCC7"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_FE"
+  }
+  6 {
+    4 {
+      1: "601074e4af9bef000c169ea8"
+      2: "6e9ed186-5f16-41e1-a5c4-cb1f27abfb88"
+      4: "69da7a7a59b29e26f812e99b"
+    }
+    11: "240004927"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929812
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 10
+}
+2: "9459BBCC-1377-4547-A7A6-DCA3CDD4171C"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    4 {
+      1: "601074e4af9bef000c169ea8"
+      2: "6e9ed186-5f16-41e1-a5c4-cb1f27abfb88"
+      4: "69da7a7a59b29e26f812e99b"
+      5: 0
+    }
+    6: "TRIFetchFactorPackSetTask"
+    11: "240004927"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929813
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 11
+}
+2: "65A4E024-BB58-4449-BC76-FD5FFE110536"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_FE"
+  }
+  6 {
+    4 {
+      1: "6081ed9716bb6d61d81d5014"
+      2: "b3799365-8658-4256-9299-b206fada434e"
+      4: "69da7985996f614fd8fe5dd3"
+    }
+    11: "240004016"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929813
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 12
+}
+2: "910BA2FA-A10F-4C80-BD9C-97DCFE7E0BF4"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    4 {
+      1: "6081ed9716bb6d61d81d5014"
+      2: "b3799365-8658-4256-9299-b206fada434e"
+      4: "69da7985996f614fd8fe5dd3"
+      5: 0
+    }
+    6: "TRIFetchFactorPackSetTask"
+    11: "240004016"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929813
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 13
+}
+2: "8E972216-E7CD-49D9-973F-DC1A9DA6A9E5"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_DE"
+  }
+  6 {
+    4 {
+      1: "601074e4af9bef000c169ea8"
+      2: "dc90443e-cbcf-482c-a09a-01841630ab39"
+      4: "69d7cffd59b29e26f812e951"
+    }
+    11: "240004923"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929813
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 14
+}
+2: "18E30B15-7D6C-4084-9E02-A1410011D6E3"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_AC"
+  }
+  6 {
+    4 {
+      1: "601074e4af9bef000c169ea8"
+      2: "6e9ed186-5f16-41e1-a5c4-cb1f27abfb88"
+      4: "69da7a7a59b29e26f812e99b"
+    }
+    11: "240004927"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929813
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 15
+}
+2: "068D9689-74CB-4944-923E-D55C639FFC8A"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    4 {
+      1: "601074e4af9bef000c169ea8"
+      2: "6e9ed186-5f16-41e1-a5c4-cb1f27abfb88"
+      4: "69da7a7a59b29e26f812e99b"
+      5: 0
+    }
+    6: "TRIActivateTargetedRolloutDeploymentTask"
+    11: "240004927"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929813
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 16
+}
+2: "202B6DA8-9CF7-4D60-B2D1-6A7CBC8E63A0"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_DE"
+  }
+  6 {
+    4 {
+      1: "6081ed9716bb6d61d81d5014"
+      2: "a0ac7567-140b-479a-b07b-e09c7750027d"
+      4: "69d7cf083f2ffb38516cf809"
+    }
+    11: "240004012"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929814
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 17
+}
+2: "19C29EDF-7057-40E2-9C7D-FCF1D5D4E44D"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "roll_st_AC"
+  }
+  6 {
+    4 {
+      1: "6081ed9716bb6d61d81d5014"
+      2: "b3799365-8658-4256-9299-b206fada434e"
+      4: "69da7985996f614fd8fe5dd3"
+    }
+    11: "240004016"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "18A1F48F-739F-4EAC-8821-B868E4D9A09F"
+  3 {
+    1: 1775929814
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775929306
+    2: -18000
+    3: 60
+  }
+  5: 18
+}
+2: "0E4EBC76-A915-4569-873F-1BAF5E096F21"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    4 {
+      1: "6081ed9716bb6d61d81d5014"
+      2: "b3799365-8658-4256-9299-b206fada434e"
+      4: "69da7985996f614fd8fe5dd3"
+      5: 0
+    }
+    6: "TRIActivateTargetedRolloutDeploymentTask"
+    11: "240004016"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "32DA2898-4E9B-45C8-8EB9-0AFAC0A27335"
+  3 {
+    1: 1775953620
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775953606
+    2: -18000
+    3: 60
+  }
+  5: 1
+}
+2: "84037E64-970D-48B0-AB00-982231D81DC8"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    4 {
+      1: "64628732bf2f5257dedc8988"
+      2: "empty"
+      4: "651ca4291993407e6d574317"
+    }
+    6: "TRIFetchFactorPackSetTask"
+    11: "240000001"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "32DA2898-4E9B-45C8-8EB9-0AFAC0A27335"
+  3 {
+    1: 1775953651
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775953606
+    2: -18000
+    3: 60
+  }
+  5: 2
+}
+2: "6A06CA82-630E-425B-9F4C-0D331900F3A6"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    4 {
+      1: "648cada15dbc71671bb3aa1b"
+      2: "ea0ca16e-8dd9-43cf-b655-2c4c61196501"
+      4: "65aaec0c0263a721d8d07ebd"
+      5: 1
+    }
+    6: "TRIFetchFactorPackSetTask"
+    11: "240000116"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "1DBB6874-892C-42CC-B1DE-E4220FE5AA5B"
+  3 {
+    1: 1775966584
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775958228
+    2: -18000
+    3: 60
+  }
+  5: 1
+}
+2: "53E83EA1-0646-48B7-85B8-69E6F0897279"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 1
+  }
+  6 {
+    6: "TRIMaintenanceTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "1DBB6874-892C-42CC-B1DE-E4220FE5AA5B"
+  3 {
+    1: 1775966592
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775958228
+    2: -18000
+    3: 60
+  }
+  5: 2
+}
+2: "C00D923C-F5A4-41C8-8392-CC6881FCD17A"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    6: "TRIScheduleFetchExperimentNotificationsTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 1
+}
+2: "47AD1ECA-1A35-4EB7-A21F-61172E11563E"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    6: "TRIRetargetAllTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 2
+}
+2: "D6693BCE-E9FA-40B5-A3EF-D28420ECC256"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "650b33afe0eb850b39e956f3"
+    }
+    6: "TRITargetingTask"
+    11: "400000009"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 3
+}
+2: "2C9BF255-D664-4150-B31B-A05B8E7F231A"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "654a99b51c6fd434e2089331"
+    }
+    6: "TRITargetingTask"
+    11: "400000013"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 4
+}
+2: "6B900B66-B74A-40E2-B815-BD9D5EBAC0DA"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "685f0520e1874a7adc676319"
+    }
+    6: "TRITargetingTask"
+    11: "400000003"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 5
+}
+2: "AEEFE3EE-C0FC-4EF7-9934-C5F61FA0849E"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "6875936a6d639f3abb9387e0"
+    }
+    6: "TRITargetingTask"
+    11: "400000001"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 6
+}
+2: "8755CF5F-BE8D-4E99-B551-F7F8E0D8AF46"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "67e5bc8c47871153a94d6706"
+    }
+    6: "TRITargetingTask"
+    11: "400000021"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 7
+}
+2: "7AF0F1F8-F77F-4218-ACC7-3D9155A27C7C"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69698a917d9963029e1ab12c"
+    }
+    6: "TRITargetingTask"
+    11: "400000004"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 8
+}
+2: "1D2A1E35-BB81-4E75-8B17-2B85134476BB"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "68f7ea85fb844b65bdae7ead"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 9
+}
+2: "4CC62423-40A9-4F64-8BA9-64B69BFE2B25"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69b42b8f805ff76412633e13"
+    }
+    6: "TRITargetingTask"
+    11: "1"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 10
+}
+2: "38F374EC-E787-4892-95C5-79DAA558A88B"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "699f84c9b3c59721f0815ff7"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 11
+}
+2: "F4078BA6-C83E-4388-BC2F-5351CF29768A"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "687ad2ca8f9e335c1a6d97b8"
+    }
+    6: "TRITargetingTask"
+    11: "400000014"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 12
+}
+2: "A1649FEF-4C90-44EC-8CDD-F20E459464C4"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "687ad3eb2c0a4d3b710c5dcd"
+    }
+    6: "TRITargetingTask"
+    11: "400000014"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 13
+}
+2: "58F39E33-B51F-4AE4-A95A-84F38F932959"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69a0952a093e85422dc87498"
+    }
+    6: "TRITargetingTask"
+    11: "400000002"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 14
+}
+2: "B56F8A2E-A101-40FA-86FF-68BB3389EE4B"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69b42b8f805ff76412633e13"
+    }
+    6: "TRITargetingTask"
+    11: "4"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 15
+}
+2: "534CA3A6-6DC7-4844-9083-E8A75078D943"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69bc44a10d826e46e80b0b95"
+    }
+    6: "TRITargetingTask"
+    11: "400000002"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 16
+}
+2: "7F1660E4-FB38-4459-8B9C-ED7A263CC767"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69bc423f7856540bea5e9183"
+    }
+    6: "TRITargetingTask"
+    11: "400000002"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 17
+}
+2: "1B1169AB-1E1A-4308-9AE6-9EB4BEAD5701"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69c58cc2a1c8055a26cc2a27"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 18
+}
+2: "5FF5B63C-D66B-4744-BD33-5C7D317EB445"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69c58eb14d251d40d202ec4a"
+    }
+    6: "TRITargetingTask"
+    11: "400000008"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "E3069124-BDF5-491A-BD8A-6D5A7CBAD6BB"
+  3 {
+    1: 1775969157
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1775969155
+    2: -18000
+    3: 60
+  }
+  5: 19
+}
+2: "3317AF9D-7598-4F39-A480-56E8623849C0"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    3 {
+      1: "69c585aa241d486045070b9d"
+    }
+    6: "TRITargetingTask"
+    11: "400000006"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "1AAEC89B-384D-4FD1-A224-3668C18666AF"
+  3 {
+    1: 1776010454
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1776008760
+    2: -18000
+    3: 60
+  }
+  5: 1
+}
+2: "A5AFB1D7-A61E-4D08-A1A6-D91D3BC0A39F"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  6 {
+    4 {
+      1: "648cada15dbc71671bb3aa1b"
+      2: "ea0ca16e-8dd9-43cf-b655-2c4c61196501"
+      4: "65aaec0c0263a721d8d07ebd"
+      5: 1
+    }
+    6: "TRIFetchFactorPackSetTask"
+    11: "240000116"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "1AAEC89B-384D-4FD1-A224-3668C18666AF"
+  3 {
+    1: 1776010458
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1776008760
+    2: -18000
+    3: 60
+  }
+  5: 2
+}
+2: "6DDC8FE5-9F42-4173-B145-D1BB10056957"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    6: "TRISelectRolloutNotificationListTask"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "1AAEC89B-384D-4FD1-A224-3668C18666AF"
+  3 {
+    1: 1776010458
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1776008760
+    2: -18000
+    3: 60
+  }
+  5: 3
+}
+2: "37D8B3DB-ACDA-4E83-9356-F3F7EB582612"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    6: "TRIFetchExperimentsTask"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "1AAEC89B-384D-4FD1-A224-3668C18666AF"
+  3 {
+    1: 1776010523
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1776008760
+    2: -18000
+    3: 60
+  }
+  5: 4
+}
+2: "D51D6062-5169-43B6-BA59-A0A5D17C6C45"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    14: "h14"
+  }
+  5 {
+    1: "activeDeviceExperiments"
+    3: 3
+  }
+  5 {
+    1: "activeServerExperiments"
+    3: 0
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "1AAEC89B-384D-4FD1-A224-3668C18666AF"
+  3 {
+    1: 1776010524
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1776008760
+    2: -18000
+    3: 60
+  }
+  5: 5
+}
+2: "627702DA-08A4-48F8-AE0A-D4191C9859B5"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 3
+  }
+  6 {
+    6: "TRIMaintenanceTask"
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "1AAEC89B-384D-4FD1-A224-3668C18666AF"
+  3 {
+    1: 1776010533
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1776008760
+    2: -18000
+    3: 60
+  }
+  5: 6
+}
+2: "2A093064-5049-4240-BB0B-D88FDF14F78B"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    4 {
+      1: "5ffde50ce2aacd000d47a95f"
+      2: "empty"
+      4: "69c6e1089f254b04167ef9cf"
+    }
+    6: "TRIFetchFactorPackSetTask"
+    11: "240000512"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}
+
+Message Group: com.apple.Trial-com.apple.triald
+Message Name: TRILogEvent
+Message Type: 984eb588
+Message Body:
+1 {
+  1: 1
+  2: "1AAEC89B-384D-4FD1-A224-3668C18666AF"
+  3 {
+    1: 1776010535
+    2: -18000
+    3: 60
+  }
+  4 {
+    1: 1776008760
+    2: -18000
+    3: 60
+  }
+  5: 7
+}
+2: "A76B94FA-1201-4BBB-82AD-56D6C6EC0334"
+10 {
+  1 {
+    1: "E4D350E1-8C5A-4163-8D14-17B9816E610F"
+  }
+  3 {
+    1: "iPhone"
+    4: "TrialXP-474.2.18"
+    5: "23E246"
+    9: "en-US"
+    10: 5
+    11: "us"
+    12: "com.apple.TMobile_US"
+    13: 0
+    14: "h14"
+  }
+  5 {
+    1: "task_status"
+    3: 2
+  }
+  5 {
+    1: "allows_cellular_download"
+    3: 1
+  }
+  6 {
+    4 {
+      1: "648cada15dbc71671bb3aa1b"
+      2: "ea0ca16e-8dd9-43cf-b655-2c4c61196501"
+      4: "65aaec0c0263a721d8d07ebd"
+      5: 1
+    }
+    6: "TRIFetchFactorPackSetTask"
+    11: "240000116"
+    15 {
+      1: 2
+      2: 1
+    }
+  }
+}

@@ -1,0 +1,704 @@
+Apr 16 10:05:55.599695 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.197143 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.220504 backboardd(CoreMotion)[72] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:05:56.248099 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.249913 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.250012 locationd(CoreAnalytics)[69812] <Info>: Dropping "com.apple.CoreMotion.MotionStateBoutMetrics" as it isn't used in any transform (not in the config or budgeted?)
+Apr 16 10:05:56.250102 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.250194 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.250249 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.251036 locationd(CoreAnalytics)[69812] <Info>: Dropping "com.apple.CoreMotion.MotionStateBoutMetrics" as it isn't used in any transform (not in the config or budgeted?)
+Apr 16 10:05:56.253285 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.254833 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:05:56.256715 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:05:56.256901 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:05:56.262007 locationd[69812] <Info>: CL: CLLocationController::onMotionNotification
+Apr 16 10:05:56.262225 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:05:56.265164 SpringBoard(CoreMotion)[37] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Apr 16 10:05:56.265661 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.269341 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:05:56.390455 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:56.592092 biometrickitd(CoreMotion)[126] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:05:57.212010 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.212099 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.213436 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.213551 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.213731 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.213797 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.213867 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.213923 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.214774 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:05:57.219032 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.219477 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:05:57.219557 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:05:57.219998 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:05:57.264580 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.391590 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.853964 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:57.949856 corespeechd(CoreMotion)[87456] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:05:58.322619 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:58.392501 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:58.403543 nearbyd(CoreMotion)[150] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:05:58.422554 cameracaptured(CoreMotion)[70] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:05:58.531368 audiomxd(CoreMotion)[15325] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:05:58.702468 routined(CoreMotion)[40] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:05:59.014622 SpringBoard(CoreMotion)[37] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:05:59.380046 Autopilot(CoreMotion)[76354] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:05:59.390961 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.393468 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.420480 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.420809 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.763897 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.765609 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.765628 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.765639 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.765650 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.765661 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:05:59.765844 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:05:59.767460 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:05:59.767482 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:05:59.767668 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:05:59.768066 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:00.143087 CommCenter(CoreMotion)[102] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:00.394754 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:00.448418 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:01.219850 backboardd(CoreMotion)[72] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:01.395804 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:01.516235 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:01.589808 biometrickitd(CoreMotion)[126] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:02.320488 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.320973 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.321063 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.321979 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.322079 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.322296 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.326647 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:02.327969 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.328317 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:02.328378 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:02.329411 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:06:02.396667 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.575513 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.753177 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.753614 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:02.947710 corespeechd(CoreMotion)[87456] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:03.397882 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:03.402085 nearbyd(CoreMotion)[150] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:03.422497 cameracaptured(CoreMotion)[70] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:03.531353 audiomxd(CoreMotion)[15325] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:03.542732 locationd[69812] <Info>: CL: CLLocationController::onWifiNotification
+Apr 16 10:06:03.542878 locationd[69812] <Debug>: {"msg":"CLLocationController::onWifiNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:03.549962 locationd(LocationSupport)[69812] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLLocationControllerSilo", "FromCohortId":"6", "ToDispatchSilo":"CLDaemonStatusSilo", "ToCohortId":"0"}
+Apr 16 10:06:03.552058 locationd[69812] <Info>: CLLocationControllerShortLookbackPostProcessor::processInterval, startMachContinuousTime_s, 334121.734, endMachContinuousTime_s, 334136.738, interval_s, 15.004, performing smoothing.
+Apr 16 10:06:03.552088 locationd[69812] <Info>: CLLocationControllerShortLookbackPostProcessor::processInterval, loaded 16 locations for smoothing.
+Apr 16 10:06:03.553074 locationd(LocationSupport)[69812] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLLocationControllerSilo", "FromCohortId":"6", "ToDispatchSilo":"CLDigitalElevationModelSilo", "ToCohortId":"4"}
+Apr 16 10:06:03.556202 locationd[69812] <Info>: {"msg":"Notifying clients with location", "location":{"location":"<redacted>"}, "notification":"CLLocationProvider_Type::kNotificationLocation"}
+Apr 16 10:06:03.557357 locationd[69812] <Notice>: {"msg":"#pla #zone-relevance-tracker, location notification", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "_currentLocation":{"location":"<redacted>"}, "NewLocation":{"location":"<redacted>"}}
+Apr 16 10:06:03.559743 locationd[69812] <Info>: {"msg":"Received local notification", "notification":"CLLocationProvider_Type::kNotificationLocationFine"}
+Apr 16 10:06:03.559920 locationd[69812] <Info>: {"msg":"Starting location for source", "source":"CLStreamingAwareLocationProviderStateMachine::kLocationSourceLocal", "notification":"CLLocationProvider_Type::kNotificationLocationFine", "include motion":0}
+Apr 16 10:06:03.560372 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationSpectator"}
+Apr 16 10:06:03.560448 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationBystander"}
+Apr 16 10:06:03.560560 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationBystanderPreLoiOverride"}
+Apr 16 10:06:03.560844 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationFine"}
+Apr 16 10:06:03.560953 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationLeech"}
+Apr 16 10:06:03.561770 locationd[69812] <Info>: {"msg":"Received local notification", "notification":"CLLocationProvider_Type::kNotificationLocationLeech"}
+Apr 16 10:06:03.561967 locationd[69812] <Info>: {"msg":"Starting location for source", "source":"CLStreamingAwareLocationProviderStateMachine::kLocationSourceLocal", "notification":"CLLocationProvider_Type::kNotificationLocationFine", "include motion":0}
+Apr 16 10:06:03.562031 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationSpectator"}
+Apr 16 10:06:03.562088 locationd[69812] <Debug>: {"msg":"LocationController,updateRegistrationInfoForClient", "id":6, "client":"<CLIntersiloProxyToInitiator: peer silo:CLStreamingAwareLocationProviderSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationFine", "from desiredAccuracy":"-1.0", "to desiredAccuracy":"-1.0"}
+Apr 16 10:06:03.562135 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationBystander"}
+Apr 16 10:06:03.562272 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationBystanderPreLoiOverride"}
+Apr 16 10:06:03.562348 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationFine"}
+Apr 16 10:06:03.562432 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationLeech"}
+Apr 16 10:06:03.562477 locationd[69812] <Debug>: {"msg":"LocationController,registration", "id":6, "client":"<CLIntersiloProxyToInitiator: peer silo:CLStreamingAwareLocationProviderSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationUnavailable"}
+Apr 16 10:06:03.562655 locationd[69812] <Debug>: {"msg":"LocationController,updateRegistrationInfoForClient", "id":6, "client":"<CLIntersiloProxyToInitiator: peer silo:CLStreamingAwareLocationProviderSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationFine", "from desiredAccuracy":"-1.0", "to desiredAccuracy":"-1.0"}
+Apr 16 10:06:03.563027 locationd[69812] <Debug>: {"msg":"LocationController,registration", "id":6, "client":"<CLIntersiloProxyToInitiator: peer silo:CLStreamingAwareLocationProviderSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationUnavailable"}
+Apr 16 10:06:03.564873 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.564917 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb65ed00"}
+Apr 16 10:06:03.565014 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:p\/System\/Library\/LocationBundles\/CountryTracker.bundle", "DC":"0xdbb985dc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:03.565788 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.566031 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb856580"}
+Apr 16 10:06:03.566106 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Traffic.bundle:", "DC":"0xdbb8addc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:03.567287 locationd[69812] <Info>: CL: CLLocationAwarenessProvider::onLocationNotification
+Apr 16 10:06:03.567314 locationd[69812] <Debug>: {"msg":"CLLocationAwarenessProvider::onLocationNotification", "event":"activity", "this":"0xdbadca700"}
+Apr 16 10:06:03.568004 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.568070 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba96300"}
+Apr 16 10:06:03.568156 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/CompassCalibration.bundle:", "DC":"0xdbba239c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:03.568612 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.568641 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb76f200"}
+Apr 16 10:06:03.568702 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/UWBRegulatory.bundle", "DC":"0xdbbb59340", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:03.569174 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.569217 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb23980"}
+Apr 16 10:06:03.569296 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/WirelessDiagnostics.framework:", "DC":"0xdbb921f80", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:03.569481 nearbyd(CoreLocation)[150] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xb3c9080c0", "delegate":"0xb3c88cc80", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.569816 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.569849 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87700"}
+Apr 16 10:06:03.569929 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb968fc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:03.570208 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.570236 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb5ded00"}
+Apr 16 10:06:03.570286 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/BulletinBoard.framework:p\/System\/Library\/LocationBundles\/DestinationdLocationBundleiOS.bundle", "DC":"0xdbdc0c1c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:03.570677 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.570698 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb24500"}
+Apr 16 10:06:03.570744 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:", "DC":"0xdbb968c40", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483643.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystanderPreLoiOverride", "hash":"0x<private>"}
+Apr 16 10:06:03.571184 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.571211 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba48280"}
+Apr 16 10:06:03.571256 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbba20540", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.571725 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.571748 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba94780"}
+Apr 16 10:06:03.571812 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:", "DC":"0xdbba22bc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.572240 wifid(CoreLocation)[55] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x1017537d0", "delegate":"0xb011240c0", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.572258 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.572281 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb50a00"}
+Apr 16 10:06:03.572324 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987800", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.572460 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.572486 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb56800"}
+Apr 16 10:06:03.572532 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987640", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.572704 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.572740 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb784780"}
+Apr 16 10:06:03.572797 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/WRMLinkSelection.bundle", "DC":"0xdbb987100", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.573497 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.573539 WirelessRadioManagerd(CoreLocation)[53] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x6b354c030", "delegate":"0x6b2c49a40", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.573569 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba4af80"}
+Apr 16 10:06:03.573620 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbd4e08c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.573690 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.573712 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb52d00"}
+Apr 16 10:06:03.573767 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:", "DC":"0xdbd4e2680", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.574228 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.574252 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87200"}
+Apr 16 10:06:03.574301 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:p\/System\/Library\/LocationBundles\/Milod.bundle", "DC":"0xdbb8ae300", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.574664 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.574685 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba48280"}
+Apr 16 10:06:03.574774 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbba20540", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.574875 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.574913 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba94780"}
+Apr 16 10:06:03.574960 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:", "DC":"0xdbba22bc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.575244 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.575309 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb50a00"}
+Apr 16 10:06:03.575374 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987800", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.575442 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.575464 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb56800"}
+Apr 16 10:06:03.575513 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987640", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.575615 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.575640 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb784780"}
+Apr 16 10:06:03.575691 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/WRMLinkSelection.bundle", "DC":"0xdbb987100", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.575911 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.575945 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba4af80"}
+Apr 16 10:06:03.575991 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbd4e08c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.576163 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.576193 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb52d00"}
+Apr 16 10:06:03.576251 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:", "DC":"0xdbd4e2680", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.576418 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.576452 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87200"}
+Apr 16 10:06:03.576508 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:p\/System\/Library\/LocationBundles\/Milod.bundle", "DC":"0xdbb8ae300", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.576705 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.576739 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba48280"}
+Apr 16 10:06:03.576797 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbba20540", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.576940 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.576981 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba94780"}
+Apr 16 10:06:03.577035 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:", "DC":"0xdbba22bc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.577212 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.577244 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb50a00"}
+Apr 16 10:06:03.577304 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987800", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.577464 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.577489 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb56800"}
+Apr 16 10:06:03.577541 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987640", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.577705 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.577748 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb784780"}
+Apr 16 10:06:03.577806 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/WRMLinkSelection.bundle", "DC":"0xdbb987100", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.578023 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.578070 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba4af80"}
+Apr 16 10:06:03.578123 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbd4e08c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.578207 locationd(CoreLocation)[69812] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xdbb6b59f0", "delegate":"0xdbb4c0c00", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.578405 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.578432 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb52d00"}
+Apr 16 10:06:03.578475 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:", "DC":"0xdbd4e2680", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.578689 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.578739 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87200"}
+Apr 16 10:06:03.578795 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:p\/System\/Library\/LocationBundles\/Milod.bundle", "DC":"0xdbb8ae300", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.578862 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.578880 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba48280"}
+Apr 16 10:06:03.578927 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbba20540", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.579097 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.579119 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba94780"}
+Apr 16 10:06:03.579161 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:", "DC":"0xdbba22bc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.579330 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.579355 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb50a00"}
+Apr 16 10:06:03.579397 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987800", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.579547 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.579576 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb56800"}
+Apr 16 10:06:03.579642 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987640", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.579735 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.579761 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb784780"}
+Apr 16 10:06:03.579806 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/WRMLinkSelection.bundle", "DC":"0xdbb987100", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.580034 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.580055 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba4af80"}
+Apr 16 10:06:03.580092 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbd4e08c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.580217 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.580238 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb52d00"}
+Apr 16 10:06:03.580286 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:", "DC":"0xdbd4e2680", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.580442 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:03.580475 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87200"}
+Apr 16 10:06:03.580552 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:p\/System\/Library\/LocationBundles\/Milod.bundle", "DC":"0xdbb8ae300", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:03.580965 locationd(CoreLocation)[69812] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xdbb4a1f80", "delegate":"0xdbb5c85a0", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.581458 locationd(CoreLocation)[69812] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xdbb4a1c40", "delegate":"0xdba984080", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.583792 destinationd(CoreLocation)[97455] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x79710d040", "delegate":"0x79706af00", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.583820 destinationd(CoreLocation)[97455] <Info>: CL: CLLocationManager
+Apr 16 10:06:03.583911 destinationd(CoreLocation)[97455] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"_limitsPrecision", "self":"0x79710d040"}
+Apr 16 10:06:03.584220 contextstored(CoreLocation)[69] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x772cf6eb0", "delegate":"0x772c40800", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.585006 wirelessinsightsd(CoreLocation)[135] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x8fb056cb0", "delegate":"0x8fb04c240", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.585062 findmydeviced(CoreLocation)[96344] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x91f4e51c0", "delegate":"0x91ed20300", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.587583 milod(CoreLocation)[92878] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xa6107c5e0", "delegate":"0xa60c513c0", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:03.587668 milod(CoreLocation)[92878] <Info>: CL: CLLocationManager
+Apr 16 10:06:03.587722 milod(CoreLocation)[92878] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"desiredAccuracy", "self":"0xa6107c5e0"}
+Apr 16 10:06:03.587741 milod(CoreLocation)[92878] <Info>: CL: CLLocationManager
+Apr 16 10:06:03.587785 milod(CoreLocation)[92878] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"desiredAccuracy", "self":"0xa6107c5e0"}
+Apr 16 10:06:03.587894 wirelessinsightsd(CoreLocation)[135] <Info>: CL: CLLocationManager
+Apr 16 10:06:03.587942 wirelessinsightsd(CoreLocation)[135] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"_zAxisStatistics", "self":"0x8fb056cb0"}
+Apr 16 10:06:03.588656 locationd(LocationSupport)[69812] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLInternalServiceSilo", "FromCohortId":"7", "ToDispatchSilo":"CLLocationControllerSilo", "ToCohortId":"6"}
+Apr 16 10:06:03.588735 milod(CoreLocation)[92878] <Info>: CL: CLLocationManager
+Apr 16 10:06:03.588795 milod(CoreLocation)[92878] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"desiredAccuracy", "self":"0xa6107c5e0"}
+Apr 16 10:06:03.635671 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:03.702416 routined(CoreMotion)[40] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:03.743797 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:03.743939 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.013623 SpringBoard(CoreMotion)[37] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:04.114891 symptomsd(SymptomEvaluator)[191] <Debug>: Flow data on entry is Autopilot TCP6 flow id 1169669 (refresh) ch i/f 11 props 0x8011008 first 0 pkts rx 48 tx 57, bytes 9706 7542 cell 0 0 wifi 17370 10164 wired 0 0 comp_bt 0 0 deltas 77 317 0 0 473 455 0 0 0 0 acct_deltas 0 0 473 455 0 0 0 0
+src 1169669 snapshot: Autopilot TCP6 flow id 1169669 (refresh) ch i/f 11 props 0x8011008 first 0 pkts rx 48 tx 57, bytes 9706 7542 cell 0 0 wifi 17370 10164 wired 0 0 comp_bt 0 0 deltas 77 317 0 0 473 455 0 0 0 0 acct_deltas 0 0 473 455 0 0 0 0
+flow: TrackedFlow 1169669 WiFi tcp6 flow owner (null) start 09:50:44.457 -0500 duration 919.657 trackers: self 0x0 - other 0x68ed09080 fyi.ticketless.app rx pkts 45 tx pkts 54
+Apr 16 10:06:04.114912 symptomsd(SymptomEvaluator)[191] <Debug>: [Bitmap] flow id 1169669, fyi.ticketless.app: current bitmaps stored before adding new bitmap: [Activity startTime: 07:26:09.000 -0500 (324536), endTime: 328632] [wordOffset: 3, numOfWords:8] <8101020204040808 10102020404080A0 810102020404080A 0850102020404080 8081010202040428 0808101020204040 4080810102020404 0000000000000000 >
+Apr 16 10:06:04.114921 symptomsd(SymptomEvaluator)[191] <Debug>: [Bitmap] flow id 1169669, fyi.ticketless.app: current bitmaps stored after adding new bitmap: [Activity startTime: 07:26:09.000 -0500 (324536), endTime: 328632] [wordOffset: 3, numOfWords:8] <8101020204040808 10102020404080A0 810102020404080A 0850102020404080 8081010202040428 0808101020204040 4080810102020404 0000000000000040 >
+Apr 16 10:06:04.114969 symptomsd(SymptomEvaluator)[191] <Debug>: found LU hint (mode: 1) for fyi.ticketless.app: 0x68f2e5c20, subscriber tag: 0
+Apr 16 10:06:04.114992 symptomsd(SymptomEvaluator)[191] <Notice>: Data Usage for fyi.ticketless.app on flow 1169669 - WiFi in/out: 147149923/58458909, WiFi delta_in/delta_out: 473/455, Cell in/out: 18863261/20671722, Cell delta_in/delta_out: 0/0, RNF: 0, subscriber tag: 0, total duration: 919.658
+Apr 16 10:06:04.115009 symptomsd(SymptomEvaluator)[191] <Debug>: Data Usage for fyi.ticketless.app on flow 1169669 - Wired in/out: 0/0, Wired delta_in/delta_out: 0/0, subscriber tag: 0, total duration: 919.658
+Apr 16 10:06:04.121367 locationd[69812] <Info>: CL: CLLocationController::onAppNotification
+Apr 16 10:06:04.121433 locationd[69812] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:04.125427 locationd[69812] <Info>: CL: CLLocationController::onAppNotification
+Apr 16 10:06:04.125492 locationd[69812] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:04.125748 locationd[69812] <Info>: CL: CLLocationController::onAppNotification
+Apr 16 10:06:04.125768 locationd[69812] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0xdbacbc000"}
+    "fyi.ticketless.app" = 1;
+    "fyi.ticketless.app" = 1;
+    "fyi.ticketless.app" = 1;
+Apr 16 10:06:04.378985 Autopilot(CoreMotion)[76354] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:04.398561 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.592367 runningboardd(RunningBoard)[36] <Debug>: > app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)> ['com.apple.frontboard.after-life.interrupted'] [36-37-156424]
+Apr 16 10:06:04.699251 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.863572 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.863702 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.863723 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.863754 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.864311 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.864321 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.864571 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:06:04.865083 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:04.865299 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:04.865462 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:04.865555 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:05.137852 Gmail(CoreFoundation)[96686] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x118fba780> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x118fb9bb0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Apr 16 10:06:05.138028 Gmail(CoreFoundation)[96686] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x118fba780> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x118fb9bb0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Apr 16 10:06:05.142926 CommCenter(CoreMotion)[102] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:05.178571 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:05.178655 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:05.178963 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:05.179009 locationd(CoreAnalytics)[69812] <Info>: Dropping "com.apple.CoreMotion.MotionStateBoutMetrics" as it isn't used in any transform (not in the config or budgeted?)
+Apr 16 10:06:05.179069 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:05.180122 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:05.180284 locationd(CoreAnalytics)[69812] <Info>: Dropping "com.apple.CoreMotion.MotionStateBoutMetrics" as it isn't used in any transform (not in the config or budgeted?)
+Apr 16 10:06:05.181682 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:05.182590 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:05.183275 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:05.183354 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:05.185552 locationd[69812] <Info>: CL: CLLocationController::onMotionNotification
+Apr 16 10:06:05.185580 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:05.186246 SpringBoard(CoreMotion)[37] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Apr 16 10:06:05.187620 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:05.190567 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:06:05.191382 Autopilot(CoreLocation)[76354] <Info>: CL: CLLocationManager
+Apr 16 10:06:05.191494 Autopilot(CoreLocation)[76354] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"location", "self":"0x114626080"}
+Apr 16 10:06:05.191526 Autopilot(CoreLocation)[76354] <Debug>: {"msg":"We have a valid, cached location. Fetching from internal state", "location":<private>}
+Apr 16 10:06:05.192493 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:06:05.192658 Autopilot(CoreLocation)[76354] <Info>: CL: CLLocationManager
+Apr 16 10:06:05.192741 Autopilot(CoreLocation)[76354] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"location", "self":"0x114626080"}
+Apr 16 10:06:05.192767 Autopilot(CoreLocation)[76354] <Debug>: {"msg":"We have a valid, cached location. Fetching from internal state", "location":<private>}
+Apr 16 10:06:05.192905 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:06:05.193057 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:06:05.252941 Gmail(CoreFoundation)[96686] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x118fba780> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x118fb9bb0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Apr 16 10:06:05.253493 Gmail(CoreFoundation)[96686] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x118fba780> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x118fb9bb0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Apr 16 10:06:05.400290 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:05.761589 Gmail(CoreFoundation)[96686] <Debug>: looked up value <private> for key previously_connected_user_ticketlessamerica@gmail.com in CFPrefsPlistSource<0x118fba780> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x118fb9bb0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Apr 16 10:06:05.761847 Gmail(CoreFoundation)[96686] <Debug>: looked up value <private> for key previously_connected_user_hiautopilotamerica@gmail.com in CFPrefsPlistSource<0x118fba780> (Domain: com.google.Gmail, User: kCFPreferencesCurrentUser, ByHost: No, Container: (null), Contents Need Refresh: No) via CFPrefsSearchListSource<0x118fb9bb0> (Domain: com.google.Gmail, Container: (null) Non-launch persona: 0)
+Apr 16 10:06:05.762352 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:06.219828 backboardd(CoreMotion)[72] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:06.397809 locationd[69812] <Info>: CL: CLLocationController::onAppNotification
+Apr 16 10:06:06.397892 locationd[69812] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0xdbacbc000"}
+    "fyi.ticketless.app" = 1;
+Apr 16 10:06:06.400422 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:06.589728 biometrickitd(CoreMotion)[126] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:06.767202 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:06.767269 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:06.767663 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:06.768180 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:06.768345 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:06.768408 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:06.768558 SpringBoard(CoreMotion)[37] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Apr 16 10:06:06.768976 locationd[69812] <Info>: CL: CLLocationController::onMotionNotification
+Apr 16 10:06:06.769115 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:06.769591 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:06.770573 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:06:06.771101 Autopilot(CoreLocation)[76354] <Info>: CL: CLLocationManager
+Apr 16 10:06:06.771139 Autopilot(CoreLocation)[76354] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"location", "self":"0x114626080"}
+Apr 16 10:06:06.771164 Autopilot(CoreLocation)[76354] <Debug>: {"msg":"We have a valid, cached location. Fetching from internal state", "location":<private>}
+Apr 16 10:06:06.771369 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:06:06.825615 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.215228 locationd[69812] <Info>: CL: CLLocationController::onAppNotification
+Apr 16 10:06:07.215337 locationd[69812] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0xdbacbc000"}
+    "fyi.ticketless.app" = 1;
+Apr 16 10:06:07.229690 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.231685 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.234733 audiomxd(RunningBoardServices)[15325] <Notice>: Received state update for 76354 (app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>, running-active-NotVisible
+Apr 16 10:06:07.235422 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.235801 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.238392 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.238742 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.244188 audiomxd(RunningBoardServices)[15325] <Notice>: Received state update for 76354 (app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>, running-active-NotVisible
+Apr 16 10:06:07.244492 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.244829 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.244984 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.245134 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.245728 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.248431 locationd[69812] <Info>: CL: CLLocationController::onAppNotification
+Apr 16 10:06:07.248483 locationd[69812] <Debug>: {"msg":"CLLocationController::onAppNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:07.252903 audiomxd(RunningBoardServices)[15325] <Notice>: Received state update for 76354 (app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>, running-active-NotVisible
+Apr 16 10:06:07.253119 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.253448 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.253702 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+Apr 16 10:06:07.254071 audiomxd(RunningBoardServices)[15325] <Info>: Update skipped for [app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:76354]
+    "fyi.ticketless.app" = 1;
+Apr 16 10:06:07.401488 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.407136 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.407840 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.407959 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.407992 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.408950 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.409001 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.409909 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:07.411228 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:07.411277 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:07.411862 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:06:07.412299 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.414447 symptomsd(SymptomEvaluator)[191] <Debug>: Flow data on entry is Autopilot TCP6 flow id 1169669 (refresh) ch i/f 11 props 0x8011008 first 0 pkts rx 48 tx 57, bytes 9706 7542 cell 0 0 wifi 17370 10164 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+src 1169669 snapshot: Autopilot TCP6 flow id 1169669 (refresh) ch i/f 11 props 0x8011008 first 0 pkts rx 48 tx 57, bytes 9706 7542 cell 0 0 wifi 17370 10164 wired 0 0 comp_bt 0 0 deltas 0 0 0 0 0 0 0 0 0 0 acct_deltas 0 0 0 0 0 0 0 0
+flow: TrackedFlow 1169669 WiFi tcp6 flow owner (null) start 09:50:44.457 -0500 duration 922.955 trackers: self 0x0 - other 0x68ed09080 fyi.ticketless.app rx pkts 48 tx pkts 57
+Apr 16 10:06:07.889556 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:07.947703 corespeechd(CoreMotion)[87456] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:08.401991 nearbyd(CoreMotion)[150] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:08.402927 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:08.422467 cameracaptured(CoreMotion)[70] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:08.531251 audiomxd(CoreMotion)[15325] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:08.625625 runningboardd(RunningBoard)[36] <Info>: [app<com.google.Gmail(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:96686]: Ignoring file /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3/Library/Application Support/data/ticketlessamerica@gmail.com/sqlitedb because it is in an allowed path:  /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3
+Apr 16 10:06:08.625686 runningboardd(RunningBoard)[36] <Info>: [app<com.google.Gmail(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:96686]: Ignoring file because it is in an allowed path: /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3/Library/Application Support/data/ticketlessamerica@gmail.com/sqlitedb
+Apr 16 10:06:08.626779 runningboardd(RunningBoard)[36] <Info>: [app<com.google.Gmail(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:96686]: Ignoring file /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3/Library/Application Support/data/ticketlessamerica@gmail.com/GBTAttachmentCacheKeyMap.sqlite3 because it is in an allowed path:  /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3
+Apr 16 10:06:08.626796 runningboardd(RunningBoard)[36] <Info>: [app<com.google.Gmail(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:96686]: Ignoring file because it is in an allowed path: /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3/Library/Application Support/data/ticketlessamerica@gmail.com/GBTAttachmentCacheKeyMap.sqlite3
+Apr 16 10:06:08.630674 runningboardd(RunningBoard)[36] <Info>: [app<com.google.Gmail(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:96686]: Ignoring file /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3/Library/Application Support/data/ticketlessamerica@gmail.com/sqlitedb-shm because it is in an allowed path:  /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3
+Apr 16 10:06:08.630699 runningboardd(RunningBoard)[36] <Info>: [app<com.google.Gmail(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:96686]: Ignoring file because it is in an allowed path: /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3/Library/Application Support/data/ticketlessamerica@gmail.com/sqlitedb-shm
+Apr 16 10:06:08.635223 runningboardd(RunningBoard)[36] <Info>: [app<com.google.Gmail(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:96686]: Ignoring file /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3/Library/Application Support/data/ticketlessamerica@gmail.com/sqlitedb-wal because it is in an allowed path:  /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3
+Apr 16 10:06:08.635241 runningboardd(RunningBoard)[36] <Info>: [app<com.google.Gmail(AFC398F4-9015-4616-82FE-85BA100A2ACD)>:96686]: Ignoring file because it is in an allowed path: /var/mobile/Containers/Data/Application/BEB7E607-1C55-4896-9DB2-87A257D778D3/Library/Application Support/data/ticketlessamerica@gmail.com/sqlitedb-wal
+    "fyi.ticketless.app" = 1;
+    "fyi.ticketless.app" = 1;
+Apr 16 10:06:08.702358 routined(CoreMotion)[40] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:08.953364 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.014665 SpringBoard(CoreMotion)[37] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:09.379277 Autopilot(CoreMotion)[76354] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:09.403991 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.420788 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.420855 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.953266 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.953654 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.953843 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.953914 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.954206 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.955331 locationd(CoreAnalytics)[69812] <Info>: Dropping "com.apple.CoreMotion.MotionStateBoutMetrics" as it isn't used in any transform (not in the config or budgeted?)
+Apr 16 10:06:09.955859 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.955950 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.956012 locationd(CoreAnalytics)[69812] <Info>: Dropping "com.apple.CoreMotion.MotionStateBoutMetrics" as it isn't used in any transform (not in the config or budgeted?)
+Apr 16 10:06:09.956155 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.956543 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.958402 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:09.960389 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:09.960435 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:09.960686 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.963417 locationd[69812] <Info>: CL: CLLocationController::onMotionNotification
+Apr 16 10:06:09.963492 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:09.964338 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:09.964571 SpringBoard(CoreMotion)[37] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Apr 16 10:06:09.965799 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:06:09.967948 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:06:10.016668 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:10.142302 CommCenter(CoreMotion)[102] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:10.405030 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:11.079973 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:11.213152 locationd[69812] <Info>: CL: CLLocationController::onWifiNotification
+Apr 16 10:06:11.213239 locationd[69812] <Debug>: {"msg":"CLLocationController::onWifiNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:11.214661 locationd(LocationSupport)[69812] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLLocationControllerSilo", "FromCohortId":"6", "ToDispatchSilo":"CLDaemonStatusSilo", "ToCohortId":"0"}
+Apr 16 10:06:11.216064 locationd[69812] <Info>: CLLocationControllerShortLookbackPostProcessor::processInterval, startMachContinuousTime_s, 334136.738, endMachContinuousTime_s, 334144.409, interval_s, 7.671, performing smoothing.
+Apr 16 10:06:11.216100 locationd[69812] <Info>: CLLocationControllerShortLookbackPostProcessor::processInterval, loaded 9 locations for smoothing.
+Apr 16 10:06:11.216467 locationd(LocationSupport)[69812] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLLocationControllerSilo", "FromCohortId":"6", "ToDispatchSilo":"CLDigitalElevationModelSilo", "ToCohortId":"4"}
+Apr 16 10:06:11.218177 locationd[69812] <Info>: {"msg":"Notifying clients with location", "location":{"location":"<redacted>"}, "notification":"CLLocationProvider_Type::kNotificationLocation"}
+Apr 16 10:06:11.219011 locationd[69812] <Notice>: {"msg":"#pla #zone-relevance-tracker, location notification", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "_currentLocation":{"location":"<redacted>"}, "NewLocation":{"location":"<redacted>"}}
+Apr 16 10:06:11.221924 backboardd(CoreMotion)[72] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:11.222622 locationd[69812] <Info>: {"msg":"Received local notification", "notification":"CLLocationProvider_Type::kNotificationLocationFine"}
+Apr 16 10:06:11.222704 locationd[69812] <Info>: {"msg":"Starting location for source", "source":"CLStreamingAwareLocationProviderStateMachine::kLocationSourceLocal", "notification":"CLLocationProvider_Type::kNotificationLocationFine", "include motion":0}
+Apr 16 10:06:11.222769 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationSpectator"}
+Apr 16 10:06:11.222841 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationBystander"}
+Apr 16 10:06:11.222999 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationBystanderPreLoiOverride"}
+Apr 16 10:06:11.223049 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationFine"}
+Apr 16 10:06:11.223122 locationd[69812] <Debug>: {"msg":"LocationController,updateRegistrationInfoForClient", "id":6, "client":"<CLIntersiloProxyToInitiator: peer silo:CLStreamingAwareLocationProviderSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationFine", "from desiredAccuracy":"-1.0", "to desiredAccuracy":"-1.0"}
+Apr 16 10:06:11.223207 locationd[69812] <Debug>: {"msg":"LocationController,registration", "id":6, "client":"<CLIntersiloProxyToInitiator: peer silo:CLStreamingAwareLocationProviderSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationUnavailable"}
+Apr 16 10:06:11.223289 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationLeech"}
+Apr 16 10:06:11.223387 locationd[69812] <Info>: {"msg":"Received local notification", "notification":"CLLocationProvider_Type::kNotificationLocationLeech"}
+Apr 16 10:06:11.223477 locationd[69812] <Info>: {"msg":"Starting location for source", "source":"CLStreamingAwareLocationProviderStateMachine::kLocationSourceLocal", "notification":"CLLocationProvider_Type::kNotificationLocationFine", "include motion":0}
+Apr 16 10:06:11.223570 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationSpectator"}
+Apr 16 10:06:11.223663 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationBystander"}
+Apr 16 10:06:11.223728 locationd[69812] <Debug>: {"msg":"LocationController,updateRegistrationInfoForClient", "id":6, "client":"<CLIntersiloProxyToInitiator: peer silo:CLStreamingAwareLocationProviderSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationFine", "from desiredAccuracy":"-1.0", "to desiredAccuracy":"-1.0"}
+Apr 16 10:06:11.223810 locationd[69812] <Debug>: {"msg":"LocationController,registration", "id":6, "client":"<CLIntersiloProxyToInitiator: peer silo:CLStreamingAwareLocationProviderSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationUnavailable"}
+Apr 16 10:06:11.223896 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationBystanderPreLoiOverride"}
+Apr 16 10:06:11.224008 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationFine"}
+Apr 16 10:06:11.224117 locationd[69812] <Info>: {"msg":"notifying", "client":"<CLIntersiloProxyToInitiator: peer silo:CLFilteredLocationControllerSilo>", "notification":"CLLocationProvider_Type::kNotificationLocationLeech"}
+Apr 16 10:06:11.224941 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.224990 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb65ed00"}
+Apr 16 10:06:11.225135 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:p\/System\/Library\/LocationBundles\/CountryTracker.bundle", "DC":"0xdbb985dc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:11.225334 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.225370 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb856580"}
+Apr 16 10:06:11.225435 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Traffic.bundle:", "DC":"0xdbb8addc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:11.225625 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.225652 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba96300"}
+Apr 16 10:06:11.225725 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/CompassCalibration.bundle:", "DC":"0xdbba239c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:11.226024 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.226096 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb76f200"}
+Apr 16 10:06:11.226231 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/UWBRegulatory.bundle", "DC":"0xdbbb59340", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:11.226432 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.226453 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb23980"}
+Apr 16 10:06:11.226609 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/WirelessDiagnostics.framework:", "DC":"0xdbb921f80", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:11.226643 nearbyd(CoreLocation)[150] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xb3c9080c0", "delegate":"0xb3c88cc80", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.227014 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.227024 locationd[69812] <Info>: CL: CLLocationAwarenessProvider::onLocationNotification
+Apr 16 10:06:11.227054 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87700"}
+Apr 16 10:06:11.227114 locationd[69812] <Debug>: {"msg":"CLLocationAwarenessProvider::onLocationNotification", "event":"activity", "this":"0xdbadca700"}
+Apr 16 10:06:11.227177 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb968fc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:11.227823 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.227849 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb5ded00"}
+Apr 16 10:06:11.228038 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/BulletinBoard.framework:p\/System\/Library\/LocationBundles\/DestinationdLocationBundleiOS.bundle", "DC":"0xdbdc0c1c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483646.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystander", "hash":"0x<private>"}
+Apr 16 10:06:11.228398 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.228442 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb24500"}
+Apr 16 10:06:11.228553 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:", "DC":"0xdbb968c40", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483643.000000", "notification":"CLLocationProvider_Type::kNotificationLocationBystanderPreLoiOverride", "hash":"0x<private>"}
+Apr 16 10:06:11.228987 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.229030 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba48280"}
+Apr 16 10:06:11.229089 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbba20540", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.229167 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.229255 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba94780"}
+Apr 16 10:06:11.229410 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:", "DC":"0xdbba22bc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.229539 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.229602 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb50a00"}
+Apr 16 10:06:11.229686 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987800", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.229820 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.229843 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb56800"}
+Apr 16 10:06:11.229884 wifid(CoreLocation)[55] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x1017537d0", "delegate":"0xb011240c0", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.230003 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987640", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.230148 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.230187 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb784780"}
+Apr 16 10:06:11.230238 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/WRMLinkSelection.bundle", "DC":"0xdbb987100", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.230481 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.230525 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba4af80"}
+Apr 16 10:06:11.230612 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbd4e08c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.230735 WirelessRadioManagerd(CoreLocation)[53] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x6b354c030", "delegate":"0x6b2c49a40", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.230881 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.230966 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb52d00"}
+Apr 16 10:06:11.231056 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:", "DC":"0xdbd4e2680", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.231102 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.231124 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87200"}
+Apr 16 10:06:11.231171 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:p\/System\/Library\/LocationBundles\/Milod.bundle", "DC":"0xdbb8ae300", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.231281 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.231308 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba48280"}
+Apr 16 10:06:11.231358 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbba20540", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.231405 locationd(CoreLocation)[69812] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xdbb6b59f0", "delegate":"0xdbb4c0c00", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.231531 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.231556 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba94780"}
+Apr 16 10:06:11.231617 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:", "DC":"0xdbba22bc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.231841 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.231887 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb50a00"}
+Apr 16 10:06:11.231967 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987800", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.232051 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.232083 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb56800"}
+Apr 16 10:06:11.232135 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987640", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.232279 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.232307 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb784780"}
+Apr 16 10:06:11.232354 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/WRMLinkSelection.bundle", "DC":"0xdbb987100", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.232586 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.232628 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba4af80"}
+Apr 16 10:06:11.232675 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbd4e08c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.232762 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.232807 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb52d00"}
+Apr 16 10:06:11.232854 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:", "DC":"0xdbd4e2680", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.232995 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.233023 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87200"}
+Apr 16 10:06:11.233084 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:p\/System\/Library\/LocationBundles\/Milod.bundle", "DC":"0xdbb8ae300", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.233227 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.233263 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba48280"}
+Apr 16 10:06:11.233307 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbba20540", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.233453 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.233492 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba94780"}
+Apr 16 10:06:11.233537 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:", "DC":"0xdbba22bc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.233721 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.233770 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb50a00"}
+Apr 16 10:06:11.233815 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987800", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.233907 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.233934 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb56800"}
+Apr 16 10:06:11.233986 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987640", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.234103 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.234146 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb784780"}
+Apr 16 10:06:11.234213 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/WRMLinkSelection.bundle", "DC":"0xdbb987100", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.234358 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.234387 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba4af80"}
+Apr 16 10:06:11.234445 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbd4e08c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.234597 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.234620 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb52d00"}
+Apr 16 10:06:11.234658 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:", "DC":"0xdbd4e2680", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.234789 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.234810 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87200"}
+Apr 16 10:06:11.234854 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:p\/System\/Library\/LocationBundles\/Milod.bundle", "DC":"0xdbb8ae300", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.235000 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.235024 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba48280"}
+Apr 16 10:06:11.235057 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbba20540", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.235218 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.235246 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba94780"}
+Apr 16 10:06:11.235287 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:", "DC":"0xdbba22bc0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.235447 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.235476 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb50a00"}
+Apr 16 10:06:11.235512 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987800", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.235569 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.235586 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb56800"}
+Apr 16 10:06:11.235625 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/FindMyDevice.framework:", "DC":"0xdbb987640", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.235744 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.235774 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbb784780"}
+Apr 16 10:06:11.235816 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/PrivateFrameworks\/MobileWiFi.framework:p\/System\/Library\/LocationBundles\/WRMLinkSelection.bundle", "DC":"0xdbb987100", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.235978 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.236015 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba4af80"}
+Apr 16 10:06:11.236053 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/MotionCalibration.bundle:", "DC":"0xdbd4e08c0", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.236120 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.236145 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbbb52d00"}
+Apr 16 10:06:11.236185 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/SystemCustomization.bundle:", "DC":"0xdbd4e2680", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.236288 locationd[69812] <Info>: CL: CLLocationSubscription::onLocationNotification
+Apr 16 10:06:11.236314 locationd[69812] <Debug>: {"msg":"CLLocationSubscription::onLocationNotification", "event":"activity", "this":"0xdbba87200"}
+Apr 16 10:06:11.236351 locationd[69812] <Notice>: {"msg":"Sending location to client", "Client":"p\/System\/Library\/LocationBundles\/Routine.bundle:p\/System\/Library\/LocationBundles\/Milod.bundle", "DC":"0xdbb8ae300", "location":{"location":"<redacted>"}, "desiredAccuracy":"2147483647.000000", "notification":"CLLocationProvider_Type::kNotificationLocationLeech", "hash":"0x<private>"}
+Apr 16 10:06:11.236920 locationd(CoreLocation)[69812] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xdbb4a1f80", "delegate":"0xdbb5c85a0", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.237063 locationd(CoreLocation)[69812] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xdbb4a1c40", "delegate":"0xdba984080", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.239175 wirelessinsightsd(CoreLocation)[135] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x8fb056cb0", "delegate":"0x8fb04c240", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.239315 destinationd(CoreLocation)[97455] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x79710d040", "delegate":"0x79706af00", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.239344 destinationd(CoreLocation)[97455] <Info>: CL: CLLocationManager
+Apr 16 10:06:11.239399 destinationd(CoreLocation)[97455] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"_limitsPrecision", "self":"0x79710d040"}
+Apr 16 10:06:11.239436 wirelessinsightsd(CoreLocation)[135] <Info>: CL: CLLocationManager
+Apr 16 10:06:11.239469 wirelessinsightsd(CoreLocation)[135] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"_zAxisStatistics", "self":"0x8fb056cb0"}
+Apr 16 10:06:11.239927 locationd(LocationSupport)[69812] <Debug>: {"msg":"#Cohorting Intend to sync", "FromDispatchSilo":"CLInternalServiceSilo", "FromCohortId":"7", "ToDispatchSilo":"CLLocationControllerSilo", "ToCohortId":"6"}
+Apr 16 10:06:11.240397 contextstored(CoreLocation)[69] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x772cf6eb0", "delegate":"0x772c40800", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.241617 findmydeviced(CoreLocation)[96344] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0x91f4e51c0", "delegate":"0x91ed20300", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.241685 milod(CoreLocation)[92878] <Notice>: {"msg":"#CLLocationManager invoking #delegate", "self":"0xa6107c5e0", "delegate":"0xa60c513c0", "selector":"locationManager:didUpdateLocations:", "location":<private>, "eventType":"kCLConnectionMessageLocation"}
+Apr 16 10:06:11.242117 milod(CoreLocation)[92878] <Info>: CL: CLLocationManager
+Apr 16 10:06:11.242180 milod(CoreLocation)[92878] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"desiredAccuracy", "self":"0xa6107c5e0"}
+Apr 16 10:06:11.242304 milod(CoreLocation)[92878] <Info>: CL: CLLocationManager
+Apr 16 10:06:11.242360 milod(CoreLocation)[92878] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"desiredAccuracy", "self":"0xa6107c5e0"}
+Apr 16 10:06:11.242412 milod(CoreLocation)[92878] <Info>: CL: CLLocationManager
+Apr 16 10:06:11.242483 milod(CoreLocation)[92878] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"desiredAccuracy", "self":"0xa6107c5e0"}
+Apr 16 10:06:11.406246 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:11.589878 biometrickitd(CoreMotion)[126] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:12.143358 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.407248 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.495824 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.499758 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.499837 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.500204 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.500347 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.500424 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.500597 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.500660 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.502481 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:12.505446 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.505514 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:12.505598 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:12.506859 locationd[69812] <Info>: CL: CLLocationController::onMotionNotification
+Apr 16 10:06:12.506983 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:12.508297 SpringBoard(CoreMotion)[37] <Debug>: Device Stationary?, <private>, Orientation, <private>, Proximity, <private>
+Apr 16 10:06:12.510661 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:06:12.511461 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:12.512066 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:06:12.512690 Autopilot(CoreLocation)[76354] <Info>: CL: CLLocationManager
+Apr 16 10:06:12.512728 Autopilot(CoreLocation)[76354] <Notice>: {"msg":"CLLocationManager", "event":"activity", "_cmd":"location", "self":"0x114626080"}
+Apr 16 10:06:12.512757 Autopilot(CoreLocation)[76354] <Debug>: {"msg":"We have a valid, cached location. Fetching from internal state", "location":<private>}
+Apr 16 10:06:12.513088 Autopilot(Foundation)[76354] <Notice>: <private>
+Apr 16 10:06:12.947655 corespeechd(CoreMotion)[87456] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:13.206852 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:13.401962 nearbyd(CoreMotion)[150] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:13.407212 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:13.407909 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:13.421576 cameracaptured(CoreMotion)[70] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:13.531204 audiomxd(CoreMotion)[15325] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:13.702409 routined(CoreMotion)[40] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:14.014593 SpringBoard(CoreMotion)[37] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:14.269859 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:14.379204 Autopilot(CoreMotion)[76354] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:14.409170 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:15.045565 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:15.045591 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:15.045612 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:15.045634 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:15.045655 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:15.045687 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:15.046731 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:15.048491 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:06:15.049002 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:15.049256 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:15.049428 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:15.143179 CommCenter(CoreMotion)[102] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:15.333293 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:15.410494 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:16.219788 backboardd(CoreMotion)[72] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:16.396411 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:16.411351 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:16.589672 biometrickitd(CoreMotion)[126] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:17.412459 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:17.459871 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:17.585032 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:17.586387 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:17.586547 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:17.586661 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:17.586811 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:17.587129 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:17.587990 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:17.591162 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:17.591500 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:06:17.591521 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:17.591566 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:17.947672 corespeechd(CoreMotion)[87456] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:18.401979 nearbyd(CoreMotion)[150] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:18.413624 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:18.422419 cameracaptured(CoreMotion)[70] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:18.523172 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:18.531274 audiomxd(CoreMotion)[15325] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:18.654382 locationd(CoreAnalytics)[69812] <Info>: Dropping "com.apple.CoreMotion.GyroBiasEstimationTemperature" as it isn't used in any transform (not in the config or budgeted?)
+Apr 16 10:06:18.702454 routined(CoreMotion)[40] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:19.014646 SpringBoard(CoreMotion)[37] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:19.379123 Autopilot(CoreMotion)[76354] <Debug>: Ping timer fired, resetting watchdog
+Apr 16 10:06:19.414650 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:19.428144 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:19.428227 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:19.587206 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:20.128209 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:20.130326 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:20.130506 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:20.130575 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:20.132119 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:20.132187 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:20.133997 locationd[69812] <Info>: CoreMotion model estimates, alsOutdoorProb, <private>, wifiIndoorProb, <private>, gpsOutdoorProb, <private>
+Apr 16 10:06:20.135628 cameracaptured(CoreMotion)[70] <Debug>: [CLIoHidInterface] Skipping invalidated device with usage pair {65280, 41} in onEvent
+Apr 16 10:06:20.136127 locationd[69812] <Info>: CL: CLLocationController::onMotionStateMediatorNotification
+Apr 16 10:06:20.136190 locationd[69812] <Debug>: {"msg":"CLLocationController::onMotionStateMediatorNotification", "event":"activity", "this":"0xdbacbc000"}
+Apr 16 10:06:20.137684 locationd[69812] <Debug>: notifying odometer elevation update clients,timestamp,<private>,ascended,<private>,descended,<private>,source,<private>
+Apr 16 10:06:20.142860 CommCenter(CoreMotion)[102] <Debug>: Ping timer fired, resetting watchdog

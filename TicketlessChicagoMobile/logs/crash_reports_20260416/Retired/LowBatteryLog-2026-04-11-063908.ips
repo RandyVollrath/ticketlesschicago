@@ -1,0 +1,2765 @@
+{"bug_type":"120","timestamp":"2026-04-11 06:39:08.00 -0500","os_version":"iPhone OS 26.4 (23E246)","roots_installed":0,"incident_id":"E6211C85-5E77-4183-8DCB-385D933E2E3A"}
+{"bug_type":"120","os_version":"iPhone OS 26.4 (23E246)"}
+Incident Identifier: 63815034-E7E7-4181-ADC5-027FC87EC24A
+CrashReporter Key:   b0e9f08a5956528e8634b098a25bc4a464ad97ab
+Date:                2026-04-11 06:39:07.208 -0500
+OS Version:          iPhone OS 26.4 (23E246)
+
+runningboardd: app<fyi.ticketless.app(AFC398F4-9015-4616-82FE-85BA100A2ACD)>34-76-27451:Location subscription	SystemIsActive == 255, held for 29:06:25
+
+Screen Brightness: 0.198808
+Hardware Model: D16AP
+Awake Time: 12:55:40 (46539)
+Standby Time: 12:55:40 (46539)
+Partial Charge: 0
+Capacity: 1
+Voltage: 3149 mV
+Voltage Droop Time: 552008
+Voltage Droop Transitions: 23
+CPMS has keys:
+ (
+        {
+        AllowPolicyRun = 0;
+        SystemLoadFraction = "0.2625406";
+        batteryPowerConsumption =         (
+            4294966731,
+            4294967046,
+            683,
+            642,
+            301,
+            555,
+            3152,
+            175
+        );
+        brownoutRiskNotificationEngaged = 0;
+        brownoutRiskPu = 0;
+        brownoutRiskSysCap = 0;
+        droopCE = "0.732299";
+        droopIS = "0.709106";
+        grantedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 2485;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 9296;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 4473;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 2038;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 6240;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 2715;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        laneCEs =         (
+            "0.0284732",
+            "0.0224452",
+            "0.01825578",
+            "0.0082381",
+            "0.732299",
+            0,
+            0,
+            0
+        );
+        lastDisengagedCriticalDroopTimeStamp = 1775906566618029125;
+        lastDisengagedPolicyTimeStamp = 1775907008931207662;
+        lastEngagedCriticalDroopTimeStamp = 1775907544040641579;
+        lastEngagedPolicyTimeStamp = 1775907543473724662;
+        mode = 2;
+        overrideFlags = 0;
+        peakPowerPressureLevel = 0;
+        reason = 0;
+        remCapCEFloors =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        remainingCapacity = 2147483647;
+        requestedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 1;
+                clientName = nfc;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 27432;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 25000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        servoCEs =         (
+            "0.0284729",
+            "0.02243042",
+            "0.01824951",
+            "0.008224487",
+            0,
+            0,
+            0
+        );
+        systemCapability =         (
+            11513,
+            244,
+            2155
+        );
+        systemCapabilitySource = 2;
+        timestamp = 1775907544319008879;
+        undroopCE = "0.025955";
+        undroopIS = "0.025955";
+        zeroSumCE = 0;
+    },
+        {
+        AllowPolicyRun = 0;
+        SystemLoadFraction = "0.2625406";
+        batteryPowerConsumption =         (
+            4294966731,
+            4294967046,
+            683,
+            644,
+            303,
+            757,
+            3151,
+            240
+        );
+        brownoutRiskNotificationEngaged = 0;
+        brownoutRiskPu = 0;
+        brownoutRiskSysCap = 0;
+        droopCE = "0.842239";
+        droopIS = "0.818161";
+        grantedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 2485;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 9277;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 4473;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 2038;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 6240;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 2715;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        laneCEs =         (
+            "0.0318066",
+            "0.0248262",
+            "0.02075855",
+            "0.0087143",
+            "0.842239",
+            0,
+            0,
+            0
+        );
+        lastDisengagedCriticalDroopTimeStamp = 1775906566618029125;
+        lastDisengagedPolicyTimeStamp = 1775907008931207662;
+        lastEngagedCriticalDroopTimeStamp = 1775907544040641579;
+        lastEngagedPolicyTimeStamp = 1775907543473724662;
+        mode = 2;
+        overrideFlags = 0;
+        peakPowerPressureLevel = 0;
+        reason = 0;
+        remCapCEFloors =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        remainingCapacity = 2147483647;
+        requestedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 1;
+                clientName = nfc;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 27432;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 25000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        servoCEs =         (
+            "0.03179932",
+            "0.02482605",
+            "0.02075195",
+            "0.008712769",
+            0,
+            0,
+            0
+        );
+        systemCapability =         (
+            11513,
+            244,
+            2155
+        );
+        systemCapabilitySource = 2;
+        timestamp = 1775907544446437775;
+        undroopCE = "0.034606";
+        undroopIS = "0.034606";
+        zeroSumCE = 0;
+    },
+        {
+        AllowPolicyRun = 0;
+        SystemLoadFraction = "0.2625406";
+        batteryPowerConsumption =         (
+            4294966731,
+            4294967046,
+            580,
+            630,
+            304,
+            627,
+            3158,
+            198
+        );
+        brownoutRiskNotificationEngaged = 0;
+        brownoutRiskPu = 0;
+        brownoutRiskSysCap = 0;
+        droopCE = "0.950485";
+        droopIS = "0.929992";
+        grantedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 2468;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 9279;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 4473;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 2038;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 6240;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 2715;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        laneCEs =         (
+            "0.032074",
+            "0.0245228",
+            "0.02152709",
+            "0.007774",
+            "0.950485",
+            0,
+            0,
+            0
+        );
+        lastDisengagedCriticalDroopTimeStamp = 1775906566618029125;
+        lastDisengagedPolicyTimeStamp = 1775907008931207662;
+        lastEngagedCriticalDroopTimeStamp = 1775907544040641579;
+        lastEngagedPolicyTimeStamp = 1775907543473724662;
+        mode = 2;
+        overrideFlags = 0;
+        peakPowerPressureLevel = 0;
+        reason = 0;
+        remCapCEFloors =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        remainingCapacity = 2147483647;
+        requestedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 1;
+                clientName = nfc;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 27432;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 25000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        servoCEs =         (
+            "0.03207397",
+            "0.02452087",
+            "0.02151489",
+            "0.007766724",
+            0,
+            0,
+            0
+        );
+        systemCapability =         (
+            11513,
+            244,
+            2155
+        );
+        systemCapabilitySource = 2;
+        timestamp = 1775907544585710320;
+        undroopCE = "0.045608";
+        undroopIS = "0.045608";
+        zeroSumCE = 0;
+    },
+        {
+        AllowPolicyRun = 0;
+        SystemLoadFraction = "0.3113863";
+        batteryPowerConsumption =         (
+            4294966642,
+            4294966923,
+            511,
+            561,
+            330,
+            646,
+            3149,
+            205
+        );
+        brownoutRiskNotificationEngaged = 0;
+        brownoutRiskPu = 0;
+        brownoutRiskSysCap = 0;
+        droopCE = 1;
+        droopIS = 1;
+        grantedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 2278;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 8684;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 4239;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 2028;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 5947;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 2607;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        laneCEs =         (
+            "0.1326723",
+            "0.09826039",
+            "0.09372575",
+            "0.0258692",
+            1,
+            0,
+            0,
+            0
+        );
+        lastDisengagedCriticalDroopTimeStamp = 1775906566618029125;
+        lastDisengagedPolicyTimeStamp = 1775907008931207662;
+        lastEngagedCriticalDroopTimeStamp = 1775907544040641579;
+        lastEngagedPolicyTimeStamp = 1775907543473724662;
+        mode = 2;
+        overrideFlags = 0;
+        peakPowerPressureLevel = 0;
+        reason = 0;
+        remCapCEFloors =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        remainingCapacity = 2147483647;
+        requestedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 1;
+                clientName = nfc;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 27432;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 25000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        servoCEs =         (
+            "0.1326599",
+            "0.09825134",
+            "0.09371948",
+            "0.02586365",
+            0,
+            0,
+            0
+        );
+        systemCapability =         (
+            11318,
+            "-217",
+            2102
+        );
+        systemCapabilitySource = 2;
+        timestamp = 1775907546968992986;
+        undroopCE = "0.257263";
+        undroopIS = "0.257263";
+        zeroSumCE = 0;
+    },
+        {
+        AllowPolicyRun = 0;
+        SystemLoadFraction = "0.09424948";
+        batteryPowerConsumption =         (
+            4294967072,
+            4294967107,
+            1922,
+            531,
+            218,
+            1809,
+            3189,
+            566
+        );
+        brownoutRiskNotificationEngaged = 0;
+        brownoutRiskPu = 0;
+        brownoutRiskSysCap = 0;
+        droopCE = "0.02658";
+        droopIS = "0.021118";
+        grantedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 18178;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        laneCEs =         (
+            0,
+            0,
+            0,
+            0,
+            "0.02658",
+            0,
+            0,
+            0
+        );
+        lastDisengagedCriticalDroopTimeStamp = 1775906566618029125;
+        lastDisengagedPolicyTimeStamp = 1775907008931207662;
+        lastEngagedCriticalDroopTimeStamp = 1775906566606553919;
+        lastEngagedPolicyTimeStamp = 1775907008850830988;
+        mode = 2;
+        overrideFlags = 0;
+        peakPowerPressureLevel = 0;
+        reason = 4;
+        remCapCEFloors =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        remainingCapacity = 2147483647;
+        requestedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 1;
+                clientName = nfc;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 27432;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 25000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        servoCEs =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        systemCapability =         (
+            12370,
+            2104,
+            2385
+        );
+        systemCapabilitySource = 2;
+        timestamp = 1775907163453685528;
+        undroopCE = 0;
+        undroopIS = 0;
+        zeroSumCE = 0;
+    },
+        {
+        AllowPolicyRun = 0;
+        SystemLoadFraction = "0.09424948";
+        batteryPowerConsumption =         (
+            4294967072,
+            4294967107,
+            1751,
+            429,
+            206,
+            2006,
+            3202,
+            626
+        );
+        brownoutRiskNotificationEngaged = 0;
+        brownoutRiskPu = 0;
+        brownoutRiskSysCap = 0;
+        droopCE = "0.001647";
+        droopIS = "0.00267";
+        grantedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 18518;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        laneCEs =         (
+            0,
+            0,
+            0,
+            0,
+            "0.001647",
+            0,
+            0,
+            0
+        );
+        lastDisengagedCriticalDroopTimeStamp = 1775906566618029125;
+        lastDisengagedPolicyTimeStamp = 1775907008931207662;
+        lastEngagedCriticalDroopTimeStamp = 1775906566606553919;
+        lastEngagedPolicyTimeStamp = 1775907008850830988;
+        mode = 2;
+        overrideFlags = 0;
+        peakPowerPressureLevel = 0;
+        reason = 4;
+        remCapCEFloors =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        remainingCapacity = 2147483647;
+        requestedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 1;
+                clientName = nfc;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 27432;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 25000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        servoCEs =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        systemCapability =         (
+            12370,
+            2104,
+            2385
+        );
+        systemCapabilitySource = 2;
+        timestamp = 1775907163394721406;
+        undroopCE = 0;
+        undroopIS = 0;
+        zeroSumCE = 0;
+    },
+        {
+        AllowPolicyRun = 0;
+        SystemLoadFraction = "0.09424948";
+        batteryPowerConsumption =         (
+            4294967072,
+            4294967107,
+            1767,
+            401,
+            203,
+            4111,
+            3190,
+            1306
+        );
+        brownoutRiskNotificationEngaged = 0;
+        brownoutRiskPu = 0;
+        brownoutRiskSysCap = 0;
+        droopCE = "0.005752";
+        droopIS = "0.001556";
+        grantedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 65000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        laneCEs =         (
+            0,
+            0,
+            0,
+            0,
+            "0.005752",
+            0,
+            0,
+            0
+        );
+        lastDisengagedCriticalDroopTimeStamp = 1775906566618029125;
+        lastDisengagedPolicyTimeStamp = 1775907008931207662;
+        lastEngagedCriticalDroopTimeStamp = 1775906566606553919;
+        lastEngagedPolicyTimeStamp = 1775907008850830988;
+        mode = 2;
+        overrideFlags = 0;
+        peakPowerPressureLevel = 0;
+        reason = 4;
+        remCapCEFloors =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        remainingCapacity = 2147483647;
+        requestedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 1;
+                clientName = nfc;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 27432;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 25000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        servoCEs =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        systemCapability =         (
+            12370,
+            2104,
+            2385
+        );
+        systemCapabilitySource = 2;
+        timestamp = 1775907163370993358;
+        undroopCE = 0;
+        undroopIS = 0;
+        zeroSumCE = 0;
+    },
+        {
+        AllowPolicyRun = 0;
+        SystemLoadFraction = "0.09424948";
+        batteryPowerConsumption =         (
+            4294967072,
+            4294967107,
+            1767,
+            401,
+            203,
+            4111,
+            3190,
+            1306
+        );
+        brownoutRiskNotificationEngaged = 0;
+        brownoutRiskPu = 0;
+        brownoutRiskSysCap = 0;
+        droopCE = "0.005752";
+        droopIS = "0.001556";
+        grantedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 65000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        laneCEs =         (
+            0,
+            0,
+            0,
+            0,
+            "0.005752",
+            0,
+            0,
+            0
+        );
+        lastDisengagedCriticalDroopTimeStamp = 1775906566618029125;
+        lastDisengagedPolicyTimeStamp = 1775907008931207662;
+        lastEngagedCriticalDroopTimeStamp = 1775906566606553919;
+        lastEngagedPolicyTimeStamp = 1775907008850830988;
+        mode = 2;
+        overrideFlags = 0;
+        peakPowerPressureLevel = 0;
+        reason = 4;
+        remCapCEFloors =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        remainingCapacity = 2147483647;
+        requestedBudgets =         (
+                        {
+                clientID = 0;
+                clientName = wifi;
+                timescales =                 (
+                                        {
+                        level = 3755;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 1;
+                clientName = nfc;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 2;
+                clientName = clpc;
+                timescales =                 (
+                                        {
+                        level = 27432;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 3;
+                clientName = t;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 4;
+                clientName = camera;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 6;
+                clientName = nand;
+                timescales =                 (
+                                        {
+                        level = 1500;
+                        timescale = 1;
+                    }
+                );
+            },
+                        {
+                clientID = 7;
+                clientName = baseband;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 9;
+                clientName = haptics;
+                timescales =                 (
+                                        {
+                        level = 10000;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 10000;
+                        timescale = 2;
+                    },
+                                        {
+                        level = 25000;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 10;
+                clientName = display;
+                timescales =                 (
+                                        {
+                        level = 3214;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 7368;
+                        timescale = 0;
+                    }
+                );
+            },
+                        {
+                clientID = 11;
+                clientName = pv;
+                timescales =                 (
+                                        {
+                        level = 0;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 0;
+                        timescale = 2;
+                    }
+                );
+            },
+                        {
+                clientID = 14;
+                clientName = pr;
+                timescales =                 (
+                                        {
+                        level = 1;
+                        timescale = 0;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 1;
+                    },
+                                        {
+                        level = 1;
+                        timescale = 2;
+                    }
+                );
+            }
+        );
+        servoCEs =         (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        systemCapability =         (
+            12370,
+            2104,
+            2385
+        );
+        systemCapabilitySource = 2;
+        timestamp = 1775907163370993358;
+        undroopCE = 0;
+        undroopIS = 0;
+        zeroSumCE = 0;
+    }
+) 
