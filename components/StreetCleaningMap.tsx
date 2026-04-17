@@ -453,78 +453,81 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         updateMeterVisibility();
       }
 
-      // Handle trigger popup with delay to ensure map is ready
+      // Zoom to user's zone when a search result is available
       if (triggerPopup && data.length > 0) {
-        console.log('Trigger popup requested for ward:', triggerPopup.ward, 'section:', triggerPopup.section);
-        console.log('Available features:', data.map(f => ({ ward: f.properties?.ward, section: f.properties?.section })));
-        console.log('Map instance ready:', !!mapInstanceRef.current);
-        
-        // Add longer delay to ensure map and all layers are fully rendered
-        setTimeout(() => {
-          const targetFeature = data.find(feature => 
-            String(feature.properties?.ward) === String(triggerPopup.ward) && 
-            String(feature.properties?.section) === String(triggerPopup.section)
-          );
+        // Use requestAnimationFrame + short delay for reliable zoom after render
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (!mapInstanceRef.current) return;
 
-          if (targetFeature && targetFeature.geometry) {
-            console.log('Found target feature:', targetFeature.properties);
-            
-            // Calculate center point and open popup
-            let centerLat = 0, centerLng = 0;
-            if (targetFeature.geometry.type === 'Polygon' && targetFeature.geometry.coordinates[0]) {
-              const coords = targetFeature.geometry.coordinates[0];
-              centerLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
-              centerLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
-            } else if (targetFeature.geometry.type === 'MultiPolygon' && targetFeature.geometry.coordinates[0]) {
-              // Handle MultiPolygon geometries
-              const coords = targetFeature.geometry.coordinates[0][0];
-              centerLat = coords.reduce((sum: number, coord: number[]) => sum + coord[1], 0) / coords.length;
-              centerLng = coords.reduce((sum: number, coord: number[]) => sum + coord[0], 0) / coords.length;
-            }
+            const targetFeature = data.find(feature =>
+              String(feature.properties?.ward) === String(triggerPopup.ward) &&
+              String(feature.properties?.section) === String(triggerPopup.section)
+            );
 
-            if (centerLat && centerLng) {
-              console.log('About to center map on:', centerLat, centerLng, 'zoom level: 16');
-              console.log('Current map view:', mapInstanceRef.current.getCenter(), 'zoom:', mapInstanceRef.current.getZoom());
-              
+            if (targetFeature && targetFeature.geometry) {
+              // Fit the map to the zone's bounds instead of a fixed zoom level
+              const geoLayer = L.geoJSON(targetFeature.geometry);
+              const bounds = geoLayer.getBounds();
+              if (bounds.isValid()) {
+                mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+              }
+
+              // Open popup at center
+              const center = bounds.getCenter();
               const props = targetFeature.properties;
-              
-              // Create modern styled popup content for zoom popup
-              let popupContent = `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 200px;">
-                  <div style="display: flex; gap: 16px; margin-bottom: 12px;">
-                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
-                      <span style="font-size: 12px; color: #6b7280; display: block;">Ward</span>
+              const statusLabel = props?.cleaningStatus === 'today' ? 'Cleaning TODAY'
+                : props?.cleaningStatus === 'soon' ? 'Cleaning in 1-3 days'
+                : props?.cleaningStatus === 'later' ? 'Cleaning scheduled'
+                : 'No schedule';
+              const statusColor = props?.cleaningStatus === 'today' ? '#dc3545'
+                : props?.cleaningStatus === 'soon' ? '#c79100'
+                : props?.cleaningStatus === 'later' ? '#1e7e34'
+                : '#6c757d';
+
+              let dateHtml = '';
+              if (props?.nextCleaningDateISO) {
+                try {
+                  const dateObj = new Date(props.nextCleaningDateISO + 'T00:00:00Z');
+                  const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+                  dateHtml = `<div style="color: ${statusColor}; font-weight: 600; margin-top: 4px;">${formatted}</div>`;
+                } catch {}
+              }
+
+              const popupContent = `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
+                  <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                    <div style="background: #f8fafc; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #374151; font-size: 13px;">
+                      <span style="font-size: 11px; color: #6b7280; display: block;">Ward</span>
                       ${props?.ward || 'N/A'}
                     </div>
-                    <div style="background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-weight: 600; color: #374151;">
-                      <span style="font-size: 12px; color: #6b7280; display: block;">Section</span>
+                    <div style="background: #f8fafc; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #374151; font-size: 13px;">
+                      <span style="font-size: 11px; color: #6b7280; display: block;">Section</span>
                       ${props?.section || 'N/A'}
                     </div>
                   </div>
+                  <div style="font-size: 13px; font-weight: 600; color: ${statusColor};">${statusLabel}</div>
+                  ${dateHtml}
+                </div>
               `;
 
-              popupContent += '</div>';
-              
-              // Set view first, then add popup
-              mapInstanceRef.current.setView([centerLat, centerLng], 16);
-              
-              // Add popup after view change
               setTimeout(() => {
-                const popup = L.popup()
-                  .setLatLng([centerLat, centerLng])
+                if (!mapInstanceRef.current) return;
+                L.popup()
+                  .setLatLng(center)
                   .setContent(popupContent)
                   .openOn(mapInstanceRef.current);
-                
-                console.log('Map view after zoom:', mapInstanceRef.current.getCenter(), 'zoom:', mapInstanceRef.current.getZoom());
-              }, 100);
-            } else {
-              console.log('Could not calculate center coordinates');
+              }, 200);
             }
-          } else {
-            console.log('Target feature not found in data');
-            console.log('Available wards/sections:', data.map(f => `${f.properties?.ward}-${f.properties?.section}`).slice(0, 10));
+          }, 300);
+        });
+      } else if (userLocation && !showSnowSafeMode && !showWinterBanMode) {
+        // No specific zone selected but user location available — zoom to neighborhood
+        setTimeout(() => {
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14);
           }
-        }, 1000); // 1000ms delay for more reliable zoom
+        }, 300);
       }
     };
 
