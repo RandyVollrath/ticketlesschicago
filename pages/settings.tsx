@@ -370,6 +370,7 @@ const DashboardContent = React.memo(function DashboardContent({
   const ticketsFound = tickets.length;
   const lettersMailed = tickets.filter(t => t.status === 'mailed').length;
   const needsApproval = tickets.filter(t => t.status === 'needs_approval');
+  const totalTicketValue = tickets.reduce((sum, t) => sum + (t.amount || 0), 0);
   const avgTicketAmount = tickets.length > 0
     ? Math.round(tickets.filter(t => t.amount).reduce((sum, t) => sum + (t.amount || 0), 0) / Math.max(tickets.filter(t => t.amount).length, 1))
     : 0;
@@ -481,8 +482,8 @@ const DashboardContent = React.memo(function DashboardContent({
     <>
       {/* Stats Row */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <StatCard label="Plates" value={platesMonitored} />
         <StatCard label="Tickets Found" value={ticketsFound} subtext="All time" />
+        <StatCard label="Total Ticket Value" value={`$${totalTicketValue.toLocaleString()}`} subtext="All time" />
         <StatCard label="Letters Mailed" value={lettersMailed} subtext="All time" />
         <StatCard
           label="Estimated Savings"
@@ -3250,7 +3251,7 @@ function SettingsPageInner() {
               Percentages show the historical win rate when contested.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-              {TICKET_TYPES.map(type => {
+              {TICKET_TYPES.filter(type => !type.evidenceOnly).map(type => {
                 const isChecked = allowedTicketTypes.includes(type.id);
                 return (
                 <label key={type.id} style={{
@@ -3289,6 +3290,47 @@ function SettingsPageInner() {
               })}
             </div>
           </div>
+
+          {/* Camera Tickets — dedicated toggle, opt-in */}
+          {(() => {
+            const cameraTypes = TICKET_TYPES.filter(t => t.evidenceOnly);
+            const cameraEnabled = cameraTypes.every(t => allowedTicketTypes.includes(t.id));
+            return (
+              <div style={{
+                marginTop: 20,
+                paddingTop: 20,
+                borderTop: `1px solid ${COLORS.border}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: 16,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
+                    Auto-contest camera tickets
+                  </h4>
+                  <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                    Red light cameras ({cameraTypes.find(t => t.id === 'red_light')?.winRate}% win) and speed cameras ({cameraTypes.find(t => t.id === 'speed_camera')?.winRate}% win).
+                    Lower win rate than parking tickets — contests rely on evidence you provide (vehicle mismatch, sign visibility, etc.).
+                  </p>
+                </div>
+                <div style={{ flexShrink: 0 }}>
+                  <Toggle
+                    checked={cameraEnabled}
+                    onChange={(checked) => {
+                      const cameraIds = cameraTypes.map(t => t.id);
+                      if (checked) {
+                        setAllowedTicketTypes(Array.from(new Set([...allowedTicketTypes, ...cameraIds])));
+                      } else {
+                        setAllowedTicketTypes(allowedTicketTypes.filter(t => !cameraIds.includes(t)));
+                      }
+                    }}
+                    disabled={false}
+                  />
+                </div>
+              </div>
+            );
+          })()}
 
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: `1px solid ${COLORS.border}` }}>
             <label style={{
