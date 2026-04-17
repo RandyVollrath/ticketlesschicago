@@ -214,6 +214,26 @@ export default async function handler(
     console.log(`[check-parking] Compass heading: ${compassHeadingDeg.toFixed(1)}° ±${compassConfidenceDeg.toFixed(1)}° — using as primary heading`);
   }
 
+  // Native detection metadata — passthrough from iOS BackgroundLocationModule.
+  // Tells us whether GPS was captured at car-stop-time (good) or at check-time
+  // after the user walked (bad), plus driving-duration and walk-away distance.
+  const nativeLocationSource = (req.method === 'GET' ? req.query.location_source : req.body.location_source) as string | undefined;
+  const nativeDetectionSource = (req.method === 'GET' ? req.query.detection_source : req.body.detection_source) as string | undefined;
+  const nativeDrivingDurationSec = parseFloat(
+    (req.method === 'GET' ? req.query.driving_duration_sec : req.body.driving_duration_sec) as string,
+  );
+  const nativeDriftMeters = parseFloat(
+    (req.method === 'GET' ? req.query.drift_from_parking_m : req.body.drift_from_parking_m) as string,
+  );
+  const nativeTimestampMs = parseFloat(
+    (req.method === 'GET' ? req.query.native_ts : req.body.native_ts) as string,
+  );
+  if (nativeLocationSource) {
+    const driftStr = Number.isFinite(nativeDriftMeters) ? `, drift=${nativeDriftMeters.toFixed(0)}m` : '';
+    const durStr = Number.isFinite(nativeDrivingDurationSec) ? `, driving=${nativeDrivingDurationSec.toFixed(0)}s` : '';
+    console.log(`[check-parking] Native meta: locationSource=${nativeLocationSource}${nativeDetectionSource ? `, detectionSource=${nativeDetectionSource}` : ''}${durStr}${driftStr}`);
+  }
+
   try {
     // Diagnostic accumulator — captures the full decision chain for accuracy tracking.
     // Inserted into parking_diagnostics table at the end (non-blocking).
@@ -226,7 +246,35 @@ export default async function handler(
       compass_confidence: hasCompass ? compassConfidenceDeg : null,
       heading_source: hasCompass ? 'compass' : (hasHeading ? 'gps' : 'none'),
       effective_heading: hasEffectiveHeading ? effectiveHeading : null,
+      // gps_source identifies which native path captured the coords:
+      //   'stop_start'       = locationAtStopStart (GOOD — car-stop-time GPS)
+      //   'last_driving'     = lastDrivingLocation (OK — last GPS while moving)
+      //   'current_refined'  = refined to current fresh GPS after proximity check (mixed)
+      //   'current_fallback' = current GPS at finalize time (BAD — possibly walk-away)
+      //   'driving-buffer'   = Android median of driving ring buffer (GOOD)
+      //   'pre-captured'     = iOS native pre-captured (= stop_start from native side)
+      //   undefined          = manual check-parking or rescan (not a park-time check)
+      gps_source: nativeLocationSource || null,
     };
+
+    // Stash native detection metadata inside walkaway_details (existing JSONB
+    // column — no migration needed). Lets us see which capture path produced
+    // the coords and how long native sat on them before the check fired.
+    const nativeMeta: Record<string, any> = {};
+    if (nativeLocationSource) nativeMeta.locationSource = nativeLocationSource;
+    if (nativeDetectionSource) nativeMeta.detectionSource = nativeDetectionSource;
+    if (Number.isFinite(nativeDrivingDurationSec)) nativeMeta.drivingDurationSec = nativeDrivingDurationSec;
+    if (Number.isFinite(nativeDriftMeters)) nativeMeta.driftFromParkingMeters = nativeDriftMeters;
+    if (Number.isFinite(nativeTimestampMs)) {
+      nativeMeta.nativeTimestampMs = nativeTimestampMs;
+      nativeMeta.serverReceivedMs = Date.now();
+      nativeMeta.captureToServerDelaySec = (Date.now() - nativeTimestampMs) / 1000;
+    }
+    if (Object.keys(nativeMeta).length > 0) {
+      // Attach under a namespaced key so the walk-away guard's own details
+      // don't collide with ours.
+      diag.walkaway_details = { ...(diag.walkaway_details || {}), native_meta: nativeMeta };
+    }
 
     // Step 0: Apply per-block GPS correction if available (Layer 4).
     // The correction model learns systematic GPS offset per block from meter locations

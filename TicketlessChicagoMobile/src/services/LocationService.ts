@@ -837,7 +837,16 @@ class LocationServiceClass {
     const compassParam = ((coords as any).compassHeading != null && (coords as any).compassConfidence != null)
       ? `&compass_heading=${(coords as any).compassHeading.toFixed(1)}&compass_confidence=${(coords as any).compassConfidence.toFixed(1)}`
       : '';
-    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}`;
+    // Diagnostic passthrough — lets the server record which native capture path
+    // produced these coords so we can distinguish anchor-held parking events
+    // from current-GPS fallbacks and timing-related drift.
+    const anyCoords = coords as any;
+    const locationSourceParam = anyCoords.locationSource ? `&location_source=${encodeURIComponent(anyCoords.locationSource)}` : '';
+    const detectionSourceParam = anyCoords.detectionSource ? `&detection_source=${encodeURIComponent(anyCoords.detectionSource)}` : '';
+    const drivingDurationParam = typeof anyCoords.drivingDurationSec === 'number' ? `&driving_duration_sec=${anyCoords.drivingDurationSec.toFixed(0)}` : '';
+    const driftParam = typeof anyCoords.driftFromParkingMeters === 'number' ? `&drift_from_parking_m=${anyCoords.driftFromParkingMeters.toFixed(1)}` : '';
+    const nativeTimestampParam = typeof anyCoords.nativeTimestamp === 'number' ? `&native_ts=${anyCoords.nativeTimestamp}` : '';
+    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}`;
 
     // Use rate-limited request with caching
     const response = await RateLimiter.rateLimitedRequest(

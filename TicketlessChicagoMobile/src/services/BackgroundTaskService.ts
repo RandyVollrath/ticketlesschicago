@@ -1861,10 +1861,23 @@ class BackgroundTaskServiceClass {
 
       log.info(`GPS acquired via ${gpsSource}. Heading: ${coords.heading != null && coords.heading >= 0 ? coords.heading.toFixed(1) + '°' : 'none'}. Now calling parking API...`);
 
+      // Attach native detection metadata so the server can record which capture
+      // path produced these coords (stop_start vs last_driving vs current_fallback),
+      // how long driving lasted, and how far the user walked from the saved spot.
+      // This is purely diagnostic passthrough — the server stores it verbatim.
+      const coordsWithMeta: any = {
+        ...coords,
+        locationSource: detectionMeta?.locationSource,
+        detectionSource: detectionMeta?.detectionSource,
+        drivingDurationSec: detectionMeta?.drivingDurationSec,
+        nativeTimestamp: detectionMeta?.nativeTimestamp,
+        driftFromParkingMeters: (presetCoords as any)?.driftFromParkingMeters,
+      };
+
       // Check parking rules
       let result;
       try {
-        result = await LocationService.checkParkingLocation(coords);
+        result = await LocationService.checkParkingLocation(coordsWithMeta);
       } catch (apiError) {
         log.error('Parking API call failed:', apiError);
         await this.sendDiagnosticNotification(
