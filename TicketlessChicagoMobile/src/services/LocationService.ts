@@ -844,7 +844,12 @@ class LocationServiceClass {
     const locationSourceParam = anyCoords.locationSource ? `&location_source=${encodeURIComponent(anyCoords.locationSource)}` : '';
     const detectionSourceParam = anyCoords.detectionSource ? `&detection_source=${encodeURIComponent(anyCoords.detectionSource)}` : '';
     const drivingDurationParam = typeof anyCoords.drivingDurationSec === 'number' ? `&driving_duration_sec=${anyCoords.drivingDurationSec.toFixed(0)}` : '';
-    const driftParam = typeof anyCoords.driftFromParkingMeters === 'number' ? `&drift_from_parking_m=${anyCoords.driftFromParkingMeters.toFixed(1)}` : '';
+    // Distance (in meters) the user had walked from the previously-saved parking
+    // location by the time this check fires. High values mean stop_start anchor
+    // held but user walked off; combined with native locationSource it tells us
+    // whether the picker saw walk-away coords or car-resting coords.
+    // Name: "distance" not "meters" to avoid confusion with paid parking meters.
+    const driftParam = typeof anyCoords.driftFromParkingMeters === 'number' ? `&drift_from_parking_distance=${anyCoords.driftFromParkingMeters.toFixed(1)}` : '';
     const nativeTimestampParam = typeof anyCoords.nativeTimestamp === 'number' ? `&native_ts=${anyCoords.nativeTimestamp}` : '';
     const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}`;
 
