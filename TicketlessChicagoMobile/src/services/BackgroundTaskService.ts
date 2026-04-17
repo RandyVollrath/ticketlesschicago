@@ -641,8 +641,18 @@ class BackgroundTaskServiceClass {
               }
 
               // GUARD: If state machine is already PARKED and new location is near
-              // existing parking, this is a duplicate event (e.g. recovery path
-              // re-detecting the same drive from CoreMotion history).
+              // existing parking, this is almost certainly a duplicate or walk-away
+              // event (user walked to coffee shop, CLVisit fired; CoreMotion flicker
+              // misclassified walking as automotive; recovery path re-detecting).
+              //
+              // Tiered rejection:
+              //   <200m  → ALWAYS reject. No legitimate re-park happens this close.
+              //           This is Randy's 22m Wolcott→Lawrence walk-away case.
+              //   <500m  → reject UNLESS onDrivingStarted AND GPS actually showed
+              //           driving speed (>5 m/s) since the last park. CoreMotion
+              //           alone can fire false automotive transitions from phone
+              //           jostling, so we also require real GPS-measured driving.
+              //   ≥500m  → accept as a genuine new parking spot.
               const smState = ParkingDetectionStateMachine.state;
               if (smState === 'PARKED' && event.latitude && event.longitude) {
                 try {
@@ -653,23 +663,49 @@ class BackgroundTaskServiceClass {
                       event.latitude, event.longitude,
                       parked.latitude, parked.longitude
                     );
+
+                    if (dist < 200) {
+                      log.warn(`Rejecting near-duplicate parking event: ${dist.toFixed(0)}m from current parked location (<200m). Walk-away drift or false positive — real re-parks require >200m movement.`);
+                      await this.persistParkingRejection('walkaway_strict_under_200m', event, {
+                        distanceMeters: dist,
+                        parkedLat: parked.latitude,
+                        parkedLng: parked.longitude,
+                        eventLat: event.latitude,
+                        eventLng: event.longitude,
+                      });
+                      return;
+                    }
+
                     if (dist < 500) {
-                      const hasRecentDriving =
+                      const hasRecentCoreMotionDriving =
                         this.lastIosDrivingStartedAt > 0 &&
                         Date.now() - this.lastIosDrivingStartedAt < RECENT_DRIVING_WINDOW_MS &&
                         this.lastIosDrivingStartedAt > this.lastAcceptedParkingEventAt;
-                      if (!hasRecentDriving) {
-                        log.warn(`Rejecting duplicate parking event: already PARKED, new location is ${dist.toFixed(0)}m from current parking (< 500m), and no recent onDrivingStarted`);
-                        await this.persistParkingRejection('duplicate_nearby_parked_without_recent_departure', event, {
+
+                      // Require GPS evidence of real driving speed since last park.
+                      // CoreMotion transitions can fire spuriously from phone vibration,
+                      // elevators, jostling in a bag — but GPS speed doesn't lie.
+                      const hasGpsDrivingEvidence = this.drivingGpsBuffer.some(
+                        (p) => p.speed >= 5.0 && p.timestamp > this.lastAcceptedParkingEventAt,
+                      );
+
+                      if (!hasRecentCoreMotionDriving || !hasGpsDrivingEvidence) {
+                        log.warn(`Rejecting duplicate parking event: PARKED, ${dist.toFixed(0)}m away, coreMotionDriving=${hasRecentCoreMotionDriving}, gpsDrivingEvidence=${hasGpsDrivingEvidence}`);
+                        await this.persistParkingRejection('duplicate_nearby_parked_without_real_driving', event, {
                           distanceMeters: dist,
                           lastIosDrivingStartedAt: this.lastIosDrivingStartedAt || null,
                           lastAcceptedParkingEventAt: this.lastAcceptedParkingEventAt || null,
+                          hasRecentCoreMotionDriving,
+                          hasGpsDrivingEvidence,
+                          drivingGpsBufferSize: this.drivingGpsBuffer.length,
+                          maxBufferedSpeed: this.drivingGpsBuffer.reduce((m, p) => Math.max(m, p.speed || 0), 0),
                         });
                         return;
                       }
-                      log.info(`Nearby parking event allowed due to recent onDrivingStarted (dist ${dist.toFixed(0)}m)`);
+                      log.info(`Nearby parking event allowed: dist=${dist.toFixed(0)}m, confirmed driving (CoreMotion + GPS speed)`);
+                    } else {
+                      log.info(`State is PARKED but new location is ${dist.toFixed(0)}m away — processing as new parking spot`);
                     }
-                    log.info(`State is PARKED but new location is ${dist.toFixed(0)}m away — processing as new parking spot`);
                   }
                 } catch (e) {
                   log.warn('Failed to check duplicate parking:', e);
