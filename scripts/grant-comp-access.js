@@ -37,16 +37,21 @@ if (!url || !serviceKey) {
 const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
 
 function parseArgs(argv) {
-  const out = { create: false, dryRun: false };
+  // sendEmail defaults to true when --create is set (new users need a way to sign in);
+  // suppress with --no-email.
+  const out = { create: false, dryRun: false, sendEmail: null };
   const positional = [];
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--reason') out.reason = argv[++i];
     else if (a === '--create') out.create = true;
+    else if (a === '--no-email') out.sendEmail = false;
+    else if (a === '--send-email') out.sendEmail = true;
     else if (a === '--dry-run') out.dryRun = true;
     else if (a === '-h' || a === '--help') out.help = true;
     else if (!a.startsWith('--')) positional.push(a);
   }
+  if (out.sendEmail === null) out.sendEmail = out.create;
   out.email = positional[0];
   return out;
 }
@@ -75,7 +80,17 @@ async function findAuthUser(email) {
   }
 }
 
-async function createAuthUser(email) {
+async function createAuthUser(email, { sendInvite }) {
+  // inviteUserByEmail creates the user AND emails them via Supabase's "Invite user"
+  // template — the email contains a link that signs them in and lets them set a password.
+  // If sendInvite is false, fall back to createUser (no email).
+  if (sendInvite) {
+    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+      redirectTo: 'https://autopilotamerica.com',
+    });
+    if (error) throw new Error(`inviteUserByEmail failed: ${error.message}`);
+    return data.user;
+  }
   const { data, error } = await supabase.auth.admin.createUser({
     email,
     email_confirm: true,
@@ -155,13 +170,13 @@ async function writeAuditLog({ userId, email, reason, action, createdAccount }) 
       process.exit(2);
     }
     if (args.dryRun) {
-      console.log(`would: create auth user, create user_profiles row, flip is_paid+has_contesting, generate magic link`);
+      console.log(`would: ${args.sendEmail ? 'invite (create + email)' : 'create'} auth user, upsert user_profiles row, flip is_paid+has_contesting`);
       process.exit(0);
     }
-    console.log(`-> creating auth user...`);
-    user = await createAuthUser(email);
+    console.log(`-> ${args.sendEmail ? 'inviting' : 'creating'} auth user...`);
+    user = await createAuthUser(email, { sendInvite: args.sendEmail });
     createdAccount = true;
-    console.log(`   created user_id=${user.id}`);
+    console.log(`   created user_id=${user.id}${args.sendEmail ? ' (invite email sent)' : ''}`);
   } else {
     console.log(`-> found auth user: ${user.id} (created ${user.created_at})`);
   }
@@ -187,7 +202,8 @@ async function writeAuditLog({ userId, email, reason, action, createdAccount }) 
   });
   console.log(`-> audit log written`);
 
-  if (createdAccount) {
+  if (createdAccount && !args.sendEmail) {
+    // No invite email was sent — hand the caller a magic link to share manually.
     const link = await generateMagicLink(email);
     if (link) {
       console.log('');
@@ -195,8 +211,9 @@ async function writeAuditLog({ userId, email, reason, action, createdAccount }) 
       console.log(link);
       console.log('');
       console.log(`Send this link to the user — clicking it signs them in on the web app.`);
-      console.log(`They can then download the mobile app and sign in with the same email via Google/Apple/email OTP.`);
     }
+  } else if (createdAccount && args.sendEmail) {
+    console.log(`-> invite email delivered via Supabase to ${email}`);
   }
 
   console.log(`\nDone. ${email} now has paid access.`);
