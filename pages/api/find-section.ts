@@ -1,20 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../lib/supabase';
 import { isAddressOnSnowRoute } from '../../lib/snow-route-matcher';
 import { isAddressOnWinterBan } from '../../lib/winter-ban-matcher';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
-
-// MyStreetCleaning database for PostGIS queries (has the geospatial data)
-// Uses environment variables - set MSC_SUPABASE_URL and MSC_SUPABASE_ANON_KEY in .env
-const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL;
-const MSC_SUPABASE_ANON_KEY = process.env.MSC_SUPABASE_ANON_KEY;
-
-const mscSupabase = MSC_SUPABASE_URL && MSC_SUPABASE_ANON_KEY
-  ? createClient(MSC_SUPABASE_URL, MSC_SUPABASE_ANON_KEY)
-  : null;
 
 // Validate our ward lookup against Chicago Data Portal official ward boundaries API
 // Fire-and-forget — logs mismatches but does not block or alter the response
@@ -213,41 +204,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let postgisResult = null;
     let postgisError = null;
 
-    // Check if MSC database is configured
-    if (!mscSupabase) {
-      console.warn('⚠️ MSC Supabase not configured - skipping PostGIS lookup');
-      postgisError = { message: 'MSC database not configured' };
+    // Use main DB (supabaseAdmin). The legacy MyStreetCleaning database didn't
+    // have the 2026 schedule loaded, which made find-section return
+    // nextCleaningDate: null for users whose cleaning IS scheduled.
+    if (!supabaseAdmin) {
+      console.error('❌ supabaseAdmin not configured — service role key missing');
+      postgisError = { message: 'supabaseAdmin not configured' };
     } else {
-      // Retry database operations up to 3 times
       for (let dbRetry = 0; dbRetry < 3; dbRetry++) {
         try {
-          const result = await mscSupabase.rpc('find_section_for_point', {
-          lon: coordinates.lng,
-          lat: coordinates.lat
-        });
-        
-        postgisResult = result.data;
-        postgisError = result.error;
-        
-        if (!postgisError) {
-          console.log(`✅ Database query successful on attempt ${dbRetry + 1}`);
-          break;
-        }
-        
-        if (dbRetry < 2) {
-          console.log(`⚠️ Database error on attempt ${dbRetry + 1}, retrying:`, postgisError.message);
-          await new Promise(resolve => setTimeout(resolve, 500 * (dbRetry + 1)));
-        }
-      } catch (dbError: any) {
-        console.error(`🚨 Database exception on attempt ${dbRetry + 1}:`, dbError.message);
-        postgisError = dbError;
-        
-        if (dbRetry < 2) {
-          await new Promise(resolve => setTimeout(resolve, 500 * (dbRetry + 1)));
+          const result = await (supabaseAdmin.rpc as any)('find_section_for_point', {
+            lon: coordinates.lng,
+            lat: coordinates.lat,
+          });
+
+          postgisResult = result.data;
+          postgisError = result.error;
+
+          if (!postgisError) {
+            console.log(`✅ Database query successful on attempt ${dbRetry + 1}`);
+            break;
+          }
+
+          if (dbRetry < 2) {
+            console.log(`⚠️ Database error on attempt ${dbRetry + 1}, retrying:`, postgisError.message);
+            await new Promise(resolve => setTimeout(resolve, 500 * (dbRetry + 1)));
+          }
+        } catch (dbError: any) {
+          console.error(`🚨 Database exception on attempt ${dbRetry + 1}:`, dbError.message);
+          postgisError = dbError;
+
+          if (dbRetry < 2) {
+            await new Promise(resolve => setTimeout(resolve, 500 * (dbRetry + 1)));
+          }
         }
       }
     }
-    } // end else (mscSupabase configured)
 
     let foundWard = null;
     let foundSection = null;
@@ -266,7 +258,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let geometryError = null;
       
       for (let geoRetry = 0; geoRetry < 2; geoRetry++) {
-        const result = await mscSupabase
+        const result = await supabaseAdmin!
           .from('street_cleaning_schedule')
           .select('geom_simplified')
           .eq('ward', foundWard)
@@ -338,7 +330,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (let schedRetry = 0; schedRetry < 2; schedRetry++) {
       if (isDateRangeRequest) {
         // Date range query for trip feature
-        const result = await mscSupabase
+        const result = await supabaseAdmin!
           .from('street_cleaning_schedule')
           .select('cleaning_date')
           .eq('ward', foundWard)
@@ -352,7 +344,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         datesInRange = scheduleEntries?.map(entry => entry.cleaning_date) || [];
       } else {
         // Single next cleaning date query (default behavior)
-        const result = await mscSupabase
+        const result = await supabaseAdmin!
           .from('street_cleaning_schedule')
           .select('cleaning_date')
           .eq('ward', foundWard)
