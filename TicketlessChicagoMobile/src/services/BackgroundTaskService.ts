@@ -640,6 +640,28 @@ class BackgroundTaskServiceClass {
                 return;
               }
 
+              // GUARD: reject events whose GPS was captured at finalize-time fallback.
+              // locationSource values, ranked by trust:
+              //   stop_start / pre-captured  → GPS at the moment the car stopped (AUTHORITATIVE)
+              //   last_driving              → last GPS while the car was moving (GOOD)
+              //   driving-buffer            → Android median of driving ring buffer (GOOD)
+              //   current_refined           → stop_start replaced with fresh GPS (within 20m, not walking) (OK)
+              //   current_fallback          → no stop_start OR last_driving available, used current GPS (BAD — may be where the user walked to)
+              //
+              // current_fallback is what produces the classic "wrong street, 22m from car"
+              // misdetect. Better to miss the detection and let the user manually tap
+              // "Check My Parking" than to write a confidently-wrong address to history.
+              if (event.locationSource === 'current_fallback') {
+                log.warn(`Rejecting parking event with locationSource=current_fallback — GPS was not captured at car-stop time (accuracy=${event.accuracy?.toFixed(0) ?? '?'}m). Parking will need to be resolved via manual Check My Parking or the next real BT/CoreMotion event.`);
+                await this.persistParkingRejection('current_fallback_source_unreliable', event, {
+                  locationSource: event.locationSource,
+                  detectionSource: event.detectionSource,
+                  accuracy: event.accuracy,
+                  driftFromParkingMeters: event.driftFromParkingMeters,
+                });
+                return;
+              }
+
               // GUARD: If state machine is already PARKED and new location is near
               // existing parking, this is a duplicate event (e.g. recovery path
               // re-detecting the same drive from CoreMotion history).
@@ -1977,10 +1999,67 @@ class BackgroundTaskServiceClass {
               parkingSessionId = saveResult.id;
               log.info(`Server save succeeded: id=${saveResult.id}, fcmToken=${fcmToken ? 'present' : 'MISSING'}`);
             } else {
-              // Server save failed — queue for retry so we never lose history
-              log.warn('Server save failed, queuing for retry');
-              const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, tokenForSave);
-              await ParkingSaveQueue.enqueue(payload);
+              // Server save failed — try direct Supabase client write as fallback
+              // (bypasses API auth issues that plague background context)
+              log.warn('Server save failed, attempting direct Supabase client fallback');
+              try {
+                const supabase = AuthService.getSupabaseClient();
+                const userId = AuthService.getUser()?.id;
+                if (supabase && userId) {
+                  const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, tokenForSave);
+
+                  // Deactivate previous active rows
+                  await supabase
+                    .from('user_parked_vehicles')
+                    .update({ is_active: false })
+                    .eq('user_id', userId)
+                    .eq('is_active', true);
+
+                  // Insert new parked location
+                  const { data: insertData, error: insertError } = await supabase
+                    .from('user_parked_vehicles')
+                    .insert({
+                      user_id: userId,
+                      latitude: payload.latitude,
+                      longitude: payload.longitude,
+                      address: payload.address,
+                      fcm_token: payload.fcm_token,
+                      on_winter_ban_street: payload.on_winter_ban_street,
+                      winter_ban_street_name: payload.winter_ban_street_name,
+                      on_snow_route: payload.on_snow_route,
+                      snow_route_name: payload.snow_route_name,
+                      street_cleaning_date: payload.street_cleaning_date,
+                      street_cleaning_ward: payload.street_cleaning_ward,
+                      street_cleaning_section: payload.street_cleaning_section,
+                      permit_zone: payload.permit_zone,
+                      permit_restriction_schedule: payload.permit_restriction_schedule,
+                      dot_permit_active: payload.dot_permit_active,
+                      dot_permit_type: payload.dot_permit_type,
+                      dot_permit_start_date: payload.dot_permit_start_date,
+                      is_active: true,
+                      parked_at: new Date().toISOString(),
+                    })
+                    .select('id')
+                    .single();
+
+                  if (!insertError && insertData?.id) {
+                    parkingSessionId = insertData.id;
+                    log.info(`Direct Supabase fallback succeeded: id=${insertData.id}`);
+                  } else {
+                    log.warn('Direct Supabase fallback insert failed:', insertError?.message);
+                    const queuePayload = LocationService.buildServerSavePayload(coords, rawData, result.address, tokenForSave);
+                    await ParkingSaveQueue.enqueue(queuePayload);
+                  }
+                } else {
+                  log.warn('Direct Supabase fallback: no client or userId, queuing for retry');
+                  const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, tokenForSave);
+                  await ParkingSaveQueue.enqueue(payload);
+                }
+              } catch (fallbackError) {
+                log.warn('Direct Supabase fallback failed, queuing for retry:', fallbackError);
+                const payload = LocationService.buildServerSavePayload(coords, rawData, result.address, tokenForSave);
+                await ParkingSaveQueue.enqueue(payload);
+              }
             }
           } else {
             // Not authenticated even after refresh — queue the save for when auth returns

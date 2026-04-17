@@ -222,8 +222,12 @@ export default async function handler(
   const nativeDrivingDurationSec = parseFloat(
     (req.method === 'GET' ? req.query.driving_duration_sec : req.body.driving_duration_sec) as string,
   );
+  // Accept the new 'distance' param name; keep '_m' as a back-compat alias so
+  // older mobile builds still log the value correctly until they're updated.
   const nativeDriftMeters = parseFloat(
-    (req.method === 'GET' ? req.query.drift_from_parking_m : req.body.drift_from_parking_m) as string,
+    (req.method === 'GET'
+      ? (req.query.drift_from_parking_distance ?? req.query.drift_from_parking_m)
+      : (req.body.drift_from_parking_distance ?? req.body.drift_from_parking_m)) as string,
   );
   const nativeTimestampMs = parseFloat(
     (req.method === 'GET' ? req.query.native_ts : req.body.native_ts) as string,
