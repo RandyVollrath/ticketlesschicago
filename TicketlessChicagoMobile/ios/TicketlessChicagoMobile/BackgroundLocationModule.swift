@@ -5670,12 +5670,26 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       return
     }
 
-    // Location priority:
-    // 1. locationAtStopStart - captured when CoreMotion first said non-automotive (best)
-    // 2. lastDrivingLocation - last GPS while in driving state (very good - includes slow creep)
-    // 3. locationManager.location - current GPS (last resort - user may have walked)
+    // Location priority (best → worst):
+    // 1. locationAtStopStart    - captured when CoreMotion first said non-automotive (best)
+    // 2. lastDrivingLocation    - last GPS while in driving state (very good - includes slow creep)
+    // 3. recentLowSpeedLocations.last - GPS captured while the car was slow/stopped
+    //                                   approaching the parking spot (still car-side data)
+    // 4. locationManager.location - current GPS (last resort - user may have walked away)
+    //
+    // The recent-low-speed fallback was added because current_fallback events
+    // occasionally fire when CoreMotion missed the stop transition and no
+    // last_driving fix is cached — using the phone's current GPS in that state
+    // is the #1 source of wrong-street misdetects. Low-speed fixes are from
+    // ≥ a few seconds ago while the car was still coasting, so they're much
+    // closer to the actual rest spot than a fresh GPS sample.
     var parkingLocation = locationAtStopStart ?? lastDrivingLocation
     var parkingLocationSource = locationAtStopStart != nil ? "stop_start" : "last_driving"
+    if parkingLocation == nil, let recent = recentLowSpeedLocations.last {
+      parkingLocation = recent
+      parkingLocationSource = "recent_low_speed"
+      self.log("Using recentLowSpeedLocations.last as parking location (stop_start + last_driving both nil): (\(recent.coordinate.latitude), \(recent.coordinate.longitude)) ±\(recent.horizontalAccuracy)m, age=\(String(format: "%.0f", Date().timeIntervalSince(recent.timestamp)))s")
+    }
     let currentLocation = locationManager.location
     let isWalking = coreMotionWalkingSince != nil
     if let candidate = parkingLocation {
