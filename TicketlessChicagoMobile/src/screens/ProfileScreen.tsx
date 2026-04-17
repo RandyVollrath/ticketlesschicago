@@ -29,6 +29,7 @@ import { clearUserData } from '../utils/storage';
 import { StorageKeys } from '../constants';
 import CameraAlertService from '../services/CameraAlertService';
 import BackgroundLocationService from '../services/BackgroundLocationService';
+import { submitDebugReport } from '../services/DebugReportService';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { MainTabParamList } from '../../App';
 
@@ -222,6 +223,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isSendingDebug, setIsSendingDebug] = useState(false);
   const [homePermitZone, setHomePermitZone] = useState<string>('');
   const [permitZoneEditing, setPermitZoneEditing] = useState(false);
   const [permitZoneInput, setPermitZoneInput] = useState('');
@@ -1289,6 +1291,41 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           />
         </Section>
 
+        <View style={styles.debugSection}>
+          <Text style={styles.debugHint}>
+            Seeing the wrong parking address, or anything else broken? Tap below to send diagnostics.
+          </Text>
+          <TouchableOpacity
+            style={[styles.debugButton, isSendingDebug && styles.debugButtonDisabled]}
+            onPress={async () => {
+              if (isSendingDebug) return;
+              setIsSendingDebug(true);
+              try {
+                const result = await submitDebugReport();
+                if (result.success) {
+                  Alert.alert(
+                    'Debug Report Sent',
+                    `Report ID: ${result.id}\n\nShare this ID with support so we can look up your logs.`,
+                  );
+                } else {
+                  Alert.alert('Could Not Send', result.error || 'Please try again.');
+                }
+              } finally {
+                setIsSendingDebug(false);
+              }
+            }}
+            disabled={isSendingDebug}
+            accessibilityRole="button"
+            accessibilityLabel="Send debug report"
+          >
+            {isSendingDebug ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.debugButtonText}>Send Debug Report</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
         <Text style={styles.version}>Autopilot v{Config.APP_VERSION}</Text>
       </ScrollView>
     </SafeAreaView>
@@ -1556,6 +1593,35 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textTertiary,
     marginTop: spacing.base,
+  },
+
+  // Debug report section (bottom of Settings)
+  debugSection: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.base,
+    paddingHorizontal: spacing.base,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  debugHint: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  debugButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.base,
+    alignItems: 'center',
+  },
+  debugButtonDisabled: {
+    opacity: 0.5,
+  },
+  debugButtonText: {
+    color: colors.white,
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
   },
 });
 
