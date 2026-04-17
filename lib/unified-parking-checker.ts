@@ -9,7 +9,7 @@
 
 import { supabaseAdmin } from './supabase';
 import { reverseGeocode } from './reverse-geocoder';
-import type { SnapGeometry } from './chicago-grid-estimator';
+import { estimateAddressFromGps, type SnapGeometry } from './chicago-grid-estimator';
 import { parseChicagoAddress, ParsedAddress } from './address-parser';
 import { validatePermitZone } from './permit-zone-time-validator';
 import { getChicagoDateISO, getChicagoTime } from './chicago-timezone-utils';
@@ -196,10 +196,34 @@ export async function checkAllParkingRestrictions(
         if (snapCore && nominatimCore && snapCore !== nominatimCore) {
           console.log(`[unified-checker] Overriding Nominatim street "${geocodeResult.street_name}" with snap street "${overrideStreetName}" (core: ${nominatimCore} → ${snapCore})`);
           result.location.streetName = overrideStreetName;
-          // Rebuild formatted address with the corrected street name
-          if (geocodeResult.street_number) {
-            const newAddress = `${geocodeResult.street_number} ${overrideStreetName}, Chicago, IL${geocodeResult.zip_code ? ' ' + geocodeResult.zip_code : ''}`;
+
+          // The house number Nominatim returned was computed for the WRONG street
+          // (e.g., "2283" for Sheffield when user is actually on Belden). Re-estimate
+          // for the correct street using Chicago's address grid so we get a real
+          // number for the actual block (e.g., "1040 W Belden" near Kenmore).
+          // Fall back to the Nominatim number only if re-estimation fails.
+          const gridForSnap = estimateAddressFromGps(
+            rawLat ?? latitude,
+            rawLng ?? longitude,
+            overrideStreetName,
+            null,
+            snapGeometry,
+            rawLat,
+            rawLng,
+          );
+
+          const correctedNumber = gridForSnap ? String(gridForSnap.houseNumber) : geocodeResult.street_number;
+          result.location.streetNumber = correctedNumber;
+
+          if (correctedNumber) {
+            const newAddress = `${correctedNumber} ${overrideStreetName}, Chicago, IL${geocodeResult.zip_code ? ' ' + geocodeResult.zip_code : ''}`;
             result.location.address = newAddress;
+            if (gridForSnap) {
+              console.log(`[unified-checker] Re-estimated house number for ${overrideStreetName}: ${correctedNumber} (was ${geocodeResult.street_number || 'none'} from Nominatim)`);
+            }
+          } else {
+            // No house number available for either street — fall back to street-only display.
+            result.location.address = `${overrideStreetName}, Chicago, IL${geocodeResult.zip_code ? ' ' + geocodeResult.zip_code : ''}`;
           }
         }
       }
