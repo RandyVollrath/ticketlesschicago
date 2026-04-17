@@ -3,15 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 
-// Use MyStreetCleaning database for geometry data
-const MSC_URL = process.env.MSC_SUPABASE_URL || '';
-const MSC_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY || '';
-
-if (!MSC_URL || !MSC_KEY) {
-  console.error('MSC_SUPABASE_URL and MSC_SUPABASE_SERVICE_ROLE_KEY must be set');
-}
-
-const mscSupabase = createClient(MSC_URL, MSC_KEY);
+// Main DB (has 2026 schedule + geometry). MSC was missing 2026 data.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const mscSupabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 interface ZoneRequest {
   ward: string;

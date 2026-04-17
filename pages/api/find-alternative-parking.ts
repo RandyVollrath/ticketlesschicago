@@ -4,15 +4,11 @@ import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
 
-// Use MyStreetCleaning database for street cleaning schedule data
-const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL || '';
-const MSC_SUPABASE_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
-
-if (!MSC_SUPABASE_URL || !MSC_SUPABASE_KEY) {
-  throw new Error('MSC_SUPABASE_URL and MSC_SUPABASE_SERVICE_ROLE_KEY must be configured');
-}
-
-const mscSupabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_KEY);
+// Main DB (has 2026 schedule + PostGIS functions). MSC is deprecated; don't
+// read from it or this endpoint returns stale/null cleaning info.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const mscSupabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Cache for alternative parking results (5 minutes is safe for distance calculations)
 const cache = new Map<string, { data: any; timestamp: number }>();
