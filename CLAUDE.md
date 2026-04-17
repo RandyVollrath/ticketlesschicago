@@ -18,6 +18,8 @@ See **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** for full workflow. Summary:
 5. **Task is NOT complete until deployed and URL reported**
 6. No dirty working tree at handoff
 
+**NEVER ask "deploy now?" — just deploy.** If a code change ships, deployment is part of the change. Asking for permission to deploy wastes the user's time. The only exception is if the user has explicitly said "don't deploy yet" in this conversation.
+
 Connected devices: Moto G 2025 (`ZT4224LFTZ`), Moto E5 Play (`ZY326L2GKG`)
 
 ## Detailed Reference Docs
