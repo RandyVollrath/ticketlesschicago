@@ -366,10 +366,6 @@ export default function CheckYourStreet() {
     return { text: 'No upcoming cleaning', color: COLORS.slate, status: 'none' }
   }
 
-  const mapLat = searchResult?.coordinates?.lat ?? 41.8781
-  const mapLng = searchResult?.coordinates?.lng ?? -87.6298
-  const primaryPermitZone = permitZoneResult?.zones?.[0]?.zone || permitZoneResult?.zones?.[0]?.zone_number || ''
-  const destinationMapUrl = `/destination-map?lat=${encodeURIComponent(String(mapLat))}&lng=${encodeURIComponent(String(mapLng))}${address ? `&address=${encodeURIComponent(address)}` : ''}${primaryPermitZone ? `&permitZone=${encodeURIComponent(String(primaryPermitZone))}` : ''}${searchResult?.ward ? `&ward=${encodeURIComponent(searchResult.ward)}` : ''}${searchResult?.section ? `&section=${encodeURIComponent(searchResult.section)}` : ''}`
 
   return (
     <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete }}>
@@ -613,7 +609,7 @@ export default function CheckYourStreet() {
         }}>
           <div style={{ padding: '16px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
             <h2 style={{ fontSize: '18px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>
-              Street Cleaning Zones — All Wards
+              Parking Map — All Wards
             </h2>
             <p style={{ fontSize: '13px', color: COLORS.slate, margin: '4px 0 0' }}>
               Click any zone to see its next cleaning date. {searchResult?.ward && `Your zone (Ward ${searchResult.ward}, Section ${searchResult.section}) is highlighted.`}
@@ -628,6 +624,9 @@ export default function CheckYourStreet() {
               <StreetCleaningMap
                 data={zoneMapData}
                 triggerPopup={searchResult?.ward && searchResult?.section ? { ward: searchResult.ward, section: searchResult.section } : null}
+                userLocation={searchResult?.coordinates ? { lat: searchResult.coordinates.lat, lng: searchResult.coordinates.lng } : undefined}
+                meterLocations={nearbyMeters || []}
+                showMeters={!!nearbyMeters && nearbyMeters.length > 0}
               />
             </div>
           )}
@@ -1044,36 +1043,6 @@ export default function CheckYourStreet() {
           </div>
         )}
 
-        {/* Map Section */}
-        <div style={{
-          backgroundColor: 'white',
-          border: `1px solid ${COLORS.border}`,
-          borderRadius: '16px',
-          overflow: 'hidden'
-        }}>
-          <div style={{ padding: '16px 24px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <h2 style={{ fontSize: '18px', margin: 0, color: COLORS.graphite, fontWeight: '600', fontFamily: '"Space Grotesk", sans-serif' }}>
-                Parking Map
-              </h2>
-              <p style={{ fontSize: '13px', color: COLORS.slate, margin: '2px 0 0' }}>
-                Cleaning zones, permit areas, snow bans, meters
-              </p>
-            </div>
-          </div>
-
-          <iframe
-            title="Destination Parking Map"
-            src={destinationMapUrl}
-            loading="lazy"
-            style={{
-              width: '100%',
-              height: '600px',
-              border: 'none',
-              display: 'block'
-            }}
-          />
-        </div>
 
         {/* Bottom CTA */}
         <div style={{

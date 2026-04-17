@@ -10,6 +10,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -529,6 +530,33 @@ const MapScreenContent: React.FC = () => {
             </View>
           </Card>
         )}
+
+        {/* Street Cleaning Map */}
+        <Card title="Street Cleaning Map">
+          <View style={styles.mapContainer}>
+            <WebView
+              source={{
+                uri: `https://autopilotamerica.com/destination-map${
+                  lastLocation
+                    ? `?lat=${lastLocation.coords.latitude}&lng=${lastLocation.coords.longitude}&address=${encodeURIComponent(lastLocation.address || '')}`
+                    : ''
+                }`,
+              }}
+              style={styles.mapWebView}
+              scrollEnabled={false}
+              nestedScrollEnabled={false}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View style={styles.mapLoading}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={styles.mapLoadingText}>Loading map...</Text>
+                </View>
+              )}
+            />
+          </View>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -716,6 +744,30 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
+  },
+  mapContainer: {
+    height: 350,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden' as const,
+    marginTop: spacing.sm,
+  },
+  mapWebView: {
+    flex: 1,
+  },
+  mapLoading: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    backgroundColor: colors.background,
+  },
+  mapLoadingText: {
+    marginTop: spacing.sm,
+    color: colors.textTertiary,
+    fontSize: 13,
   },
 });
 
