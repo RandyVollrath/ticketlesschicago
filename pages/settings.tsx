@@ -1058,13 +1058,7 @@ function SettingsPageInner() {
   // Receipt forwarding
   const [receiptCount, setReceiptCount] = useState<number | null>(null); // null = not loaded yet
   const [receiptBannerDismissed, setReceiptBannerDismissed] = useState(false);
-
-  // Permit zone correction
-  const [zoneInput, setZoneInput] = useState('');
-  const [correctedSchedule, setCorrectedSchedule] = useState('');
-  const [correctionAddress, setCorrectionAddress] = useState('');
-  const [correctionStatus, setCorrectionStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-  const [correctionMessage, setCorrectionMessage] = useState('');
+  const [receiptForwardingExpanded, setReceiptForwardingExpanded] = useState(false);
 
   // Guided Setup Wizard
   const [guidedSetupStep, setGuidedSetupStep] = useState(0);
@@ -3068,30 +3062,57 @@ function SettingsPageInner() {
         )}
 
         <Card title="Receipt Forwarding" badge={
-          receiptCount !== null && receiptCount > 0
-            ? <span style={{ fontSize: 11, fontWeight: 600, color: COLORS.accent }}>{receiptCount} receipt{receiptCount !== 1 ? 's' : ''} on file</span>
-            : <span style={{ fontSize: 11, color: COLORS.textMuted }}>Recommended</span>
-        }>
-          <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
-            Set up a one-time email filter so your city sticker and plate sticker purchase receipts forward to us automatically. If you ever get a sticker ticket, your receipt is proof you already paid — 70% win rate.
-          </p>
-          {userId && (
-            <RegistrationForwardingSetup
-              forwardingEmail="receipts@autopilotamerica.com"
-              compact
-              userEmail={email}
-            />
-          )}
-          <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Link href="/registration-evidence" style={{
-              fontSize: 13,
-              color: COLORS.accent,
-              textDecoration: 'none',
+          <button
+            onClick={() => setReceiptForwardingExpanded(v => !v)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '4px 8px',
+              fontSize: 12,
               fontWeight: 600,
-            }}>
-              View receipt history
-            </Link>
-          </div>
+              color: COLORS.accent,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            aria-expanded={receiptForwardingExpanded}
+          >
+            {receiptCount !== null && receiptCount > 0 && (
+              <span style={{ color: COLORS.accent }}>{receiptCount} on file</span>
+            )}
+            <span>{receiptForwardingExpanded ? 'Hide' : 'Set up'}</span>
+            <span style={{ fontSize: 10 }}>{receiptForwardingExpanded ? '▲' : '▼'}</span>
+          </button>
+        }>
+          {!receiptForwardingExpanded ? (
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted, lineHeight: 1.5 }}>
+              Forward sticker purchase receipts so we can prove you paid — 70% win rate on sticker tickets.
+            </p>
+          ) : (
+            <>
+              <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
+                Set up a one-time email filter so your city sticker and plate sticker purchase receipts forward to us automatically. If you ever get a sticker ticket, your receipt is proof you already paid — 70% win rate.
+              </p>
+              {userId && (
+                <RegistrationForwardingSetup
+                  forwardingEmail="receipts@autopilotamerica.com"
+                  compact
+                  userEmail={email}
+                />
+              )}
+              <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Link href="/registration-evidence" style={{
+                  fontSize: 13,
+                  color: COLORS.accent,
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                }}>
+                  View receipt history
+                </Link>
+              </div>
+            </>
+          )}
         </Card>
 
         {/* Autopilot Settings */}
@@ -3143,12 +3164,13 @@ function SettingsPageInner() {
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: 'flex-start',
+            gap: 16,
             marginBottom: 20,
             paddingBottom: 16,
             borderBottom: `1px solid ${COLORS.border}`,
           }}>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
                 Full auto-pilot (no approval needed)
               </h4>
@@ -3157,79 +3179,26 @@ function SettingsPageInner() {
               </p>
               {autoMailEnabled && (
                 <div style={{
-                  margin: '8px 0 0',
-                  padding: '8px 12px',
+                  margin: '10px 0 0',
+                  padding: '8px 10px',
                   background: '#FEF3C7',
                   border: '1px solid #F59E0B',
                   borderRadius: 6,
                   fontSize: 12,
                   color: '#92400E',
+                  lineHeight: 1.4,
                 }}>
                   <strong>Heads up:</strong> Letters will be mailed to the City of Chicago on your behalf without you seeing them first.
                   We still email you evidence requests and send a copy of each letter, but the letter goes out automatically.
                 </div>
               )}
             </div>
-            <Toggle
-              checked={autoMailEnabled}
-              onChange={(checked) => {
-                setAutoMailEnabled(checked);
-                setRequireApproval(!checked);
-              }}
-              disabled={false}
-            />
-          </div>
-
-          {/* FOIA Wait Preference */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: 20,
-            paddingBottom: 16,
-            borderBottom: `1px solid ${COLORS.border}`,
-          }}>
-            <div style={{ flex: 1 }}>
-              <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
-                Wait for FOIA deadline before contesting
-              </h4>
-              <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted, lineHeight: 1.5 }}>
-                {foiaWaitPreference === 'wait_for_foia'
-                  ? 'We wait for the city\'s 5-business-day FOIA deadline to expire before generating your contest letter. This gives us the strongest "Prima Facie Case Not Established" argument.'
-                  : 'Contest letters are generated as soon as evidence is gathered, without waiting for the FOIA response deadline.'
-                }
-              </p>
-              <div style={{
-                margin: '8px 0 0',
-                padding: '8px 12px',
-                background: foiaWaitPreference === 'wait_for_foia' ? '#ECFDF5' : '#FEF3C7',
-                border: `1px solid ${foiaWaitPreference === 'wait_for_foia' ? '#6EE7B7' : '#F59E0B'}`,
-                borderRadius: 6,
-                fontSize: 12,
-                color: foiaWaitPreference === 'wait_for_foia' ? '#065F46' : '#92400E',
-                lineHeight: 1.5,
-              }}>
-                {foiaWaitPreference === 'wait_for_foia' ? (
-                  <>
-                    <strong>Recommended.</strong> When the city fails to respond to our records request within 5 business days,
-                    your letter includes a &quot;Prima Facie Case Not Established&quot; argument — one of the top reasons tickets
-                    get dismissed in Chicago. This typically adds ~7 calendar days to the timeline but significantly
-                    increases your chances of winning.
-                  </>
-                ) : (
-                  <>
-                    <strong>Faster, but weaker.</strong> Your letter goes out sooner but won&apos;t include the FOIA non-response
-                    argument. If you have a hard deadline approaching (e.g. late penalty date), this may be the right choice.
-                    You can always switch back to waiting for FOIA.
-                  </>
-                )}
-              </div>
-            </div>
-            <div style={{ marginLeft: 16, flexShrink: 0 }}>
+            <div style={{ flexShrink: 0, paddingTop: 2 }}>
               <Toggle
-                checked={foiaWaitPreference === 'wait_for_foia'}
+                checked={autoMailEnabled}
                 onChange={(checked) => {
-                  setFoiaWaitPreference(checked ? 'wait_for_foia' : 'send_immediately');
+                  setAutoMailEnabled(checked);
+                  setRequireApproval(!checked);
                 }}
                 disabled={false}
               />
@@ -3251,7 +3220,7 @@ function SettingsPageInner() {
               Percentages show the historical win rate when contested.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-              {TICKET_TYPES.filter(type => !type.evidenceOnly).map(type => {
+              {TICKET_TYPES.map(type => {
                 const isChecked = allowedTicketTypes.includes(type.id);
                 return (
                 <label key={type.id} style={{
@@ -3290,47 +3259,6 @@ function SettingsPageInner() {
               })}
             </div>
           </div>
-
-          {/* Camera Tickets — dedicated toggle, opt-in */}
-          {(() => {
-            const cameraTypes = TICKET_TYPES.filter(t => t.evidenceOnly);
-            const cameraEnabled = cameraTypes.every(t => allowedTicketTypes.includes(t.id));
-            return (
-              <div style={{
-                marginTop: 20,
-                paddingTop: 20,
-                borderTop: `1px solid ${COLORS.border}`,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: 16,
-              }}>
-                <div style={{ flex: 1 }}>
-                  <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
-                    Auto-contest camera tickets
-                  </h4>
-                  <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted, lineHeight: 1.5 }}>
-                    Red light cameras ({cameraTypes.find(t => t.id === 'red_light')?.winRate}% win) and speed cameras ({cameraTypes.find(t => t.id === 'speed_camera')?.winRate}% win).
-                    Lower win rate than parking tickets — contests rely on evidence you provide (vehicle mismatch, sign visibility, etc.).
-                  </p>
-                </div>
-                <div style={{ flexShrink: 0 }}>
-                  <Toggle
-                    checked={cameraEnabled}
-                    onChange={(checked) => {
-                      const cameraIds = cameraTypes.map(t => t.id);
-                      if (checked) {
-                        setAllowedTicketTypes(Array.from(new Set([...allowedTicketTypes, ...cameraIds])));
-                      } else {
-                        setAllowedTicketTypes(allowedTicketTypes.filter(t => !cameraIds.includes(t)));
-                      }
-                    }}
-                    disabled={false}
-                  />
-                </div>
-              </div>
-            );
-          })()}
 
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: `1px solid ${COLORS.border}` }}>
             <label style={{
@@ -3400,135 +3328,6 @@ function SettingsPageInner() {
         </Card>
           </>
         )}
-
-        {/* Permit Zone Hours Correction */}
-        <Card title="Permit Zone Hours" badge={
-          <span style={{ fontSize: 11, color: COLORS.textMuted }}>Help improve accuracy</span>
-        }>
-          <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
-            If the enforcement hours we show for your permit zone are wrong, let us know.
-            Our team will review your correction and update the data.
-          </p>
-          <div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-              <div style={{ flex: '0 0 100px' }}>
-                <label style={{
-                  display: 'block', fontSize: 12, fontWeight: 600,
-                  color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase',
-                }}>Zone</label>
-                <input
-                  type="text"
-                  value={zoneInput}
-                  onChange={(e) => setZoneInput(e.target.value)}
-                  placeholder="e.g. 383"
-                  maxLength={6}
-                  style={{
-                    width: '100%', padding: '10px 14px', borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`, fontSize: 15,
-                    color: COLORS.primary, backgroundColor: COLORS.bgLight,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{
-                  display: 'block', fontSize: 12, fontWeight: 600,
-                  color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase',
-                }}>Cross street or address (optional)</label>
-                <input
-                  type="text"
-                  value={correctionAddress}
-                  onChange={(e) => setCorrectionAddress(e.target.value)}
-                  placeholder="e.g. 2300 N Lincoln Ave"
-                  style={{
-                    width: '100%', padding: '10px 14px', borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`, fontSize: 15,
-                    color: COLORS.primary, backgroundColor: COLORS.bgLight,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{
-                display: 'block', fontSize: 12, fontWeight: 600,
-                color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase',
-              }}>What hours does the sign say?</label>
-              <input
-                type="text"
-                value={correctedSchedule}
-                onChange={(e) => setCorrectedSchedule(e.target.value)}
-                placeholder='e.g. "No parking 6pm-6am Mon-Fri" or "24/7"'
-                style={{
-                  width: '100%', padding: '10px 14px', borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`, fontSize: 15,
-                  color: COLORS.primary, backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                onClick={async () => {
-                  if (!zoneInput.trim() || !correctedSchedule.trim()) return;
-                  setCorrectionStatus('submitting');
-                  try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    const resp = await fetch('/api/submit-zone-correction', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-                      },
-                      body: JSON.stringify({
-                        zone: zoneInput.trim().toUpperCase(),
-                        correctedSchedule: correctedSchedule.trim(),
-                        address: correctionAddress.trim() || undefined,
-                      }),
-                    });
-                    const data = await resp.json();
-                    if (resp.ok) {
-                      setCorrectionStatus('success');
-                      setCorrectionMessage(data.message || 'Correction submitted!');
-                      setZoneInput('');
-                      setCorrectedSchedule('');
-                      setCorrectionAddress('');
-                      setTimeout(() => setCorrectionStatus('idle'), 5000);
-                    } else {
-                      setCorrectionStatus('error');
-                      setCorrectionMessage(data.error || 'Failed to submit');
-                      setTimeout(() => setCorrectionStatus('idle'), 4000);
-                    }
-                  } catch {
-                    setCorrectionStatus('error');
-                    setCorrectionMessage('Network error. Please try again.');
-                    setTimeout(() => setCorrectionStatus('idle'), 4000);
-                  }
-                }}
-                disabled={correctionStatus === 'submitting' || !zoneInput.trim() || !correctedSchedule.trim()}
-                style={{
-                  padding: '10px 20px', borderRadius: 8,
-                  backgroundColor: correctionStatus === 'submitting' ? COLORS.textMuted : COLORS.primary,
-                  color: COLORS.white, border: 'none', fontSize: 14,
-                  fontWeight: 600, cursor: correctionStatus === 'submitting' ? 'wait' : 'pointer',
-                  opacity: (!zoneInput.trim() || !correctedSchedule.trim()) ? 0.5 : 1,
-                }}
-              >
-                {correctionStatus === 'submitting' ? 'Submitting...' : 'Submit Correction'}
-              </button>
-              {correctionStatus === 'success' && (
-                <span style={{ fontSize: 13, color: COLORS.accent, fontWeight: 600 }}>
-                  {correctionMessage}
-                </span>
-              )}
-              {correctionStatus === 'error' && (
-                <span style={{ fontSize: 13, color: COLORS.danger || '#DC2626', fontWeight: 600 }}>
-                  {correctionMessage}
-                </span>
-              )}
-            </div>
-          </div>
-        </Card>
 
         {/* Sign Out */}
         <div style={{ textAlign: 'center', marginTop: 32, marginBottom: 40 }}>
