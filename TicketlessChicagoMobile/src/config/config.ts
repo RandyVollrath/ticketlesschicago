@@ -1,6 +1,10 @@
-// App version - update this when releasing new versions
-export const APP_VERSION = '2.0.4';
-export const BUILD_NUMBER = '38';
+// Single source of truth: app.json (which is what the release pipeline bumps).
+// Don't hardcode a version string here — it drifts out of sync with the iOS
+// MARKETING_VERSION and makes the in-app Settings display lie. v2.0.3/v2.0.4/v2.0.5
+// iOS builds all showed "v2.0.3" in Settings because this file wasn't kept in sync.
+import appJson from '../../app.json';
+export const APP_VERSION: string = appJson.version;
+export const BUILD_NUMBER: string = appJson.buildNumber;
 
 /**
  * Environment-specific configuration
