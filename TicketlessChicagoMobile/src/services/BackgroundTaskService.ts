@@ -27,6 +27,7 @@ import { ParkingHistoryService } from '../screens/HistoryScreen';
 import CameraAlertService from './CameraAlertService';
 import RedLightReceiptService from './RedLightReceiptService';
 import GroundTruthService from './GroundTruthService';
+import { triggerAutoDebugReport } from './DebugReportService';
 import { fetchCameraLocations } from '../data/chicago-cameras';
 import AppEvents from './AppEvents';
 import AnalyticsService from './AnalyticsService';
@@ -351,6 +352,9 @@ class BackgroundTaskServiceClass {
         `${ParkingDetectionStateMachine.carName || 'Car'} disconnected. Checking parking rules...`
       );
       await this.handleCarDisconnection();
+      // Fire auto debug report so we can see the geocoded address + coords that
+      // were resolved for this parking event. Gated to Config.DEBUG_AUTO_REPORT_EMAILS.
+      triggerAutoDebugReport('parking_confirmed');
     });
 
     // When user starts driving again (BT reconnect while parked):
