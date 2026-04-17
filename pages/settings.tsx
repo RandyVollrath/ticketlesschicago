@@ -966,6 +966,73 @@ const Card = React.memo(function Card({ title, children, badge, greyed, upgradeC
   );
 });
 
+function CollapsibleCard({ title, summary, children, defaultOpen = false }: { title: string; summary?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={CARD_STYLES.container}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        style={{
+          width: '100%',
+          minHeight: 48,
+          padding: '12px 24px',
+          borderBottom: open ? `1px solid ${COLORS.border}` : 'none',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: 'inherit',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ ...CARD_STYLES.title, marginBottom: !open && summary ? 2 : 0 }}>
+            {title}
+          </h3>
+          {!open && summary && (
+            <div style={{
+              fontSize: 13,
+              color: COLORS.textMuted,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontWeight: 400,
+            }}>
+              {summary}
+            </div>
+          )}
+        </div>
+        <span
+          aria-hidden
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 24,
+            height: 24,
+            color: COLORS.textMuted,
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 180ms ease-out',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+      </button>
+      {open && (
+        <div style={{ padding: 24 }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   return (
     <SettingsErrorBoundary>
@@ -1058,7 +1125,6 @@ function SettingsPageInner() {
   // Receipt forwarding
   const [receiptCount, setReceiptCount] = useState<number | null>(null); // null = not loaded yet
   const [receiptBannerDismissed, setReceiptBannerDismissed] = useState(false);
-  const [receiptForwardingExpanded, setReceiptForwardingExpanded] = useState(false);
 
   // Guided Setup Wizard
   const [guidedSetupStep, setGuidedSetupStep] = useState(0);
@@ -2123,7 +2189,14 @@ function SettingsPageInner() {
         {activeTab === 'settings' && (
           <>
         {/* Account Info */}
-        <Card title="Account Info">
+        <CollapsibleCard
+          title="Account Info"
+          summary={[
+            [firstName, lastName].filter(Boolean).join(' ').trim() || 'Add your name',
+            email,
+            phone,
+          ].filter(Boolean).join(' • ')}
+        >
           <div style={{ marginBottom: 16 }}>
             <label style={{
               display: 'block',
@@ -2171,10 +2244,17 @@ function SettingsPageInner() {
             <label style={FORM_STYLES.label}>Phone Number (for SMS alerts)</label>
             <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 123-4567" style={FORM_STYLES.input} />
           </div>
-        </Card>
+        </CollapsibleCard>
 
         {/* Vehicle Information */}
-        <Card title="Vehicle Information">
+        <CollapsibleCard
+          title="Vehicle Information"
+          summary={(() => {
+            const plate = plateNumber ? `${plateNumber} (${plateState})` : 'Add plate';
+            const veh = [vehicleYear, vehicleMake, vehicleModel].filter(Boolean).join(' ');
+            return [plate, veh || null].filter(Boolean).join(' • ');
+          })()}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginBottom: 20 }}>
             {/* License Plate */}
             <div>
@@ -2276,12 +2356,19 @@ function SettingsPageInner() {
                 maxLength={17} style={{ ...FORM_STYLES.input, fontFamily: 'monospace' }} />
             </div>
           </div>
-        </Card>
+        </CollapsibleCard>
 
         {/* Home Address */}
-        <Card title="Home Address" badge={
-          <span style={{ fontSize: 11, color: COLORS.textMuted }}>For street cleaning alerts</span>
-        }>
+        <CollapsibleCard
+          title="Home Address"
+          summary={(() => {
+            const parts: string[] = [];
+            if (homeAddress) parts.push(homeAddress);
+            if (ward) parts.push(`Ward ${ward}`);
+            if (section) parts.push(`Section ${section}`);
+            return parts.length > 0 ? parts.join(' • ') : 'Add your home address for alerts';
+          })()}
+        >
           <div style={{ marginBottom: 16 }}>
             <label style={{
               display: 'block',
@@ -2515,23 +2602,17 @@ function SettingsPageInner() {
               />
             </div>
           </div>
-        </Card>
+        </CollapsibleCard>
 
         {/* Mailing Address */}
-        <Card
+        <CollapsibleCard
           title="Mailing Address"
-          badge={
-            <span style={{
-              fontSize: 11,
-              fontWeight: 600,
-              padding: '2px 8px',
-              borderRadius: 4,
-              backgroundColor: !mailingAddress1.trim() ? '#FEE2E2' : COLORS.successLight,
-              color: !mailingAddress1.trim() ? '#991B1B' : COLORS.accent,
-            }}>
-              {!mailingAddress1.trim() ? 'REQUIRED' : 'COMPLETE'}
-            </span>
-          }
+          defaultOpen={!mailingAddress1.trim()}
+          summary={(() => {
+            if (!mailingAddress1.trim()) return 'Required — needed for contest letters';
+            const parts = [mailingAddress1, mailingAddress2, mailingCity, mailingState, mailingZip].filter(Boolean);
+            return parts.join(', ');
+          })()}
         >
           {/* Same as home address checkbox */}
           <div style={{
@@ -2773,10 +2854,25 @@ function SettingsPageInner() {
               />
             </div>
           </div>
-        </Card>
+        </CollapsibleCard>
 
-        {/* How You Receive Alerts */}
-        <Card title="How You Receive Alerts">
+        {/* Alert Preferences — merged: how you receive + what you get alerted about */}
+        <CollapsibleCard
+          title="Alert Preferences"
+          summary={(() => {
+            const channels: string[] = ['Push'];
+            if (emailNotifications) channels.push('Email');
+            if (smsNotifications) channels.push('SMS');
+            if (phoneCallNotifications) channels.push('Call');
+            const types: string[] = [];
+            if (streetCleaningAlerts) types.push('Street cleaning');
+            if (snowBanAlerts) types.push('Snow ban');
+            if (towAlerts) types.push('Tow');
+            if (dotPermitAlerts) types.push('DOT events');
+            const typeLabel = types.length === 0 ? 'No alerts enabled' : types.length <= 2 ? types.join(', ') : `${types.length} alert types`;
+            return `${channels.join('/')} • ${typeLabel}`;
+          })()}
+        >
           {/* Push notifications — always on */}
           <div style={{
             display: 'flex',
@@ -2850,10 +2946,16 @@ function SettingsPageInner() {
             </div>
             <Toggle checked={phoneCallNotifications} onChange={setPhoneCallNotifications} disabled={!phone} />
           </div>
-        </Card>
 
-        {/* What You Get Alerted About */}
-        <Card title="What You Get Alerted About">
+          {/* Separator between delivery channels and alert types */}
+          <div style={{
+            margin: '8px -24px 20px',
+            borderTop: `1px solid ${COLORS.border}`,
+          }} />
+          <div style={{ marginBottom: 12, fontSize: 12, fontWeight: 600, color: COLORS.textMuted, textTransform: 'uppercase' }}>
+            What You Get Alerted About
+          </div>
+
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -3017,7 +3119,7 @@ function SettingsPageInner() {
               ))}
             </div>
           </div>
-        </Card>
+        </CollapsibleCard>
 
 
         {/* Soft nudge banner — only shown when user has zero receipts on file */}
@@ -3061,59 +3163,35 @@ function SettingsPageInner() {
           </div>
         )}
 
-        <Card title="Receipt Forwarding" badge={
-          <button
-            onClick={() => setReceiptForwardingExpanded(v => !v)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '4px 8px',
-              fontSize: 12,
-              fontWeight: 600,
-              color: COLORS.accent,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-            aria-expanded={receiptForwardingExpanded}
-          >
-            {receiptCount !== null && receiptCount > 0 && (
-              <span style={{ color: COLORS.accent }}>{receiptCount} on file</span>
-            )}
-            <span>{receiptForwardingExpanded ? 'Hide' : 'Set up'}</span>
-            <span style={{ fontSize: 10 }}>{receiptForwardingExpanded ? '▲' : '▼'}</span>
-          </button>
-        }>
-          {!receiptForwardingExpanded ? (
-            <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted, lineHeight: 1.5 }}>
-              Forward sticker purchase receipts so we can prove you paid — 70% win rate on sticker tickets.
-            </p>
-          ) : (
-            <>
-              <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
-                Set up a one-time email filter so your city sticker and plate sticker purchase receipts forward to us automatically. If you ever get a sticker ticket, your receipt is proof you already paid — 70% win rate.
-              </p>
-              {userId && (
-                <RegistrationForwardingSetup
-                  forwardingEmail="receipts@autopilotamerica.com"
-                  compact
-                  userEmail={email}
-                />
-              )}
-              <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Link href="/registration-evidence" style={{
-                  fontSize: 13,
-                  color: COLORS.accent,
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                }}>
-                  View receipt history
-                </Link>
-              </div>
-            </>
+        <CollapsibleCard
+          title="Receipt Forwarding"
+          summary={
+            receiptCount !== null && receiptCount > 0
+              ? `${receiptCount} receipt${receiptCount === 1 ? '' : 's'} on file — sticker proof protects against ticket losses`
+              : 'Forward sticker purchase receipts so we can prove you paid — 70% win rate on sticker tickets'
+          }
+        >
+          <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
+            Set up a one-time email filter so your city sticker and plate sticker purchase receipts forward to us automatically. If you ever get a sticker ticket, your receipt is proof you already paid — 70% win rate.
+          </p>
+          {userId && (
+            <RegistrationForwardingSetup
+              forwardingEmail="receipts@autopilotamerica.com"
+              compact
+              userEmail={email}
+            />
           )}
-        </Card>
+          <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Link href="/registration-evidence" style={{
+              fontSize: 13,
+              color: COLORS.accent,
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}>
+              View receipt history
+            </Link>
+          </div>
+        </CollapsibleCard>
 
         {/* Autopilot Settings */}
         <Card title="Contesting Settings" badge={
