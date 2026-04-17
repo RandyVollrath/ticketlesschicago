@@ -80,22 +80,29 @@ export default async function handler(
   console.log('========================================');
 
   // Determine notification type based on Chicago time.
-  // Use ranges to handle CST/CDT transitions:
-  //   CDT (UTC-5, Apr-Oct): 12 UTC=7am, 20 UTC=3pm, 0 UTC=7pm
+  //
+  // The cron fires 6x per day at 0,1,12,13,20,21 UTC. Two fires per window
+  // because the correct one depends on DST:
+  //   CDT (UTC-5, Mar-Nov): 12 UTC=7am, 20 UTC=3pm, 0 UTC=7pm
   //   CST (UTC-6, Nov-Mar): 13 UTC=7am, 21 UTC=3pm, 1 UTC=7pm
-  // The cron fires at 0,12,13,20,21 UTC, so we accept ranges.
+  //
+  // The OLD logic matched ranges (6-8, 14-16, 18-20), which fired BOTH UTC
+  // times during the same DST state — e.g. both 3pm AND 4pm Chicago in
+  // summer. Dedup caught the second, but for users with broken dedup (like
+  // Travis, whose logNotification silently FK-failed) it doubled every SMS.
+  // Pin to the exact target hours so exactly one fire per window per day.
   let notificationType = 'unknown';
-  if (hour >= 6 && hour <= 8) {
+  if (hour === 7) {
     notificationType = 'morning_reminder';
     console.log(`Matched: morning_reminder (Chicago hour ${hour})`);
-  } else if (hour >= 14 && hour <= 16) {
+  } else if (hour === 15) {
     notificationType = 'follow_up';
     console.log(`Matched: follow_up (Chicago hour ${hour})`);
-  } else if (hour >= 18 && hour <= 20) {
+  } else if (hour === 19) {
     notificationType = 'evening_reminder';
     console.log(`Matched: evening_reminder (Chicago hour ${hour})`);
   } else {
-    console.log(`Skipped: Chicago hour ${hour} doesn't match any notification window (6-8, 14-16, 18-20)`);
+    console.log(`Skipped: Chicago hour ${hour} is not 7am/3pm/7pm`);
     return res.status(200).json({
       success: true,
       processed: 0,
