@@ -862,7 +862,7 @@ export default function CheckYourStreet() {
                 ? `${Math.min(...blockStats.by_year.map((y: any) => y.year))}-${Math.max(...blockStats.by_year.map((y: any) => y.year))}`
                 : '2019-2024';
               const avgTicketsPerYear = blockStats.avg_tickets_per_year || 0;
-              const isActiveBlock = avgTicketsPerYear >= 5; // 5+ tickets/yr on the block = active enforcement
+              const isActiveBlock = avgTicketsPerYear >= 20; // 20+ tickets/yr ≈ one every other week — top ~9% of Chicago blocks, covers 92.8% of all citywide tickets
 
               return (
                 <>
@@ -934,7 +934,7 @@ export default function CheckYourStreet() {
                         }}>
                           <div>
                             <div style={{ fontSize: '15px', color: 'white', fontWeight: '600', lineHeight: '1.4' }}>
-                              This block is actively ticketed. One <span style={{ color: '#FCA5A5' }}>$65-$200 ticket</span> costs more than a full year of Autopilot.
+                              This block gets a parking ticket roughly every other week. One <span style={{ color: '#FCA5A5' }}>$65-$200 ticket</span> costs more than a full year of Autopilot.
                             </div>
                             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
                               We contest every ticket on your plate automatically. 68.5% get dismissed. $99/yr.
