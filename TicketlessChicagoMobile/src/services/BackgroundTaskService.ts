@@ -640,26 +640,20 @@ class BackgroundTaskServiceClass {
                 return;
               }
 
-              // GUARD: reject events whose GPS was captured at finalize-time fallback.
-              // locationSource values, ranked by trust:
+              // locationSource ranking for future accuracy improvements:
               //   stop_start / pre-captured  → GPS at the moment the car stopped (AUTHORITATIVE)
               //   last_driving              → last GPS while the car was moving (GOOD)
               //   driving-buffer            → Android median of driving ring buffer (GOOD)
-              //   current_refined           → stop_start replaced with fresh GPS (within 20m, not walking) (OK)
-              //   current_fallback          → no stop_start OR last_driving available, used current GPS (BAD — may be where the user walked to)
+              //   current_refined           → stop_start replaced with fresh GPS within 20m (OK)
+              //   current_fallback          → no stop_start/last_driving available, used current GPS (LOW CONFIDENCE)
               //
-              // current_fallback is what produces the classic "wrong street, 22m from car"
-              // misdetect. Better to miss the detection and let the user manually tap
-              // "Check My Parking" than to write a confidently-wrong address to history.
+              // current_fallback events are LOW confidence but accepted — silently
+              // rejecting them would lose valid parking detections. Server-side
+              // parking_diagnostics.gps_source records the source so we can see in
+              // the accuracy stats how often current_fallback was the source of a
+              // wrong-address event and fix the native capture path if needed.
               if (event.locationSource === 'current_fallback') {
-                log.warn(`Rejecting parking event with locationSource=current_fallback — GPS was not captured at car-stop time (accuracy=${event.accuracy?.toFixed(0) ?? '?'}m). Parking will need to be resolved via manual Check My Parking or the next real BT/CoreMotion event.`);
-                await this.persistParkingRejection('current_fallback_source_unreliable', event, {
-                  locationSource: event.locationSource,
-                  detectionSource: event.detectionSource,
-                  accuracy: event.accuracy,
-                  driftFromParkingMeters: event.driftFromParkingMeters,
-                });
-                return;
+                log.warn(`Low-confidence parking event: locationSource=current_fallback (accuracy=${event.accuracy?.toFixed(0) ?? '?'}m). GPS wasn't captured at car-stop time — address may be off. Proceeding.`);
               }
 
               // GUARD: If state machine is already PARKED and new location is near

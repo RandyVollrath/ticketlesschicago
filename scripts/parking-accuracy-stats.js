@@ -73,7 +73,7 @@ function histogram(rows, key, opts = {}) {
   }
 
   let q = s.from('parking_diagnostics')
-    .select('gps_source,heading_source,heading_orientation,nominatim_agreed,nominatim_overrode,heading_confirmed_snap,near_intersection,snap_source,snap_candidates_count,snap_distance_meters,street_correct,side_correct,user_confirmed_parking,walkaway_guard_fired,created_at,walkaway_details')
+    .select('gps_source,heading_source,heading_orientation,nominatim_agreed,nominatim_overrode,heading_confirmed_snap,near_intersection,snap_source,snap_candidates_count,snap_distance_meters,street_correct,side_correct,user_confirmed_parking,walkaway_guard_fired,created_at,walkaway_details,native_meta')
     .gte('created_at', sinceISO);
   if (userId) q = q.eq('user_id', userId);
   const { data: rows, error } = await q.limit(20000);
@@ -150,10 +150,50 @@ function histogram(rows, key, opts = {}) {
     console.log(`\nUser feedback: no rated rows in window`);
   }
 
-  // Walkaway drift (pulled from native_meta stashed in walkaway_details)
+  // Nominatim-override accuracy — only meaningful for rows with user feedback
+  const fbRows = rows.filter((r) => r.street_correct != null);
+  if (fbRows.length > 0) {
+    const buckets = {
+      'agreed (nominatim+snap same)':        { total: 0, correct: 0 },
+      'disagreed, nominatim won':            { total: 0, correct: 0 },
+      'disagreed, snap kept (heading won)':  { total: 0, correct: 0 },
+    };
+    for (const r of fbRows) {
+      let key;
+      if (r.nominatim_agreed === true) key = 'agreed (nominatim+snap same)';
+      else if (r.nominatim_overrode === true) key = 'disagreed, nominatim won';
+      else if (r.nominatim_agreed === false) key = 'disagreed, snap kept (heading won)';
+      else continue;
+      buckets[key].total++;
+      if (r.street_correct) buckets[key].correct++;
+    }
+    console.log(`\nNominatim-override street accuracy  (rated: ${fbRows.length})`);
+    console.log('─'.repeat(60));
+    for (const [k, v] of Object.entries(buckets)) {
+      if (v.total === 0) continue;
+      const acc = (v.correct / v.total * 100).toFixed(1);
+      console.log(`  ${acc.padStart(5)}%  ${String(v.correct).padStart(3)}/${String(v.total).padStart(3)}  ${k}`);
+    }
+  }
+
+  // Heading disagreement (GPS vs compass) — new native_meta field
+  const disagreeRows = rows.filter((r) => r.native_meta?.headingDisagreementDeg != null);
+  if (disagreeRows.length > 0) {
+    const big = disagreeRows.filter((r) => r.native_meta.headingDisagreementDeg > 45);
+    const huge = disagreeRows.filter((r) => r.native_meta.headingDisagreementDeg > 90);
+    const preferredGps = disagreeRows.filter((r) => r.native_meta.headingPreferredSource === 'gps');
+    console.log(`\nGPS vs compass heading agreement  (both available: ${disagreeRows.length})`);
+    console.log('─'.repeat(60));
+    console.log(`  ${pct(disagreeRows.length - big.length, disagreeRows.length)}  agree (<45° apart)`);
+    console.log(`  ${pct(big.length - huge.length, disagreeRows.length)}  disagree 45-90°  → GPS preferred for disambiguation`);
+    console.log(`  ${pct(huge.length, disagreeRows.length)}  disagree >90°    → GPS preferred`);
+    console.log(`  (preferred GPS ${preferredGps.length} times)`);
+  }
+
+  // Walkaway drift (prefer new native_meta column, fall back to nested stash in walkaway_details)
   const drifts = [];
   for (const r of rows) {
-    const d = r.walkaway_details?.native_meta?.driftFromParkingMeters;
+    const d = r.native_meta?.driftFromParkingMeters ?? r.walkaway_details?.native_meta?.driftFromParkingMeters;
     if (typeof d === 'number' && d >= 0) drifts.push(d);
   }
   if (drifts.length > 0) {
