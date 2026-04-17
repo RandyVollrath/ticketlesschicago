@@ -85,7 +85,7 @@ function histogram(rows, key, opts = {}) {
 
   // GPS source — the big one. stop_start/last_driving/pre-captured/driving-buffer are good.
   // current_fallback is bad. null = missing instrumentation (older build).
-  const GOOD_SOURCES = new Set(['stop_start', 'last_driving', 'pre-captured', 'driving-buffer']);
+  const GOOD_SOURCES = new Set(['stop_start', 'last_driving', 'pre-captured', 'driving-buffer', 'recent_low_speed']);
   const MIXED_SOURCES = new Set(['current_refined']);
   const BAD_SOURCES = new Set(['current_fallback']);
 
@@ -148,6 +148,21 @@ function histogram(rows, key, opts = {}) {
     }
   } else {
     console.log(`\nUser feedback: no rated rows in window`);
+  }
+
+  // Auto-label signal from departure snap. Noisy (car parked near intersection
+  // and departs onto main street can flip the signal), but aggregated across
+  // events it's a meaningful proxy for "how often did we probably get the
+  // street wrong?" — especially when combined with other indicators.
+  const autoLabeled = rows.filter((r) => r.native_meta?.auto_label?.source === 'departure_snap');
+  if (autoLabeled.length > 0) {
+    const matched = autoLabeled.filter((r) => r.native_meta.auto_label.street_matched === true).length;
+    const unmatched = autoLabeled.filter((r) => r.native_meta.auto_label.street_matched === false).length;
+    console.log(`\nDeparture-snap auto-label  (events: ${autoLabeled.length})`);
+    console.log('─'.repeat(60));
+    console.log(`  ${pct(matched, autoLabeled.length)}  ${String(matched).padStart(5)}  saved street matches departure snap`);
+    console.log(`  ${pct(unmatched, autoLabeled.length)}  ${String(unmatched).padStart(5)}  saved street differs from departure snap (maybe wrong, maybe just departed onto cross street)`);
+    console.log(`  ${''.padStart(6)}  Run: node scripts/auto-label-parking-accuracy.js  to refresh`);
   }
 
   // Nominatim-override accuracy — only meaningful for rows with user feedback
