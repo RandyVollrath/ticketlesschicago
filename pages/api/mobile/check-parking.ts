@@ -207,12 +207,43 @@ export default async function handler(
   const hasCompass = !isNaN(compassHeadingDeg) && compassHeadingDeg >= 0 && compassHeadingDeg < 360
     && !isNaN(compassConfidenceDeg) && compassConfidenceDeg < 40; // only trust if std < 40°
 
-  // When compass heading is available, use it as the primary heading signal.
-  const effectiveHeading = hasCompass ? compassHeadingDeg : (hasHeading ? headingDeg : NaN);
-  const hasEffectiveHeading = !isNaN(effectiveHeading);
-  if (hasCompass) {
-    console.log(`[check-parking] Compass heading: ${compassHeadingDeg.toFixed(1)}° ±${compassConfidenceDeg.toFixed(1)}° — using as primary heading`);
+  // Heading source preference:
+  //   - Both available AND they disagree >45° → prefer GPS heading. The phone's
+  //     compass reads the top-of-phone orientation, which doesn't always match
+  //     the car's direction of travel (phone in cupholder sideways, bag, etc.).
+  //     GPS heading captured while actually driving is ground-truth car direction.
+  //     This is the Randy Lawrence bug: compass said 83° (E), GPS said 355° (N),
+  //     car was on N-S Wolcott — GPS was right.
+  //   - Only compass → use compass (car stopped, GPS heading goes invalid)
+  //   - Only GPS → use GPS (compass has low confidence)
+  //   - Neither → no disambiguation
+  let headingDisagreementDeg: number | null = null;
+  let headingPrefersGps = false;
+  if (hasCompass && hasHeading) {
+    const rawDiff = Math.abs(compassHeadingDeg - headingDeg);
+    headingDisagreementDeg = Math.min(rawDiff, 360 - rawDiff);
+    if (headingDisagreementDeg > 45) {
+      headingPrefersGps = true;
+    }
   }
+  let effectiveHeading: number;
+  let effectiveHeadingSource: 'compass' | 'gps' | 'none';
+  if (headingPrefersGps && hasHeading) {
+    effectiveHeading = headingDeg;
+    effectiveHeadingSource = 'gps';
+    console.log(`[check-parking] GPS vs compass heading disagreement ${headingDisagreementDeg!.toFixed(0)}° — preferring GPS ${headingDeg.toFixed(0)}° over compass ${compassHeadingDeg.toFixed(0)}° (compass likely reflects phone orientation, not car direction)`);
+  } else if (hasCompass) {
+    effectiveHeading = compassHeadingDeg;
+    effectiveHeadingSource = 'compass';
+    console.log(`[check-parking] Compass heading: ${compassHeadingDeg.toFixed(1)}° ±${compassConfidenceDeg.toFixed(1)}° — using as primary heading`);
+  } else if (hasHeading) {
+    effectiveHeading = headingDeg;
+    effectiveHeadingSource = 'gps';
+  } else {
+    effectiveHeading = NaN;
+    effectiveHeadingSource = 'none';
+  }
+  const hasEffectiveHeading = !isNaN(effectiveHeading);
 
   // Native detection metadata — passthrough from iOS BackgroundLocationModule.
   // Tells us whether GPS was captured at car-stop-time (good) or at check-time
@@ -248,7 +279,7 @@ export default async function handler(
       gps_heading: hasHeading ? headingDeg : null,
       compass_heading: hasCompass ? compassHeadingDeg : null,
       compass_confidence: hasCompass ? compassConfidenceDeg : null,
-      heading_source: hasCompass ? 'compass' : (hasHeading ? 'gps' : 'none'),
+      heading_source: effectiveHeadingSource,
       effective_heading: hasEffectiveHeading ? effectiveHeading : null,
       // gps_source identifies which native path captured the coords:
       //   'stop_start'       = locationAtStopStart (GOOD — car-stop-time GPS)
@@ -274,10 +305,12 @@ export default async function handler(
       nativeMeta.serverReceivedMs = Date.now();
       nativeMeta.captureToServerDelaySec = (Date.now() - nativeTimestampMs) / 1000;
     }
+    if (headingDisagreementDeg != null) {
+      nativeMeta.headingDisagreementDeg = Math.round(headingDisagreementDeg);
+      nativeMeta.headingPreferredSource = effectiveHeadingSource;
+    }
     if (Object.keys(nativeMeta).length > 0) {
-      // Attach under a namespaced key so the walk-away guard's own details
-      // don't collide with ours.
-      diag.walkaway_details = { ...(diag.walkaway_details || {}), native_meta: nativeMeta };
+      diag.native_meta = nativeMeta;
     }
 
     // Step 0: Apply per-block GPS correction if available (Layer 4).
@@ -362,6 +395,21 @@ export default async function handler(
 
           // Filter by max snap distance
           let candidates = allCandidates.filter((s: any) => s.snap_distance_meters <= maxSnapDistance);
+
+          // Detect near-intersection: 2+ candidates AND they span both N-S and E-W
+          // orientations, or 2+ candidates within ~25m of each other. Previously
+          // near_intersection was never set server-side so it was stuck at 0%.
+          if (candidates.length >= 2) {
+            const orients = new Set<string>();
+            for (const c of candidates) {
+              const o = getChicagoStreetOrientation(c.street_name);
+              if (o) orients.add(o);
+            }
+            const closeTogether = (candidates[1].snap_distance_meters - candidates[0].snap_distance_meters) < 25;
+            if (orients.size >= 2 || closeTogether) {
+              diag.near_intersection = true;
+            }
+          }
 
           if (candidates.length > 0) {
             let bestCandidate = candidates[0]; // Default: closest
@@ -873,7 +921,7 @@ export default async function handler(
         snap_bearing: snapResult?.streetBearing || null,
         snapped_lat: snapResult?.wasSnapped ? checkLat : null,
         snapped_lng: snapResult?.wasSnapped ? checkLng : null,
-        heading_source: hasCompass ? 'compass' : (hasHeading ? 'gps' : 'none'),
+        heading_source: effectiveHeadingSource,
         effective_heading: hasEffectiveHeading ? effectiveHeading : null,
         heading_orientation: hasEffectiveHeading ? (isHeadingNorthSouth(effectiveHeading) ? 'N-S' : 'E-W') : null,
         nominatim_street: diag.nominatim_street || null,
@@ -896,6 +944,7 @@ export default async function handler(
         meters_on_opposite_side: diag.meters_on_opposite_side ?? null,
         near_intersection: diag.near_intersection ?? false,
         snap_candidates_count: diag.snap_candidates_count ?? null,
+        native_meta: diag.native_meta || null,
       }).then(({ error }) => {
         if (error) console.warn('[diagnostics] Insert failed (non-fatal):', error.message);
         else console.log('[diagnostics] Parking diagnostic logged');
