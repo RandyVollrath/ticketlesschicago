@@ -22,6 +22,14 @@ The phone captures GPS after the user has already started walking away from the 
 
 **Fix (implemented 2026-04-12):** Freeze parking location at stop-detection moment. Never update with post-walking GPS. If CoreMotion/accelerometer detects walking, lock the location.
 
+### 1b. Burst Refinement Overriding Correct Native Location (iOS — April 2026)
+
+The native iOS module correctly captured `locationAtStopStart` at the car's position. But then `backgroundBurstRefine()` on the JS side ran a 10-second burst sample while the user was already walking away. The burst's GPS accuracy was better (open area vs urban canyon), so the 3x accuracy walk-away guard (`burstAcc < initialAcc * 0.33`) was defeated, and the JS "corrected" the address to the walked-to location.
+
+**Real example (2026-04-17):** User parked on Belden near Kenmore. Native iOS correctly captured stop location. User walked east toward Sheffield. Burst sampling got ~12m accuracy near Sheffield vs ~45m at Belden. `12 < 45 * 0.33 = 14.85` → guard bypassed → address overridden to "2284 N Sheffield."
+
+**Fix (2026-04-17):** Disabled `backgroundBurstRefine()` for iOS pre-captured coordinates entirely. The native module captures GPS at the exact moment the car stops, before any walking. This is fundamentally more reliable than any post-parking burst, regardless of accuracy numbers. GPS accuracy measures confidence in the phone's position, not the car's.
+
 ### 2. Stale GPS Heading After Turns
 
 GPS heading requires speed > 1 m/s. When you slow down, turn, and park, the last heading is from BEFORE the turn.
@@ -99,6 +107,7 @@ The most reliable parking location is the inverse-variance weighted average of G
 4. **Test with real parking events.** Check Vercel logs for `[check-parking]` messages. Verify street name, side, and address against actual parking location.
 5. **Log the full decision chain.** Every parking check should log: snap result, heading source, Nominatim result, address, side determination. Without logs, we can't debug.
 6. **Prefer the earliest accurate GPS fix.** The first fix at stop time is closest to the car. Later fixes are further from the car.
+8. **NEVER override iOS native stop coordinates with post-parking GPS.** The native module captures location at the exact moment the car stops. Post-parking burst sampling runs while the user walks — better GPS accuracy does NOT mean better car location. A 50m-accuracy fix at the car beats a 5m-accuracy fix at the coffee shop.
 7. **Measure before and after.** Before deploying accuracy changes, log 5+ real parking events and compare results.
 
 ## Accuracy Improvement Plan
@@ -139,3 +148,4 @@ See `/home/randy-vollrath/.claude/plans/magical-hugging-quail.md` for the full p
 | 2026-04-12 | iOS stop-candidate protection | Never consider stop candidate "weak" when walking. Add 20m proximity guard for refinement. |
 | 2026-04-13 | Keep close snap even if heading disagrees | Snap < 15m is strong geometric evidence; stale heading after a turn should not override it |
 | 2026-04-13 | Don't let heading protect extended/far snaps from Nominatim | Extended search (>25m) driven by stale heading can find wrong street; Nominatim overrides these |
+| 2026-04-17 | Disable JS burst refinement for iOS pre-captured coords | Burst sampling runs AFTER user starts walking — converges on phone position (Sheffield) instead of car (Belden). Native stop location is authoritative on iOS. |

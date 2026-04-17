@@ -1726,23 +1726,20 @@ class BackgroundTaskServiceClass {
       let coords;
       let gpsSource = 'unknown';
 
-      // On iOS with background location, we already have the parking spot coordinates
-      // captured at the moment the car stopped. Use those for the fast initial check,
-      // BUT still kick off burst refinement — the native fix is a single GPS sample
-      // that can be 50-100m off (one block in Chicago), causing wrong-street addresses
-      // (e.g. Sheffield instead of Kenmore). Burst sampling averages multiple fixes
-      // and produces a more accurate position.
+      // On iOS, the native module captures GPS at the moment the car stops
+      // (locationAtStopStart / lastDrivingLocation) — BEFORE the user walks away.
+      // This is the most reliable parking location we can get. DO NOT run burst
+      // refinement on iOS pre-captured coords: the burst samples during the 10s
+      // window AFTER parking, when the user is already walking away from the car.
+      // Walk-away drift causes the burst to converge on the phone's position
+      // (e.g. Sheffield) instead of the car's position (e.g. Belden/Kenmore).
+      // The burst's GPS accuracy may be BETTER (open sky vs urban canyon) but
+      // the position is WRONG — accuracy measures where the phone is, not the car.
       if (presetCoords?.latitude && presetCoords?.longitude) {
         coords = presetCoords;
         resolvedCoords = coords;
         gpsSource = 'pre-captured (iOS)';
-        log.info(`Using pre-captured parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m`);
-
-        // Phase 2: Burst-refine the native fix in the background.
-        // Same logic as Android — if burst result differs by >25m, re-check parking
-        // restrictions and silently update the notification + history.
-        const initialCoords = { ...coords };
-        this.backgroundBurstRefine(initialCoords, nativeTimestamp, persistParkingEvent);
+        log.info(`Using pre-captured parking location: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)} ±${coords.accuracy?.toFixed(1) || '?'}m (no burst refinement — native stop location is authoritative)`);
       } else {
         // Android (Bluetooth disconnect) or fallback: get fresh GPS
         // TWO-PHASE approach: get a fast single fix immediately, then refine
