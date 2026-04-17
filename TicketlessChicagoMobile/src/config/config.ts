@@ -58,14 +58,14 @@ export default {
   ENABLE_ANALYTICS: !__DEV__,
   ENABLE_CRASH_REPORTING: !__DEV__,
 
-  // Emails that get automatic debug-report uploads after parking/camera events.
-  // Check is case-insensitive. Expand this list to enroll friends/testers whose
-  // phones you want to debug remotely. The reports land in audit_logs under
+  // Controls who auto-uploads debug reports after parking/camera events.
+  // Empty array = ALL authenticated users (we want data from every user to
+  // improve parking detection accuracy).
+  // If you ever need to re-gate to specific users, list their emails here
+  // (case-insensitive). Reports land in audit_logs under
   // action_type='mobile_debug_report' and can be pulled via
   // `node scripts/fetch-debug-report.js --user <email>`.
-  DEBUG_AUTO_REPORT_EMAILS: [
-    'randyvollrath@gmail.com',
-  ],
+  DEBUG_AUTO_REPORT_EMAILS: [] as string[],
 
   // Chicago Parking Rules Configuration
   PARKING_RULES: {

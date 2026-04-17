@@ -48,8 +48,19 @@ async function readAsyncStorageKey(key: string): Promise<any> {
 
 /**
  * Collect all diagnostic data into a single payload.
+ *
+ * mode='manual' (default): user tapped Send Debug Report — send everything we
+ *   have, up to 1.5MB per log file and full history/queue.
+ * mode='auto': fired automatically after a parking or camera event — trim logs
+ *   and arrays to keep per-report storage cost bounded when running across
+ *   every user, every parking event.
  */
-async function collectPayload(): Promise<Record<string, any>> {
+async function collectPayload(mode: 'manual' | 'auto' = 'manual'): Promise<Record<string, any>> {
+  const logBytesPerFile = mode === 'auto' ? 250_000 : 1_500_000;
+  const maxHistoryItems = mode === 'auto' ? 20 : Number.POSITIVE_INFINITY;
+  const maxQueueItems = mode === 'auto' ? 20 : Number.POSITIVE_INFINITY;
+  const maxJsLogEntries = mode === 'auto' ? 100 : 500;
+
   const [
     debugLogs,
     history,
@@ -60,7 +71,7 @@ async function collectPayload(): Promise<Record<string, any>> {
     logInfo,
     pipelineHealth,
   ] = await Promise.all([
-    BackgroundLocationService.getDebugLogBundle(1_500_000), // ~1.5MB per file max
+    BackgroundLocationService.getDebugLogBundle(logBytesPerFile),
     readAsyncStorageKey(StorageKeys.PARKING_HISTORY),
     readAsyncStorageKey(StorageKeys.PARKING_SAVE_RETRY_QUEUE),
     readAsyncStorageKey(StorageKeys.LAST_PARKED_COORDS),
@@ -77,11 +88,21 @@ async function collectPayload(): Promise<Record<string, any>> {
     if (typeof anyLogger.getRecentLogs === 'function') {
       recentLogs = anyLogger.getRecentLogs();
     } else if (Array.isArray(anyLogger.buffer)) {
-      recentLogs = anyLogger.buffer.slice(-500);
+      recentLogs = anyLogger.buffer.slice(-maxJsLogEntries);
+    }
+    if (recentLogs.length > maxJsLogEntries) {
+      recentLogs = recentLogs.slice(-maxJsLogEntries);
     }
   } catch {
     // Logger doesn't expose a buffer — that's OK
   }
+
+  const trimmedHistory = Array.isArray(history) && maxHistoryItems !== Number.POSITIVE_INFINITY
+    ? history.slice(-maxHistoryItems)
+    : (history || []);
+  const trimmedQueue = Array.isArray(queue) && maxQueueItems !== Number.POSITIVE_INFINITY
+    ? queue.slice(-maxQueueItems)
+    : (queue || []);
 
   const user = AuthService.getUser();
 
@@ -102,12 +123,15 @@ async function collectPayload(): Promise<Record<string, any>> {
     native_log_info: logInfo,
     local_parking_history: {
       count: Array.isArray(history) ? history.length : 0,
-      items: history || [],
+      items: trimmedHistory,
+      truncated: Array.isArray(history) && history.length > (trimmedHistory as any[]).length,
     },
     parking_save_retry_queue: {
       count: Array.isArray(queue) ? queue.length : 0,
-      items: queue || [],
+      items: trimmedQueue,
+      truncated: Array.isArray(queue) && queue.length > (trimmedQueue as any[]).length,
     },
+    report_mode: mode,
     last_parked_coords: lastParkedCoords,
     last_parking_check: lastParkingCheck,
     pipeline_health: pipelineHealth,
@@ -119,7 +143,11 @@ async function collectPayload(): Promise<Record<string, any>> {
  * Package everything and submit to the server. User-facing — returns
  * a success/error result the UI can display.
  */
-export async function submitDebugReport(note?: string): Promise<DebugReportResult> {
+export async function submitDebugReport(
+  note?: string,
+  options?: { mode?: 'manual' | 'auto' },
+): Promise<DebugReportResult> {
+  const mode = options?.mode || 'manual';
   try {
     if (!AuthService.isAuthenticated()) {
       return { success: false, error: 'Not signed in' };
@@ -129,8 +157,8 @@ export async function submitDebugReport(note?: string): Promise<DebugReportResul
     // auth can silently expire. Do this before we spend time collecting data.
     await AuthService.refreshToken().catch(() => {});
 
-    log.info('Collecting debug report payload...');
-    const payload = await collectPayload();
+    log.info(`Collecting debug report payload (mode=${mode})...`);
+    const payload = await collectPayload(mode);
     const payloadSize = JSON.stringify(payload).length;
     log.info(`Debug report collected: ${payloadSize} bytes`);
 
@@ -180,13 +208,14 @@ const lastAutoReportAt = new Map<string, number>();
 
 export function triggerAutoDebugReport(reason: string, meta?: Record<string, any>): void {
   try {
+    // Empty allowlist = enabled for all authenticated users (we want data
+    // from everyone to improve parking detection). Non-empty = gated to listed emails.
     const enrolled: string[] = (Config as any).DEBUG_AUTO_REPORT_EMAILS || [];
-    if (enrolled.length === 0) return;
 
     const user = AuthService.getUser();
     const email = user?.email?.toLowerCase();
     if (!email) return;
-    if (!enrolled.some((e) => e.toLowerCase() === email)) return;
+    if (enrolled.length > 0 && !enrolled.some((e) => e.toLowerCase() === email)) return;
 
     const now = Date.now();
     const last = lastAutoReportAt.get(reason) || 0;
@@ -201,7 +230,9 @@ export function triggerAutoDebugReport(reason: string, meta?: Record<string, any
       : `auto:${reason}`;
 
     // Fire-and-forget — don't block the caller, don't surface errors.
-    submitDebugReport(note)
+    // Use 'auto' mode so payload size is capped (we're running this across
+    // every user, every parking event).
+    submitDebugReport(note, { mode: 'auto' })
       .then((r) => {
         if (r.success) {
           log.info(`auto-report submitted: reason=${reason} id=${r.id}`);
