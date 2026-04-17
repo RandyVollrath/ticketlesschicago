@@ -146,20 +146,20 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
           feature.properties?.ward === triggerPopup.ward && 
           feature.properties?.section === triggerPopup.section;
         
+        // Set color based on cleaning status
+        switch (status) {
+          case 'today': fillColor = '#dc3545'; color = '#b02a37'; break;
+          case 'soon': fillColor = '#ffc107'; color = '#c79100'; break;
+          case 'later': fillColor = '#28a745'; color = '#1e7e34'; break;
+          case 'none': fillColor = '#6c757d'; color = '#5a6268'; break;
+          default: fillColor = '#6c757d'; color = '#5a6268'; break;
+        }
+
         if (isHighlighted) {
-          // Make highlighted section more prominent
-          weight = 3;
+          // Keep status color but add prominent border to distinguish
+          weight = 4;
           fillOpacity = 0.8;
-          color = '#007bff'; // Blue border for highlighted
-          fillColor = '#007bff'; // Blue fill for highlighted
-        } else {
-          switch (status) {
-            case 'today': fillColor = '#dc3545'; color = '#b02a37'; break;
-            case 'soon': fillColor = '#ffc107'; color = '#c79100'; break;
-            case 'later': fillColor = '#28a745'; color = '#1e7e34'; break;
-            case 'none': fillColor = '#6c757d'; color = '#5a6268'; break;
-            default: fillColor = '#6c757d'; color = '#5a6268'; break;
-          }
+          color = '#ffffff'; // White border to make it pop
         }
 
         const geojsonLayer = L.geoJSON(feature.geometry, {
