@@ -35,6 +35,7 @@ import RedLightReceiptService, { RedLightTracePoint } from './RedLightReceiptSer
 import BackgroundLocationService from './BackgroundLocationService';
 import GroundTruthService from './GroundTruthService';
 import AnalyticsService from './AnalyticsService';
+import { triggerAutoDebugReport } from './DebugReportService';
 import { distanceMeters, toRad } from '../utils/geo';
 import Logger from '../utils/Logger';
 
@@ -1734,6 +1735,12 @@ class CameraAlertServiceClass {
     const firstSuccess = await speak(message);
     if (firstSuccess) {
       this.tripAudioSpeakSuccess += 1;
+      triggerAutoDebugReport('camera_alert_fired', {
+        type: camera.type,
+        address: camera.address,
+        distanceMeters: Math.round(distanceMeters),
+        confidenceTier,
+      });
       return;
     }
 

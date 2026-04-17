@@ -164,4 +164,57 @@ export async function submitDebugReport(note?: string): Promise<DebugReportResul
   }
 }
 
-export default { submitDebugReport };
+/**
+ * Fire-and-forget auto debug report after interesting events
+ * (parking confirmed, camera alert, misdetection corrected, etc).
+ *
+ * Gated by Config.DEBUG_AUTO_REPORT_EMAILS — only enrolled users generate
+ * auto-uploads. Per-reason throttle prevents spam from rapid BT reconnect
+ * flaps or repeated camera passes.
+ *
+ * Safe to call from any hot path — async work is detached and errors are
+ * swallowed to the log (never thrown back at the caller).
+ */
+const AUTO_REPORT_MIN_INTERVAL_MS = 60 * 1000;
+const lastAutoReportAt = new Map<string, number>();
+
+export function triggerAutoDebugReport(reason: string, meta?: Record<string, any>): void {
+  try {
+    const enrolled: string[] = (Config as any).DEBUG_AUTO_REPORT_EMAILS || [];
+    if (enrolled.length === 0) return;
+
+    const user = AuthService.getUser();
+    const email = user?.email?.toLowerCase();
+    if (!email) return;
+    if (!enrolled.some((e) => e.toLowerCase() === email)) return;
+
+    const now = Date.now();
+    const last = lastAutoReportAt.get(reason) || 0;
+    if (now - last < AUTO_REPORT_MIN_INTERVAL_MS) {
+      log.debug(`auto-report throttled: reason=${reason} (${Math.round((now - last) / 1000)}s since last)`);
+      return;
+    }
+    lastAutoReportAt.set(reason, now);
+
+    const note = meta
+      ? `auto:${reason} ${JSON.stringify(meta).slice(0, 400)}`
+      : `auto:${reason}`;
+
+    // Fire-and-forget — don't block the caller, don't surface errors.
+    submitDebugReport(note)
+      .then((r) => {
+        if (r.success) {
+          log.info(`auto-report submitted: reason=${reason} id=${r.id}`);
+        } else {
+          log.warn(`auto-report failed: reason=${reason} error=${r.error}`);
+        }
+      })
+      .catch((e) => {
+        log.warn(`auto-report exception: reason=${reason}`, e);
+      });
+  } catch (e) {
+    log.warn('triggerAutoDebugReport synchronous error:', e);
+  }
+}
+
+export default { submitDebugReport, triggerAutoDebugReport };
