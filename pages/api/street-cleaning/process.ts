@@ -353,19 +353,62 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
           continue;
         }
 
+        // Pre-claim the dedup slot BEFORE sending. If this insert fails (e.g. FK
+        // violation because user has no users row), REFUSE to send — otherwise
+        // subsequent cron runs find no dedup row and re-send, which is how
+        // Travis Bee got 4 duplicate SMS on 2026-04-17.
+        const { data: claimRow, error: claimError } = await supabaseAdmin
+          .from('user_notifications')
+          .insert({
+            user_id: user.user_id,
+            notification_type: 'street_cleaning',
+            sent_at: new Date().toISOString(),
+            status: 'sending',
+            ward: user.home_address_ward,
+            section: user.home_address_section,
+            cleaning_date: cleaningDateStr,
+            days_before: daysUntil,
+            channels: [],
+            metadata: { type },
+          } as any)
+          .select('id')
+          .single();
+
+        if (claimError || !claimRow) {
+          const msg = sanitizeErrorMessage(claimError);
+          console.error(`REFUSING TO SEND ${type} to ${user.email} (${user.user_id}): dedup claim insert failed — ${msg}`);
+          errors.push(`claim-failed:${user.email}: ${msg}`);
+          failed++;
+          continue;
+        }
+
         const cleaningDateForDisplay = new Date(cleaningDateStr + 'T12:00:00');
         console.log(`Sending ${type} to ${user.email} for ${isSplitCycle ? `split cycle [${cycleDates.join(', ')}]` : cleaningDateStr} (keyed ${cleaningDateStr}, ${daysUntil}d)`);
         const result = await sendNotification(user, type, cleaningDateForDisplay, daysUntil, { cycleDates, isSplitCycle });
 
         if (result.sent) {
           successful++;
-          await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.channels, 'sent');
+          await supabaseAdmin
+            .from('user_notifications')
+            .update({
+              status: 'sent',
+              channels: result.channels,
+              error_message: result.failedChannels.length > 0 ? result.errors.join('; ') : null,
+            })
+            .eq('id', claimRow.id);
           if (result.failedChannels.length > 0) {
             await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.failedChannels, 'partial_failure', result.errors.join('; '));
           }
         } else {
           failed++;
-          await logNotification(user.user_id, type, cleaningDateStr, user.home_address_ward, user.home_address_section, daysUntil, result.failedChannels, 'failed', result.errors.join('; '));
+          await supabaseAdmin
+            .from('user_notifications')
+            .update({
+              status: 'failed',
+              channels: result.failedChannels,
+              error_message: result.errors.join('; '),
+            })
+            .eq('id', claimRow.id);
         }
 
       } catch (userError) {
