@@ -67,7 +67,12 @@ export default async function handler(
   const now = new Date();
   const { hour, chicagoTime, chicagoDateISO } = getChicagoTime();
 
-  // Enhanced logging to debug cron execution
+  // Enhanced logging to debug cron execution.
+  // vercelId is unique per invocation — searching logs for the same vercelId
+  // twice means Vercel retried; two different vercelIds at the same UTC
+  // minute means two distinct cron fires (e.g. cutover between deployments).
+  const vercelId = (req.headers['x-vercel-id'] as string) || 'no-vercel-id';
+  const deploymentUrl = (req.headers['x-vercel-deployment-url'] as string) || 'unknown';
   console.log('========================================');
   console.log('STREET CLEANING CRON EXECUTION');
   console.log('========================================');
@@ -77,32 +82,34 @@ export default async function handler(
   console.log('Chicago Date:', chicagoDateISO);
   console.log('Request Method:', req.method);
   console.log('User-Agent:', req.headers['user-agent']);
+  console.log('x-vercel-id:', vercelId);
+  console.log('deployment:', deploymentUrl);
   console.log('========================================');
 
   // Determine notification type based on Chicago time.
   //
-  // Cron fires 3x per day at 13,21,1 UTC — CST-aligned so:
+  // Vercel cron is UTC-only and cannot shift with DST. To hit EXACTLY 7am /
+  // 3pm / 7pm Chicago year-round, we schedule two UTC candidates per window:
+  //   CDT (UTC-5, Mar-Nov): 12 UTC=7am, 20 UTC=3pm, 0 UTC=7pm
   //   CST (UTC-6, Nov-Mar): 13 UTC=7am, 21 UTC=3pm, 1 UTC=7pm
-  //   CDT (UTC-5, Mar-Nov): 13 UTC=8am, 21 UTC=4pm, 1 UTC=8pm
-  // One fire per window per day regardless of DST; notifications land at 7am
-  // in winter and drift to 8am in summer (acceptable — cleaning starts at 9am).
+  // The strict hour check below picks the one that lands on the target
+  // Chicago hour and no-ops the other. Exactly one fire per window per day.
   //
-  // Accept both DST hours so the same fire matches in CST and CDT. The range
-  // used to be wider (6-8 etc) which let BOTH cron UTC times match when we
-  // had 6 fires/day — that's how Travis got duplicates. The narrower window
-  // + 3 fires makes a double-fire impossible.
+  // Do NOT broaden these checks (e.g. `hour >= 7 && hour <= 8`) — the old
+  // range matcher let BOTH UTC candidates through in the same DST state,
+  // which is how Travis got 16 duplicate follow_ups at 3pm+4pm on Apr 17.
   let notificationType = 'unknown';
-  if (hour === 7 || hour === 8) {
+  if (hour === 7) {
     notificationType = 'morning_reminder';
     console.log(`Matched: morning_reminder (Chicago hour ${hour})`);
-  } else if (hour === 15 || hour === 16) {
+  } else if (hour === 15) {
     notificationType = 'follow_up';
     console.log(`Matched: follow_up (Chicago hour ${hour})`);
-  } else if (hour === 19 || hour === 20) {
+  } else if (hour === 19) {
     notificationType = 'evening_reminder';
     console.log(`Matched: evening_reminder (Chicago hour ${hour})`);
   } else {
-    console.log(`Skipped: Chicago hour ${hour} is not a notification window (7-8/15-16/19-20)`);
+    console.log(`Skipped: Chicago hour ${hour} is not 7am/3pm/7pm (wrong-DST UTC fire)`);
     return res.status(200).json({
       success: true,
       processed: 0,
