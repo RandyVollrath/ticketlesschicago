@@ -433,7 +433,7 @@ export default function LandingPage() {
                 'Full dashboard access',
                 'Contest letter approval system',
                 'Email notifications on ticket status',
-                '68.5% parking ticket dismissal rate',
+                '66% parking ticket dismissal rate',
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
                   <div style={{ color: COLORS.accent, flexShrink: 0, marginTop: '2px' }}><CheckIcon /></div>

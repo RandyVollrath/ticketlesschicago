@@ -61,8 +61,8 @@ export default function PricingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F0FDF4', borderRadius: 10, border: '1px solid #BBF7D0' }}>
               <div>
-                <div style={{ fontWeight: 600, color: '#166534' }}>Ticket contesting (68.5% win rate)</div>
-                <div style={{ fontSize: 13, color: '#15803D' }}>2.2 tickets × $77 avg × 68.5% dismissed</div>
+                <div style={{ fontWeight: 600, color: '#166534' }}>Ticket contesting (66% win rate)</div>
+                <div style={{ fontSize: 13, color: '#15803D' }}>2.2 tickets × $77 avg × 66% dismissed</div>
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: '#166534' }}>~$116</div>
             </div>
@@ -118,7 +118,7 @@ export default function PricingPage() {
 
         <section style={{ marginTop: 20, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 16, padding: 24 }}>
           <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#166534' }}>94% of Chicago parking tickets go uncontested.</p>
-          <p style={{ margin: '8px 0 0', fontSize: 20, fontWeight: 600, color: '#15803D' }}>But 68.5% of contested parking tickets win.</p>
+          <p style={{ margin: '8px 0 0', fontSize: 20, fontWeight: 600, color: '#15803D' }}>But 66% of contested parking tickets win.</p>
           <p style={{ margin: '12px 0 0', color: '#64748B', fontSize: 14 }}>Based on 2.66 million parking tickets and 35.7 million total records from Chicago FOIA data.</p>
         </section>
       </main>
