@@ -1,8 +1,8 @@
 {
   "name": "TicketlessChicagoMobile",
   "displayName": "Autopilot America",
-  "version": "2.0.6",
-  "buildNumber": "1",
+  "version": "2.0.7",
+  "buildNumber": "2",
   "bundleIdentifier": "fyi.ticketless.app",
   "description": "Peace of Mind Parking in Chicago. Automatic parking violation detection and alerts.",
   "author": "Autopilot America",
