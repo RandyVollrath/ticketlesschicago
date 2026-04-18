@@ -1108,9 +1108,15 @@ export default async function handler(
       addressNumberSource = 'segment_interpolation';
       console.log(`[check-parking] Display address from block-aware interpolation: ${finalAddress}`);
     }
-    // Log which source we ended up using for the house number.
+    // Log which source we ended up using for the house number + side-detection.
     const nm: Record<string, any> = diag.native_meta || {};
     nm.address_number_source = addressNumberSource;
+    nm.user_side_from_gps = userSideFromGps;           // 'L' | 'R' | null
+    nm.expected_parity = expectedParity;               // 'O' | 'E' | null
+    nm.snap_oneway_dir = snapResult?.onewayDir || null;
+    nm.snap_l_parity = snapResult?.lParity || null;
+    nm.snap_r_parity = snapResult?.rParity || null;
+    nm.building_constrained_match = buildingFootprintResult ? (expectedParity ? 'parity_constrained' : 'no_parity_constraint') : 'no_building_in_range';
     if (snapResult?.interpolatedNumber) {
       nm.interpolated_number = snapResult.interpolatedNumber;
       nm.segment_fraction = snapResult.segmentFraction;
