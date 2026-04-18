@@ -17,7 +17,7 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
 const LogEntrySchema = z.object({
   event: z.string(),                    // event type (e.g. parking_confirmed, trip_summary)
   ts: z.union([z.string(), z.number()]),// timestamp — NDJSON uses epoch ms (number), not ISO string
-  data: z.record(z.unknown()),          // full event payload
+  data: z.record(z.string(), z.unknown()),  // full event payload (Zod v4 requires key+value schemas)
   hash: z.string().min(8).max(64),      // client-side dedup hash
 });
 
