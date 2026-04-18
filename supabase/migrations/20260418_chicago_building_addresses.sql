@@ -36,13 +36,18 @@ COMMENT ON TABLE chicago_building_addresses IS
   'Chicago building footprint centroids with house numbers. Used by nearest_address_point() for precise house-number lookup during parking checks.';
 
 -- Finds the nearest building to a GPS point, optionally constrained to a
--- specific street (so we don't match the house across the street on the wrong
--- corner). Returns the building's house_number, full street, and distance.
+-- specific street AND to a specific address parity so we don't match a
+-- building across the street on the wrong side (common when one side of a
+-- street has addresses and the other is an alley/lot/garage with no
+-- registered buildings).
+DROP FUNCTION IF EXISTS nearest_address_point(DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT);
+
 CREATE OR REPLACE FUNCTION nearest_address_point(
   user_lat DOUBLE PRECISION,
   user_lng DOUBLE PRECISION,
   search_radius_meters DOUBLE PRECISION DEFAULT 25,
-  expected_street TEXT DEFAULT NULL     -- e.g. 'N WOLCOTT AVE' to restrict match
+  expected_street TEXT DEFAULT NULL,    -- e.g. 'N WOLCOTT AVE'
+  expected_parity TEXT DEFAULT NULL     -- 'O' (odd) or 'E' (even), from user's side
 )
 RETURNS TABLE (
   house_number INT,
@@ -52,6 +57,7 @@ RETURNS TABLE (
   street_type TEXT,
   distance_meters DOUBLE PRECISION
 ) AS $$
+#variable_conflict use_column
 BEGIN
   RETURN QUERY
   WITH user_point AS (
@@ -69,7 +75,12 @@ BEGIN
     AND a.full_street_name IS NOT NULL
     AND ST_DWithin(a.point::geography, up.pt::geography, search_radius_meters)
     AND (expected_street IS NULL OR a.full_street_name = expected_street)
-  ORDER BY a.point <-> up.pt    -- KNN index-assisted nearest-neighbor
+    AND (
+      expected_parity IS NULL
+      OR (expected_parity = 'O' AND a.house_number % 2 = 1)
+      OR (expected_parity = 'E' AND a.house_number % 2 = 0)
+    )
+  ORDER BY a.point <-> up.pt
   LIMIT 1;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
@@ -77,4 +88,4 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION nearest_address_point TO authenticated, anon;
 
 COMMENT ON FUNCTION nearest_address_point IS
-  'Finds the nearest Chicago building address to a GPS point, optionally constrained to a street name. Returns house_number and full_street_name.';
+  'Nearest Chicago building to a GPS point, constrained optionally by street and parity (so we do not match a wrong-side building when the correct side has no registered addresses).';

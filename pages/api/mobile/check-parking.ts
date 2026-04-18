@@ -418,6 +418,9 @@ export default async function handler(
 
     const shouldSnap = !accuracyMeters || accuracyMeters <= 75;
 
+    // Hoisted so downstream building-footprint parity constraint can read it.
+    let userSideFromGps: 'L' | 'R' | null = null;
+
     if (shouldSnap && supabaseAdmin) {
       try {
         // Use a search radius proportional to reported accuracy, clamped 25-50m
@@ -639,7 +642,6 @@ export default async function handler(
               // Then pick THAT side's address range and stretch it to the
               // full block when the next segment confirms a standard boundary.
               let interpolatedNumber: number | null = null;
-              let userSideFromGps: 'L' | 'R' | null = null;
               const frac = typeof bestCandidate.segment_fraction === 'number' ? bestCandidate.segment_fraction : null;
               const ranges = [
                 { from: bestCandidate.l_from_addr, to: bestCandidate.l_to_addr, side: 'L' as const },
@@ -920,7 +922,22 @@ export default async function handler(
     // house number (and its parity) flows into meter block-range lookup and
     // side-of-street parity check. Previously this ran after the meter check,
     // meaning meters got the less-accurate number from Nominatim/grid estimator.
+    //
+    // Parity constraint: if we know which side of the centerline the user is on
+    // (from GPS offset computed during interpolation above), and we know which
+    // parity lives on that side (from Chicago's L_PARITY / R_PARITY fields),
+    // then we restrict the building lookup to that parity. This prevents the
+    // "lone building across the street" failure where the nearest registered
+    // building is on the opposite side of the road and has the wrong parity
+    // (odd vs even), flipping downstream side-of-street detection.
     let buildingFootprintResult: any = null;
+    let expectedParity: 'O' | 'E' | null = null;
+    if (userSideFromGps === 'L' && snapResult?.lParity) {
+      expectedParity = (snapResult.lParity === 'E' ? 'E' : 'O');
+    } else if (userSideFromGps === 'R' && snapResult?.rParity) {
+      expectedParity = (snapResult.rParity === 'E' ? 'E' : 'O');
+    }
+
     if (snapResult?.streetName && supabaseAdmin) {
       try {
         const { data: bld, error: bldErr } = await supabaseAdmin.rpc('nearest_address_point', {
@@ -928,9 +945,17 @@ export default async function handler(
           user_lng: longitude,
           search_radius_meters: 25,
           expected_street: snapResult.streetName,
+          expected_parity: expectedParity,
         });
         if (!bldErr && bld && bld.length > 0 && bld[0].house_number > 0) {
           buildingFootprintResult = bld[0];
+          if (expectedParity) {
+            console.log(`[check-parking] Building lookup (parity-constrained to ${expectedParity}, user on ${userSideFromGps} side): ${bld[0].house_number} ${bld[0].full_street_name} (${bld[0].distance_meters.toFixed(1)}m)`);
+          } else {
+            console.log(`[check-parking] Building lookup (no parity constraint — insufficient GPS offset or missing parity data): ${bld[0].house_number} ${bld[0].full_street_name} (${bld[0].distance_meters.toFixed(1)}m)`);
+          }
+        } else if (expectedParity) {
+          console.log(`[check-parking] Building lookup: no ${expectedParity}-parity building within 25m on ${snapResult.streetName} — will fall back to segment interpolation`);
         }
       } catch (bldErr) {
         console.warn('[check-parking] Building footprint lookup failed (non-fatal):', bldErr);
