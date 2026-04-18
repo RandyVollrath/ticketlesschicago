@@ -456,54 +456,91 @@ export default async function handler(
           if (candidates.length > 0) {
             let bestCandidate = candidates[0]; // Default: closest
 
-            // ── TRAJECTORY-BASED DISAMBIGUATION ──
-            // If the car drove for a while before stopping, the recent GPS
-            // trajectory tells us exactly which street it was on. Snap each
-            // trajectory point to a street and tally votes — the winner
-            // overrides distance- and heading-based picking.
+            // ── TRAJECTORY-BASED DISAMBIGUATION (turn-aware) ──
+            // The car may have driven a long stretch on street A, then turned
+            // onto street B and parked seconds later. Voting across the whole
+            // trajectory would incorrectly pick A. We need to find the LAST
+            // constant-heading run (the post-turn segment) and vote only on
+            // those fixes — that's the actual parking street.
             //
-            // This is the strongest signal we have because it's N measurements
-            // of where the CAR was, not 1 measurement of where the phone's
-            // stop-time GPS landed (which might be near a cross street).
-            if (driveTrajectory.length >= 3 && candidates.length > 1 && supabaseAdmin) {
+            // Algorithm: walk backwards from the most recent driving fix.
+            // Keep accumulating fixes as long as each one's heading is within
+            // 30° of the previous. When a heading jump >30° appears, that's
+            // the turn; stop walking back. Vote with just the post-turn fixes.
+            if (driveTrajectory.length >= 2 && candidates.length > 1 && supabaseAdmin) {
               try {
-                const candidateNames = new Set(candidates.map((c: any) => c.street_name));
-                const snaps = await Promise.all(
-                  driveTrajectory.map(([plat, plng]) =>
-                    supabaseAdmin!.rpc('snap_to_nearest_street', {
-                      user_lat: plat, user_lng: plng, search_radius_meters: 25,
-                    }),
-                  ),
-                );
-                const votes = new Map<string, number>();
-                for (const snap of snaps) {
-                  const winner = (snap.data || []).filter((c: any) => c.was_snapped)[0];
-                  if (winner?.street_name && candidateNames.has(winner.street_name)) {
-                    votes.set(winner.street_name, (votes.get(winner.street_name) || 0) + 1);
+                // Build the post-turn segment (most recent consecutive fixes
+                // with consistent heading). Trajectory is oldest → newest.
+                const postTurn: Array<[number, number, number, number]> = [];
+                for (let i = driveTrajectory.length - 1; i >= 0; i--) {
+                  const curr = driveTrajectory[i];
+                  if (postTurn.length === 0) {
+                    postTurn.unshift(curr);
+                    continue;
+                  }
+                  const prev = postTurn[0];
+                  // Both must have valid headings (≥0) to compare
+                  if (prev[2] < 0 || curr[2] < 0) {
+                    postTurn.unshift(curr);
+                    continue;
+                  }
+                  const diff = Math.abs(prev[2] - curr[2]);
+                  const delta = Math.min(diff, 360 - diff);
+                  if (delta < 30) {
+                    postTurn.unshift(curr);
+                  } else {
+                    // Heading jump — turn detected. Older fixes are on the
+                    // previous street and irrelevant to the parking street.
+                    console.log(`[check-parking] Trajectory turn detected at fix ${i}: heading jumped ${delta.toFixed(0)}° (${curr[2].toFixed(0)}°→${prev[2].toFixed(0)}°). Using ${postTurn.length} post-turn fixes.`);
+                    break;
                   }
                 }
-                if (votes.size > 0) {
-                  const sorted = Array.from(votes.entries()).sort((a, b) => b[1] - a[1]);
-                  const [topStreet, topVotes] = sorted[0];
-                  const runnerUpVotes = sorted[1]?.[1] ?? 0;
-                  const marginRequired = Math.max(2, Math.ceil(driveTrajectory.length * 0.3));
-                  // Require a clear majority: at least marginRequired points AND
-                  // at least 2 more votes than the runner-up.
-                  if (topVotes >= marginRequired && topVotes - runnerUpVotes >= 2) {
-                    const trajWinner = candidates.find((c: any) => c.street_name === topStreet);
-                    if (trajWinner && trajWinner !== bestCandidate) {
-                      console.log(`[check-parking] Trajectory override: ${driveTrajectory.length} drive points, votes=${JSON.stringify(Object.fromEntries(votes))} → ${topStreet} wins over ${bestCandidate.street_name}`);
-                      bestCandidate = trajWinner;
-                      diag.trajectory_override = true;
-                      diag.trajectory_votes = Object.fromEntries(votes);
-                    } else if (trajWinner === bestCandidate) {
-                      console.log(`[check-parking] Trajectory confirms snap pick: ${topStreet} (${topVotes}/${driveTrajectory.length} points on street)`);
-                      diag.trajectory_confirmed = true;
-                      diag.trajectory_votes = Object.fromEntries(votes);
+
+                // Only run trajectory vote if we have ≥3 post-turn fixes.
+                // Fewer means we're in the turn-and-park-immediately edge
+                // case where trajectory isn't reliable — fall back to the
+                // heading disambiguation below.
+                if (postTurn.length >= 3) {
+                  const candidateNames = new Set(candidates.map((c: any) => c.street_name));
+                  const snaps = await Promise.all(
+                    postTurn.map(([plat, plng]) =>
+                      supabaseAdmin!.rpc('snap_to_nearest_street', {
+                        user_lat: plat, user_lng: plng, search_radius_meters: 25,
+                      }),
+                    ),
+                  );
+                  const votes = new Map<string, number>();
+                  for (const snap of snaps) {
+                    const winner = (snap.data || []).filter((c: any) => c.was_snapped)[0];
+                    if (winner?.street_name && candidateNames.has(winner.street_name)) {
+                      votes.set(winner.street_name, (votes.get(winner.street_name) || 0) + 1);
                     }
-                  } else {
-                    console.log(`[check-parking] Trajectory votes inconclusive: ${JSON.stringify(Object.fromEntries(votes))} (need ≥${marginRequired} and +2 margin)`);
                   }
+                  if (votes.size > 0) {
+                    const sorted = Array.from(votes.entries()).sort((a, b) => b[1] - a[1]);
+                    const [topStreet, topVotes] = sorted[0];
+                    const runnerUpVotes = sorted[1]?.[1] ?? 0;
+                    // Majority of post-turn fixes + clear lead
+                    if (topVotes >= Math.ceil(postTurn.length * 0.5) && topVotes - runnerUpVotes >= 1) {
+                      const trajWinner = candidates.find((c: any) => c.street_name === topStreet);
+                      if (trajWinner && trajWinner !== bestCandidate) {
+                        console.log(`[check-parking] Trajectory override: ${postTurn.length} post-turn points, votes=${JSON.stringify(Object.fromEntries(votes))} → ${topStreet} wins over ${bestCandidate.street_name}`);
+                        bestCandidate = trajWinner;
+                        diag.trajectory_override = true;
+                        diag.trajectory_votes = Object.fromEntries(votes);
+                        diag.trajectory_post_turn_len = postTurn.length;
+                      } else if (trajWinner === bestCandidate) {
+                        console.log(`[check-parking] Trajectory confirms snap pick: ${topStreet} (${topVotes}/${postTurn.length} post-turn points)`);
+                        diag.trajectory_confirmed = true;
+                        diag.trajectory_votes = Object.fromEntries(votes);
+                      }
+                    } else {
+                      console.log(`[check-parking] Trajectory votes inconclusive: ${JSON.stringify(Object.fromEntries(votes))}`);
+                    }
+                  }
+                } else {
+                  console.log(`[check-parking] Only ${postTurn.length} post-turn fixes — insufficient for trajectory vote, falling back to heading.`);
+                  diag.trajectory_post_turn_len = postTurn.length;
                 }
               } catch (trajErr) {
                 console.warn('[check-parking] Trajectory disambiguation failed (non-fatal):', trajErr);
