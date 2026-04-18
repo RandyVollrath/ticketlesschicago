@@ -9,13 +9,15 @@ import { capture } from '../lib/posthog';
 // user never converts.
 type Step =
   | 'intro' | 'lastname' | 'plate' | 'vehicle' | 'address' | 'mailing'
-  | 'registration' | 'tickets' | 'notifications' | 'value' | 'price'
-  | 'confirmed';
+  | 'tickets' | 'notifications' | 'value' | 'price'
+  | 'confirmed' | 'registration';
 
 const FUNNEL_STEPS: Step[] = [
   'intro', 'lastname', 'plate', 'vehicle', 'address', 'mailing',
-  'registration', 'tickets', 'notifications', 'value', 'price',
+  'tickets', 'notifications', 'value', 'price',
 ];
+
+const POST_PAYMENT_STEPS: Step[] = ['confirmed', 'registration'];
 
 const COLORS = {
   bg: '#FAFBFC',
@@ -277,7 +279,7 @@ export default function StartFunnel() {
   }, [step]);
 
   const stepIndex = FUNNEL_STEPS.indexOf(step);
-  const isPostPayment = step === 'confirmed';
+  const isPostPayment = POST_PAYMENT_STEPS.includes(step);
   const totalSteps = FUNNEL_STEPS.length;
   const progress = isPostPayment
     ? 100
@@ -368,11 +370,32 @@ export default function StartFunnel() {
     });
   };
 
-  const handleRegistrationSubmit = () => {
-    goNext({
-      city_sticker_expiry: cityStickerExpiry || null,
-      plate_expiry: plateExpiry || null,
-    });
+  const [savingRegistration, setSavingRegistration] = useState(false);
+  const handleRegistrationSubmit = async () => {
+    // Post-payment: save directly to user_profiles via authed API.
+    setSavingRegistration(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        await fetch('/api/autopilot/update-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            city_sticker_expiry: cityStickerExpiry || null,
+            plate_expiry: plateExpiry || null,
+          }),
+        });
+      }
+    } catch { /* non-fatal */ }
+    setSavingRegistration(false);
+    router.push('/welcome');
+  };
+
+  const handleSkipRegistration = () => {
+    router.push('/welcome');
   };
 
   const handleTicketsSubmit = () => {
@@ -537,7 +560,7 @@ export default function StartFunnel() {
         padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {stepIndex > 0 && step !== 'confirmed' && (
+          {stepIndex > 0 && !isPostPayment && (
             <button
               onClick={goBack}
               style={{
@@ -918,8 +941,10 @@ export default function StartFunnel() {
                 strengthens contest letters if you ever do get one.
               </ValueCallout>
 
-              <ContinueButton onClick={handleRegistrationSubmit}>Continue</ContinueButton>
-              <SkipButton onClick={handleRegistrationSubmit}>Skip — I&apos;ll add later</SkipButton>
+              <ContinueButton onClick={handleRegistrationSubmit} disabled={savingRegistration}>
+                {savingRegistration ? 'Saving...' : 'Save and finish'}
+              </ContinueButton>
+              <SkipButton onClick={handleSkipRegistration}>Skip — I&apos;ll add later in Settings</SkipButton>
             </StepContainer>
           )}
 
@@ -1206,9 +1231,12 @@ export default function StartFunnel() {
                 </div>
               </div>
 
-              <ContinueButton onClick={() => router.push('/welcome')}>
-                Go to my dashboard
+              <ContinueButton onClick={() => setStep('registration')}>
+                One more thing — your registration dates
               </ContinueButton>
+              <SkipButton onClick={() => router.push('/welcome')}>
+                Skip — I&apos;ll add later in Settings
+              </SkipButton>
             </StepContainer>
           )}
 
