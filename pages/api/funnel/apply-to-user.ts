@@ -9,14 +9,25 @@ const supabaseAdmin = createClient(
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const PROFILE_FIELDS = [
-  'first_name', 'last_name', 'phone_number',
-  'license_plate', 'license_state',
-  'vehicle_make', 'vehicle_model', 'vehicle_color', 'vehicle_year',
-  'home_address_full',
-  'mailing_address', 'mailing_city', 'mailing_state', 'mailing_zip',
-  'city_sticker_expiry', 'plate_expiry',
-];
+// Map: funnel_leads column → user_profiles column. Most are 1:1.
+const PROFILE_FIELD_MAP: Record<string, string> = {
+  first_name: 'first_name',
+  last_name: 'last_name',
+  phone_number: 'phone_number',
+  license_plate: 'license_plate',
+  license_state: 'license_state',
+  vehicle_make: 'vehicle_make',
+  vehicle_model: 'vehicle_model',
+  vehicle_color: 'vehicle_color',
+  vehicle_year: 'vehicle_year',
+  home_address_full: 'home_address_full',
+  mailing_address: 'mailing_address',
+  mailing_city: 'mailing_city',
+  mailing_state: 'mailing_state',
+  mailing_zip: 'mailing_zip',
+  city_sticker_expiry: 'city_sticker_expiry',
+  plate_expiry: 'license_plate_expiry',
+};
 
 const SETTINGS_FIELDS = [
   'allowed_ticket_types',
@@ -68,9 +79,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Build profile patch
     const profileUpdates: Record<string, any> = { user_id: userId };
-    for (const f of PROFILE_FIELDS) {
-      if (lead[f] !== null && lead[f] !== undefined && lead[f] !== '') {
-        profileUpdates[f] = lead[f];
+    for (const [leadCol, profileCol] of Object.entries(PROFILE_FIELD_MAP)) {
+      const v = lead[leadCol];
+      if (v !== null && v !== undefined && v !== '') {
+        profileUpdates[profileCol] = v;
       }
     }
     if (authUser.email && !profileUpdates.email) {

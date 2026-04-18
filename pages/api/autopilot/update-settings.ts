@@ -49,7 +49,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       license_state,
       city_sticker_expiry,
       plate_expiry,
+      license_plate_expiry,
     } = req.body;
+    // Accept either name; the real column is license_plate_expiry.
+    const plateExpiryValue = license_plate_expiry ?? plate_expiry;
 
     // ── Update autopilot_settings (ticket types + notifications) ──
     const settingsUpdates: Record<string, any> = {};
@@ -105,8 +108,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (typeof city_sticker_expiry === 'string' && city_sticker_expiry) {
       profileUpdates.city_sticker_expiry = city_sticker_expiry;
     }
-    if (typeof plate_expiry === 'string' && plate_expiry) {
-      profileUpdates.plate_expiry = plate_expiry;
+    if (typeof plateExpiryValue === 'string' && plateExpiryValue) {
+      profileUpdates.license_plate_expiry = plateExpiryValue;
     }
     if (typeof mailing_address === 'string' && mailing_address.trim()) {
       profileUpdates.mailing_address = mailing_address.trim();
