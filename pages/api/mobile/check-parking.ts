@@ -975,20 +975,35 @@ export default async function handler(
       }
     }
 
-    // If the snap delivered a block address range, override the house number
-    // with the interpolated one. That's more precise than Nominatim's
-    // guess-at-this-lat/lng number and much more precise than the grid
-    // estimator's ±50-number linear approximation.
-    let finalAddress = result.location.address;
-    if (snapResult?.interpolatedNumber && result.location.streetName) {
-      // Reuse result.location.streetName if it was normalized (e.g. "N WOLCOTT AVE");
-      // otherwise fall back to the snap's raw street_name.
-      const streetForDisplay = result.location.streetName;
-      // Extract zip from the existing formatted address if present.
-      const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
-      const zip = zipMatch ? ` ${zipMatch[1]}` : '';
-      finalAddress = `${snapResult.interpolatedNumber} ${streetForDisplay}, Chicago, IL${zip}`;
-      console.log(`[check-parking] Address override via interpolation: was "${result.location.address}" → "${finalAddress}"`);
+    // Use whatever house number the unified-parking-checker already produced
+    // (Nominatim's number or the grid estimator's number).
+    //
+    // We compute an interpolated number from the snap segment's address range
+    // and stash it in diag.native_meta for comparison — do NOT override the
+    // user-visible address with it. Reason: Chicago's centerline GeoJSON often
+    // has segments whose address ranges STOP SHORT of the physical intersection
+    // (e.g. Randy's 4700-block Wolcott segment has range 4700-4758 while the
+    // actual road runs from Leland at 4700 up to Lawrence at 4800 — the
+    // 4759-4798 addresses have no segment coverage). When a parking spot sits
+    // in that gap, interpolating along the 4700-segment produces a number like
+    // 4752 that's far below the true address. The latitude-based grid
+    // estimator extrapolates past segment ends and produces a better number in
+    // those cases.
+    //
+    // Correct fix (future): detect the gap case (frac > 0.9 AND next segment's
+    // low address > this segment's high address by more than 2) and fall back
+    // to the grid estimator in that window. For now, always defer to what
+    // unified-parking-checker computed.
+    const finalAddress = result.location.address;
+    if (snapResult?.interpolatedNumber) {
+      const nm: Record<string, any> = diag.native_meta || {};
+      nm.interpolated_number = snapResult.interpolatedNumber;
+      nm.segment_fraction = snapResult.segmentFraction;
+      nm.segment_l_range = snapResult.lFromAddr != null ? [snapResult.lFromAddr, snapResult.lToAddr] : null;
+      nm.segment_r_range = snapResult.rFromAddr != null ? [snapResult.rFromAddr, snapResult.rToAddr] : null;
+      nm.displayed_address = result.location.address;
+      diag.native_meta = nm;
+      console.log(`[check-parking] Interpolation candidate: ${snapResult.interpolatedNumber} on ${snapResult.streetName} (L=${snapResult.lFromAddr}-${snapResult.lToAddr} R=${snapResult.rFromAddr}-${snapResult.rToAddr}, frac=${snapResult.segmentFraction?.toFixed(3)}) — NOT using as display number, keeping unified-checker's "${result.location.address}"`);
     }
 
     // Transform to mobile API response format
