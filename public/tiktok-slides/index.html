@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TikTok Slides</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0f172a; color: #fff; font-family: -apple-system, sans-serif; padding: 20px; }
+h1 { font-size: 20px; margin-bottom: 4px; }
+h2 { font-size: 16px; color: #94a3b8; margin: 32px 0 8px; }
+p.hint { font-size: 13px; color: #64748b; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.grid img { width: 100%; border-radius: 8px; border: 1px solid #1e293b; }
+a { color: #10b981; }
+.dl { display: inline-block; padding: 12px 24px; background: #10b981; color: #0f172a; font-weight: 700; font-size: 15px; border-radius: 8px; text-decoration: none; margin: 8px 4px 16px 0; cursor: pointer; border: none; }
+.dl-small { padding: 8px 14px; font-size: 13px; background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+.dl:active { opacity: 0.7; }
+.dl:disabled { opacity: 0.5; cursor: wait; }
+.sep { border: none; height: 1px; background: #1e293b; margin: 8px 0; }
+</style>
+</head><body>
+<h1>TikTok Slides</h1>
+<p class="hint">61 slides across 10 videos. Tap a button to download, or long-press images to save individually.</p>
+<button class="dl" id="dlAll" onclick="downloadAll()">Download All 10 Videos</button>
+<hr class="sep">
+<div id="content"></div>
+<script>
+const videos = [
+  { name: 'video01_420million', title: '1. $420 Million', slides: 7 },
+  { name: 'video02_one_camera', title: '2. One Camera, 94K Tickets', slides: 6 },
+  { name: 'video03_66pct_dismissed', title: '3. 66% Get Dismissed', slides: 7 },
+  { name: 'video04_356_vs_99', title: '4. $356 vs $99', slides: 6 },
+  { name: 'video05_dont_pay', title: "5. Don't Pay = $894M Owed", slides: 6 },
+  { name: 'video06_street_cleaning', title: '6. Street Cleaning Season', slides: 6 },
+  { name: 'video07_western_ave', title: '7. Western Ave Camera', slides: 5 },
+  { name: 'video08_i_foiad_the_city', title: "8. I FOIA'd the City", slides: 7 },
+  { name: 'video09_200_mistake', title: '9. The $200 Mistake', slides: 6 },
+  { name: 'video10_check_your_block', title: '10. Check Your Block', slides: 5 },
+];
+
+function getSlideUrl(video, num) {
+  return '/tiktok-slides/' + video + '/slide' + String(num).padStart(2, '0') + '.png';
+}
+
+// Render gallery
+const el = document.getElementById('content');
+videos.forEach((v, vi) => {
+  let html = '<h2>' + v.title + '</h2>';
+  html += '<button class="dl dl-small" onclick="downloadVideo(' + vi + ', this)">Download this video (' + v.slides + ' slides)</button>';
+  html += '<div class="grid">';
+  for (let i = 1; i <= v.slides; i++) {
+    const url = getSlideUrl(v.name, i);
+    html += '<a href="' + url + '" target="_blank"><img src="' + url + '" loading="lazy" alt="Slide ' + i + '"></a>';
+  }
+  html += '</div>';
+  el.innerHTML += html;
+});
+
+async function fetchBlob(url) {
+  const r = await fetch(url);
+  return r.blob();
+}
+
+async function downloadVideo(idx, btn) {
+  const v = videos[idx];
+  const orig = btn.textContent;
+  btn.textContent = 'Zipping...';
+  btn.disabled = true;
+  try {
+    const zip = new JSZip();
+    const folder = zip.folder(v.name);
+    for (let i = 1; i <= v.slides; i++) {
+      const url = getSlideUrl(v.name, i);
+      const blob = await fetchBlob(url);
+      folder.file('slide' + String(i).padStart(2, '0') + '.png', blob);
+    }
+    const content = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = v.name + '.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch(e) { alert('Download failed: ' + e.message); }
+  btn.textContent = orig;
+  btn.disabled = false;
+}
+
+async function downloadAll() {
+  const btn = document.getElementById('dlAll');
+  btn.textContent = 'Zipping all slides...';
+  btn.disabled = true;
+  try {
+    const zip = new JSZip();
+    for (const v of videos) {
+      const folder = zip.folder(v.name);
+      for (let i = 1; i <= v.slides; i++) {
+        const url = getSlideUrl(v.name, i);
+        const blob = await fetchBlob(url);
+        folder.file('slide' + String(i).padStart(2, '0') + '.png', blob);
+      }
+      btn.textContent = 'Zipping... (' + (videos.indexOf(v) + 1) + '/10)';
+    }
+    const content = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = 'all_tiktok_slides.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch(e) { alert('Download failed: ' + e.message); }
+  btn.textContent = 'Download All 10 Videos';
+  btn.disabled = false;
+}
+</script>
+</body></html>

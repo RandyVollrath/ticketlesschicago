@@ -1,0 +1,82 @@
+{
+  "scenes": [
+    {
+      "type": "slideshow",
+      "props": {
+        "slides": [
+          {
+            "text": "We FOIA'd the City of Chicago\nand got the REAL dismissal rates\nfor every parking ticket type.",
+            "subtext": "35.7 million ticket records. Here's what we found.",
+            "fontSize": 48
+          },
+          {
+            "text": "Expired Plates\n89% get dismissed",
+            "subtext": "$60 fine · contest to win",
+            "highlight": "89%",
+            "fontSize": 52,
+            "accentColor": "#00e676"
+          },
+          {
+            "text": "No City Sticker\n85% get dismissed",
+            "subtext": "$200 fine · contest to win",
+            "highlight": "85%",
+            "fontSize": 52,
+            "accentColor": "#00e676"
+          },
+          {
+            "text": "Disabled Parking Zone\n72% get dismissed",
+            "subtext": "$250 fine · contest to win",
+            "highlight": "72%",
+            "fontSize": 52,
+            "accentColor": "#00e676"
+          },
+          {
+            "text": "Expired Meter (CBD)\n68% get dismissed",
+            "subtext": "$70 fine · contest to win",
+            "highlight": "68%",
+            "fontSize": 52,
+            "accentColor": "#00e676"
+          },
+          {
+            "text": "Expired Meter\n66% get dismissed",
+            "subtext": "$50 fine · contest to win",
+            "highlight": "66%",
+            "fontSize": 52,
+            "accentColor": "#00e676"
+          },
+          {
+            "text": "Residential Permit\n52% get dismissed",
+            "subtext": "$75 fine · contest to win",
+            "highlight": "52%",
+            "fontSize": 52,
+            "accentColor": "#ffd700"
+          },
+          {
+            "text": "Street Cleaning\n30% get dismissed",
+            "subtext": "$60 fine · contest to win",
+            "highlight": "30%",
+            "fontSize": 52,
+            "accentColor": "#ff6b2b"
+          },
+          {
+            "text": "94% of people never contest.\nThe city is counting on that.",
+            "highlight": "94%",
+            "fontSize": 52,
+            "accentColor": "#ff1a1a"
+          },
+          {
+            "text": "We contest your tickets automatically.\n$99/year. Link in bio.",
+            "highlight": "$99/year",
+            "fontSize": 50,
+            "accentColor": "#00e676"
+          }
+        ],
+        "accentColor": "#00e676",
+        "sourceLabel": "Source: Chicago FOIA data, 35.7M records"
+      },
+      "durationFrames": 900
+    }
+  ],
+  "musicFile": "audio/bg-music.mp3",
+  "musicVolume": 0.1
+}

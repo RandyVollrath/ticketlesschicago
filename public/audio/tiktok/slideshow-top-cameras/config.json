@@ -1,0 +1,87 @@
+{
+  "scenes": [
+    {
+      "type": "slideshow",
+      "props": {
+        "slides": [
+          {
+            "text": "The 8 worst speed cameras\nin Chicago",
+            "subtext": "Ranked by total tickets issued. Real FOIA data.",
+            "fontSize": 52
+          },
+          {
+            "text": "#1: 445 W 127TH",
+            "subtext": "478,264 tickets · $18.5M in fines",
+            "highlight": "478,264",
+            "fontSize": 44,
+            "accentColor": "#ff1a1a"
+          },
+          {
+            "text": "#2: 536 E MORGAN DR",
+            "subtext": "472,335 tickets · $16.7M in fines",
+            "highlight": "472,335",
+            "fontSize": 44,
+            "accentColor": "#ff1a1a"
+          },
+          {
+            "text": "#3: 4909 N CICERO AVE",
+            "subtext": "449,131 tickets · $14.0M in fines",
+            "highlight": "449,131",
+            "fontSize": 44,
+            "accentColor": "#ff1a1a"
+          },
+          {
+            "text": "#4: 4124 W FOSTER AVE",
+            "subtext": "363,389 tickets · $12.0M in fines",
+            "highlight": "363,389",
+            "fontSize": 44,
+            "accentColor": "#ff1a1a"
+          },
+          {
+            "text": "#5: 2705 W IRVING PARK",
+            "subtext": "357,684 tickets · $12.0M in fines",
+            "highlight": "357,684",
+            "fontSize": 44,
+            "accentColor": "#ff1a1a"
+          },
+          {
+            "text": "#6: 2900 W OGDEN",
+            "subtext": "326,586 tickets · $11.9M in fines",
+            "highlight": "326,586",
+            "fontSize": 44,
+            "accentColor": "#ff1a1a"
+          },
+          {
+            "text": "#7: 8020 W FOREST PRESERVE AV",
+            "subtext": "324,184 tickets · $10.9M in fines",
+            "highlight": "324,184",
+            "fontSize": 44,
+            "accentColor": "#ff1a1a"
+          },
+          {
+            "text": "#8: 10318 S INDIANAPOLIS",
+            "subtext": "323,746 tickets · $12.6M in fines",
+            "highlight": "323,746",
+            "fontSize": 44,
+            "accentColor": "#ff1a1a"
+          },
+          {
+            "text": "We alert you before every camera.\n$99/year. Link in bio.",
+            "highlight": "every camera",
+            "fontSize": 50,
+            "accentColor": "#00e676"
+          }
+        ],
+        "accentColor": "#ff1a1a",
+        "sourceLabel": "Source: Chicago FOIA data",
+        "particleColors": [
+          "#ff1a1a",
+          "#ff6b2b"
+        ]
+      },
+      "durationFrames": 1050
+    }
+  ],
+  "musicFile": "audio/bg-music.mp3",
+  "musicVolume": 0.1
+}

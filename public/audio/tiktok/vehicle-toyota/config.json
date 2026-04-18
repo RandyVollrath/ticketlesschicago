@@ -1,0 +1,49 @@
+{
+  "scenes": [
+    {
+      "type": "big-number",
+      "props": {
+        "preText": "If you drive a Toyota in Chicago",
+        "number": "$142M",
+        "postText": "in fines charged to Toyota drivers",
+        "subText": "1,863,207 tickets total",
+        "color": "#ff1a1a",
+        "glitch": true
+      },
+      "durationFrames": 300
+    },
+    {
+      "type": "stat-stack",
+      "props": {
+        "stats": [
+          {
+            "number": "1,863,207",
+            "label": "Toyota tickets issued",
+            "color": "#ff6b2b"
+          },
+          {
+            "number": "$142M",
+            "label": "in fines",
+            "color": "#ff1a1a"
+          },
+          {
+            "number": "66%",
+            "label": "get dismissed when contested",
+            "color": "#00e676"
+          }
+        ]
+      },
+      "durationFrames": 330
+    },
+    {
+      "type": "cta",
+      "props": {
+        "headline": "Toyota drivers, protect yourself",
+        "headlineSub": "before the next ticket hits"
+      },
+      "durationFrames": 240
+    }
+  ],
+  "musicFile": "audio/bg-music.mp3",
+  "musicVolume": 0.1
+}

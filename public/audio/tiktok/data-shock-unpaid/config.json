@@ -1,0 +1,42 @@
+{
+  "scenes": [
+    {
+      "type": "big-number",
+      "props": {
+        "preText": "Chicago drivers currently owe",
+        "number": "$1220M",
+        "postText": "in unpaid tickets",
+        "subText": "And 44,000 cars got booted last year",
+        "color": "#ff1a1a",
+        "glitch": true
+      },
+      "durationFrames": 465,
+      "voFile": "audio/tiktok/data-shock-unpaid/vo-0.mp3"
+    },
+    {
+      "type": "two-stat",
+      "props": {
+        "stat1Label": "Cars booted in 2025",
+        "stat1Number": "44,014",
+        "stat1Sub": "that's 120 boots per day",
+        "stat1Color": "#ff6b2b",
+        "stat2Label": "Average boot release fee",
+        "stat2Number": "$500+",
+        "stat2Sub": "plus towing if you don't pay fast",
+        "stat2Color": "#ff1a1a",
+        "kicker": "One unpaid ticket can snowball into hundreds in fees."
+      },
+      "durationFrames": 420
+    },
+    {
+      "type": "cta",
+      "props": {
+        "headline": "We scan your plate twice a week",
+        "headlineSub": "so you never miss a ticket"
+      },
+      "durationFrames": 240
+    }
+  ],
+  "musicFile": "audio/bg-music.mp3",
+  "musicVolume": 0.1
+}
