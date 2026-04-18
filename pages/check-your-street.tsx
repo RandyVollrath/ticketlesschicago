@@ -812,35 +812,102 @@ export default function CheckYourStreet() {
             </div>
 
             {/* === UPCOMING CLEANING DATES === */}
-            {cleaningDates.length > 0 && (
-              <div style={{
-                backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px',
-                padding: '20px 24px', marginBottom: '16px',
-              }}>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: COLORS.graphite, marginBottom: '12px', fontFamily: '"Space Grotesk", sans-serif' }}>
-                  Upcoming Cleaning Dates
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '6px' }}>
-                  {cleaningDates.slice(0, 12).map((d) => {
-                    const today = new Date().toISOString().split('T')[0]
-                    const isToday = d === today
-                    const dateObj = new Date(d + 'T00:00:00Z')
-                    const soon = !isToday && (dateObj.getTime() - new Date().setHours(0,0,0,0)) <= 3 * 86400000 && dateObj.getTime() >= new Date().setHours(0,0,0,0)
-                    const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
-                    return (
-                      <div key={d} style={{
-                        padding: '8px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: isToday ? '700' : '500',
-                        backgroundColor: isToday ? 'rgba(239,68,68,0.08)' : soon ? 'rgba(245,158,11,0.06)' : '#f8fafc',
-                        color: isToday ? COLORS.danger : soon ? '#b45309' : COLORS.graphite,
-                        border: isToday ? `1px solid ${COLORS.danger}30` : soon ? '1px solid rgba(245,158,11,0.2)' : `1px solid ${COLORS.border}`,
-                      }}>
-                        {formatted}{isToday ? ' — TODAY' : ''}
+            {cleaningDates.length > 0 && (() => {
+              const today = new Date().toISOString().split('T')[0]
+              const dates = cleaningDates.slice(0, 12)
+
+              return (
+                <div style={{
+                  backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '16px',
+                  overflow: 'hidden', marginBottom: '16px',
+                }}>
+                  <div style={{
+                    padding: '16px 24px', borderBottom: `1px solid ${COLORS.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
+                        Cleaning Schedule
                       </div>
-                    )
-                  })}
+                      <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '2px' }}>
+                        Ward {searchResult.ward}, Section {searchResult.section} — next {dates.length} dates
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '600',
+                      backgroundColor: 'rgba(37,99,235,0.08)', color: COLORS.regulatory,
+                    }}>
+                      Apr–Nov
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '8px 12px' }}>
+                    {dates.map((d, i) => {
+                      const isToday = d === today
+                      const dateObj = new Date(d + 'T00:00:00Z')
+                      const nowMs = new Date().setHours(0,0,0,0)
+                      const diffDays = Math.round((dateObj.getTime() - nowMs) / 86400000)
+                      const soon = !isToday && diffDays >= 1 && diffDays <= 3
+                      const past = diffDays < 0
+
+                      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })
+                      const monthDay = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+
+                      const dotColor = isToday ? COLORS.danger : soon ? COLORS.warning : past ? COLORS.slate : COLORS.signal
+
+                      return (
+                        <div key={d} style={{
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          padding: '10px 12px', borderRadius: '8px',
+                          backgroundColor: isToday ? 'rgba(239,68,68,0.05)' : i % 2 === 0 ? 'transparent' : '#fafbfc',
+                          borderLeft: isToday ? `3px solid ${COLORS.danger}` : '3px solid transparent',
+                        }}>
+                          {/* Status dot */}
+                          <div style={{
+                            width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+                            backgroundColor: dotColor,
+                          }} />
+
+                          {/* Day name */}
+                          <div style={{
+                            width: '36px', fontSize: '13px', fontWeight: '600',
+                            color: isToday ? COLORS.danger : COLORS.slate,
+                          }}>
+                            {dayName}
+                          </div>
+
+                          {/* Date */}
+                          <div style={{
+                            fontSize: '14px', fontWeight: isToday ? '700' : '500',
+                            color: isToday ? COLORS.danger : COLORS.graphite, flex: 1,
+                          }}>
+                            {monthDay}
+                          </div>
+
+                          {/* Badge */}
+                          {isToday && (
+                            <span style={{
+                              padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700',
+                              backgroundColor: COLORS.danger, color: 'white', letterSpacing: '0.03em',
+                            }}>
+                              TODAY
+                            </span>
+                          )}
+                          {soon && (
+                            <span style={{
+                              padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                              backgroundColor: 'rgba(245,158,11,0.1)', color: '#b45309',
+                            }}>
+                              {diffDays === 1 ? 'Tomorrow' : `${diffDays} days`}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {/* === TRIP CHECKER (expandable) === */}
             {tripExpanded && searchResult.nextCleaningDate && (
