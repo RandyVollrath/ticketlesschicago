@@ -32,7 +32,7 @@ const LAYER_COLORS = {
 const PERMIT_COLORS = {
   both: '#475569',
   odd: '#2563EB',
-  even: '#EA580C',
+  even: '#F59E0B',  // amber — distinct from red (cleaning today)
 };
 
 // --- Parkability colors ---
@@ -299,7 +299,7 @@ export default function DestinationMapView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const [legendCollapsed, setLegendCollapsed] = useState(true);
   const [parkabilityMode, setParkabilityMode] = useState(true);
   const touchStartY = useRef(0);
   const touchMoved = useRef(false);
@@ -1129,6 +1129,10 @@ export default function DestinationMapView() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '18px', height: '3px', borderTop: `3px dashed ${PERMIT_COLORS.even}`, flexShrink: 0 }} />
                     <span style={{ color: '#374151' }}>Permit even side</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '18px', height: '3px', borderTop: `3px solid ${PERMIT_COLORS.both}`, flexShrink: 0 }} />
+                    <span style={{ color: '#374151' }}>Permit both sides</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.meter, borderRadius: '50%', flexShrink: 0 }} />

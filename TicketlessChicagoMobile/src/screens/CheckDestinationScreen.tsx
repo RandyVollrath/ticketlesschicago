@@ -188,7 +188,8 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           severity = 'info';
           message = `Street cleaning ${dateStr} (${diffDays} days)`;
         } else {
-          message = `Next cleaning: ${dateStr}`;
+          severity = 'info';
+          message = `Next cleaning: ${dateStr} (${diffDays} days away)`;
         }
 
         result.streetCleaning = {
