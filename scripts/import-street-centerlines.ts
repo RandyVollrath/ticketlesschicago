@@ -218,6 +218,18 @@ interface InsertRow {
   class: string | null;
   source: string;
   geom: string;  // EWKT
+  // Address ranges from Chicago's GeoJSON per segment. OSM-sourced rows leave
+  // these null (OSM doesn't have per-segment address ranges in Chicago).
+  l_from_addr: number | null;
+  l_to_addr: number | null;
+  r_from_addr: number | null;
+  r_to_addr: number | null;
+}
+
+function parseAddr(v: unknown): number | null {
+  if (v == null) return null;
+  const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 async function insertBatch(rows: InsertRow[]): Promise<number> {
@@ -291,6 +303,10 @@ async function main() {
       class: feature.properties.CLASS?.toString() || null,
       source: 'chicago_open_data',
       geom: wkt,
+      l_from_addr: parseAddr(feature.properties.L_F_ADD),
+      l_to_addr:   parseAddr(feature.properties.L_T_ADD),
+      r_from_addr: parseAddr(feature.properties.R_F_ADD),
+      r_to_addr:   parseAddr(feature.properties.R_T_ADD),
     });
 
     if (chicagoBatch.length >= BATCH_SIZE) {
@@ -344,6 +360,10 @@ async function main() {
       class: null,
       source: 'osm',
       geom: wkt,
+      l_from_addr: null,
+      l_to_addr: null,
+      r_from_addr: null,
+      r_to_addr: null,
     });
 
     if (osmBatch.length >= BATCH_SIZE) {

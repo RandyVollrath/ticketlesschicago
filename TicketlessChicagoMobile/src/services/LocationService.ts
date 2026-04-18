@@ -844,6 +844,26 @@ class LocationServiceClass {
     const locationSourceParam = anyCoords.locationSource ? `&location_source=${encodeURIComponent(anyCoords.locationSource)}` : '';
     const detectionSourceParam = anyCoords.detectionSource ? `&detection_source=${encodeURIComponent(anyCoords.detectionSource)}` : '';
     const drivingDurationParam = typeof anyCoords.drivingDurationSec === 'number' ? `&driving_duration_sec=${anyCoords.drivingDurationSec.toFixed(0)}` : '';
+
+    // Drive trajectory — last N GPS fixes while the car was actually moving.
+    // This is the self-correction signal: if the car was on Wolcott for 6 blocks
+    // before stopping, every point in the trajectory will sit on Wolcott's
+    // centerline, not Lawrence's. Server uses this to disambiguate between
+    // candidate streets when the stop coords are close to multiple.
+    // Compact format [[lat,lng,heading,speed],...] — up to ~10 points, URL-safe size.
+    let trajectoryParam = '';
+    if (Array.isArray(anyCoords.driveTrajectory) && anyCoords.driveTrajectory.length > 0) {
+      const compact = anyCoords.driveTrajectory
+        .slice(-10) // Last 10 points
+        .map((p: any) => [
+          Number(p.latitude?.toFixed(6) ?? 0),
+          Number(p.longitude?.toFixed(6) ?? 0),
+          Number(p.heading?.toFixed(0) ?? -1),
+          Number(p.speed?.toFixed(1) ?? 0),
+        ]);
+      trajectoryParam = `&drive_trajectory=${encodeURIComponent(JSON.stringify(compact))}`;
+    }
+
     // Distance (in meters) the user had walked from the previously-saved parking
     // location by the time this check fires. High values mean stop_start anchor
     // held but user walked off; combined with native locationSource it tells us
@@ -851,7 +871,7 @@ class LocationServiceClass {
     // Name: "distance" not "meters" to avoid confusion with paid parking meters.
     const driftParam = typeof anyCoords.driftFromParkingMeters === 'number' ? `&drift_from_parking_distance=${anyCoords.driftFromParkingMeters.toFixed(1)}` : '';
     const nativeTimestampParam = typeof anyCoords.nativeTimestamp === 'number' ? `&native_ts=${anyCoords.nativeTimestamp}` : '';
-    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}`;
+    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}${trajectoryParam}`;
 
     // Use rate-limited request with caching
     const response = await RateLimiter.rateLimitedRequest(

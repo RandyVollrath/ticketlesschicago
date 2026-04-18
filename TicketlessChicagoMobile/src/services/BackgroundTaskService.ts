@@ -1880,7 +1880,21 @@ class BackgroundTaskServiceClass {
       // Attach native detection metadata so the server can record which capture
       // path produced these coords (stop_start vs last_driving vs current_fallback),
       // how long driving lasted, and how far the user walked from the saved spot.
-      // This is purely diagnostic passthrough — the server stores it verbatim.
+      //
+      // Also attach the recent driving GPS trajectory — the self-correction signal.
+      // When the stop coords are close to multiple streets, the server can see that
+      // all the last-minute-of-driving points were on Wolcott's centerline, not
+      // Lawrence's, and pick Wolcott. Buffer is cleared on DRIVING → PARKED, so
+      // we capture it here before any reset.
+      const now = Date.now();
+      const freshTrajectory = this.drivingGpsBuffer
+        .filter((p) => now - p.timestamp <= this.DRIVING_GPS_BUFFER_MAX_AGE_MS)
+        .map((p) => ({
+          latitude: p.latitude,
+          longitude: p.longitude,
+          heading: p.heading,
+          speed: p.speed,
+        }));
       const coordsWithMeta: any = {
         ...coords,
         locationSource: detectionMeta?.locationSource,
@@ -1888,6 +1902,7 @@ class BackgroundTaskServiceClass {
         drivingDurationSec: detectionMeta?.drivingDurationSec,
         nativeTimestamp: detectionMeta?.nativeTimestamp,
         driftFromParkingMeters: (presetCoords as any)?.driftFromParkingMeters,
+        driveTrajectory: freshTrajectory,
       };
 
       // Check parking rules
