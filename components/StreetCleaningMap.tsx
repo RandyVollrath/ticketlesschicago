@@ -454,80 +454,70 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
       }
 
       // Zoom to user's zone when a search result is available
+      // This runs synchronously after all layers are added above, so the map is ready
       if (triggerPopup && data.length > 0) {
-        // Use requestAnimationFrame + short delay for reliable zoom after render
-        requestAnimationFrame(() => {
+        const targetFeature = data.find(feature =>
+          String(feature.properties?.ward) === String(triggerPopup.ward) &&
+          String(feature.properties?.section) === String(triggerPopup.section)
+        );
+
+        if (targetFeature && targetFeature.geometry) {
+          // Fit the map to the zone's bounds
+          const geoLayer = L.geoJSON(targetFeature.geometry);
+          const bounds = geoLayer.getBounds();
+          if (bounds.isValid()) {
+            mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+          }
+
+          // Open popup at center with cleaning status
+          const center = bounds.getCenter();
+          const props = targetFeature.properties;
+          const statusLabel = props?.cleaningStatus === 'today' ? 'Cleaning TODAY'
+            : props?.cleaningStatus === 'soon' ? 'Cleaning in 1-3 days'
+            : props?.cleaningStatus === 'later' ? 'Cleaning scheduled'
+            : 'No schedule';
+          const statusColor = props?.cleaningStatus === 'today' ? '#dc3545'
+            : props?.cleaningStatus === 'soon' ? '#c79100'
+            : props?.cleaningStatus === 'later' ? '#1e7e34'
+            : '#6c757d';
+
+          let dateHtml = '';
+          if (props?.nextCleaningDateISO) {
+            try {
+              const dateObj = new Date(props.nextCleaningDateISO + 'T00:00:00Z');
+              const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+              dateHtml = `<div style="color: ${statusColor}; font-weight: 600; margin-top: 4px;">${formatted}</div>`;
+            } catch {}
+          }
+
+          const popupContent = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
+              <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                <div style="background: #f8fafc; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #374151; font-size: 13px;">
+                  <span style="font-size: 11px; color: #6b7280; display: block;">Ward</span>
+                  ${props?.ward || 'N/A'}
+                </div>
+                <div style="background: #f8fafc; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #374151; font-size: 13px;">
+                  <span style="font-size: 11px; color: #6b7280; display: block;">Section</span>
+                  ${props?.section || 'N/A'}
+                </div>
+              </div>
+              <div style="font-size: 13px; font-weight: 600; color: ${statusColor};">${statusLabel}</div>
+              ${dateHtml}
+            </div>
+          `;
+
+          // Small delay for popup so fitBounds animation completes
           setTimeout(() => {
             if (!mapInstanceRef.current) return;
-
-            const targetFeature = data.find(feature =>
-              String(feature.properties?.ward) === String(triggerPopup.ward) &&
-              String(feature.properties?.section) === String(triggerPopup.section)
-            );
-
-            if (targetFeature && targetFeature.geometry) {
-              // Fit the map to the zone's bounds instead of a fixed zoom level
-              const geoLayer = L.geoJSON(targetFeature.geometry);
-              const bounds = geoLayer.getBounds();
-              if (bounds.isValid()) {
-                mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
-              }
-
-              // Open popup at center
-              const center = bounds.getCenter();
-              const props = targetFeature.properties;
-              const statusLabel = props?.cleaningStatus === 'today' ? 'Cleaning TODAY'
-                : props?.cleaningStatus === 'soon' ? 'Cleaning in 1-3 days'
-                : props?.cleaningStatus === 'later' ? 'Cleaning scheduled'
-                : 'No schedule';
-              const statusColor = props?.cleaningStatus === 'today' ? '#dc3545'
-                : props?.cleaningStatus === 'soon' ? '#c79100'
-                : props?.cleaningStatus === 'later' ? '#1e7e34'
-                : '#6c757d';
-
-              let dateHtml = '';
-              if (props?.nextCleaningDateISO) {
-                try {
-                  const dateObj = new Date(props.nextCleaningDateISO + 'T00:00:00Z');
-                  const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
-                  dateHtml = `<div style="color: ${statusColor}; font-weight: 600; margin-top: 4px;">${formatted}</div>`;
-                } catch {}
-              }
-
-              const popupContent = `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
-                  <div style="display: flex; gap: 12px; margin-bottom: 8px;">
-                    <div style="background: #f8fafc; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #374151; font-size: 13px;">
-                      <span style="font-size: 11px; color: #6b7280; display: block;">Ward</span>
-                      ${props?.ward || 'N/A'}
-                    </div>
-                    <div style="background: #f8fafc; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #374151; font-size: 13px;">
-                      <span style="font-size: 11px; color: #6b7280; display: block;">Section</span>
-                      ${props?.section || 'N/A'}
-                    </div>
-                  </div>
-                  <div style="font-size: 13px; font-weight: 600; color: ${statusColor};">${statusLabel}</div>
-                  ${dateHtml}
-                </div>
-              `;
-
-              setTimeout(() => {
-                if (!mapInstanceRef.current) return;
-                L.popup()
-                  .setLatLng(center)
-                  .setContent(popupContent)
-                  .openOn(mapInstanceRef.current);
-              }, 200);
-            }
-          }, 300);
-        });
+            L.popup()
+              .setLatLng(center)
+              .setContent(popupContent)
+              .openOn(mapInstanceRef.current);
+          }, 400);
+        }
       } else if (userLocation && !showSnowSafeMode && !showWinterBanMode) {
-        // No specific zone selected but user location available — zoom to neighborhood
-        setTimeout(() => {
-          if (mapInstanceRef.current) {
-            mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14);
-          }
-        }, 300);
+        mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14);
       }
     };
 
