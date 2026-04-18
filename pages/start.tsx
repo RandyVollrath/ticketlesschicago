@@ -1130,22 +1130,22 @@ export default function StartFunnel() {
                     backgroundColor: COLORS.primary, color: '#fff', fontSize: 12, fontWeight: 600,
                     textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16,
                   }}>
-                    Founding Member Rate
+                    Intro offer · 30 days for $1
                   </div>
                 )}
                 <div style={{ fontSize: 48, fontWeight: 700, color: COLORS.text, lineHeight: 1.1 }}>
-                  {billingPlan === 'annual' ? '$99' : '$15'}
+                  {billingPlan === 'annual' ? '$1' : '$15'}
                   <span style={{ fontSize: 20, fontWeight: 400, color: COLORS.textSecondary }}>
-                    {billingPlan === 'annual' ? '/year' : '/month'}
+                    {billingPlan === 'annual' ? ' for 30 days' : '/month'}
                   </span>
                 </div>
                 {billingPlan === 'annual' ? (
                   <>
                     <div style={{ fontSize: 14, color: COLORS.textSecondary, marginTop: 8 }}>
-                      Price locked for life while your membership stays active.
+                      Then <strong style={{ color: COLORS.text }}>$99/year</strong>. Cancel anytime in the first 30 days and never get charged again.
                     </div>
                     <div style={{ fontSize: 14, color: COLORS.success, fontWeight: 600, marginTop: 6 }}>
-                      First Dismissal Guarantee included.
+                      Founding Member rate locked for life.
                     </div>
                   </>
                 ) : (
@@ -1195,11 +1195,17 @@ export default function StartFunnel() {
               {error && <ErrorText>{error}</ErrorText>}
 
               <ContinueButton onClick={handleCheckout} disabled={loading}>
-                {loading ? 'Setting up...' : `Start protection — ${billingPlan === 'annual' ? '$99/year' : '$15/month'}`}
+                {loading
+                  ? 'Setting up...'
+                  : billingPlan === 'annual'
+                    ? 'Start protection — $1 today'
+                    : 'Start protection — $15/month'}
               </ContinueButton>
 
               <div style={{ textAlign: 'center', marginTop: 12, fontSize: 13, color: COLORS.textSecondary, fontWeight: 500 }}>
-                Skip one ticket and you&apos;re ahead.
+                {billingPlan === 'annual'
+                  ? '30 days for $1, then $99/year. Cancel anytime in the first 30 days.'
+                  : 'Skip one ticket and you’re ahead.'}
               </div>
               <div style={{ textAlign: 'center', marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>
                 Secure payment via Stripe · Sign in on the next screen.
