@@ -388,6 +388,14 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
           .select('id')
           .single();
 
+        if (claimError?.code === '23505') {
+          // Unique-index violation — another cron fire already claimed this
+          // exact (user, cleaning_date, type, chicago_day) slot. This is the
+          // intended dedup guarantee from user_notifications_unique_daily_send.
+          // Skip silently; DO NOT send a duplicate SMS.
+          console.log(`DB-deduped ${type} for ${user.email} (${cleaningDateStr}) — unique index blocked the claim`);
+          continue;
+        }
         if (claimError || !claimRow) {
           const msg = sanitizeErrorMessage(claimError);
           console.error(`REFUSING TO SEND ${type} to ${user.email} (${user.user_id}): dedup claim insert failed — ${msg}`);
