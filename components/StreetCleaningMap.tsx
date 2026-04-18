@@ -60,6 +60,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const lastZoomedRef = useRef<string | null>(null);
+  const legendRef = useRef<any>(null);
 
   // Cleanup only on unmount
   useEffect(() => {
@@ -94,8 +95,14 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         mapInstanceRef.current.removeLayer(layer);
       });
 
-      // Add legend
+      // Remove previous legend if it exists
+      if (legendRef.current) {
+        legendRef.current.remove();
+      }
+
+      // Add legend (once per render cycle)
       const legend = L.control({ position: 'topleft' });
+      legendRef.current = legend;
       legend.onAdd = () => {
         const div = L.DomUtil.create('div', 'map-legend');
         div.style.background = 'rgba(255, 255, 255, 0.9)';
@@ -478,7 +485,7 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
           const geoLayer = L.geoJSON(targetFeature.geometry);
           const bounds = geoLayer.getBounds();
           if (bounds.isValid()) {
-            mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+            mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
           }
 
           const center = bounds.getCenter();
