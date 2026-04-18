@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { resolveAddressZone } from '../../../lib/address-zone-resolver';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -7,11 +8,17 @@ const supabase = createClient(
 );
 
 /**
- * Weekly cron: re-check every user's address against the latest zone polygons.
- * If their ward/section changed (because they moved or zones were redrawn),
- * update their profile.
+ * Daily cron: ensure every user with an address has the correct ward + section.
  *
- * Schedule: Weekly Sunday at 3am (vercel.json: "0 3 * * 0")
+ * Two passes:
+ * 1. For users with a saved address but NO coordinates, geocode via Google and
+ *    run PostGIS. Covers settings.tsx and signup flows that upsert the text
+ *    address without lat/lng — those rows bypass the auto_fill_user_profile_zone
+ *    DB trigger (which only fires when lat/lng are present).
+ * 2. For users with coords whose ward/section is stale or missing (zones
+ *    redrawn, moved, etc.), re-run point-in-polygon and update.
+ *
+ * Schedule: daily at 8am UTC / 3am CDT (vercel.json).
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const authHeader = req.headers.authorization;
@@ -21,7 +28,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Get all users with lat/lng
+    // Pass 1: users with an address but no coordinates — geocode + PostGIS.
+    const { data: missingCoords } = await supabase
+      .from('user_profiles')
+      .select('user_id, email, street_address, home_address_full')
+      .or('home_address_lat.is.null,home_address_lng.is.null')
+      .or('street_address.not.is.null,home_address_full.not.is.null');
+
+    let geocoded = 0;
+    const geocodeChanges: string[] = [];
+    for (const u of missingCoords || []) {
+      const addr = (u as any).street_address || (u as any).home_address_full;
+      if (!addr) continue;
+      const resolved = await resolveAddressZone(addr);
+      if (!resolved) continue;
+      await supabase.from('user_profiles').update({
+        home_address_lat: resolved.lat,
+        home_address_lng: resolved.lng,
+        // The DB trigger will fill ward/section once lat/lng land, but set
+        // them here too in case the trigger isn't installed yet.
+        home_address_ward: resolved.ward,
+        home_address_section: resolved.section,
+      }).eq('user_id', (u as any).user_id);
+      geocoded++;
+      geocodeChanges.push(`${(u as any).email}: geocoded "${addr}" → W${resolved.ward} S${resolved.section}`);
+    }
+
+    // Pass 2: users with coords — point-in-polygon refresh.
     const { data: users } = await supabase
       .from('user_profiles')
       .select('user_id, email, home_address_lat, home_address_lng, home_address_ward, home_address_section')
@@ -29,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .not('home_address_lng', 'is', null);
 
     if (!users?.length) {
-      return res.status(200).json({ message: 'No users with coordinates', updated: 0 });
+      return res.status(200).json({ message: 'No users with coordinates', updated: 0, geocoded });
     }
 
     // Load zone polygons from zone_geometry_edits + schedule
@@ -127,7 +160,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(200).json({
       checked: users.length,
       updated,
+      geocoded,
       changes,
+      geocodeChanges,
     });
   } catch (err: any) {
     console.error('Zone update error:', err);

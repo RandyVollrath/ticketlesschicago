@@ -240,7 +240,7 @@
     },
     {
       "path": "/api/cron/update-user-zones",
-      "schedule": "0 8 * * 0"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/monitor-crons",
