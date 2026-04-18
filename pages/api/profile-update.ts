@@ -4,6 +4,7 @@ import { supabaseAdmin, supabase } from '../../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { maskEmail, maskUserId } from '../../lib/mask-pii';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { resolveAddressZone } from '../../lib/address-zone-resolver';
 
 // Input validation schema for profile updates
 const profileUpdateSchema = z.object({
@@ -109,6 +110,25 @@ export default async function handler(
     }
     if (updates.phone) {
       updates.phone = normalizePhoneNumber(updates.phone);
+    }
+
+    // If the client is changing the address but didn't already send ward/section
+    // (or sent stale values), resolve them server-side. This is the *only*
+    // place we can guarantee ward/section stays in sync with the saved address
+    // — clients that forget to send them silently fall out of the cron.
+    const addressTarget = (updates as any).street_address || (updates as any).home_address_full;
+    const wardSectionProvided = (updates as any).home_address_ward && (updates as any).home_address_section;
+    if (addressTarget && !wardSectionProvided) {
+      const resolved = await resolveAddressZone(addressTarget);
+      if (resolved) {
+        (updates as any).home_address_lat = resolved.lat;
+        (updates as any).home_address_lng = resolved.lng;
+        (updates as any).home_address_ward = resolved.ward;
+        (updates as any).home_address_section = resolved.section;
+        console.log(`[profile-update] Resolved "${addressTarget}" -> ward=${resolved.ward} section=${resolved.section}`);
+      } else {
+        console.warn(`[profile-update] Could not resolve address "${addressTarget}" to a zone`);
+      }
     }
 
     // Update TicketlessAmerica profile

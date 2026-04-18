@@ -81,28 +81,28 @@ export default async function handler(
 
   // Determine notification type based on Chicago time.
   //
-  // The cron fires 6x per day at 0,1,12,13,20,21 UTC. Two fires per window
-  // because the correct one depends on DST:
-  //   CDT (UTC-5, Mar-Nov): 12 UTC=7am, 20 UTC=3pm, 0 UTC=7pm
+  // Cron fires 3x per day at 13,21,1 UTC — CST-aligned so:
   //   CST (UTC-6, Nov-Mar): 13 UTC=7am, 21 UTC=3pm, 1 UTC=7pm
+  //   CDT (UTC-5, Mar-Nov): 13 UTC=8am, 21 UTC=4pm, 1 UTC=8pm
+  // One fire per window per day regardless of DST; notifications land at 7am
+  // in winter and drift to 8am in summer (acceptable — cleaning starts at 9am).
   //
-  // The OLD logic matched ranges (6-8, 14-16, 18-20), which fired BOTH UTC
-  // times during the same DST state — e.g. both 3pm AND 4pm Chicago in
-  // summer. Dedup caught the second, but for users with broken dedup (like
-  // Travis, whose logNotification silently FK-failed) it doubled every SMS.
-  // Pin to the exact target hours so exactly one fire per window per day.
+  // Accept both DST hours so the same fire matches in CST and CDT. The range
+  // used to be wider (6-8 etc) which let BOTH cron UTC times match when we
+  // had 6 fires/day — that's how Travis got duplicates. The narrower window
+  // + 3 fires makes a double-fire impossible.
   let notificationType = 'unknown';
-  if (hour === 7) {
+  if (hour === 7 || hour === 8) {
     notificationType = 'morning_reminder';
     console.log(`Matched: morning_reminder (Chicago hour ${hour})`);
-  } else if (hour === 15) {
+  } else if (hour === 15 || hour === 16) {
     notificationType = 'follow_up';
     console.log(`Matched: follow_up (Chicago hour ${hour})`);
-  } else if (hour === 19) {
+  } else if (hour === 19 || hour === 20) {
     notificationType = 'evening_reminder';
     console.log(`Matched: evening_reminder (Chicago hour ${hour})`);
   } else {
-    console.log(`Skipped: Chicago hour ${hour} is not 7am/3pm/7pm`);
+    console.log(`Skipped: Chicago hour ${hour} is not a notification window (7-8/15-16/19-20)`);
     return res.status(200).json({
       success: true,
       processed: 0,
