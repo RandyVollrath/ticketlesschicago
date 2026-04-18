@@ -913,23 +913,12 @@ export default async function handler(
       ? { snappedLat: checkLat, snappedLng: checkLng, streetBearing: snapResult.streetBearing }
       : null;
 
-    const result = await checkAllParkingRestrictions(
-      checkLat, checkLng, snapResult?.streetName || undefined,
-      snapGeometry, latitude, longitude,
-    );
-
-    // Step 2a: Building-footprint lookup BEFORE metered parking so the corrected
-    // house number (and its parity) flows into meter block-range lookup and
-    // side-of-street parity check. Previously this ran after the meter check,
-    // meaning meters got the less-accurate number from Nominatim/grid estimator.
-    //
-    // Parity constraint: if we know which side of the centerline the user is on
-    // (from GPS offset computed during interpolation above), and we know which
-    // parity lives on that side (from Chicago's L_PARITY / R_PARITY fields),
-    // then we restrict the building lookup to that parity. This prevents the
-    // "lone building across the street" failure where the nearest registered
-    // building is on the opposite side of the road and has the wrong parity
-    // (odd vs even), flipping downstream side-of-street detection.
+    // Step 1.9: Run the building-footprint lookup BEFORE the unified checker so
+    // we can pass the authoritative house number into it. Permit zone and
+    // address-range queries inside unified-parking-checker must use the right
+    // number — otherwise a grid-estimator miss (e.g., 2070 W Ainslie instead of
+    // Randy's actual 1901) falls outside every permit zone's range and silently
+    // suppresses legitimate permit alerts.
     let buildingFootprintResult: any = null;
     let expectedParity: 'O' | 'E' | null = null;
     if (userSideFromGps === 'L' && snapResult?.lParity) {
@@ -962,19 +951,20 @@ export default async function handler(
       }
     }
 
-    // If we have a better house number (building > interpolation > existing),
-    // inject it into parsedAddress BEFORE downstream checks read it.
-    const bestNumber =
-      buildingFootprintResult?.house_number ||
-      snapResult?.interpolatedNumber ||
-      result.location.parsedAddress?.number ||
+    // Pick authoritative house number BEFORE unified-checker runs so permit
+    // zone + address-range queries inside it use the right number.
+    // Precedence: building_footprint > segment_interpolation > (unified's own).
+    const overrideHouseNumber: number | null =
+      buildingFootprintResult?.house_number ??
+      snapResult?.interpolatedNumber ??
       null;
-    if (bestNumber && result.location.parsedAddress) {
-      if (result.location.parsedAddress.number !== bestNumber) {
-        console.log(`[check-parking] Overriding parsedAddress.number ${result.location.parsedAddress.number} → ${bestNumber} (source=${buildingFootprintResult ? 'building_footprint' : 'interpolation'}) for meter/permit/risk checks`);
-        result.location.parsedAddress = { ...result.location.parsedAddress, number: bestNumber };
-      }
-    }
+
+    // NOW run the unified checker with the authoritative number.
+    const result = await checkAllParkingRestrictions(
+      checkLat, checkLng, snapResult?.streetName || undefined,
+      snapGeometry, latitude, longitude,
+      overrideHouseNumber,
+    );
 
     // Step 2b: Metered parking check uses the shared parsed address from step 2.
     // Now uses the corrected number so meters on the right block + side are found.
