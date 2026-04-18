@@ -503,9 +503,8 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             : props?.cleaningStatus === 'later' ? '#1e7e34'
             : '#6c757d';
 
-          // Show initial popup immediately, then fetch full schedule
-          const buildPopupHtml = (datesHtml: string) => `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
+          const popupContent = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 160px;">
               <div style="display: flex; gap: 12px; margin-bottom: 8px;">
                 <div style="background: #f8fafc; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #374151; font-size: 13px;">
                   <span style="font-size: 11px; color: #6b7280; display: block;">Ward</span>
@@ -516,52 +515,18 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
                   ${props?.section || 'N/A'}
                 </div>
               </div>
-              <div style="font-size: 13px; font-weight: 600; color: ${statusColor}; margin-bottom: 4px;">${statusLabel}</div>
-              ${datesHtml}
+              <div style="font-size: 13px; font-weight: 600; color: ${statusColor};">${statusLabel}</div>
+              ${props?.nextCleaningDateISO ? `<div style="font-size: 12px; color: #64748b; margin-top: 2px;">${new Date(props.nextCleaningDateISO + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })}</div>` : ''}
             </div>
           `;
 
-          // Open popup with loading state
-          const mapPopup = L.popup({ maxHeight: 250 })
-            .setLatLng(popupLatLng as [number, number])
-            .setContent(buildPopupHtml('<div style="font-size: 12px; color: #94a3b8;">Loading dates...</div>'));
-
           setTimeout(() => {
             if (!mapInstanceRef.current) return;
-            mapPopup.openOn(mapInstanceRef.current);
+            L.popup()
+              .setLatLng(popupLatLng as [number, number])
+              .setContent(popupContent)
+              .openOn(mapInstanceRef.current);
           }, 400);
-
-          // Fetch all cleaning dates for this zone
-          fetch(`/api/get-cleaning-schedule?ward=${props?.ward}&section=${props?.section}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(schedData => {
-              if (!mapInstanceRef.current) return;
-              const dates: string[] = schedData?.cleaningDates || [];
-              let datesHtml = '';
-              if (dates.length > 0) {
-                const items = dates.slice(0, 12).map((d: string, i: number) => {
-                  const dateObj = new Date(d + 'T00:00:00Z');
-                  const today = new Date().toISOString().split('T')[0];
-                  const isToday = d === today;
-                  const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
-                  const style = isToday
-                    ? 'font-weight: 700; color: #dc3545;'
-                    : i < 3 ? 'font-weight: 500; color: #374151;' : 'color: #64748b;';
-                  return `<div style="font-size: 12px; padding: 2px 0; ${style}">${formatted}${isToday ? ' — TODAY' : ''}</div>`;
-                }).join('');
-                datesHtml = `<div style="margin-top: 4px; border-top: 1px solid #e2e8f0; padding-top: 6px;">${items}</div>`;
-              } else {
-                datesHtml = '<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">No upcoming dates</div>';
-              }
-              mapPopup.setContent(buildPopupHtml(datesHtml));
-            })
-            .catch(() => {
-              mapPopup.setContent(buildPopupHtml(
-                props?.nextCleaningDateISO
-                  ? `<div style="font-size: 12px; color: ${statusColor}; font-weight: 600;">${new Date(props.nextCleaningDateISO + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}</div>`
-                  : ''
-              ));
-            });
         }
       } else if (!zoomKey && userLocation && !showSnowSafeMode && !showWinterBanMode) {
         mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14);

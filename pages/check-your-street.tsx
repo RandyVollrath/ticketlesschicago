@@ -55,6 +55,7 @@ export default function CheckYourStreet() {
   } | null>(null)
   const [blockStats, setBlockStats] = useState<any>(null)
   const [nearbyMeters, setNearbyMeters] = useState<any[] | null>(null)
+  const [cleaningDates, setCleaningDates] = useState<string[]>([])
   const [statsExpanded, setStatsExpanded] = useState(false)
   const [tripExpanded, setTripExpanded] = useState(false)
   const [suggestions, setSuggestions] = useState<any[]>([])
@@ -211,6 +212,7 @@ export default function CheckYourStreet() {
     setSnowForecast(null)
     setBlockStats(null)
     setNearbyMeters(null)
+    setCleaningDates([])
 
     try {
       // Fetch section data, permit zone data, snow forecast, and block stats in parallel
@@ -241,6 +243,16 @@ export default function CheckYourStreet() {
       }
 
       setSearchResult(data)
+
+      // Fetch full cleaning schedule (non-blocking)
+      if (data.ward && data.section) {
+        fetch(`/api/get-cleaning-schedule?ward=${data.ward}&section=${data.section}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(schedData => {
+            if (schedData?.cleaningDates) setCleaningDates(schedData.cleaningDates)
+          })
+          .catch(() => {})
+      }
 
       // Process permit zone result (non-blocking)
       if (permitResponse && permitResponse.ok) {
@@ -798,6 +810,37 @@ export default function CheckYourStreet() {
                 </button>
               )}
             </div>
+
+            {/* === UPCOMING CLEANING DATES === */}
+            {cleaningDates.length > 0 && (
+              <div style={{
+                backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px',
+                padding: '20px 24px', marginBottom: '16px',
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: COLORS.graphite, marginBottom: '12px', fontFamily: '"Space Grotesk", sans-serif' }}>
+                  Upcoming Cleaning Dates
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '6px' }}>
+                  {cleaningDates.slice(0, 12).map((d) => {
+                    const today = new Date().toISOString().split('T')[0]
+                    const isToday = d === today
+                    const dateObj = new Date(d + 'T00:00:00Z')
+                    const soon = !isToday && (dateObj.getTime() - new Date().setHours(0,0,0,0)) <= 3 * 86400000 && dateObj.getTime() >= new Date().setHours(0,0,0,0)
+                    const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+                    return (
+                      <div key={d} style={{
+                        padding: '8px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: isToday ? '700' : '500',
+                        backgroundColor: isToday ? 'rgba(239,68,68,0.08)' : soon ? 'rgba(245,158,11,0.06)' : '#f8fafc',
+                        color: isToday ? COLORS.danger : soon ? '#b45309' : COLORS.graphite,
+                        border: isToday ? `1px solid ${COLORS.danger}30` : soon ? '1px solid rgba(245,158,11,0.2)' : `1px solid ${COLORS.border}`,
+                      }}>
+                        {formatted}{isToday ? ' — TODAY' : ''}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* === TRIP CHECKER (expandable) === */}
             {tripExpanded && searchResult.nextCleaningDate && (
