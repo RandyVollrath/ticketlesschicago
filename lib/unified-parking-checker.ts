@@ -99,6 +99,14 @@ export async function checkAllParkingRestrictions(
   snapGeometry?: SnapGeometry | null,
   rawLat?: number,
   rawLng?: number,
+  /**
+   * Authoritative house number supplied by the caller (from a building-footprint
+   * lookup or segment interpolation). When set, it replaces whatever Nominatim
+   * or the grid estimator produced BEFORE downstream permit-zone and address-
+   * range queries run. Without this, the old grid estimator's number can fall
+   * outside every real permit zone range and silently suppress alerts.
+   */
+  overrideHouseNumber?: number | null,
 ): Promise<UnifiedParkingResult> {
   const timestamp = new Date().toISOString();
 
@@ -228,11 +236,25 @@ export async function checkAllParkingRestrictions(
         }
       }
 
-      // Parse address for database matching
+      // Parse address for database matching. If the caller supplied an
+      // authoritative house number (building footprint or block-aware
+      // interpolation from check-parking), use THAT — it's more reliable than
+      // the Nominatim / grid-estimator number we otherwise would have used.
+      // Before this override, permit zone queries could use the wrong number
+      // and silently skip every real zone whose range didn't overlap (e.g.,
+      // grid-estimated 2070 W Ainslie missed Zone 62's 1901-1949 range for
+      // a user actually at 1901).
       const streetNameForParsing = result.location.streetName || geocodeResult.street_name;
-      if (geocodeResult.street_number && streetNameForParsing) {
-        const fullAddress = `${geocodeResult.street_number} ${streetNameForParsing}`;
+      const authoritativeNumber = overrideHouseNumber != null && overrideHouseNumber > 0
+        ? String(overrideHouseNumber)
+        : (geocodeResult.street_number || null);
+      if (authoritativeNumber && streetNameForParsing) {
+        const fullAddress = `${authoritativeNumber} ${streetNameForParsing}`;
         result.location.parsedAddress = parseChicagoAddress(fullAddress);
+        result.location.streetNumber = authoritativeNumber;
+        if (overrideHouseNumber != null && overrideHouseNumber > 0 && String(overrideHouseNumber) !== geocodeResult.street_number) {
+          console.log(`[unified-checker] Using override house number ${overrideHouseNumber} (was ${geocodeResult.street_number || 'none'}) for permit zone + address-range matching`);
+        }
       }
     }
 
