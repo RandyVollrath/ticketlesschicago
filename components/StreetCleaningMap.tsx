@@ -488,7 +488,11 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
           }
 
-          const center = bounds.getCenter();
+          // Place popup at the searched address, not zone center
+          const popupLatLng = userLocation
+            ? [userLocation.lat, userLocation.lng]
+            : [bounds.getCenter().lat, bounds.getCenter().lng];
+
           const props = targetFeature.properties;
           const statusLabel = props?.cleaningStatus === 'today' ? 'Cleaning TODAY'
             : props?.cleaningStatus === 'soon' ? 'Cleaning in 1-3 days'
@@ -499,16 +503,8 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             : props?.cleaningStatus === 'later' ? '#1e7e34'
             : '#6c757d';
 
-          let dateHtml = '';
-          if (props?.nextCleaningDateISO) {
-            try {
-              const dateObj = new Date(props.nextCleaningDateISO + 'T00:00:00Z');
-              const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
-              dateHtml = `<div style="color: ${statusColor}; font-weight: 600; margin-top: 4px;">${formatted}</div>`;
-            } catch {}
-          }
-
-          const popupContent = `
+          // Show initial popup immediately, then fetch full schedule
+          const buildPopupHtml = (datesHtml: string) => `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px;">
               <div style="display: flex; gap: 12px; margin-bottom: 8px;">
                 <div style="background: #f8fafc; padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #374151; font-size: 13px;">
@@ -520,18 +516,52 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
                   ${props?.section || 'N/A'}
                 </div>
               </div>
-              <div style="font-size: 13px; font-weight: 600; color: ${statusColor};">${statusLabel}</div>
-              ${dateHtml}
+              <div style="font-size: 13px; font-weight: 600; color: ${statusColor}; margin-bottom: 4px;">${statusLabel}</div>
+              ${datesHtml}
             </div>
           `;
 
+          // Open popup with loading state
+          const mapPopup = L.popup({ maxHeight: 250 })
+            .setLatLng(popupLatLng as [number, number])
+            .setContent(buildPopupHtml('<div style="font-size: 12px; color: #94a3b8;">Loading dates...</div>'));
+
           setTimeout(() => {
             if (!mapInstanceRef.current) return;
-            L.popup()
-              .setLatLng(center)
-              .setContent(popupContent)
-              .openOn(mapInstanceRef.current);
+            mapPopup.openOn(mapInstanceRef.current);
           }, 400);
+
+          // Fetch all cleaning dates for this zone
+          fetch(`/api/get-cleaning-schedule?ward=${props?.ward}&section=${props?.section}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(schedData => {
+              if (!mapInstanceRef.current) return;
+              const dates: string[] = schedData?.cleaningDates || [];
+              let datesHtml = '';
+              if (dates.length > 0) {
+                const items = dates.slice(0, 12).map((d: string, i: number) => {
+                  const dateObj = new Date(d + 'T00:00:00Z');
+                  const today = new Date().toISOString().split('T')[0];
+                  const isToday = d === today;
+                  const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+                  const style = isToday
+                    ? 'font-weight: 700; color: #dc3545;'
+                    : i < 3 ? 'font-weight: 500; color: #374151;' : 'color: #64748b;';
+                  return `<div style="font-size: 12px; padding: 2px 0; ${style}">${formatted}${isToday ? ' — TODAY' : ''}</div>`;
+                }).join('');
+                datesHtml = `<div style="margin-top: 4px; border-top: 1px solid #e2e8f0; padding-top: 6px;">${items}</div>`;
+              } else {
+                datesHtml = '<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">No upcoming dates</div>';
+              }
+              mapPopup.setContent(buildPopupHtml(datesHtml));
+            })
+            .catch(() => {
+              mapPopup.setContent(buildPopupHtml(
+                props?.nextCleaningDateISO
+                  ? `<div style="font-size: 12px; color: ${statusColor}; font-weight: 600;">${new Date(props.nextCleaningDateISO + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}</div>`
+                  : ''
+              ));
+            });
         }
       } else if (!zoomKey && userLocation && !showSnowSafeMode && !showWinterBanMode) {
         mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14);
