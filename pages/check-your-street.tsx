@@ -827,7 +827,7 @@ export default function CheckYourStreet() {
                   }}>
                     <div>
                       <div style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, fontFamily: '"Space Grotesk", sans-serif' }}>
-                        Cleaning Schedule
+                        Cleaning Schedule 2026
                       </div>
                       <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '2px' }}>
                         Ward {searchResult.ward}, Section {searchResult.section} — next {dates.length} dates
