@@ -300,7 +300,10 @@ export default function DestinationMapView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [legendCollapsed, setLegendCollapsed] = useState(true);
-  const [parkabilityMode, setParkabilityMode] = useState(true);
+  const [parkabilityMode, setParkabilityMode] = useState(false);
+  const [showSnowRoutes, setShowSnowRoutes] = useState(false);
+  const [showWinterBan, setShowWinterBan] = useState(false);
+  const [showPermitZones, setShowPermitZones] = useState(false);
   const touchStartY = useRef(0);
   const touchMoved = useRef(false);
 
@@ -428,6 +431,31 @@ export default function DestinationMapView() {
       return next;
     });
   }, [applyViewMode]);
+
+  // Layer toggle effects — add/remove from map when filters change
+  useEffect(() => {
+    const map = mapRef.current;
+    const { snowLayer } = layersRef.current;
+    if (!map || !snowLayer) return;
+    if (showSnowRoutes) { if (!map.hasLayer(snowLayer)) snowLayer.addTo(map); }
+    else { if (map.hasLayer(snowLayer)) map.removeLayer(snowLayer); }
+  }, [showSnowRoutes]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const { winterLayer } = layersRef.current;
+    if (!map || !winterLayer) return;
+    if (showWinterBan) { if (!map.hasLayer(winterLayer)) winterLayer.addTo(map); }
+    else { if (map.hasLayer(winterLayer)) map.removeLayer(winterLayer); }
+  }, [showWinterBan]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const { permitLayer } = layersRef.current;
+    if (!map || !permitLayer) return;
+    if (showPermitZones) { if (!map.hasLayer(permitLayer)) permitLayer.addTo(map); }
+    else { if (map.hasLayer(permitLayer)) map.removeLayer(permitLayer); }
+  }, [showPermitZones]);
 
   useEffect(() => {
     if (!containerRef.current || !router.isReady) return;
@@ -573,10 +601,10 @@ export default function DestinationMapView() {
             const color = cleaningColor(feature?.properties?.nextISO);
             return {
               fillColor: color,
-              fillOpacity: 0.25,
+              fillOpacity: 0.35,
               color: color,
-              weight: 1.5,
-              opacity: 0.7,
+              weight: 2,
+              opacity: 0.8,
             };
           },
           onEachFeature: (feature: any, layer: any) => {
@@ -622,9 +650,9 @@ export default function DestinationMapView() {
               </div>
             `, { maxWidth: 270 });
           },
-        }).addTo(map);
+        });
+        // Don't add to map — toggled on via filter chips
         layersRef.current.snowLayer = snowLayer;
-        applyViewMode(parkabilityMode);
       });
 
       // --- Winter ban routes ---
@@ -647,9 +675,9 @@ export default function DestinationMapView() {
               </div>
             `, { maxWidth: 250 });
           },
-        }).addTo(map);
+        });
+        // Don't add to map — toggled on via filter chips
         layersRef.current.winterLayer = winterLayer;
-        applyViewMode(parkabilityMode);
       });
 
       // --- Parking meters (visible at zoom 14+) ---
@@ -794,7 +822,7 @@ export default function DestinationMapView() {
             gEven.addTo(permitLayer);
           }
         });
-        permitLayer.addTo(map);
+        // Don't add to map — toggled on via filter chips
         layersRef.current.permitLayer = permitLayer;
 
         // Parkability permit overlays
@@ -844,11 +872,10 @@ export default function DestinationMapView() {
             }).addTo(permitParkabilityLayer);
           }
         });
-        permitParkabilityLayer.addTo(map);
+        // Don't add to map — toggled on via filter chips
         layersRef.current.permitParkabilityLayer = permitParkabilityLayer;
 
         console.log(`[map] Rendered ${permitRes.features.length} permit zone lines (${permitRes.total} total zones, ${permitRes.resolved} resolved)`);
-        applyViewMode(parkabilityMode);
       });
 
       // Force a resize after mount (WebView sometimes needs this)
@@ -900,55 +927,68 @@ export default function DestinationMapView() {
         </div>
       )}
 
-      {/* Parkability toggle — top right */}
+      {/* Layer filter chips — top */}
       {!loading && (
         <div
           style={{
             position: 'absolute',
-            top: '12px',
-            right: '12px',
+            top: '10px',
+            left: '50px',
+            right: '10px',
             zIndex: 1000,
+            display: 'flex',
+            gap: '6px',
+            flexWrap: 'wrap',
           }}
         >
-          <button
-            onClick={toggleParkability}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '8px 14px',
-              backgroundColor: parkabilityMode ? '#22c55e' : 'rgba(255,255,255,0.95)',
-              color: parkabilityMode ? '#fff' : '#374151',
-              border: parkabilityMode ? '2px solid #16a34a' : '2px solid #e5e7eb',
-              borderRadius: '24px',
-              fontFamily: 'system-ui',
-              fontSize: '13px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-              transition: 'all 0.2s ease',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            <span style={{ fontSize: '16px' }}>{parkabilityMode ? '🔍' : 'P'}</span>
-            {parkabilityMode ? 'View restrictions' : 'Where to park'}
-          </button>
+          {([
+            { label: 'Snow Routes', active: showSnowRoutes, toggle: () => setShowSnowRoutes(s => !s), color: LAYER_COLORS.snowRoute },
+            { label: 'Winter Ban', active: showWinterBan, toggle: () => setShowWinterBan(s => !s), color: LAYER_COLORS.winterBan },
+            { label: 'Permit Zones', active: showPermitZones, toggle: () => setShowPermitZones(s => !s), color: LAYER_COLORS.permitZone },
+          ] as const).map(chip => (
+            <button
+              key={chip.label}
+              onClick={chip.toggle}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: chip.active ? chip.color : 'rgba(255,255,255,0.92)',
+                color: chip.active ? '#fff' : '#475569',
+                border: chip.active ? `1.5px solid ${chip.color}` : '1.5px solid #d1d5db',
+                borderRadius: '16px',
+                fontFamily: 'system-ui',
+                fontSize: '11px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
       )}
 
 
-      {/* Legend — swipeable: drag down to collapse, tap or swipe up to expand */}
+      {/* Compact legend bar */}
       <div
         style={{
           position: 'absolute',
-          bottom: '12px',
-          left: '12px',
-          right: '12px',
+          bottom: '8px',
+          left: '8px',
+          right: '8px',
           zIndex: 1000,
-          backgroundColor: 'rgba(255,255,255,0.95)',
-          borderRadius: '12px',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+          backgroundColor: 'rgba(255,255,255,0.93)',
+          borderRadius: '10px',
+          boxShadow: '0 1px 6px rgba(0,0,0,0.1)',
           fontFamily: 'system-ui',
-          overflow: 'hidden',
-          transition: 'all 0.25s ease',
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px',
+          fontSize: '11px',
+          color: '#475569',
         }}
         onTouchStart={(e) => {
           touchStartY.current = e.touches[0].clientY;
@@ -968,7 +1008,31 @@ export default function DestinationMapView() {
           }
         }}
       >
-        {/* Drag handle */}
+        {/* Street Cleaning legend — always visible, compact */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.cleaningToday, borderRadius: '2px' }} />
+          <span>Today</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.cleaningSoon, borderRadius: '2px' }} />
+          <span>1-3 days</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.cleaningLater, borderRadius: '2px' }} />
+          <span>Later</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.cleaningNone, borderRadius: '2px' }} />
+          <span>No schedule</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.meter, borderRadius: '50%' }} />
+          <span>Meter</span>
+        </div>
+      </div>
+
+      {/* Remove old legend content — replaced by compact bar above */}
+      <div style={{ display: 'none' }}>
         <div style={{
           display: 'flex', justifyContent: 'center', paddingTop: '8px',
           paddingBottom: legendCollapsed ? '8px' : '0px',
@@ -1151,7 +1215,7 @@ export default function DestinationMapView() {
             )}
           </div>
         )}
-      </div>
+      </div>{/* end hidden old legend */}
 
 
       <style>{`
