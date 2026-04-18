@@ -263,17 +263,25 @@ export async function sendSnowBanNotifications(notificationType: 'forecast' | 'c
     smsEnabled: boolean,
     emailEnabled: boolean
   ) {
-    // Check if user has already been notified for this snow event and notification type
-    const { data: existingNotification } = await supabaseAdmin
-      .from('user_snow_ban_notifications')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('snow_event_id', snowEvent.id)
-      .eq('notification_type', notificationType)
-      .maybeSingle();
-
-    if (existingNotification) {
+    // Atomic pre-claim. Partial unique index on user_notifications
+    // (user_id, type='snow_ban', metadata->>'snow_event_id', metadata->>'type')
+    // means a concurrent fire's INSERT fails with 23505 and we skip.
+    const { error: claimErr } = await supabaseAdmin
+      .from('user_notifications')
+      .insert({
+        user_id: userId,
+        notification_type: 'snow_ban',
+        sent_at: new Date().toISOString(),
+        status: 'sending',
+        channels: [],
+        metadata: { snow_event_id: String(snowEvent.id), type: notificationType },
+      } as any);
+    if (claimErr?.code === '23505') {
       stats.alreadyNotified++;
+      return;
+    }
+    if (claimErr) {
+      console.error(`[snow-ban] REFUSING TO SEND for ${userId}: claim failed — ${claimErr.message}`);
       return;
     }
 

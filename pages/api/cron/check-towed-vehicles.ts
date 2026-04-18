@@ -76,20 +76,39 @@ export default async function handler(
         continue; // No tows for this user
       }
 
-      // Check if we already notified about this tow
       const tow = tows[0];
-      const alreadyNotified = tow.notified_users?.includes(user.user_id);
 
-      if (alreadyNotified) {
-        console.log(`Already notified ${user.user_id} about tow ${tow.inventory_number}`);
-        continue;
-      }
-
-      // Skip if user has tow notifications disabled
       if (user.notify_tow === false) {
         console.log(`Skipping ${user.user_id}: tow notifications disabled`);
         continue;
       }
+
+      // Pre-claim dedup slot. Partial unique index on user_notifications
+      // (user_id, notification_type='tow_alert', metadata->>'tow_id') means
+      // a second cron fire's INSERT fails with 23505 and we skip the send.
+      // This replaces the old notified_users[] array read-modify-write race.
+      const { data: claim, error: claimErr } = await supabaseAdmin
+        .from('user_notifications')
+        .insert({
+          user_id: user.user_id,
+          notification_type: 'tow_alert',
+          sent_at: new Date().toISOString(),
+          status: 'sending',
+          channels: [],
+          metadata: { tow_id: String(tow.id), inventory_number: tow.inventory_number, plate },
+        } as any)
+        .select('id')
+        .single();
+
+      if (claimErr?.code === '23505') {
+        console.log(`DB-deduped tow alert for ${user.user_id}/tow ${tow.id}`);
+        continue;
+      }
+      if (claimErr || !claim) {
+        console.error(`REFUSING TO SEND tow alert to ${user.user_id}: claim failed — ${sanitizeErrorMessage(claimErr)}`);
+        continue;
+      }
+      const claimId = (claim as any).id;
 
       console.log(`🚨 FOUND TOW: ${plate} (${state}) - User: ${user.user_id}`);
 
@@ -227,7 +246,18 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
         console.error(`Failed to create tow alert for user ${user.user_id}:`, alertError);
       }
 
-      // Mark this user as notified for this tow (re-read to avoid overwriting concurrent updates)
+      // Update the dedup claim row with final channel list + status.
+      await supabaseAdmin
+        .from('user_notifications')
+        .update({ status: 'sent', channels: ['sms', 'email', 'push'].filter(c =>
+          (c === 'sms' && user.notify_sms && user.phone_number) ||
+          (c === 'email' && user.notify_email && user.email) ||
+          c === 'push'
+        ) })
+        .eq('id', claimId);
+      notifiedUsers.push(user.user_id);
+
+      // Legacy: keep notified_users[] array in sync for any downstream reader.
       try {
         const { data: freshTow } = await supabaseAdmin
           .from('towed_vehicles')
@@ -236,19 +266,12 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
           .maybeSingle();
         const currentNotified = (freshTow?.notified_users as string[]) || [];
         if (!currentNotified.includes(user.user_id)) {
-          const { error: updateErr } = await supabaseAdmin
+          await supabaseAdmin
             .from('towed_vehicles')
             .update({ notified_users: [...currentNotified, user.user_id] })
             .eq('id', tow.id);
-          if (updateErr) {
-            console.error(`Failed to update notified_users for tow ${tow.id}:`, updateErr.message);
-          }
         }
-
-        notifiedUsers.push(user.user_id);
-      } catch (notifyErr) {
-        console.error(`Failed to mark user ${user.user_id} as notified for tow ${tow.id}:`, notifyErr);
-      }
+      } catch { /* non-critical, unique index is the source of truth now */ }
 
       // Rate limiting
       await new Promise(resolve => setTimeout(resolve, 1000));
