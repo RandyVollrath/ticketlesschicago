@@ -10,28 +10,36 @@ import { z } from 'zod';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
-// Input validation schema
+// Input validation schema.
+// Mobile sends `value || null` for most restriction fields when the parking
+// check finds no restriction. Zod v4 `.optional()` accepts undefined but
+// rejects null — so every optional field must be `.nullish()` (accepts both).
+// Prior `.optional()` caused the 400s observed 2026-04-17 18:32.
 const SaveParkedLocationSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  address: z.string().max(500).optional(),
-  fcm_token: z.string().min(1).max(500),
+  address: z.string().max(500).nullish(),
+
+  // fcm_token: tolerate missing/empty. iOS users who haven't granted push
+  // permission have no token, but we still want to save the parking location.
+  // Server-side push just won't fire for them.
+  fcm_token: z.string().max(500).nullish(),
 
   // Restriction flags from the parking check
   on_winter_ban_street: z.boolean().default(false),
-  winter_ban_street_name: z.string().max(200).optional(),
+  winter_ban_street_name: z.string().max(200).nullish(),
   on_snow_route: z.boolean().default(false),
-  snow_route_name: z.string().max(200).optional(),
-  street_cleaning_date: z.string().nullable().optional(), // ISO date string
-  street_cleaning_ward: z.string().max(50).optional(),
-  street_cleaning_section: z.string().max(50).optional(),
-  permit_zone: z.string().max(50).nullable().optional(),
-  permit_restriction_schedule: z.string().max(100).optional(),
+  snow_route_name: z.string().max(200).nullish(),
+  street_cleaning_date: z.string().nullish(), // ISO date string
+  street_cleaning_ward: z.string().max(50).nullish(),
+  street_cleaning_section: z.string().max(50).nullish(),
+  permit_zone: z.string().max(50).nullish(),
+  permit_restriction_schedule: z.string().max(100).nullish(),
 
   // DOT permit flags
   dot_permit_active: z.boolean().default(false),
-  dot_permit_type: z.string().max(100).optional(),
-  dot_permit_start_date: z.string().max(50).optional(),
+  dot_permit_type: z.string().max(100).nullish(),
+  dot_permit_start_date: z.string().max(50).nullish(),
 });
 
 type SaveParkedLocationInput = z.infer<typeof SaveParkedLocationSchema>;

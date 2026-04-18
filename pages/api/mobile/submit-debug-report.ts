@@ -18,7 +18,7 @@ const ReportSchema = z.object({
   app_version: z.string().max(20).optional(),
   platform: z.enum(['ios', 'android']).optional(),
   note: z.string().max(500).optional(),
-  payload: z.record(z.unknown()), // free-form JSON
+  payload: z.record(z.string(), z.unknown()), // free-form JSON (Zod v4 requires key+value)
 });
 
 const MAX_PAYLOAD_BYTES = 8_000_000; // 8MB
