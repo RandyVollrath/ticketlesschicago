@@ -207,38 +207,32 @@ export default async function handler(
   const hasCompass = !isNaN(compassHeadingDeg) && compassHeadingDeg >= 0 && compassHeadingDeg < 360
     && !isNaN(compassConfidenceDeg) && compassConfidenceDeg < 40; // only trust if std < 40°
 
-  // Heading source preference:
-  //   - Both available AND they disagree >45° → prefer GPS heading. The phone's
-  //     compass reads the top-of-phone orientation, which doesn't always match
-  //     the car's direction of travel (phone in cupholder sideways, bag, etc.).
-  //     GPS heading captured while actually driving is ground-truth car direction.
-  //     This is the Randy Lawrence bug: compass said 83° (E), GPS said 355° (N),
-  //     car was on N-S Wolcott — GPS was right.
-  //   - Only compass → use compass (car stopped, GPS heading goes invalid)
-  //   - Only GPS → use GPS (compass has low confidence)
-  //   - Neither → no disambiguation
+  // Heading source preference (updated 2026-04-17 after Randy clarified):
+  //   - GPS heading available     → ALWAYS use GPS. It measures the car's actual
+  //     direction of travel while driving. The phone's compass measures which
+  //     way the top of the PHONE is pointing — which is an arbitrary direction
+  //     depending on whether the phone is in a cupholder, pocket, bag, etc.
+  //     Phones don't reliably orient forward with the car, so compass is
+  //     structurally unreliable for car-direction disambiguation.
+  //   - Only compass → use compass as a weak signal (better than nothing)
+  //   - Neither → no disambiguation, fall back to geometric-nearest snap
   let headingDisagreementDeg: number | null = null;
-  let headingPrefersGps = false;
   if (hasCompass && hasHeading) {
     const rawDiff = Math.abs(compassHeadingDeg - headingDeg);
     headingDisagreementDeg = Math.min(rawDiff, 360 - rawDiff);
-    if (headingDisagreementDeg > 45) {
-      headingPrefersGps = true;
-    }
   }
   let effectiveHeading: number;
   let effectiveHeadingSource: 'compass' | 'gps' | 'none';
-  if (headingPrefersGps && hasHeading) {
+  if (hasHeading) {
     effectiveHeading = headingDeg;
     effectiveHeadingSource = 'gps';
-    console.log(`[check-parking] GPS vs compass heading disagreement ${headingDisagreementDeg!.toFixed(0)}° — preferring GPS ${headingDeg.toFixed(0)}° over compass ${compassHeadingDeg.toFixed(0)}° (compass likely reflects phone orientation, not car direction)`);
+    if (hasCompass && headingDisagreementDeg != null && headingDisagreementDeg > 15) {
+      console.log(`[check-parking] GPS ${headingDeg.toFixed(0)}° vs compass ${compassHeadingDeg.toFixed(0)}° disagree by ${headingDisagreementDeg.toFixed(0)}°. Using GPS (compass reflects phone orientation, not car direction).`);
+    }
   } else if (hasCompass) {
     effectiveHeading = compassHeadingDeg;
     effectiveHeadingSource = 'compass';
-    console.log(`[check-parking] Compass heading: ${compassHeadingDeg.toFixed(1)}° ±${compassConfidenceDeg.toFixed(1)}° — using as primary heading`);
-  } else if (hasHeading) {
-    effectiveHeading = headingDeg;
-    effectiveHeadingSource = 'gps';
+    console.log(`[check-parking] No GPS heading — falling back to compass ${compassHeadingDeg.toFixed(1)}° ±${compassConfidenceDeg.toFixed(1)}° (phone orientation, weak signal)`);
   } else {
     effectiveHeading = NaN;
     effectiveHeadingSource = 'none';
