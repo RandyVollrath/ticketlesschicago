@@ -99,14 +99,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    res.setHeader('Cache-Control', 'no-store');
+    // Geometry changes rarely (manual edits only). Let CDN + browser cache
+    // it for an hour with a long SWR so the map doesn't re-download 1.5MB
+    // on every open.
+    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
     res.status(200).json(geojson);
   } catch (err: any) {
     // Fallback to static file
     try {
       const geojsonPath = path.join(process.cwd(), 'public', 'data', 'street-cleaning-zones-2026.geojson');
       const geojson = JSON.parse(fs.readFileSync(geojsonPath, 'utf-8'));
-      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
       res.status(200).json(geojson);
     } catch {
       res.status(500).json({ error: err.message });
