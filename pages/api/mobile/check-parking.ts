@@ -624,17 +624,22 @@ export default async function handler(
               checkLat = bestCandidate.snapped_lat;
               checkLng = bestCandidate.snapped_lng;
 
-              // Address-range interpolation: if the snap row includes address
-              // ranges (from the 20260417 migration + re-import), compute an
-              // exact house number from the segment fraction. This replaces
-              // the coarse grid-estimator approximation that can be 20-50
-              // numbers off within a block.
+              // Block-aware address interpolation.
               //
-              // Chicago convention: left and right sides of a segment have
-              // different parity (odd vs even). We pick whichever range's
-              // parity matches what we can infer, or just use the one that's
-              // populated. If both populated, prefer the side the GPS is on
-              // (not implemented here — defaults to whichever has data).
+              // Chicago's centerline GeoJSON records per-segment address ranges,
+              // but segments often end 20-40 addresses short of the true block
+              // boundary (e.g., the 4700-block Wolcott segment is labeled
+              // 4700-4758 while the road physically runs from Leland 4700 N all
+              // the way to Lawrence 4800 N — addresses 4759-4798 exist but
+              // aren't in the GeoJSON). Plain interpolation across the recorded
+              // range underestimates positions at the end of such segments.
+              //
+              // Fix: if the NEXT segment on this street starts exactly 100
+              // higher (confirming a standard block boundary), extrapolate the
+              // current segment's address range to the full block (base..base+98)
+              // and interpolate across that. For irregular blocks (diagonals,
+              // dead-ends) where the next segment isn't on a 100-boundary,
+              // fall back to the recorded range.
               let interpolatedNumber: number | null = null;
               const frac = typeof bestCandidate.segment_fraction === 'number' ? bestCandidate.segment_fraction : null;
               const ranges = [
@@ -642,22 +647,41 @@ export default async function handler(
                 { from: bestCandidate.r_from_addr, to: bestCandidate.r_to_addr, side: 'R' },
               ].filter((r) => typeof r.from === 'number' && typeof r.to === 'number' && r.from > 0 && r.to > 0);
 
-              if (frac != null && ranges.length > 0) {
-                // Use the range whose span is larger (usually the full block side).
-                // Interpolate linearly along the segment.
+              if (frac != null && ranges.length > 0 && supabaseAdmin) {
+                // Look up the next segment on this street to detect standard block boundaries.
+                let isStandardBlock = false;
+                try {
+                  const { data: nextSeg } = await supabaseAdmin
+                    .from('street_centerlines')
+                    .select('l_from_addr')
+                    .eq('street_name', bestCandidate.street_name)
+                    .gt('l_from_addr', bestCandidate.l_from_addr)
+                    .order('l_from_addr', { ascending: true })
+                    .limit(1)
+                    .maybeSingle();
+                  if (nextSeg?.l_from_addr) {
+                    const currentBase = Math.floor(bestCandidate.l_from_addr / 100) * 100;
+                    const nextBase = Math.floor(nextSeg.l_from_addr / 100) * 100;
+                    isStandardBlock = nextBase - currentBase === 100;
+                  }
+                } catch (e) {
+                  console.warn('[check-parking] Next-segment lookup failed:', e);
+                }
+
+                // Pick the side with the larger recorded span (the more reliable one).
                 const pick = ranges.sort((a: any, b: any) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from))[0] as any;
-                const low = Math.min(pick.from, pick.to);
-                const high = Math.max(pick.from, pick.to);
-                const raw = pick.from + (pick.to - pick.from) * frac;
-                // Snap to nearest integer with matching parity of the low end
-                // so we stay on the block's odd-or-even house pattern.
-                const parityLow = low % 2;
+                const parityTarget = pick.from % 2;
+                const blockBase = Math.floor(pick.from / 100) * 100;
+                // Standard Chicago blocks: addresses run blockBase..blockBase+98 (even side)
+                // or blockBase+1..blockBase+99 (odd side).
+                const effectiveLow = pick.from;
+                const effectiveHigh = isStandardBlock ? blockBase + (parityTarget === 0 ? 98 : 99) : pick.to;
+                const raw = effectiveLow + (effectiveHigh - effectiveLow) * frac;
                 let n = Math.round(raw);
-                if (n % 2 !== parityLow) n += n > raw ? -1 : 1;
-                // Clamp to segment's declared range.
-                n = Math.min(Math.max(n, low), high);
+                if (n % 2 !== parityTarget) n += n > raw ? -1 : 1;
+                n = Math.min(Math.max(n, effectiveLow), effectiveHigh);
                 interpolatedNumber = n;
-                console.log(`[check-parking] Address interpolated: side=${pick.side}, range ${pick.from}-${pick.to}, frac=${frac.toFixed(2)} → ${interpolatedNumber}`);
+                console.log(`[check-parking] Address interpolated: side=${pick.side}, recorded=${pick.from}-${pick.to}, effective=${effectiveLow}-${effectiveHigh} (standard_block=${isStandardBlock}), frac=${frac.toFixed(3)} → ${interpolatedNumber}`);
               }
 
               snapResult = {
@@ -975,35 +999,28 @@ export default async function handler(
       }
     }
 
-    // Use whatever house number the unified-parking-checker already produced
-    // (Nominatim's number or the grid estimator's number).
-    //
-    // We compute an interpolated number from the snap segment's address range
-    // and stash it in diag.native_meta for comparison — do NOT override the
-    // user-visible address with it. Reason: Chicago's centerline GeoJSON often
-    // has segments whose address ranges STOP SHORT of the physical intersection
-    // (e.g. Randy's 4700-block Wolcott segment has range 4700-4758 while the
-    // actual road runs from Leland at 4700 up to Lawrence at 4800 — the
-    // 4759-4798 addresses have no segment coverage). When a parking spot sits
-    // in that gap, interpolating along the 4700-segment produces a number like
-    // 4752 that's far below the true address. The latitude-based grid
-    // estimator extrapolates past segment ends and produces a better number in
-    // those cases.
-    //
-    // Correct fix (future): detect the gap case (frac > 0.9 AND next segment's
-    // low address > this segment's high address by more than 2) and fall back
-    // to the grid estimator in that window. For now, always defer to what
-    // unified-parking-checker computed.
-    const finalAddress = result.location.address;
+    // Address number: prefer segment-based block-aware interpolation when we
+    // have it. It uses actual Chicago GIS segment data extrapolated across the
+    // standard 100-address block, producing numbers close to the real address.
+    // Falls back to whatever unified-parking-checker produced (Nominatim or
+    // the latitude-based grid estimator) when segment data isn't available.
+    let finalAddress = result.location.address;
+    if (snapResult?.interpolatedNumber && result.location.streetName) {
+      const streetForDisplay = result.location.streetName;
+      const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
+      const zip = zipMatch ? ` ${zipMatch[1]}` : '';
+      finalAddress = `${snapResult.interpolatedNumber} ${streetForDisplay}, Chicago, IL${zip}`;
+      console.log(`[check-parking] Address number from block-aware interpolation: ${snapResult.interpolatedNumber} (was "${result.location.address}")`);
+    }
+    // Still log the interpolation context into native_meta for future debugging.
     if (snapResult?.interpolatedNumber) {
       const nm: Record<string, any> = diag.native_meta || {};
       nm.interpolated_number = snapResult.interpolatedNumber;
       nm.segment_fraction = snapResult.segmentFraction;
       nm.segment_l_range = snapResult.lFromAddr != null ? [snapResult.lFromAddr, snapResult.lToAddr] : null;
       nm.segment_r_range = snapResult.rFromAddr != null ? [snapResult.rFromAddr, snapResult.rToAddr] : null;
-      nm.displayed_address = result.location.address;
+      nm.grid_estimator_address = result.location.address;
       diag.native_meta = nm;
-      console.log(`[check-parking] Interpolation candidate: ${snapResult.interpolatedNumber} on ${snapResult.streetName} (L=${snapResult.lFromAddr}-${snapResult.lToAddr} R=${snapResult.rFromAddr}-${snapResult.rToAddr}, frac=${snapResult.segmentFraction?.toFixed(3)}) — NOT using as display number, keeping unified-checker's "${result.location.address}"`);
     }
 
     // Transform to mobile API response format
