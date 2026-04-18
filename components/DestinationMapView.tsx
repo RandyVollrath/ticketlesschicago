@@ -125,7 +125,7 @@ function cleaningColor(nextISO: string | null): string {
   const days = daysBetween(nextISO, new Date());
   if (days <= 0) return LAYER_COLORS.cleaningToday;
   if (days <= 3) return LAYER_COLORS.cleaningSoon;
-  return LAYER_COLORS.cleaningLater;
+  return LAYER_COLORS.cleaningNone; // later — same calm gray as "no schedule"
 }
 
 function parkabilityZoneColor(nextISO: string | null): string {
@@ -304,6 +304,7 @@ export default function DestinationMapView() {
   const [showSnowRoutes, setShowSnowRoutes] = useState(false);
   const [showWinterBan, setShowWinterBan] = useState(false);
   const [showPermitZones, setShowPermitZones] = useState(false);
+  const [showMeters, setShowMeters] = useState(false);
   const touchStartY = useRef(0);
   const touchMoved = useRef(false);
 
@@ -458,6 +459,14 @@ export default function DestinationMapView() {
   }, [showPermitZones]);
 
   useEffect(() => {
+    const map = mapRef.current;
+    const { meterLayer } = layersRef.current;
+    if (!map || !meterLayer) return;
+    if (showMeters) { if (!map.hasLayer(meterLayer)) meterLayer.addTo(map); }
+    else { if (map.hasLayer(meterLayer)) map.removeLayer(meterLayer); }
+  }, [showMeters]);
+
+  useEffect(() => {
     if (!containerRef.current || !router.isReady) return;
 
     const lat = parseFloat(router.query.lat as string);
@@ -601,9 +610,9 @@ export default function DestinationMapView() {
             const color = cleaningColor(feature?.properties?.nextISO);
             return {
               fillColor: color,
-              fillOpacity: 0.35,
+              fillOpacity: 0.55,
               color: color,
-              weight: 2,
+              weight: 1,
               opacity: 0.8,
             };
           },
@@ -724,15 +733,8 @@ export default function DestinationMapView() {
           cm.addTo(meterLayerGroup);
         });
 
-        const updateMeterVisibility = () => {
-          const z = map.getZoom();
-          if (z >= 14) { if (!map.hasLayer(meterLayerGroup)) map.addLayer(meterLayerGroup); }
-          else { if (map.hasLayer(meterLayerGroup)) map.removeLayer(meterLayerGroup); }
-        };
-        map.on('zoomend', updateMeterVisibility);
-        updateMeterVisibility();
+        // Meters hidden by default — toggled via filter chip
         layersRef.current.meterLayer = meterLayerGroup;
-        applyViewMode(parkabilityMode);
       });
 
       // --- Permit zone lines (heaviest — renders last) ---
@@ -942,6 +944,7 @@ export default function DestinationMapView() {
           }}
         >
           {([
+            { label: 'Meters', active: showMeters, toggle: () => setShowMeters(s => !s), color: LAYER_COLORS.meter },
             { label: 'Snow Routes', active: showSnowRoutes, toggle: () => setShowSnowRoutes(s => !s), color: LAYER_COLORS.snowRoute },
             { label: 'Winter Ban', active: showWinterBan, toggle: () => setShowWinterBan(s => !s), color: LAYER_COLORS.winterBan },
             { label: 'Permit Zones', active: showPermitZones, toggle: () => setShowPermitZones(s => !s), color: LAYER_COLORS.permitZone },
@@ -1008,26 +1011,19 @@ export default function DestinationMapView() {
           }
         }}
       >
-        {/* Street Cleaning legend — always visible, compact */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.cleaningToday, borderRadius: '2px' }} />
+        {/* Street Cleaning legend — 3 colors only */}
+        <span style={{ fontWeight: 600, fontSize: '11px', color: '#374151' }}>Street Cleaning</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningToday, borderRadius: '3px' }} />
           <span>Today</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.cleaningSoon, borderRadius: '2px' }} />
-          <span>1-3 days</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningSoon, borderRadius: '3px' }} />
+          <span>Soon</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.cleaningLater, borderRadius: '2px' }} />
-          <span>Later</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.cleaningNone, borderRadius: '2px' }} />
-          <span>No schedule</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-          <div style={{ width: '10px', height: '10px', backgroundColor: LAYER_COLORS.meter, borderRadius: '50%' }} />
-          <span>Meter</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ width: '12px', height: '12px', backgroundColor: LAYER_COLORS.cleaningNone, borderRadius: '3px' }} />
+          <span>Clear</span>
         </div>
       </div>
 
