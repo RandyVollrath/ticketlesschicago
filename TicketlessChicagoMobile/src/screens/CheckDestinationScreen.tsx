@@ -34,6 +34,7 @@ interface RestrictionResult {
     message: string;
     severity: string;
     nextDate?: string;
+    subsequentDate?: string;
     schedule?: string;
   };
   winterOvernightBan?: {
@@ -195,6 +196,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           message,
           severity,
           nextDate: d.nextCleaningDate,
+          subsequentDate: d.subsequentCleaningDate || undefined,
         };
       } else {
         result.streetCleaning = { hasRestriction: false, message: 'No upcoming street cleaning scheduled', severity: 'none' };
@@ -359,7 +361,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         else if (diffDays === 1) { severity = 'warning'; message = `Street cleaning tomorrow (${dateStr})`; }
         else if (diffDays <= 3) { severity = 'info'; message = `Street cleaning ${dateStr} (${diffDays} days)`; }
         else { message = `Next cleaning: ${dateStr}`; }
-        result.streetCleaning = { hasRestriction: diffDays <= 1, message, severity, nextDate: d.nextCleaningDate };
+        result.streetCleaning = { hasRestriction: diffDays <= 1, message, severity, nextDate: d.nextCleaningDate, subsequentDate: d.subsequentCleaningDate || undefined };
       } else {
         result.streetCleaning = { hasRestriction: false, message: 'No upcoming street cleaning scheduled', severity: 'none' };
       }
@@ -688,9 +690,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
               'broom',
               restrictions.streetCleaning?.message || '',
               restrictions.streetCleaning?.severity || 'none',
-              restrictions.streetCleaning?.nextDate
-                ? `Next: ${new Date(restrictions.streetCleaning.nextDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
-                : undefined,
+              formatNextCleaningLabel(restrictions.streetCleaning?.severity, restrictions.streetCleaning?.nextDate, restrictions.streetCleaning?.subsequentDate),
             )}
             {renderRestrictionCard(
               '2" Snow Ban',
@@ -834,6 +834,30 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+// Format an ISO YYYY-MM-DD as a Chicago-local short string. Parsing naked
+// YYYY-MM-DD defaults to UTC, which renders Apr 17 as "Thu, Apr 16" on any
+// device west of UTC — always anchor to local noon before formatting.
+function formatIsoDateChicago(iso: string): string {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// The "Next:" subline under the street-cleaning card. When today IS a cleaning
+// day, the red alert already says "TODAY" — showing "Next: today" is noise, so
+// jump to the subsequent distinct date.
+function formatNextCleaningLabel(
+  severity: string | undefined,
+  nextDate: string | undefined,
+  subsequentDate: string | undefined,
+): string | undefined {
+  if (!nextDate) return undefined;
+  if (severity === 'critical' && subsequentDate) {
+    return `Next: ${formatIsoDateChicago(subsequentDate)}`;
+  }
+  if (severity === 'critical') return undefined;
+  return `Next: ${formatIsoDateChicago(nextDate)}`;
 }
 
 function renderRestrictionCard(

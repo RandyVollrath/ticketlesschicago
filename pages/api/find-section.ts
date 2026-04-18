@@ -343,7 +343,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         scheduleError = result.error;
         datesInRange = scheduleEntries?.map(entry => entry.cleaning_date) || [];
       } else {
-        // Single next cleaning date query (default behavior)
+        // Fetch the next few upcoming cleanings so the UI can show both
+        // "today" (if applicable) and the next distinct date after today.
         const result = await supabaseAdmin!
           .from('street_cleaning_schedule')
           .select('cleaning_date')
@@ -351,12 +352,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('section', foundSection)
           .gte('cleaning_date', todayStr)
           .order('cleaning_date', { ascending: true })
-          .limit(1);
+          .limit(5);
 
         scheduleEntries = result.data;
         scheduleError = result.error;
 
-        console.log(`🔍 Schedule lookup for Ward ${foundWard}, Section ${foundSection}: next date =`, scheduleEntries?.[0]?.cleaning_date ?? 'none');
+        console.log(`🔍 Schedule lookup for Ward ${foundWard}, Section ${foundSection}: upcoming =`, scheduleEntries?.map(e => e.cleaning_date).join(',') ?? 'none');
       }
       
       if (!scheduleError) {
@@ -378,11 +379,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const nextCleaningDate = scheduleEntries && scheduleEntries.length > 0 
-      ? scheduleEntries[0].cleaning_date 
+    const nextCleaningDate = scheduleEntries && scheduleEntries.length > 0
+      ? scheduleEntries[0].cleaning_date
       : null;
 
-    console.log('Location search successful:', foundWard, foundSection, nextCleaningDate);
+    // For "Next: …" UX when today is already a cleaning day. Skip today and
+    // any back-to-back cycle day so the next distinct upcoming cleaning lands
+    // on a day the user cares about (e.g. Apr 17+20 → subsequent = Apr 20).
+    const subsequentCleaningDate = scheduleEntries && scheduleEntries.length > 1
+      ? scheduleEntries.map(e => e.cleaning_date).find(d => d > todayStr) || null
+      : null;
+
+    console.log('Location search successful:', foundWard, foundSection, nextCleaningDate, 'subsequent:', subsequentCleaningDate);
 
     // Check snow ban active status (single-row table, very fast)
     let snowBanActive = false;
@@ -422,6 +430,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ward: foundWard,
       section: foundSection,
       nextCleaningDate: nextCleaningDate,
+      subsequentCleaningDate: subsequentCleaningDate,
+      upcomingCleaningDates: scheduleEntries?.map(e => e.cleaning_date) || [],
       coordinates: coordinates,
       geometry: foundGeometry,
       matchType: matchType,
