@@ -87,6 +87,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [mapTouched, setMapTouched] = useState(false);
+  const [mapFullscreen, setMapFullscreen] = useState(false);
   const [snowForecast, setSnowForecast] = useState<{
     hasSignificantSnow: boolean;
     significantSnowWhen: string | null;
@@ -772,6 +773,17 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                 <View style={styles.mapHeader}>
                   <Icon name="map" size={18} color={colors.primary} />
                   <Text style={styles.mapHeaderText}>Area Restrictions Map</Text>
+                  <View style={{ flex: 1 }} />
+                  <TouchableOpacity
+                    onPress={() => setMapFullscreen(true)}
+                    style={styles.mapExpandButton}
+                    accessibilityLabel="Expand map to fullscreen"
+                    accessibilityRole="button"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Icon name="arrow-expand" size={16} color={colors.primary} />
+                    <Text style={styles.mapExpandText}>Expand</Text>
+                  </TouchableOpacity>
                 </View>
                 <View
                   style={styles.mapContainer}
@@ -796,10 +808,51 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                   />
                 </View>
                 <Text style={styles.mapHint}>
-                  Pinch to zoom. Tap zones for cleaning dates.
+                  Pinch to zoom. Tap zones for cleaning dates. Tap Expand for fullscreen.
                 </Text>
               </View>
             )}
+
+            {/* Fullscreen map modal */}
+            <Modal
+              visible={mapFullscreen}
+              animationType="slide"
+              presentationStyle="fullScreen"
+              onRequestClose={() => setMapFullscreen(false)}
+            >
+              <SafeAreaView style={styles.fullscreenMapContainer} edges={['top']}>
+                <View style={styles.fullscreenMapHeader}>
+                  <Icon name="map" size={18} color={colors.primary} />
+                  <Text style={styles.fullscreenMapTitle} numberOfLines={1}>
+                    {geocoded?.address || 'Area Restrictions Map'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setMapFullscreen(false)}
+                    style={styles.fullscreenCloseButton}
+                    accessibilityLabel="Close fullscreen map"
+                    accessibilityRole="button"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  >
+                    <Icon name="close" size={24} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                </View>
+                <WebView
+                  source={{ uri: mapUrl }}
+                  style={{ flex: 1, backgroundColor: 'transparent' }}
+                  javaScriptEnabled
+                  domStorageEnabled
+                  startInLoadingState
+                  renderLoading={() => (
+                    <View style={styles.mapLoading}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                      <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 8 }}>
+                        Loading map...
+                      </Text>
+                    </View>
+                  )}
+                />
+              </SafeAreaView>
+            </Modal>
 
             {/* Directions button */}
             <View style={styles.resultActionsRow}>
@@ -1193,6 +1246,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+  },
+  mapExpandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: borderRadius.sm,
+    backgroundColor: '#E6EFFF',
+  },
+  mapExpandText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+  },
+  fullscreenMapContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  fullscreenMapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.cardBg,
+  },
+  fullscreenMapTitle: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  fullscreenCloseButton: {
+    padding: 4,
   },
 
   // Directions
