@@ -169,6 +169,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
       const result: RestrictionResult = {};
 
       // Street cleaning severity based on nextCleaningDate
+      // Color policy mirrors the destination map: today=red, 1-3d=yellow, 4+d=green.
       if (d.nextCleaningDate) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -185,10 +186,10 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           severity = 'warning';
           message = `Street cleaning tomorrow (${dateStr})`;
         } else if (diffDays <= 3) {
-          severity = 'info';
+          severity = 'warning';
           message = `Street cleaning ${dateStr} (${diffDays} days)`;
         } else {
-          severity = 'info';
+          severity = 'none';
           message = `Next cleaning: ${dateStr} (${diffDays} days away)`;
         }
 
@@ -360,8 +361,8 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         let message: string;
         if (diffDays === 0) { severity = 'critical'; message = `Street cleaning TODAY (${dateStr}). Move your car!`; }
         else if (diffDays === 1) { severity = 'warning'; message = `Street cleaning tomorrow (${dateStr})`; }
-        else if (diffDays <= 3) { severity = 'info'; message = `Street cleaning ${dateStr} (${diffDays} days)`; }
-        else { message = `Next cleaning: ${dateStr}`; }
+        else if (diffDays <= 3) { severity = 'warning'; message = `Street cleaning ${dateStr} (${diffDays} days)`; }
+        else { severity = 'none'; message = `Next cleaning: ${dateStr}`; }
         result.streetCleaning = { hasRestriction: diffDays <= 1, message, severity, nextDate: d.nextCleaningDate, subsequentDate: d.subsequentCleaningDate || undefined };
       } else {
         result.streetCleaning = { hasRestriction: false, message: 'No upcoming street cleaning scheduled', severity: 'none' };
