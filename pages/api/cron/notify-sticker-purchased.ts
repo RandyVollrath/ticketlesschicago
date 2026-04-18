@@ -61,8 +61,25 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
 // SMS sending via centralized service with retry (lib/sms-service.ts)
 
 /**
- * Check if notification was already sent
+ * Atomically claim a notification slot. Partial unique index on
+ * notification_log (user_id, message_key) makes concurrent claims fail
+ * with 23505 so only one cron fire sends. Returns true if we hold the
+ * claim and should send; false if another fire already claimed.
  */
+async function claimNotification(userId: string, type: string, channel: string, messageKey: string): Promise<boolean> {
+  const { error } = await supabase.from('notification_log').insert({
+    user_id: userId,
+    notification_type: type,
+    channel,
+    message_key: messageKey,
+    metadata: { sent_at: new Date().toISOString() },
+  } as any);
+  if (!error) return true;
+  if ((error as any).code === '23505') return false; // already claimed
+  console.error('Notification claim failed:', error);
+  return false; // refuse-to-send on any other error — safer than duplicate
+}
+
 async function wasNotificationSent(userId: string, messageKey: string): Promise<boolean> {
   const { data } = await supabase
     .from('notification_log')
@@ -70,21 +87,18 @@ async function wasNotificationSent(userId: string, messageKey: string): Promise<
     .eq('user_id', userId)
     .eq('message_key', messageKey)
     .maybeSingle();
-
   return !!data;
 }
 
-/**
- * Log that notification was sent
- */
 async function logNotification(userId: string, type: string, channel: string, messageKey: string): Promise<void> {
+  // Kept for back-compat; prefer claimNotification for new code paths.
   await supabase.from('notification_log').insert({
     user_id: userId,
     notification_type: type,
     channel,
     message_key: messageKey,
     metadata: { sent_at: new Date().toISOString() },
-  }).catch(err => console.error('Failed to log notification:', err));
+  } as any);
 }
 
 export default async function handler(
@@ -154,25 +168,20 @@ export default async function handler(
 
       console.log(`Processing ${user.email}: ${daysSincePurchase} days since purchase`);
 
+      // Pre-claim pattern used for all three milestones — if the partial
+      // unique index on notification_log(user_id, message_key) rejects the
+      // INSERT as a duplicate, the second concurrent fire skips.
+
       // 1. PURCHASE NOTIFICATION (day 0-1)
       if (daysSincePurchase <= 1) {
         const messageKey = `sticker_purchased_${user.sticker_purchased_at}`;
-
-        if (!(await wasNotificationSent(user.user_id, messageKey))) {
-          // Use centralized templates
+        if (await claimNotification(user.user_id, 'sticker_purchased', 'email', messageKey)) {
           const userContext = { firstName: user.first_name, licensePlate: user.license_plate };
           const emailContent = emailTemplates.stickerPurchased(userContext, purchaseDate);
           const smsMessage = smsTemplates.stickerPurchased(user.license_plate);
-
-          // Send email
           const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
-
-          // Send SMS
           const smsResult = await sendClickSendSMS(user.phone || user.phone_number, smsMessage);
-          const smsSent = smsResult.success;
-
-          if (emailSent || smsSent) {
-            await logNotification(user.user_id, 'sticker_purchased', emailSent ? 'email' : 'sms', messageKey);
+          if (emailSent || smsResult.success) {
             results.purchaseNotificationsSent++;
             console.log(`✅ Sent purchase notification to ${user.email}`);
           }
@@ -182,19 +191,13 @@ export default async function handler(
       // 2. DELIVERY REMINDER (around day 10)
       if (daysSincePurchase >= 9 && daysSincePurchase <= 11) {
         const messageKey = `sticker_delivery_reminder_${user.sticker_purchased_at}`;
-
-        if (!(await wasNotificationSent(user.user_id, messageKey))) {
-          // Use centralized templates
+        if (await claimNotification(user.user_id, 'sticker_delivery_reminder', 'email', messageKey)) {
           const userContext = { firstName: user.first_name, licensePlate: user.license_plate };
           const emailContent = emailTemplates.stickerDelivery(userContext);
           const smsMessage = smsTemplates.stickerDelivery(user.license_plate);
-
           const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
           const smsResult = await sendClickSendSMS(user.phone || user.phone_number, smsMessage);
-          const smsSent = smsResult.success;
-
-          if (emailSent || smsSent) {
-            await logNotification(user.user_id, 'sticker_delivery_reminder', emailSent ? 'email' : 'sms', messageKey);
+          if (emailSent || smsResult.success) {
             results.deliveryRemindersSent++;
             console.log(`✅ Sent delivery reminder to ${user.email}`);
           }
@@ -204,19 +207,13 @@ export default async function handler(
       // 3. APPLY REMINDER (around day 14)
       if (daysSincePurchase >= 13 && daysSincePurchase <= 15) {
         const messageKey = `sticker_apply_reminder_${user.sticker_purchased_at}`;
-
-        if (!(await wasNotificationSent(user.user_id, messageKey))) {
-          // Use centralized templates
+        if (await claimNotification(user.user_id, 'sticker_apply_reminder', 'email', messageKey)) {
           const userContext = { firstName: user.first_name, licensePlate: user.license_plate };
           const emailContent = emailTemplates.stickerApplyCheck(userContext);
           const smsMessage = smsTemplates.stickerApplyCheck(user.license_plate);
-
           const emailSent = await sendEmail(user.email, emailContent.subject, emailContent.html);
           const smsResult = await sendClickSendSMS(user.phone || user.phone_number, smsMessage);
-          const smsSent = smsResult.success;
-
-          if (emailSent || smsSent) {
-            await logNotification(user.user_id, 'sticker_apply_reminder', emailSent ? 'email' : 'sms', messageKey);
+          if (emailSent || smsResult.success) {
             results.applyRemindersSent++;
             console.log(`✅ Sent apply reminder to ${user.email}`);
           }

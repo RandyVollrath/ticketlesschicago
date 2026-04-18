@@ -97,21 +97,43 @@ export default async function handler(
         continue; // No relocations for this user
       }
 
-      // Check if we already notified about this relocation
       const relocation = relocations[0];
-      const alreadyNotified = relocation.notified_users?.includes(user.user_id);
 
-      if (alreadyNotified) {
-        console.log(`Already notified ${user.user_id} about relocation ${relocation.service_request_number}`);
-        continue;
-      }
-
-      // Skip if user has tow/relocation notifications disabled
-      // (we reuse notify_tow for relocations since they're related)
       if (user.notify_tow === false) {
         console.log(`Skipping ${user.user_id}: tow/relocation notifications disabled`);
         continue;
       }
+
+      // Pre-claim dedup row. Partial unique index on user_notifications
+      // (user_id, notification_type='relocation_alert', metadata->>'relocation_id')
+      // means concurrent cron fires can't both send — second one's INSERT
+      // fails with 23505 and we skip.
+      const { data: claim, error: claimErr } = await supabaseAdmin
+        .from('user_notifications')
+        .insert({
+          user_id: user.user_id,
+          notification_type: 'relocation_alert',
+          sent_at: new Date().toISOString(),
+          status: 'sending',
+          channels: [],
+          metadata: {
+            relocation_id: String(relocation.id),
+            service_request_number: relocation.service_request_number,
+            plate,
+          },
+        } as any)
+        .select('id')
+        .single();
+
+      if (claimErr?.code === '23505') {
+        console.log(`DB-deduped relocation alert for ${user.user_id}/relocation ${relocation.id}`);
+        continue;
+      }
+      if (claimErr || !claim) {
+        console.error(`REFUSING TO SEND relocation alert to ${user.user_id}: claim failed — ${sanitizeErrorMessage(claimErr)}`);
+        continue;
+      }
+      const claimId = (claim as any).id;
 
       console.log(`📍 FOUND RELOCATION: ${plate} (${state}) - User: ${user.user_id}`);
 
@@ -245,19 +267,19 @@ Reply STOP to unsubscribe.`;
         }
       }
 
-      // Mark this user as notified for this relocation
-      const updatedNotifiedUsers = [...(relocation.notified_users || []), user.user_id];
-      const { error: updateError } = await supabaseAdmin
-        .from('relocated_vehicles' as any)
-        .update({ notified_users: updatedNotifiedUsers })
-        .eq('id', relocation.id);
-
-      if (updateError) {
-        console.error(`Failed to mark user ${user.user_id} as notified:`, updateError);
-        // Continue anyway - better to potentially re-notify than miss an alert
-      }
-
+      await supabaseAdmin
+        .from('user_notifications')
+        .update({ status: 'sent' })
+        .eq('id', claimId);
       notifiedUsers.push(user.user_id);
+
+      // Legacy: keep notified_users[] array in sync for downstream readers.
+      try {
+        await supabaseAdmin
+          .from('relocated_vehicles' as any)
+          .update({ notified_users: [...(relocation.notified_users || []), user.user_id] })
+          .eq('id', relocation.id);
+      } catch { /* non-critical — unique index is the source of truth now */ }
 
       // Rate limiting
       await new Promise(resolve => setTimeout(resolve, 1000));

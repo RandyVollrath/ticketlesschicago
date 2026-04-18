@@ -254,7 +254,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }));
 
         // 5. Deduplication — check if we already notified about these permits recently
-        // Use application numbers as the dedup key
         const permitKeys = actionablePermits
           .map((p: DotPermit) => p.application_number)
           .sort()
@@ -272,6 +271,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             contextData: { permit_count: actionablePermits.length },
             reason: 'already_sent_48h',
           });
+          continue;
+        }
+
+        // Atomic pre-claim — partial unique index on (user_id, type='dot_permit',
+        // metadata->>'message_key') means a concurrent fire's INSERT fails with
+        // 23505 and we skip without sending.
+        const { error: claimErr } = await supabaseAdmin
+          .from('user_notifications')
+          .insert({
+            user_id: user.user_id,
+            notification_type: 'dot_permit',
+            sent_at: new Date().toISOString(),
+            status: 'sent',
+            channels: [],
+            metadata: { message_key: messageKey, permit_count: actionablePermits.length },
+          } as any);
+        if (claimErr?.code === '23505') {
+          console.log(`[notify-dot-permits] DB-deduped ${user.user_id}/${messageKey}`);
+          stats.skipped++;
+          continue;
+        }
+        if (claimErr) {
+          console.error(`[notify-dot-permits] REFUSING TO SEND for ${user.user_id}: claim failed — ${claimErr.message}`);
+          stats.errors++;
           continue;
         }
 

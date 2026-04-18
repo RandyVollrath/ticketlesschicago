@@ -440,30 +440,42 @@ export default async function handler(
 
         // Winter ban reminder — send from 8pm through 2am (ban starts at 3am)
         // Wide window catches users who park late at night on winter ban streets.
-        // Only send once per parking session (tracked by winter_ban_notified_at).
+        // Atomic claim-then-send: conditional UPDATE where flag is still null
+        // guarantees no concurrent fire can double-send even on a deployment
+        // cutover. If push fails, rollback the flag so the next fire retries.
         const isWinterBanWindow = isWinterSeason && (chicagoHour >= 20 || chicagoHour <= 2);
         if (isWinterBanWindow && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'winter_ban')) {
-          const result = await sendPushNotification(vehicle.fcm_token, {
-            title: 'Winter Parking Ban Reminder',
-            body: `Your car at ${vehicle.address} is on a winter ban street. Move before 3am to avoid towing ($150+).`,
-            data: {
-              type: 'winter_ban_reminder',
-              lat: vehicle.latitude?.toString(),
-              lng: vehicle.longitude?.toString(),
-            },
-          });
-          if (result.success) {
-            await supabaseAdmin.from('user_parked_vehicles')
-              .update({ winter_ban_notified_at: new Date().toISOString() })
-              .eq('id', vehicle.id);
-            results.winterBanReminders++;
-            console.log(`Sent winter ban reminder to ${vehicle.user_id}`);
-          } else if (result.invalidToken) {
-            await supabaseAdmin.from('user_parked_vehicles')
-              .update({ is_active: false })
-              .eq('id', vehicle.id);
-            invalidFcmTokens.push(vehicle.fcm_token);
-            console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+          const { data: claimed } = await supabaseAdmin.from('user_parked_vehicles')
+            .update({ winter_ban_notified_at: new Date().toISOString() })
+            .eq('id', vehicle.id)
+            .is('winter_ban_notified_at', null)
+            .select('id');
+          if (claimed && claimed.length > 0) {
+            const result = await sendPushNotification(vehicle.fcm_token, {
+              title: 'Winter Parking Ban Reminder',
+              body: `Your car at ${vehicle.address} is on a winter ban street. Move before 3am to avoid towing ($150+).`,
+              data: {
+                type: 'winter_ban_reminder',
+                lat: vehicle.latitude?.toString(),
+                lng: vehicle.longitude?.toString(),
+              },
+            });
+            if (result.success) {
+              results.winterBanReminders++;
+              console.log(`Sent winter ban reminder to ${vehicle.user_id}`);
+            } else {
+              // Rollback the claim so the next fire retries.
+              await supabaseAdmin.from('user_parked_vehicles')
+                .update({ winter_ban_notified_at: null })
+                .eq('id', vehicle.id);
+              if (result.invalidToken) {
+                await supabaseAdmin.from('user_parked_vehicles')
+                  .update({ is_active: false })
+                  .eq('id', vehicle.id);
+                invalidFcmTokens.push(vehicle.fcm_token);
+                console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+              }
+            }
           }
         }
 
@@ -473,30 +485,39 @@ export default async function handler(
         // users who PARK on a snow route AFTER the snow event was already detected.
         // Also sends call alerts for snow routes.
         if (vehicle.on_snow_route && !vehicle.snow_ban_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'snow_route')) {
-          // Use pre-fetched snow event (queried once before the loop)
           if (activeSnowEvent) {
-            const snowAmount = activeSnowEvent.snow_amount_inches || 2;
-            const result = await sendPushNotification(vehicle.fcm_token, {
-              title: '2-Inch Snow Ban — Move Your Car!',
-              body: `${snowAmount}" of snow detected. Your car at ${vehicle.address} is on a snow route and may be towed ($150+). Move now!`,
-              data: {
-                type: 'snow_ban_reminder',
-                lat: vehicle.latitude?.toString(),
-                lng: vehicle.longitude?.toString(),
-              },
-            });
-            if (result.success) {
-              await supabaseAdmin.from('user_parked_vehicles')
-                .update({ snow_ban_notified_at: new Date().toISOString() })
-                .eq('id', vehicle.id);
-              results.snowRouteReminders++;
-              console.log(`Sent snow route reminder to ${vehicle.user_id} (${snowAmount}" snow active)`);
-            } else if (result.invalidToken) {
-              await supabaseAdmin.from('user_parked_vehicles')
-                .update({ is_active: false })
-                .eq('id', vehicle.id);
-              invalidFcmTokens.push(vehicle.fcm_token);
-              console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+            // Atomic claim — see winter_ban block above for rationale.
+            const { data: claimed } = await supabaseAdmin.from('user_parked_vehicles')
+              .update({ snow_ban_notified_at: new Date().toISOString() })
+              .eq('id', vehicle.id)
+              .is('snow_ban_notified_at', null)
+              .select('id');
+            if (claimed && claimed.length > 0) {
+              const snowAmount = activeSnowEvent.snow_amount_inches || 2;
+              const result = await sendPushNotification(vehicle.fcm_token, {
+                title: '2-Inch Snow Ban — Move Your Car!',
+                body: `${snowAmount}" of snow detected. Your car at ${vehicle.address} is on a snow route and may be towed ($150+). Move now!`,
+                data: {
+                  type: 'snow_ban_reminder',
+                  lat: vehicle.latitude?.toString(),
+                  lng: vehicle.longitude?.toString(),
+                },
+              });
+              if (result.success) {
+                results.snowRouteReminders++;
+                console.log(`Sent snow route reminder to ${vehicle.user_id} (${snowAmount}" snow active)`);
+              } else {
+                await supabaseAdmin.from('user_parked_vehicles')
+                  .update({ snow_ban_notified_at: null })
+                  .eq('id', vehicle.id);
+                if (result.invalidToken) {
+                  await supabaseAdmin.from('user_parked_vehicles')
+                    .update({ is_active: false })
+                    .eq('id', vehicle.id);
+                  invalidFcmTokens.push(vehicle.fcm_token);
+                  console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+                }
+              }
             }
           }
         }
