@@ -768,7 +768,7 @@ export default function CheckYourStreet() {
             })()}
 
             {/* === ACTION ROW === */}
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '32px', justifyContent: 'center' }}>
               {searchResult.nextCleaningDate && (
                 <button
                   onClick={() => handleDownloadCalendar(searchResult.ward, searchResult.section)}
