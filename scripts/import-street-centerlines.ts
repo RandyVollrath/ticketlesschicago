@@ -19,6 +19,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createClient } from '@supabase/supabase-js';
 
+// Load .env.local without leaking dotenv's stdout tip (which contains non-ASCII
+// characters that break Supabase client auth headers when captured via shell).
+const dotenv = require('dotenv');
+dotenv.config({ path: path.resolve(__dirname, '..', '.env.local'), quiet: true });
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
