@@ -999,29 +999,58 @@ export default async function handler(
       }
     }
 
-    // Address number: prefer segment-based block-aware interpolation when we
-    // have it. It uses actual Chicago GIS segment data extrapolated across the
-    // standard 100-address block, producing numbers close to the real address.
-    // Falls back to whatever unified-parking-checker produced (Nominatim or
-    // the latitude-based grid estimator) when segment data isn't available.
+    // Address-number precedence, best → fallback:
+    //   1. Nearest building's registered house number (Chicago Building
+    //      Footprints dataset). Exact address from city records — no
+    //      interpolation math. Constrained to the snap-picked street so we
+    //      don't grab a house across an intersection on the wrong corner.
+    //   2. Block-aware segment interpolation (stretched to full 100-address
+    //      block when the next segment confirms a standard boundary).
+    //   3. Whatever unified-parking-checker produced (grid estimator or
+    //      Nominatim's number).
     let finalAddress = result.location.address;
-    if (snapResult?.interpolatedNumber && result.location.streetName) {
+    let addressNumberSource: 'building_footprint' | 'segment_interpolation' | 'fallback' = 'fallback';
+
+    if (snapResult?.streetName && supabaseAdmin) {
+      try {
+        const { data: bld, error: bldErr } = await supabaseAdmin.rpc('nearest_address_point', {
+          user_lat: latitude,
+          user_lng: longitude,
+          search_radius_meters: 25,
+          expected_street: snapResult.streetName,
+        });
+        if (!bldErr && bld && bld.length > 0 && bld[0].house_number > 0) {
+          const b = bld[0];
+          const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
+          const zip = zipMatch ? ` ${zipMatch[1]}` : '';
+          finalAddress = `${b.house_number} ${b.full_street_name}, Chicago, IL${zip}`;
+          addressNumberSource = 'building_footprint';
+          console.log(`[check-parking] Address from building footprint: ${b.house_number} ${b.full_street_name} (${b.distance_meters.toFixed(1)}m to building centroid)`);
+        }
+      } catch (bldErr) {
+        console.warn('[check-parking] Building footprint lookup failed (non-fatal):', bldErr);
+      }
+    }
+
+    if (addressNumberSource === 'fallback' && snapResult?.interpolatedNumber && result.location.streetName) {
       const streetForDisplay = result.location.streetName;
       const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
       const zip = zipMatch ? ` ${zipMatch[1]}` : '';
       finalAddress = `${snapResult.interpolatedNumber} ${streetForDisplay}, Chicago, IL${zip}`;
-      console.log(`[check-parking] Address number from block-aware interpolation: ${snapResult.interpolatedNumber} (was "${result.location.address}")`);
+      addressNumberSource = 'segment_interpolation';
+      console.log(`[check-parking] Address number from block-aware interpolation: ${snapResult.interpolatedNumber}`);
     }
-    // Still log the interpolation context into native_meta for future debugging.
+    // Log which source we ended up using for the house number.
+    const nm: Record<string, any> = diag.native_meta || {};
+    nm.address_number_source = addressNumberSource;
     if (snapResult?.interpolatedNumber) {
-      const nm: Record<string, any> = diag.native_meta || {};
       nm.interpolated_number = snapResult.interpolatedNumber;
       nm.segment_fraction = snapResult.segmentFraction;
       nm.segment_l_range = snapResult.lFromAddr != null ? [snapResult.lFromAddr, snapResult.lToAddr] : null;
       nm.segment_r_range = snapResult.rFromAddr != null ? [snapResult.rFromAddr, snapResult.rToAddr] : null;
       nm.grid_estimator_address = result.location.address;
-      diag.native_meta = nm;
     }
+    diag.native_meta = nm;
 
     // Transform to mobile API response format
     const streetCleaningTiming: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE' =
