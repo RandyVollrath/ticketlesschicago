@@ -263,6 +263,44 @@ export default async function handler(
     console.log(`[check-parking] Native meta: locationSource=${nativeLocationSource}${nativeDetectionSource ? `, detectionSource=${nativeDetectionSource}` : ''}${durStr}${driftStr}`);
   }
 
+  // Drive trajectory — last ~10 GPS fixes while the car was moving. Used for
+  // trajectory-based street disambiguation: if the car was on Wolcott for 6
+  // blocks before stopping, every trajectory point will be near Wolcott's
+  // centerline, not Lawrence's, even if the stop point's nearest centerline
+  // happens to be Lawrence.
+  let driveTrajectory: Array<[number, number, number, number]> = [];
+  const trajectoryRaw = (req.method === 'GET' ? req.query.drive_trajectory : req.body.drive_trajectory) as string | undefined;
+  if (trajectoryRaw) {
+    try {
+      const parsed = JSON.parse(trajectoryRaw);
+      if (Array.isArray(parsed)) {
+        driveTrajectory = parsed
+          .filter((p) => Array.isArray(p) && p.length >= 2 && typeof p[0] === 'number' && typeof p[1] === 'number')
+          .slice(-10); // defensive cap
+      }
+    } catch (e) {
+      console.warn('[check-parking] Failed to parse drive_trajectory:', e);
+    }
+  }
+  if (driveTrajectory.length > 0) {
+    // Also fold a median heading from the trajectory into heading disambiguation.
+    // Single-point GPS heading can be noisy (especially the last fix before stop,
+    // where speed is low and heading drifts). A median over the last few moving
+    // fixes is more stable.
+    const headings = driveTrajectory.map((p) => p[2]).filter((h) => h >= 0 && h < 360);
+    if (headings.length >= 3) {
+      // Circular median approximation: convert to unit vectors, average, convert back.
+      let sumX = 0, sumY = 0;
+      for (const h of headings) {
+        const r = (h * Math.PI) / 180;
+        sumX += Math.cos(r);
+        sumY += Math.sin(r);
+      }
+      const meanDeg = ((Math.atan2(sumY, sumX) * 180) / Math.PI + 360) % 360;
+      console.log(`[check-parking] Trajectory median heading: ${meanDeg.toFixed(0)}° (from ${headings.length} driving points)`);
+    }
+  }
+
   try {
     // Diagnostic accumulator — captures the full decision chain for accuracy tracking.
     // Inserted into parking_diagnostics table at the end (non-blocking).
@@ -363,6 +401,16 @@ export default async function handler(
       streetName: string | null;
       snapSource: string | null;
       streetBearing?: number;
+      // Address range + segment fraction for house-number interpolation.
+      // Only populated when the migration 20260417_street_centerlines_address_ranges
+      // has been applied AND the re-import has been run. Fall back to grid
+      // estimator when these are null.
+      segmentFraction?: number;
+      lFromAddr?: number | null;
+      lToAddr?: number | null;
+      rFromAddr?: number | null;
+      rToAddr?: number | null;
+      interpolatedNumber?: number | null;
     } | null = null;
 
     const shouldSnap = !accuracyMeters || accuracyMeters <= 75;
@@ -407,6 +455,60 @@ export default async function handler(
 
           if (candidates.length > 0) {
             let bestCandidate = candidates[0]; // Default: closest
+
+            // ── TRAJECTORY-BASED DISAMBIGUATION ──
+            // If the car drove for a while before stopping, the recent GPS
+            // trajectory tells us exactly which street it was on. Snap each
+            // trajectory point to a street and tally votes — the winner
+            // overrides distance- and heading-based picking.
+            //
+            // This is the strongest signal we have because it's N measurements
+            // of where the CAR was, not 1 measurement of where the phone's
+            // stop-time GPS landed (which might be near a cross street).
+            if (driveTrajectory.length >= 3 && candidates.length > 1 && supabaseAdmin) {
+              try {
+                const candidateNames = new Set(candidates.map((c: any) => c.street_name));
+                const snaps = await Promise.all(
+                  driveTrajectory.map(([plat, plng]) =>
+                    supabaseAdmin!.rpc('snap_to_nearest_street', {
+                      user_lat: plat, user_lng: plng, search_radius_meters: 25,
+                    }),
+                  ),
+                );
+                const votes = new Map<string, number>();
+                for (const snap of snaps) {
+                  const winner = (snap.data || []).filter((c: any) => c.was_snapped)[0];
+                  if (winner?.street_name && candidateNames.has(winner.street_name)) {
+                    votes.set(winner.street_name, (votes.get(winner.street_name) || 0) + 1);
+                  }
+                }
+                if (votes.size > 0) {
+                  const sorted = Array.from(votes.entries()).sort((a, b) => b[1] - a[1]);
+                  const [topStreet, topVotes] = sorted[0];
+                  const runnerUpVotes = sorted[1]?.[1] ?? 0;
+                  const marginRequired = Math.max(2, Math.ceil(driveTrajectory.length * 0.3));
+                  // Require a clear majority: at least marginRequired points AND
+                  // at least 2 more votes than the runner-up.
+                  if (topVotes >= marginRequired && topVotes - runnerUpVotes >= 2) {
+                    const trajWinner = candidates.find((c: any) => c.street_name === topStreet);
+                    if (trajWinner && trajWinner !== bestCandidate) {
+                      console.log(`[check-parking] Trajectory override: ${driveTrajectory.length} drive points, votes=${JSON.stringify(Object.fromEntries(votes))} → ${topStreet} wins over ${bestCandidate.street_name}`);
+                      bestCandidate = trajWinner;
+                      diag.trajectory_override = true;
+                      diag.trajectory_votes = Object.fromEntries(votes);
+                    } else if (trajWinner === bestCandidate) {
+                      console.log(`[check-parking] Trajectory confirms snap pick: ${topStreet} (${topVotes}/${driveTrajectory.length} points on street)`);
+                      diag.trajectory_confirmed = true;
+                      diag.trajectory_votes = Object.fromEntries(votes);
+                    }
+                  } else {
+                    console.log(`[check-parking] Trajectory votes inconclusive: ${JSON.stringify(Object.fromEntries(votes))} (need ≥${marginRequired} and +2 margin)`);
+                  }
+                }
+              } catch (trajErr) {
+                console.warn('[check-parking] Trajectory disambiguation failed (non-fatal):', trajErr);
+              }
+            }
 
             // Heading-based street disambiguation using Chicago's grid system.
             // Chicago streets follow a strict grid: streets prefixed W/E run east-west,
@@ -484,12 +586,55 @@ export default async function handler(
             if (bestCandidate) {
               checkLat = bestCandidate.snapped_lat;
               checkLng = bestCandidate.snapped_lng;
+
+              // Address-range interpolation: if the snap row includes address
+              // ranges (from the 20260417 migration + re-import), compute an
+              // exact house number from the segment fraction. This replaces
+              // the coarse grid-estimator approximation that can be 20-50
+              // numbers off within a block.
+              //
+              // Chicago convention: left and right sides of a segment have
+              // different parity (odd vs even). We pick whichever range's
+              // parity matches what we can infer, or just use the one that's
+              // populated. If both populated, prefer the side the GPS is on
+              // (not implemented here — defaults to whichever has data).
+              let interpolatedNumber: number | null = null;
+              const frac = typeof bestCandidate.segment_fraction === 'number' ? bestCandidate.segment_fraction : null;
+              const ranges = [
+                { from: bestCandidate.l_from_addr, to: bestCandidate.l_to_addr, side: 'L' },
+                { from: bestCandidate.r_from_addr, to: bestCandidate.r_to_addr, side: 'R' },
+              ].filter((r) => typeof r.from === 'number' && typeof r.to === 'number' && r.from > 0 && r.to > 0);
+
+              if (frac != null && ranges.length > 0) {
+                // Use the range whose span is larger (usually the full block side).
+                // Interpolate linearly along the segment.
+                const pick = ranges.sort((a: any, b: any) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from))[0] as any;
+                const low = Math.min(pick.from, pick.to);
+                const high = Math.max(pick.from, pick.to);
+                const raw = pick.from + (pick.to - pick.from) * frac;
+                // Snap to nearest integer with matching parity of the low end
+                // so we stay on the block's odd-or-even house pattern.
+                const parityLow = low % 2;
+                let n = Math.round(raw);
+                if (n % 2 !== parityLow) n += n > raw ? -1 : 1;
+                // Clamp to segment's declared range.
+                n = Math.min(Math.max(n, low), high);
+                interpolatedNumber = n;
+                console.log(`[check-parking] Address interpolated: side=${pick.side}, range ${pick.from}-${pick.to}, frac=${frac.toFixed(2)} → ${interpolatedNumber}`);
+              }
+
               snapResult = {
                 wasSnapped: true,
                 snapDistanceMeters: bestCandidate.snap_distance_meters,
                 streetName: bestCandidate.street_name,
                 snapSource: bestCandidate.snap_source,
                 streetBearing: bestCandidate.street_bearing,
+                segmentFraction: frac ?? undefined,
+                lFromAddr: bestCandidate.l_from_addr ?? null,
+                lToAddr: bestCandidate.l_to_addr ?? null,
+                rFromAddr: bestCandidate.r_from_addr ?? null,
+                rToAddr: bestCandidate.r_to_addr ?? null,
+                interpolatedNumber,
               };
               console.log(`[check-parking] Snapped ${bestCandidate.snap_distance_meters.toFixed(1)}m to ${bestCandidate.street_name} (${bestCandidate.snap_source}, bearing=${bestCandidate.street_bearing?.toFixed(0) ?? 'none'}°)`);
               diag.snap_candidates_count = allCandidates?.length || 0;
@@ -793,6 +938,22 @@ export default async function handler(
       }
     }
 
+    // If the snap delivered a block address range, override the house number
+    // with the interpolated one. That's more precise than Nominatim's
+    // guess-at-this-lat/lng number and much more precise than the grid
+    // estimator's ±50-number linear approximation.
+    let finalAddress = result.location.address;
+    if (snapResult?.interpolatedNumber && result.location.streetName) {
+      // Reuse result.location.streetName if it was normalized (e.g. "N WOLCOTT AVE");
+      // otherwise fall back to the snap's raw street_name.
+      const streetForDisplay = result.location.streetName;
+      // Extract zip from the existing formatted address if present.
+      const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
+      const zip = zipMatch ? ` ${zipMatch[1]}` : '';
+      finalAddress = `${snapResult.interpolatedNumber} ${streetForDisplay}, Chicago, IL${zip}`;
+      console.log(`[check-parking] Address override via interpolation: was "${result.location.address}" → "${finalAddress}"`);
+    }
+
     // Transform to mobile API response format
     const streetCleaningTiming: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE' =
       result.streetCleaning.isActiveNow || result.streetCleaning.severity === 'critical'
@@ -805,7 +966,7 @@ export default async function handler(
 
     const response: MobileCheckParkingResponse = {
       success: true,
-      address: result.location.address,
+      address: finalAddress,
       coordinates: { latitude: checkLat, longitude: checkLng },
 
       streetCleaning: {
@@ -923,7 +1084,7 @@ export default async function handler(
         nominatim_agreed: diag.nominatim_agreed ?? null,
         nominatim_overrode: diag.nominatim_overrode ?? false,
         heading_confirmed_snap: diag.heading_confirmed_snap ?? null,
-        resolved_address: result.location.address || null,
+        resolved_address: finalAddress || null,
         resolved_street_name: pa?.name || null,
         resolved_street_direction: pa?.direction || null,
         resolved_house_number: pa?.number || null,
