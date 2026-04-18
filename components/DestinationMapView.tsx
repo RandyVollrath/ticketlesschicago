@@ -584,26 +584,42 @@ export default function DestinationMapView() {
 
       // Load data layers progressively — each renders as it arrives
       // Fire all fetches in parallel, but render each independently
-      const loadCleaning = fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null).catch(() => null);
+      // Cleaning needs BOTH geometry (zone-geojson) and schedule (get-street-cleaning-data)
+      const loadCleaning = Promise.all([
+        fetch('/api/zone-geojson').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
       const loadSnow = fetch('/api/get-snow-routes').then(r => r.ok ? r.json() : null).catch(() => null);
       const loadWinter = fetch('/api/get-winter-ban-routes').then(r => r.ok ? r.json() : null).catch(() => null);
       const loadMeters = fetch('/api/metered-parking').then(r => r.ok ? r.json() : null).catch(() => null);
       const loadPermits = fetch('/api/permit-zone-lines').then(r => r.ok ? r.json() : null).catch(() => null);
 
       // --- Street cleaning zones (renders first — usually fastest) ---
-      loadCleaning.then(cleaningRes => {
-        if (cancelled || !cleaningRes?.data) return;
-        const zones = cleaningRes.data
-          .filter((z: any) => z.geom_simplified)
-          .map((z: any) => ({
+      loadCleaning.then(([geojson, scheduleRes]) => {
+        if (cancelled || !geojson?.features) return;
+
+        // Build schedule lookup: "ward-section" → nextCleaningDateISO
+        const schedMap = new Map<string, string | null>();
+        if (scheduleRes?.data) {
+          for (const z of scheduleRes.data) {
+            schedMap.set(`${z.ward}-${z.section}`, z.nextCleaningDateISO || null);
+          }
+        }
+
+        const zones = geojson.features.map((f: any) => {
+          const ward = f.properties?.ward;
+          const section = f.properties?.section;
+          const key = `${ward}-${section}`;
+          return {
             type: 'Feature' as const,
-            geometry: z.geom_simplified,
+            geometry: f.geometry,
             properties: {
-              ward: z.ward,
-              section: z.section,
-              nextISO: z.nextCleaningDateISO,
+              ward,
+              section,
+              nextISO: schedMap.get(key) || null,
             },
-          }));
+          };
+        });
 
         const cleaningLayer = L.geoJSON(zones, {
           style: (feature: any) => {
