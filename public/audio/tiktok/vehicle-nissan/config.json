@@ -1,0 +1,52 @@
+{
+  "scenes": [
+    {
+      "type": "big-number",
+      "props": {
+        "preText": "If you drive a Nissan in Chicago",
+        "number": "$107M",
+        "postText": "in fines charged to Nissan drivers",
+        "subText": "1,356,001 tickets total",
+        "color": "#ff1a1a",
+        "glitch": true
+      },
+      "durationFrames": 404,
+      "voFile": "audio/tiktok/vehicle-nissan/vo-0.mp3"
+    },
+    {
+      "type": "stat-stack",
+      "props": {
+        "stats": [
+          {
+            "number": "1,356,001",
+            "label": "Nissan tickets issued",
+            "color": "#ff6b2b"
+          },
+          {
+            "number": "$107M",
+            "label": "in fines",
+            "color": "#ff1a1a"
+          },
+          {
+            "number": "66%",
+            "label": "get dismissed when contested",
+            "color": "#00e676"
+          }
+        ]
+      },
+      "durationFrames": 494,
+      "voFile": "audio/tiktok/vehicle-nissan/vo-1.mp3"
+    },
+    {
+      "type": "cta",
+      "props": {
+        "headline": "Nissan drivers, protect yourself",
+        "headlineSub": "before the next ticket hits"
+      },
+      "durationFrames": 313,
+      "voFile": "audio/tiktok/vehicle-nissan/vo-2.mp3"
+    }
+  ],
+  "musicFile": "audio/bg-music.mp3",
+  "musicVolume": 0.1
+}

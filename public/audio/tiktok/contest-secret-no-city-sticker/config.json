@@ -1,0 +1,46 @@
+{
+  "scenes": [
+    {
+      "type": "big-number",
+      "props": {
+        "preText": "no city sticker tickets",
+        "number": "85%",
+        "postText": "get dismissed when contested",
+        "subText": "$200 fine · 1,225,806 tickets issued",
+        "color": "#00e676",
+        "glitch": false
+      },
+      "durationFrames": 300
+    },
+    {
+      "type": "two-stat",
+      "props": {
+        "stat1Label": "People who just pay it",
+        "stat1Number": "94%",
+        "stat1Sub": "never even try to fight",
+        "stat1Color": "#ff6b2b",
+        "stat2Label": "People who contest and win",
+        "stat2Number": "85%",
+        "stat2Sub": "get their ticket dismissed",
+        "stat2Color": "#00e676",
+        "kicker": "The city is counting on you giving up."
+      },
+      "durationFrames": 420
+    },
+    {
+      "type": "brand-reveal",
+      "props": {
+        "tagline1": "We contest your tickets automatically.",
+        "tagline2": "Letters drafted, printed, and mailed."
+      },
+      "durationFrames": 240
+    },
+    {
+      "type": "cta",
+      "props": {},
+      "durationFrames": 210
+    }
+  ],
+  "musicFile": "audio/bg-music.mp3",
+  "musicVolume": 0.1
+}

@@ -1,0 +1,56 @@
+{
+  "scenes": [
+    {
+      "type": "big-number",
+      "props": {
+        "preText": "Since 2019, Chicago charged drivers",
+        "number": "$2289M+",
+        "postText": "in parking and camera fines",
+        "subText": "Source: FOIA F118906, 35.7M records",
+        "color": "#ff1a1a",
+        "glitch": true
+      },
+      "durationFrames": 300
+    },
+    {
+      "type": "stat-stack",
+      "props": {
+        "stats": [
+          {
+            "number": "35.7M",
+            "label": "total tickets issued",
+            "color": "#ff1a1a"
+          },
+          {
+            "number": "$2289M",
+            "label": "in fines charged",
+            "color": "#ff6b2b"
+          },
+          {
+            "number": "94%",
+            "label": "never contested",
+            "sublabel": "the city is counting on it",
+            "color": "#ffd700"
+          }
+        ]
+      },
+      "durationFrames": 360
+    },
+    {
+      "type": "brand-reveal",
+      "props": {
+        "tagline1": "We fight your tickets automatically.",
+        "tagline2": "66% of contested tickets get dismissed."
+      },
+      "durationFrames": 270
+    },
+    {
+      "type": "cta",
+      "props": {},
+      "durationFrames": 252,
+      "voFile": "audio/tiktok/data-shock-total-fines/vo-3.mp3"
+    }
+  ],
+  "musicFile": "audio/bg-music.mp3",
+  "musicVolume": 0.1
+}

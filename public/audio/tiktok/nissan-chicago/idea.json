@@ -1,0 +1,63 @@
+{
+  "id": "nissan-chicago-v2",
+  "pillar": "vehicle-make",
+  "caption": "If you drive a Nissan in CHICAGO, the city has taken $107 MILLION from Nissan drivers in parking tickets. Real FOIA data. 1.3 million tickets. #chicago #nissan #parkingticket #chicagoparking #fyp #didyouknow",
+  "hashtags": "#chicago #nissan #parkingticket #chicagoparking #fyp #didyouknow #carlife",
+  "scenes": [
+    {
+      "type": "big-number",
+      "props": {
+        "preText": "Nissan drivers in Chicago",
+        "number": "$107M",
+        "postText": "taken by the City of Chicago",
+        "subText": "1,356,001 parking tickets. Real city data.",
+        "color": "#ff1a1a",
+        "glitch": true,
+        "particleColors": ["#ff1a1a", "#ff6b2b"]
+      },
+      "durationFrames": 350,
+      "voScript": "If you drive a Nissan in Chicago... the City of Chicago has taken one hundred and seven million dollars from Nissan drivers in parking tickets. One point three million tickets. This is real data from the city's own records."
+    },
+    {
+      "type": "stat-stack",
+      "props": {
+        "stats": [
+          { "number": "1.35M", "label": "Nissan tickets in Chicago", "color": "#ff1a1a" },
+          { "number": "$107M", "label": "in fines from Chicago", "color": "#ff6b2b" },
+          { "number": "94%", "label": "never even tried to fight it", "sublabel": "Chicago is counting on that", "color": "#ffd700" }
+        ],
+        "scanColor": "#ff1a1a",
+        "particleColors": ["#ff1a1a"]
+      },
+      "durationFrames": 420,
+      "voScript": "One point three five million Nissan tickets in the city of Chicago. A hundred and seven million dollars in fines. And ninety four percent of Chicago drivers never even try to contest. The city is literally counting on you not fighting back."
+    },
+    {
+      "type": "two-stat",
+      "props": {
+        "stat1Label": "Chicago drivers who just pay",
+        "stat1Number": "94%",
+        "stat1Sub": "never contest their ticket",
+        "stat1Color": "#ff6b2b",
+        "stat2Label": "Chicago drivers who fight back",
+        "stat2Number": "66%",
+        "stat2Sub": "get their ticket dismissed",
+        "stat2Color": "#00e676",
+        "kicker": "The City of Chicago is betting you won't try."
+      },
+      "durationFrames": 420,
+      "voScript": "Ninety four percent of Chicago drivers just pay the ticket. But sixty six percent of the people who actually contest in Chicago win. The City of Chicago is betting you won't try. Prove them wrong."
+    },
+    {
+      "type": "cta",
+      "props": {
+        "headline": "Chicago Nissan drivers",
+        "headlineSub": "stop giving the city your money",
+        "price": "$99/year · Built for Chicago drivers",
+        "url": "autopilotamerica.com"
+      },
+      "durationFrames": 270,
+      "voScript": "Autopilot America was built for Chicago drivers. We contest your tickets automatically. Ninety nine dollars a year. First dismissal guarantee. If we don't save you money, you pay nothing. Link in bio."
+    }
+  ]
+}
