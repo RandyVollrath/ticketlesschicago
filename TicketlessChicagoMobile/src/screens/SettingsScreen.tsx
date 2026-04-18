@@ -14,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import AnalyticsService from '../services/AnalyticsService';
-import { submitDebugReport } from '../services/DebugReportService';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import Logger from '../utils/Logger';
 
@@ -44,28 +43,6 @@ const SettingsScreen: React.FC = () => {
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
-  const [isSendingDebug, setIsSendingDebug] = useState(false);
-
-  const handleSendDebugReport = useCallback(async () => {
-    if (isSendingDebug) return;
-    setIsSendingDebug(true);
-    try {
-      const result = await submitDebugReport();
-      if (result.success) {
-        Alert.alert(
-          'Debug Report Sent',
-          `Report ID: ${result.id}\n\nShare this ID with support so we can look up your logs.`
-        );
-      } else {
-        Alert.alert('Send Failed', result.error || 'Could not submit debug report. Try again in a moment.');
-      }
-    } catch (e) {
-      Alert.alert('Send Failed', String(e));
-    } finally {
-      if (isMountedRef.current) setIsSendingDebug(false);
-    }
-  }, [isSendingDebug]);
-
   const isMountedRef = useRef(true);
   const loadingRef = useRef(false);
   const selectingRef = useRef(false);
@@ -265,11 +242,6 @@ const SettingsScreen: React.FC = () => {
               For best results, set location access to "Always" in Settings {'>'} Privacy {'>'} Location Services {'>'} Autopilot America.
             </Text>
           </View>
-
-          <DebugReportButton
-            onPress={handleSendDebugReport}
-            busy={isSendingDebug}
-          />
         </ScrollView>
       </SafeAreaView>
     );
@@ -372,36 +344,10 @@ const SettingsScreen: React.FC = () => {
             </Text>
           </View>
         )}
-
-        <DebugReportButton
-          onPress={handleSendDebugReport}
-          busy={isSendingDebug}
-        />
       </ScrollView>
     </SafeAreaView>
   );
 };
-
-const DebugReportButton: React.FC<{ onPress: () => void; busy: boolean }> = ({ onPress, busy }) => (
-  <View style={styles.debugSection}>
-    <Text style={styles.debugHint}>
-      Having an issue? Tap below to send diagnostic logs to support.
-    </Text>
-    <TouchableOpacity
-      style={[styles.debugButton, busy && styles.buttonDisabled]}
-      onPress={onPress}
-      disabled={busy}
-      accessibilityRole="button"
-      accessibilityLabel="Send debug report to support"
-    >
-      {busy ? (
-        <ActivityIndicator color={colors.white} />
-      ) : (
-        <Text style={styles.debugButtonText}>Send Debug Report</Text>
-      )}
-    </TouchableOpacity>
-  </View>
-);
 
 const styles = StyleSheet.create({
   container: {
