@@ -59,6 +59,17 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const lastZoomedRef = useRef<string | null>(null);
+
+  // Cleanup only on unmount
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Dynamically import Leaflet to avoid SSR issues
@@ -66,20 +77,20 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
       if (typeof window === 'undefined' || !mapRef.current) return;
 
       const L = (await import('leaflet')).default;
-      
-      // Initialize map
+
+      // Initialize map only once — never destroy/recreate on prop changes
       if (!mapInstanceRef.current) {
         mapInstanceRef.current = L.map(mapRef.current).setView([41.8781, -87.6298], 11);
-        
+
         // Add tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(mapInstanceRef.current);
       }
 
-      // Clear existing layers
+      // Clear existing layers (keep tile layer)
       mapInstanceRef.current.eachLayer((layer: any) => {
-        if (layer.options.attribution) return; // Keep tile layer
+        if (layer.options.attribution) return;
         mapInstanceRef.current.removeLayer(layer);
       });
 
@@ -453,23 +464,23 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         updateMeterVisibility();
       }
 
-      // Zoom to user's zone when a search result is available
-      // This runs synchronously after all layers are added above, so the map is ready
-      if (triggerPopup && data.length > 0) {
+      // Zoom to user's zone — only when the target ward/section actually changes
+      const zoomKey = triggerPopup ? `${triggerPopup.ward}-${triggerPopup.section}` : null;
+      if (zoomKey && zoomKey !== lastZoomedRef.current && data.length > 0) {
+        lastZoomedRef.current = zoomKey;
+
         const targetFeature = data.find(feature =>
-          String(feature.properties?.ward) === String(triggerPopup.ward) &&
-          String(feature.properties?.section) === String(triggerPopup.section)
+          String(feature.properties?.ward) === String(triggerPopup!.ward) &&
+          String(feature.properties?.section) === String(triggerPopup!.section)
         );
 
         if (targetFeature && targetFeature.geometry) {
-          // Fit the map to the zone's bounds
           const geoLayer = L.geoJSON(targetFeature.geometry);
           const bounds = geoLayer.getBounds();
           if (bounds.isValid()) {
             mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
           }
 
-          // Open popup at center with cleaning status
           const center = bounds.getCenter();
           const props = targetFeature.properties;
           const statusLabel = props?.cleaningStatus === 'today' ? 'Cleaning TODAY'
@@ -507,7 +518,6 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
             </div>
           `;
 
-          // Small delay for popup so fitBounds animation completes
           setTimeout(() => {
             if (!mapInstanceRef.current) return;
             L.popup()
@@ -516,19 +526,12 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
               .openOn(mapInstanceRef.current);
           }, 400);
         }
-      } else if (userLocation && !showSnowSafeMode && !showWinterBanMode) {
+      } else if (!zoomKey && userLocation && !showSnowSafeMode && !showWinterBanMode) {
         mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14);
       }
     };
 
     initMap();
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
   }, [data, triggerPopup, snowRoutes, showSnowSafeMode, winterBanRoutes, showWinterBanMode, permitZoneLines, showPermitZones, meterLocations, showMeters, userLocation, alternativeZones]);
 
   return (
