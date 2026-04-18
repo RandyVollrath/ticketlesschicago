@@ -907,7 +907,7 @@ export default function CheckYourStreet() {
                           backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center',
                         }}>
                           <div style={{ fontSize: '24px', fontWeight: '700', color: '#6EE7B7', fontFamily: '"Space Grotesk", sans-serif' }}>
-                            68.5%
+                            66%
                           </div>
                           <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>dismissed when contested</div>
                         </div>
@@ -926,7 +926,7 @@ export default function CheckYourStreet() {
                               This block gets a parking ticket roughly every other week. One <span style={{ color: '#FCA5A5' }}>$65-$200 ticket</span> costs more than a full year of Autopilot.
                             </div>
                             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
-                              We contest every ticket on your plate automatically. 68.5% get dismissed. $99/yr.
+                              We contest every ticket on your plate automatically. 66% get dismissed. $99/yr.
                             </div>
                           </div>
                           <a href="/get-started" style={{
@@ -1042,7 +1042,7 @@ export default function CheckYourStreet() {
           <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', margin: '0 0 8px', fontFamily: '"Space Grotesk", sans-serif' }}>
             Never worry about parking tickets again
           </h3>
-          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 68.5% get dismissed. $99/yr.</p>
+          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 66% get dismissed. $99/yr.</p>
           <a href="/get-started" style={{
             display: 'inline-block', backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '10px',
             padding: '12px 24px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none',
