@@ -627,31 +627,48 @@ export default async function handler(
               checkLat = bestCandidate.snapped_lat;
               checkLng = bestCandidate.snapped_lng;
 
-              // Block-aware address interpolation.
+              // Block-aware, side-aware address interpolation.
               //
-              // Chicago's centerline GeoJSON records per-segment address ranges,
-              // but segments often end 20-40 addresses short of the true block
-              // boundary (e.g., the 4700-block Wolcott segment is labeled
-              // 4700-4758 while the road physically runs from Leland 4700 N all
-              // the way to Lawrence 4800 N — addresses 4759-4798 exist but
-              // aren't in the GeoJSON). Plain interpolation across the recorded
-              // range underestimates positions at the end of such segments.
+              // Randy pointed out the old code picked the larger-span side's
+              // parity regardless of which physical side the user was on —
+              // which could flip the parity and misidentify the side for
+              // downstream one-way side detection.
               //
-              // Fix: if the NEXT segment on this street starts exactly 100
-              // higher (confirming a standard block boundary), extrapolate the
-              // current segment's address range to the full block (base..base+98)
-              // and interpolate across that. For irregular blocks (diagonals,
-              // dead-ends) where the next segment isn't on a 100-boundary,
-              // fall back to the recorded range.
+              // Fix: use the user's GPS offset from the centerline, combined
+              // with the segment bearing, to determine which side they're on.
+              // Then pick THAT side's address range and stretch it to the
+              // full block when the next segment confirms a standard boundary.
               let interpolatedNumber: number | null = null;
+              let userSideFromGps: 'L' | 'R' | null = null;
               const frac = typeof bestCandidate.segment_fraction === 'number' ? bestCandidate.segment_fraction : null;
               const ranges = [
-                { from: bestCandidate.l_from_addr, to: bestCandidate.l_to_addr, side: 'L' },
-                { from: bestCandidate.r_from_addr, to: bestCandidate.r_to_addr, side: 'R' },
+                { from: bestCandidate.l_from_addr, to: bestCandidate.l_to_addr, side: 'L' as const },
+                { from: bestCandidate.r_from_addr, to: bestCandidate.r_to_addr, side: 'R' as const },
               ].filter((r) => typeof r.from === 'number' && typeof r.to === 'number' && r.from > 0 && r.to > 0);
 
+              // Determine user's side of centerline from GPS offset.
+              // Positive cross-product (east × north relative to bearing) = LEFT of segment direction.
+              if (
+                typeof bestCandidate.snapped_lat === 'number' &&
+                typeof bestCandidate.snapped_lng === 'number' &&
+                typeof bestCandidate.street_bearing === 'number' &&
+                bestCandidate.street_bearing >= 0
+              ) {
+                const cosLat = Math.cos((latitude * Math.PI) / 180);
+                const dE = (longitude - bestCandidate.snapped_lng) * cosLat * 111000;
+                const dN = (latitude - bestCandidate.snapped_lat) * 111000;
+                const br = (bestCandidate.street_bearing * Math.PI) / 180;
+                // Unit right-of-direction vector: (cos(br), -sin(br))
+                const rightDot = dE * Math.cos(br) - dN * Math.sin(br);
+                // Only trust the side determination when the user is >2m off
+                // the centerline. Inside 2m, GPS noise can flip the sign.
+                if (Math.abs(rightDot) >= 2) {
+                  userSideFromGps = rightDot > 0 ? 'R' : 'L';
+                }
+              }
+
               if (frac != null && ranges.length > 0 && supabaseAdmin) {
-                // Look up the next segment on this street to detect standard block boundaries.
+                // Detect standard block boundary for full-block stretch.
                 let isStandardBlock = false;
                 try {
                   const { data: nextSeg } = await supabaseAdmin
@@ -671,12 +688,17 @@ export default async function handler(
                   console.warn('[check-parking] Next-segment lookup failed:', e);
                 }
 
-                // Pick the side with the larger recorded span (the more reliable one).
-                const pick = ranges.sort((a: any, b: any) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from))[0] as any;
+                // Pick range by user-side-from-GPS, fall back to larger-span side.
+                let pick: any = ranges[0];
+                if (userSideFromGps) {
+                  const sideMatch = ranges.find((r) => r.side === userSideFromGps);
+                  if (sideMatch) pick = sideMatch;
+                }
+                if (pick === ranges[0] && !userSideFromGps) {
+                  pick = ranges.sort((a, b) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from))[0];
+                }
                 const parityTarget = pick.from % 2;
                 const blockBase = Math.floor(pick.from / 100) * 100;
-                // Standard Chicago blocks: addresses run blockBase..blockBase+98 (even side)
-                // or blockBase+1..blockBase+99 (odd side).
                 const effectiveLow = pick.from;
                 const effectiveHigh = isStandardBlock ? blockBase + (parityTarget === 0 ? 98 : 99) : pick.to;
                 const raw = effectiveLow + (effectiveHigh - effectiveLow) * frac;
@@ -684,7 +706,7 @@ export default async function handler(
                 if (n % 2 !== parityTarget) n += n > raw ? -1 : 1;
                 n = Math.min(Math.max(n, effectiveLow), effectiveHigh);
                 interpolatedNumber = n;
-                console.log(`[check-parking] Address interpolated: side=${pick.side}, recorded=${pick.from}-${pick.to}, effective=${effectiveLow}-${effectiveHigh} (standard_block=${isStandardBlock}), frac=${frac.toFixed(3)} → ${interpolatedNumber}`);
+                console.log(`[check-parking] Address interpolated: picked_side=${pick.side}${userSideFromGps ? ' (from GPS offset)' : ' (larger-span fallback, no GPS offset signal)'}, range=${pick.from}-${pick.to}, effective=${effectiveLow}-${effectiveHigh} (standard_block=${isStandardBlock}), frac=${frac.toFixed(3)} → ${interpolatedNumber}`);
               }
 
               snapResult = {
@@ -894,9 +916,43 @@ export default async function handler(
       snapGeometry, latitude, longitude,
     );
 
+    // Step 2a: Building-footprint lookup BEFORE metered parking so the corrected
+    // house number (and its parity) flows into meter block-range lookup and
+    // side-of-street parity check. Previously this ran after the meter check,
+    // meaning meters got the less-accurate number from Nominatim/grid estimator.
+    let buildingFootprintResult: any = null;
+    if (snapResult?.streetName && supabaseAdmin) {
+      try {
+        const { data: bld, error: bldErr } = await supabaseAdmin.rpc('nearest_address_point', {
+          user_lat: latitude,
+          user_lng: longitude,
+          search_radius_meters: 25,
+          expected_street: snapResult.streetName,
+        });
+        if (!bldErr && bld && bld.length > 0 && bld[0].house_number > 0) {
+          buildingFootprintResult = bld[0];
+        }
+      } catch (bldErr) {
+        console.warn('[check-parking] Building footprint lookup failed (non-fatal):', bldErr);
+      }
+    }
+
+    // If we have a better house number (building > interpolation > existing),
+    // inject it into parsedAddress BEFORE downstream checks read it.
+    const bestNumber =
+      buildingFootprintResult?.house_number ||
+      snapResult?.interpolatedNumber ||
+      result.location.parsedAddress?.number ||
+      null;
+    if (bestNumber && result.location.parsedAddress) {
+      if (result.location.parsedAddress.number !== bestNumber) {
+        console.log(`[check-parking] Overriding parsedAddress.number ${result.location.parsedAddress.number} → ${bestNumber} (source=${buildingFootprintResult ? 'building_footprint' : 'interpolation'}) for meter/permit/risk checks`);
+        result.location.parsedAddress = { ...result.location.parsedAddress, number: bestNumber };
+      }
+    }
+
     // Step 2b: Metered parking check uses the shared parsed address from step 2.
-    // Pass heading so the checker can determine which side of the street the user
-    // is on and suppress meter warnings when parked on the non-metered side.
+    // Now uses the corrected number so meters on the right block + side are found.
     const meteredParkingResult = await checkMeteredParking(
       checkLat,
       checkLng,
@@ -1006,46 +1062,26 @@ export default async function handler(
       }
     }
 
-    // Address-number precedence, best → fallback:
-    //   1. Nearest building's registered house number (Chicago Building
-    //      Footprints dataset). Exact address from city records — no
-    //      interpolation math. Constrained to the snap-picked street so we
-    //      don't grab a house across an intersection on the wrong corner.
-    //   2. Block-aware segment interpolation (stretched to full 100-address
-    //      block when the next segment confirms a standard boundary).
-    //   3. Whatever unified-parking-checker produced (grid estimator or
-    //      Nominatim's number).
+    // Address-number precedence for the DISPLAY string, best → fallback:
+    //   1. Building footprint (already queried at Step 2a)
+    //   2. Block-aware segment interpolation (already computed on snapResult)
+    //   3. unified-parking-checker's address (grid estimator / Nominatim)
     let finalAddress = result.location.address;
     let addressNumberSource: 'building_footprint' | 'segment_interpolation' | 'fallback' = 'fallback';
-
-    if (snapResult?.streetName && supabaseAdmin) {
-      try {
-        const { data: bld, error: bldErr } = await supabaseAdmin.rpc('nearest_address_point', {
-          user_lat: latitude,
-          user_lng: longitude,
-          search_radius_meters: 25,
-          expected_street: snapResult.streetName,
-        });
-        if (!bldErr && bld && bld.length > 0 && bld[0].house_number > 0) {
-          const b = bld[0];
-          const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
-          const zip = zipMatch ? ` ${zipMatch[1]}` : '';
-          finalAddress = `${b.house_number} ${b.full_street_name}, Chicago, IL${zip}`;
-          addressNumberSource = 'building_footprint';
-          console.log(`[check-parking] Address from building footprint: ${b.house_number} ${b.full_street_name} (${b.distance_meters.toFixed(1)}m to building centroid)`);
-        }
-      } catch (bldErr) {
-        console.warn('[check-parking] Building footprint lookup failed (non-fatal):', bldErr);
-      }
-    }
-
-    if (addressNumberSource === 'fallback' && snapResult?.interpolatedNumber && result.location.streetName) {
+    if (buildingFootprintResult) {
+      const b = buildingFootprintResult;
+      const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
+      const zip = zipMatch ? ` ${zipMatch[1]}` : '';
+      finalAddress = `${b.house_number} ${b.full_street_name}, Chicago, IL${zip}`;
+      addressNumberSource = 'building_footprint';
+      console.log(`[check-parking] Display address from building footprint: ${finalAddress} (${b.distance_meters.toFixed(1)}m to building centroid)`);
+    } else if (snapResult?.interpolatedNumber && result.location.streetName) {
       const streetForDisplay = result.location.streetName;
       const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
       const zip = zipMatch ? ` ${zipMatch[1]}` : '';
       finalAddress = `${snapResult.interpolatedNumber} ${streetForDisplay}, Chicago, IL${zip}`;
       addressNumberSource = 'segment_interpolation';
-      console.log(`[check-parking] Address number from block-aware interpolation: ${snapResult.interpolatedNumber}`);
+      console.log(`[check-parking] Display address from block-aware interpolation: ${finalAddress}`);
     }
     // Log which source we ended up using for the house number.
     const nm: Record<string, any> = diag.native_meta || {};
