@@ -15,12 +15,18 @@
  * Takes ~15-20 minutes (~820K rows, batched 500 at a time via SODA API).
  */
 
-import * as path from 'path';
+import * as dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import { fileURLToPath } from 'url';
+import * as path from 'path';
 
-// Load .env.local without leaking dotenv's stdout tip (which contains non-ASCII
-// characters that break Supabase client auth headers).
-const dotenv = require('dotenv');
+// ES-module-safe __dirname equivalent. ts-node runs this file as ESM so
+// CommonJS __dirname isn't defined; derive it from import.meta.url.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+
+// Load .env.local quietly so dotenv's stdout tip (non-ASCII chars) doesn't
+// leak into anything that captures process stdout.
 dotenv.config({ path: path.resolve(__dirname, '..', '.env.local'), quiet: true });
 
 const SUPABASE_URL = 'https://dzhqolbhuqdcpngdayuq.supabase.co';

@@ -46,6 +46,7 @@ RETURNS TABLE (
   r_from_addr INT,
   r_to_addr   INT
 ) AS $$
+#variable_conflict use_column
 BEGIN
   RETURN QUERY
   WITH user_point AS (
