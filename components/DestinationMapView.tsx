@@ -347,14 +347,20 @@ export default function DestinationMapView() {
           const color = parkabilityZoneColor(nextISO);
           layer.setStyle({
             fillColor: color,
-            color,
+            color: '#1f2937',
             fillOpacity: 0.3,
-            weight: 1.5,
-            opacity: 0.7
+            weight: 0.6,
+            opacity: 0.45,
           });
         } else {
           const color = cleaningColor(nextISO);
-          layer.setStyle({ fillColor: color, color, fillOpacity: 0.25, weight: 1.5, opacity: 0.7 });
+          layer.setStyle({
+            fillColor: color,
+            color: '#1f2937',
+            fillOpacity: 0.55,
+            weight: 0.6,
+            opacity: 0.45,
+          });
         }
       });
     }
@@ -638,12 +644,14 @@ export default function DestinationMapView() {
         const cleaningLayer = L.geoJSON(zones, {
           style: (feature: any) => {
             const color = cleaningColor(feature?.properties?.nextISO);
+            // Use a contrasting stroke so adjacent same-fill zones (e.g. the
+            // green "Clear" wash) still show distinct polygon boundaries.
             return {
               fillColor: color,
               fillOpacity: 0.55,
-              color: color,
-              weight: 1,
-              opacity: 0.8,
+              color: '#1f2937',
+              weight: 0.6,
+              opacity: 0.45,
             };
           },
           onEachFeature: (feature: any, layer: any) => {
