@@ -229,12 +229,32 @@ interface InsertRow {
   l_to_addr: number | null;
   r_from_addr: number | null;
   r_to_addr: number | null;
+  // One-way direction + left/right parity for side-of-street detection on
+  // one-way streets (where the heading rule fails when parking is allowed on
+  // the left side of the travel direction).
+  oneway_dir: string | null;   // "N", "S", "E", "W", or null (two-way)
+  l_parity: string | null;     // "O" (odd) or "E" (even)
+  r_parity: string | null;
 }
 
 function parseAddr(v: unknown): number | null {
   if (v == null) return null;
   const n = typeof v === 'number' ? v : parseInt(String(v), 10);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function parseDirOrNull(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim().toUpperCase();
+  if (s === 'N' || s === 'S' || s === 'E' || s === 'W') return s;
+  return null;
+}
+
+function parseParity(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim().toUpperCase();
+  if (s === 'O' || s === 'E') return s;
+  return null;
 }
 
 async function insertBatch(rows: InsertRow[]): Promise<number> {
@@ -312,6 +332,9 @@ async function main() {
       l_to_addr:   parseAddr(feature.properties.L_T_ADD),
       r_from_addr: parseAddr(feature.properties.R_F_ADD),
       r_to_addr:   parseAddr(feature.properties.R_T_ADD),
+      oneway_dir:  parseDirOrNull((feature.properties as any).ONEWAY_DIR),
+      l_parity:    parseParity((feature.properties as any).L_PARITY),
+      r_parity:    parseParity((feature.properties as any).R_PARITY),
     });
 
     if (chicagoBatch.length >= BATCH_SIZE) {
@@ -369,6 +392,9 @@ async function main() {
       l_to_addr: null,
       r_from_addr: null,
       r_to_addr: null,
+      oneway_dir: null,
+      l_parity: null,
+      r_parity: null,
     });
 
     if (osmBatch.length >= BATCH_SIZE) {

@@ -411,6 +411,9 @@ export default async function handler(
       rFromAddr?: number | null;
       rToAddr?: number | null;
       interpolatedNumber?: number | null;
+      onewayDir?: string | null;
+      lParity?: string | null;
+      rParity?: string | null;
     } | null = null;
 
     const shouldSnap = !accuracyMeters || accuracyMeters <= 75;
@@ -696,6 +699,9 @@ export default async function handler(
                 rFromAddr: bestCandidate.r_from_addr ?? null,
                 rToAddr: bestCandidate.r_to_addr ?? null,
                 interpolatedNumber,
+                onewayDir: bestCandidate.oneway_dir ?? null,
+                lParity: bestCandidate.l_parity ?? null,
+                rParity: bestCandidate.r_parity ?? null,
               };
               console.log(`[check-parking] Snapped ${bestCandidate.snap_distance_meters.toFixed(1)}m to ${bestCandidate.street_name} (${bestCandidate.snap_source}, bearing=${bestCandidate.street_bearing?.toFixed(0) ?? 'none'}°)`);
               diag.snap_candidates_count = allCandidates?.length || 0;
@@ -896,6 +902,7 @@ export default async function handler(
       checkLng,
       result.location.parsedAddress,  // Pass shared address — no second geocode call
       hasEffectiveHeading ? effectiveHeading : undefined,
+      snapResult ? { isOneWay: !!snapResult.onewayDir } : undefined,
     );
 
     // Step 3: Compute enforcement risk score from FOIA ticket data.

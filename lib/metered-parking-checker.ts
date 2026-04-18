@@ -402,37 +402,40 @@ function getUserSideOfStreet(
   streetDirection: string | null,
   headingDeg: number | undefined,
   addressNumber: number | null,
+  isOneWay: boolean = false,
 ): string | null {
   const isEWStreet = streetDirection === 'W' || streetDirection === 'E';
   const isNSStreet = streetDirection === 'N' || streetDirection === 'S';
 
-  // Primary: heading-based determination
+  // On one-way streets, heading tells you the direction of travel but not
+  // which side you parked on — parking is often allowed on BOTH sides of a
+  // Chicago one-way. The "right side of travel" rule then fails whenever the
+  // driver parallel-parked on the left-hand curb, which is legal on one-ways.
+  // Address parity is the ground truth in those cases (Chicago's convention:
+  // odd=east/south, even=west/north, verified against FOIA meter inventory).
+  if (isOneWay && addressNumber != null) {
+    if (isEWStreet) return addressNumber % 2 === 1 ? 'S' : 'N';
+    if (isNSStreet) return addressNumber % 2 === 1 ? 'E' : 'W';
+  }
+
+  // Primary (two-way streets): heading-based determination.
+  // "Right side of travel direction" — the curb you parallel-parked against.
   if (headingDeg != null && headingDeg >= 0 && headingDeg < 360) {
     if (isEWStreet) {
-      // Heading roughly east (45-135°) → parked on south (right) side
-      // Heading roughly west (225-315°) → parked on north (right) side
-      if (headingDeg >= 45 && headingDeg < 135) return 'S';
-      if (headingDeg >= 225 && headingDeg < 315) return 'N';
+      if (headingDeg >= 45 && headingDeg < 135) return 'S';       // heading east → south side
+      if (headingDeg >= 225 && headingDeg < 315) return 'N';      // heading west → north side
       // Heading is N/S on an E-W street — unusual, fall through to parity
     } else if (isNSStreet) {
-      // Heading roughly north (315-360 or 0-45°) → parked on east (right) side
-      // Heading roughly south (135-225°) → parked on west (right) side
-      if (headingDeg >= 315 || headingDeg < 45) return 'E';
-      if (headingDeg >= 135 && headingDeg < 225) return 'W';
+      if (headingDeg >= 315 || headingDeg < 45) return 'E';       // heading north → east side
+      if (headingDeg >= 135 && headingDeg < 225) return 'W';      // heading south → west side
       // Heading is E/W on a N-S street — unusual, fall through to parity
     }
   }
 
-  // Fallback: address parity
-  // Verified against FOIA meter inventory: 100% match rate on both orientations.
+  // Fallback: address parity (also used on one-ways above).
   if (addressNumber != null) {
-    if (isEWStreet) {
-      // Odd = south side, even = north side
-      return addressNumber % 2 === 1 ? 'S' : 'N';
-    } else if (isNSStreet) {
-      // Odd = east side, even = west side
-      return addressNumber % 2 === 1 ? 'E' : 'W';
-    }
+    if (isEWStreet) return addressNumber % 2 === 1 ? 'S' : 'N';
+    if (isNSStreet) return addressNumber % 2 === 1 ? 'E' : 'W';
   }
 
   return null;
@@ -463,6 +466,15 @@ export async function checkMeteredParking(
   longitude: number,
   preResolvedAddress?: ParsedAddress | null,
   headingDeg?: number,
+  /**
+   * Snap context from street_centerlines, passed by check-parking.ts so we
+   * can tell if the street is one-way (parity overrides heading for side
+   * detection). Optional — falls back to the original heading-first logic
+   * for standalone callers.
+   */
+  snapContext?: {
+    isOneWay?: boolean;
+  } | null,
 ): Promise<MeteredParkingStatus> {
   if (!supabaseAdmin) return makeNoMeterResult();
 
@@ -544,7 +556,12 @@ export async function checkMeteredParking(
     // address number to the wrong side of a narrow street (~20m wide), but
     // heading is captured while driving and is direction-accurate.
     let candidateMeters = meters;
-    const userSide = getUserSideOfStreet(parsed.direction, headingDeg, parsed.number);
+    const userSide = getUserSideOfStreet(
+      parsed.direction,
+      headingDeg,
+      parsed.number,
+      snapContext?.isOneWay === true,
+    );
 
     if (userSide) {
       const sideMatched = meters.filter((m: any) => m.side_of_street === userSide);
