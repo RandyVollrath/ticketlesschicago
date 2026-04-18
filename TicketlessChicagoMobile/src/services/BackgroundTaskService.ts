@@ -1384,6 +1384,37 @@ class BackgroundTaskServiceClass {
       let iosGpsCount = 0;
       this.cameraLocationUnsubscribe = BackgroundLocationService.addLocationListener(
         (event) => {
+          // Mirror the Android path: buffer driving GPS fixes so the
+          // trajectory-based street disambiguation has data to work with.
+          // Previously iOS skipped this entirely, leaving drivingGpsBuffer
+          // empty for all iOS users — trajectory override never fired.
+          //
+          // Lower speed threshold to 0.3 m/s (0.7 mph) so we also capture
+          // the slow-creep fixes right before parking. This is critical for
+          // turn-and-park cases (Randy's Lawrence→Wolcott, Kenmore→Belden)
+          // where the car turns and stops within 1-2s — we need at least
+          // one post-turn fix on the new street for trajectory to pick it.
+          const speed = event.speed ?? 0;
+          const heading = event.heading ?? -1;
+          if (speed > 0.3) {
+            if (heading >= 0 && heading < 360 && speed > 1.0) {
+              // Only update the "last driving heading" from fixes fast enough
+              // that the GPS heading reading is reliable (>1 m/s).
+              this.lastDrivingHeading = heading;
+            }
+            this.drivingGpsBuffer.push({
+              latitude: event.latitude,
+              longitude: event.longitude,
+              accuracy: event.accuracy ?? 30,
+              heading,
+              speed,
+              timestamp: Date.now(),
+            });
+            if (this.drivingGpsBuffer.length > this.DRIVING_GPS_BUFFER_MAX) {
+              this.drivingGpsBuffer.shift();
+            }
+          }
+
           CameraAlertService.onLocationUpdate(
             event.latitude,
             event.longitude,
@@ -1463,10 +1494,13 @@ class BackgroundTaskServiceClass {
           if (heading >= 0 && heading < 360 && (position.coords.speed ?? 0) > 1.0) {
             this.lastDrivingHeading = heading;
           }
-          // Save driving GPS fix to ring buffer for park-time location.
-          // Only buffer fixes while actually moving (speed > 1 m/s).
+          // Save driving GPS fix to ring buffer for park-time location +
+          // trajectory-based street disambiguation. Lowered threshold from
+          // 1.0 to 0.3 m/s so we also capture slow-creep fixes right before
+          // the car stops — those fixes reveal the street after a turn,
+          // even when the turn-and-park happens within 1-2 seconds.
           const speed = position.coords.speed ?? 0;
-          if (speed > 1.0) {
+          if (speed > 0.3) {
             this.drivingGpsBuffer.push({
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
