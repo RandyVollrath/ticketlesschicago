@@ -1223,7 +1223,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   mapContainer: {
-    height: 400,
+    height: 520,
     backgroundColor: '#F3F4F6',
   },
   webView: {

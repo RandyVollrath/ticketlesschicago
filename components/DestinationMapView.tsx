@@ -354,11 +354,12 @@ export default function DestinationMapView() {
           });
         } else {
           const color = cleaningColor(nextISO);
+          const isClear = color === LAYER_COLORS.cleaningNone;
           layer.setStyle({
             fillColor: color,
             color: '#1f2937',
-            fillOpacity: 0.55,
-            weight: 0.6,
+            fillOpacity: isClear ? 0.18 : 0.55,
+            weight: 1.0,
             opacity: 0.45,
           });
         }
@@ -478,12 +479,21 @@ export default function DestinationMapView() {
     else { if (map.hasLayer(permitLayer)) map.removeLayer(permitLayer); }
   }, [showPermitZones]);
 
+  // Meters: only render when the user has the chip on AND zoom >= 15.
+  // Rendering 38k circle markers at city-wide zoom is useless and freezes
+  // the WebView for several seconds.
   useEffect(() => {
     const map = mapRef.current;
     const { meterLayer } = layersRef.current;
     if (!map || !meterLayer) return;
-    if (showMeters) { if (!map.hasLayer(meterLayer)) meterLayer.addTo(map); }
-    else { if (map.hasLayer(meterLayer)) map.removeLayer(meterLayer); }
+    const syncMeterVisibility = () => {
+      const shouldShow = showMeters && map.getZoom() >= 15;
+      if (shouldShow) { if (!map.hasLayer(meterLayer)) meterLayer.addTo(map); }
+      else { if (map.hasLayer(meterLayer)) map.removeLayer(meterLayer); }
+    };
+    syncMeterVisibility();
+    map.on('zoomend', syncMeterVisibility);
+    return () => { map.off('zoomend', syncMeterVisibility); };
   }, [showMeters]);
 
   useEffect(() => {
@@ -517,7 +527,13 @@ export default function DestinationMapView() {
       const map = L.map(containerRef.current, {
         center: [lat, lng],
         zoom: 16,
-        zoomControl: true,
+        // Canvas renderer: single <canvas> node instead of one SVG element per
+        // zone/marker. Turns 40k+ DOM nodes into one — huge pan/zoom win on
+        // WebView. See DestinationMap perf notes.
+        preferCanvas: true,
+        // Hide the +/- controls — pinch zoom is enough on mobile and this
+        // frees up the top-left so filter chips can start at left:10.
+        zoomControl: false,
         scrollWheelZoom: true,
         touchZoom: true,
         dragging: true,
@@ -644,13 +660,14 @@ export default function DestinationMapView() {
         const cleaningLayer = L.geoJSON(zones, {
           style: (feature: any) => {
             const color = cleaningColor(feature?.properties?.nextISO);
-            // Use a contrasting stroke so adjacent same-fill zones (e.g. the
-            // green "Clear" wash) still show distinct polygon boundaries.
+            const isClear = color === LAYER_COLORS.cleaningNone;
+            // Keep red/yellow bold, but dim the green "Clear" wash so the
+            // urgent zones pop instead of drowning in a sea of green.
             return {
               fillColor: color,
-              fillOpacity: 0.55,
+              fillOpacity: isClear ? 0.18 : 0.55,
               color: '#1f2937',
-              weight: 0.6,
+              weight: 1.0,
               opacity: 0.45,
             };
           },
@@ -973,7 +990,7 @@ export default function DestinationMapView() {
           style={{
             position: 'absolute',
             top: '10px',
-            left: '50px',
+            left: '10px',
             right: '10px',
             zIndex: 1000,
             display: 'flex',
