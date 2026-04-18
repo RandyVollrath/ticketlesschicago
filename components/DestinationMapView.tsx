@@ -21,7 +21,7 @@ const LAYER_COLORS = {
   cleaningToday: '#EF4444',
   cleaningSoon: '#EAB308',
   cleaningLater: '#10B981',
-  cleaningNone: '#94A3B8',
+  cleaningNone: '#10B981', // green — Clear (no upcoming cleaning, free to park)
   snowRoute: '#D946EF',
   winterBan: '#06B6D4',
   permitZone: '#8B5CF6',
@@ -115,22 +115,32 @@ function isWinterBanActiveNow(): boolean {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function daysBetween(a: string, b: Date): number {
-  const d = new Date(a);
-  return Math.floor((d.getTime() - b.getTime()) / 86400000);
+// All cleaning dates are date-only strings (YYYY-MM-DD). Compare as Chicago
+// calendar days, not UTC ms — otherwise an 11pm Chicago user (already 4am UTC
+// next-day) would see weekday/relative-day labels shifted by one.
+function chicagoTodayISO(): string {
+  // en-CA locale formats as YYYY-MM-DD
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+}
+
+function daysFromToday(targetISO: string): number {
+  const today = chicagoTodayISO();
+  const t0 = Date.parse(today + 'T00:00:00Z');
+  const t1 = Date.parse(targetISO + 'T00:00:00Z');
+  return Math.round((t1 - t0) / 86400000);
 }
 
 function cleaningColor(nextISO: string | null): string {
   if (!nextISO) return LAYER_COLORS.cleaningNone;
-  const days = daysBetween(nextISO, new Date());
+  const days = daysFromToday(nextISO);
   if (days <= 0) return LAYER_COLORS.cleaningToday;
   if (days <= 3) return LAYER_COLORS.cleaningSoon;
-  return LAYER_COLORS.cleaningNone; // later — same calm gray as "no schedule"
+  return LAYER_COLORS.cleaningNone; // green — clear
 }
 
 function parkabilityZoneColor(nextISO: string | null): string {
   if (!nextISO) return PARK_COLORS.free; // no cleaning scheduled → free
-  const days = daysBetween(nextISO, new Date());
+  const days = daysFromToday(nextISO);
   if (days <= 0) return PARK_COLORS.restricted; // cleaning today → can't park
   if (days <= 1) return PARK_COLORS.caution;     // cleaning tomorrow → caution
   return PARK_COLORS.free;                       // cleaning later → free
@@ -146,9 +156,13 @@ function meterColor(rate: number): string {
 
 function cleaningLabel(nextISO: string | null): string {
   if (!nextISO) return 'No scheduled cleaning';
-  const d = new Date(nextISO);
-  const days = daysBetween(nextISO, new Date());
-  const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  // Render the YYYY-MM-DD as UTC noon so the weekday name doesn't shift by a
+  // day for late-night Chicago viewers.
+  const d = new Date(nextISO + 'T12:00:00Z');
+  const dateStr = d.toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC',
+  });
+  const days = daysFromToday(nextISO);
   if (days <= 0) return `Cleaning TODAY (${dateStr})`;
   if (days === 1) return `Cleaning TOMORROW (${dateStr})`;
   return `Next cleaning: ${dateStr}`;
