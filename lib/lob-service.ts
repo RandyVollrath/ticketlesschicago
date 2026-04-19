@@ -341,6 +341,18 @@ function sanitizeImageUrl(url: string): string {
  * @param options.streetViewAddress - Address shown in the Street View images
  * @param options.redLightEvidence - Red-light camera sensor data exhibit
  */
+export interface FoiaExhibit {
+  agency: 'finance' | 'cdot' | 'cpd';
+  agencyLabel: string; // e.g. "Chicago Department of Finance"
+  responseType: 'records_produced' | 'denial' | 'no_records' | 'overdue';
+  referenceId?: string | null; // city-issued FOIA reference (e.g. "F-12345")
+  requestedAt?: string | null;
+  receivedAt?: string | null;
+  attachmentCount?: number;
+  summaryText?: string | null; // human-readable summary Claude or the parser produced
+  attachmentUrls?: string[]; // blob URLs for received documents (referenced, not embedded)
+}
+
 export function formatLetterAsHTML(
   letterText: string,
   options?: {
@@ -350,9 +362,10 @@ export function formatLetterAsHTML(
     streetViewDate?: string | null;
     streetViewAddress?: string | null;
     redLightEvidence?: RedLightEvidenceExhibit;
+    foiaExhibits?: FoiaExhibit[];
   }
 ): string {
-  const { signatureImage, evidenceImages, streetViewImages, streetViewDate, streetViewAddress, redLightEvidence } = options || {};
+  const { signatureImage, evidenceImages, streetViewImages, streetViewDate, streetViewAddress, redLightEvidence, foiaExhibits } = options || {};
 
   // Clean up the letter text - remove leading/trailing delimiters and whitespace
   let cleanedText = letterText.trim();
@@ -637,6 +650,63 @@ export function formatLetterAsHTML(
     `;
   }
 
+  // FOIA exhibit block — city-produced records, denials, or overdue notices.
+  // This is the primary argumentative weight of "the City failed to produce
+  // its own records" defenses, so we always render it when a response has
+  // been matched to this ticket.
+  let foiaExhibitHTML = '';
+  if (foiaExhibits && foiaExhibits.length > 0) {
+    const fmtDate = (iso?: string | null) => {
+      if (!iso) return '';
+      try {
+        return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      } catch { return iso; }
+    };
+
+    foiaExhibitHTML = foiaExhibits.map(f => {
+      const statusBanner = (() => {
+        switch (f.responseType) {
+          case 'records_produced':
+            return `The ${escapeHtml(f.agencyLabel)} responded to this request on ${escapeHtml(fmtDate(f.receivedAt))} and produced ${f.attachmentCount || 'supporting'} document(s).`;
+          case 'denial':
+            return `The ${escapeHtml(f.agencyLabel)} issued a denial or exemption response on ${escapeHtml(fmtDate(f.receivedAt))}. Under 5 ILCS 140/9, denial without statutory basis is itself grounds to question the sufficiency of the underlying enforcement record.`;
+          case 'no_records':
+            return `The ${escapeHtml(f.agencyLabel)} confirmed on ${escapeHtml(fmtDate(f.receivedAt))} that NO responsive records exist for this citation. Under § 9-100-060, the absence of enforcement records supports dismissal.`;
+          case 'overdue':
+            return `The ${escapeHtml(f.agencyLabel)} has NOT responded to this request within the 5-business-day statutory deadline set by 5 ILCS 140/3(d). Non-response is itself evidence that the City cannot substantiate the citation with its own records.`;
+          default:
+            return `Response status: ${escapeHtml(f.responseType)}.`;
+        }
+      })();
+
+      const attachmentList = (f.attachmentUrls && f.attachmentUrls.length > 0)
+        ? `<ul style="font-size: 9pt; margin: 8px 0 0 20px;">${
+            f.attachmentUrls.slice(0, 6).map(u => {
+              const safe = sanitizeImageUrl(u) || escapeHtml(u);
+              return `<li style="margin-bottom: 2px;"><code style="font-size: 8pt; word-break: break-all;">${safe}</code></li>`;
+            }).join('')
+          }</ul>`
+        : '';
+
+      return `
+      <div style="page-break-before: always; margin-top: 30px;">
+        <h3 style="font-size: 14pt; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 8px;">
+          Exhibit ${exhibitNumber++}: ${escapeHtml(f.agencyLabel)} — FOIA Response
+        </h3>
+        <p style="font-size: 10pt; color: #111; margin-bottom: 10px;">
+          <strong>Request:</strong> Freedom of Information Act request under 5 ILCS 140/ filed on ${escapeHtml(fmtDate(f.requestedAt))}${f.referenceId ? ` (City reference ${escapeHtml(f.referenceId)})` : ''}.<br>
+          <strong>Response:</strong> ${statusBanner}
+        </p>
+        ${f.summaryText ? `<p style="font-size: 10pt; margin-bottom: 10px;"><strong>Summary of produced records:</strong><br>${escapeHtml(f.summaryText).replace(/\n/g, '<br>')}</p>` : ''}
+        ${attachmentList}
+        <p style="font-size: 8pt; color: #555; margin-top: 12px;">
+          The complete response is on file with Autopilot America and can be produced for the hearing officer upon request.
+        </p>
+      </div>
+    `;
+    }).join('');
+  }
+
   return `
 <!DOCTYPE html>
 <html>
@@ -662,6 +732,7 @@ export function formatLetterAsHTML(
   ${streetViewHTML}
   ${evidenceHTML}
   ${redLightEvidenceHTML}
+  ${foiaExhibitHTML}
 </body>
 </html>
   `.trim();

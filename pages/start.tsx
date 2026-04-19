@@ -597,9 +597,9 @@ export default function StartFunnel() {
             <StepContainer>
               <StepLabel>Stop paying Chicago $420 million a year.</StepLabel>
               <StepSubtext>
-                That&apos;s what Chicago drivers pay every year in parking tickets and late fees.
-                A single ticket with late fees can run over $200. Ticketless protects your car
-                three ways so you don&apos;t.
+                That&apos;s what Chicago drivers paid in parking and camera tickets in 2025, per
+                the City of Chicago&apos;s own FOIA data. A single ticket with late fees can run
+                over $200. Ticketless protects your car three ways so you don&apos;t.
               </StepSubtext>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
@@ -691,9 +691,10 @@ export default function StartFunnel() {
               <ValueCallout>
                 We&apos;ll watch this plate every Monday and Thursday and automatically file
                 contests with supporting evidence. <strong>94% of Chicago parking tickets are
-                never contested</strong> — people just pay. When we do contest, sticker tickets
-                with proof of purchase win about <strong>70%</strong> of the time. A single
-                missed ticket plus late fee can run <strong>$200+</strong>.
+                never contested</strong> — people just pay. When contested, city sticker tickets
+                with proof of purchase win <strong>85%</strong> of the time (2025 City of Chicago
+                FOIA data). A missed city sticker ticket is <strong>$200</strong>, plus a
+                <strong> $50</strong> late fee if unpaid.
               </ValueCallout>
               <ContinueButton onClick={handlePlateSubmit}>Continue</ContinueButton>
             </StepContainer>
@@ -803,8 +804,9 @@ export default function StartFunnel() {
               {error && <ErrorText>{error}</ErrorText>}
               <ValueCallout>
                 You&apos;ll get the night-before alert for every street cleaning at this address
-                so you can move your car. A street cleaning ticket is <strong>$60</strong>, and
-                averages <strong>$79</strong> with the late fee.
+                so you can move your car. A street cleaning ticket is <strong>$60</strong> — once
+                late fees hit, the average ticketed driver ends up charged <strong>$79</strong>
+                (2025 City of Chicago FOIA data).
               </ValueCallout>
               <ContinueButton onClick={handleAddressSubmit}>Continue</ContinueButton>
             </StepContainer>
@@ -940,9 +942,10 @@ export default function StartFunnel() {
               </div>
 
               <ValueCallout>
-                A no-city-sticker ticket is <strong>$200</strong> — <strong>$400</strong> with the
-                late fee. Knowing your renewal dates lets us warn you before they expire and
-                strengthens contest letters if you ever do get one.
+                A no-city-sticker ticket is <strong>$200</strong> — <strong>$250</strong> with
+                the late fee, and up to <strong>$305</strong> if it goes to collections. Knowing
+                your renewal dates lets us warn you before they expire and strengthens contest
+                letters if you ever do get one.
               </ValueCallout>
 
               <ContinueButton onClick={handleRegistrationSubmit} disabled={savingRegistration}>
@@ -1084,7 +1087,7 @@ export default function StartFunnel() {
                   What one ticket actually costs
                 </div>
                 <div><strong style={{ color: COLORS.text }}>Red light camera:</strong> $100 base — averages $156 with late fees</div>
-                <div><strong style={{ color: COLORS.text }}>Street cleaning:</strong> $60 base — averages $79 with late fees</div>
+                <div><strong style={{ color: COLORS.text }}>Street cleaning:</strong> $60 base — average ticketed driver is charged $79 after late fees</div>
                 <div><strong style={{ color: COLORS.text }}>Expired meter:</strong> $50–$70 base — averages $62–$88 with late fees</div>
                 <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>Source: City of Chicago FOIA data, 2025. 48% of red light tickets incur late fees.</div>
               </div>

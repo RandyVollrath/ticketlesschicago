@@ -2,6 +2,7 @@ import { supabaseAdmin } from './supabase';
 import { sendClickSendSMS, sendClickSendVoiceCall } from './sms-service';
 import { Resend } from 'resend';
 import { sendEmailWithRetry } from './resend-with-retry';
+import { notificationLogger } from './notification-logger';
 import {
   logMessageSent,
   logMessageSkipped,
@@ -90,6 +91,21 @@ export class NotificationService {
         subject: notification.subject
       });
 
+      // Log the attempt to notification_logs when we have enough metadata
+      // (category + either userId or recipient). Everything routed through
+      // this method gets delivery tracking for free.
+      const logId = notification.category
+        ? await notificationLogger.log({
+            user_id: notification.userId,
+            email: notification.to,
+            notification_type: 'email',
+            category: notification.category,
+            subject: notification.subject,
+            content_preview: (notification.text || notification.html || '').slice(0, 200),
+            status: 'pending',
+          })
+        : null;
+
       // Route through sendEmailWithRetry so we survive Resend's 2 req/sec
       // rate limit and transient 429s. Previously a single 429 on a
       // street-cleaning alert was a silent missed notification.
@@ -108,6 +124,7 @@ export class NotificationService {
 
       if (!result.success) {
         console.error(`❌ Resend error after ${result.retries ?? 0} retries:`, result.error);
+        if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, result.error);
         return false;
       }
 
@@ -116,6 +133,7 @@ export class NotificationService {
       } else {
         console.log('✅ Email sent successfully:', result.data);
       }
+      if (logId) await notificationLogger.updateStatus(logId, 'sent', (result.data as any)?.id);
       return true;
     } catch (error) {
       console.error('Email sending failed:', error);
@@ -133,12 +151,25 @@ export class NotificationService {
         length: notification.message.length + ' chars'
       });
 
+      const logId = notification.category
+        ? await notificationLogger.log({
+            user_id: notification.userId,
+            phone: notification.to,
+            notification_type: 'sms',
+            category: notification.category,
+            content_preview: notification.message.slice(0, 200),
+            status: 'pending',
+          })
+        : null;
+
       const result = await sendClickSendSMS(notification.to, notification.message);
 
       if (result.success) {
         console.log('✅ SMS sent successfully to', notification.to);
+        if (logId) await notificationLogger.updateStatus(logId, 'sent', result.messageId);
       } else {
         console.error('❌ SMS failed:', result.error);
+        if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, result.error);
       }
 
       return result.success;

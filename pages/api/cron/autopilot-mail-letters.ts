@@ -562,7 +562,8 @@ async function mailLetter(
   profile: UserProfile,
   ticketNumber: string,
   evidenceImages?: string[],
-  redLightEvidence?: RedLightEvidenceExhibit
+  redLightEvidence?: RedLightEvidenceExhibit,
+  foiaExhibits?: import('../../../lib/lob-service').FoiaExhibit[],
 ): Promise<{ success: boolean; lobId?: string; expectedDelivery?: string; pdfUrl?: string; error?: string; alreadyMailed?: boolean; skipped?: boolean }> {
   console.log(`  Mailing letter ${letter.id} for ticket ${ticketNumber}...`);
 
@@ -638,14 +639,20 @@ async function mailLetter(
       throw new Error('No letter content found');
     }
 
-    // Format letter as HTML with evidence images, Street View exhibits, and red-light sensor data
+    // Format letter as HTML with evidence images, Street View exhibits,
+    // red-light sensor data, and FOIA response exhibits.
     const htmlContent = formatLetterAsHTML(letterText, {
       evidenceImages: evidenceImages,
       streetViewImages: letter.street_view_exhibit_urls || undefined,
       streetViewDate: letter.street_view_date || undefined,
       streetViewAddress: letter.street_view_address || undefined,
       redLightEvidence: redLightEvidence,
+      foiaExhibits: foiaExhibits,
     });
+
+    if (foiaExhibits && foiaExhibits.length > 0) {
+      console.log(`    Including ${foiaExhibits.length} FOIA response exhibit(s) in letter`);
+    }
 
     if (evidenceImages && evidenceImages.length > 0) {
       console.log(`    Including ${evidenceImages.length} evidence image(s) in letter`);
@@ -1911,13 +1918,92 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
+      // Fetch FOIA responses received for this ticket so they can be rendered
+      // as exhibits. The incoming-email webhook matches replies from the
+      // City and writes to ticket_foia_requests; here we translate the row
+      // shape into what formatLetterAsHTML expects.
+      let foiaExhibits: import('../../../lib/lob-service').FoiaExhibit[] | undefined;
+      try {
+        const { data: foiaRows } = await supabaseAdmin
+          .from('ticket_foia_requests')
+          .select('request_type, status, requested_at, fulfilled_at, reference_id, response_payload, notes')
+          .eq('ticket_id', letter.ticket_id);
+
+        if (foiaRows && foiaRows.length > 0) {
+          const mapped: import('../../../lib/lob-service').FoiaExhibit[] = [];
+          for (const row of foiaRows as any[]) {
+            const rt = String(row.request_type || '');
+            // Decide agency label from request_type.
+            let agency: 'finance' | 'cdot' | 'cpd' = 'finance';
+            let agencyLabel = 'Chicago Department of Finance';
+            if (rt.includes('cdot') || rt.includes('signal')) {
+              agency = 'cdot';
+              agencyLabel = 'Chicago Department of Transportation';
+            } else if (rt.includes('cpd') || rt.includes('police')) {
+              agency = 'cpd';
+              agencyLabel = 'Chicago Police Department';
+            }
+
+            // Map status → responseType. "not_needed" and "queued" are
+            // skipped because they aren't actionable exhibits.
+            const st = String(row.status || '');
+            let responseType: 'records_produced' | 'denial' | 'no_records' | 'overdue' | null = null;
+            if (st === 'fulfilled' || st === 'received' || st === 'records_produced') responseType = 'records_produced';
+            else if (st === 'denied' || st === 'exempt') responseType = 'denial';
+            else if (st === 'no_records') responseType = 'no_records';
+            else if (st === 'overdue') responseType = 'overdue';
+            // Overdue-by-calendar fallback: if requested_at > 10 days ago
+            // and still 'sent', count as overdue — statute is 5 business days.
+            if (!responseType && (st === 'sent' || st === 'pending') && row.requested_at) {
+              const ageDays = (Date.now() - new Date(row.requested_at).getTime()) / 86400000;
+              if (ageDays > 10) responseType = 'overdue';
+            }
+            if (!responseType) continue;
+
+            const payload = (row.response_payload || {}) as Record<string, any>;
+            mapped.push({
+              agency,
+              agencyLabel,
+              responseType,
+              referenceId: row.reference_id || null,
+              requestedAt: row.requested_at || null,
+              receivedAt: row.fulfilled_at || null,
+              attachmentCount: typeof payload.attachment_count === 'number' ? payload.attachment_count : (Array.isArray(payload.attachments) ? payload.attachments.length : undefined),
+              summaryText: payload.summary_text || payload.response_text || row.notes || null,
+              attachmentUrls: Array.isArray(payload.attachment_urls) ? payload.attachment_urls : undefined,
+            });
+          }
+          if (mapped.length > 0) foiaExhibits = mapped;
+        }
+      } catch (foiaFetchErr: any) {
+        console.error(`    FOIA exhibit fetch failed: ${foiaFetchErr.message}`);
+      }
+
       const result = await mailLetter(
         letter as LetterToMail,
         profile as UserProfile,
         ticketNumber,
         evidenceImages,
-        redLightEvidence
+        redLightEvidence,
+        foiaExhibits
       );
+
+      // Flag the letter so the admin dashboard + QA report reflect FOIA
+      // usage. The webhook already sets these on receipt, but we set again
+      // here in case a letter was regenerated after the FOIA arrived.
+      if (foiaExhibits && foiaExhibits.length > 0) {
+        const hasFinance = foiaExhibits.some(f => f.agency === 'finance');
+        const hasCdot = foiaExhibits.some(f => f.agency === 'cdot');
+        if (hasFinance || hasCdot) {
+          await supabaseAdmin
+            .from('contest_letters')
+            .update({
+              ...(hasFinance ? { finance_foia_integrated: true, finance_foia_integrated_at: new Date().toISOString() } : {}),
+              ...(hasCdot ? { cdot_foia_integrated: true, cdot_foia_integrated_at: new Date().toISOString() } : {}),
+            })
+            .eq('id', letter.id);
+        }
+      }
 
       if (result.success) {
         if (result.skipped) {
