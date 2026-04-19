@@ -595,7 +595,7 @@ export default function StartFunnel() {
           {/* ── Step 1: Intro ── */}
           {step === 'intro' && (
             <StepContainer>
-              <StepLabel>Stop paying Chicago $280 million a year.</StepLabel>
+              <StepLabel>Stop paying Chicago $420 million a year.</StepLabel>
               <StepSubtext>
                 That&apos;s what Chicago drivers pay every year in parking tickets and late fees.
                 A single ticket with late fees can run over $200. Ticketless protects your car
@@ -803,8 +803,8 @@ export default function StartFunnel() {
               {error && <ErrorText>{error}</ErrorText>}
               <ValueCallout>
                 You&apos;ll get the night-before alert for every street cleaning at this address
-                so you can move your car. A street cleaning ticket is <strong>$75</strong>, and
-                doubles to <strong>$150</strong> with the late fee.
+                so you can move your car. A street cleaning ticket is <strong>$60</strong>, and
+                averages <strong>$79</strong> with the late fee.
               </ValueCallout>
               <ContinueButton onClick={handleAddressSubmit}>Continue</ContinueButton>
             </StepContainer>
@@ -1061,7 +1061,7 @@ export default function StartFunnel() {
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>The math, plainly:</div>
                 <div style={{ color: COLORS.textSecondary }}>
-                  One avoided street-cleaning ticket: <strong style={{ color: COLORS.text }}>$75</strong>.
+                  One avoided street-cleaning ticket: <strong style={{ color: COLORS.text }}>$60</strong>.
                   One contested red-light ticket dismissed: <strong style={{ color: COLORS.text }}>$156 saved</strong>.
                   Autopilot is <strong style={{ color: COLORS.text }}>$99/year</strong>.
                   Skip <strong>one</strong> ticket and you&apos;re ahead.

@@ -163,7 +163,7 @@ export default function Welcome() {
               Chicago drivers pay
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.text, letterSpacing: '-0.02em' }}>
-              $280,000,000
+              $420,000,000
             </div>
             <div style={{ fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>
               every year in parking tickets and late fees. You&apos;re out.
