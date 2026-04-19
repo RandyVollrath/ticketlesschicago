@@ -185,6 +185,20 @@ const PARKING_PROTECTIONS: ProtectionItem[] = [
     sheetTitle: '2-Inch Snow Emergency',
     sheetBody: 'When 2+ inches of snow falls, the city activates a ban on 500 miles of arterial streets. We monitor the city\'s official declaration and alert you immediately.',
   },
+  {
+    icon: 'camera',
+    label: 'Red Light Cameras',
+    sheetTitle: 'Red Light Camera Alerts',
+    sheetBody: 'We alert you when approaching a red light camera intersection while driving. Keeps you aware so you stop fully and avoid a $100 ticket.',
+    sheetAction: { label: 'Manage Camera Alerts', target: 'settings', scrollTo: 'camera_alerts' },
+  },
+  {
+    icon: 'speedometer',
+    label: 'Speed Cameras',
+    sheetTitle: 'Speed Camera Alerts',
+    sheetBody: 'We alert you when approaching a speed camera zone while driving, especially near schools and parks. Avoid a $35-$100 ticket by staying under the limit.',
+    sheetAction: { label: 'Manage Camera Alerts', target: 'settings', scrollTo: 'camera_alerts' },
+  },
 ];
 
 // ──────────────────────────────────────────────────────
@@ -2055,7 +2069,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* ──── Parking Protection ──── */}
         <View style={styles.protectionCard}>
-          <Text style={styles.protectionTitle}>Parking Protection</Text>
+          <Text style={styles.protectionTitle}>Car Ticket Protection</Text>
           {PARKING_PROTECTIONS.map((item, index) => (
             <TouchableOpacity
               key={index}
@@ -2081,29 +2095,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           ))}
         </View>
 
-        {/* ──── Driving Alerts (read-only status → Settings) ──── */}
-        <TouchableOpacity
-          style={[styles.protectionCard, styles.drivingAlertsCard]}
-          onPress={() => navigation.navigate('Settings', { scrollTo: 'camera_alerts' })}
-          activeOpacity={0.7}
-          accessibilityLabel="Camera alerts status. Tap to manage in Settings."
-          accessibilityRole="button"
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <MaterialCommunityIcons
-              name="camera-iris"
-              size={18}
-              color={redLightEnabled || speedCameraEnabled ? colors.primary : colors.textTertiary}
-            />
-            <Text style={{ flex: 1, fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colors.white }}>
-              Camera Alerts
-            </Text>
-            <Text style={{ fontSize: typography.sizes.xs, color: redLightEnabled || speedCameraEnabled ? colors.success : colors.textTertiary }}>
-              {redLightEnabled && speedCameraEnabled ? 'All On' : redLightEnabled ? 'Red Light Only' : speedCameraEnabled ? 'Speed Only' : 'Off'}
-            </Text>
-            <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
-          </View>
-        </TouchableOpacity>
+        {/* Camera Alerts card removed — cameras now included in Car Ticket Protection list */}
 
         {/* ──── Protection Info Bottom Sheet ──── */}
         <Modal
