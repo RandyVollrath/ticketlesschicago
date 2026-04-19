@@ -48,6 +48,14 @@ export interface MeteredParkingStatus {
   isRushHour: boolean;
   /** Full enforcement schedule breakdown */
   scheduleText: string;
+  /**
+   * Short human-readable block range of the meter's coverage, e.g.,
+   * "4804-4810 N Wolcott west side". Rendered by the mobile app as a
+   * secondary line under the main address so the user can see WHY the
+   * meter alert fired — useful for partial-block meters where the
+   * alert range is narrower than the full block.
+   */
+  blockRangeLabel: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -631,6 +639,24 @@ export async function checkMeteredParking(
       severity = 'info';
     }
 
+    // Build a compact block-range label for the mobile UI — shown smaller/less
+    // prominently under the main address. Helps users understand WHY a meter
+    // alert fired when the partial-block range is narrower than the full
+    // block (e.g., 4804-4810 instead of 4800-4898).
+    const sideText = meter.side_of_street
+      ? ({ N: 'north', S: 'south', E: 'east', W: 'west' } as Record<string, string>)[meter.side_of_street] || null
+      : null;
+    const rangeLabel = (() => {
+      if (!meter.block_start || !meter.block_end) return null;
+      const dir = parsed.direction ? `${parsed.direction} ` : '';
+      const streetLabel = `${dir}${parsed.name}${parsed.type ? ' ' + parsed.type : ''}`.trim();
+      const sideSuffix = sideText ? `, ${sideText} side` : '';
+      if (meter.block_start === meter.block_end) {
+        return `Meter at ${meter.block_start} ${streetLabel}${sideSuffix}`;
+      }
+      return `Meter range: ${meter.block_start}-${meter.block_end} ${streetLabel}${sideSuffix}`;
+    })();
+
     return {
       inMeteredZone: true,
       nearestMeterDistanceM: null, // Street-based matching — distance not applicable
@@ -647,6 +673,7 @@ export async function checkMeteredParking(
       rushHourInfo: enforcement.rushHourInfo,
       isRushHour: enforcement.isRushHour,
       scheduleText: enforcement.scheduleText,
+      blockRangeLabel: rangeLabel,
     };
   } catch (err) {
     console.warn('[metered-parking] Check failed:', err);
@@ -675,5 +702,6 @@ function makeNoMeterResult(): MeteredParkingStatus {
     rushHourInfo: null,
     isRushHour: false,
     scheduleText: '',
+    blockRangeLabel: null,
   };
 }
