@@ -911,11 +911,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Get all active subscriptions
+    // Get all active subscriptions (including trialing — trial users
+    // should still have their plates monitored so real tickets during
+    // the trial window are detected and queued for letter generation)
     const { data: subscriptions } = await supabaseAdmin
       .from('autopilot_subscriptions')
       .select('user_id')
-      .eq('status', 'active')
+      .in('status', ['active', 'trialing'])
       .is('authorization_revoked_at', null);
 
     if (!subscriptions || subscriptions.length === 0) {
