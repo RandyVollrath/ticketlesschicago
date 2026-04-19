@@ -403,23 +403,29 @@ function getUserSideOfStreet(
   headingDeg: number | undefined,
   addressNumber: number | null,
   isOneWay: boolean = false,
+  /**
+   * When true, the caller got the address number from a high-confidence source
+   * (e.g., Chicago's building-footprint dataset). That number IS ground truth
+   * for which side of the street the building sits on, so parity should win
+   * over heading even on two-way streets. Heading is a proxy that can fail
+   * with U-turns, cross-street approaches, or noisy GPS heading at low speed.
+   */
+  numberIsHighConfidence: boolean = false,
 ): string | null {
   const isEWStreet = streetDirection === 'W' || streetDirection === 'E';
   const isNSStreet = streetDirection === 'N' || streetDirection === 'S';
 
-  // On one-way streets, heading tells you the direction of travel but not
-  // which side you parked on — parking is often allowed on BOTH sides of a
-  // Chicago one-way. The "right side of travel" rule then fails whenever the
-  // driver parallel-parked on the left-hand curb, which is legal on one-ways.
-  // Address parity is the ground truth in those cases (Chicago's convention:
-  // odd=east/south, even=west/north, verified against FOIA meter inventory).
-  if (isOneWay && addressNumber != null) {
+  // On one-way streets, OR when we have a high-confidence house number,
+  // parity is the ground truth. Chicago's convention (100% match rate vs
+  // FOIA meter inventory): odd = east/south, even = west/north.
+  if ((isOneWay || numberIsHighConfidence) && addressNumber != null) {
     if (isEWStreet) return addressNumber % 2 === 1 ? 'S' : 'N';
     if (isNSStreet) return addressNumber % 2 === 1 ? 'E' : 'W';
   }
 
-  // Primary (two-way streets): heading-based determination.
-  // "Right side of travel direction" — the curb you parallel-parked against.
+  // Primary (two-way streets with low-confidence house number):
+  // heading-based determination. "Right side of travel direction" — the curb
+  // you parallel-parked against.
   if (headingDeg != null && headingDeg >= 0 && headingDeg < 360) {
     if (isEWStreet) {
       if (headingDeg >= 45 && headingDeg < 135) return 'S';       // heading east → south side
@@ -474,6 +480,7 @@ export async function checkMeteredParking(
    */
   snapContext?: {
     isOneWay?: boolean;
+    numberIsHighConfidence?: boolean;
   } | null,
 ): Promise<MeteredParkingStatus> {
   if (!supabaseAdmin) return makeNoMeterResult();
@@ -561,6 +568,7 @@ export async function checkMeteredParking(
       headingDeg,
       parsed.number,
       snapContext?.isOneWay === true,
+      snapContext?.numberIsHighConfidence === true,
     );
 
     if (userSide) {

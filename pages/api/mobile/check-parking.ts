@@ -992,7 +992,16 @@ export default async function handler(
       checkLng,
       result.location.parsedAddress,  // Pass shared address — no second geocode call
       hasEffectiveHeading ? effectiveHeading : undefined,
-      snapResult ? { isOneWay: !!snapResult.onewayDir } : undefined,
+      snapResult
+        ? {
+            isOneWay: !!snapResult.onewayDir,
+            // Building-footprint numbers come from Chicago's registered address
+            // file — the house's physical location + parity are ground truth.
+            // Tell the side-detection logic to prefer parity over heading in
+            // that case, since heading can fail (U-turns, cross-street approach).
+            numberIsHighConfidence: !!buildingFootprintResult,
+          }
+        : undefined,
     );
 
     // Step 3: Compute enforcement risk score from FOIA ticket data.
