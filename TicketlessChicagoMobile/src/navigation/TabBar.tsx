@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryTint,
   },
   label: {
-    fontSize: typography.sizes.xs,
+    fontSize: 12,
     color: colors.textTertiary,
     fontWeight: typography.weights.medium,
   },

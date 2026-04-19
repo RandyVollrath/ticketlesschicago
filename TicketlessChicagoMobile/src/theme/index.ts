@@ -97,13 +97,13 @@ export const spacing = {
   xxxl: 40,
 };
 
-// Border Radius - More rounded for modern look
+// Border Radius - Modern but not overly bubbly
 export const borderRadius = {
   sm: 6,
   md: 12,
   lg: 16,
-  xl: 24,
-  xxl: 32,
+  xl: 20,
+  xxl: 24,
   full: 9999,
 };
 
@@ -130,13 +130,13 @@ export const shadows = {
     shadowRadius: 32,
     elevation: 8,
   },
-  // Primary button glow effect
+  // Primary button shadow — subtle depth, no colored glow
   primaryGlow: {
-    shadowColor: '#0066FF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
 };
 

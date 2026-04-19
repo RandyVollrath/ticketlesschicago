@@ -398,11 +398,7 @@ const MapScreenContent: React.FC = () => {
                   <Text style={styles.addressText} numberOfLines={2}>
                     {lastLocation.address || formatCoords(lastLocation.coords)}
                   </Text>
-                  {lastLocation.address && (
-                    <Text style={styles.coordsSubtext}>
-                      {formatCoords(lastLocation.coords)}
-                    </Text>
-                  )}
+                  {/* Coordinates removed — addresses only per UX review */}
                 </View>
               </View>
 
@@ -533,14 +529,11 @@ const MapScreenContent: React.FC = () => {
 
             {currentLocation ? (
               <Card title="Current Location">
-                <View style={styles.coordsContainer}>
-                  <Text style={styles.coordsIcon}>📱</Text>
-                  <Text style={styles.coordsText}>
-                    {formatCoords(currentLocation)}
-                  </Text>
-                </View>
+                <Text style={styles.currentLocationHint}>
+                  Check restrictions at your current GPS location.
+                </Text>
                 <Button
-                  title="Save Current Location"
+                  title="Check My Parking"
                   variant="primary"
                   onPress={checkCurrentLocation}
                   disabled={isOffline}
@@ -813,6 +806,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
+  },
+  currentLocationHint: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: typography.sizes.sm * 1.4,
   },
   mapCardHeader: {
     flexDirection: 'row' as const,
