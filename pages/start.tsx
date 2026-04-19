@@ -452,6 +452,8 @@ export default function StartFunnel() {
 
       // 2. Create Stripe checkout session
       const cleanPlate = plate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const meta = (session.user?.user_metadata || {}) as Record<string, any>;
+      const signatureName = (meta.full_name || meta.name || session.user?.email?.split('@')[0] || '').toString().trim();
       const checkoutRes = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
         headers: {
@@ -463,6 +465,8 @@ export default function StartFunnel() {
           licensePlate: cleanPlate,
           plateState,
           billingPlan,
+          contestConsent: consentChecked,
+          consentSignature: signatureName,
         }),
       });
 

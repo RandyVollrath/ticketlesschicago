@@ -141,6 +141,10 @@ export default function GetStarted() {
         throw new Error('Please sign in again before checkout.');
       }
 
+      // Typed-name signature: OAuth profile name if available, else email local-part.
+      const meta = (user?.user_metadata || {}) as Record<string, any>;
+      const signatureName = (meta.full_name || meta.name || user?.email?.split('@')[0] || '').toString().trim();
+
       // Go to Stripe checkout for Autopilot plan
       const response = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
@@ -152,6 +156,8 @@ export default function GetStarted() {
           userId: user.id,
           licensePlate: cleanPlate,
           plateState,
+          contestConsent: consentChecked,
+          consentSignature: signatureName,
         }),
       });
 

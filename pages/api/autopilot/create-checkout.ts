@@ -31,11 +31,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const userId = authUser.id;
 
-    const { licensePlate, plateState, billingPlan } = req.body;
+    const { licensePlate, plateState, billingPlan, contestConsent, consentSignature } = req.body;
     const isMonthly = billingPlan === 'monthly';
 
     if (!licensePlate) {
       return res.status(400).json({ error: 'License plate required' });
+    }
+
+    // AUTHORIZATION GATE (Chicago Municipal Code § 9-100-070 / Illinois UETA):
+    // Require the user to authorize Autopilot to contest tickets on their behalf
+    // before creating the Stripe subscription. Client-side checkbox isn't
+    // enough — we enforce here so the DB state matches what the user agreed
+    // to. Without this the mail cron stalls every letter at the consent gate
+    // until the Day-19 safety net fires.
+    if (contestConsent !== true) {
+      return res.status(400).json({
+        error: 'Authorization required. Please check the box agreeing to let us contest tickets on your behalf before continuing.',
+      });
     }
 
     // Sanitize inputs
@@ -50,6 +62,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const email = userData.user.email;
+
+    // Derive a typed-name signature for the authorization record. Prefer an
+    // explicit signature from the client; fall back to OAuth profile name or
+    // email local-part so we always have something on file.
+    const meta = (userData.user.user_metadata || {}) as Record<string, any>;
+    const metaName = [meta.full_name, meta.name].find(v => typeof v === 'string' && v.trim().length > 0);
+    const signatureName = (typeof consentSignature === 'string' && consentSignature.trim())
+      ? consentSignature.trim()
+      : (metaName ? String(metaName).trim() : email.split('@')[0]);
+
+    // Capture requester IP for the audit record.
+    const fwd = (req.headers['x-forwarded-for'] || '') as string;
+    const consentIp = fwd.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+
+    // Persist contest authorization to user_profiles. Upsert handles both the
+    // "row doesn't exist yet" and "row exists but consent never captured" cases.
+    // Only overwrite if not already set — re-running checkout shouldn't move
+    // the original consent timestamp/IP.
+    const { data: existingProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('contest_consent')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!existingProfile?.contest_consent) {
+      await supabaseAdmin
+        .from('user_profiles')
+        .upsert({
+          user_id: userId,
+          email,
+          contest_consent: true,
+          contest_consent_at: new Date().toISOString(),
+          contest_consent_ip: consentIp,
+          contest_consent_signature: signatureName,
+        }, { onConflict: 'user_id' });
+    }
 
     // Check if user already has a Stripe customer
     const { data: existingSub } = await supabaseAdmin
