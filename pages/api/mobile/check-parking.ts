@@ -662,9 +662,18 @@ export default async function handler(
                 const br = (bestCandidate.street_bearing * Math.PI) / 180;
                 // Unit right-of-direction vector: (cos(br), -sin(br))
                 const rightDot = dE * Math.cos(br) - dN * Math.sin(br);
-                // Only trust the side determination when the user is >2m off
-                // the centerline. Inside 2m, GPS noise can flip the sign.
-                if (Math.abs(rightDot) >= 2) {
+                // Adaptive threshold: trust the side determination when the
+                // measured offset is at least half the GPS accuracy (but no
+                // less than 1m). Rationale: a parallel-parked Chicago car is
+                // typically 3-5m off the centerline, which is well above any
+                // reasonable GPS noise floor. A static 2m threshold
+                // unnecessarily abstained on ~15% of events when GPS was
+                // slightly noisy on an otherwise clear offset. We still
+                // abstain if GPS is particularly bad (e.g., 15m accuracy →
+                // require ≥7.5m offset before trusting the sign).
+                const acc = typeof accuracyMeters === 'number' && accuracyMeters > 0 ? accuracyMeters : 5;
+                const sideThreshold = Math.max(1, acc * 0.5);
+                if (Math.abs(rightDot) >= sideThreshold) {
                   userSideFromGps = rightDot > 0 ? 'R' : 'L';
                 }
               }
