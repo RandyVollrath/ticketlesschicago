@@ -604,19 +604,19 @@ export default function StartFunnel() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
                 <ValueItem
-                  icon="&#128205;"
-                  title="Address alerts"
-                  desc="Street cleaning, snow ban, and winter overnight alerts for your home block — the night before, so you can move your car."
-                />
-                <ValueItem
                   icon="&#128663;"
-                  title="Live car-location alerts"
-                  desc="Install the mobile app and we'll detect where you parked and warn you before your car is at risk — wherever you park."
+                  title="Alerts wherever you park"
+                  desc="Install our mobile app and we'll detect where you parked and warn you before your car is at risk — any block, any time."
                 />
                 <ValueItem
                   icon="&#9993;&#65039;"
                   title="Automatic ticket contesting"
                   desc="We check your plate twice a week. When we find a ticket we draft a contest letter, gather supporting evidence, and mail it to the City for you."
+                />
+                <ValueItem
+                  icon="&#128205;"
+                  title="Home-block alerts"
+                  desc="Street cleaning, snow ban, and winter overnight alerts for your home block — the night before, so you can move your car."
                 />
               </div>
 
