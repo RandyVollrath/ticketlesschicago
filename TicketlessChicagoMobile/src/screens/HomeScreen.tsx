@@ -1640,21 +1640,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </View>
           )}
 
-          {/* Stale result info — show how long ago the check was */}
-          {lastParkingCheck && (heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation') &&
-           (currentTime.getTime() - lastParkingCheck.timestamp > 2 * 60 * 60 * 1000) && (
-            <View
-              style={styles.staleInfo}
-              accessibilityLabel={`Parked ${Math.floor((currentTime.getTime() - lastParkingCheck.timestamp) / (60 * 60 * 1000))} hours ago`}
-            >
-              <MaterialCommunityIcons name="clock-outline" size={12} color={colors.textTertiary} />
-              <Text style={styles.staleInfoText}>
-                Parked {Math.floor((currentTime.getTime() - lastParkingCheck.timestamp) / (60 * 60 * 1000))}h ago
-              </Text>
-            </View>
-          )}
-
-          {/* Driving overlay badge — show only when no parking result */}
+{/* Driving overlay badge — show only when no parking result */}
           {isDriving && heroState !== 'clear' && heroState !== 'upcoming' && heroState !== 'violation' && (
             <View style={[styles.drivingBadge, { marginTop: spacing.sm }]}>
               <MaterialCommunityIcons name="car" size={12} color={colors.white} />

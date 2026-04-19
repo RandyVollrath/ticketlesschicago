@@ -107,6 +107,15 @@ export async function checkAllParkingRestrictions(
    * outside every real permit zone range and silently suppress alerts.
    */
   overrideHouseNumber?: number | null,
+  /**
+   * Street classification from Chicago's centerlines (1=expressway, 2=arterial,
+   * 3=collector, 4=residential). Drives adaptive radius for spatial checks:
+   * residential streets use a tighter 15m (no bleed to parallel streets), while
+   * wide arterials use 40m (parked cars can legitimately sit further from the
+   * centerline). Defaults to 30m when unknown. Reduces the rate of false
+   * positives on dense residential blocks and false negatives on arterials.
+   */
+  streetClass?: string | null,
 ): Promise<UnifiedParkingResult> {
   const timestamp = new Date().toISOString();
 
@@ -262,6 +271,25 @@ export async function checkAllParkingRestrictions(
       return result;
     }
 
+    // Adaptive radius based on street class (when known):
+    //   expressway / arterial / collector (1-3): 40m (parked cars on wide roads
+    //     sit further from the centerline)
+    //   residential (4): 15m (narrow streets; 30m bled into parallel streets)
+    //   unknown (null or other): 30m (original default)
+    // Applies to snow-route / winter-ban / street-cleaning / DOT-permit queries.
+    const cls = streetClass?.trim() || '';
+    const spatialRadius = cls === '4' ? 15 : (cls === '1' || cls === '2' || cls === '3') ? 40 : 30;
+    // Same-street cross-check: if a spatial query matches a street whose name
+    // differs from the snapped street, the match was on a parallel or adjacent
+    // street and doesn't apply to the user's parking location. We suppress it.
+    const snapStreetForCrossCheck = overrideStreetName || null;
+    const sameStreet = (dataStreetName: any): boolean => {
+      if (!snapStreetForCrossCheck || !dataStreetName) return true; // can't compare → accept
+      const a = String(snapStreetForCrossCheck).toUpperCase().trim();
+      const b = String(dataStreetName).toUpperCase().trim();
+      return a === b || a.includes(b) || b.includes(a);
+    };
+
     // ==========================================
     // STEP 2: Combined spatial queries (parallel)
     // ==========================================
@@ -280,15 +308,29 @@ export async function checkAllParkingRestrictions(
       supabaseAdmin.rpc('get_street_cleaning_at_location_enhanced', {
         user_lat: latitude,
         user_lng: longitude,
-        distance_meters: 30,
-      }).then(r => r.data?.[0] || null).catch(() => null),
+        distance_meters: spatialRadius,
+      }).then(r => {
+        const row = r.data?.[0] || null;
+        if (row && !sameStreet(row.street_name)) {
+          console.log(`[unified-checker] Street cleaning suppressed — spatial match on ${row.street_name} but parked on ${snapStreetForCrossCheck}`);
+          return null;
+        }
+        return row;
+      }).catch(() => null),
 
       // Snow route spatial query
       supabaseAdmin.rpc('get_snow_route_at_location_enhanced', {
         user_lat: latitude,
         user_lng: longitude,
-        distance_meters: 30,
-      }).then(r => r.data?.[0] || null).catch(() => null),
+        distance_meters: spatialRadius,
+      }).then(r => {
+        const row = r.data?.[0] || null;
+        if (row && !sameStreet(row.street_name)) {
+          console.log(`[unified-checker] Snow route suppressed — spatial match on ${row.street_name} but parked on ${snapStreetForCrossCheck}`);
+          return null;
+        }
+        return row;
+      }).catch(() => null),
 
       // Snow ban status (single row)
       supabaseAdmin
@@ -302,8 +344,15 @@ export async function checkAllParkingRestrictions(
       supabaseAdmin.rpc('get_winter_ban_at_location', {
         user_lat: latitude,
         user_lng: longitude,
-        distance_meters: 30,
-      }).then(r => r.data?.[0] || null).catch(() => null),
+        distance_meters: spatialRadius,
+      }).then(r => {
+        const row = r.data?.[0] || null;
+        if (row && !sameStreet(row.street_name)) {
+          console.log(`[unified-checker] Winter ban suppressed — spatial match on ${row.street_name} but parked on ${snapStreetForCrossCheck}`);
+          return null;
+        }
+        return row;
+      }).catch(() => null),
 
       // Residential permit zones (address matching) - only if we have parsed address
       result.location.parsedAddress

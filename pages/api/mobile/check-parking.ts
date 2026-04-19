@@ -959,11 +959,30 @@ export default async function handler(
       snapResult?.interpolatedNumber ??
       null;
 
-    // NOW run the unified checker with the authoritative number.
+    // Look up the snapped street's class (1=expressway, 2=arterial, 3=collector,
+    // 4=residential). Drives adaptive spatial radius inside the unified checker.
+    let snapStreetClass: string | null = null;
+    if (snapResult?.streetName && supabaseAdmin) {
+      try {
+        const { data: cls } = await supabaseAdmin
+          .from('street_centerlines')
+          .select('class')
+          .eq('street_name', snapResult.streetName)
+          .not('class', 'is', null)
+          .limit(1)
+          .maybeSingle();
+        snapStreetClass = cls?.class ?? null;
+      } catch (e) {
+        // non-fatal
+      }
+    }
+
+    // NOW run the unified checker with the authoritative number + street class.
     const result = await checkAllParkingRestrictions(
       checkLat, checkLng, snapResult?.streetName || undefined,
       snapGeometry, latitude, longitude,
       overrideHouseNumber,
+      snapStreetClass,
     );
 
     // Step 2b: Metered parking check uses the shared parsed address from step 2.
