@@ -9,13 +9,16 @@ import {
   Alert,
   ScrollView,
   TouchableOpacity,
+  Modal,
+  StatusBar,
+  Dimensions,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, useNavigation, RouteProp, NavigationProp } from '@react-navigation/native';
-import { colors, typography, spacing, borderRadius } from '../theme';
+import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { Button, Card, RuleCard, ErrorBoundary } from '../components';
 import LocationService, { Coordinates, ParkingCheckResult } from '../services/LocationService';
 import NetworkStatus from '../utils/NetworkStatus';
@@ -44,6 +47,7 @@ const MapScreenContent: React.FC = () => {
   const [showProtectionStatus, setShowProtectionStatus] = useState(false);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [mapFullscreen, setMapFullscreen] = useState(false);
 
   // Refs to prevent memory leaks and race conditions
   const isMountedRef = useRef(true);
@@ -409,6 +413,50 @@ const MapScreenContent: React.FC = () => {
               />
             </Card>
 
+            {/* Street Cleaning Map — moved up for visibility */}
+            <TouchableOpacity
+              onPress={() => setMapFullscreen(true)}
+              activeOpacity={0.9}
+              accessibilityLabel="Tap to expand map"
+              accessibilityHint="Opens map in fullscreen for easier browsing"
+            >
+              <Card title={
+                <View style={styles.mapCardHeader}>
+                  <Text style={styles.mapCardTitle}>Street Cleaning Map</Text>
+                  <View style={styles.mapExpandHint}>
+                    <MaterialCommunityIcons name="arrow-expand" size={14} color={colors.textTertiary} />
+                    <Text style={styles.mapExpandText}>Tap to expand</Text>
+                  </View>
+                </View>
+              }>
+                <View style={styles.mapContainer}>
+                  <WebView
+                    source={{
+                      uri: `https://autopilotamerica.com/destination-map${
+                        lastLocation
+                          ? `?lat=${lastLocation.coords.latitude}&lng=${lastLocation.coords.longitude}&address=${encodeURIComponent(lastLocation.address || '')}`
+                          : ''
+                      }`,
+                    }}
+                    style={styles.mapWebView}
+                    scrollEnabled={false}
+                    nestedScrollEnabled={false}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                    startInLoadingState={true}
+                    // Disable interaction on the preview — user taps to open fullscreen
+                    pointerEvents="none"
+                    renderLoading={() => (
+                      <View style={styles.mapLoading}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={styles.mapLoadingText}>Loading map...</Text>
+                      </View>
+                    )}
+                  />
+                </View>
+              </Card>
+            </TouchableOpacity>
+
             {lastLocation.rules.length > 0 && (
               <Card title="Active Restrictions">
                 {lastLocation.rules.map((rule, index) => (
@@ -530,34 +578,55 @@ const MapScreenContent: React.FC = () => {
             </View>
           </Card>
         )}
-
-        {/* Street Cleaning Map */}
-        <Card title="Street Cleaning Map">
-          <View style={styles.mapContainer}>
-            <WebView
-              source={{
-                uri: `https://autopilotamerica.com/destination-map${
-                  lastLocation
-                    ? `?lat=${lastLocation.coords.latitude}&lng=${lastLocation.coords.longitude}&address=${encodeURIComponent(lastLocation.address || '')}`
-                    : ''
-                }`,
-              }}
-              style={styles.mapWebView}
-              scrollEnabled={false}
-              nestedScrollEnabled={false}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              startInLoadingState={true}
-              renderLoading={() => (
-                <View style={styles.mapLoading}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={styles.mapLoadingText}>Loading map...</Text>
-                </View>
-              )}
-            />
-          </View>
-        </Card>
       </ScrollView>
+
+      {/* Fullscreen Map Modal */}
+      <Modal
+        visible={mapFullscreen}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setMapFullscreen(false)}
+      >
+        <View style={styles.fullscreenContainer}>
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+          {/* Close button */}
+          <SafeAreaView style={styles.fullscreenHeader}>
+            <TouchableOpacity
+              onPress={() => setMapFullscreen(false)}
+              style={styles.fullscreenCloseButton}
+              accessibilityLabel="Close fullscreen map"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="close" size={24} color={colors.white} />
+            </TouchableOpacity>
+            <Text style={styles.fullscreenTitle}>Street Cleaning Map</Text>
+            <View style={{ width: 40 }} />
+          </SafeAreaView>
+
+          {/* Full-height interactive WebView */}
+          <WebView
+            source={{
+              uri: `https://autopilotamerica.com/destination-map${
+                lastLocation
+                  ? `?lat=${lastLocation.coords.latitude}&lng=${lastLocation.coords.longitude}&address=${encodeURIComponent(lastLocation.address || '')}`
+                  : ''
+              }`,
+            }}
+            style={styles.fullscreenWebView}
+            scrollEnabled={true}
+            nestedScrollEnabled={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={true}
+            renderLoading={() => (
+              <View style={styles.fullscreenLoading}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.mapLoadingText}>Loading map...</Text>
+              </View>
+            )}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -745,8 +814,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
   },
+  mapCardHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    flex: 1,
+  },
+  mapCardTitle: {
+    fontSize: 16,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  mapExpandHint: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  mapExpandText: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    fontWeight: typography.weights.medium,
+  },
   mapContainer: {
-    height: 350,
+    height: 250,
     borderRadius: borderRadius.md,
     overflow: 'hidden' as const,
     marginTop: spacing.sm,
@@ -768,6 +862,45 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     color: colors.textTertiary,
     fontSize: 13,
+  },
+  // Fullscreen map modal
+  fullscreenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  fullscreenHeader: {
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+  },
+  fullscreenCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  fullscreenTitle: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.white,
+  },
+  fullscreenWebView: {
+    flex: 1,
+  },
+  fullscreenLoading: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    backgroundColor: colors.background,
   },
 });
 
