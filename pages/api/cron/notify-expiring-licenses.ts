@@ -12,6 +12,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { sendClickSendSMS } from '../../../lib/sms-service';
+import { notificationLogger } from '../../../lib/notification-logger';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: profiles, error: queryError } = await supabase
       .from('user_profiles')
-      .select('user_id, email, first_name, license_valid_until, city_sticker_expiry')
+      .select('user_id, email, first_name, license_valid_until, city_sticker_expiry, phone, phone_number, notify_sms, notify_email')
       .eq('license_reuse_consent_given', true)
       .not('license_valid_until', 'is', null)
       .not('city_sticker_expiry', 'is', null)
@@ -77,12 +79,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log(`User ${profile.user_id}: License expires before renewal (${daysUntilRenewal} days out), notifying...`);
 
-        // Send email notification
-        const emailSent = await sendExpiringLicenseEmail(profile);
+        // Send email notification (primary channel)
+        const emailSent = profile.notify_email !== false
+          ? await sendExpiringLicenseEmail(profile)
+          : false;
 
-        if (emailSent) {
-          // Mark as notified (could add a column for this if needed)
-          console.log(`✓ Notified user ${profile.user_id} about expiring license`);
+        // Send SMS backup so a spam-foldered email doesn't blow a renewal
+        // deadline. Gated on explicit notify_sms consent + phone on file.
+        const phone = profile.phone_number || profile.phone;
+        const smsSent = (profile.notify_sms && phone)
+          ? await sendExpiringLicenseSMS(profile, phone)
+          : false;
+
+        if (emailSent || smsSent) {
+          console.log(`✓ Notified user ${profile.user_id} about expiring license (email=${emailSent}, sms=${smsSent})`);
           notifiedCount++;
         }
       } catch (error: any) {
@@ -173,6 +183,18 @@ Ticketless Chicago
 Automated parking ticket contesting and city sticker renewals
     `.trim();
 
+    // Log the attempt BEFORE the HTTP call so a crash mid-send is still
+    // visible to the QA report.
+    const logId = await notificationLogger.log({
+      user_id: profile.user_id,
+      email: profile.email,
+      notification_type: 'email',
+      category: 'license_expiring',
+      subject: emailSubject,
+      content_preview: emailBody.slice(0, 200),
+      status: 'pending',
+    });
+
     // Send email via your email service (Resend, SendGrid, etc.)
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -191,13 +213,52 @@ Automated parking ticket contesting and city sticker renewals
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Email send failed:', errorData);
+      if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, JSON.stringify(errorData).slice(0, 500));
       return false;
     }
 
+    const data = await response.json().catch(() => ({}));
+    if (logId) await notificationLogger.updateStatus(logId, 'sent', data.id);
     console.log(`✓ Email sent to ${profile.email}`);
     return true;
   } catch (error: any) {
     console.error('Email send error:', error);
+    return false;
+  }
+}
+
+/**
+ * SMS fallback for users who opted in. Shorter copy than the email.
+ */
+async function sendExpiringLicenseSMS(profile: any, phone: string): Promise<boolean> {
+  try {
+    const expiry = new Date(profile.license_valid_until);
+    const days = Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / 86400000));
+    const message =
+      `Autopilot America: your driver's license expires ${days > 0 ? `in ${days} day${days === 1 ? '' : 's'}` : 'soon'}. ` +
+      `Upload an updated photo at autopilotamerica.com/settings so we can keep your city-sticker renewal on autopilot. ` +
+      `Reply STOP to unsubscribe.`;
+
+    const logId = await notificationLogger.log({
+      user_id: profile.user_id,
+      phone,
+      notification_type: 'sms',
+      category: 'license_expiring',
+      content_preview: message.slice(0, 200),
+      status: 'pending',
+    });
+
+    const result = await sendClickSendSMS(phone, message);
+    if (!result.success) {
+      console.error('SMS send failed:', result.error);
+      if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, result.error);
+      return false;
+    }
+    if (logId) await notificationLogger.updateStatus(logId, 'sent', result.messageId);
+    console.log(`✓ SMS sent to ${phone}`);
+    return true;
+  } catch (error: any) {
+    console.error('SMS send error:', error);
     return false;
   }
 }

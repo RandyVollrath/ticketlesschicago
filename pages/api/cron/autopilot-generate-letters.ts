@@ -9,6 +9,7 @@ import * as Sentry from '@sentry/nextjs';
 import { getHistoricalWeather, HistoricalWeatherData } from '../../../lib/weather-service';
 import { getOrdinanceByCode } from '../../../lib/chicago-ordinances';
 import { verifySweeperVisit, type SweeperVerification } from '../../../lib/sweeper-tracker';
+import { getZoneBoundaryDefense } from '../../../lib/parking-intersection-defense';
 import {
   lookupParkingEvidence,
   generateEvidenceParagraph,
@@ -234,6 +235,7 @@ interface EvidenceBundle {
     foiaFulfilledAt: string | null;
   } | null;
   sweeperVerification: SweeperVerification | null;
+  zoneBoundaryDefense: import('../../../lib/parking-intersection-defense').ZoneBoundaryDefense | null;
 }
 
 // ─── Levenshtein Distance (for clerical error detection) ────
@@ -477,7 +479,22 @@ async function gatherAllEvidence(
     nonResidentDetected: null,
     userFoiaHistory: null,
     sweeperVerification: null,
+    zoneBoundaryDefense: null,
   };
+
+  // Zone-boundary defense for fire hydrant / bus stop / no-standing /
+  // bike-lane / disabled-zone / commercial-loading / parking-prohibited.
+  // Synchronous — no I/O — so we compute it inline instead of pushing to
+  // the parallel promises list.
+  try {
+    bundle.zoneBoundaryDefense = getZoneBoundaryDefense(
+      ticket.violation_type,
+      ticket.violation_description,
+    );
+    if (bundle.zoneBoundaryDefense) {
+      console.log(`    Zone-boundary defense applied for ${ticket.violation_type} (${bundle.zoneBoundaryDefense.cmcSection})`);
+    }
+  } catch (e) { /* non-fatal */ }
 
   // Resolve violation code
   const vCode = violationCode || VIOLATION_TYPE_TO_CODE[ticket.violation_type] || null;
@@ -849,13 +866,21 @@ async function gatherAllEvidence(
   }
 
   // 11. Google Street View imagery (CACHED — reuses across tickets at same address)
-  if (ticket.location) {
+  // The portal scraper rarely populates ticket.location, so we fall back to
+  // the user's mailing/home address — most parking tickets happen near home and
+  // this still gives the signage-AI useful imagery instead of skipping entirely.
+  const streetViewAddress =
+    ticket.location ||
+    profile?.mailing_address ||
+    (profile as any)?.home_address_full ||
+    null;
+  if (streetViewAddress) {
     promises.push((async () => {
       try {
         // Use cached Street View to avoid duplicate API calls for same address
         const cached = await getCachedStreetView(
           supabaseAdmin,
-          ticket.location!,
+          streetViewAddress,
           ticket.violation_date,
           ticket.id || null,
           ticket.violation_type || null,
@@ -869,7 +894,7 @@ async function gatherAllEvidence(
             panoramaId: cached.panoramaId,
             latitude: cached.latitude,
             longitude: cached.longitude,
-            address: ticket.location,
+            address: streetViewAddress,
             images: [],
             analyses: cached.analyses || [],
             analysisSummary: cached.analysisSummary || '',
@@ -881,7 +906,7 @@ async function gatherAllEvidence(
         } else {
           // Fallback to direct fetch if cache service fails
           bundle.streetViewPackage = await getStreetViewEvidenceWithAnalysis(
-            ticket.location!,
+            streetViewAddress,
             ticket.violation_date,
             ticket.id || null,
             ticket.violation_type || null,
@@ -1206,6 +1231,98 @@ async function gatherAllEvidence(
 }
 
 // ─── Build the Claude Prompt ─────────────────────────────────
+
+/**
+ * Template-first layer for proven defenses.
+ *
+ * If the evidence bundle contains a defense with a historical win rate above
+ * 70%, we pre-write the opening paragraph and force Claude to use it verbatim
+ * instead of hoping it decides to lead with the strongest argument. Priority
+ * cascade (first match wins):
+ *   1. Clerical error / plate mismatch — grounds for immediate dismissal
+ *   2. Non-resident city-sticker defense (80% win rate)
+ *   3. City sticker purchase receipt (72% win rate)
+ *   4. Registration renewal receipt (76% win rate)
+ *   5. GPS departure proof (high confidence when available)
+ */
+function pickMandatoryLeadArgument(
+  ticket: DetectedTicket,
+  profile: UserProfile,
+  evidence: EvidenceBundle,
+): { openingParagraph: string; rationale: string } | null {
+  const violationDate = formatViolationDate(ticket.violation_date);
+  const ticketNum = ticket.ticket_number || ticket.id;
+
+  // 1. Clerical error — plate mismatch is near-automatic dismissal
+  if (evidence.clericalErrorCheck?.hasErrors) {
+    const { ticketPlate, userPlate } = evidence.clericalErrorCheck;
+    return {
+      openingParagraph:
+        `I am writing to contest parking citation ${ticketNum} on the grounds of a material clerical error. ` +
+        `The citation lists license plate "${ticketPlate}", but my vehicle's actual plate is "${userPlate}". ` +
+        `Under Chicago Municipal Code § 9-100-060(a)(1), failure to correctly identify the cited vehicle is a codified affirmative defense and grounds for immediate dismissal. The City cannot establish that my vehicle was the vehicle involved in this alleged violation.`,
+      rationale: 'Plate mismatch is a § 9-100-060(a)(1) codified defense with near-automatic dismissal rate.',
+    };
+  }
+
+  // 2. Non-resident city-sticker defense — 80% win rate
+  if (
+    evidence.nonResidentDetected?.isNonResident &&
+    (ticket.violation_type === 'no_city_sticker' || ticket.violation_code?.includes('9-64-125'))
+  ) {
+    const nr = evidence.nonResidentDetected;
+    const residency = nr.mailingCity
+      ? `${nr.mailingCity}${nr.mailingState ? `, ${nr.mailingState}` : ''}`
+      : 'a municipality outside the City of Chicago';
+    return {
+      openingParagraph:
+        `I am writing to contest parking citation ${ticketNum} on the grounds that I am not a resident of the City of Chicago and my vehicle is not principally used or kept in Chicago. ` +
+        `My permanent address is in ${residency}. ` +
+        `Chicago Municipal Code § 9-64-125 requires a city vehicle sticker only for vehicles "principally used or kept" within the City. Under § 9-100-030, the City bears the burden of establishing a prima facie case, and non-residency is a codified affirmative defense under § 9-100-060(a)(4) (violation does not exist). ` +
+        `Because I am a non-resident whose vehicle is registered and kept outside Chicago, this ordinance does not apply to me, and the citation must be dismissed.`,
+      rationale: 'Non-resident defense carries ~80% historical win rate for city-sticker violations.',
+    };
+  }
+
+  // 3. City sticker purchase receipt — proves compliance
+  if (evidence.cityStickerReceipt && ticket.violation_type === 'no_city_sticker') {
+    const purchaseDate = evidence.cityStickerReceipt.parsed_purchase_date || 'the date shown on the enclosed receipt';
+    return {
+      openingParagraph:
+        `I am writing to contest parking citation ${ticketNum} issued on ${violationDate}. I have enclosed a receipt from the Chicago City Clerk showing that a valid city vehicle sticker was purchased on ${purchaseDate} for this vehicle. ` +
+        `Under Chicago Municipal Code § 9-100-060(a)(4), the existence of a valid sticker is a codified affirmative defense. The City's own records will confirm the purchase. I respectfully request dismissal on the basis of this documented compliance.`,
+      rationale: 'City sticker receipt carries ~72% win rate; explicit compliance evidence.',
+    };
+  }
+
+  // 4. Registration renewal receipt — 76% win rate for expired-plate violations
+  if (
+    evidence.registrationReceipt &&
+    (ticket.violation_type === 'expired_plates' || ticket.violation_code?.includes('9-76-160'))
+  ) {
+    const renewalDate = evidence.registrationReceipt.parsed_purchase_date || 'the date shown on the enclosed receipt';
+    return {
+      openingParagraph:
+        `I am writing to contest parking citation ${ticketNum} issued on ${violationDate}. I have enclosed documentation from the Illinois Secretary of State showing that my vehicle registration was renewed on ${renewalDate}. ` +
+        `Under Chicago Municipal Code § 9-100-060(a)(4), proof of valid registration is a codified affirmative defense demonstrating that the cited condition did not exist or was corrected. I respectfully request dismissal on the basis of this documented compliance.`,
+      rationale: 'Registration renewal receipt carries ~76% historical win rate for expired-plate violations.',
+    };
+  }
+
+  // 5. GPS departure proof — strong physical alibi
+  if (evidence.parkingEvidence?.departureProof) {
+    const dp = evidence.parkingEvidence.departureProof;
+    return {
+      openingParagraph:
+        `I am writing to contest parking citation ${ticketNum} issued on ${violationDate} on the grounds that my vehicle was not present at the cited location at the time of the alleged violation. ` +
+        `GPS records from my connected parking application confirm that I departed the cited location at ${dp.departureTimeFormatted} — ${dp.minutesBeforeTicket} minutes before the citation was issued — and moved ${dp.departureDistanceMeters} meters from the parking spot before the ticket was written. ` +
+        `Because my vehicle was demonstrably absent at the cited time, no violation occurred and the citation must be dismissed.`,
+      rationale: 'GPS departure proof is objective, timestamped physical alibi evidence.',
+    };
+  }
+
+  return null;
+}
 
 /**
  * Build the comprehensive Claude AI prompt with ALL evidence.
@@ -2119,6 +2236,29 @@ INSTRUCTIONS: If other strong evidence exists, you may briefly mention (1-2 sent
     sections.push(foiaHistorySection);
   }
 
+  // ── Mandatory Lead Argument (template-first for proven defenses) ──
+  // Some defenses have such strong historical win rates that we cannot
+  // risk the AI burying them. When one applies we pre-write the opening
+  // paragraph and force Claude to use it verbatim. Ordered by priority:
+  // clerical error (near-100%) → non-resident (80%) → registration/sticker
+  // receipts (72–76%) → GPS departure proof.
+  const mandatoryLead = pickMandatoryLeadArgument(ticket, profile as UserProfile, evidence);
+  if (mandatoryLead) {
+    sections.push(`=== MANDATORY LEAD ARGUMENT (TEMPLATE-FIRST) ===
+
+This letter has a defense with a historical win rate above 70%. DO NOT BURY IT.
+
+Your opening paragraph — immediately after the "To Whom It May Concern" salutation — MUST begin with the following text, verbatim (you may add one short sentence to it, but do not rephrase or move it later in the letter):
+
+"""
+${mandatoryLead.openingParagraph}
+"""
+
+Then, in the paragraphs that follow, support this lead argument with the rest of the evidence. Weaker arguments (mitigation, character, etc.) come after, never before.
+
+Reason this is mandatory: ${mandatoryLead.rationale}`);
+  }
+
   // ── Final Instructions ──
   sections.push(`=== LETTER GENERATION INSTRUCTIONS ===
 
@@ -2147,6 +2287,7 @@ Generate a professional, formal contest letter that:
    ${evidence.userSubmittedEvidence?.hasEvidence ? `- User-submitted evidence: ${evidence.userSubmittedEvidence.text ? 'written statement' : ''}${evidence.userSubmittedEvidence.text && evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? ' + ' : ''}${evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? `${evidence.userSubmittedEvidence.photoAnalyses.length} AI-analyzed photo(s) (STRONGEST — user's own documentation)` : evidence.userSubmittedEvidence.attachmentUrls.length > 0 ? `${evidence.userSubmittedEvidence.attachmentUrls.length} attachment(s)` : ''}` : ''}
    ${evidence.clericalErrorCheck?.hasErrors ? `- CLERICAL ERROR DETECTED: Plate mismatch — ticket says "${evidence.clericalErrorCheck.ticketPlate}" but actual plate is "${evidence.clericalErrorCheck.userPlate}" (STRONGEST — grounds for immediate dismissal)` : evidence.clericalErrorCheck?.checked ? '- Clerical error check: PASSED (ticket plate matches user plate)' : ''}
    ${evidence.userFoiaHistory?.hasData ? `- FOIA user ticket history: ${evidence.userFoiaHistory.totalLifetimeTickets === 0 ? 'ZERO prior tickets (POWERFUL — first-time offender argument)' : evidence.userFoiaHistory.sameViolationTypeCount === 0 ? `First offense for this type (${evidence.userFoiaHistory.totalLifetimeTickets} total lifetime — SUPPORTING argument)` : evidence.userFoiaHistory.totalLifetimeTickets <= 3 ? `Near-clean record (${evidence.userFoiaHistory.totalLifetimeTickets} total — brief mention)` : `${evidence.userFoiaHistory.totalLifetimeTickets} lifetime tickets (use cautiously)`}` : ''}
+   ${evidence.zoneBoundaryDefense ? `- ZONE-BOUNDARY DEFENSE (§ ${evidence.zoneBoundaryDefense.cmcSection}, STRONG codified defense): The City rarely produces measurement evidence for ${evidence.zoneBoundaryDefense.statutoryDistanceFt ? `distance-based violations (${evidence.zoneBoundaryDefense.statutoryDistanceFt}-ft radius)` : 'posted-zone violations'}. USE THIS ARGUMENT VERBATIM OR REPHRASED — it invokes § 9-100-060(a)(4): "${evidence.zoneBoundaryDefense.argument.slice(0, 260)}..."` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the reviewer for their consideration, sign with sender name only (Lob adds return address automatically). Do NOT suggest or request an in-person hearing — users want dismissal by mail, not additional time commitments
