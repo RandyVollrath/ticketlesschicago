@@ -579,7 +579,9 @@ export default function DestinationMapView() {
             <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">${address}</div>
             ${permitZone ? `<div style="margin-top:4px;padding:3px 8px;background:#F3E8FF;color:#7C3AED;border-radius:4px;font-size:12px;font-weight:600;display:inline-block">Permit Zone ${permitZone}</div>` : ''}
           </div>
-        `, { maxWidth: 280 }).openPopup();
+        `, { maxWidth: 280 });
+        // Don't auto-open popup — let user tap the pin to see details
+        // This reduces initial clutter on the map
       }
       marker.on('dragend', async () => {
         const updated = marker.getLatLng();
