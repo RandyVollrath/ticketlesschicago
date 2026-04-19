@@ -111,6 +111,13 @@ interface MobileCheckParkingResponse {
     scheduleText?: string;
     isSeasonal?: boolean;
     rateZone?: number;
+    /**
+     * Secondary, less-prominent label rendered under the main address in the
+     * mobile UI: the actual block range the meter covers. Useful for partial-
+     * block meters (e.g., 4804-4810 Wolcott) so the user understands why the
+     * alert fired even if the main displayed address falls outside that range.
+     */
+    blockRangeLabel?: string;
   };
   dotPermit: {
     hasActivePermit: boolean;
@@ -1241,6 +1248,7 @@ export default async function handler(
         scheduleText: meteredParkingResult.scheduleText || undefined,
         isSeasonal: meteredParkingResult.isSeasonal || undefined,
         rateZone: meteredParkingResult.rateZone || undefined,
+        blockRangeLabel: meteredParkingResult.blockRangeLabel || undefined,
       },
 
       dotPermit: {
