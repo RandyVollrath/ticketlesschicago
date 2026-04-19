@@ -1377,8 +1377,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('user_id', letter.user_id)
         .maybeSingle();
 
-      if (!subscription || subscription.status !== 'active') {
-        console.log(`  ⚠️ Skipping letter ${letter.id}: User ${letter.user_id} subscription is ${subscription?.status || 'missing'} (not active)`);
+      if (!subscription || (subscription.status !== 'active' && subscription.status !== 'trialing')) {
+        console.log(`  ⚠️ Skipping letter ${letter.id}: User ${letter.user_id} subscription is ${subscription?.status || 'missing'} (not active/trialing)`);
         // Update letter status so it's not retried every cron run
         await supabaseAdmin
           .from('contest_letters')
