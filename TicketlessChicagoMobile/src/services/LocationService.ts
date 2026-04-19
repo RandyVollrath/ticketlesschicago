@@ -30,6 +30,10 @@ export interface ParkingRule {
   scheduleText?: string;
   isSeasonal?: boolean;
   rateZone?: number;
+  // Metered parking: compact range/side label — shown as a small line under
+  // the main address so users understand WHY a meter alert fired on partial-
+  // block meters (e.g., "Meter range: 4804-4810 N WOLCOTT AVE, west side").
+  blockRangeLabel?: string;
 }
 
 export interface Coordinates {
@@ -1003,6 +1007,7 @@ class LocationServiceClass {
         scheduleText: data.meteredParking.scheduleText,
         isSeasonal: data.meteredParking.isSeasonal,
         rateZone: data.meteredParking.rateZone,
+        blockRangeLabel: data.meteredParking.blockRangeLabel,
         schedule: data.meteredParking.scheduleText || `Mon–Sat 8am–10pm, ${data.meteredParking.estimatedRate || '$2.50/hr'}`,
       });
     }

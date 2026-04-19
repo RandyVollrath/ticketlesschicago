@@ -103,6 +103,9 @@ const RuleCard: React.FC<RuleCardProps> = ({ rule }) => {
         </View>
       </View>
       <Text style={styles.message}>{rule.message}</Text>
+      {rule.blockRangeLabel && (
+        <Text style={styles.blockRangeText}>{rule.blockRangeLabel}</Text>
+      )}
       {rule.schedule && (
         <View style={styles.scheduleRow}>
           <MaterialCommunityIcons
@@ -172,6 +175,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: typography.sizes.sm * typography.lineHeights.relaxed,
     marginBottom: spacing.xs,
+  },
+  // Smaller, de-emphasized line for meter block range (e.g., "Meter range:
+  // 4804-4810 N WOLCOTT AVE, west side") so the user knows the specific
+  // partial-block coverage without crowding the main message.
+  blockRangeText: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginBottom: spacing.xs,
+    fontStyle: 'italic',
   },
   scheduleRow: {
     flexDirection: 'row',
