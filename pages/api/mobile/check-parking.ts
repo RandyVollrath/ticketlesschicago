@@ -960,10 +960,25 @@ export default async function handler(
       }
     }
 
-    // Pick authoritative house number BEFORE unified-checker runs so permit
-    // zone + address-range queries inside it use the right number.
-    // Precedence: building_footprint > segment_interpolation > (unified's own).
-    const overrideHouseNumber: number | null =
+    // Split "rule-match number" from "display number":
+    //
+    // Rule-match number (for permit-zone / meter / block queries) prefers
+    //   segment interpolation first. On clustered-address blocks (e.g., all
+    //   buildings bunched at one end), the interpolated number reflects the
+    //   user's ACTUAL physical position along the block more accurately than
+    //   the nearest registered building's address — which matters for narrow
+    //   sub-block meter ranges like Wolcott's 4804-4810 meter at Lawrence.
+    //
+    // Display number (what we show the user) prefers the building footprint.
+    //   That's an address that really exists on a house/business the user can
+    //   see. Builds trust, matches signage.
+    //
+    // When only one source is available, both fall through to that.
+    const ruleMatchNumber: number | null =
+      snapResult?.interpolatedNumber ??
+      buildingFootprintResult?.house_number ??
+      null;
+    const displayNumber: number | null =
       buildingFootprintResult?.house_number ??
       snapResult?.interpolatedNumber ??
       null;
@@ -986,11 +1001,12 @@ export default async function handler(
       }
     }
 
-    // NOW run the unified checker with the authoritative number + street class.
+    // NOW run the unified checker with the RULE-MATCH number + street class.
+    // Display number override happens AFTER, on the final address string only.
     const result = await checkAllParkingRestrictions(
       checkLat, checkLng, snapResult?.streetName || undefined,
       snapGeometry, latitude, longitude,
-      overrideHouseNumber,
+      ruleMatchNumber,
       snapStreetClass,
     );
 
@@ -1137,13 +1153,16 @@ export default async function handler(
     }
     // Log which source we ended up using for the house number + side-detection.
     const nm: Record<string, any> = diag.native_meta || {};
-    nm.address_number_source = addressNumberSource;
-    nm.user_side_from_gps = userSideFromGps;           // 'L' | 'R' | null
-    nm.expected_parity = expectedParity;               // 'O' | 'E' | null
+    nm.address_number_source = addressNumberSource;        // display source
+    nm.display_number = displayNumber;                      // shown to user
+    nm.rule_match_number = ruleMatchNumber;                 // used for permit/meter/block queries
+    nm.user_side_from_gps = userSideFromGps;                // 'L' | 'R' | null
+    nm.expected_parity = expectedParity;                    // 'O' | 'E' | null
     nm.snap_oneway_dir = snapResult?.onewayDir || null;
     nm.snap_l_parity = snapResult?.lParity || null;
     nm.snap_r_parity = snapResult?.rParity || null;
     nm.building_constrained_match = buildingFootprintResult ? (expectedParity ? 'parity_constrained' : 'no_parity_constraint') : 'no_building_in_range';
+    nm.display_and_rule_match_numbers_differ = (displayNumber != null && ruleMatchNumber != null && displayNumber !== ruleMatchNumber);
     if (snapResult?.interpolatedNumber) {
       nm.interpolated_number = snapResult.interpolatedNumber;
       nm.segment_fraction = snapResult.segmentFraction;
