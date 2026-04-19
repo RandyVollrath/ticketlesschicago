@@ -9,6 +9,11 @@ See **[PRODUCT_DECISIONS.md](./PRODUCT_DECISIONS.md)** for finalized product dec
 - **Backend**: Supabase (auth, database, RLS policies)
 - **Domain**: autopilotamerica.com
 
+## Explain things like I'm in fifth grade
+When explaining what changed, what broke, or how a system works, use plain language and everyday analogies. Skip the jargon. Imagine you're telling a curious 10-year-old. Short sentences. No acronyms without spelling them out. If a concept needs a metaphor (door, permission slip, robot, file cabinet), use one.
+
+This applies to end-of-turn summaries, bug diagnoses, and any "what did you do?" answers — not to code comments or commit messages, which stay precise and technical.
+
 ## Deployment — MANDATORY after every change
 See **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** for full workflow. Summary:
 1. Commit, push to GitHub
