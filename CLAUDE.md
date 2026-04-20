@@ -40,6 +40,14 @@ Read these when working on the relevant subsystem:
 
 ## Critical Rules (Always Apply)
 
+### Website/App Copy — MUST be functionally true
+Only add copy to the website, app, or any user-facing surface if it is **functionally true** — the product actually does what the copy claims, today, in the code. Before writing or editing any user-facing copy:
+1. **Verify the claim against the code.** Read the relevant service/handler/cron job. Don't rely on memory or assumption.
+2. **If the claim is not true**, do not write it. Tell the user explicitly, and offer to either (a) make the copy match reality, or (b) implement the feature so the copy becomes true.
+3. **If a stat or number is involved** (FOIA data, win rates, revenue figures), query the source (e.g. `~/Documents/FOIA/foia.db`) and cite it. Never invent or estimate — per the "Never make up numbers" rule in memory.
+
+This applies to marketing pages, onboarding flows, confirmation screens, email templates, and any text a user sees. Deceptive or aspirational copy erodes trust and creates legal exposure.
+
 ### Every feature must work on BOTH iOS and Android
 Think through platform differences separately. iOS is stricter on almost everything. See [docs/WEBVIEW_RULES.md](./docs/WEBVIEW_RULES.md) for details.
 
