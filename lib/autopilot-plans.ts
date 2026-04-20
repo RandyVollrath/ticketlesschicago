@@ -8,10 +8,10 @@ export const AUTOPILOT_PLANS = {
     priceLock: true,
     priceLockCents: 4900,
   },
-  FOUNDING_MONTHLY_15: {
-    code: 'FOUNDING_MONTHLY_15',
-    name: 'Founding Member (Monthly)',
-    priceCents: 1500,
+  STANDARD_MONTHLY_10: {
+    code: 'STANDARD_MONTHLY_10',
+    name: 'Autopilot (Monthly)',
+    priceCents: 1000,
     interval: 'month' as const,
     gracePeriodDays: 7,
     priceLock: false,
@@ -38,7 +38,7 @@ export const AUTOPILOT_PLANS = {
 } as const;
 
 export const ACTIVE_AUTOPILOT_PLAN = AUTOPILOT_PLANS.FOUNDING_ANNUAL_49;
-export const ACTIVE_MONTHLY_PLAN = AUTOPILOT_PLANS.FOUNDING_MONTHLY_15;
+export const ACTIVE_MONTHLY_PLAN = AUTOPILOT_PLANS.STANDARD_MONTHLY_10;
 
 export const AUTOPILOT_PRICE_ID =
   process.env.STRIPE_FOUNDING_ANNUAL_49_PRICE_ID ||
