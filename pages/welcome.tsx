@@ -85,7 +85,7 @@ export default function Welcome() {
       fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     }}>
       <Head>
-        <title>Welcome to Ticketless</title>
+        <title>Welcome to Autopilot America</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -145,7 +145,7 @@ export default function Welcome() {
               maxWidth: 480,
               margin: '0 auto',
             }}>
-              Your car is now protected by Ticketless. Here&apos;s what&apos;s already
+              Your car is now protected by Autopilot America. Here&apos;s what&apos;s already
               happening for you.
             </p>
           </div>
