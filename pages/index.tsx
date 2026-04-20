@@ -317,29 +317,17 @@ export default function LandingPage() {
           margin: '0 auto 24px',
           position: 'relative',
         }}>
-          Chicago Charged Drivers $420M Last Year.
+          If you park in Chicago, this saves you money.
         </h1>
 
         <p style={{
           fontSize: 'clamp(18px, 3vw, 22px)',
           color: '#94A3B8',
-          maxWidth: '700px',
-          margin: '0 auto 40px',
-          lineHeight: 1.6
+          maxWidth: '640px',
+          margin: '0 auto 32px',
+          lineHeight: 1.5
         }}>
-          One red light camera ticket averages $156 with late fees. The average Chicago driver gets 2–3 a year, conservatively. Full year of Autopilot protection: $99.
-        </p>
-
-        <p style={{
-          fontSize: 'clamp(16px, 2.5vw, 18px)',
-          color: '#94A3B8',
-          maxWidth: '700px',
-          margin: '0 auto 40px',
-          lineHeight: 1.6
-        }}>
-          We fight back — automatically.
-          <br/>
-          Automatic ticket contesting for Chicago drivers, backed by our First Dismissal Guarantee.
+          Chicago drivers paid <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>$99/year keeps you out of that number.</span>
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -370,7 +358,7 @@ export default function LandingPage() {
           </span>
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
           <span style={{ color: '#E2E8F0', fontSize: '14px' }}>
-            If we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund.
+            Avoid every ticket this year, or get one dismissed — or your money back.
           </span>
         </div>
 
@@ -442,10 +430,10 @@ export default function LandingPage() {
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
           {[
-            { title: '1. Connect', text: 'Enter your license plate once.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>) },
-            { title: '2. Monitor', text: 'Our system checks for new violations twice a week.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>) },
-            { title: '3. Fight', text: 'When we find a ticket, we email you to gather any evidence you have — then build the strongest code-specific defense and mail it for you.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>) },
-            { title: '4. Track & Learn', text: 'We notify you of outcomes - and use real results to continuously improve the system.', icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>) }
+            { title: '1. Install the app', text: "We watch out for tickets your car is at risk of — wherever you park. Camera zones, meter timeouts, temporary no-parking — the app warns you before it costs you.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>) },
+            { title: '2. Add your address', text: "Get the heads-up the night before street cleaning, snow bans, and overnight bans on your block — so you can move your car.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>) },
+            { title: '3. We monitor your plate', text: "Every Monday and Thursday we scan the City's database for any ticket written to your plate.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>) },
+            { title: '4. We fight every ticket', text: "We pull the best evidence available — from you, the City (FOIA), the internet, and your app — then draft your contest letter and mail it for you.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>) }
           ].map((step, i) => (
             <div key={i} style={{
               flex: '1 1 250px',
