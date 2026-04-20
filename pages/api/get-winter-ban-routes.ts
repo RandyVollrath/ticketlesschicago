@@ -33,6 +33,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }));
 
+    // Static data — cache aggressively
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
+
     return res.status(200).json({
       routes,
       count: routes.length,

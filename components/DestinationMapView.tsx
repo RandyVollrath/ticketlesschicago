@@ -327,43 +327,49 @@ export default function DestinationMapView() {
   // Store layer references + raw data for restyling on toggle
   const layersRef = useRef<{
     cleaningLayer: any;
+    cleaningZones: any[]; // raw zone features for re-styling by featureId
     snowLayer: any;
     winterLayer: any;
     meterLayer: any;
     permitLayer: any;
     permitParkabilityLayer: any;
     meters: any[];
-  }>({ cleaningLayer: null, snowLayer: null, winterLayer: null, meterLayer: null, permitLayer: null, permitParkabilityLayer: null, meters: [] });
+  }>({ cleaningLayer: null, cleaningZones: [], snowLayer: null, winterLayer: null, meterLayer: null, permitLayer: null, permitParkabilityLayer: null, meters: [] });
 
   // Restyle all layers when parkability mode changes
   const applyViewMode = useCallback((isParkability: boolean) => {
     const { cleaningLayer, snowLayer, winterLayer, meterLayer, permitLayer, permitParkabilityLayer } = layersRef.current;
 
-    // --- Restyle cleaning zones ---
-    if (cleaningLayer) {
-      cleaningLayer.eachLayer((layer: any) => {
-        const nextISO = layer.feature?.properties?.nextISO;
+    // --- Restyle cleaning zones (VectorGrid) ---
+    // VectorGrid uses setFeatureStyle(featureId, style) per feature.
+    // We iterate over stored zone data and restyle each by its ward-section ID.
+    if (cleaningLayer && layersRef.current.cleaningZones.length > 0) {
+      for (const zone of layersRef.current.cleaningZones) {
+        const featureId = `${zone.properties.ward}-${zone.properties.section}`;
+        const nextISO = zone.properties.nextISO;
         if (isParkability) {
           const color = parkabilityZoneColor(nextISO);
-          layer.setStyle({
+          cleaningLayer.setFeatureStyle(featureId, {
             fillColor: color,
-            color: '#1f2937',
             fillOpacity: 0.3,
+            color: '#1f2937',
             weight: 0.6,
             opacity: 0.45,
+            fill: true,
           });
         } else {
           const color = cleaningColor(nextISO);
           const isClear = color === LAYER_COLORS.cleaningNone;
-          layer.setStyle({
+          cleaningLayer.setFeatureStyle(featureId, {
             fillColor: color,
-            color: '#1f2937',
             fillOpacity: isClear ? 0.18 : 0.55,
+            color: '#1f2937',
             weight: 1.0,
             opacity: 0.45,
+            fill: true,
           });
         }
-      });
+      }
     }
 
     // --- Restyle snow routes ---
@@ -516,6 +522,9 @@ export default function DestinationMapView() {
 
     async function init() {
       const L = (await import('leaflet')).default;
+      // VectorGrid plugin needs L on window
+      (window as any).L = L;
+      await import('leaflet.vectorgrid');
       if (cancelled || !containerRef.current) return;
 
       // Clean up existing map
@@ -623,6 +632,12 @@ export default function DestinationMapView() {
       // Load data layers progressively — each renders as it arrives
       // Fire all fetches in parallel, but render each independently
       // Cleaning needs BOTH geometry (zone-geojson) and schedule (get-street-cleaning-data)
+      //
+      // Use default browser caching (respects Cache-Control from APIs).
+      // zone-geojson: 1hr CDN, street-cleaning-data: 5min CDN,
+      // snow-routes: 1hr CDN, winter-ban: 24hr CDN, meters: 6hr CDN,
+      // permit-zone-lines: 10min CDN. All endpoints return immutable
+      // geometry; only cleaning schedules change frequently.
       const loadCleaning = Promise.all([
         fetch('/api/zone-geojson').then(r => r.ok ? r.json() : null).catch(() => null),
         fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null).catch(() => null),
@@ -659,32 +674,46 @@ export default function DestinationMapView() {
           };
         });
 
-        const cleaningLayer = L.geoJSON(zones, {
-          style: (feature: any) => {
-            const color = cleaningColor(feature?.properties?.nextISO);
-            const isClear = color === LAYER_COLORS.cleaningNone;
-            // Keep red/yellow bold, but dim the green "Clear" wash so the
-            // urgent zones pop instead of drowning in a sea of green.
-            return {
-              fillColor: color,
-              fillOpacity: isClear ? 0.18 : 0.55,
-              color: '#1f2937',
-              weight: 1.0,
-              opacity: 0.45,
-            };
+        // Use VectorGrid.Slicer for efficient tile-based rendering.
+        // Instead of creating 292 individual canvas paths, this slices
+        // the GeoJSON into vector tiles and only draws the visible viewport.
+        const cleaningFC = { type: 'FeatureCollection' as const, features: zones };
+        const cleaningLayer = (L as any).vectorGrid.slicer(cleaningFC, {
+          vectorTileLayerStyles: {
+            sliced: (properties: any) => {
+              const color = cleaningColor(properties.nextISO);
+              const isClear = color === LAYER_COLORS.cleaningNone;
+              return {
+                fillColor: color,
+                fillOpacity: isClear ? 0.18 : 0.55,
+                color: '#1f2937',
+                weight: 1.0,
+                opacity: 0.45,
+                fill: true,
+              };
+            },
           },
-          onEachFeature: (feature: any, layer: any) => {
-            const p = feature.properties;
-            const label = cleaningLabel(p.nextISO);
-            layer.bindPopup(`
+          interactive: true,
+          getFeatureId: (f: any) => `${f.properties.ward}-${f.properties.section}`,
+          maxZoom: 18,
+          indexMaxZoom: 5,
+          tolerance: 3,
+        }).on('click', (e: any) => {
+          const p = e.layer.properties;
+          if (!p) return;
+          const label = cleaningLabel(p.nextISO);
+          L.popup({ maxWidth: 250 })
+            .setLatLng(e.latlng)
+            .setContent(`
               <div style="font-family:system-ui;font-size:13px">
                 <div style="font-weight:700;color:#1A1C1E">Ward ${p.ward}, Section ${p.section}</div>
                 <div style="color:#6C727A;margin-top:2px">${label}</div>
               </div>
-            `, { maxWidth: 250 });
-          },
+            `)
+            .openOn(map);
         }).addTo(map);
         layersRef.current.cleaningLayer = cleaningLayer;
+        layersRef.current.cleaningZones = zones;
         applyViewMode(parkabilityMode);
       });
 
