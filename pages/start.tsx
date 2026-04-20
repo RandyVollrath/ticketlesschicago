@@ -1183,14 +1183,14 @@ export default function StartFunnel() {
                 <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 12 }}>What&apos;s included:</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <IncludedItem text="Red-light and speed camera alerts as you drive ($183M/yr in Chicago)" />
-                  <IncludedItem text="Meter alerts — when you park at a meter, when time is running low, and when you've hit the posted limit" />
+                  <IncludedItem text="Meter alerts — when you park at a meter, when time is running low, and when you've hit the posted limit ($47M/yr)" />
                   <IncludedItem text="Street cleaning, winter overnight, snow ban, and temporary no-parking alerts" />
                   <IncludedItem text="Twice-weekly plate monitoring + automatic contest letters drafted, printed, and mailed" />
                   <IncludedItem text="City sticker and license plate renewal deadline reminders" />
                   <IncludedItem text="First Dismissal Guarantee" />
                 </div>
                 <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 10, lineHeight: 1.5 }}>
-                  Covers 9 of the top 10 ticket categories in Chicago — roughly $360M of the $420M the City charged drivers in 2025.
+                  Covers 9 of the top 10 ticket categories in Chicago — <strong>$345M (82%)</strong> of the $420M the City charged drivers in 2025. Ticket revenue figures from 2025 City of Chicago FOIA data.
                 </div>
               </div>
 
