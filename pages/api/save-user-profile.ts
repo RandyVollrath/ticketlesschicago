@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           email: formData.emailNotifications !== false,
           sms: formData.smsNotifications || false,
           voice: formData.voiceNotifications || false,
-          reminder_days: formData.reminderDays || [30, 7, 1]
+          reminder_days: formData.reminderDays || [1]
         },
         updated_at: new Date().toISOString()
       })
@@ -174,7 +174,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           email: formData.emailNotifications !== false,
           sms: formData.smsNotifications || false,
           voice: formData.voiceNotifications || false,
-          reminder_days: formData.reminderDays || [30, 7, 1]
+          reminder_days: formData.reminderDays || [1]
         },
         service_plan: 'free',
         mailing_address: formData.mailingAddress,

@@ -2120,7 +2120,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   email: formData.emailNotifications !== false, // Default to true
                   sms: formData.smsNotifications || false,
                   voice: formData.voiceNotifications || false,
-                  reminder_days: formData.reminderDays || [30, 7, 1]
+                  reminder_days: formData.reminderDays || [1]
                 },
                 // Form data fields that settings page expects
                 license_plate: formData.licensePlate,
@@ -2187,7 +2187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               notify_winter_parking: false,
               phone_call_enabled: formData.voiceNotifications || false,
               voice_calls_enabled: formData.voiceNotifications || false, // Duplicate field some places use
-              notify_days_array: formData.reminderDays || [1, 7, 30], // Default reminder days
+              notify_days_array: formData.reminderDays || [1], // Default: day-before only (user can add 3/7/14/30 in settings)
               notify_days_before: formData.reminderDays?.[0] || 1, // Primary reminder day
               notify_evening_before: formData.eveningBefore !== false,
               voice_preference: 'female',
@@ -2199,7 +2199,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 email: formData.emailNotifications !== false,
                 sms: formData.smsNotifications || false,
                 voice: formData.voiceNotifications || false,
-                reminder_days: formData.reminderDays || [1, 7, 30]
+                reminder_days: formData.reminderDays || [1]
               },
               // All Ticketless users are paid
               sms_pro: true,

@@ -248,7 +248,7 @@ export default function Welcome() {
               What happens next
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <ExpectItem text={<>You&apos;ll get reminders <strong>the day before</strong> and <strong>the night before</strong> your block&apos;s next sweep (plus earlier heads-ups 7 and 30 days out).</>} />
+              <ExpectItem text={<>You&apos;ll get reminders <strong>the day before</strong> and <strong>the night before</strong> your block&apos;s next sweep — right when you need them, not weeks ahead.</>} />
               <ExpectItem text={<>We check your plate <strong>every Monday and Thursday</strong>. If we find a ticket, you&apos;ll get an email asking for any extra evidence you have.</>} />
               <ExpectItem text={<>Whether you reply or not, we&apos;ll mail a contest letter to the City on your behalf.</>} />
               <ExpectItem text={<>You&apos;ll be notified when a letter is mailed and again when the result comes back from the City.</>} />
