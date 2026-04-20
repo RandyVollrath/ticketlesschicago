@@ -3,6 +3,8 @@ import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { FEATURES } from '../../../lib/config';
+import { sendClickSendSMS } from '../../../lib/sms-service';
+import { notificationLogger } from '../../../lib/notification-logger';
 
 /**
  * Cron Job: Remind PAID Protection users to confirm their profile before renewal
@@ -64,6 +66,10 @@ export default async function handler(
         email,
         first_name,
         last_name,
+        phone,
+        phone_number,
+        notify_sms,
+        notify_email,
         city_sticker_expiry,
         license_plate_expiry,
         emissions_date,
@@ -147,15 +153,30 @@ export default async function handler(
 
           console.log(`User ${user.user_id}: ${daysUntilRenewal} days until ${renewal.type} renewal, sending ${matchingReminderDay}-day reminder`);
 
-          const emailSent = await sendProfileConfirmationEmail(
-            user,
-            renewal,
-            daysUntilRenewal,
-            matchingReminderDay,
-            profileIssues
-          );
+          const emailSent = user.notify_email !== false
+            ? await sendProfileConfirmationEmail(
+                user,
+                renewal,
+                daysUntilRenewal,
+                matchingReminderDay,
+                profileIssues
+              )
+            : false;
 
-          if (emailSent) {
+          // SMS backup. Protection members pay $99/yr — we will not rely
+          // on email alone for a $200 plate violation deadline.
+          const phone = user.phone_number || user.phone;
+          const smsSent = (user.notify_sms && phone)
+            ? await sendProfileConfirmationSMS(
+                user,
+                phone,
+                renewal,
+                daysUntilRenewal,
+                profileIssues
+              )
+            : false;
+
+          if (emailSent || smsSent) {
             notificationsSent[matchingReminderDay] = (notificationsSent[matchingReminderDay] || 0) + 1;
           }
         }
@@ -334,6 +355,50 @@ Autopilot America
     return true;
   } catch (error: any) {
     console.error('Email send error:', error);
+    return false;
+  }
+}
+
+async function sendProfileConfirmationSMS(
+  user: any,
+  phone: string,
+  renewal: { type: string; label: string; date: Date },
+  daysUntilRenewal: number,
+  profileIssues: string[],
+): Promise<boolean> {
+  try {
+    const fineMap: Record<string, string> = {
+      city_sticker: '$90',
+      license_plate: '$200',
+      emissions: 'a registration block',
+    };
+    const fineText = fineMap[renewal.type] || 'a fine';
+    const issueSnippet = profileIssues.length > 0 ? ` We still need: ${profileIssues[0]}.` : '';
+    const message =
+      `Autopilot America: your ${renewal.label.toLowerCase()} renews in ${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'}.${issueSnippet} ` +
+      `Confirm your profile at autopilotamerica.com/settings so we can auto-renew and avoid ${fineText}. ` +
+      `Reply STOP to unsubscribe.`;
+
+    const logId = await notificationLogger.log({
+      user_id: user.user_id,
+      phone,
+      notification_type: 'sms',
+      category: `renewal_profile_confirmation_${renewal.type}`,
+      content_preview: message.slice(0, 200),
+      status: 'pending',
+    });
+
+    const result = await sendClickSendSMS(phone, message);
+    if (!result.success) {
+      console.error(`SMS send failed for ${phone}:`, result.error);
+      if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, result.error);
+      return false;
+    }
+    if (logId) await notificationLogger.updateStatus(logId, 'sent', result.messageId);
+    console.log(`✓ ${renewal.type} profile-confirmation SMS sent to ${phone}`);
+    return true;
+  } catch (error: any) {
+    console.error('SMS send error:', error);
     return false;
   }
 }

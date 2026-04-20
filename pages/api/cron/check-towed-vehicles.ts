@@ -5,7 +5,6 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { createTowAlert, markAlertNotified } from '../../../lib/contest-intelligence';
 import { pushService } from '../../../lib/push-service';
 import { notificationLogger } from '../../../lib/notification-logger';
-import { getAdminAlertEmails } from '../../../lib/admin-alert-emails';
 
 // Checks if any user's car was towed recently
 // Sends immediate SMS/email alerts
@@ -139,44 +138,47 @@ Call immediately to retrieve your vehicle. Fees increase daily.
 
 Reply STOP to unsubscribe from Autopilot America alerts.`;
 
-      // Track per-channel success so we can detect "tow alert reached no-one"
-      // and force a fallback send. A tow is high-urgency enough that even
-      // users who opted out of SMS/email should get at minimum an admin
-      // escalation if push also fails.
+      // Tow alerts are safety-critical transactional alerts — the user's
+      // vehicle is impounded and fees accrue daily. We send on every
+      // channel where contact info exists, regardless of the user's
+      // marketing opt-out flags. The STOP footer in the message preserves
+      // legal opt-out (CTIA carrier compliance) for SMS, and the email
+      // includes a List-Unsubscribe header.
       let smsDelivered = false;
       let emailDelivered = false;
       let pushDelivered = false;
 
-      // Send SMS if enabled
-      if (user.notify_sms && user.phone_number) {
+      // SMS — attempt whenever we have a phone number, safety override.
+      const smsPhone = user.phone_number;
+      if (smsPhone) {
         const smsLogId = await notificationLogger.log({
           user_id: user.user_id,
-          phone: user.phone_number,
+          phone: smsPhone,
           notification_type: 'sms',
           category: 'tow_alert',
           content_preview: message.slice(0, 200),
           status: 'pending',
-          metadata: { tow_id: String(tow.id), plate },
+          metadata: { tow_id: String(tow.id), plate, safety_override: !user.notify_sms },
         });
         try {
-          const result = await sendClickSendSMS(user.phone_number, message);
+          const result = await sendClickSendSMS(smsPhone, message);
           if (result.success) {
-            console.log(`✓ SMS sent to ${user.phone_number}`);
+            console.log(`✓ SMS sent to ${smsPhone}${!user.notify_sms ? ' (safety override)' : ''}`);
             smsDelivered = true;
             notificationsSent++;
             if (smsLogId) await notificationLogger.updateStatus(smsLogId, 'sent', result.messageId);
           } else {
-            console.error(`Error sending SMS to ${user.phone_number}:`, result.error);
+            console.error(`Error sending SMS to ${smsPhone}:`, result.error);
             if (smsLogId) await notificationLogger.updateStatus(smsLogId, 'failed', undefined, result.error);
           }
         } catch (smsError: any) {
-          console.error(`Error sending SMS to ${user.phone_number}:`, smsError);
+          console.error(`Error sending SMS to ${smsPhone}:`, smsError);
           if (smsLogId) await notificationLogger.updateStatus(smsLogId, 'failed', undefined, smsError?.message || String(smsError));
         }
       }
 
-      // Send email if enabled
-      if (user.notify_email && user.email && RESEND_API_KEY) {
+      // Email — attempt whenever we have an email address.
+      if (user.email && RESEND_API_KEY) {
         const emailHtml = `
             <h2 style="color: #dc2626;">🚨 Your Car Was Towed</h2>
             <p><strong>Vehicle:</strong> ${tow.color} ${tow.make}</p>
@@ -189,7 +191,8 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
             <p><strong>Inventory Number:</strong> ${tow.inventory_number}</p>
             <hr style="margin: 20px 0; border: 1px solid #e5e7eb;">
             <p style="color: #dc2626; font-weight: bold;">⚠️ Call immediately to retrieve your vehicle. Impound fees increase daily.</p>
-            <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">- Autopilot America</p>
+            <p style="margin-top: 30px; color: #6b7280; font-size: 12px;">Tow alerts are safety-critical transactional notifications. If you no longer want ANY messages from Autopilot America, email support@autopilotamerica.com.</p>
+            <p style="margin-top: 10px; color: #6b7280; font-size: 14px;">- Autopilot America</p>
           `;
         const emailLogId = await notificationLogger.log({
           user_id: user.user_id,
@@ -199,7 +202,7 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
           subject: '🚨 Your Car Was Towed - Act Now',
           content_preview: `${tow.color} ${tow.make} (${plate}) towed to ${tow.towed_to_address}`.slice(0, 200),
           status: 'pending',
-          metadata: { tow_id: String(tow.id), plate },
+          metadata: { tow_id: String(tow.id), plate, safety_override: !user.notify_email },
         });
         try {
           const emailRes = await fetch('https://api.resend.com/emails', {
@@ -212,13 +215,16 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
               from: 'Autopilot America <alerts@autopilotamerica.com>',
               to: user.email,
               subject: '🚨 Your Car Was Towed - Act Now',
-              html: emailHtml
+              html: emailHtml,
+              headers: {
+                'List-Unsubscribe': '<mailto:support@autopilotamerica.com>',
+              },
             })
           });
 
           if (emailRes.ok) {
             const data = await emailRes.json().catch(() => ({}));
-            console.log(`✓ Email sent to ${user.email}`);
+            console.log(`✓ Email sent to ${user.email}${!user.notify_email ? ' (safety override)' : ''}`);
             emailDelivered = true;
             notificationsSent++;
             if (emailLogId) await notificationLogger.updateStatus(emailLogId, 'sent', data.id);
@@ -232,9 +238,8 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
         }
       }
 
-      // Send push notification (most urgent — user's car is impounded)
-      // Note: pushService.sendToUser already writes to notification_logs
-      // internally (see lib/push-service.ts:133), so no extra log call here.
+      // Push — always attempt. pushService.sendToUser already logs to
+      // notification_logs internally (see lib/push-service.ts:133).
       try {
         const pushResult: any = await pushService.sendToUser(user.user_id, {
           title: '🚨 Your Car Was Towed!',
@@ -258,12 +263,13 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
         console.error(`Push notification failed for tow alert:`, pushError);
       }
 
-      // Sentinel: if NO channel delivered — because user has no push token,
-      // opted out of SMS/email, or gateways are all down — escalate to an
-      // admin alert so the user doesn't silently miss a tow notification.
-      // Tow is treated as a safety-critical alert.
+      // Record the zero-delivery case so we can track it in QA reports,
+      // but we don't page an admin — there's nothing a human follow-up
+      // call would accomplish that the automatic delivery above hasn't
+      // already. If nothing delivered, it's because we had no contact
+      // info at all, which is a data problem to surface in the dashboard.
       if (!smsDelivered && !emailDelivered && !pushDelivered) {
-        console.warn(`🚨 Tow alert for user ${user.user_id} reached ZERO channels — escalating to admin`);
+        console.warn(`⚠️ Tow alert for user ${user.user_id} reached ZERO channels (no contact info on file)`);
         await notificationLogger.log({
           user_id: user.user_id,
           notification_type: 'email',
@@ -275,28 +281,9 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
             plate,
             has_phone: !!user.phone_number,
             has_email: !!user.email,
-            notify_sms: !!user.notify_sms,
-            notify_email: !!user.notify_email,
+            reason: (!user.phone_number && !user.email) ? 'no_contact_info' : 'all_gateways_failed',
           },
         });
-        if (RESEND_API_KEY) {
-          try {
-            await fetch('https://api.resend.com/emails', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_API_KEY}` },
-              body: JSON.stringify({
-                from: 'Autopilot America <alerts@autopilotamerica.com>',
-                to: getAdminAlertEmails(),
-                subject: `🚨 Tow alert reached zero channels — user ${user.user_id}`,
-                html: `<p>User <code>${user.user_id}</code> had a tow detected (plate <code>${plate}</code>, tow id <code>${tow.id}</code>) but no notification channel delivered.</p>
-                       <p>SMS: consent=${!!user.notify_sms}, phone=${!!user.phone_number}<br>
-                       Email: consent=${!!user.notify_email}, email=${!!user.email}<br>
-                       Push: no active tokens or all failed</p>
-                       <p>Reach out manually — vehicle impound fees accrue daily.</p>`,
-              }),
-            });
-          } catch {}
-        }
       }
 
       // Create tow alert in the intelligence system

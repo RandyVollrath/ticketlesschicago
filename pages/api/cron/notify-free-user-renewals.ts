@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { sendClickSendSMS } from '../../../lib/sms-service';
+import { notificationLogger } from '../../../lib/notification-logger';
 
 /**
  * Cron Job: Send renewal reminders to inactive users
@@ -49,6 +51,10 @@ export default async function handler(
         email,
         first_name,
         last_name,
+        phone,
+        phone_number,
+        notify_sms,
+        notify_email,
         city_sticker_expiry,
         license_plate_expiry,
         emissions_date,
@@ -123,14 +129,30 @@ export default async function handler(
 
           console.log(`User ${user.user_id}: ${daysUntilRenewal} days until ${renewal.type}, sending ${matchingReminderDay}-day reminder`);
 
-          const emailSent = await sendRenewalReminderEmail(
-            user,
-            renewal,
-            daysUntilRenewal,
-            matchingReminderDay
-          );
+          const emailSent = user.notify_email !== false
+            ? await sendRenewalReminderEmail(
+                user,
+                renewal,
+                daysUntilRenewal,
+                matchingReminderDay
+              )
+            : false;
 
-          if (emailSent) {
+          // SMS backup so a spam-foldered renewal email doesn't blow a
+          // $200 plate violation or $90 sticker violation. Gated on
+          // notify_sms + phone on file.
+          const phone = user.phone_number || user.phone;
+          const smsSent = (user.notify_sms && phone)
+            ? await sendRenewalReminderSMS(
+                user,
+                phone,
+                renewal,
+                daysUntilRenewal,
+                matchingReminderDay,
+              )
+            : false;
+
+          if (emailSent || smsSent) {
             notificationsSent[matchingReminderDay] = (notificationsSent[matchingReminderDay] || 0) + 1;
           }
         }
@@ -285,6 +307,50 @@ Autopilot America
     return true;
   } catch (error: any) {
     console.error('Email send error:', error);
+    return false;
+  }
+}
+
+async function sendRenewalReminderSMS(
+  user: any,
+  phone: string,
+  renewal: { type: string; label: string; date: Date },
+  daysUntilRenewal: number,
+  reminderDay: number,
+): Promise<boolean> {
+  try {
+    const fineMap: Record<string, string> = {
+      city_sticker: '$90',
+      license_plate: '$200',
+      emissions: '$25 late fee + registration block',
+    };
+    const fineText = fineMap[renewal.type] || 'a fine';
+    const renewalDate = renewal.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const message =
+      `Autopilot America: your ${renewal.label.toLowerCase()} expires ${renewalDate} (in ${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'}). ` +
+      `Miss it and you risk ${fineText}. Renew at autopilotamerica.com/settings. ` +
+      `Reply STOP to unsubscribe.`;
+
+    const logId = await notificationLogger.log({
+      user_id: user.user_id,
+      phone,
+      notification_type: 'sms',
+      category: `renewal_reminder_${renewal.type}`,
+      content_preview: message.slice(0, 200),
+      status: 'pending',
+    });
+
+    const result = await sendClickSendSMS(phone, message);
+    if (!result.success) {
+      console.error(`SMS send failed for ${phone}:`, result.error);
+      if (logId) await notificationLogger.updateStatus(logId, 'failed', undefined, result.error);
+      return false;
+    }
+    if (logId) await notificationLogger.updateStatus(logId, 'sent', result.messageId);
+    console.log(`✓ ${reminderDay}-day ${renewal.type} SMS reminder sent to ${phone}`);
+    return true;
+  } catch (error: any) {
+    console.error('SMS send error:', error);
     return false;
   }
 }

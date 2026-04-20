@@ -34,17 +34,34 @@ export interface NotificationRetryEntry {
   metadata: Record<string, unknown>;
 }
 
+// Cache the "logging is unavailable" state so we don't spam logs with the
+// same missing-function / missing-table error for every send. Flips to false
+// once log() or updateStatus() sees a schema-not-found error; stays false
+// until process restart. Once the migration is applied the next deploy will
+// start logging again naturally.
+let loggingAvailable = true;
+
+function isSchemaMissingError(err: any): boolean {
+  if (!err) return false;
+  const msg = (err.message || err.hint || '').toLowerCase();
+  return msg.includes('could not find') || msg.includes('does not exist') || msg.includes('schema cache');
+}
+
 export class NotificationLogger {
   /**
    * Log a new notification attempt
+   *
+   * Returns the new log row id, or null if logging is disabled (missing
+   * migration) or failed. Callers should treat null as "no log id" and not
+   * error out — notification_logs is observability, not the critical path.
    */
   async log(entry: NotificationLogEntry): Promise<string | null> {
-    if (!supabaseAdmin) {
-      console.error('Supabase admin client not available');
-      return null;
-    }
+    if (!supabaseAdmin || !loggingAvailable) return null;
 
     try {
+      // Prefer the RPC (adds defaults + normalizes content preview length).
+      // Fall back to a direct insert if the RPC isn't installed — this lets
+      // the logger work even when only the table+column migration ran.
       // @ts-expect-error - RPC function not in generated types
       const { data, error } = await supabaseAdmin.rpc('log_notification', {
         p_user_id: entry.user_id || null,
@@ -59,12 +76,42 @@ export class NotificationLogger {
         p_metadata: entry.metadata || {}
       }) as { data: string | null; error: any };
 
-      if (error) {
-        console.error('Error logging notification:', error);
+      if (!error) return data;
+
+      if (isSchemaMissingError(error)) {
+        // Try direct table insert as a fallback before giving up.
+        // @ts-expect-error - notification_logs table not in generated types
+        const { data: row, error: insertErr } = await supabaseAdmin
+          .from('notification_logs')
+          .insert({
+            user_id: entry.user_id || null,
+            email: entry.email || null,
+            phone: entry.phone || null,
+            notification_type: entry.notification_type,
+            category: entry.category,
+            subject: entry.subject || null,
+            content_preview: entry.content_preview?.substring(0, 200) || null,
+            status: entry.status || 'pending',
+            external_id: entry.external_id || null,
+            metadata: entry.metadata || {},
+          })
+          .select('id')
+          .single() as { data: { id: string } | null; error: any };
+
+        if (!insertErr && row) return row.id;
+
+        if (isSchemaMissingError(insertErr)) {
+          loggingAvailable = false;
+          console.warn('notification_logs table/function missing — disabling notification logging for this process. Apply supabase/migrations/*_create_notification_logs.sql to enable.');
+          return null;
+        }
+
+        console.error('Error logging notification (direct insert):', insertErr);
         return null;
       }
 
-      return data;
+      console.error('Error logging notification:', error);
+      return null;
     } catch (err) {
       console.error('Exception logging notification:', err);
       return null;
@@ -80,10 +127,7 @@ export class NotificationLogger {
     externalId?: string,
     error?: string
   ): Promise<boolean> {
-    if (!supabaseAdmin) {
-      console.error('Supabase admin client not available');
-      return false;
-    }
+    if (!supabaseAdmin || !loggingAvailable) return false;
 
     try {
       // @ts-expect-error - RPC function not in generated types
@@ -94,12 +138,39 @@ export class NotificationLogger {
         p_error: error || null
       }) as { error: any };
 
-      if (updateError) {
-        console.error('Error updating notification status:', updateError);
+      if (!updateError) return true;
+
+      if (isSchemaMissingError(updateError)) {
+        // Fallback to direct table update.
+        const now = new Date().toISOString();
+        const updatePayload: Record<string, any> = {
+          status,
+          updated_at: now,
+        };
+        if (externalId) updatePayload.external_id = externalId;
+        if (error) updatePayload.last_error = error;
+        if (status === 'sent') updatePayload.sent_at = now;
+        if (status === 'delivered') updatePayload.delivered_at = now;
+        if (status === 'failed' || status === 'bounced') updatePayload.failed_at = now;
+
+        // @ts-expect-error - notification_logs table not in generated types
+        const { error: directErr } = await supabaseAdmin
+          .from('notification_logs')
+          .update(updatePayload)
+          .eq('id', id) as { error: any };
+
+        if (!directErr) return true;
+
+        if (isSchemaMissingError(directErr)) {
+          loggingAvailable = false;
+          return false;
+        }
+        console.error('Error updating notification status (direct):', directErr);
         return false;
       }
 
-      return true;
+      console.error('Error updating notification status:', updateError);
+      return false;
     } catch (err) {
       console.error('Exception updating notification status:', err);
       return false;
