@@ -201,10 +201,8 @@ export default function LandingPage() {
 
         {/* Desktop Nav */}
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }} className="desktop-nav">
-          <a href="#how-it-works" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>How it works</a>
           <Link href="/check-your-street" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>Check Your Street</Link>
           <a href="#pricing" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>Pricing</a>
-          <a href="#faq" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>FAQ</a>
           {user ? (
             <Button primary href="/dashboard" style={{ padding: '10px 20px', fontSize: '14px' }}>Dashboard</Button>
           ) : (
@@ -243,10 +241,8 @@ export default function LandingPage() {
           flexDirection: 'column',
           gap: '16px',
         }}>
-          <a href="#how-it-works" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>How it works</a>
           <Link href="/check-your-street" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Check Your Street</Link>
           <a href="#pricing" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Pricing</a>
-          <a href="#faq" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>FAQ</a>
           {user ? (
             <Link href="/dashboard" style={{ color: COLORS.accent, textDecoration: 'none', fontWeight: 600 }}>Dashboard</Link>
           ) : (
@@ -342,7 +338,7 @@ export default function LandingPage() {
         </div>
 
         <p style={{ marginTop: '16px', fontSize: '14px', color: '#CBD5E1' }}>
-          Built on 35.7M Chicago ticket records.
+          One dismissed ticket pays for the year. The second one is profit.
         </p>
 
         <div style={{
@@ -369,11 +365,144 @@ export default function LandingPage() {
 
       </header>
 
+      {/* Personalize the money question — dual CTAs */}
+      <section style={{
+        padding: '60px 5% 20px',
+        maxWidth: '1200px',
+        margin: '0 auto',
+      }}>
+        <h2 style={{
+          fontFamily: FONTS.heading,
+          fontSize: 'clamp(24px, 3.5vw, 32px)',
+          fontWeight: 700,
+          color: COLORS.text,
+          textAlign: 'center',
+          marginBottom: '8px',
+          letterSpacing: '-0.5px',
+        }}>
+          Want proof this applies to you?
+        </h2>
+        <p style={{
+          fontSize: '15px',
+          color: COLORS.textMuted,
+          textAlign: 'center',
+          marginBottom: '24px',
+          maxWidth: '560px',
+          margin: '0 auto 24px',
+        }}>
+          $420M is abstract. These two free tools show what <strong style={{ color: COLORS.text }}>you personally</strong> are paying — before you pay us a cent.
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: '16px',
+        }}>
+          <Link href="/ticket-history" style={{ textDecoration: 'none' }}>
+            <div style={{
+              backgroundColor: '#fff',
+              padding: '28px 24px',
+              borderRadius: '16px',
+              border: '1px solid #BAE6FD',
+              background: 'linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%)',
+              cursor: 'pointer',
+              transition: 'box-shadow 0.2s, transform 0.2s',
+              height: '100%',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 8px 25px -5px rgba(37, 99, 235, 0.15)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </div>
+                <div style={{ fontFamily: FONTS.heading, fontSize: '18px', fontWeight: 700, color: COLORS.primary }}>
+                  How many tickets have YOU gotten?
+                </div>
+              </div>
+              <div style={{ fontSize: '14px', color: COLORS.textMuted, lineHeight: 1.5, marginBottom: '12px' }}>
+                Free FOIA lookup. Every citation, fine, and outcome on your plate since 2018. Takes ~5 days.
+              </div>
+              <div style={{ fontSize: '14px', color: COLORS.primary, fontWeight: 600 }}>
+                Pull my ticket history →
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/check-your-street" style={{ textDecoration: 'none' }}>
+            <div style={{
+              backgroundColor: '#fff',
+              padding: '28px 24px',
+              borderRadius: '16px',
+              border: `1px solid ${COLORS.border}`,
+              cursor: 'pointer',
+              transition: 'box-shadow 0.2s, transform 0.2s',
+              height: '100%',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 8px 25px -5px rgba(0,0,0,0.1)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                </div>
+                <div style={{ fontFamily: FONTS.heading, fontSize: '18px', fontWeight: 700, color: COLORS.primary }}>
+                  What does YOUR block cost?
+                </div>
+              </div>
+              <div style={{ fontSize: '14px', color: COLORS.textMuted, lineHeight: 1.5, marginBottom: '12px' }}>
+                Interactive map. Street cleaning, snow bans, permit zones — see what your street will ticket you for.
+              </div>
+              <div style={{ fontSize: '14px', color: COLORS.primary, fontWeight: 600 }}>
+                Check my street →
+              </div>
+            </div>
+          </Link>
+        </div>
+      </section>
+
       {/* Below-the-fold Stats */}
       <section style={{
         background: 'linear-gradient(145deg, #0F172A 0%, #111827 55%, #0B1220 100%)',
         color: COLORS.textLight,
-        margin: '-44px 5% 0',
+        margin: '20px 5% 0',
         borderRadius: '24px',
         maxWidth: '1200px',
         marginLeft: 'auto',
@@ -435,10 +564,10 @@ export default function LandingPage() {
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
           {[
-            { title: '1. Install the app', text: "We watch out for tickets your car is at risk of — wherever you park. Camera zones, meter timeouts, temporary no-parking — the app warns you before it costs you.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>) },
-            { title: '2. Add your address', text: "Get the heads-up the night before street cleaning, snow bans, and overnight bans on your block — so you can move your car.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>) },
-            { title: '3. We monitor your plate', text: "Every Monday and Thursday we scan the City's database for any ticket written to your plate.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>) },
-            { title: '4. We fight every ticket', text: "We pull the best evidence available — from you, the City (FOIA), the internet, and your app — then draft your contest letter and mail it for you.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>) }
+            { title: '1. Install the app', text: "Get real-time parking alerts wherever you park — camera zones, meter timeouts, temporary no-parking signs.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>) },
+            { title: '2. Add your address', text: "Get warnings the night before street cleaning, snow bans, and overnight restrictions on your block.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>) },
+            { title: '3. We monitor your plate', text: "Twice a week we scan the City's database for any ticket written to your license plate.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>) },
+            { title: '4. We mail the contest letter', text: "We draft a code-specific contest letter with FOIA evidence and mail it to the City for you.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>) }
           ].map((step, i) => (
             <div key={i} style={{
               flex: '1 1 250px',
@@ -454,129 +583,6 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
-      </section>
-
-      {/* Tools Banner */}
-      <section style={{
-        padding: '0 5%',
-        maxWidth: '1200px',
-        margin: '0 auto 20px',
-      }}>
-        <Link href="/check-your-street" style={{ textDecoration: 'none' }}>
-          <div style={{
-            backgroundColor: '#fff',
-            padding: '28px 32px',
-            borderRadius: '16px',
-            border: `1px solid ${COLORS.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '20px',
-            cursor: 'pointer',
-            transition: 'box-shadow 0.2s, transform 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow = '0 8px 25px -5px rgba(0,0,0,0.1)';
-            e.currentTarget.style.transform = 'translateY(-2px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow = 'none';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(37, 99, 235, 0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontFamily: FONTS.heading, fontSize: '18px', fontWeight: 600, color: COLORS.primary, marginBottom: '4px' }}>
-                  Check Your Street
-                </div>
-                <div style={{ fontSize: '14px', color: COLORS.textMuted, lineHeight: 1.5 }}>
-                  See street cleaning schedules, snow ban routes, winter parking bans, and permit zones on an interactive map.
-                </div>
-              </div>
-            </div>
-            <div style={{ color: COLORS.textMuted, flexShrink: 0 }}>
-              <ArrowRight />
-            </div>
-          </div>
-        </Link>
-      </section>
-
-      {/* Ticket History Banner */}
-      <section style={{
-        padding: '0 5%',
-        maxWidth: '1200px',
-        margin: '0 auto 20px',
-      }}>
-        <Link href="/ticket-history" style={{ textDecoration: 'none' }}>
-          <div style={{
-            backgroundColor: '#fff',
-            padding: '28px 32px',
-            borderRadius: '16px',
-            border: '1px solid #BAE6FD',
-            background: 'linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '20px',
-            cursor: 'pointer',
-            transition: 'box-shadow 0.2s, transform 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow = '0 8px 25px -5px rgba(37, 99, 235, 0.15)';
-            e.currentTarget.style.transform = 'translateY(-2px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow = 'none';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(37, 99, 235, 0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontFamily: FONTS.heading, fontSize: '18px', fontWeight: 600, color: COLORS.primary, marginBottom: '4px' }}>
-                  How Many Tickets Have You Gotten?
-                </div>
-                <div style={{ fontSize: '14px', color: COLORS.textMuted, lineHeight: 1.5 }}>
-                  We'll FOIA the City of Chicago for your complete ticket history — every citation, fine, and outcome. Free, takes 5 days.
-                </div>
-              </div>
-            </div>
-            <div style={{ color: COLORS.textMuted, flexShrink: 0 }}>
-              <ArrowRight />
-            </div>
-          </div>
-        </Link>
       </section>
 
       {/* Data Section */}
