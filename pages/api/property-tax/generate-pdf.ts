@@ -149,7 +149,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       margins: { top: 72, bottom: 72, left: 72, right: 72 },
       info: {
         Title: `Property Tax Appeal - ${formatPin(appeal.pin)}`,
-        Author: 'Ticketless Chicago',
+        Author: 'Autopilot America',
         Subject: `Appeal for ${appeal.address}`,
         Keywords: 'property tax, appeal, Cook County',
       }
@@ -281,7 +281,7 @@ function generateCoverLetter(doc: PDFKit.PDFDocument, appeal: any, ownerName: st
 
   // Footer
   doc.fontSize(9)
-    .text('Prepared with Ticketless Chicago Property Tax Appeal Service', 72, 700, {
+    .text('Prepared with Autopilot America Property Tax Appeal Service', 72, 700, {
       align: 'center',
       opacity: 0.5
     });
@@ -503,7 +503,7 @@ function generateComparisonSummary(doc: PDFKit.PDFDocument, appeal: any, compara
 
   // Footer
   doc.fontSize(9)
-    .text('Prepared with Ticketless Chicago Property Tax Appeal Service', 72, 700, {
+    .text('Prepared with Autopilot America Property Tax Appeal Service', 72, 700, {
       align: 'center',
       opacity: 0.5
     });

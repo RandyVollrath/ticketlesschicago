@@ -404,7 +404,7 @@ export default function PropertyTaxDashboard() {
   return (
     <>
       <Head>
-        <title>My Property Tax Appeals | Ticketless Chicago</title>
+        <title>My Property Tax Appeals | Autopilot America</title>
         <meta name="description" content="Track your property tax appeals" />
       </Head>
 

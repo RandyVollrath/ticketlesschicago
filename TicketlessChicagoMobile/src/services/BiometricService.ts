@@ -251,7 +251,7 @@ class BiometricServiceClass {
       return true;
     }
 
-    return this.authenticate('Authenticate to access Ticketless Chicago');
+    return this.authenticate('Authenticate to access Autopilot America');
   }
 
   /**

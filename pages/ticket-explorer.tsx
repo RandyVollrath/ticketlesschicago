@@ -175,7 +175,7 @@ export default function TicketExplorer() {
   return (
     <>
       <Head>
-        <title>Chicago Ticket &amp; Tow Explorer | Ticketless Chicago</title>
+        <title>Chicago Ticket &amp; Tow Explorer | Autopilot America</title>
         <meta name="description" content="Interactive map of 860K+ Chicago parking tickets and tows. Filter by type, date, and view as heatmap or markers." />
       </Head>
 

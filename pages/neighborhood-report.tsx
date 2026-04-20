@@ -94,7 +94,7 @@ export default function NeighborhoodReport() {
   return (
     <>
       <Head>
-        <title>Neighborhood Reality Report - Ticketless Chicago</title>
+        <title>Neighborhood Reality Report - Autopilot America</title>
         <meta
           name="description"
           content="Get a data-driven report on enforcement, safety, and quality of life for any Chicago address."
@@ -114,7 +114,7 @@ export default function NeighborhoodReport() {
         >
           <a href="/" style={{ textDecoration: 'none' }}>
             <span style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>
-              Ticketless Chicago
+              Autopilot America
             </span>
           </a>
         </header>

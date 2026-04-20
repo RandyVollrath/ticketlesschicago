@@ -184,7 +184,7 @@ export default function FoiaData() {
   return (
     <>
       <Head>
-        <title>Chicago FOIA Data | Ticketless Chicago</title>
+        <title>Chicago FOIA Data | Autopilot America</title>
         <meta name="description" content={`${tickets.total.toLocaleString()} parking tickets and ${tows.total.toLocaleString()} tow dispatches from the City of Chicago obtained via FOIA requests. Interactive charts, maps, and searchable data.`} />
       </Head>
 
