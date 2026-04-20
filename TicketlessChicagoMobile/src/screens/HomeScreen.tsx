@@ -252,6 +252,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   // Bottom sheet state for protection info
   const [activeSheet, setActiveSheet] = useState<ProtectionItem | null>(null);
+  const [protectionExpanded, setProtectionExpanded] = useState(false);
 
   // Camera alert toggle state
   const [redLightEnabled, setRedLightEnabled] = useState(true);
@@ -2067,32 +2068,62 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textTertiary} />
         </TouchableOpacity>
 
-        {/* ──── Parking Protection ──── */}
+        {/* ──── Car Ticket Protection (collapsed indicator) ──── */}
         <View style={styles.protectionCard}>
-          <Text style={styles.protectionTitle}>Car Ticket Protection</Text>
-          {PARKING_PROTECTIONS.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.protectionRow}
-              accessibilityLabel={`${item.label}. Active. Tap for details.`}
-              accessibilityRole="button"
-              onPress={() => setActiveSheet(item)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.protectionRowDot} />
-              <MaterialCommunityIcons
-                name={item.icon}
-                size={18}
-                color={colors.success}
-              />
-              <Text style={styles.protectionRowText}>{item.label}</Text>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={16}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          ))}
+          <TouchableOpacity
+            style={styles.protectionHeader}
+            onPress={() => setProtectionExpanded(prev => !prev)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Car Ticket Protection. ${PARKING_PROTECTIONS.length} protections active. ${protectionExpanded ? 'Collapse' : 'Expand'}`}
+          >
+            <View style={styles.protectionHeaderLeft}>
+              <View style={styles.protectionBadge}>
+                <MaterialCommunityIcons name="shield-check" size={18} color={colors.white} />
+              </View>
+              <View>
+                <Text style={styles.protectionHeaderTitle}>Car Ticket Protection</Text>
+                <Text style={styles.protectionHeaderSubtitle}>
+                  {PARKING_PROTECTIONS.length} protections active
+                </Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons
+              name={protectionExpanded ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textTertiary}
+            />
+          </TouchableOpacity>
+          {protectionExpanded && (
+            <View style={styles.protectionList}>
+              {PARKING_PROTECTIONS.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.protectionRow,
+                    index === PARKING_PROTECTIONS.length - 1 && { borderBottomWidth: 0 },
+                  ]}
+                  accessibilityLabel={`${item.label}. Active. Tap for details.`}
+                  accessibilityRole="button"
+                  onPress={() => setActiveSheet(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.protectionRowDot} />
+                  <MaterialCommunityIcons
+                    name={item.icon}
+                    size={18}
+                    color={colors.success}
+                  />
+                  <Text style={styles.protectionRowText}>{item.label}</Text>
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={16}
+                    color={colors.textTertiary}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Camera Alerts card removed — cameras now included in Car Ticket Protection list */}
@@ -2903,13 +2934,40 @@ const styles = StyleSheet.create({
     marginBottom: spacing.base,
     ...shadows.sm,
   },
-  protectionTitle: {
-    fontSize: typography.sizes.xs,
+  protectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  protectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  protectionBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  protectionHeaderTitle: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  protectionHeaderSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: colors.success,
     fontWeight: typography.weights.medium,
-    color: colors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: typography.letterSpacing.wide,
-    marginBottom: spacing.sm,
+    marginTop: 1,
+  },
+  protectionList: {
+    marginTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: spacing.xs,
   },
   protectionRow: {
     flexDirection: 'row',

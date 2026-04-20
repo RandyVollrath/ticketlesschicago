@@ -63,6 +63,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }));
 
+    // Snow routes change rarely; cache aggressively on CDN
+    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+
     return res.status(200).json({
       routes: geoJsonRoutes,
       count: geoJsonRoutes.length,
