@@ -1249,12 +1249,13 @@ export default function StartFunnel() {
                 backgroundColor: COLORS.primaryLight, border: `1px solid ${COLORS.border}`,
                 borderRadius: 12, padding: '20px', marginBottom: 24, textAlign: 'left',
               }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 14 }}>What happens next:</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 14 }}>What happens next — most of it without you lifting a finger:</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <HowItWorksItem num="1" text={<>We check for new tickets on your plate <strong>twice a week</strong> (Monday &amp; Thursday).</>} />
-                  <HowItWorksItem num="2" text={<>When we find a ticket, we&apos;ll <strong>email you to request evidence</strong> (photos, receipts) that strengthens your case.</>} />
-                  <HowItWorksItem num="3" text={<>We then <strong>generate a contest letter and mail it</strong> to the City on your behalf — whether you send evidence or not.</>} />
-                  <HowItWorksItem num="4" text={<>You&apos;ll get notified at every step — when a ticket is found, when a letter is mailed, and when the result comes back.</>} />
+                  <HowItWorksItem num="1" text={<><strong>Twice-weekly plate check.</strong> Every Monday and Thursday we scan the City&apos;s ticket database for your plate.</>} />
+                  <HowItWorksItem num="2" text={<><strong>We file open-records (FOIA) requests with the City immediately.</strong> The second a ticket shows up, we ask the Department of Finance and CDOT for the officer&apos;s notes, scene photos, handheld device logs, and — for cameras — the footage. The City has 5 business days to respond. If they miss that, we use their silence as part of your defense.</>} />
+                  <HowItWorksItem num="3" text={<><strong>We pick the right legal defense for you.</strong> Chicago has a fixed list of defenses you can cite on a contest letter, and picking the wrong one is the #1 way contests lose. We match the City&apos;s own records against your ticket and select the defense that fits.</>} />
+                  <HowItWorksItem num="4" text={<><strong>We&apos;ll only email you if you can help.</strong> If a receipt, photo, or proof of purchase would strengthen your case, we&apos;ll ask for it. Otherwise we run the contest without bothering you.</>} />
+                  <HowItWorksItem num="5" text={<><strong>Letter drafted, printed, mailed, tracked.</strong> We draft the contest letter, bundle the FOIA evidence, mail it to the City, and update you at every step: ticket found → records requested → letter mailed → decision.</>} />
                 </div>
               </div>
 
