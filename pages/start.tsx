@@ -694,7 +694,8 @@ export default function StartFunnel() {
                 never contested</strong> — people just pay. When contested with proof of
                 purchase, city sticker tickets win <strong>85%</strong> of the time and
                 expired-plate tickets win <strong>88%</strong>. A missed city sticker ticket is
-                <strong> $200</strong>, plus a <strong>$50</strong> late fee if unpaid.
+                <strong> $200</strong> (<strong>$250</strong> with late fee); a missed license
+                plate sticker ticket is <strong>$60</strong> (<strong>$120</strong> with late fee).
                 <em style={{ display: 'block', marginTop: 6, fontSize: 11, color: COLORS.textMuted, fontStyle: 'normal' }}>
                   Source: 2025 City of Chicago FOIA data.
                 </em>
