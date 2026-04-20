@@ -1376,7 +1376,7 @@ function SettingsPageInner() {
           setTowAlerts(prefs.tow ?? profileData.notify_tow ?? true);
           setDotPermitAlerts(prefs.dot_permits ?? profileData.notify_dot_permits ?? true);
           setAllClearAlerts(prefs.all_clear ?? true);
-          setNotificationDays(prefs.days_before || profileData.notify_days_array || [30, 7, 1]);
+          setNotificationDays(prefs.days_before || profileData.notify_days_array || [1]);
         } else {
           setEmailNotifications(profileData.notify_email ?? true);
           setSmsNotifications(profileData.notify_sms ?? false);
@@ -1384,7 +1384,7 @@ function SettingsPageInner() {
           setSnowBanAlerts(profileData.notify_snow_ban ?? true);
           setTowAlerts(profileData.notify_tow ?? true);
           setDotPermitAlerts(profileData.notify_dot_permits ?? true);
-          setNotificationDays(profileData.notify_days_array || [30, 7, 1]);
+          setNotificationDays(profileData.notify_days_array || [1]);
         }
         if (profileData.foia_wait_preference) {
           setFoiaWaitPreference(profileData.foia_wait_preference);

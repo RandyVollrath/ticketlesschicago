@@ -63,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       address: signupData.address,
       notificationMethod: signupData.notificationMethod,
       phone: signupData.phone,
-      reminderDays: signupData.reminderDays || [1, 7, 30],
+      reminderDays: signupData.reminderDays || [1],
       oauth_provider: user.app_metadata.provider,
       google_id: user.user_metadata.sub || user.id
     };
