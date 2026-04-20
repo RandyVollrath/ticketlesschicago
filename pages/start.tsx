@@ -1182,12 +1182,15 @@ export default function StartFunnel() {
               <div style={{ marginBottom: 24 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 12 }}>What&apos;s included:</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <IncludedItem text="Street cleaning and snow ban alerts for your address" />
-                  <IncludedItem text="Real-time car location alerts via the mobile app" />
-                  <IncludedItem text="Twice-weekly plate monitoring for new tickets" />
-                  <IncludedItem text="Contest letters drafted, printed, and mailed automatically" />
-                  <IncludedItem text="Registration renewal deadline reminders" />
+                  <IncludedItem text="Red-light and speed camera alerts as you drive ($183M/yr in Chicago)" />
+                  <IncludedItem text="Meter alerts — when you park at a meter, when time is running low, and when you've hit the posted limit" />
+                  <IncludedItem text="Street cleaning, winter overnight, snow ban, and temporary no-parking alerts" />
+                  <IncludedItem text="Twice-weekly plate monitoring + automatic contest letters drafted, printed, and mailed" />
+                  <IncludedItem text="City sticker and license plate renewal deadline reminders" />
                   <IncludedItem text="First Dismissal Guarantee" />
+                </div>
+                <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 10, lineHeight: 1.5 }}>
+                  Covers 9 of the top 10 ticket categories in Chicago — roughly $360M of the $420M the City charged drivers in 2025.
                 </div>
               </div>
 
