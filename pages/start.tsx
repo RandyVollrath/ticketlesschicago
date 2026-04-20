@@ -943,7 +943,7 @@ export default function StartFunnel() {
                   border: `1px solid ${COLORS.border}`, backgroundColor: COLORS.primaryLight,
                   fontSize: 13, color: COLORS.textSecondary, lineHeight: 1.5,
                 }}>
-                  Don&apos;t know them? Check your email for your last renewal receipt, or skip and add later.
+                  Don&apos;t know them? Search your email — <code style={{ background: COLORS.card, padding: '1px 5px', borderRadius: 4, fontSize: 12 }}>chicagovehiclestickers@sebis.com</code> (city sticker) and <code style={{ background: COLORS.card, padding: '1px 5px', borderRadius: 4, fontSize: 12 }}>ecommerce@ilsos.gov</code> (plate). Or skip.
                 </div>
               </div>
 
