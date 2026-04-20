@@ -1006,7 +1006,7 @@ export default function StartFunnel() {
           {step === 'notifications' && (
             <StepContainer>
               <StepLabel>How should we notify you?</StepLabel>
-              <StepSubtext>We&apos;ll alert you when we find a ticket, when a contest letter is mailed, and when we need your input.</StepSubtext>
+              <StepSubtext>We&apos;ll text you the night before street cleaning or snow routes, alert you when we find a ticket, and notify you when a contest letter is mailed.</StepSubtext>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 8 }}>
                 <ToggleCard
