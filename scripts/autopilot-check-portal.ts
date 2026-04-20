@@ -2080,6 +2080,26 @@ async function sendEvidenceRequestEmail(
           </p>
         </div>
         ${receiptForwardingHtml}
+        <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 12px; color: #065f46; font-size: 18px;">📸 Most Important: Photograph Your Ticket</h3>
+          <p style="margin: 0 0 12px; color: #065f46; font-size: 14px; line-height: 1.6;">
+            The city's public lookup only tells us the ticket number and violation type &mdash;
+            it does <strong>not</strong> give us the street address where the ticket was written, the officer's
+            badge, or the exact time. All of that is on the paper ticket itself.
+          </p>
+          <p style="margin: 0 0 12px; color: #065f46; font-size: 14px; line-height: 1.6;">
+            <strong>Please reply to this email with a clear photo of:</strong>
+          </p>
+          <ul style="margin: 0 0 12px 20px; color: #065f46; font-size: 14px; line-height: 1.8;">
+            <li>The <strong>paper ticket</strong> left on your windshield (front side with address + officer info), OR</li>
+            <li>The <strong>mailed notice of violation</strong> if you got one (for camera tickets especially)</li>
+          </ul>
+          <p style="margin: 0; color: #065f46; font-size: 13px; font-style: italic;">
+            The address lets us pull Google Street View of the actual spot, check for signage issues,
+            look up 311 complaints, and build the strongest possible defense. Without it, we're contesting
+            with one hand tied behind our back.
+          </p>
+        </div>
         <div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 16px; color: #92400e; font-size: 18px;">Help Us Win Your Case</h3>
           <p style="margin: 0 0 16px; color: #92400e; font-size: 14px;">Please <strong>reply to this email</strong> with answers to these questions:</p>
@@ -2301,6 +2321,17 @@ async function processFoundTicket(
       ticket_state: ticket.ticket_state || null,
       // Full ISO timestamp from portal API (e.g. "2026-02-07T21:07:00") for correlation with red-light receipt timestamps
       issue_datetime: ticket.issue_datetime || null,
+      // Additional portal fields (Phase 1 of scraper upgrade). CHI PAY
+      // doesn't expose the violation address on the public payment portal —
+      // we capture everything else it DOES give us so nothing is dropped.
+      // The address lives on the paper ticket / mailed notice and is filled
+      // in later via the user-photo OCR path.
+      portal_receivable_id: ticket.portal_receivable_id || null,
+      portal_receivable_type: ticket.receivable_type || null,
+      portal_receivable_description: ticket.receivable_description || null,
+      portal_payable: ticket.payable,
+      hearing_start_date: ticket.hearing_start_date || null,
+      hearing_end_date: ticket.hearing_end_date || null,
     })
     .select()
     .single();

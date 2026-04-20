@@ -582,19 +582,6 @@ const MapScreenContent: React.FC = () => {
       >
         <View style={styles.fullscreenContainer}>
           <StatusBar barStyle="light-content" backgroundColor="#000" />
-          {/* Close button */}
-          <SafeAreaView style={styles.fullscreenHeader}>
-            <TouchableOpacity
-              onPress={() => setMapFullscreen(false)}
-              style={styles.fullscreenCloseButton}
-              accessibilityLabel="Close fullscreen map"
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons name="close" size={24} color={colors.white} />
-            </TouchableOpacity>
-            <Text style={styles.fullscreenTitle}>Street Cleaning Map</Text>
-            <View style={{ width: 40 }} />
-          </SafeAreaView>
 
           {/* Full-height interactive WebView */}
           <WebView
@@ -618,6 +605,20 @@ const MapScreenContent: React.FC = () => {
               </View>
             )}
           />
+
+          {/* Close button — overlays top-left of map, above WebView */}
+          <SafeAreaView style={styles.fullscreenHeader} pointerEvents="box-none">
+            <TouchableOpacity
+              onPress={() => setMapFullscreen(false)}
+              style={styles.fullscreenCloseButton}
+              accessibilityLabel="Close fullscreen map"
+              accessibilityRole="button"
+              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+            >
+              <MaterialCommunityIcons name="close" size={22} color={colors.white} />
+              <Text style={styles.fullscreenCloseLabel}>Close</Text>
+            </TouchableOpacity>
+          </SafeAreaView>
         </View>
       </Modal>
     </SafeAreaView>
@@ -868,23 +869,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   fullscreenHeader: {
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
     paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.sm,
   },
   fullscreenCloseButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    alignSelf: 'flex-start' as const,
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
-  fullscreenTitle: {
-    fontSize: typography.sizes.md,
+  fullscreenCloseLabel: {
+    fontSize: 14,
     fontWeight: typography.weights.semibold,
     color: colors.white,
   },
