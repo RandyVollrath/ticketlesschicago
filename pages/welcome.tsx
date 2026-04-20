@@ -190,8 +190,8 @@ export default function Welcome() {
               }
             />
             <ProtectionCard
-              title="Optional: boost sticker contests with your receipts"
-              desc={<>Sticker tickets are already contested for you. Forwarding your city sticker and plate sticker receipts adds proof of purchase to each contest letter — stronger evidence, higher win rates. <Link href="/registration-evidence" style={{ color: COLORS.primary, textDecoration: 'underline', fontWeight: 600 }}>Set it up here →</Link></>}
+              title="Optional: add your sticker receipts"
+              desc={<>Forward your city sticker and plate sticker receipts to attach proof of purchase to every contest letter. Stronger evidence, higher win rates. <Link href="/registration-evidence" style={{ color: COLORS.primary, textDecoration: 'underline', fontWeight: 600 }}>Set it up here →</Link></>}
             />
           </div>
 
