@@ -2332,6 +2332,11 @@ async function processFoundTicket(
       portal_payable: ticket.payable,
       hearing_start_date: ticket.hearing_start_date || null,
       hearing_end_date: ticket.hearing_end_date || null,
+      // Registered-owner info from the City of Chicago vehicle-registration
+      // record. NOT the violation address — useful for mismatch / improper-
+      // service checks against user_profiles.mailing_address.
+      registered_owner_name: ticket.registered_owner_name || null,
+      registered_owner_address: ticket.registered_owner_address || null,
     })
     .select()
     .single();
