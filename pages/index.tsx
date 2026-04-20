@@ -262,10 +262,15 @@ export default function LandingPage() {
       <header style={{
         backgroundColor: COLORS.bgDark,
         color: COLORS.textLight,
+        minHeight: '100vh',
         padding: '88px 5% 150px',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
       }}>
         {/* Background glow effect */}
         <div style={{
@@ -327,7 +332,7 @@ export default function LandingPage() {
           margin: '0 auto 32px',
           lineHeight: 1.5
         }}>
-          Chicago drivers paid <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>$99/year keeps you out of that number.</span>
+          Chicago drivers paid <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>$99/year keeps you out of that number. <strong style={{ color: '#fff' }}>Guaranteed<sup style={{ fontSize: '0.6em' }}>*</sup></strong></span>
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -354,7 +359,7 @@ export default function LandingPage() {
           flexWrap: 'wrap',
         }}>
           <span style={{ color: '#D1FAE5', fontSize: '14px', fontWeight: 700 }}>
-            FIRST DISMISSAL GUARANTEE
+            * GUARANTEE
           </span>
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
           <span style={{ color: '#E2E8F0', fontSize: '14px' }}>
