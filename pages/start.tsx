@@ -943,7 +943,7 @@ export default function StartFunnel() {
                   border: `1px solid ${COLORS.border}`, backgroundColor: COLORS.primaryLight,
                   fontSize: 13, color: COLORS.textSecondary, lineHeight: 1.5,
                 }}>
-                  Don&apos;t know the exact dates? No problem — skip for now and add them later.
+                  Don&apos;t know them? Check your email for your last renewal receipt, or skip and add later.
                 </div>
               </div>
 
