@@ -225,7 +225,7 @@ export default function Welcome() {
                 Download for iPhone
               </a>
               <a
-                href="https://play.google.com/store/apps/details?id=com.ticketlesschicago"
+                href="https://play.google.com/store/apps/details?id=fyi.ticketless.app"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => capture('welcome_android_app_clicked')}
