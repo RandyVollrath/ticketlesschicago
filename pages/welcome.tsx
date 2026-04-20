@@ -216,7 +216,7 @@ export default function Welcome() {
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <a
-                href="https://apps.apple.com/app/ticketless-chicago/id6740301884"
+                href="https://apps.apple.com/us/app/autopilot-america/id6758504333"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => capture('welcome_ios_app_clicked')}
