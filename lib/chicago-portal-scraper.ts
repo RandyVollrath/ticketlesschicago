@@ -80,6 +80,15 @@ export interface PortalTicket {
   // Hearing window — when present, gives us a hard deadline to work against.
   hearing_start_date: string | null;
   hearing_end_date: string | null;
+
+  // Registered-owner contact info from the search response's shared
+  // `contactInformation` block. This is the address the City of Chicago
+  // has on file for the plate — NOT the violation address — but it lets
+  // us detect mismatches with the user's profile (improper service /
+  // stale registration defenses) and confirm the plate belongs to the
+  // person signing the contest letter.
+  registered_owner_name: string | null;
+  registered_owner_address: string | null; // single-line concatenation
 }
 
 export interface LookupResult {
@@ -122,6 +131,41 @@ const KNOWN_ITEM_FIELD_KEYS = new Set([
  * Returns { tickets, warnings } — warnings are non-fatal format issues that
  * should be logged and alerted on to detect API format changes early.
  */
+/**
+ * Extract the registered-owner name and mailing address from the shared
+ * `searchResult.contactInformation` block and merge into every parsed ticket.
+ * This block comes from the City of Chicago's vehicle-registration record
+ * for the plate — useful for detecting mismatches against the user's
+ * profile (stale registration / improper service defenses), NOT the
+ * violation address (which is nowhere in the public portal).
+ */
+function extractRegisteredOwner(data: any): { name: string | null; address: string | null } {
+  const c = data?.searchResult?.contactInformation;
+  if (!c || typeof c !== 'object') return { name: null, address: null };
+  const name = typeof c.contactName === 'string' && c.contactName.trim() ? c.contactName.trim() : null;
+
+  // Normalize the weird 9-digit zip (city stores as "606222656" — that's a
+  // standard 9-digit ZIP+4, just no hyphen) for display.
+  const rawZip = typeof c.zipCode === 'string' ? c.zipCode.replace(/\D/g, '') : '';
+  const formattedZip = rawZip.length === 9 ? `${rawZip.slice(0, 5)}-${rawZip.slice(5)}` : rawZip || null;
+
+  const parts: string[] = [];
+  if (c.addressLine1 && typeof c.addressLine1 === 'string') parts.push(c.addressLine1.trim());
+  if (c.addressLine2 && typeof c.addressLine2 === 'string' && c.addressLine2.trim()) parts.push(c.addressLine2.trim());
+  const cityStateZip: string[] = [];
+  if (c.city && typeof c.city === 'string') cityStateZip.push(c.city.trim());
+  if (c.state && typeof c.state === 'string') {
+    const s = c.state.trim();
+    cityStateZip.push(c.city ? s : s); // join below
+  }
+  let tail = cityStateZip.filter(Boolean).join(', ');
+  if (formattedZip) tail = tail ? `${tail} ${formattedZip}` : formattedZip;
+  if (tail) parts.push(tail);
+  const address = parts.length ? parts.join(', ') : null;
+
+  return { name, address };
+}
+
 function parseTicketsFromApiResponse(data: any): { tickets: PortalTicket[]; warnings: string[] } {
   const tickets: PortalTicket[] = [];
   const warnings: string[] = [];
@@ -139,6 +183,9 @@ function parseTicketsFromApiResponse(data: any): { tickets: PortalTicket[]; warn
     const topKeys = Object.keys(data).join(', ');
     warnings.push(`Missing searchResult in API response. Top-level keys: [${topKeys}]`);
   }
+
+  // Shared across every ticket in this response — plate-level owner info.
+  const owner = extractRegisteredOwner(data);
 
   // The CHI PAY API returns tickets in data.searchResult.itemRows,
   // where each row has an itemFields array of {fieldKey, fieldValue} pairs.
@@ -170,6 +217,8 @@ function parseTicketsFromApiResponse(data: any): { tickets: PortalTicket[]; warn
     for (const row of itemRows) {
       const ticket = parseItemRow(row, JSON.stringify(row));
       if (ticket) {
+        ticket.registered_owner_name = owner.name;
+        ticket.registered_owner_address = owner.address;
         tickets.push(ticket);
       }
     }
@@ -201,7 +250,10 @@ function parseTicketsFromApiResponse(data: any): { tickets: PortalTicket[]; warn
 
   if (!Array.isArray(receivables)) {
     if (typeof receivables === 'object' && receivables.ticketNumber) {
-      return { tickets: [parseReceivable(receivables, JSON.stringify(data))], warnings };
+      const t = parseReceivable(receivables, JSON.stringify(data));
+      t.registered_owner_name = owner.name;
+      t.registered_owner_address = owner.address;
+      return { tickets: [t], warnings };
     }
     return { tickets, warnings };
   }
@@ -213,6 +265,8 @@ function parseTicketsFromApiResponse(data: any): { tickets: PortalTicket[]; warn
   for (const recv of receivables) {
     const ticket = parseReceivable(recv, JSON.stringify(recv));
     if (ticket) {
+      ticket.registered_owner_name = owner.name;
+      ticket.registered_owner_address = owner.address;
       tickets.push(ticket);
     }
   }
@@ -310,6 +364,8 @@ function parseItemRow(row: any, rawJson: string): PortalTicket | null {
     payable,
     hearing_start_date: hearingStart && hearingStart.trim() ? hearingStart : null,
     hearing_end_date: hearingEnd && hearingEnd.trim() ? hearingEnd : null,
+    registered_owner_name: null, // filled in by the caller from searchResult.contactInformation
+    registered_owner_address: null,
   };
 }
 
@@ -361,6 +417,8 @@ function parseReceivable(recv: any, rawJson: string): PortalTicket {
     payable: typeof recv.payable === 'boolean' ? recv.payable : recv.payable === 'true' ? true : recv.payable === 'false' ? false : null,
     hearing_start_date: recv.hearingStartDate || recv.hearing_start_date || null,
     hearing_end_date: recv.hearingEndDate || recv.hearing_end_date || null,
+    registered_owner_name: null,
+    registered_owner_address: null,
   };
 }
 
@@ -947,6 +1005,8 @@ function parseTicketFromText(text: string): PortalTicket | null {
     payable: null,
     hearing_start_date: null,
     hearing_end_date: null,
+    registered_owner_name: null,
+    registered_owner_address: null,
   };
 }
 

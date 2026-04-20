@@ -28,9 +28,21 @@ export function generateEvidenceReferenceId(): string {
 
 // Records we request based on violation type
 const BASE_RECORDS = [
+  // Explicit address request — the public payment portal only shows a
+  // "Skeletal" record that omits the street. We need the Department of
+  // Finance to state, on the record, the exact location the enforcement
+  // officer recorded for this citation. This serves two purposes: (a) fills
+  // in ticket.location when the user doesn't send us a photo of the paper
+  // ticket; (b) if the officer's record is missing a location, that itself
+  // is a § 9-100-060(a)(4) codified defense ground.
+  'The exact location of the violation as recorded by the issuing officer, including street address or block, direction of travel, side of street, and any intersection or landmark reference. Please state this location explicitly even if it is also embedded in other records requested below.',
   'The issuing officer\'s field notes, observations, and contemporaneous written records for this citation',
   'Any photographs taken by the issuing officer at the time of the citation',
   'The handheld citation device data and timestamps for this ticket, including GPS coordinates',
+  // Surface any mismatch between the address printed on the citation, the
+  // city\'s vehicle-registration contact address, and the officer\'s stated
+  // location — mismatches are evidence of improper service or clerical error.
+  'The registered-owner contact address the City of Chicago has on file for this license plate as of the violation date, if different from the location of the violation',
 ];
 
 const VIOLATION_SPECIFIC_RECORDS: Record<string, string[]> = {
