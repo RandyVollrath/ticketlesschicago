@@ -190,8 +190,8 @@ export default function Welcome() {
               }
             />
             <ProtectionCard
-              title="One more thing — add your sticker receipts"
-              desc={<>Forward your city sticker and plate sticker receipts so they attach automatically to any future sticker ticket contest. <Link href="/registration-evidence" style={{ color: COLORS.primary, textDecoration: 'underline', fontWeight: 600 }}>Set it up here →</Link> A no-city-sticker ticket is <strong>$200</strong> — <strong>$250</strong> with the late fee.</>}
+              title="Optional: boost sticker contests with your receipts"
+              desc={<>Sticker tickets are already contested for you. Forwarding your city sticker and plate sticker receipts adds proof of purchase to each contest letter — stronger evidence, higher win rates. <Link href="/registration-evidence" style={{ color: COLORS.primary, textDecoration: 'underline', fontWeight: 600 }}>Set it up here →</Link></>}
             />
           </div>
 
