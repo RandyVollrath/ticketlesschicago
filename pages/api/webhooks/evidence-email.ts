@@ -9,6 +9,7 @@ import {
   regenerateLetterWithAI,
   sendApprovalEmailForEvidence,
   analyzeEvidencePhotos,
+  extractTicketFieldsFromPhoto,
 } from '../../../lib/evidence-processing';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
@@ -611,6 +612,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const existingAnalyses: any[] = existingEvidence.photo_analyses || [];
           evidenceData.photo_analyses = [...existingAnalyses, ...photoAnalysisResults];
           console.log(`Photo analyses: ${evidenceData.photo_analyses.length} total (${existingAnalyses.length} existing + ${photoAnalysisResults.length} new)`);
+        }
+
+        // ── OCR structured fields from the ticket image ──
+        // CHI PAY doesn't expose the violation address, violation code,
+        // officer badge, or issue time. When the user replies with a photo
+        // of the paper ticket / mailed notice, this OCR pass pulls those
+        // fields out and backfills the ticket row so Street View, 311
+        // geo-proximity, contest-letter exhibits, and intersection defenses
+        // all start working. We only write fields that are currently null
+        // on the ticket and for which the OCR has high confidence.
+        const ticketUpdate: Record<string, any> = {};
+        for (const url of photoUrls) {
+          const extracted = await extractTicketFieldsFromPhoto(url).catch((e) => {
+            console.error(`OCR failed for ${url}:`, e?.message);
+            return null;
+          });
+          if (!extracted || !extracted.is_actual_ticket) continue;
+          console.log(`OCR extracted fields from ${url.split('/').pop()}: addr_conf=${extracted.address_confidence}, addr="${extracted.violation_address?.slice(0, 60)}", code=${extracted.violation_code}, time=${extracted.issue_time}`);
+
+          // Address — only accept high confidence (≥0.6) so we don't steer
+          // Street View to a bad block. Only fill if ticket.location is null.
+          if (!ticket.location && extracted.violation_address && extracted.address_confidence >= 0.6) {
+            ticketUpdate.location = extracted.violation_address;
+          }
+          // Violation code — the scraper infers type from description regex;
+          // the actual CMC code on the ticket is authoritative.
+          if (!ticket.violation_code && extracted.violation_code) {
+            ticketUpdate.violation_code = extracted.violation_code;
+          }
+          // Officer badge — useful for officer-intelligence lookup and
+          // clerical-error checks.
+          if (!ticket.officer_badge && extracted.officer_badge) {
+            ticketUpdate.officer_badge = extracted.officer_badge;
+          }
+          // Issue time — the scraper captures full ISO datetime when the
+          // portal supplies it, but when it doesn't we use the OCR value
+          // for within-day correlation (red-light receipts, weather hour).
+          if (!ticket.issue_datetime && extracted.issue_time && ticket.violation_date) {
+            // Combine ticket's date with the OCR'd time.
+            ticketUpdate.issue_datetime = `${ticket.violation_date}T${extracted.issue_time}:00`;
+          }
+          // photo_url — single-image legacy column. Record the first photo
+          // that the user submitted as THE ticket photo.
+          if (!ticket.photo_url) {
+            ticketUpdate.photo_url = url;
+          }
+          // Stop at the first ticket-like photo to save vision calls.
+          break;
+        }
+
+        if (Object.keys(ticketUpdate).length > 0) {
+          console.log(`Backfilling ticket ${ticket.id} with OCR fields:`, Object.keys(ticketUpdate).join(', '));
+          await supabaseAdmin
+            .from('detected_tickets')
+            .update(ticketUpdate)
+            .eq('id', ticket.id);
+          // Reflect the update on the in-memory ticket object so any later
+          // logic in this request sees the fresh values.
+          Object.assign(ticket, ticketUpdate);
         }
       }
     }

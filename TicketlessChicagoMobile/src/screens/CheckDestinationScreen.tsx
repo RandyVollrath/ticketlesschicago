@@ -520,7 +520,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         scrollEnabled={!mapTouched}
       >
         {/* Search Card */}

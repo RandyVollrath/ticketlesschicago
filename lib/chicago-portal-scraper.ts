@@ -50,6 +50,36 @@ export interface PortalTicket {
   // Plate data from the ticket itself (for clerical error detection)
   ticket_plate: string | null; // The plate number ON the ticket (may differ from user's actual plate)
   ticket_state: string | null; // The plate state ON the ticket
+
+  // ── Additional fields the CHI PAY search API exposes ──
+  // These were being dropped on the floor before this pass. They don't give
+  // us the violation address (that's not in the public payment portal —
+  // everything there is labeled "Ticket -- Skeletal"), but they're useful
+  // for deduplication, hearing-deadline tracking, and future endpoint probes.
+
+  // Receivable id as exposed by the portal — format "tk:<ticketNumber>".
+  // Stable across sessions, can be passed to future detail endpoints.
+  portal_receivable_id: string | null;
+
+  // The portal's internal classification, e.g. "Ticket -- Skeletal".
+  // Also tracked as a sentinel: if this ever changes to a non-"Skeletal" value
+  // for a given plate, the portal may be exposing fuller data.
+  receivable_description: string | null;
+
+  // Portal's receivable type code, e.g. "CANVAS_PARKING_TICKET_SKELETAL",
+  // "CANVAS_RED_LIGHT", "CANVAS_AUTOMATED_SPEED". More granular than the
+  // parking/red_light/speed inference we do off the description.
+  receivable_type: string | null;
+
+  // Whether the portal considers this ticket payable right now. Useful for
+  // detecting tickets that were moved into collections and no longer have a
+  // payable status — affects our contest strategy (collections needs a
+  // different approach than active Notice-level tickets).
+  payable: boolean | null;
+
+  // Hearing window — when present, gives us a hard deadline to work against.
+  hearing_start_date: string | null;
+  hearing_end_date: string | null;
 }
 
 export interface LookupResult {
@@ -251,6 +281,14 @@ function parseItemRow(row: any, rawJson: string): PortalTicket | null {
   const amountDue = parseFloat(fields['amountDue'] || '0');
   const noticeLevel = fields['Notice Level'] || '';
 
+  // Normalize hearing dates — the API returns them only for tickets that are
+  // already in the hearing queue; empty strings come through for others.
+  const hearingStart = fields['Hearing Start Date'] || null;
+  const hearingEnd = fields['Hearing End Date'] || null;
+
+  const payableRaw = fields['payable'];
+  const payable = payableRaw === 'true' ? true : payableRaw === 'false' ? false : null;
+
   return {
     ticket_number: ticketNumber,
     ticket_type: ticketType,
@@ -266,6 +304,12 @@ function parseItemRow(row: any, rawJson: string): PortalTicket | null {
     raw_text: rawJson.substring(0, 500),
     ticket_plate: fields['Lic Plate Number'] || null,
     ticket_state: fields['Lic Plate State'] || null,
+    portal_receivable_id: fields['id'] || null,
+    receivable_description: fields['receivableDescription'] || null,
+    receivable_type: fields['receivableType'] || null,
+    payable,
+    hearing_start_date: hearingStart && hearingStart.trim() ? hearingStart : null,
+    hearing_end_date: hearingEnd && hearingEnd.trim() ? hearingEnd : null,
   };
 }
 
@@ -311,6 +355,12 @@ function parseReceivable(recv: any, rawJson: string): PortalTicket {
     raw_text: rawJson.substring(0, 500),
     ticket_plate: recv.licPlateNumber || recv.lic_plate_number || recv.plateNumber || null,
     ticket_state: recv.licPlateState || recv.lic_plate_state || recv.plateState || null,
+    portal_receivable_id: recv.id || recv.receivableId || null,
+    receivable_description: recv.receivableDescription || recv.receivable_description || null,
+    receivable_type: recv.receivableType || recv.receivable_type || null,
+    payable: typeof recv.payable === 'boolean' ? recv.payable : recv.payable === 'true' ? true : recv.payable === 'false' ? false : null,
+    hearing_start_date: recv.hearingStartDate || recv.hearing_start_date || null,
+    hearing_end_date: recv.hearingEndDate || recv.hearing_end_date || null,
   };
 }
 
@@ -891,6 +941,12 @@ function parseTicketFromText(text: string): PortalTicket | null {
     raw_text: text.substring(0, 500),
     ticket_plate: null, // Not available from text parsing
     ticket_state: null,
+    portal_receivable_id: null,
+    receivable_description: null,
+    receivable_type: null,
+    payable: null,
+    hearing_start_date: null,
+    hearing_end_date: null,
   };
 }
 

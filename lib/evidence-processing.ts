@@ -482,6 +482,133 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
 }
 
 /**
+ * Extract structured ticket fields from a photograph of the paper ticket
+ * or mailed notice using Claude Vision.
+ *
+ * The CHI PAY public payment portal does NOT expose the violation address,
+ * violation code, officer badge, or evidence photo URL (everything there is
+ * tagged "Ticket -- Skeletal"). So when a user replies to an evidence
+ * request with a photo of their physical ticket, we OCR it to fill in the
+ * location + code + officer + issue time that downstream modules
+ * (Street View, 311, intersection geometry, contest letter) need.
+ *
+ * Returns fields only for what is clearly legible in the image. Anything
+ * the model can't read with confidence is returned as null — we will not
+ * guess at an address that might steer Street View to the wrong block.
+ */
+export interface ExtractedTicketFields {
+  /** Street address / intersection where the ticket was written. */
+  violation_address: string | null;
+  /** Chicago Municipal Code section (e.g. "9-64-125(b)"). */
+  violation_code: string | null;
+  /** Officer badge / ID number. */
+  officer_badge: string | null;
+  /** Issuing agency as printed, e.g. "Chicago Police Department", "Department of Finance". */
+  issuing_agency: string | null;
+  /** Time of day as printed on the ticket (HH:MM 24-hour). */
+  issue_time: string | null;
+  /** Plate as printed on the ticket (cross-check against scraped ticket_plate). */
+  plate_on_ticket: string | null;
+  /** Make/model/color if clearly written. */
+  vehicle_description: string | null;
+  /** Whether the image appears to be a real ticket/notice (false if selfie, random photo, etc.). */
+  is_actual_ticket: boolean;
+  /** Model confidence 0-1 in the extracted address specifically — low means don't trust the street. */
+  address_confidence: number;
+}
+
+export async function extractTicketFieldsFromPhoto(
+  photoUrl: string,
+): Promise<ExtractedTicketFields | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+
+  try {
+    const imgResponse = await fetch(photoUrl);
+    if (!imgResponse.ok) return null;
+    const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
+    const base64 = imgBuffer.toString('base64');
+    const ext = photoUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)?.[1]?.toLowerCase() || 'jpeg';
+    const mediaType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            {
+              type: 'text',
+              text: `This photograph should be a City of Chicago parking ticket (either a paper citation placed on the vehicle or a mailed notice of violation). Extract structured fields for an automated contest system.
+
+Return ONLY a JSON object (no prose, no markdown fences) with these exact keys:
+
+{
+  "is_actual_ticket": true|false,                   // false if the photo is clearly not a parking ticket (selfie, receipt, something else)
+  "violation_address": "<street address or intersection exactly as printed>" | null,
+  "violation_code": "<Chicago Municipal Code section like '9-64-125(b)' or '9-76-160'>" | null,
+  "officer_badge": "<officer or PEA badge / ID number>" | null,
+  "issuing_agency": "<agency name as printed, e.g. 'Chicago Police Department' or 'Department of Finance'>" | null,
+  "issue_time": "<HH:MM in 24-hour form if legible>" | null,
+  "plate_on_ticket": "<plate exactly as printed, uppercase, no spaces>" | null,
+  "vehicle_description": "<year/make/model/color only if clearly written>" | null,
+  "address_confidence": <number 0.0 to 1.0>         // how sure you are of the street address specifically
+}
+
+Rules:
+- Return null for any field that is not plainly legible. Do NOT guess.
+- The address is the MOST IMPORTANT field. If you cannot read the street clearly, set violation_address=null and address_confidence below 0.5.
+- If this is a mailed notice, the address is typically in a block labeled "Location of Violation" or "Where Issued".
+- Do NOT output anything except the JSON object.`,
+            },
+          ],
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error('Vision OCR API error:', response.status, errText.slice(0, 300));
+      return null;
+    }
+    const data = await response.json();
+    const text = data.content?.[0]?.text?.trim() || '';
+
+    // Strip ```json fences if the model added them despite instruction.
+    const cleaned = text.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    if (jsonStart === -1 || jsonEnd === -1) {
+      console.error('Vision OCR: no JSON in response:', text.slice(0, 200));
+      return null;
+    }
+
+    const parsed = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
+    return {
+      is_actual_ticket: !!parsed.is_actual_ticket,
+      violation_address: typeof parsed.violation_address === 'string' && parsed.violation_address.trim() ? parsed.violation_address.trim() : null,
+      violation_code: typeof parsed.violation_code === 'string' && parsed.violation_code.trim() ? parsed.violation_code.trim() : null,
+      officer_badge: typeof parsed.officer_badge === 'string' && parsed.officer_badge.trim() ? parsed.officer_badge.trim() : null,
+      issuing_agency: typeof parsed.issuing_agency === 'string' && parsed.issuing_agency.trim() ? parsed.issuing_agency.trim() : null,
+      issue_time: typeof parsed.issue_time === 'string' && /^\d{1,2}:\d{2}$/.test(parsed.issue_time) ? parsed.issue_time : null,
+      plate_on_ticket: typeof parsed.plate_on_ticket === 'string' ? parsed.plate_on_ticket.trim().toUpperCase().replace(/\s+/g, '') || null : null,
+      vehicle_description: typeof parsed.vehicle_description === 'string' && parsed.vehicle_description.trim() ? parsed.vehicle_description.trim() : null,
+      address_confidence: typeof parsed.address_confidence === 'number' ? Math.max(0, Math.min(1, parsed.address_confidence)) : 0,
+    };
+  } catch (err: any) {
+    console.error('extractTicketFieldsFromPhoto failed:', err.message || err);
+    return null;
+  }
+}
+
+/**
  * Generate a JWT token for one-click letter approval
  */
 export function generateApprovalToken(ticketId: string, userId: string, letterId: string): string {
