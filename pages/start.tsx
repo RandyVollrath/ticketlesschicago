@@ -1073,7 +1073,7 @@ export default function StartFunnel() {
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>The math, plainly:</div>
                 <div style={{ color: COLORS.textSecondary }}>
-                  One contested city sticker ticket dismissed: <strong style={{ color: COLORS.text }}>$200 saved</strong> (we win these ~85% of the time).
+                  One contested city sticker ticket dismissed: <strong style={{ color: COLORS.text }}>$200 saved</strong> (these get dismissed ~85% of the time with proof of purchase).
                   One contested red-light ticket dismissed: <strong style={{ color: COLORS.text }}>$156 saved</strong>.
                   Autopilot is <strong style={{ color: COLORS.text }}>$99/year</strong>.
                   Dismiss <strong>one</strong> ticket and you&apos;re ahead for the year.
