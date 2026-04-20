@@ -1119,7 +1119,7 @@ export default function StartFunnel() {
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  Annual <span style={{ fontSize: 11, color: COLORS.success, fontWeight: 600 }}>Save 45%</span>
+                  Annual <span style={{ fontSize: 11, color: COLORS.success, fontWeight: 600 }}>Save 18%</span>
                 </button>
                 <button
                   type="button"
@@ -1152,7 +1152,7 @@ export default function StartFunnel() {
                   </div>
                 )}
                 <div style={{ fontSize: 48, fontWeight: 700, color: COLORS.text, lineHeight: 1.1 }}>
-                  {billingPlan === 'annual' ? '$1' : '$15'}
+                  {billingPlan === 'annual' ? '$1' : '$10'}
                   <span style={{ fontSize: 20, fontWeight: 400, color: COLORS.textSecondary }}>
                     {billingPlan === 'annual' ? ' for 30 days' : '/month'}
                   </span>
@@ -1172,7 +1172,7 @@ export default function StartFunnel() {
                       Cancel anytime. No commitment.
                     </div>
                     <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 6 }}>
-                      $180/year — save 45% with annual billing
+                      $120/year — save 18% with annual billing
                     </div>
                   </>
                 )}
@@ -1217,7 +1217,7 @@ export default function StartFunnel() {
                   ? 'Setting up...'
                   : billingPlan === 'annual'
                     ? 'Start protection — $1 today'
-                    : 'Start protection — $15/month'}
+                    : 'Start protection — $10/month'}
               </ContinueButton>
 
               <div style={{ textAlign: 'center', marginTop: 12, fontSize: 13, color: COLORS.textSecondary, fontWeight: 500 }}>
