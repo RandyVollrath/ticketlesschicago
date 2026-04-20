@@ -109,7 +109,7 @@ class LocationServiceClass {
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
           title: 'Location Permission',
-          message: 'Ticketless Chicago needs access to your location to check parking restrictions where you park.',
+          message: 'Autopilot America needs access to your location to check parking restrictions where you park.',
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',

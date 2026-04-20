@@ -176,10 +176,10 @@ This will only take 2 minutes:
 
 Questions? Reply to this email or visit https://ticketlesschicago.com/help
 
-Thanks for using Ticketless Chicago!
+Thanks for using Autopilot America!
 
 —
-Ticketless Chicago
+Autopilot America
 Automated parking ticket contesting and city sticker renewals
     `.trim();
 

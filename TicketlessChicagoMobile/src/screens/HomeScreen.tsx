@@ -977,7 +977,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       ? '\n' + rules.map(r => `• ${r.message || r.type}`).join('\n')
       : '';
     const mapUrl = `https://maps.google.com/?q=${coords.latitude},${coords.longitude}`;
-    const message = `${status} at ${address}${ruleList}\n\n${mapUrl}\n\nChecked with Ticketless Chicago`;
+    const message = `${status} at ${address}${ruleList}\n\n${mapUrl}\n\nChecked with Autopilot America`;
 
     try {
       await Share.share({ message });

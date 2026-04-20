@@ -50,7 +50,7 @@ export default function TowHeatmapPage() {
   return (
     <>
       <Head>
-        <title>Chicago Tow Heatmap by ZIP Code | Ticketless Chicago</title>
+        <title>Chicago Tow Heatmap by ZIP Code | Autopilot America</title>
         <meta name="description" content="See which Chicago ZIP codes have the most vehicle tows. Interactive map and ranking." />
       </Head>
 
@@ -175,7 +175,7 @@ export default function TowHeatmapPage() {
               {/* Data Source */}
               <div className="mt-8 text-center text-sm text-gray-500">
                 <p>Data source: Chicago FOIA Request F512258</p>
-                <p>Analysis by Ticketless Chicago</p>
+                <p>Analysis by Autopilot America</p>
               </div>
             </>
           )}

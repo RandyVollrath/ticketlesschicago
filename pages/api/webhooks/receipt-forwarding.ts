@@ -221,7 +221,7 @@ async function generateEmailEvidenceScreenshot(params: {
   ${excerptLines
     .map((line, idx) => `<text x="80" y="${510 + idx * 32}" font-size="22" font-family="Arial, sans-serif" fill="#1f2937">${escapeXml(line)}</text>`)
     .join('\n')}
-  <text x="80" y="838" font-size="18" font-family="Arial, sans-serif" fill="#64748b">Generated automatically by Ticketless Chicago evidence pipeline.</text>
+  <text x="80" y="838" font-size="18" font-family="Arial, sans-serif" fill="#64748b">Generated automatically by Autopilot America evidence pipeline.</text>
 </svg>`;
 
   return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();
