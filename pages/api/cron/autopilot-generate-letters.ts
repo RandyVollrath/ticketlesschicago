@@ -866,21 +866,18 @@ async function gatherAllEvidence(
   }
 
   // 11. Google Street View imagery (CACHED — reuses across tickets at same address)
-  // The portal scraper rarely populates ticket.location, so we fall back to
-  // the user's mailing/home address — most parking tickets happen near home and
-  // this still gives the signage-AI useful imagery instead of skipping entirely.
-  const streetViewAddress =
-    ticket.location ||
-    profile?.mailing_address ||
-    (profile as any)?.home_address_full ||
-    null;
-  if (streetViewAddress) {
+  // Only use Street View when we have the TICKET'S actual location. Falling
+  // back to the user's home/mailing address would show the signage at their
+  // home — not at the ticket location — which is useless evidence (and
+  // actively misleading if surfaced as "signage at the citation location").
+  // If ticket.location is null, the right fix is the portal scraper, not here.
+  if (ticket.location) {
     promises.push((async () => {
       try {
         // Use cached Street View to avoid duplicate API calls for same address
         const cached = await getCachedStreetView(
           supabaseAdmin,
-          streetViewAddress,
+          ticket.location!,
           ticket.violation_date,
           ticket.id || null,
           ticket.violation_type || null,
@@ -894,7 +891,7 @@ async function gatherAllEvidence(
             panoramaId: cached.panoramaId,
             latitude: cached.latitude,
             longitude: cached.longitude,
-            address: streetViewAddress,
+            address: ticket.location,
             images: [],
             analyses: cached.analyses || [],
             analysisSummary: cached.analysisSummary || '',
@@ -906,7 +903,7 @@ async function gatherAllEvidence(
         } else {
           // Fallback to direct fetch if cache service fails
           bundle.streetViewPackage = await getStreetViewEvidenceWithAnalysis(
-            streetViewAddress,
+            ticket.location!,
             ticket.violation_date,
             ticket.id || null,
             ticket.violation_type || null,
