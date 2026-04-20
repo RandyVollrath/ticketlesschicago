@@ -693,9 +693,11 @@ export default function StartFunnel() {
                 contests with supporting evidence. <strong>94% of Chicago parking tickets are
                 never contested</strong> — people just pay. When contested with proof of
                 purchase, city sticker tickets win <strong>85%</strong> of the time and
-                expired-plate tickets win <strong>88%</strong> (2025 City of Chicago FOIA data).
-                A missed city sticker ticket is <strong>$200</strong>, plus a <strong>$50</strong>
-                late fee if unpaid.
+                expired-plate tickets win <strong>88%</strong>. A missed city sticker ticket is
+                <strong> $200</strong>, plus a <strong>$50</strong> late fee if unpaid.
+                <em style={{ display: 'block', marginTop: 6, fontSize: 11, color: COLORS.textMuted, fontStyle: 'normal' }}>
+                  Source: 2025 City of Chicago FOIA data.
+                </em>
               </ValueCallout>
               <ContinueButton onClick={handlePlateSubmit}>Continue</ContinueButton>
             </StepContainer>
@@ -806,8 +808,10 @@ export default function StartFunnel() {
               <ValueCallout>
                 You&apos;ll get the night-before alert for every street cleaning at this address
                 so you can move your car. A street cleaning ticket starts at <strong>$60</strong>
-                and averages <strong>$79</strong> per ticket once late fees are factored in
-                (2025 City of Chicago FOIA data).
+                and averages <strong>$79</strong> per ticket once late fees are factored in.
+                <em style={{ display: 'block', marginTop: 6, fontSize: 11, color: COLORS.textMuted, fontStyle: 'normal' }}>
+                  Source: 2025 City of Chicago FOIA data.
+                </em>
               </ValueCallout>
               <ContinueButton onClick={handleAddressSubmit}>Continue</ContinueButton>
             </StepContainer>
@@ -947,6 +951,9 @@ export default function StartFunnel() {
                 the late fee, and up to <strong>$305</strong> if it goes to collections. Knowing
                 your renewal dates lets us warn you before they expire and strengthens contest
                 letters if you ever do get one.
+                <em style={{ display: 'block', marginTop: 6, fontSize: 11, color: COLORS.textMuted, fontStyle: 'normal' }}>
+                  Source: 2025 City of Chicago FOIA data.
+                </em>
               </ValueCallout>
 
               <ContinueButton onClick={handleRegistrationSubmit} disabled={savingRegistration}>
@@ -1054,7 +1061,7 @@ export default function StartFunnel() {
                 <ValueItem
                   icon="&#9993;&#65039;"
                   title="Automatic contesting — after a ticket"
-                  desc="Twice-weekly plate checks. Contest letters drafted, printed, and mailed for you. Sticker contests with proof of purchase win ~70% of the time."
+                  desc="Twice-weekly plate checks. Contest letters drafted, printed, and mailed for you. City sticker contests win ~85% with proof of purchase; expired-plate contests ~88% (2025 City of Chicago FOIA data)."
                 />
               </div>
 
@@ -1069,6 +1076,9 @@ export default function StartFunnel() {
                   One contested red-light ticket dismissed: <strong style={{ color: COLORS.text }}>$156 saved</strong>.
                   Autopilot is <strong style={{ color: COLORS.text }}>$99/year</strong>.
                   Skip <strong>one</strong> ticket and you&apos;re ahead.
+                </div>
+                <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted }}>
+                  Ticket amounts from 2025 City of Chicago FOIA data.
                 </div>
               </div>
 
