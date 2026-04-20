@@ -1050,11 +1050,6 @@ export default function StartFunnel() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 18, margin: '8px 0' }}>
                 <ValueItem
-                  icon="&#128205;"
-                  title="Address alerts — before you park"
-                  desc="Street cleaning, snow bans, and permit restrictions for your block. Night-before notifications so you can move your car."
-                />
-                <ValueItem
                   icon="&#128663;"
                   title="Car alerts — while you're parked"
                   desc="The mobile app knows where your car is. Real-time warnings if a sweep or tow zone is about to hit your location."
@@ -1063,6 +1058,11 @@ export default function StartFunnel() {
                   icon="&#9993;&#65039;"
                   title="Automatic contesting — after a ticket"
                   desc="Twice-weekly plate checks. Contest letters drafted, printed, and mailed for you. City sticker contests win ~85% with proof of purchase; expired-plate contests ~88% (2025 City of Chicago FOIA data)."
+                />
+                <ValueItem
+                  icon="&#128205;"
+                  title="Address alerts — before you park"
+                  desc="Street cleaning, snow bans, and permit restrictions for your block. Night-before notifications so you can move your car."
                 />
               </div>
 
@@ -1073,10 +1073,10 @@ export default function StartFunnel() {
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>The math, plainly:</div>
                 <div style={{ color: COLORS.textSecondary }}>
-                  One avoided street-cleaning ticket: <strong style={{ color: COLORS.text }}>$60</strong>.
+                  One contested city sticker ticket dismissed: <strong style={{ color: COLORS.text }}>$200 saved</strong> (we win these ~85% of the time).
                   One contested red-light ticket dismissed: <strong style={{ color: COLORS.text }}>$156 saved</strong>.
                   Autopilot is <strong style={{ color: COLORS.text }}>$99/year</strong>.
-                  Skip <strong>one</strong> ticket and you&apos;re ahead.
+                  Dismiss <strong>one</strong> ticket and you&apos;re ahead for the year.
                 </div>
                 <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted }}>
                   Ticket amounts from 2025 City of Chicago FOIA data.
