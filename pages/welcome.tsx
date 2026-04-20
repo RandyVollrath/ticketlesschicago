@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import { capture } from '../lib/posthog';
@@ -189,8 +190,8 @@ export default function Welcome() {
               }
             />
             <ProtectionCard
-              title="Sticker contest evidence is ready"
-              desc={<>If you set up receipt forwarding, your city sticker and plate sticker receipts will be attached automatically to any future sticker ticket contest. A no-city-sticker ticket is <strong>$200</strong> — <strong>$400</strong> with the late fee.</>}
+              title="One more thing — add your sticker receipts"
+              desc={<>Forward your city sticker and plate sticker receipts so they attach automatically to any future sticker ticket contest. <Link href="/registration-evidence" style={{ color: COLORS.primary, textDecoration: 'underline', fontWeight: 600 }}>Set it up here →</Link> A no-city-sticker ticket is <strong>$200</strong> — <strong>$250</strong> with the late fee.</>}
             />
           </div>
 
