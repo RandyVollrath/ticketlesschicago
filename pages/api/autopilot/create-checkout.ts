@@ -223,6 +223,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         grace_period_days: selectedPlan.gracePeriodDays,
         stripe_customer_id: customerId,
         status: 'trialing', // Will be updated to 'active' by webhook after payment
+        letters_included_remaining: 999, // Unlimited — no per-subscription letter cap
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
