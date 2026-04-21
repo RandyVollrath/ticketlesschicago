@@ -517,6 +517,53 @@ export interface ExtractedTicketFields {
   address_confidence: number;
 }
 
+/**
+ * Extracted data from a police report for stolen-plate / lost-plate
+ * defenses. This is the #1 winning reason for red-light and speed-camera
+ * dismissals per City of Chicago hearing records.
+ */
+export interface ExtractedPoliceReport {
+  /** Chicago Police "RD number" or other jurisdictions' case/report number. */
+  report_number: string | null;
+  /** Issuing department ("Chicago Police Department", Evanston PD, etc.). */
+  agency: string | null;
+  /** Date the report was filed (ISO YYYY-MM-DD if legible). */
+  report_date: string | null;
+  /** Date the user says the plate was stolen / discovered missing. */
+  incident_date: string | null;
+  /** Plate number listed on the report. */
+  plate_on_report: string | null;
+  /** True if the report covers a stolen/lost license plate specifically. */
+  is_stolen_plate_report: boolean;
+  /** Model confidence 0-1 in the extracted report number. */
+  confidence: number;
+}
+
+/**
+ * Extracted data from a ParkChicago payment receipt or confirmation email.
+ * Used to prove payment for expired-meter tickets (67% win rate; #1 winning
+ * reason is "Violation is Factually Inconsistent" and payment proof is the
+ * cleanest way to establish factual inconsistency).
+ */
+export interface ExtractedParkChicagoReceipt {
+  /** The zone number on the meter (e.g. "4567"). */
+  zone: string | null;
+  /** Start time of the paid parking session (ISO datetime if legible). */
+  start_time: string | null;
+  /** End time / expiration of the paid session. */
+  end_time: string | null;
+  /** Amount paid in dollars. */
+  amount_paid: number | null;
+  /** Confirmation / transaction ID from ParkChicago. */
+  transaction_id: string | null;
+  /** Plate the payment was tied to. */
+  plate_on_receipt: string | null;
+  /** True if this looks like a real ParkChicago receipt (not a random photo). */
+  is_parkchicago_receipt: boolean;
+  /** Model confidence 0-1 in the overall extraction. */
+  confidence: number;
+}
+
 export async function extractTicketFieldsFromPhoto(
   photoUrl: string,
 ): Promise<ExtractedTicketFields | null> {
@@ -606,6 +653,195 @@ Rules:
     console.error('extractTicketFieldsFromPhoto failed:', err.message || err);
     return null;
   }
+}
+
+/**
+ * Extract police-report data from a user-uploaded image or PDF screenshot.
+ * Used for stolen-plate / lost-plate defenses, which dismiss ~70% of
+ * red-light and speed-camera camera tickets per City of Chicago hearing
+ * records.
+ */
+export async function extractPoliceReportFromPhoto(
+  photoUrl: string,
+): Promise<ExtractedPoliceReport | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+
+  try {
+    const imgResponse = await fetch(photoUrl);
+    if (!imgResponse.ok) return null;
+    const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
+    const base64 = imgBuffer.toString('base64');
+    const ext = photoUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)?.[1]?.toLowerCase() || 'jpeg';
+    const mediaType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            {
+              type: 'text',
+              text: `This image should be a police report (paper form, PDF screenshot, or online-report confirmation). Extract structured fields.
+
+Return ONLY a JSON object with these exact keys (no prose, no markdown):
+
+{
+  "is_stolen_plate_report": true|false,   // true only if the incident is a stolen/lost license plate
+  "report_number": "<Chicago 'RD number' or other jurisdiction case/report number>" | null,
+  "agency": "<issuing department name>" | null,
+  "report_date": "<YYYY-MM-DD>" | null,   // date the report was filed
+  "incident_date": "<YYYY-MM-DD>" | null, // date the plate was stolen / went missing
+  "plate_on_report": "<plate number, uppercase, no spaces>" | null,
+  "confidence": <number 0.0 to 1.0>       // how sure you are this is a real police report
+}
+
+Rules:
+- Return null for any field that isn't plainly legible.
+- If the image is not a police report at all, set is_stolen_plate_report=false and confidence<0.3.
+- A Chicago RD number looks like "RD-1234567" or just a 7-digit number labeled "RD #".
+- Do NOT output anything except the JSON object.`,
+            },
+          ],
+        }],
+      }),
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    const text = data.content?.[0]?.text?.trim() || '';
+    const cleaned = text.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    if (jsonStart === -1 || jsonEnd === -1) return null;
+
+    const parsed = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
+    return {
+      report_number: typeof parsed.report_number === 'string' && parsed.report_number.trim() ? parsed.report_number.trim() : null,
+      agency: typeof parsed.agency === 'string' && parsed.agency.trim() ? parsed.agency.trim() : null,
+      report_date: typeof parsed.report_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.report_date) ? parsed.report_date : null,
+      incident_date: typeof parsed.incident_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.incident_date) ? parsed.incident_date : null,
+      plate_on_report: typeof parsed.plate_on_report === 'string' ? parsed.plate_on_report.trim().toUpperCase().replace(/\s+/g, '') || null : null,
+      is_stolen_plate_report: !!parsed.is_stolen_plate_report,
+      confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0,
+    };
+  } catch (err: any) {
+    console.error('extractPoliceReportFromPhoto failed:', err.message || err);
+    return null;
+  }
+}
+
+/**
+ * Extract ParkChicago payment-receipt data from a user-uploaded image.
+ * Used to defeat expired-meter tickets by showing the user had active paid
+ * time at the meter zone when the citation was issued.
+ */
+export async function extractParkChicagoReceiptFromPhoto(
+  photoUrl: string,
+): Promise<ExtractedParkChicagoReceipt | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+
+  try {
+    const imgResponse = await fetch(photoUrl);
+    if (!imgResponse.ok) return null;
+    const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
+    const base64 = imgBuffer.toString('base64');
+    const ext = photoUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)?.[1]?.toLowerCase() || 'jpeg';
+    const mediaType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            {
+              type: 'text',
+              text: `This image should be a ParkChicago meter-payment receipt, payment-confirmation email, or transaction-history screenshot. Extract structured fields.
+
+Return ONLY a JSON object with these exact keys:
+
+{
+  "is_parkchicago_receipt": true|false,   // true only if this is clearly from ParkChicago
+  "zone": "<meter zone number, digits only>" | null,
+  "start_time": "<YYYY-MM-DDTHH:MM:SS or null>",   // when the paid session began
+  "end_time": "<YYYY-MM-DDTHH:MM:SS or null>",     // when the paid session expires
+  "amount_paid": <number in USD or null>,
+  "transaction_id": "<confirmation/transaction id>" | null,
+  "plate_on_receipt": "<plate number, uppercase, no spaces>" | null,
+  "confidence": <number 0.0 to 1.0>
+}
+
+Rules:
+- Return null for any field that isn't plainly legible.
+- Do NOT guess. If you can't read the zone, set zone=null.
+- ParkChicago zones are always 4-digit numeric.
+- Do NOT output anything except the JSON object.`,
+            },
+          ],
+        }],
+      }),
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    const text = data.content?.[0]?.text?.trim() || '';
+    const cleaned = text.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    if (jsonStart === -1 || jsonEnd === -1) return null;
+
+    const parsed = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
+    return {
+      zone: typeof parsed.zone === 'string' && /^\d{3,5}$/.test(parsed.zone) ? parsed.zone : null,
+      start_time: typeof parsed.start_time === 'string' && parsed.start_time.trim() ? parsed.start_time.trim() : null,
+      end_time: typeof parsed.end_time === 'string' && parsed.end_time.trim() ? parsed.end_time.trim() : null,
+      amount_paid: typeof parsed.amount_paid === 'number' ? parsed.amount_paid : null,
+      transaction_id: typeof parsed.transaction_id === 'string' && parsed.transaction_id.trim() ? parsed.transaction_id.trim() : null,
+      plate_on_receipt: typeof parsed.plate_on_receipt === 'string' ? parsed.plate_on_receipt.trim().toUpperCase().replace(/\s+/g, '') || null : null,
+      is_parkchicago_receipt: !!parsed.is_parkchicago_receipt,
+      confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0,
+    };
+  } catch (err: any) {
+    console.error('extractParkChicagoReceiptFromPhoto failed:', err.message || err);
+    return null;
+  }
+}
+
+/**
+ * Text-based fallback: look for a Chicago Police RD number in plain text
+ * (email body, forwarded notification, etc). Returns null if not found.
+ */
+export function extractPoliceReportNumberFromText(text: string): { report_number: string; source: 'rd_format' | 'case_format' } | null {
+  if (!text || typeof text !== 'string') return null;
+  // Chicago RD format: "RD #JB123456", "RD No. JB-123-456", or just a 7+ digit number near "RD".
+  // Accept dashes/spaces inside the number run since the city's paper form uses dashes.
+  const rdMatch = text.match(/RD\s*(?:#|No\.?|Number)?\s*:?\s*([A-Z]{0,3}[-\s]?\d(?:[\d-]{5,}))/i);
+  if (rdMatch && rdMatch[1]) {
+    return { report_number: rdMatch[1].replace(/\s+/g, '').toUpperCase(), source: 'rd_format' };
+  }
+  // Generic case number "Case #12345" / "Report #67890"
+  const caseMatch = text.match(/(?:case|report)\s*(?:#|No\.?|Number)?\s*:?\s*([A-Z0-9-]{6,})/i);
+  if (caseMatch && caseMatch[1]) {
+    return { report_number: caseMatch[1].toUpperCase(), source: 'case_format' };
+  }
+  return null;
 }
 
 /**

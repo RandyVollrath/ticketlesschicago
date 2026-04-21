@@ -1926,6 +1926,30 @@ async function sendEvidenceRequestEmail(
             </a>
           </div>
         </div>
+
+        <div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #92400e; font-size: 18px;">
+            ⚠️ Was your plate stolen, lost, or used without permission?
+          </h3>
+          <p style="margin: 0 0 12px; color: #92400e; font-size: 14px; line-height: 1.6;">
+            This is the <strong>single most common reason ${isRedLight ? 'red-light' : 'speed-camera'} tickets get dismissed</strong>
+            (per City of Chicago hearing records). If your license plate was stolen, lost, or used by someone else
+            around the time of this citation, the law requires the ticket to be dismissed under Chicago Municipal
+            Code § 9-102-050(c).
+          </p>
+          <p style="margin: 0 0 12px; color: #92400e; font-size: 14px; line-height: 1.6;">
+            <strong>Reply to this email with:</strong>
+          </p>
+          <ul style="margin: 0 0 12px 20px; color: #92400e; font-size: 14px; line-height: 1.8;">
+            <li>A copy of the <strong>police report</strong> (Chicago Police, your local department, or state police)</li>
+            <li>The report's <strong>RD number</strong> (Chicago) or case number</li>
+            <li>The date you discovered the plate was stolen or missing</li>
+          </ul>
+          <p style="margin: 0; color: #92400e; font-size: 13px; font-style: italic;">
+            No report filed yet? If your plate really was stolen, file one at <a href="https://home.chicagopolice.org/online-reports/">home.chicagopolice.org/online-reports</a> today and reply with the RD number when you get it. It takes about 10 minutes online.
+          </p>
+        </div>
+
         <div style="background: #ecfdf5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin: 0 0 8px; color: #065f46; font-size: 18px;">Found Something? Reply to This Email</h3>
           <p style="margin: 0 0 8px; color: #065f46; font-size: 14px; line-height: 1.6;">
@@ -2016,6 +2040,47 @@ async function sendEvidenceRequestEmail(
             If something was temporarily blocking it (bike rack, snow, cargo carrier), remove the obstruction first,
             then photograph the plate. Showing the plate was there (or that any issue has been fixed)
             is a strong defense for this type of ticket.
+          </p>
+        </div>
+        <div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #92400e; font-size: 18px;">
+            ⚠️ Was the plate stolen, lost, or removed without permission?
+          </h3>
+          <p style="margin: 0 0 12px; color: #92400e; font-size: 14px; line-height: 1.6;">
+            Stolen-plate defense is one of the top reasons missing-plate tickets get dismissed.
+            If your plate was stolen or removed, file a police report immediately and reply to this email with:
+          </p>
+          <ul style="margin: 0 0 12px 20px; color: #92400e; font-size: 14px; line-height: 1.8;">
+            <li>A copy of the <strong>police report</strong></li>
+            <li>The <strong>RD number</strong> (Chicago) or case number</li>
+            <li>The date you discovered the plate was missing</li>
+          </ul>
+          <p style="margin: 0; color: #92400e; font-size: 13px; font-style: italic;">
+            File online in ~10 minutes: <a href="https://home.chicagopolice.org/online-reports/">home.chicagopolice.org/online-reports</a>
+          </p>
+        </div>
+      `;
+    } else if (violationType === 'rush_hour' || violationType === 'no_standing_time_restricted' || violationType === 'parking_prohibited') {
+      // Per FOIA hearings data, "Signs were Missing or Obscured" is the #2
+      // winning reason for these time-restricted / prohibited-zone tickets.
+      // Explicitly ask for a sign photo — most users don't think to do this.
+      receiptForwardingHtml = `
+        <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 18px;">
+            📸 Photograph the Sign (Both Sides of the Block)
+          </h3>
+          <p style="margin: 0 0 12px; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            <strong>Missing, obscured, or unclear signs are the second-most-successful defense for this ticket type</strong>
+            (per City of Chicago hearing records). Go back to where you parked and photograph:
+          </p>
+          <ul style="margin: 0 0 12px 20px; color: #991b1b; font-size: 14px; line-height: 1.8;">
+            <li>The <strong>nearest regulation sign in each direction</strong> from where you parked</li>
+            <li>The <strong>full length of the block</strong> showing sign spacing (or gaps)</li>
+            <li>Any signs that are faded, bent, blocked by trees / construction / other vehicles, or pointed away from the street</li>
+            <li>If <strong>no sign is visible</strong> from where you parked, photograph the empty pole or bare block face — that IS the evidence</li>
+          </ul>
+          <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
+            <strong>Reply to this email</strong> with the photos. We'll include them as exhibits and cite § 9-100-060(a)(2) — inadequate signage is a codified affirmative defense.
           </p>
         </div>
       `;

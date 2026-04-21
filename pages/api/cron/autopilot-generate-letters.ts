@@ -170,9 +170,20 @@ interface AlertSubscriptionEvidence {
 
 interface ClericalErrorCheck {
   checked: boolean; // true = we ran the check (even if no errors found)
-  hasErrors: boolean; // true = at least one clerical error found
+  hasErrors: boolean; // true = at least one factual inconsistency found
   errors: {
-    type: 'plate_mismatch' | 'state_mismatch' | 'plate_digit_error' | 'date_format_error';
+    // "Violation is Factually Inconsistent" is the #1 winning reason in every
+    // ticket type in the FOIA hearings data — so we cast a wide net here.
+    type:
+      | 'plate_mismatch'
+      | 'state_mismatch'
+      | 'plate_digit_error'
+      | 'date_format_error'
+      | 'location_mismatch'      // OCR'd ticket address vs user's known location / GPS
+      | 'timestamp_alibi'        // user's GPS shows they were elsewhere at ticket time
+      | 'registered_owner_mismatch'  // city-registered owner is someone else entirely
+      | 'violation_code_mismatch'    // ticket's code doesn't match its description
+      | 'missing_required_field';    // officer left required field blank on OCR'd ticket
     description: string;
     ticketValue: string;
     actualValue: string;
@@ -639,8 +650,12 @@ async function gatherAllEvidence(
     })());
   }
 
-  // 5. Red Light Camera Receipt Data (for red_light violations)
-  if (ticket.violation_type === 'red_light') {
+  // 5. Red Light / Speed Camera Receipt Data
+  // The same GPS-based physics arguments (yellow timing, approach speed,
+  // dilemma zone, stop detection) are just as relevant for speed_camera
+  // tickets as for red_light — we were only firing them for red_light
+  // because `redLightReceipt` was gated to that type. Opening to both.
+  if (ticket.violation_type === 'red_light' || ticket.violation_type === 'speed_camera') {
     promises.push((async () => {
       try {
         const { data } = await supabaseAdmin
@@ -655,9 +670,9 @@ async function gatherAllEvidence(
             ticket.violation_date && r.violation_date === ticket.violation_date
           ) || data[0];
           bundle.redLightReceipt = matching;
-          console.log(`    Red light receipt found: speed=${matching.speed_mph}mph, stop=${matching.full_stop_detected}`);
+          console.log(`    Camera receipt found (${ticket.violation_type}): speed=${matching.speed_mph}mph, stop=${matching.full_stop_detected}`);
         }
-      } catch (e) { console.error('    Red light receipt lookup failed:', e); }
+      } catch (e) { console.error('    Camera receipt lookup failed:', e); }
     })());
   }
 
@@ -1242,7 +1257,7 @@ async function gatherAllEvidence(
  *   4. Registration renewal receipt (76% win rate)
  *   5. GPS departure proof (high confidence when available)
  */
-function pickMandatoryLeadArgument(
+export function pickMandatoryLeadArgument(
   ticket: DetectedTicket,
   profile: UserProfile,
   evidence: EvidenceBundle,
@@ -1250,15 +1265,50 @@ function pickMandatoryLeadArgument(
   const violationDate = formatViolationDate(ticket.violation_date);
   const ticketNum = ticket.ticket_number || ticket.id;
 
-  // 1. Clerical error — plate mismatch is near-automatic dismissal
-  if (evidence.clericalErrorCheck?.hasErrors) {
-    const { ticketPlate, userPlate } = evidence.clericalErrorCheck;
+  // 1a. Stolen-plate defense for camera / missing-plate tickets takes
+  // priority because § 9-102-050(c) provides a specific statutory exemption
+  // for camera violations issued to a stolen plate. It's the #1 winning
+  // reason for these ticket types per FOIA hearings data.
+  const anyTicketEarly = ticket as any;
+  if (
+    anyTicketEarly.plate_stolen &&
+    (ticket.violation_type === 'red_light' || ticket.violation_type === 'speed_camera' || ticket.violation_type === 'missing_plate')
+  ) {
+    const rpt = anyTicketEarly.plate_stolen_report_number
+      ? ` and filed a police report (${anyTicketEarly.plate_stolen_report_agency || 'police'}, report # ${anyTicketEarly.plate_stolen_report_number}${anyTicketEarly.plate_stolen_report_date ? `, filed ${anyTicketEarly.plate_stolen_report_date}` : ''})`
+      : '';
     return {
       openingParagraph:
-        `I am writing to contest parking citation ${ticketNum} on the grounds of a material clerical error. ` +
-        `The citation lists license plate "${ticketPlate}", but my vehicle's actual plate is "${userPlate}". ` +
-        `Under Chicago Municipal Code § 9-100-060(a)(1), failure to correctly identify the cited vehicle is a codified affirmative defense and grounds for immediate dismissal. The City cannot establish that my vehicle was the vehicle involved in this alleged violation.`,
-      rationale: 'Plate mismatch is a § 9-100-060(a)(1) codified defense with near-automatic dismissal rate.',
+        `I am writing to contest parking citation ${ticketNum} on the grounds that my license plate was stolen, lost, or used without my permission${rpt}. ` +
+        `Under Chicago Municipal Code § 9-102-050(c), automated traffic-enforcement citations issued while a plate is stolen or being used without the registered owner's consent are not attributable to the owner. ` +
+        `The statute provides this as a codified affirmative defense, and City of Chicago administrative hearings dismiss the overwhelming majority of such contests. I respectfully request dismissal on that basis.`,
+      rationale: 'Stolen-plate is a § 9-102-050(c) codified defense and the #1 winning reason for camera tickets per FOIA hearings data.',
+    };
+  }
+
+  // 1b. Factual Inconsistency — the #1 winning reason in every OTHER
+  // violation type in the FOIA hearings data. If ANY factual check flags an
+  // error (plate, state, owner, timestamp, code↔desc, location), lead with it.
+  if (evidence.clericalErrorCheck?.hasErrors && evidence.clericalErrorCheck.errors.length > 0) {
+    const errors = evidence.clericalErrorCheck.errors;
+    const strong = errors.filter(e => e.severity === 'strong');
+    const topErrors = strong.length > 0 ? strong : errors;
+    const primary = topErrors[0];
+
+    // If we have multiple strong errors, enumerate all of them — stacked
+    // factual inconsistencies are nearly impossible for the City to
+    // overcome on its prima facie burden.
+    const errorList = topErrors.length > 1
+      ? topErrors.map(e => `  • ${e.description}`).join('\n')
+      : primary.description;
+
+    const lead = topErrors.length > 1
+      ? `I am writing to contest parking citation ${ticketNum} on the grounds that the record contains ${topErrors.length} material factual inconsistencies, each independently sufficient for dismissal:\n\n${errorList}\n\nUnder Chicago Municipal Code § 9-100-060(a)(1) and § 9-100-030, the City bears the burden of establishing a prima facie case with internally consistent facts. It has not done so. I respectfully request dismissal.`
+      : `I am writing to contest parking citation ${ticketNum} on the grounds of a material factual inconsistency in the record. ${primary.description}. Under Chicago Municipal Code § 9-100-060(a)(1), factual inconsistencies on the citation are a codified affirmative defense and grounds for immediate dismissal. The City cannot establish that my vehicle was the vehicle involved, at the time and place alleged, in this alleged violation.`;
+
+    return {
+      openingParagraph: lead,
+      rationale: `Factual inconsistency (${topErrors.map(e => e.type).join(', ')}) is the dominant winning reason in every violation type per FOIA hearings data; § 9-100-060(a)(1) codified defense.`,
     };
   }
 
@@ -2285,6 +2335,8 @@ Generate a professional, formal contest letter that:
    ${evidence.clericalErrorCheck?.hasErrors ? `- CLERICAL ERROR DETECTED: Plate mismatch — ticket says "${evidence.clericalErrorCheck.ticketPlate}" but actual plate is "${evidence.clericalErrorCheck.userPlate}" (STRONGEST — grounds for immediate dismissal)` : evidence.clericalErrorCheck?.checked ? '- Clerical error check: PASSED (ticket plate matches user plate)' : ''}
    ${evidence.userFoiaHistory?.hasData ? `- FOIA user ticket history: ${evidence.userFoiaHistory.totalLifetimeTickets === 0 ? 'ZERO prior tickets (POWERFUL — first-time offender argument)' : evidence.userFoiaHistory.sameViolationTypeCount === 0 ? `First offense for this type (${evidence.userFoiaHistory.totalLifetimeTickets} total lifetime — SUPPORTING argument)` : evidence.userFoiaHistory.totalLifetimeTickets <= 3 ? `Near-clean record (${evidence.userFoiaHistory.totalLifetimeTickets} total — brief mention)` : `${evidence.userFoiaHistory.totalLifetimeTickets} lifetime tickets (use cautiously)`}` : ''}
    ${evidence.zoneBoundaryDefense ? `- ZONE-BOUNDARY DEFENSE (§ ${evidence.zoneBoundaryDefense.cmcSection}, STRONG codified defense): The City rarely produces measurement evidence for ${evidence.zoneBoundaryDefense.statutoryDistanceFt ? `distance-based violations (${evidence.zoneBoundaryDefense.statutoryDistanceFt}-ft radius)` : 'posted-zone violations'}. USE THIS ARGUMENT VERBATIM OR REPHRASED — it invokes § 9-100-060(a)(4): "${evidence.zoneBoundaryDefense.argument.slice(0, 260)}..."` : ''}
+   ${(ticket as any).plate_stolen ? `- STOLEN PLATE DEFENSE (STRONGEST for camera tickets — #1 reason these dismiss per FOIA data): User confirms the plate was stolen / lost / used without permission${(ticket as any).plate_stolen_report_number ? ` and has filed a police report (${(ticket as any).plate_stolen_report_agency || 'police'}, report # ${(ticket as any).plate_stolen_report_number}${(ticket as any).plate_stolen_report_date ? `, filed ${(ticket as any).plate_stolen_report_date}` : ''})` : ''}. Cite Chicago Municipal Code § 9-102-050(c) — the automated violation statute specifically exempts citations issued while a plate is stolen. This is a codified affirmative defense and grounds for immediate dismissal.` : ''}
+   ${(ticket as any).parkchicago_transaction_id || (ticket as any).parkchicago_zone ? `- PARKCHICAGO PAYMENT PROOF (STRONGEST for expired meter — proves factual inconsistency): User paid for active parking via the ParkChicago mobile app${(ticket as any).parkchicago_zone ? ` in zone ${(ticket as any).parkchicago_zone}` : ''}${(ticket as any).parkchicago_start_time ? ` from ${(ticket as any).parkchicago_start_time}` : ''}${(ticket as any).parkchicago_end_time ? ` to ${(ticket as any).parkchicago_end_time}` : ''}${typeof (ticket as any).parkchicago_amount_paid === 'number' ? ` ($${(ticket as any).parkchicago_amount_paid.toFixed(2)})` : ''}${(ticket as any).parkchicago_transaction_id ? `, confirmation ${(ticket as any).parkchicago_transaction_id}` : ''}. The receipt proves the vehicle had active paid time at the cited location when the citation was issued, contradicting the "expired meter" allegation on its face.` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the reviewer for their consideration, sign with sender name only (Lob adds return address automatically). Do NOT suggest or request an in-person hearing — users want dismissal by mail, not additional time commitments
@@ -2709,6 +2761,82 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
           ticketValue: ticketState,
           actualValue: userState,
           severity: 'strong',
+        });
+      }
+    }
+
+    // ── Registered-owner mismatch ──
+    // The portal's contactInformation block tells us who the City of Chicago
+    // has on file as the registered owner of the plate. If that name does
+    // not include the user's surname at all, the plate may have been sold,
+    // transferred, or misread — strong grounds for dismissal.
+    const regOwner = ((ticket as any).registered_owner_name || '').toUpperCase().trim();
+    const userLast = (profile?.last_name || '').toUpperCase().trim();
+    const userFirst = (profile?.first_name || '').toUpperCase().trim();
+    if (regOwner && userLast && !regOwner.includes(userLast) && !(userFirst && regOwner.includes(userFirst))) {
+      clericalErrors.push({
+        type: 'registered_owner_mismatch',
+        description: `City records list the registered owner of plate ${userPlate} as "${regOwner}", not ${userFirst} ${userLast}. If the vehicle was sold, transferred, or misidentified, the prima facie case fails.`,
+        ticketValue: regOwner,
+        actualValue: `${userFirst} ${userLast}`.trim(),
+        severity: 'strong',
+      });
+    }
+
+    // ── Timestamp alibi ──
+    // If the parking evidence shows GPS departure BEFORE the ticket
+    // timestamp (and the ticket happens to have a timestamp), that's an
+    // objective alibi — the vehicle wasn't at the cited location at the
+    // cited time.
+    const departureProof = evidence.parkingEvidence?.departureProof;
+    if (departureProof && (ticket as any).issue_datetime) {
+      try {
+        const ticketTime = new Date((ticket as any).issue_datetime).getTime();
+        const departureTime = new Date(departureProof.departureConfirmedAt).getTime();
+        if (Number.isFinite(ticketTime) && Number.isFinite(departureTime) && departureTime < ticketTime) {
+          const minutesBefore = Math.round((ticketTime - departureTime) / 60000);
+          if (minutesBefore >= 2 && departureProof.departureDistanceMeters >= 50) {
+            clericalErrors.push({
+              type: 'timestamp_alibi',
+              description: `GPS evidence from the connected parking app shows the vehicle departed the cited location ${minutesBefore} minutes before the ticket timestamp and moved ${departureProof.departureDistanceMeters} meters away. The vehicle was not present at the cited location at the cited time.`,
+              ticketValue: (ticket as any).issue_datetime,
+              actualValue: departureProof.departureTimeFormatted,
+              severity: 'strong',
+            });
+          }
+        }
+      } catch { /* bad timestamp — skip */ }
+    }
+
+    // ── Violation code ↔ description mismatch ──
+    // If the portal gave us both a violation code and a description but they
+    // don't correspond (e.g. code says 9-64-100 "fire hydrant" but
+    // description says "expired meter"), someone made a mistake on the
+    // citation — the record is internally inconsistent.
+    const vCodeRaw = ((ticket as any).violation_code || '').replace(/[^0-9a-zA-Z-]/g, '');
+    const vDesc = ((ticket as any).violation_description || '').toLowerCase();
+    if (vCodeRaw && vDesc) {
+      // Light heuristic: the description must contain at least one word from
+      // the code's expected type. We only flag SURE mismatches — where a
+      // camera code pairs with a meter description or vice versa — to avoid
+      // false positives from ambiguous code mappings.
+      const isFireHydrantCode = /9-?64-?100/.test(vCodeRaw);
+      const isMeterCode = /9-?64-?170/.test(vCodeRaw);
+      const isRedLightCode = /9-?102-?020/.test(vCodeRaw);
+      const descSaysMeter = /meter/.test(vDesc);
+      const descSaysHydrant = /hydrant/.test(vDesc);
+      const descSaysRedLight = /red light|camera violation/.test(vDesc);
+      const contradictions: string[] = [];
+      if (isFireHydrantCode && !descSaysHydrant) contradictions.push(`code ${vCodeRaw} is for fire hydrant but description says "${vDesc}"`);
+      if (isMeterCode && !descSaysMeter) contradictions.push(`code ${vCodeRaw} is for parking meter but description says "${vDesc}"`);
+      if (isRedLightCode && !descSaysRedLight) contradictions.push(`code ${vCodeRaw} is for red-light camera but description says "${vDesc}"`);
+      for (const c of contradictions) {
+        clericalErrors.push({
+          type: 'violation_code_mismatch',
+          description: `Internal inconsistency: ${c}. The ordinance cited does not correspond to the alleged conduct.`,
+          ticketValue: vCodeRaw,
+          actualValue: vDesc.slice(0, 80),
+          severity: 'moderate',
         });
       }
     }
