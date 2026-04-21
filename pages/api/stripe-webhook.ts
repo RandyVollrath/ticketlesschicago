@@ -1398,7 +1398,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 status: 'active',
                 stripe_subscription_id: session.subscription as string || null,
                 stripe_customer_id: session.customer as string || null,
-                letters_included_remaining: 12,
+                letters_included_remaining: 999, // Unlimited — no per-subscription letter cap
                 price_cents: ACTIVE_AUTOPILOT_PLAN.priceCents,
                 price_lock: ACTIVE_AUTOPILOT_PLAN.priceLock,
                 price_lock_cents: ACTIVE_AUTOPILOT_PLAN.priceLockCents,
@@ -2267,7 +2267,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   status: 'active',
                   stripe_subscription_id: session.subscription as string || null,
                   stripe_customer_id: session.customer as string || null,
-                  letters_included_remaining: 12,
+                  letters_included_remaining: 999, // Unlimited — no per-subscription letter cap
                   price_cents: ACTIVE_AUTOPILOT_PLAN.priceCents,
                   price_lock: ACTIVE_AUTOPILOT_PLAN.priceLock,
                   price_lock_cents: ACTIVE_AUTOPILOT_PLAN.priceLockCents,
