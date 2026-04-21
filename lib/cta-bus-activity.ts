@@ -36,7 +36,14 @@ export interface CtaBusActivityFinding {
 // for one-shot lookups.
 const CTA_STOPS_DATASET = 'https://data.cityofchicago.org/resource/qs84-j7wh.json';
 
-type StopRow = { stop_id?: string; stop_name?: string; stop_lat?: string; stop_lon?: string };
+type StopRow = {
+  the_geom?: { type?: string; coordinates?: [number, number] };
+  systemstop?: string;
+  public_nam?: string;
+  street?: string;
+  cross_st?: string;
+  routesstpg?: string;
+};
 
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -49,10 +56,15 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
 
 /**
  * Find the nearest CTA bus stop to a given location and return a coarse
- * service-window finding. We deliberately don't overreach — returning
- * `defenseSummary` is a conservative "service appears to be operating"
- * or "no stop found nearby" rather than claiming the specific bus was/
- * wasn't there.
+ * service-window finding. We deliberately don't overreach:
+ *   - We assert "no stop nearby" ONLY after a successful Open Data query
+ *     returned at least one row in the broader bounding box (so we know
+ *     the dataset has data for this area of the city). A failed / empty
+ *     query means we can't prove anything and return null.
+ *   - The dataset's geometry lives in `the_geom` as a GeoJSON Point with
+ *     coordinates [lng, lat]. We do distance math client-side because
+ *     SoQL's `within_circle` requires the column to be cast as a
+ *     geometry type, and the public dataset isn't indexed that way.
  */
 export async function getCtaBusActivityFinding(
   lat: number | null,
@@ -61,18 +73,19 @@ export async function getCtaBusActivityFinding(
 ): Promise<CtaBusActivityFinding | null> {
   if (lat == null || lng == null) return null;
 
-  // Query Open Data for stops within ~150 m. The CTA stops dataset uses
-  // stop_lat / stop_lon — we do the distance filter client-side since
-  // SoQL's within_circle requires a geo column configured as a location.
-  const latBand = 0.002; // ~222 m N-S
-  const lonBand = 0.0025; // ~200 m E-W at Chicago latitude
+  // Fetch CTA stops within a ~750m box around the point (bigger than our
+  // 150m threshold, so a negative result is meaningful: we know the
+  // dataset was queried successfully and no stop exists nearby).
+  const BIG_RADIUS_DEG = 0.008; // ~880m
 
+  // SoQL supports within_box on the_geom even without a geometry type
+  // cast because the_geom is already a Point column.
   const url = new URL(CTA_STOPS_DATASET);
   url.searchParams.set(
     '$where',
-    `stop_lat between '${(lat - latBand).toFixed(5)}' and '${(lat + latBand).toFixed(5)}' and stop_lon between '${(lng - lonBand).toFixed(5)}' and '${(lng + lonBand).toFixed(5)}'`,
+    `within_box(the_geom, ${(lat + BIG_RADIUS_DEG).toFixed(6)}, ${(lng - BIG_RADIUS_DEG).toFixed(6)}, ${(lat - BIG_RADIUS_DEG).toFixed(6)}, ${(lng + BIG_RADIUS_DEG).toFixed(6)})`,
   );
-  url.searchParams.set('$limit', '20');
+  url.searchParams.set('$limit', '50');
 
   let rows: StopRow[] = [];
   try {
@@ -80,38 +93,49 @@ export async function getCtaBusActivityFinding(
     if (!r.ok) return null;
     rows = (await r.json()) as StopRow[];
   } catch { return null; }
-  if (rows.length === 0) {
-    return {
-      checked: true,
-      stopId: null,
-      stopName: null,
-      scheduledArrivalsInWindow: 0,
-      serviceWindowStart: null,
-      serviceWindowEnd: null,
-      defenseSummary: 'City of Chicago published CTA-stop records show no bus stop within 150 meters of the cited location at the time of the violation. The posted bus-stop zone the citation references may not be in actual CTA service.',
-    };
-  }
 
-  // Nearest stop
+  // Find nearest stop with valid coordinates.
   let best: { row: StopRow; distance: number } | null = null;
   for (const row of rows) {
-    const lat2 = parseFloat(row.stop_lat || '');
-    const lon2 = parseFloat(row.stop_lon || '');
+    const coords = row.the_geom?.coordinates;
+    if (!coords || coords.length !== 2) continue;
+    const lon2 = Number(coords[0]);
+    const lat2 = Number(coords[1]);
     if (!Number.isFinite(lat2) || !Number.isFinite(lon2)) continue;
     const d = haversineMeters(lat, lng, lat2, lon2);
     if (!best || d < best.distance) best = { row, distance: d };
   }
 
-  if (!best) return null;
+  // Only claim "no stop nearby" when the dataset query succeeded AND
+  // the nearest stop is beyond the 150m threshold. We require at least
+  // ONE row in the larger box to prove the dataset actually has coverage
+  // for this area — otherwise we can't tell "no stops here" from "query
+  // returned empty because of a SoQL problem."
+  if (rows.length === 0) {
+    // Zero stops even in an 880m box strains credulity in Chicago — more
+    // likely the query errored silently. Don't assert either way.
+    return null;
+  }
 
-  // We have a nearby stop but no per-arrival schedule in this dataset.
-  // Return a neutral finding that the argument is weak — the stop exists,
-  // service is likely running. Letter generator will skip this unless the
-  // stronger "no-stop" finding fires above.
+  if (!best || best.distance > 150) {
+    return {
+      checked: true,
+      stopId: best?.row?.systemstop || null,
+      stopName: best?.row?.public_nam || null,
+      scheduledArrivalsInWindow: 0,
+      serviceWindowStart: null,
+      serviceWindowEnd: null,
+      defenseSummary: `Chicago's published CTA-stop records (Open Data Portal, dataset qs84-j7wh) show no bus stop within 150 meters of the cited location (nearest stop${best ? ` "${best.row.public_nam || best.row.systemstop}" is ${Math.round(best.distance)}m away` : ' not found within 880m'}). The posted bus-stop zone the citation references may not correspond to an active CTA service location.`,
+    };
+  }
+
+  // There IS a stop within 150m. We don't have historical arrival data
+  // publicly, so we don't overreach — return a neutral finding. The
+  // letter generator treats null defenseSummary as "no argument here."
   return {
     checked: true,
-    stopId: best.row.stop_id || null,
-    stopName: best.row.stop_name || null,
+    stopId: best.row.systemstop || null,
+    stopName: best.row.public_nam || null,
     scheduledArrivalsInWindow: -1, // -1 = not determinable from public data
     serviceWindowStart: null,
     serviceWindowEnd: null,
