@@ -795,6 +795,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let maxRecentLowSpeedLocations = 10  // Keep last 10 fixes (~10 seconds)
   private let lowSpeedThresholdMps = 3.0  // Collect when speed < 3 m/s (~7 mph)
 
+  // Ring buffer of recent GPS fixes while the car is moving (any speed above
+  // ~0.3 m/s). Sent with the parking event as `driveTrajectory` so the server
+  // can run turn-aware street disambiguation (see pages/api/mobile/check-parking.ts
+  // trajectory vote). Context: at a corner park (e.g. drove east on Lawrence,
+  // turned south onto Wolcott, parked 2 seconds later), the single GPS heading
+  // at park time is STALE from before the turn. But the last 2-3 fixes in this
+  // buffer show the car actually moved south on Wolcott's longitude, which lets
+  // the server pick Wolcott over Lawrence despite the snap distances saying
+  // otherwise. Before this buffer existed, iOS parks had no turn-detection signal
+  // to send to the server — only Android did.
+  private var recentDrivingLocations: [CLLocation] = []
+  private let maxRecentDrivingLocations = 10
+  private let drivingBufferMinSpeedMps = 0.3  // Match Android: capture slow-creep before stop
+
   // GPS trace ring buffer for camera evidence capture.
   // Keeps last 60 seconds of driving GPS fixes so evidence has a multi-point
   // trace showing approach path, speed changes, and deceleration — not just a single snapshot.
@@ -1468,11 +1482,30 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       lastEmittedParkingCoord = CLLocation(latitude: latitude, longitude: longitude)
     }
 
+    // Attach the driving GPS trajectory (last ~10 fixes at speed > 0.3 m/s) so
+    // the server has the car's real path to work with for street disambiguation.
+    // Format matches what BackgroundTaskService.ts expects from the Android path:
+    // array of {latitude, longitude, heading, speed} objects (LocationService.ts
+    // compresses to [lat, lng, heading, speed] tuples before sending to server).
+    var emitBody = body
+    if !recentDrivingLocations.isEmpty {
+      let trajectory: [[String: Any]] = recentDrivingLocations.map { loc in
+        return [
+          "latitude": loc.coordinate.latitude,
+          "longitude": loc.coordinate.longitude,
+          "heading": loc.course >= 0 ? loc.course : -1,
+          "speed": max(0, loc.speed),
+        ]
+      }
+      emitBody["driveTrajectory"] = trajectory
+      self.log("EMIT GATE [\(source)]: attaching driveTrajectory with \(trajectory.count) fixes")
+    }
+
     // Emit to JS
-    sendEvent(withName: "onParkingDetected", body: body)
+    sendEvent(withName: "onParkingDetected", body: emitBody)
 
     // Persist to pending queue (survives JS suspension)
-    persistPendingParkingEvent(body)
+    persistPendingParkingEvent(emitBody)
 
     self.log("EMIT GATE [\(source)]: EMITTED parking event (lat=\(String(format: "%.6f", latitude)), lng=\(String(format: "%.6f", longitude)), acc=\(String(format: "%.0f", accuracy)))")
 
@@ -2553,6 +2586,10 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           // Clear GPS averaging buffer — stale fixes from previous parking
           // spot would contaminate the next parking location average.
           self.recentLowSpeedLocations.removeAll()
+          // Clear driving trajectory buffer — new drive starts with empty
+          // trajectory so the next parking event's driveTrajectory reflects
+          // only this drive's path, not leftover fixes from the last trip.
+          self.recentDrivingLocations.removeAll()
           // Spin up precise GPS now that we know user is driving
           self.startContinuousGps()
           // Start recording accelerometer data for red light evidence
@@ -2940,6 +2977,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         lastDrivingLocation = nil
         locationAtStopStart = nil
         recentLowSpeedLocations.removeAll()
+        recentDrivingLocations.removeAll()
         // TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4)
         // configureSpeechAudioSession()
         self.log("Driving started (GPS speed \(String(format: "%.1f", speed)) m/s confirmed CoreMotion automotive)")
@@ -3015,6 +3053,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             lastDrivingLocation = nil
             locationAtStopStart = nil
             recentLowSpeedLocations.removeAll()
+            recentDrivingLocations.removeAll()
             startContinuousGps()
             startAccelerometerRecording()
             // TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4)
@@ -3352,6 +3391,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     } else if location.speed >= 0 && location.speed >= lowSpeedThresholdMps {
       // Still driving fast — clear the buffer, we haven't started stopping yet
       recentLowSpeedLocations.removeAll()
+    }
+
+    // Driving-speed trajectory buffer: capture fixes at any non-trivial speed
+    // (> 0.3 m/s) so the server can reconstruct the car's path for turn-aware
+    // street disambiguation. Lower bound matches Android — the slow-creep fixes
+    // right before a stop are exactly the ones that reveal the post-turn street
+    // (the 1-2 fixes between turning onto Wolcott and stopping).
+    // Accuracy gate (<= 50m) prevents trash fixes from polluting the trajectory.
+    if isDriving && location.speed >= drivingBufferMinSpeedMps
+       && location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
+      recentDrivingLocations.append(location)
+      if recentDrivingLocations.count > maxRecentDrivingLocations {
+        recentDrivingLocations.removeFirst()
+      }
     }
 
     // Camera-aware GPS boost: if GPS speed shows movement but CoreMotion hasn't
