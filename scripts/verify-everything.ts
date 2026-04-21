@@ -256,6 +256,34 @@ async function main() {
     }
   }
 
+  // ─── 13b. Parking-quality-daily personalized email handler ───
+  {
+    try {
+      const { default: handler } = await import('../pages/api/cron/parking-quality-daily');
+      const req = { headers: { 'x-vercel-cron': '1', authorization: '' } } as any;
+      let status = 0;
+      let body: any = null;
+      const res = {
+        status(s: number) { status = s; return res; },
+        json(b: any) { body = b; return res; },
+      } as any;
+      await handler(req, res);
+      a('parking-quality-daily handler returns 200', status === 200, `status=${status}`);
+      a('parking-quality-daily includes AI analysis or graceful fallback', body?.success === true);
+    } catch (e: any) {
+      a('parking-quality-daily handler runs without throwing', false, e.message?.slice(0, 200));
+    }
+  }
+
+  // ─── 13c. Parking-quality improver skill file exists ───
+  {
+    const fs = await import('fs');
+    a(
+      'parking-quality-improver skill file present',
+      fs.existsSync('/home/randy-vollrath/ticketless-chicago/.claude/skills/parking-quality-improver.md'),
+    );
+  }
+
   // ─── 14. parking_quality_reports table exists ───
   {
     const dotenv = await import('dotenv');

@@ -61,12 +61,21 @@ export default withAdminAuth(async (req, res, adminUser) => {
         'amount'
       ];
 
+      // CSV cell escape with formula-injection prevention.
+      // A leading =, +, -, @, tab, or CR can be interpreted by Excel as a formula.
+      // Prefix those with a single quote, then quote-wrap and double any inner quotes.
+      const csvEscape = (v: unknown): string => {
+        const s = String(v ?? '');
+        const guarded = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+        return `"${guarded.replace(/"/g, '""')}"`;
+      };
+
       const rows = plates.map(u => {
         const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ');
         return [
           u.license_plate || '',
           u.license_state || 'IL',
-          fullName.replace(/,/g, ' '), // Remove commas from names
+          fullName,
           '', // ticket_number - VA fills in
           '', // issue_date - VA fills in
           '', // violation_code - VA fills in
@@ -77,8 +86,8 @@ export default withAdminAuth(async (req, res, adminUser) => {
       });
 
       const csv = [
-        headers.join(','),
-        ...rows.map(row => row.join(','))
+        headers.map(csvEscape).join(','),
+        ...rows.map(row => row.map(csvEscape).join(','))
       ].join('\n');
 
       res.setHeader('Content-Type', 'text/csv');

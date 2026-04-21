@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
+import { safeCompare } from '../../lib/auth-middleware';
 
 /**
  * Street View Proxy — allows CLI scripts to fetch Street View images
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  if (!token || token !== adminToken) {
+  if (!safeCompare(token, adminToken)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

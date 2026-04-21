@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { notificationScheduler } from '../../lib/notifications';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { verifyCronAuth } from '../../lib/auth-middleware';
 
 export default async function handler(
   req: NextApiRequest,
@@ -12,12 +13,10 @@ export default async function handler(
   }
 
   // Auth: require CRON_SECRET — this endpoint processes all pending reminders
-  const authHeader = req.headers.authorization;
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
+  if (!process.env.CRON_SECRET) {
     return res.status(500).json({ error: 'Server misconfiguration' });
   }
-  if (authHeader !== `Bearer ${secret}`) {
+  if (!verifyCronAuth(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

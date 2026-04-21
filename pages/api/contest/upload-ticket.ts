@@ -58,15 +58,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing image data' });
     }
 
-    // Upload image to Supabase storage
-    const fileName = `${user.id}/${Date.now()}-ticket.${imageType === 'image/jpeg' ? 'jpg' : 'png'}`;
+    // Whitelist the mime. ticket-photos is a public bucket — accepting
+    // text/html here would be stored XSS served off the Supabase origin.
+    const ALLOWED_IMAGE_TYPES: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'image/heic': 'heic',
+    };
+    const mime = typeof imageType === 'string' ? imageType.toLowerCase() : '';
+    const ext = ALLOWED_IMAGE_TYPES[mime];
+    if (!ext) {
+      return res.status(400).json({ error: 'Unsupported image type' });
+    }
+
+    const fileName = `${user.id}/${Date.now()}-ticket.${ext}`;
     const base64Data = imageData.split(',')[1] || imageData;
     const buffer = Buffer.from(base64Data, 'base64');
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('ticket-photos')
       .upload(fileName, buffer, {
-        contentType: imageType,
+        contentType: mime,
         upsert: false
       });
 
@@ -96,7 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   type: 'image',
                   source: {
                     type: 'base64',
-                    media_type: imageType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+                    media_type: mime as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
                     data: base64Data,
                   },
                 },

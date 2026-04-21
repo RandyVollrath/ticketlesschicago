@@ -105,19 +105,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const uploadedFiles: EvidenceFile[] = [];
     const fileArray = Array.isArray(files.files) ? files.files : [files.files].filter(Boolean);
 
+    // Strict MIME allowlist — the bucket is public, so any HTML/SVG/JS upload
+    // is stored XSS against admins previewing evidence in the review UI.
+    const ALLOWED_MIME = new Set([
+      'image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/heif', 'image/webp',
+      'application/pdf',
+    ]);
+    const EXT_FOR_MIME: Record<string, string> = {
+      'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+      'image/heic': 'heic', 'image/heif': 'heif', 'image/webp': 'webp',
+      'application/pdf': 'pdf',
+    };
+
     for (const file of fileArray) {
       if (!file) continue;
 
+      const mime = (file.mimetype || '').toLowerCase();
+      if (!ALLOWED_MIME.has(mime)) {
+        console.warn(`Rejected evidence upload with disallowed mime: ${mime}`);
+        continue;
+      }
+
       // Read file
       const fileBuffer = fs.readFileSync(file.filepath);
-      const fileExt = file.originalFilename?.split('.').pop() || 'jpg';
+      // Pin extension to validated mime rather than client-supplied filename.
+      const fileExt = EXT_FOR_MIME[mime] || 'bin';
       const fileName = `${user.id}/${Date.now()}-${evidenceType || 'evidence'}.${fileExt}`;
 
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage with the validated mime.
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('contest-evidence')
         .upload(fileName, fileBuffer, {
-          contentType: file.mimetype || 'application/octet-stream',
+          contentType: mime,
           upsert: false,
         });
 

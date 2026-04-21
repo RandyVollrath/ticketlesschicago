@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { safeCompare } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,18 +24,23 @@ export default async function handler(
   }
 
   // ── Webhook Authentication ──
-  // ClickSend doesn't support HMAC signatures, so we use a shared secret
-  // configured in the ClickSend inbound SMS rule URL:
-  // https://autopilotamerica.com/api/sms/inbound?secret=<CLICKSEND_WEBHOOK_SECRET>
+  // Fail closed if the secret is not configured.
+  // Accept the secret via header only (query params get logged by every proxy).
+  // Use timing-safe comparison.
+  // ClickSend config: set header X-ClickSend-Token: <secret> on the inbound rule.
   const webhookSecret = process.env.CLICKSEND_WEBHOOK_SECRET;
-  if (webhookSecret) {
-    const providedSecret = req.query.secret;
-    if (providedSecret !== webhookSecret) {
-      console.warn('SMS webhook: invalid or missing secret');
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-  } else {
-    console.warn('SMS webhook: CLICKSEND_WEBHOOK_SECRET not configured — running without auth');
+  if (!webhookSecret) {
+    console.error('SMS webhook: CLICKSEND_WEBHOOK_SECRET not configured — rejecting (fail closed)');
+    return res.status(500).json({ error: 'Server misconfiguration' });
+  }
+  const headerToken =
+    (req.headers['x-clicksend-token'] as string | undefined) ||
+    (req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7)
+      : undefined);
+  if (!safeCompare(headerToken, webhookSecret)) {
+    console.warn('SMS webhook: invalid or missing secret header');
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {

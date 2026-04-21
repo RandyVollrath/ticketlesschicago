@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
+import { verifyCronAuth } from '../../lib/auth-middleware';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -20,8 +21,12 @@ async function buffer(readable: any) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // SECURITY: Only allow in development mode
+  // Only allow in non-production AND require CRON_SECRET. Preview deployments
+  // are non-production but publicly reachable — NODE_ENV alone is not enough.
   if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  if (!verifyCronAuth(req)) {
     return res.status(404).json({ error: 'Not found' });
   }
 
