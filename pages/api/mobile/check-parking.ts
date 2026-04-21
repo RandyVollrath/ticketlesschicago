@@ -214,27 +214,54 @@ export default async function handler(
   const hasCompass = !isNaN(compassHeadingDeg) && compassHeadingDeg >= 0 && compassHeadingDeg < 360
     && !isNaN(compassConfidenceDeg) && compassConfidenceDeg < 40; // only trust if std < 40°
 
-  // Heading source preference (updated 2026-04-17 after Randy clarified):
-  //   - GPS heading available     → ALWAYS use GPS. It measures the car's actual
-  //     direction of travel while driving. The phone's compass measures which
-  //     way the top of the PHONE is pointing — which is an arbitrary direction
-  //     depending on whether the phone is in a cupholder, pocket, bag, etc.
-  //     Phones don't reliably orient forward with the car, so compass is
-  //     structurally unreliable for car-direction disambiguation.
-  //   - Only compass → use compass as a weak signal (better than nothing)
-  //   - Neither → no disambiguation, fall back to geometric-nearest snap
+  // Heading source preference (updated 2026-04-21 after Randy's Wolcott/Lawrence park):
+  //   - GPS heading is the default — it reflects actual direction of motion.
+  //   - BUT GPS heading at park time is frequently STALE (last driving direction
+  //     captured before a turn). A car that drove east on Lawrence, turned north
+  //     onto Wolcott, and parked seconds later will still have GPS heading=east.
+  //     That drives "heading disambiguation" into picking the wrong street.
+  //   - When GPS and compass disagree by more than 30° AND classify to different
+  //     Chicago-grid orientations (N-S vs E-W), one signal is structurally wrong.
+  //     GPS-after-turn is wrong-by-~90° with high certainty; compass can be off
+  //     by 0-180° but is captured at park time (fresh), so on average compass
+  //     is the better orientation signal in a high-disagreement scenario.
+  //     We PREFER COMPASS in that case, rather than blindly keeping stale GPS.
+  //   - Small disagreement (<30°) → keep GPS as primary (compass has mount noise)
+  //   - Only compass available → use compass (weak but fresh)
+  //   - Neither → no heading-based disambiguation.
   let headingDisagreementDeg: number | null = null;
   if (hasCompass && hasHeading) {
     const rawDiff = Math.abs(compassHeadingDeg - headingDeg);
     headingDisagreementDeg = Math.min(rawDiff, 360 - rawDiff);
   }
+  // Same helper as isHeadingNorthSouth (defined at the bottom of file) but
+  // inlined here so we can compute orientation before that block is reached.
+  const orient = (h: number): 'N-S' | 'E-W' => {
+    const n = ((h % 360) + 360) % 360;
+    return (n <= 45 || n >= 315 || (n >= 135 && n <= 225)) ? 'N-S' : 'E-W';
+  };
   let effectiveHeading: number;
   let effectiveHeadingSource: 'compass' | 'gps' | 'none';
-  if (hasHeading) {
+  const HEADING_STALE_DISAGREEMENT_DEG = 30;
+  const gpsAndCompassClassifyDifferently =
+    hasHeading && hasCompass && orient(headingDeg) !== orient(compassHeadingDeg);
+  if (
+    hasHeading && hasCompass &&
+    headingDisagreementDeg != null &&
+    headingDisagreementDeg > HEADING_STALE_DISAGREEMENT_DEG &&
+    gpsAndCompassClassifyDifferently
+  ) {
+    // Large disagreement + different orientation categories. GPS is almost
+    // certainly stale from before a turn. Prefer compass.
+    effectiveHeading = compassHeadingDeg;
+    effectiveHeadingSource = 'compass';
+    console.log(`[check-parking] GPS ${headingDeg.toFixed(0)}° (${orient(headingDeg)}) vs compass ${compassHeadingDeg.toFixed(0)}° (${orient(compassHeadingDeg)}) disagree by ${headingDisagreementDeg.toFixed(0)}° AND classify to different grid orientations. GPS heading likely stale after turn — preferring compass for street orientation.`);
+    hasHeading = false; // treat GPS heading as not present downstream
+  } else if (hasHeading) {
     effectiveHeading = headingDeg;
     effectiveHeadingSource = 'gps';
     if (hasCompass && headingDisagreementDeg != null && headingDisagreementDeg > 15) {
-      console.log(`[check-parking] GPS ${headingDeg.toFixed(0)}° vs compass ${compassHeadingDeg.toFixed(0)}° disagree by ${headingDisagreementDeg.toFixed(0)}°. Using GPS (compass reflects phone orientation, not car direction).`);
+      console.log(`[check-parking] GPS ${headingDeg.toFixed(0)}° vs compass ${compassHeadingDeg.toFixed(0)}° disagree by ${headingDisagreementDeg.toFixed(0)}° (same grid orientation). Using GPS.`);
     }
   } else if (hasCompass) {
     effectiveHeading = compassHeadingDeg;
@@ -430,10 +457,16 @@ export default async function handler(
 
     if (shouldSnap && supabaseAdmin) {
       try {
-        // Use a search radius proportional to reported accuracy, clamped 25-50m
+        // Search radius must be wide enough that the PERPENDICULAR street at
+        // an intersection shows up as a candidate, not just the street whose
+        // centerline happens to be closest to the raw GPS. Corner parking
+        // (user ~3m from cross-street's centerline, ~45m from their own
+        // street's centerline) is common and was producing wrong-street snaps
+        // before. Floor at 50m so perpendicular candidates enter the pool.
+        // Cap at 80m to avoid matching streets clearly out of range.
         const searchRadius = accuracyMeters
-          ? Math.min(Math.max(accuracyMeters * 1.5, 25), 50)
-          : 40;
+          ? Math.min(Math.max(accuracyMeters * 2.5, 50), 80)
+          : 50;
 
         const { data: snapData, error: snapError } = await supabaseAdmin.rpc(
           'snap_to_nearest_street',
@@ -446,6 +479,9 @@ export default async function handler(
 
         if (!snapError && snapData && snapData.length > 0 && snapData[0].was_snapped) {
           const allCandidates = snapData.filter((s: any) => s.was_snapped);
+          // Max distance for the "obvious best" filter. Keep close candidates
+          // here; far perpendicular ones (30-60m) are still available in
+          // allCandidates for heading/trajectory disambiguation below.
           const maxSnapDistance = accuracyMeters ? Math.max(accuracyMeters, 30) : 40;
 
           // Filter by max snap distance
@@ -480,7 +516,12 @@ export default async function handler(
             // Keep accumulating fixes as long as each one's heading is within
             // 30° of the previous. When a heading jump >30° appears, that's
             // the turn; stop walking back. Vote with just the post-turn fixes.
-            if (driveTrajectory.length >= 2 && candidates.length > 1 && supabaseAdmin) {
+            // Run trajectory vote whenever we have trajectory data AND there's
+            // more than one candidate in the widened pool (allCandidates). A
+            // perpendicular street at an intersection is often outside the
+            // tight distance filter (~30m) but within the search radius (50m);
+            // trajectory can still identify the correct one.
+            if (driveTrajectory.length >= 2 && allCandidates.length > 1 && supabaseAdmin) {
               try {
                 // Build the post-turn segment (most recent consecutive fixes
                 // with consistent heading). Trajectory is oldest → newest.
@@ -514,7 +555,9 @@ export default async function handler(
                 // case where trajectory isn't reliable — fall back to the
                 // heading disambiguation below.
                 if (postTurn.length >= 3) {
-                  const candidateNames = new Set(candidates.map((c: any) => c.street_name));
+                  // Vote among ALL candidates (including perpendicular streets
+                  // just outside the distance filter), not just the close ones.
+                  const candidateNames = new Set(allCandidates.map((c: any) => c.street_name));
                   const snaps = await Promise.all(
                     postTurn.map(([plat, plng]) =>
                       supabaseAdmin!.rpc('snap_to_nearest_street', {
@@ -535,7 +578,7 @@ export default async function handler(
                     const runnerUpVotes = sorted[1]?.[1] ?? 0;
                     // Majority of post-turn fixes + clear lead
                     if (topVotes >= Math.ceil(postTurn.length * 0.5) && topVotes - runnerUpVotes >= 1) {
-                      const trajWinner = candidates.find((c: any) => c.street_name === topStreet);
+                      const trajWinner = allCandidates.find((c: any) => c.street_name === topStreet);
                       if (trajWinner && trajWinner !== bestCandidate) {
                         console.log(`[check-parking] Trajectory override: ${postTurn.length} post-turn points, votes=${JSON.stringify(Object.fromEntries(votes))} → ${topStreet} wins over ${bestCandidate.street_name}`);
                         bestCandidate = trajWinner;
@@ -560,6 +603,12 @@ export default async function handler(
               }
             }
 
+            // Trajectory already picked a winner? Skip heading disambiguation —
+            // trajectory is a stronger signal (based on the car's actual path
+            // over multiple fixes) and shouldn't be overridden by a single
+            // snap-point heading read.
+            const trajectoryAlreadyPicked = diag.trajectory_override === true;
+
             // Heading-based street disambiguation using Chicago's grid system.
             // Chicago streets follow a strict grid: streets prefixed W/E run east-west,
             // streets prefixed N/S run north-south. If we have heading AND multiple
@@ -568,7 +617,7 @@ export default async function handler(
             //
             // Example: User parked on Wolcott (N-S) near Lawrence (E-W).
             // If heading is ~0°/180° (N/S), prefer the N/S street.
-            if (hasEffectiveHeading && candidates.length > 1) {
+            if (!trajectoryAlreadyPicked && hasEffectiveHeading && candidates.length > 1) {
               const headingIsNS = isHeadingNorthSouth(effectiveHeading);
               const headingDir = headingIsNS ? 'N-S' : 'E-W';
               const hdgSrc = hasCompass ? ', compass' : '';
@@ -600,7 +649,7 @@ export default async function handler(
                   }
                 }
               }
-            } else if (hasEffectiveHeading && candidates.length === 1) {
+            } else if (!trajectoryAlreadyPicked && hasEffectiveHeading && candidates.length === 1) {
               // Single candidate — verify heading alignment. If mismatched, search ALL
               // snap candidates (including those beyond max distance) for a heading match.
               const streetDir = getChicagoStreetOrientation(candidates[0].street_name);
@@ -824,8 +873,14 @@ export default async function handler(
                 // Was this snap from the extended heading search (far away, heading-driven)?
                 // If so, Nominatim disagreeing is strong evidence the heading was stale.
                 // Extended search snaps are 30-150m away — much weaker than a close initial snap.
+                //
+                // BUT: when the heading source is COMPASS (fresh magnetometer reading at
+                // park time), a far snap is still trustworthy — compass isn't susceptible
+                // to the "stale-after-turn" failure mode that makes GPS heading drive
+                // extended searches to wrong streets. So we only treat "far snap" as
+                // extended when GPS heading was the driver.
                 const snapWasExtended = snapResult.snapSource?.includes('heading_extended') ||
-                  (snapResult.snapDistanceMeters > 25);
+                  (snapResult.snapDistanceMeters > 25 && effectiveHeadingSource !== 'compass');
 
                 if (headingConfirmedSnap && !snapWasExtended) {
                   // Close snap + heading agree, Nominatim disagrees.
