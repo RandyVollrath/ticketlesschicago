@@ -135,16 +135,33 @@ export function handleAuthError(res: NextApiResponse, error: Error) {
 }
 
 /**
- * Admin emails that have access to admin routes
- * Also checks is_admin field in user_profiles
+ * Admin emails that have access to admin routes.
+ * Also checks is_admin field in user_profiles.
+ *
+ * SINGLE SOURCE OF TRUTH — every admin check in the codebase must go through
+ * this list + the is_admin column. Don't duplicate the list elsewhere.
  */
-const ADMIN_EMAILS = [
+export const ADMIN_EMAILS = [
   'randy@autopilotamerica.com',
   'admin@autopilotamerica.com',
   'randyvollrath@gmail.com',
   'carenvollrath@gmail.com',
   process.env.ADMIN_EMAIL,
 ].filter(Boolean) as string[];
+
+/**
+ * Returns true if the given user is an admin (by email allowlist or
+ * user_profiles.is_admin = true). Pass the authenticated userId + email.
+ */
+export async function isAdminUser(userId: string, email: string | null | undefined): Promise<boolean> {
+  if (email && ADMIN_EMAILS.includes(email)) return true;
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('is_admin')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return profile?.is_admin === true;
+}
 
 /**
  * Verify admin access via Bearer token OR session cookies.
@@ -224,6 +241,43 @@ export async function requireAdminAuth(
 }
 
 /**
+ * Verify the request's Origin (or Referer) matches an allowed host.
+ * Defense against CSRF-style attacks that use cookie-based sessions.
+ *
+ * Returns true if:
+ *  - the request has no Origin/Referer (server-to-server, curl) AND is a GET
+ *  - or the Origin/Referer matches an allowed origin
+ */
+function verifySameOrigin(req: NextApiRequest): boolean {
+  const allowed = new Set<string>(
+    [
+      process.env.NEXT_PUBLIC_BASE_URL,
+      process.env.NEXT_PUBLIC_SITE_URL,
+      'https://autopilotamerica.com',
+      'https://www.autopilotamerica.com',
+      'http://localhost:3000',
+    ].filter(Boolean) as string[],
+  );
+
+  const origin = (req.headers.origin as string | undefined) || '';
+  if (origin) return allowed.has(origin);
+
+  // If there's no Origin but there is a Referer, compare the referer's origin.
+  const referer = (req.headers.referer as string | undefined) || '';
+  if (referer) {
+    try {
+      const refOrigin = new URL(referer).origin;
+      return allowed.has(refOrigin);
+    } catch {
+      return false;
+    }
+  }
+
+  // No Origin, no Referer — only accept if this is a safe method.
+  return req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS';
+}
+
+/**
  * Higher-order function to wrap admin API routes with authentication
  * Uses session cookies for browser-based access
  *
@@ -243,6 +297,12 @@ export function withAdminAuth(
 ) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     try {
+      // CSRF defense: cookie-authenticated mutations must come from an allowed origin.
+      if (!verifySameOrigin(req)) {
+        console.warn(`Admin route blocked for cross-origin request: ${req.headers.origin || req.headers.referer || '<no origin>'} ${req.method} ${req.url}`);
+        return res.status(403).json({ error: 'Forbidden', message: 'Cross-origin request blocked' });
+      }
+
       // Create Supabase client with cookie-based session
       const supabaseServer = createPagesServerClient({ req, res });
 
@@ -323,7 +383,13 @@ export function withCronOrAdminAuth(
         return handler(req, res, { isCron: true });
       }
 
-      // Not cron - check for admin session
+      // Not cron — falling back to admin session. Enforce same-origin for
+      // cookie-authenticated mutations.
+      if (!verifySameOrigin(req)) {
+        console.warn(`Protected route blocked for cross-origin request: ${req.headers.origin || req.headers.referer || '<no origin>'} ${req.method} ${req.url}`);
+        return res.status(403).json({ error: 'Forbidden', message: 'Cross-origin request blocked' });
+      }
+
       const supabaseServer = createPagesServerClient({ req, res });
       const { data: { session }, error: sessionError } = await supabaseServer.auth.getSession();
 

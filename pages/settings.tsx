@@ -1193,6 +1193,19 @@ function SettingsPageInner() {
     if (mobileAccessToken && mobileRefreshToken) {
       // Reinforce the sticky flag (ref initializer already set it, but be safe)
       isMobileWebViewRef.current = true;
+
+      // SECURITY: Scrub tokens from the URL immediately — they'd otherwise
+      // leak via Referer headers to any 3P asset the page loads, via
+      // browser history, and via access logs / analytics. We capture the
+      // values into locals above before replacing; the consumer code below
+      // keeps working from those locals.
+      try {
+        const scrubbed = new URL(window.location.href);
+        scrubbed.searchParams.delete('mobile_access_token');
+        scrubbed.searchParams.delete('mobile_refresh_token');
+        window.history.replaceState({}, '', scrubbed.toString());
+      } catch { /* non-fatal */ }
+
       // setSession returns { data, error } as a resolved promise — it does NOT
       // reject on auth errors. We must check the return value explicitly.
       supabase.auth.setSession({

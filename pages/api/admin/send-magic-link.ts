@@ -40,7 +40,8 @@ export default withAdminAuth(async (req, res, adminUser) => {
       return res.status(500).json({ error: 'No action link generated' });
     }
 
-    console.log('✅ Magic link generated:', linkData.properties.action_link);
+    // Never log the action_link in plain text — treat it as a bearer credential.
+    console.log(`✅ Magic link generated for ${maskEmail(email)}`);
 
     // Send via Resend
     const resendResponse = await fetch('https://api.resend.com/emails', {
@@ -96,13 +97,15 @@ export default withAdminAuth(async (req, res, adminUser) => {
       });
     }
 
-    console.log('✅ Email sent via Resend:', resendData);
+    console.log(`✅ Email sent via Resend (id: ${resendData.id})`);
 
+    // Do NOT return the magic link in the response — it's a single-use bearer
+    // credential equivalent to a password. Admins should retrieve it via the
+    // target user's email, or via the audit log if explicitly needed.
     return res.status(200).json({
       success: true,
       message: 'Magic link sent',
       resendId: resendData.id,
-      magicLink: linkData.properties.action_link
     });
 
   } catch (error: any) {

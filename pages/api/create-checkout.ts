@@ -51,12 +51,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       quantity: 1
     };
 
-    // Create Stripe checkout session
+    // Create Stripe checkout session.
+    // NOTE: do NOT include email in success_url — the Referer header leaks the
+    // full URL to any asset the /auth/success page loads (analytics, fonts,
+    // 3P scripts). The success page can look up the email server-side via
+    // session_id if it needs it.
     const checkoutParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
       line_items: [lineItem],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/auth/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/auth/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/`,
       customer_email: email,
       metadata: {

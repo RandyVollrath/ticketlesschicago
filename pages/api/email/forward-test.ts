@@ -1,14 +1,18 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { verifyCronAuth } from '../../../lib/auth-middleware';
 
 /**
- * Simple test endpoint to verify Cloudflare Worker is calling us
+ * Simple test endpoint to verify Cloudflare Worker is calling us.
+ * Requires CRON_SECRET so preview deploys aren't a logging oracle.
  */
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // SECURITY: Only allow in development mode
   if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  if (!verifyCronAuth(req)) {
     return res.status(404).json({ error: 'Not found' });
   }
 
