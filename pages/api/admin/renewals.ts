@@ -551,7 +551,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
                   <p>We tried to process your automatic renewal, but there was an issue with your payment method.</p>
                   <p>To ensure your renewal is completed on time, please:</p>
                   <ol>
-                    <li>Log in to your account at <a href="https://ticketlesschicago.com/settings">ticketlesschicago.com/settings</a></li>
+                    <li>Log in to your account at <a href="https://autopilotamerica.com/settings">autopilotamerica.com/settings</a></li>
                     <li>Update your payment method</li>
                     <li>We'll automatically retry the renewal</li>
                   </ol>

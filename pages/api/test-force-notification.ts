@@ -72,7 +72,7 @@ export default async function handler(
       console.log('Testing SMS notification to:', phone);
       const smsResult = await notificationService.sendSMS({
         to: phone,
-        message: 'Ticketless test: Your notifications are working! You\'ll receive reminders before renewals are due.'
+        message: 'Autopilot America test: Your notifications are working! You\'ll receive reminders before renewals are due.'
       });
       results.sms = {
         sent: smsResult,

@@ -602,7 +602,7 @@ export default function PropertyTaxDashboard() {
           textAlign: 'center'
         }}>
           <p style={{ fontSize: '13px', color: COLORS.slate }}>
-            Questions about your appeal? <a href="mailto:support@ticketlesschicago.com" style={{ color: COLORS.regulatory }}>Contact Support</a>
+            Questions about your appeal? <a href="mailto:support@autopilotamerica.com" style={{ color: COLORS.regulatory }}>Contact Support</a>
           </p>
         </div>
       </div>

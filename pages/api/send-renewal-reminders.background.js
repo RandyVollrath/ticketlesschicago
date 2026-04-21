@@ -9,9 +9,9 @@ const supabase = createClient(
 
 /** ---------- Config ---------- **/
 const BRAND = {
-  name: 'Ticketless America',
-  dashboardUrl: 'https://ticketlessamerica.com/dashboard',
-  emailFrom: process.env.RESEND_FROM || 'TicketLess America <noreply@ticketlessamerica.com>',
+  name: 'Autopilot America',
+  dashboardUrl: 'https://autopilotamerica.com/dashboard',
+  emailFrom: process.env.RESEND_FROM || 'Autopilot America <noreply@ticketlessamerica.com>',
 };
 
 // Notification schedule designed to get profile updates BEFORE we process renewals at 14 days

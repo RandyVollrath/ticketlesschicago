@@ -179,7 +179,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
                 </div>
                 <p>Please log in to your account and upload new documents that address these issues:</p>
                 <p style="text-align: center; margin: 24px 0;">
-                  <a href="https://ticketlessamerica.com/dashboard" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
+                  <a href="https://autopilotamerica.com/dashboard" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
                     Upload New Documents
                   </a>
                 </p>

@@ -811,7 +811,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 📄 PERMIT DOCUMENTS RECEIVED (${mediaFiles.length} files)
               </p>
               <p style="margin: 12px 0 0 0;">
-                <a href="https://ticketlessamerica.com/admin-permit-documents" style="color: #0052cc; font-weight: 600;">
+                <a href="https://autopilotamerica.com/admin-permit-documents" style="color: #0052cc; font-weight: 600;">
                   Review Documents in Admin Panel
                 </a>
               </p>
@@ -840,7 +840,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             </div>
 
             <div style="text-align: center; margin: 24px 0;">
-              <a href="https://ticketlessamerica.com/admin/profile-updates"
+              <a href="https://autopilotamerica.com/admin/profile-updates"
                  style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">
                 Update Profile in Admin Panel
               </a>

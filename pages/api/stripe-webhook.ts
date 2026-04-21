@@ -2333,7 +2333,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
                 console.log('✅ Customer affiliate created:', {
                   id: affiliateData.id,
-                  referral_link: affiliateData.links?.[0]?.url || `https://ticketlessamerica.com?via=${affiliateData.token}`
+                  referral_link: affiliateData.links?.[0]?.url || `https://autopilotamerica.com?via=${affiliateData.token}`
                 });
               } else {
                 console.log('⚠️ Could not create affiliate (non-blocking)');
@@ -2471,7 +2471,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'magiclink',
               email: email,
               options: {
-                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlessamerica.com'}/oauth-return`
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/oauth-return`
               }
             });
 

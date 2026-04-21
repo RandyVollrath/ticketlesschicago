@@ -95,7 +95,7 @@ export default async function handler(
       if (!affiliateData) {
         console.error('createRewardfulAffiliate returned null for user:', userId);
         return res.status(500).json({
-          error: 'Unable to create referral link at this time. Please try again later or contact support@ticketlessamerica.com for assistance.',
+          error: 'Unable to create referral link at this time. Please try again later or contact support@autopilotamerica.com for assistance.',
           details: 'Affiliate account creation failed - this may be a temporary issue with our referral system.'
         });
       }
@@ -164,7 +164,7 @@ export default async function handler(
               <div style="background: #fff7ed; border: 1px solid #fed7aa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3 style="margin: 0 0 10px 0; color: #92400e;">📋 Program Terms:</h3>
                 <ul style="margin: 0; padding-left: 20px; color: #78350f; line-height: 1.6;">
-                  <li>Share your link with friends who might benefit from Ticketless</li>
+                  <li>Share your link with friends who might benefit from Autopilot America</li>
                   <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
                   <li>Earn <strong>$2/month</strong> for each monthly subscriber you refer, as long as they remain subscribed</li>
                   <li>Earn <strong>$20 one-time</strong> for each annual subscriber</li>
@@ -174,7 +174,7 @@ export default async function handler(
                 </ul>
               </div>
 
-              <p>You can also find your referral link anytime in your account settings at <a href="https://ticketlessamerica.com/settings">ticketlessamerica.com/settings</a></p>
+              <p>You can also find your referral link anytime in your account settings at <a href="https://autopilotamerica.com/settings">autopilotamerica.com/settings</a></p>
 
               <p>Thanks for spreading the word!</p>
               <p>- The Autopilot America Team</p>

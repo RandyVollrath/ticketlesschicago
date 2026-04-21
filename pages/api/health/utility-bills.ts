@@ -83,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 3. Check webhook endpoint is accessible
     checks.checks.webhook_endpoint = {
       status: 'ok',
-      url: 'https://www.ticketlesschicago.com/api/utility-bills',
+      url: 'https://www.autopilotamerica.com/api/utility-bills',
       method: 'POST',
       event_type: 'email.received',
     };

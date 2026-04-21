@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Call the health check endpoint
     const healthCheckUrl = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}/api/health/utility-bills`
-      : 'https://www.ticketlesschicago.com/api/health/utility-bills';
+      : 'https://www.autopilotamerica.com/api/health/utility-bills';
 
     const response = await fetch(healthCheckUrl);
     const healthData = await response.json();
@@ -86,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           <pre>${JSON.stringify(healthData.checks, null, 2)}</pre>
 
           <hr>
-          <p><a href="https://www.ticketlesschicago.com/api/health/utility-bills">View Health Check</a></p>
+          <p><a href="https://www.autopilotamerica.com/api/health/utility-bills">View Health Check</a></p>
           <p><a href="https://resend.com/webhooks">Check Resend Webhooks</a></p>
           <p><a href="https://vercel.com/ticketless-chicago/settings/domains">Check Vercel Domains</a></p>
         `,
@@ -132,7 +132,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           <p>Please check the cron job and health check endpoint manually.</p>
 
           <hr>
-          <p><a href="https://www.ticketlesschicago.com/api/health/utility-bills">View Health Check</a></p>
+          <p><a href="https://www.autopilotamerica.com/api/health/utility-bills">View Health Check</a></p>
           <p><a href="https://vercel.com/ticketless-chicago/deployments">View Vercel Deployments</a></p>
         `,
       });

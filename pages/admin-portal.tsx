@@ -2585,10 +2585,10 @@ export default function AdminPortal() {
                       Signed up: {new Date(user.created_at).toLocaleDateString()}
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <a href={`mailto:${user.email}?subject=Complete%20Your%20Residency%20Proof%20Upload&body=Hi%20${user.first_name}%2C%0A%0AWe%20noticed%20you%20haven't%20uploaded%20your%20proof%20of%20residency%20yet.%20Please%20log%20in%20to%20complete%20your%20setup%3A%0A%0Ahttps%3A%2F%2Fticketlesschicago.com%2Fsettings%0A%0AYou%20can%20upload%20a%20lease%2C%20mortgage%20statement%2C%20or%20property%20tax%20bill.%0A%0AThanks!`} style={{ flex: 1, padding: '10px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', textDecoration: 'none', textAlign: 'center', fontSize: '13px' }}>
+                      <a href={`mailto:${user.email}?subject=Complete%20Your%20Residency%20Proof%20Upload&body=Hi%20${user.first_name}%2C%0A%0AWe%20noticed%20you%20haven't%20uploaded%20your%20proof%20of%20residency%20yet.%20Please%20log%20in%20to%20complete%20your%20setup%3A%0A%0Ahttps%3A%2F%2Fautopilotamerica.com%2Fsettings%0A%0AYou%20can%20upload%20a%20lease%2C%20mortgage%20statement%2C%20or%20property%20tax%20bill.%0A%0AThanks!`} style={{ flex: 1, padding: '10px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', textDecoration: 'none', textAlign: 'center', fontSize: '13px' }}>
                         Email User
                       </a>
-                      <a href={`https://ticketlesschicago.com/settings`} target="_blank" rel="noopener noreferrer" style={{ padding: '10px 16px', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', textDecoration: 'none', fontSize: '13px' }}>
+                      <a href={`https://autopilotamerica.com/settings`} target="_blank" rel="noopener noreferrer" style={{ padding: '10px 16px', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', textDecoration: 'none', fontSize: '13px' }}>
                         Settings Page
                       </a>
                     </div>
