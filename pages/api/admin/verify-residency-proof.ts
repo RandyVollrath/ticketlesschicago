@@ -185,7 +185,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
                     <p><strong>How to Submit:</strong></p>
                     <ol>
-                      <li>Log in to your account at <a href="https://ticketlesschicago.com/settings">ticketlesschicago.com/settings</a></li>
+                      <li>Log in to your account at <a href="https://autopilotamerica.com/settings">autopilotamerica.com/settings</a></li>
                       <li>Go to the "Proof of Residency" section</li>
                       <li>Upload a new document</li>
                     </ol>

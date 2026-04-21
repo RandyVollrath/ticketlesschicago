@@ -417,8 +417,8 @@ export default async function handler(
     );
 
     doc.text(
-      'ticketlesschicago.com',
-      { align: 'center', link: 'https://ticketlesschicago.com' }
+      'autopilotamerica.com',
+      { align: 'center', link: 'https://autopilotamerica.com' }
     );
 
     // Finalize PDF

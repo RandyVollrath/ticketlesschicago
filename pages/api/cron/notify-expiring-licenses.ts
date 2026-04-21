@@ -157,7 +157,7 @@ Your driver's license expires ${daysUntilExpiry > 0 ? `in ${daysUntilExpiry} day
 To continue your automated city sticker renewals, we need an updated driver's license image.
 
 📸 Upload Your Updated License:
-https://ticketlesschicago.com/settings#license-upload
+https://autopilotamerica.com/settings#license-upload
 
 Why we need this:
 ✓ The city requires a valid driver's license for permit parking city stickers
@@ -174,7 +174,7 @@ This will only take 2 minutes:
 3. Take a clear photo of your new license
 4. Done! We'll handle your renewals for the next ${licenseExpiry.getFullYear() - new Date().getFullYear() + 1} years
 
-Questions? Reply to this email or visit https://ticketlesschicago.com/help
+Questions? Reply to this email or visit https://autopilotamerica.com/help
 
 Thanks for using Autopilot America!
 

@@ -118,7 +118,7 @@ export default function Success() {
 
           {/* Contact */}
           <p style={{ fontSize: '14px', color: '#888' }}>
-            Questions? Email us at <strong>support@ticketlessamerica.com</strong>
+            Questions? Email us at <strong>support@autopilotamerica.com</strong>
           </p>
         </div>
       </div>

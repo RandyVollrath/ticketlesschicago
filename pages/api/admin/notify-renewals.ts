@@ -127,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             <h3 style="color: #374151; margin: 0 0 12px; font-size: 16px;">📋 Next Steps:</h3>
             <ol style="color: #6b7280; margin: 0; padding-left: 20px; line-height: 1.8;">
               <li>Purchase stickers on behalf of these users</li>
-              <li>Go to the <a href="https://ticketlessamerica.com/admin/profile-updates" style="color: #2563eb; text-decoration: none;">admin panel</a></li>
+              <li>Go to the <a href="https://autopilotamerica.com/admin/profile-updates" style="color: #2563eb; text-decoration: none;">admin panel</a></li>
               <li>Select the users and send "sticker purchased" notifications</li>
               <li>Mark them as notified in the system</li>
             </ol>
@@ -135,7 +135,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           <!-- Dashboard Link -->
           <div style="text-align: center; margin: 32px 0;">
-            <a href="https://ticketlessamerica.com/admin/profile-updates"
+            <a href="https://autopilotamerica.com/admin/profile-updates"
                style="background: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
               Go to Admin Panel
             </a>
@@ -165,7 +165,7 @@ ${licensePlateRenewals.map(r => `- ${r.first_name} ${r.last_name} (${r.email}) -
 
 NEXT STEPS:
 1. Purchase stickers on behalf of these users
-2. Go to: https://ticketlessamerica.com/admin/profile-updates
+2. Go to: https://autopilotamerica.com/admin/profile-updates
 3. Select users and send "sticker purchased" notifications
 4. Mark them as notified in the system
 

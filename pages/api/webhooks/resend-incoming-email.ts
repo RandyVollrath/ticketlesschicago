@@ -973,8 +973,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 📋 USER WANTS INFO! Send them protection details:
               </p>
               <p style="margin: 12px 0 0 0;">
-                <a href="https://ticketlessamerica.com/protection" style="color: #0052cc; font-weight: 600;">
-                  https://ticketlessamerica.com/protection
+                <a href="https://autopilotamerica.com/protection" style="color: #0052cc; font-weight: 600;">
+                  https://autopilotamerica.com/protection
                 </a>
               </p>
             </div>
@@ -989,7 +989,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 User sent permit zone documents via email. Review and approve/reject in admin panel:
               </p>
               <p style="margin: 12px 0 0 0;">
-                <a href="https://ticketlessamerica.com/admin-permit-documents" style="color: #0052cc; font-weight: 600;">
+                <a href="https://autopilotamerica.com/admin-permit-documents" style="color: #0052cc; font-weight: 600;">
                   Review Documents in Admin Panel
                 </a>
               </p>

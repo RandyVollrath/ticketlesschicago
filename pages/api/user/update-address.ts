@@ -177,7 +177,7 @@ export default async function handler(
               </div>
 
               <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
-                Questions? Reply to this email or contact us at support@ticketlessamerica.com
+                Questions? Reply to this email or contact us at support@autopilotamerica.com
               </p>
             </div>
           `,
@@ -265,7 +265,7 @@ export default async function handler(
             </p>
 
             <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
-              Questions? Reply to this email or contact us at support@ticketlessamerica.com
+              Questions? Reply to this email or contact us at support@autopilotamerica.com
             </p>
           </div>
         `,

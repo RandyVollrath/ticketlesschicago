@@ -97,7 +97,7 @@ export default async function handler(
         // Test actual SMS sending
         const prefs = randy.notification_preferences || {};
         if (prefs.sms && randy.phone_number) {
-          const message = `TicketlessAmerica: Your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Reply STOP to opt out.`;
+          const message = `Autopilot America: Your ${renewal.type} expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Reply STOP to opt out.`;
           
           log(`\n📱 TEST SMS:`);
           log(`  To: ${randy.phone_number}`);

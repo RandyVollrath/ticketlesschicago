@@ -937,7 +937,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
                 <p><strong>To fix this:</strong></p>
                 <ol>
-                  <li>Log in at <a href="https://ticketlesschicago.com/settings">ticketlesschicago.com/settings</a></li>
+                  <li>Log in at <a href="https://autopilotamerica.com/settings">autopilotamerica.com/settings</a></li>
                   <li>Update your payment method</li>
                   <li>We'll automatically retry your renewal</li>
                 </ol>

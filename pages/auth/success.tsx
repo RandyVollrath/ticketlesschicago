@@ -79,7 +79,7 @@ export default function AuthSuccess() {
           margin: '0 auto', 
           padding: '24px 32px' 
         }}>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>Ticketless</div>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>Autopilot America</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '32px', fontSize: '14px' }}>
             <span style={{ color: '#10b981' }}>✓ Payment Confirmed</span>
           </div>
@@ -171,7 +171,7 @@ export default function AuthSuccess() {
                     fontWeight: 'bold', 
                     color: '#111827',
                     marginBottom: '8px'
-                  }}>Welcome to Ticketless!</h1>
+                  }}>Welcome to Autopilot America!</h1>
                   
                   <p style={{
                     fontSize: '18px',

@@ -107,7 +107,7 @@ export default async function handler(
         // Test SMS
         if (prefs.sms && userData.phone_number) {
           log(`\n📱 Testing SMS for ${notif.type}...`);
-          const message = `TicketlessAmerica: Your ${notif.type} expires in ${notif.daysUntil} day${notif.daysUntil !== 1 ? 's' : ''} on ${notif.dueDate.toLocaleDateString()}. Reply STOP to opt out.`;
+          const message = `Autopilot America: Your ${notif.type} expires in ${notif.daysUntil} day${notif.daysUntil !== 1 ? 's' : ''} on ${notif.dueDate.toLocaleDateString()}. Reply STOP to opt out.`;
           log(`  Message: ${message}`);
           log(`  To: ${userData.phone_number}`);
           

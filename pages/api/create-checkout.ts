@@ -56,8 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       payment_method_types: ['card'],
       line_items: [lineItem],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlessamerica.com'}/auth/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://ticketlessamerica.com'}/`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/auth/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/`,
       customer_email: email,
       metadata: {
         email,

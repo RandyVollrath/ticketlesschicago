@@ -80,7 +80,7 @@ export default withAdminAuth(async (req, res, adminUser) => {
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
 
             <p style="color: #9ca3af; font-size: 13px;">
-              Questions? Email us at <a href="mailto:support@ticketlessamerica.com" style="color: #0052cc;">support@ticketlessamerica.com</a>
+              Questions? Email us at <a href="mailto:support@autopilotamerica.com" style="color: #0052cc;">support@autopilotamerica.com</a>
             </p>
           </div>
         `

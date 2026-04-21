@@ -326,7 +326,7 @@ export default async function handler(
           </div>
 
           <div style="text-align: center; margin: 32px 0;">
-            <a href="https://ticketlessamerica.com/admin-permit-documents"
+            <a href="https://autopilotamerica.com/admin-permit-documents"
                style="background: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
               Review Documents in Admin Panel
             </a>

@@ -207,7 +207,7 @@ function generateRandomToken(): string {
  * Send signup email with pre-filled link
  */
 async function sendSignupEmail(data: ParsedEmailData, token: string) {
-  const signupUrl = `https://ticketlessamerica.com/signup?token=${token}`;
+  const signupUrl = `https://autopilotamerica.com/signup?token=${token}`;
 
   const subject = '🚗 Complete Your Autopilot America Signup';
 
@@ -328,7 +328,7 @@ async function sendVehicleAddLink(data: ParsedEmailData) {
         </p>
 
         <div style="text-align: center; margin: 32px 0;">
-          <a href="https://ticketlessamerica.com/login"
+          <a href="https://autopilotamerica.com/login"
              style="background: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
             Log In to Add Vehicle
           </a>
@@ -345,7 +345,7 @@ Vehicle Info:
 - VIN: ${data.vin}
 - Renewal: ${data.renewalDate}
 
-Log in to add this vehicle: https://ticketlessamerica.com/login
+Log in to add this vehicle: https://autopilotamerica.com/login
   `;
 
   await notificationService.sendEmail({
