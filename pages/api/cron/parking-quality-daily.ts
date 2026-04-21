@@ -16,7 +16,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Anthropic from '@anthropic-ai/sdk';
-import { diagnose, type DiagnosisReport } from '../../../scripts/parking-quality-diagnose';
+import { diagnose, type DiagnosisReport } from '../../../lib/parking-quality-diagnose';
 import { sendEmailWithRetry } from '../../../lib/resend-with-retry';
 import { Resend } from 'resend';
 
@@ -185,8 +185,8 @@ function escapeHtml(s: string): string {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
-  const secret = process.env.CRON_SECRET;
-  const isAuthorized = isVercelCron || (secret ? req.headers.authorization === `Bearer ${secret}` : false);
+  const cronAuth = process.env.CRON_SECRET;
+  const isAuthorized = isVercelCron || (cronAuth ? req.headers.authorization === `Bearer ${cronAuth}` : false);
   if (!isAuthorized) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
