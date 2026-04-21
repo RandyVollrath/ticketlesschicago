@@ -406,7 +406,7 @@ export default function LandingPage() {
               Never get a surprise ticket.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              While you drive, the app warns you as you approach red-light and speed cameras. While you&apos;re parked, it warns you when your spot is about to become a ticket — a meter going active, rush hour kicking in, or a temporary no-parking sign. Camera tickets alone are <strong style={{ color: COLORS.text }}>$183M/year</strong> in Chicago.
+              While you&apos;re parked, the app watches your spot and alerts you when it&apos;s about to become a ticket — a meter running down or a temporary no-parking sign kicking in. While you drive, it warns you as you approach red-light and speed cameras (<strong style={{ color: COLORS.text }}>$183M/year</strong> in Chicago).
             </p>
           </div>
 
