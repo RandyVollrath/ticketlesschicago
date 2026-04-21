@@ -1,18 +1,25 @@
 /**
- * Daily personalized parking-quality report → randyvollrath@gmail.com.
+ * Personalized parking-quality report → randyvollrath@gmail.com.
  *
- * Runs once a day. Uses the deterministic `diagnose()` function to pull
- * last 24h of parking data grouped by user, then asks Claude to write
- * SHORT plain-language what's-working / what-isn't / proposed-fix
- * paragraphs grounded in the actual row data. Emails the result.
+ * Runs TWICE a day on NON-OVERLAPPING 12-hour windows so every email
+ * covers a fresh slice of data. Uses the deterministic `diagnose()`
+ * function to pull the window's parking events grouped by user, then
+ * asks Claude to write a SHORT plain-language what's-working /
+ * what-isn't / proposed-fix digest grounded in the actual rows.
+ *
+ * Windows:
+ *   - Morning (13:00 UTC / 8am Chicago) covers 8pm yesterday → 8am today
+ *   - Evening (01:00 UTC / 8pm Chicago) covers 8am today → 8pm today
+ * That matches the natural parking rhythm — morning email shows what
+ * happened overnight, evening email shows what happened during the day.
  *
  * This does NOT ship any code changes. The "proposed solution" in each
  * email is a written suggestion for the human to review — the on-demand
  * `.claude/skills/parking-quality-improver.md` workflow is what turns
  * a suggestion into an actual branch.
- *
- * Schedule: 13:00 UTC = 8am Chicago (1 line in vercel.json).
  */
+
+const WINDOW_HOURS = 12;
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Anthropic from '@anthropic-ai/sdk';
@@ -75,7 +82,7 @@ async function askClaudeForAnalysis(report: DiagnosisReport): Promise<AiAnalysis
     })),
   };
 
-  const prompt = `You are reading a 24-hour parking-detection quality report for Autopilot America (Chicago parking app). Produce a SHORT, plain-language daily digest for the founder. Be grounded in the actual data; do not speculate beyond what the rows show.
+  const prompt = `You are reading a ${WINDOW_HOURS}-hour parking-detection quality report for Autopilot America (Chicago parking app). This is one of TWO daily reports — each covers a non-overlapping 12-hour window (morning report covers overnight 8pm→8am Chicago; evening report covers daytime 8am→8pm Chicago). Produce a SHORT, plain-language digest for the founder grounded in the actual rows — do not speculate beyond what the rows show.
 
 Output STRICT JSON with this exact shape (no prose outside the JSON):
 
@@ -161,7 +168,7 @@ function renderHtml(report: DiagnosisReport, ai: AiAnalysis | null): string {
 
   return `
     <div style="font-family: -apple-system, Segoe UI, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
-      <h1 style="color: #0f172a;">Parking Quality — Daily</h1>
+      <h1 style="color: #0f172a;">Parking Quality — ${WINDOW_HOURS}h window</h1>
       <p style="color: #6b7280; font-size: 13px;">${windowLabel}</p>
       <p style="font-size: 14px;">
         <strong>${report.total_rows}</strong> checks across <strong>${report.total_users}</strong> users ·
@@ -196,7 +203,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!isAuthorized) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
-    const report = await diagnose(24);
+    const report = await diagnose(WINDOW_HOURS);
     const ai = await askClaudeForAnalysis(report);
 
     // Persist a snapshot row to parking_quality_reports so we preserve the
@@ -257,9 +264,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const html = renderHtml(report, ai);
+    // Label the window in the subject so the two daily emails don't look
+    // identical when skimming inbox. The UTC hour of the run tells us
+    // which slice of the day we're summarizing.
+    const runUtcHour = new Date().getUTCHours();
+    // 13:00 UTC = 8am Chicago = "morning" (covered overnight).
+    // 01:00 UTC = 8pm Chicago = "evening" (covered daytime).
+    const windowLabel = runUtcHour >= 6 && runUtcHour < 18 ? 'morning' : 'evening';
     const subject = ai?.headline
-      ? `Parking quality — ${ai.headline.slice(0, 80)}`
-      : `Parking quality — ${report.total_rows} checks, ${report.total_rows - report.overall_failure_counts.healthy} failures`;
+      ? `Parking quality (${windowLabel}) — ${ai.headline.slice(0, 80)}`
+      : `Parking quality (${windowLabel}) — ${report.total_rows} checks, ${report.total_rows - report.overall_failure_counts.healthy} failures`;
 
     if (resend && process.env.RESEND_API_KEY) {
       await sendEmailWithRetry(resend, {
