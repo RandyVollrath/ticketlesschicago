@@ -347,6 +347,141 @@ export default function LandingPage() {
 
       </header>
 
+      {/* What you get — 3 benefit cards (app, contest, address) */}
+      <section style={{
+        padding: '60px 5% 20px',
+        maxWidth: '1200px',
+        margin: '0 auto',
+      }}>
+        <h2 style={{
+          fontFamily: FONTS.heading,
+          fontSize: 'clamp(28px, 4vw, 40px)',
+          fontWeight: 800,
+          color: COLORS.text,
+          textAlign: 'center',
+          marginBottom: '10px',
+          letterSpacing: '-0.5px',
+        }}>
+          Here&apos;s how $99/year saves you money.
+        </h2>
+        <p style={{
+          fontSize: '16px',
+          color: COLORS.textMuted,
+          textAlign: 'center',
+          marginBottom: '36px',
+          maxWidth: '560px',
+          margin: '0 auto 36px',
+        }}>
+          Three layers of protection, all on autopilot.
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '20px',
+        }}>
+          {/* Card 1: Mobile app (biggest value — $183M camera tickets/yr) */}
+          <div style={{
+            backgroundColor: '#fff',
+            padding: '32px 28px',
+            borderRadius: '16px',
+            border: `1px solid ${COLORS.border}`,
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(37, 99, 235, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '18px',
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                <line x1="12" y1="18" x2="12.01" y2="18"/>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
+              Never get a camera ticket again.
+            </h3>
+            <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
+              The app warns you before you park near a red-light or speed camera, a meter about to expire, or a temporary no-parking sign. Camera tickets alone are <strong style={{ color: COLORS.text }}>$183M/year</strong> in Chicago.
+            </p>
+          </div>
+
+          {/* Card 2: Ticket contesting */}
+          <div style={{
+            backgroundColor: '#fff',
+            padding: '32px 28px',
+            borderRadius: '16px',
+            border: `1px solid ${COLORS.border}`,
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(37, 99, 235, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '18px',
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
+              Every ticket you get, we fight for you.
+            </h3>
+            <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
+              We scan the City&apos;s database twice a week for any ticket on your plate, pull FOIA evidence, draft a code-specific contest letter, and mail it for you. <strong style={{ color: COLORS.text }}>94%</strong> of Chicago tickets go uncontested — when contested, <strong style={{ color: COLORS.text }}>66% win</strong>.
+            </p>
+          </div>
+
+          {/* Card 3: Address alerts */}
+          <div style={{
+            backgroundColor: '#fff',
+            padding: '32px 28px',
+            borderRadius: '16px',
+            border: `1px solid ${COLORS.border}`,
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(37, 99, 235, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '18px',
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
+              Sleep through street cleaning.
+            </h3>
+            <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
+              Night-before alerts for your home block — street cleaning, snow bans, winter overnight restrictions. Move your car in the morning instead of paying the ticket in the afternoon.
+            </p>
+          </div>
+        </div>
+        <p style={{
+          textAlign: 'center',
+          fontSize: '12px',
+          color: COLORS.textMuted,
+          marginTop: '24px',
+        }}>
+          Ticket-revenue and win-rate figures from 2025 City of Chicago FOIA data.
+        </p>
+      </section>
+
       {/* Personalize the money question — dual CTAs */}
       <section style={{
         padding: '60px 5% 20px',
@@ -477,93 +612,6 @@ export default function LandingPage() {
               </div>
             </div>
           </Link>
-        </div>
-      </section>
-
-      {/* Below-the-fold Stats */}
-      <section style={{
-        background: 'linear-gradient(145deg, #0F172A 0%, #111827 55%, #0B1220 100%)',
-        color: COLORS.textLight,
-        margin: '20px 5% 0',
-        borderRadius: '24px',
-        maxWidth: '1200px',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-        padding: '56px 5%',
-        border: `1px solid rgba(255,255,255,0.08)`,
-        boxShadow: '0 24px 60px -30px rgba(2, 6, 23, 0.7)',
-        position: 'relative',
-        zIndex: 3,
-      }}>
-        <p style={{
-          margin: '0 0 18px',
-          color: '#94A3B8',
-          fontSize: '13px',
-          fontWeight: 700,
-          letterSpacing: '1px',
-          textTransform: 'uppercase',
-        }}>
-          Chicago FOIA Data, 2018–2025
-        </p>
-        <div style={{
-          fontFamily: FONTS.heading,
-          fontSize: 'clamp(34px, 6vw, 62px)',
-          lineHeight: 1.1,
-          fontWeight: 800,
-          letterSpacing: '-0.5px',
-        }}>
-          <div>94% of tickets go uncontested.</div>
-          <div style={{ marginTop: '12px', color: '#A7F3D0' }}>But 66% of contested parking tickets win.</div>
-        </div>
-        <p style={{
-          margin: '24px 0 0',
-          color: '#64748B',
-          fontSize: '14px',
-          lineHeight: 1.6,
-          maxWidth: '580px',
-        }}>
-
-          35.7 million parking tickets. 530,000 hearings. The data is clear: most people never fight back — and the ones who do win more than half the time.
-        </p>
-        <p style={{
-          margin: '16px 0 0',
-          color: '#F59E0B',
-          fontSize: '15px',
-          lineHeight: 1.6,
-          fontWeight: 600,
-        }}>
-          A single red light camera ticket averages $156 with late fees. Autopilot is $99/year — one avoided ticket and it&apos;s paid for.
-        </p>
-      </section>
-
-      {/* How it Works */}
-      <section id="how-it-works" style={{
-        padding: '80px 5%',
-        maxWidth: '1200px',
-        margin: '24px auto 0',
-        position: 'relative',
-        zIndex: 2
-      }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
-          {[
-            { title: '1. Install the app', text: "Get real-time parking alerts wherever you park — camera zones, meter timeouts, temporary no-parking signs.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>) },
-            { title: '2. Add your address', text: "Get warnings the night before street cleaning, snow bans, and overnight restrictions on your block.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>) },
-            { title: '3. We monitor your plate', text: "Twice a week we scan the City's database for any ticket written to your license plate.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>) },
-            { title: '4. We mail the contest letter', text: "We draft a code-specific contest letter with FOIA evidence and mail it to the City for you.", icon: (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>) }
-          ].map((step, i) => (
-            <div key={i} style={{
-              flex: '1 1 250px',
-              backgroundColor: '#fff',
-              padding: '32px',
-              borderRadius: '16px',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-              border: `1px solid ${COLORS.border}`,
-            }}>
-              <div style={{ marginBottom: '16px', color: COLORS.primary }}>{step.icon}</div>
-              <h3 style={{ fontFamily: FONTS.heading, fontSize: '20px', marginBottom: '10px', color: COLORS.primary }}>{step.title}</h3>
-              <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0 }}>{step.text}</p>
-            </div>
-          ))}
         </div>
       </section>
 
