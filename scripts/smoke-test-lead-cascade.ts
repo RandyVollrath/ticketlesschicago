@@ -109,6 +109,20 @@ const emptyEvidence: any = {
   a('stolen plate beats factual inconsistency', !!r && /stolen/i.test(r.openingParagraph), r?.openingParagraph?.slice(0, 120));
 }
 
+// 8. Date guard: plate reported stolen AFTER violation — defense should NOT fire
+{
+  const t = { ...ticketBase, violation_type: 'speed_camera', violation_date: '2026-03-01', plate_stolen: true, plate_stolen_incident_date: '2026-04-15' };
+  const r = pickMandatoryLeadArgument(t, profile, emptyEvidence);
+  a('stolen-plate defense DOES NOT fire when incident is after violation', !r || !/stolen/i.test(r.openingParagraph), r?.openingParagraph?.slice(0, 120));
+}
+
+// 9. Date guard: plate reported stolen BEFORE violation — defense SHOULD fire
+{
+  const t = { ...ticketBase, violation_type: 'speed_camera', violation_date: '2026-03-01', plate_stolen: true, plate_stolen_incident_date: '2026-02-15' };
+  const r = pickMandatoryLeadArgument(t, profile, emptyEvidence);
+  a('stolen-plate defense fires when incident is before violation', !!r && /stolen/i.test(r.openingParagraph) && /2026-02-15/.test(r.openingParagraph), r?.openingParagraph?.slice(0, 220));
+}
+
 console.log('\n=== Mandatory-Lead Cascade Tests ===');
 const passed = results.filter(r => r.pass).length;
 for (const r of results) {

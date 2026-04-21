@@ -10,6 +10,10 @@ import { getHistoricalWeather, HistoricalWeatherData } from '../../../lib/weathe
 import { getOrdinanceByCode } from '../../../lib/chicago-ordinances';
 import { verifySweeperVisit, type SweeperVerification } from '../../../lib/sweeper-tracker';
 import { getZoneBoundaryDefense } from '../../../lib/parking-intersection-defense';
+import { getCameraMalfunctionSignal, type CameraMalfunctionFinding } from '../../../lib/camera-malfunction-detector';
+import { getCtaBusActivityFinding, type CtaBusActivityFinding } from '../../../lib/cta-bus-activity';
+import { getCdotEmergencyPermits, type CdotPermitFinding } from '../../../lib/cdot-emergency-permits';
+import { getResidentialPermitZoneFinding, type PermitZoneFinding } from '../../../lib/residential-permit-zone-check';
 import {
   lookupParkingEvidence,
   generateEvidenceParagraph,
@@ -62,7 +66,12 @@ if (!JWT_SECRET) {
 }
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://autopilotamerica.com';
 
-// Weather relevance by violation type — same map as user-facing system
+// Weather relevance by violation type — kept in sync with
+// WEATHER_DEFENSE_MAP in lib/evidence-enrichment-service.ts so every
+// violation type that qualifies for a weather defense actually has its
+// relevance level surfaced in the Claude prompt (previously the two maps
+// disagreed on several entries — weather evidence silently no-opped for
+// parking_prohibited, no_standing, commercial_loading, double_parking).
 const WEATHER_RELEVANCE: Record<string, 'primary' | 'supporting' | 'emergency'> = {
   '9-64-010': 'primary',    // Street Cleaning
   '9-64-100': 'primary',    // Snow Route
@@ -71,8 +80,13 @@ const WEATHER_RELEVANCE: Record<string, 'primary' | 'supporting' | 'emergency'> 
   '9-64-130': 'supporting', // Fire Hydrant
   '9-64-050': 'supporting', // Bus Stop
   '9-64-090': 'supporting', // Bike Lane
+  '9-64-140': 'supporting', // No Standing / Time Restricted
+  '9-64-150': 'supporting', // Parking Prohibited Anytime
+  '9-64-060': 'supporting', // Commercial Loading Zone
+  '9-64-040': 'supporting', // Double Parking
+  '9-64-110': 'supporting', // Bus Lane
   '9-64-020': 'emergency',  // Parking in Alley
-  '9-64-180': 'emergency',  // Handicapped Zone
+  '9-64-180': 'emergency',  // Disabled / Handicapped Zone
 };
 
 // Violation type to code mapping
@@ -247,6 +261,10 @@ interface EvidenceBundle {
   } | null;
   sweeperVerification: SweeperVerification | null;
   zoneBoundaryDefense: import('../../../lib/parking-intersection-defense').ZoneBoundaryDefense | null;
+  cameraMalfunction: CameraMalfunctionFinding | null;
+  ctaBusActivity: CtaBusActivityFinding | null;
+  cdotEmergencyPermits: CdotPermitFinding | null;
+  permitZone: PermitZoneFinding | null;
 }
 
 // ─── Levenshtein Distance (for clerical error detection) ────
@@ -491,6 +509,10 @@ async function gatherAllEvidence(
     userFoiaHistory: null,
     sweeperVerification: null,
     zoneBoundaryDefense: null,
+    cameraMalfunction: null,
+    ctaBusActivity: null,
+    cdotEmergencyPermits: null,
+    permitZone: null,
   };
 
   // Zone-boundary defense for fire hydrant / bus stop / no-standing /
@@ -1001,9 +1023,70 @@ async function gatherAllEvidence(
             if (bundle.constructionPermits?.defenseSummary) {
               console.log(`    Construction permits: ${bundle.constructionPermits.totalActivePermits} found, defense-relevant`);
             }
+
+            // 14b. CDOT emergency permits — applies to restriction-based
+            // parking tickets where a temporary/emergency permit could
+            // have suspended the prohibition.
+            if (['parking_prohibited', 'no_standing_time_restricted', 'parking_alley', 'commercial_loading'].includes(ticket.violation_type || '')) {
+              try {
+                bundle.cdotEmergencyPermits = await getCdotEmergencyPermits(loc.lat, loc.lng, ticket.violation_date, 200);
+                if (bundle.cdotEmergencyPermits?.hasActivePermit) {
+                  console.log(`    CDOT emergency permit(s): ${bundle.cdotEmergencyPermits.permitCount} active within 200m`);
+                }
+              } catch (e) { console.error('    CDOT emergency-permit lookup failed:', e); }
+            }
+
+            // 14c. CTA bus activity — only for bus_stop / bus_lane tickets.
+            if (ticket.violation_type === 'bus_stop' || ticket.violation_type === 'bus_lane') {
+              try {
+                bundle.ctaBusActivity = await getCtaBusActivityFinding(loc.lat, loc.lng, ticket.violation_date);
+                if (bundle.ctaBusActivity?.defenseSummary) {
+                  console.log(`    CTA bus activity: ${bundle.ctaBusActivity.defenseSummary.slice(0, 80)}...`);
+                }
+              } catch (e) { console.error('    CTA bus-activity lookup failed:', e); }
+            }
+
+            // 14d. Residential permit zone cross-check — only for
+            // residential_permit tickets. Needs both the ticket location
+            // and the user's mailing address (passed in via profile).
+            if (ticket.violation_type === 'residential_permit') {
+              try {
+                let userLatLng: [number, number] | null = null;
+                if (profile?.mailing_address) {
+                  const userGeoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(profile.mailing_address + ', Chicago, IL')}&key=${apiKey}`;
+                  const userGeoRes = await fetch(userGeoUrl);
+                  const userGeoData = await userGeoRes.json();
+                  const userLoc = userGeoData.results?.[0]?.geometry?.location;
+                  if (userLoc) userLatLng = [userLoc.lat, userLoc.lng];
+                }
+                bundle.permitZone = await getResidentialPermitZoneFinding(userLatLng, [loc.lat, loc.lng]);
+                if (bundle.permitZone?.defenseSummary) {
+                  console.log(`    Permit zone: ${bundle.permitZone.defenseSummary.slice(0, 80)}...`);
+                }
+              } catch (e) { console.error('    Residential permit-zone lookup failed:', e); }
+            }
           }
         }
       } catch (e) { console.error('    Construction permit lookup failed:', e); }
+    })());
+  }
+
+  // 14e. Camera malfunction signal — for red_light / speed_camera tickets,
+  // query Chicago Open Data for violation-volume anomalies on the ticket
+  // date. Doesn't need geocoding — uses the address string directly in
+  // the Open Data SoQL query.
+  if ((ticket.violation_type === 'red_light' || ticket.violation_type === 'speed_camera') && ticket.location && ticket.violation_date) {
+    promises.push((async () => {
+      try {
+        bundle.cameraMalfunction = await getCameraMalfunctionSignal(
+          ticket.violation_type as 'red_light' | 'speed_camera',
+          ticket.location,
+          ticket.violation_date,
+        );
+        if (bundle.cameraMalfunction?.hasAnomaly) {
+          console.log(`    Camera malfunction signal: ${bundle.cameraMalfunction.multipleOfMedian}× median (${bundle.cameraMalfunction.violationsOnTicketDate} vs median ${bundle.cameraMalfunction.medianViolationsPerDay})`);
+        }
+      } catch (e) { console.error('    Camera malfunction lookup failed:', e); }
     })());
   }
 
@@ -1269,21 +1352,43 @@ export function pickMandatoryLeadArgument(
   // priority because § 9-102-050(c) provides a specific statutory exemption
   // for camera violations issued to a stolen plate. It's the #1 winning
   // reason for these ticket types per FOIA hearings data.
+  //
+  // IMPORTANT: only apply the defense when the plate was stolen BEFORE the
+  // violation — if the user reports the plate stolen after the ticket was
+  // issued, the statute doesn't help them and the argument makes the letter
+  // look sloppy.
   const anyTicketEarly = ticket as any;
   if (
     anyTicketEarly.plate_stolen &&
     (ticket.violation_type === 'red_light' || ticket.violation_type === 'speed_camera' || ticket.violation_type === 'missing_plate')
   ) {
-    const rpt = anyTicketEarly.plate_stolen_report_number
-      ? ` and filed a police report (${anyTicketEarly.plate_stolen_report_agency || 'police'}, report # ${anyTicketEarly.plate_stolen_report_number}${anyTicketEarly.plate_stolen_report_date ? `, filed ${anyTicketEarly.plate_stolen_report_date}` : ''})`
-      : '';
-    return {
-      openingParagraph:
-        `I am writing to contest parking citation ${ticketNum} on the grounds that my license plate was stolen, lost, or used without my permission${rpt}. ` +
-        `Under Chicago Municipal Code § 9-102-050(c), automated traffic-enforcement citations issued while a plate is stolen or being used without the registered owner's consent are not attributable to the owner. ` +
-        `The statute provides this as a codified affirmative defense, and City of Chicago administrative hearings dismiss the overwhelming majority of such contests. I respectfully request dismissal on that basis.`,
-      rationale: 'Stolen-plate is a § 9-102-050(c) codified defense and the #1 winning reason for camera tickets per FOIA hearings data.',
-    };
+    const incidentStr = anyTicketEarly.plate_stolen_incident_date || anyTicketEarly.plate_stolen_report_date;
+    const violationDateOnly = ticket.violation_date ? String(ticket.violation_date).slice(0, 10) : null;
+    let incidentBeforeViolation = true; // default to "apply defense" when we don't have an incident date
+    if (incidentStr && violationDateOnly) {
+      try {
+        // Compare as ISO dates — both should be YYYY-MM-DD.
+        incidentBeforeViolation = String(incidentStr).slice(0, 10) <= violationDateOnly;
+      } catch { /* bad date format — fall back to permissive */ }
+    }
+
+    if (incidentBeforeViolation) {
+      const rpt = anyTicketEarly.plate_stolen_report_number
+        ? ` and filed a police report (${anyTicketEarly.plate_stolen_report_agency || 'police'}, report # ${anyTicketEarly.plate_stolen_report_number}${anyTicketEarly.plate_stolen_report_date ? `, filed ${anyTicketEarly.plate_stolen_report_date}` : ''})`
+        : '';
+      const incidentPhrase = incidentStr
+        ? ` The plate was reported stolen/missing on ${String(incidentStr).slice(0, 10)}, which preceded the cited violation date.`
+        : '';
+      return {
+        openingParagraph:
+          `I am writing to contest parking citation ${ticketNum} on the grounds that my license plate was stolen, lost, or used without my permission${rpt}.${incidentPhrase} ` +
+          `Under Chicago Municipal Code § 9-102-050(c), automated traffic-enforcement citations issued while a plate is stolen or being used without the registered owner's consent are not attributable to the owner. ` +
+          `The statute provides this as a codified affirmative defense, and City of Chicago administrative hearings dismiss the overwhelming majority of such contests. I respectfully request dismissal on that basis.`,
+        rationale: 'Stolen-plate is a § 9-102-050(c) codified defense; plate reported stolen on or before the violation date.',
+      };
+    }
+    // else: plate was reported stolen AFTER the ticket, so the defense
+    // doesn't apply. Fall through to next mandatory-lead candidate.
   }
 
   // 1b. Factual Inconsistency — the #1 winning reason in every OTHER
@@ -2168,12 +2273,30 @@ INSTRUCTIONS: Do NOT raise a clerical error defense — the citation correctly i
 The user submitted their own evidence for this ticket contest. This is CRITICAL — it shows they took initiative to provide supporting documentation. Integrate this evidence prominently into the letter.`;
 
     if (ue.text) {
+      // Strip common email-chrome (quoted replies, signature blocks, links)
+      // before quoting the user, so Claude doesn't try to incorporate a
+      // LinkedIn URL or phone number into the legal argument.
+      const cleanedUserText = ue.text
+        .replace(/^>.*$/gm, '') // quoted email lines
+        .replace(/https?:\/\/\S+/g, '') // URLs
+        .replace(/On\s+\w+,\s+\w+\s+\d+,\s+\d{4}\s+at\s+\d+:\d+[^\n]*wrote:[\s\S]*$/, '') // reply preamble
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
       userEvidenceSection += `
 
-USER'S WRITTEN STATEMENT:
-"${ue.text}"
+USER'S WRITTEN STATEMENT (MANDATORY — MUST APPEAR IN LETTER):
+"""
+${cleanedUserText}
+"""
 
-INSTRUCTIONS: The user wrote the above in their own words. Extract any factual claims (dates, locations, circumstances) and incorporate them into the letter as first-person statements. Do NOT quote the email directly — rewrite professionally. If the user describes circumstances (e.g., "the meter was broken," "I had my sticker displayed"), use these as specific factual assertions in the letter.`;
+REQUIREMENT: Your letter MUST include at least one body paragraph that professionally restates the user's factual claim above. This is non-negotiable — the user has told us, in their own words, what happened; the letter must convey that to the hearing officer.
+
+How to incorporate:
+- Extract the specific factual claims (dates, circumstances, what was present/absent, what was working/broken).
+- Rewrite in formal first-person legal prose (NOT a direct quote). Example user text: "the meter was broken" → letter: "The parking meter at the cited location was non-functional at the time of the citation, as detailed in the evidence submitted herewith."
+- If the user attached proof of the claim (receipt, photo), reference the exhibit in the same paragraph.
+- Do NOT ignore or soften the claim. Do NOT add a claim the user did not make. Do NOT include greetings, signatures, URLs, or metadata from their email.`;
     }
 
     if (ue.photoAnalyses.length > 0) {
@@ -2335,8 +2458,22 @@ Generate a professional, formal contest letter that:
    ${evidence.clericalErrorCheck?.hasErrors ? `- CLERICAL ERROR DETECTED: Plate mismatch — ticket says "${evidence.clericalErrorCheck.ticketPlate}" but actual plate is "${evidence.clericalErrorCheck.userPlate}" (STRONGEST — grounds for immediate dismissal)` : evidence.clericalErrorCheck?.checked ? '- Clerical error check: PASSED (ticket plate matches user plate)' : ''}
    ${evidence.userFoiaHistory?.hasData ? `- FOIA user ticket history: ${evidence.userFoiaHistory.totalLifetimeTickets === 0 ? 'ZERO prior tickets (POWERFUL — first-time offender argument)' : evidence.userFoiaHistory.sameViolationTypeCount === 0 ? `First offense for this type (${evidence.userFoiaHistory.totalLifetimeTickets} total lifetime — SUPPORTING argument)` : evidence.userFoiaHistory.totalLifetimeTickets <= 3 ? `Near-clean record (${evidence.userFoiaHistory.totalLifetimeTickets} total — brief mention)` : `${evidence.userFoiaHistory.totalLifetimeTickets} lifetime tickets (use cautiously)`}` : ''}
    ${evidence.zoneBoundaryDefense ? `- ZONE-BOUNDARY DEFENSE (§ ${evidence.zoneBoundaryDefense.cmcSection}, STRONG codified defense): The City rarely produces measurement evidence for ${evidence.zoneBoundaryDefense.statutoryDistanceFt ? `distance-based violations (${evidence.zoneBoundaryDefense.statutoryDistanceFt}-ft radius)` : 'posted-zone violations'}. USE THIS ARGUMENT VERBATIM OR REPHRASED — it invokes § 9-100-060(a)(4): "${evidence.zoneBoundaryDefense.argument.slice(0, 260)}..."` : ''}
-   ${(ticket as any).plate_stolen ? `- STOLEN PLATE DEFENSE (STRONGEST for camera tickets — #1 reason these dismiss per FOIA data): User confirms the plate was stolen / lost / used without permission${(ticket as any).plate_stolen_report_number ? ` and has filed a police report (${(ticket as any).plate_stolen_report_agency || 'police'}, report # ${(ticket as any).plate_stolen_report_number}${(ticket as any).plate_stolen_report_date ? `, filed ${(ticket as any).plate_stolen_report_date}` : ''})` : ''}. Cite Chicago Municipal Code § 9-102-050(c) — the automated violation statute specifically exempts citations issued while a plate is stolen. This is a codified affirmative defense and grounds for immediate dismissal.` : ''}
+   ${(() => {
+     const at = ticket as any;
+     if (!at.plate_stolen) return '';
+     // Only surface the defense when the incident pre-dates the ticket.
+     const incidentStr = at.plate_stolen_incident_date || at.plate_stolen_report_date;
+     const violationDateOnly = ticket.violation_date ? String(ticket.violation_date).slice(0, 10) : null;
+     if (incidentStr && violationDateOnly && String(incidentStr).slice(0, 10) > violationDateOnly) {
+       return ''; // plate was stolen AFTER the ticket — defense doesn't apply
+     }
+     return `- STOLEN PLATE DEFENSE (STRONGEST for camera tickets — #1 reason these dismiss per FOIA data): User confirms the plate was stolen / lost / used without permission${at.plate_stolen_report_number ? ` and has filed a police report (${at.plate_stolen_report_agency || 'police'}, report # ${at.plate_stolen_report_number}${at.plate_stolen_report_date ? `, filed ${at.plate_stolen_report_date}` : ''})` : ''}${incidentStr ? `. Incident date: ${String(incidentStr).slice(0, 10)} (before violation date)` : ''}. Cite Chicago Municipal Code § 9-102-050(c) — the automated violation statute specifically exempts citations issued while a plate is stolen. This is a codified affirmative defense and grounds for immediate dismissal.`;
+   })()}
    ${(ticket as any).parkchicago_transaction_id || (ticket as any).parkchicago_zone ? `- PARKCHICAGO PAYMENT PROOF (STRONGEST for expired meter — proves factual inconsistency): User paid for active parking via the ParkChicago mobile app${(ticket as any).parkchicago_zone ? ` in zone ${(ticket as any).parkchicago_zone}` : ''}${(ticket as any).parkchicago_start_time ? ` from ${(ticket as any).parkchicago_start_time}` : ''}${(ticket as any).parkchicago_end_time ? ` to ${(ticket as any).parkchicago_end_time}` : ''}${typeof (ticket as any).parkchicago_amount_paid === 'number' ? ` ($${(ticket as any).parkchicago_amount_paid.toFixed(2)})` : ''}${(ticket as any).parkchicago_transaction_id ? `, confirmation ${(ticket as any).parkchicago_transaction_id}` : ''}. The receipt proves the vehicle had active paid time at the cited location when the citation was issued, contradicting the "expired meter" allegation on its face.` : ''}
+   ${evidence.cameraMalfunction?.hasAnomaly ? `- CAMERA MALFUNCTION SIGNAL (STRONG for camera tickets): ${evidence.cameraMalfunction.defenseSummary} Independently verifiable via Chicago Open Data — use this as a primary technical-challenge argument alongside any yellow-timing or signal-calibration arguments.` : ''}
+   ${evidence.ctaBusActivity?.defenseSummary ? `- CTA BUS-STOP SERVICE CHECK (for bus_stop / bus_lane): ${evidence.ctaBusActivity.defenseSummary}` : ''}
+   ${evidence.cdotEmergencyPermits?.hasActivePermit ? `- CDOT EMERGENCY/WORK PERMIT (STRONG for restriction violations): ${evidence.cdotEmergencyPermits.defenseSummary}` : ''}
+   ${evidence.permitZone?.defenseSummary ? `- RESIDENTIAL PERMIT ZONE CROSS-CHECK: ${evidence.permitZone.defenseSummary}` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
 7. CLOSING: Request dismissal, thank the reviewer for their consideration, sign with sender name only (Lob adds return address automatically). Do NOT suggest or request an in-person hearing — users want dismissal by mail, not additional time commitments

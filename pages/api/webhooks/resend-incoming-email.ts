@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../../lib/supabase';
 import { verifyWebhook, readRawBody } from '../../../lib/webhook-verification';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
+import { extractDocketNumberFromText } from '../../../lib/ahms-fetcher';
 import {
   isFoiaResponseEmail,
   processFoiaResponse,
@@ -705,6 +706,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       } else {
         console.log(`⚠️  No pending_evidence ticket found for user ${matchedUserId}`);
+      }
+    }
+
+    // ── Docket-number capture from inbound city mail ──
+    // Chicago's acknowledgement / summons letters include a docket
+    // number like "Docket # 7654321". When we see one we stamp it onto
+    // every contest_letter for this user that was recently mailed and
+    // doesn't yet have a docket. The autopilot-track-dockets cron then
+    // polls AHMS daily for hearing + disposition data.
+    if (matchedUserId) {
+      const combined = `${subject || ''}\n${text || ''}`;
+      const docket = extractDocketNumberFromText(combined);
+      if (docket) {
+        const recentCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+        // Cast to any — the generated Supabase types don't yet include
+        // the new docket_number / docket_captured_at / docket_source
+        // columns until we regenerate them from the live schema.
+        const { data: lettersToStamp } = await (supabaseAdmin as any)
+          .from('contest_letters')
+          .select('id')
+          .eq('user_id', matchedUserId)
+          .eq('status', 'sent')
+          .is('docket_number', null)
+          .gte('mailed_at', recentCutoff)
+          .limit(10);
+        if (lettersToStamp && lettersToStamp.length > 0) {
+          await (supabaseAdmin as any)
+            .from('contest_letters')
+            .update({
+              docket_number: docket,
+              docket_captured_at: new Date().toISOString(),
+              docket_source: 'city_email',
+            })
+            .in('id', lettersToStamp.map((l: any) => l.id));
+          console.log(`📇 Captured docket ${docket} on ${lettersToStamp.length} contest letter(s) for user ${matchedUserId}`);
+        }
       }
     }
 

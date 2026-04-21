@@ -129,7 +129,7 @@ async function isTestModeEnabled(): Promise<boolean> {
  */
 function validateLetterContent(
   letterContent: string,
-  ticketData: { ticket_number: string; violation_date: string; violation_type?: string; violation_description?: string }
+  ticketData: { ticket_number: string; violation_date: string; violation_type?: string; violation_description?: string; user_evidence_text?: string | null }
 ): { pass: boolean; issues: string[] } {
   const issues: string[] = [];
 
@@ -219,6 +219,39 @@ function validateLetterContent(
   // AI sometimes outputs system-prompt-like text
   if (contentLower.includes('as an ai') || contentLower.includes('language model') || contentLower.includes('i cannot')) {
     issues.push('Letter contains AI self-reference ("as an AI", "language model", etc.)');
+  }
+
+  // ── 9. User-evidence-text integration check ──
+  // When the user replied with factual claims, the letter MUST incorporate
+  // them. Strip email chrome (signatures, quoted replies, URLs) and extract
+  // content nouns (5+ letters) — if NONE of the user's top content nouns
+  // appear in the letter, the AI silently dropped the user's claim. Flag.
+  if (ticketData.user_evidence_text && ticketData.user_evidence_text.trim()) {
+    const cleaned = ticketData.user_evidence_text
+      .replace(/^>.*$/gm, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/On\s+\w+,\s+\w+\s+\d+,\s+\d{4}\s+at\s+\d+:\d+[^\n]*wrote:[\s\S]*$/, '')
+      .toLowerCase();
+
+    // Stopwords + email-metadata words we don't want to count as "content".
+    const STOP = new Set([
+      'actually','attachment','email','reply','thanks','please','sincerely','regards',
+      'hello','there','that','this','have','would','could','should','where','which',
+      'about','after','before','cannot','check','linkedin','twitter','facebook',
+      'yahoo','gmail','hotmail','phone','cell','https','http',
+    ]);
+    const words = (cleaned.match(/\b[a-z]{5,}\b/g) || []).filter(w => !STOP.has(w));
+    // Dedupe and take up to 6 content nouns.
+    const unique = Array.from(new Set(words)).slice(0, 6);
+    if (unique.length >= 2) {
+      const hits = unique.filter(w => contentLower.includes(w));
+      // Require at least one meaningful user-content-word to appear in the
+      // letter. If zero match, the letter demonstrably doesn't address the
+      // user's claim.
+      if (hits.length === 0) {
+        issues.push(`Letter does not reference any content from the user's written statement (checked: ${unique.join(', ')})`);
+      }
+    }
   }
 
   return { pass: issues.length === 0, issues };
@@ -1417,11 +1450,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // ── QUALITY GATE: Validate letter before mailing ──
       const letterText = letter.letter_content || letter.letter_text;
       if (letterText) {
+        // Pull user_evidence.text so validation can confirm the letter
+        // actually incorporates the user's factual claim.
+        let userEvidenceText: string | null = null;
+        try {
+          const raw = (ticket as any)?.user_evidence;
+          if (raw) {
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (parsed?.text && typeof parsed.text === 'string' && parsed.text.trim()) {
+              userEvidenceText = parsed.text;
+            }
+          }
+        } catch { /* non-fatal */ }
+
         const validation = validateLetterContent(letterText, {
           ticket_number: ticketNumber,
           violation_date: ticket?.violation_date || '',
           violation_type: ticket?.violation_type || '',
           violation_description: ticket?.violation_description || '',
+          user_evidence_text: userEvidenceText,
         });
 
         if (!validation.pass) {

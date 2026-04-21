@@ -145,6 +145,44 @@ const WEATHER_DEFENSE_MAP: Record<string, {
     conditions: ['extreme_weather', 'snow_coverage'],
     template: 'Weather conditions ({condition}) may have obscured no-parking signage.',
   },
+  // Alias — the rest of the codebase uses 'parking_prohibited' as the
+  // canonical violation_type key while this map previously had only
+  // 'no_parking_anytime'. Both point at the same statutory class.
+  'parking_prohibited': {
+    level: 'supporting',
+    conditions: ['extreme_weather', 'snow_coverage'],
+    template: 'Weather conditions ({condition}) may have obscured no-parking signage.',
+  },
+  'disabled_zone': {
+    level: 'contextual',
+    conditions: ['snow_coverage', 'extreme_weather'],
+    template: 'Snow accumulation or severe weather may have obscured the disability-parking zone markings and placard-display requirements.',
+  },
+  'handicapped_zone': {
+    level: 'contextual',
+    conditions: ['snow_coverage', 'extreme_weather'],
+    template: 'Snow accumulation or severe weather may have obscured the disability-parking zone markings.',
+  },
+  'bus_lane': {
+    level: 'contextual',
+    conditions: ['snow_coverage'],
+    template: 'Snow accumulation obscured bus-lane markings and active-hours signage.',
+  },
+  'rush_hour': {
+    level: 'supporting',
+    conditions: ['extreme_weather'],
+    template: 'Adverse weather conditions may have obscured the rush-hour restriction signage.',
+  },
+  'missing_plate': {
+    level: 'contextual',
+    conditions: ['snow_coverage'],
+    template: 'Snow or road-spray accumulation on the license plate may have temporarily obscured the plate from view.',
+  },
+  'snow_plow': {
+    level: 'supporting',
+    conditions: ['snow_coverage'],
+    template: 'Plowed snow accumulation from the cited date altered curb visibility and vehicle position relative to the restriction zone.',
+  },
   // Contextual — weather adds context but isn't a standalone defense
   'double_parking': {
     level: 'contextual',
