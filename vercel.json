@@ -60,6 +60,9 @@
     "pages/api/cron/autopilot-track-dockets.ts": {
       "maxDuration": 120
     },
+    "pages/api/cron/parking-quality-report.ts": {
+      "maxDuration": 120
+    },
     "pages/api/cron/autopilot-send-foia-requests.ts": {
       "maxDuration": 120
     },
@@ -180,6 +183,10 @@
     {
       "path": "/api/cron/autopilot-track-dockets",
       "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/parking-quality-report",
+      "schedule": "0 5,17 * * *"
     },
     {
       "path": "/api/cron/autopilot-send-foia-requests",
