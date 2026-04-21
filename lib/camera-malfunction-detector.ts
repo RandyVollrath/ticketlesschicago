@@ -39,6 +39,12 @@ export interface CameraMalfunctionFinding {
   windowEnd: string;
   rowCount: number;
   defenseSummary: string | null;
+  /** Reason this finding is inconclusive, if applicable. */
+  skipReason?:
+    | 'data_not_yet_published'  // ticket is too fresh — city hasn't backfilled yet
+    | 'no_rows_for_camera'      // camera address didn't match any rows
+    | 'insufficient_history'    // too few days to compute a stable median
+    | 'median_zero';
 }
 
 const RED_LIGHT_DATASET = 'https://data.cityofchicago.org/resource/spqx-js37.json';
@@ -64,6 +70,41 @@ export async function getCameraMalfunctionSignal(
 ): Promise<CameraMalfunctionFinding | null> {
   if (!cameraIdentifier || !violationDate) return null;
   const dataset = violationType === 'speed_camera' ? SPEED_CAMERA_DATASET : RED_LIGHT_DATASET;
+
+  // First — check dataset freshness. The city publishes these datasets
+  // on a delay (currently ~14 days for red_light, ~40 days for
+  // speed_camera). If the ticket date is more recent than the latest
+  // published data, we can't draw any conclusion yet — return a
+  // "data_not_yet_published" sentinel so the caller knows to skip
+  // silently rather than (a) claim no anomaly and (b) quietly drop the
+  // defense forever.
+  try {
+    const maxUrl = new URL(dataset);
+    maxUrl.searchParams.set('$select', 'max(violation_date)');
+    const maxResp = await fetch(maxUrl.toString(), {
+      headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (maxResp.ok) {
+      const [row] = (await maxResp.json()) as Array<{ max_violation_date?: string }>;
+      const latest = row?.max_violation_date?.slice(0, 10);
+      if (latest && violationDate > latest) {
+        return {
+          hasAnomaly: false,
+          cameraIdentifier,
+          violationDate,
+          violationsOnTicketDate: 0,
+          medianViolationsPerDay: 0,
+          multipleOfMedian: 0,
+          windowStart: '',
+          windowEnd: latest,
+          rowCount: 0,
+          defenseSummary: null,
+          skipReason: 'data_not_yet_published',
+        };
+      }
+    }
+  } catch { /* freshness check is best-effort — fall through */ }
 
   // 30-day window centred on the violation date.
   const vDate = new Date(violationDate + 'T00:00:00Z');

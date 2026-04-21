@@ -12,7 +12,6 @@ import { verifySweeperVisit, type SweeperVerification } from '../../../lib/sweep
 import { getZoneBoundaryDefense } from '../../../lib/parking-intersection-defense';
 import { getCameraMalfunctionSignal, type CameraMalfunctionFinding } from '../../../lib/camera-malfunction-detector';
 import { getCtaBusActivityFinding, type CtaBusActivityFinding } from '../../../lib/cta-bus-activity';
-import { getCdotEmergencyPermits, type CdotPermitFinding } from '../../../lib/cdot-emergency-permits';
 import { getResidentialPermitZoneFinding, type PermitZoneFinding } from '../../../lib/residential-permit-zone-check';
 import {
   lookupParkingEvidence,
@@ -263,7 +262,6 @@ interface EvidenceBundle {
   zoneBoundaryDefense: import('../../../lib/parking-intersection-defense').ZoneBoundaryDefense | null;
   cameraMalfunction: CameraMalfunctionFinding | null;
   ctaBusActivity: CtaBusActivityFinding | null;
-  cdotEmergencyPermits: CdotPermitFinding | null;
   permitZone: PermitZoneFinding | null;
 }
 
@@ -511,7 +509,6 @@ async function gatherAllEvidence(
     zoneBoundaryDefense: null,
     cameraMalfunction: null,
     ctaBusActivity: null,
-    cdotEmergencyPermits: null,
     permitZone: null,
   };
 
@@ -1024,19 +1021,7 @@ async function gatherAllEvidence(
               console.log(`    Construction permits: ${bundle.constructionPermits.totalActivePermits} found, defense-relevant`);
             }
 
-            // 14b. CDOT emergency permits — applies to restriction-based
-            // parking tickets where a temporary/emergency permit could
-            // have suspended the prohibition.
-            if (['parking_prohibited', 'no_standing_time_restricted', 'parking_alley', 'commercial_loading'].includes(ticket.violation_type || '')) {
-              try {
-                bundle.cdotEmergencyPermits = await getCdotEmergencyPermits(loc.lat, loc.lng, ticket.violation_date, 200);
-                if (bundle.cdotEmergencyPermits?.hasActivePermit) {
-                  console.log(`    CDOT emergency permit(s): ${bundle.cdotEmergencyPermits.permitCount} active within 200m`);
-                }
-              } catch (e) { console.error('    CDOT emergency-permit lookup failed:', e); }
-            }
-
-            // 14c. CTA bus activity — only for bus_stop / bus_lane tickets.
+            // 14b. CTA bus activity — only for bus_stop / bus_lane tickets.
             if (ticket.violation_type === 'bus_stop' || ticket.violation_type === 'bus_lane') {
               try {
                 bundle.ctaBusActivity = await getCtaBusActivityFinding(loc.lat, loc.lng, ticket.violation_date);
@@ -1046,20 +1031,16 @@ async function gatherAllEvidence(
               } catch (e) { console.error('    CTA bus-activity lookup failed:', e); }
             }
 
-            // 14d. Residential permit zone cross-check — only for
-            // residential_permit tickets. Needs both the ticket location
-            // and the user's mailing address (passed in via profile).
+            // 14c. Residential permit zone cross-check — only for
+            // residential_permit tickets. Uses string addresses (not
+            // coordinates) because the u9xt-hiju dataset is address-
+            // range-based, not polygon-based.
             if (ticket.violation_type === 'residential_permit') {
               try {
-                let userLatLng: [number, number] | null = null;
-                if (profile?.mailing_address) {
-                  const userGeoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(profile.mailing_address + ', Chicago, IL')}&key=${apiKey}`;
-                  const userGeoRes = await fetch(userGeoUrl);
-                  const userGeoData = await userGeoRes.json();
-                  const userLoc = userGeoData.results?.[0]?.geometry?.location;
-                  if (userLoc) userLatLng = [userLoc.lat, userLoc.lng];
-                }
-                bundle.permitZone = await getResidentialPermitZoneFinding(userLatLng, [loc.lat, loc.lng]);
+                bundle.permitZone = await getResidentialPermitZoneFinding(
+                  profile?.mailing_address || null,
+                  ticket.location || null,
+                );
                 if (bundle.permitZone?.defenseSummary) {
                   console.log(`    Permit zone: ${bundle.permitZone.defenseSummary.slice(0, 80)}...`);
                 }
@@ -1071,7 +1052,7 @@ async function gatherAllEvidence(
     })());
   }
 
-  // 14e. Camera malfunction signal — for red_light / speed_camera tickets,
+  // 14d. Camera malfunction signal — for red_light / speed_camera tickets,
   // query Chicago Open Data for violation-volume anomalies on the ticket
   // date. Doesn't need geocoding — uses the address string directly in
   // the Open Data SoQL query.
@@ -2472,7 +2453,6 @@ Generate a professional, formal contest letter that:
    ${(ticket as any).parkchicago_transaction_id || (ticket as any).parkchicago_zone ? `- PARKCHICAGO PAYMENT PROOF (STRONGEST for expired meter — proves factual inconsistency): User paid for active parking via the ParkChicago mobile app${(ticket as any).parkchicago_zone ? ` in zone ${(ticket as any).parkchicago_zone}` : ''}${(ticket as any).parkchicago_start_time ? ` from ${(ticket as any).parkchicago_start_time}` : ''}${(ticket as any).parkchicago_end_time ? ` to ${(ticket as any).parkchicago_end_time}` : ''}${typeof (ticket as any).parkchicago_amount_paid === 'number' ? ` ($${(ticket as any).parkchicago_amount_paid.toFixed(2)})` : ''}${(ticket as any).parkchicago_transaction_id ? `, confirmation ${(ticket as any).parkchicago_transaction_id}` : ''}. The receipt proves the vehicle had active paid time at the cited location when the citation was issued, contradicting the "expired meter" allegation on its face.` : ''}
    ${evidence.cameraMalfunction?.hasAnomaly ? `- CAMERA MALFUNCTION SIGNAL (STRONG for camera tickets): ${evidence.cameraMalfunction.defenseSummary} Independently verifiable via Chicago Open Data — use this as a primary technical-challenge argument alongside any yellow-timing or signal-calibration arguments.` : ''}
    ${evidence.ctaBusActivity?.defenseSummary ? `- CTA BUS-STOP SERVICE CHECK (for bus_stop / bus_lane): ${evidence.ctaBusActivity.defenseSummary}` : ''}
-   ${evidence.cdotEmergencyPermits?.hasActivePermit ? `- CDOT EMERGENCY/WORK PERMIT (STRONG for restriction violations): ${evidence.cdotEmergencyPermits.defenseSummary}` : ''}
    ${evidence.permitZone?.defenseSummary ? `- RESIDENTIAL PERMIT ZONE CROSS-CHECK: ${evidence.permitZone.defenseSummary}` : ''}
 5. TONE: Professional, confident, respectful. Write like an experienced attorney, not a template
 6. LENGTH: Keep the letter body to ONE page (Lob printing requirement). Be concise but thorough
