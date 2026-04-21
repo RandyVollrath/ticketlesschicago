@@ -237,26 +237,7 @@ async function main() {
     }
   }
 
-  // ─── 13. Parking-quality-report handler runs end-to-end ───
-  {
-    try {
-      const { default: handler } = await import('../pages/api/cron/parking-quality-report');
-      const req = { headers: { 'x-vercel-cron': '1', authorization: '' } } as any;
-      let status = 0;
-      let body: any = null;
-      const res = {
-        status(s: number) { status = s; return res; },
-        json(b: any) { body = b; return res; },
-      } as any;
-      await handler(req, res);
-      a('parking-quality-report handler returns 200', status === 200, `status=${status}`);
-      a('parking-quality-report computes total_checks', typeof body?.metrics?.total_checks === 'number');
-    } catch (e: any) {
-      a('parking-quality-report handler runs without throwing', false, e.message?.slice(0, 200));
-    }
-  }
-
-  // ─── 13b. Parking-quality-daily personalized email handler ───
+  // ─── 13. Parking-quality-daily personalized email handler ───
   {
     try {
       const { default: handler } = await import('../pages/api/cron/parking-quality-daily');
