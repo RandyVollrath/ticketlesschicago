@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../lib/supabase';
 import { notificationService } from '../../lib/notifications';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { quickEmail, p, section, button, bulletList } from '../../lib/email-template';
+import { verifyCronAuth } from '../../lib/auth-middleware';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -10,12 +11,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Auth: require CRON_SECRET to prevent unauthorized mass email sends
-  const authHeader = req.headers.authorization;
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
+  if (!process.env.CRON_SECRET) {
     return res.status(500).json({ error: 'Server misconfiguration' });
   }
-  if (authHeader !== `Bearer ${secret}`) {
+  if (!verifyCronAuth(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

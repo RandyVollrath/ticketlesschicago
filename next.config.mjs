@@ -19,6 +19,23 @@ const nextConfig = {
       { source: '/oauth-return', destination: '/auth/callback' },
     ];
   },
+  async headers() {
+    const securityHeaders = [
+      // Prevent MIME sniffing so a misuploaded file can't be served as HTML/JS.
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      // Clickjacking protection.
+      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+      // Don't leak full URLs (which may carry mobile_access_token) to 3P hosts.
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      // Force HTTPS for a year including subdomains.
+      { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+      // Drop permissions we don't use.
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self)' },
+    ];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+    ];
+  },
 };
 
 const sentryWebpackPluginOptions = {

@@ -54,8 +54,9 @@ export default async function handler(
       'last_name',
       'phone', // Frontend sends 'phone', we map to 'phone_number'
       'phone_number', // Direct phone_number updates
-      'email_verified',
-      'phone_verified',
+      // NOTE: email_verified and phone_verified are deliberately NOT user-settable.
+      // They must only be flipped by the verification flow server-side; otherwise
+      // a user can skip verification and spoof "verified" state for gating logic.
       
       // Vehicle information
       'license_plate',

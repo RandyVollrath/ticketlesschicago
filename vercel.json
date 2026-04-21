@@ -63,6 +63,9 @@
     "pages/api/cron/parking-quality-report.ts": {
       "maxDuration": 120
     },
+    "pages/api/cron/parking-quality-daily.ts": {
+      "maxDuration": 120
+    },
     "pages/api/cron/autopilot-send-foia-requests.ts": {
       "maxDuration": 120
     },
@@ -189,6 +192,10 @@
       "schedule": "0 5,17 * * *"
     },
     {
+      "path": "/api/cron/parking-quality-daily",
+      "schedule": "0 13 * * *"
+    },
+    {
       "path": "/api/cron/autopilot-send-foia-requests",
       "schedule": "30 15 * * *"
     },
@@ -282,6 +289,6 @@
     }
   ],
   "github": {
-    "deploymentProtection": false
+    "deploymentProtection": true
   }
 }

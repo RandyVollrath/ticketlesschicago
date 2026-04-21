@@ -42,10 +42,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const email = user.user.email!;
 
-    // Update user profile in users table with all form data
+    // Update user profile in users table.
+    // Billing/entitlement fields (subscription_status, spending_limit,
+    // concierge_service, city_stickers_only) are NOT set from client input —
+    // those are Stripe-webhook controlled.
     const { error: updateError } = await supabaseAdmin
       .from('users')
-      .update({ 
+      .update({
         phone: formData.phone || null,
         first_name: formData.name ? formData.name.split(' ')[0] : null,
         last_name: formData.name ? formData.name.split(' ').slice(1).join(' ') : null,
@@ -62,9 +65,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mailing_city: formData.mailingCity,
         mailing_state: formData.mailingState,
         mailing_zip: formData.mailingZip,
-        concierge_service: formData.conciergeService || false,
-        city_stickers_only: formData.cityStickersOnly || false,
-        spending_limit: formData.spendingLimit || 500,
         notification_preferences: {
           email: formData.emailNotifications !== false,
           sms: formData.smsNotifications || false,
@@ -79,7 +79,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Error updating user profile:', updateError);
     }
 
-    // Create vehicle record
+    // Create vehicle record. subscription_status stays 'free' here —
+    // Stripe webhook is the only writer that sets it to 'active'.
     const vehicleData = {
       user_id: userId,
       license_plate: formData.licensePlate,
@@ -91,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       mailing_state: formData.mailingState || 'IL',
       mailing_zip: formData.mailingZip || formData.zipCode,
       subscription_id: 'oauth_signup',
-      subscription_status: 'active'
+      subscription_status: 'free'
     };
 
     console.log('Creating vehicle with data:', vehicleData);
