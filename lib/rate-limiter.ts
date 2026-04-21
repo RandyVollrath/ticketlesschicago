@@ -61,23 +61,36 @@ interface RateLimitResult {
 }
 
 /**
- * Get client IP from Next.js API request headers
+ * Get the real client IP.
+ *
+ * On Vercel, x-vercel-forwarded-for is set by the Vercel edge and can be
+ * trusted. x-forwarded-for is client-spoofable at the *first* position —
+ * Vercel appends the real IP at the *end* of the list — so if we fall back to
+ * x-forwarded-for we take the LAST entry, not the first.
+ *
+ * Taking the first entry (prior behavior) let an attacker bypass per-IP rate
+ * limits by rotating the leading x-forwarded-for value they sent.
  */
 export function getClientIP(req: NextApiRequest): string {
-  // Check x-forwarded-for (standard for proxies/load balancers)
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+  const vercelFwd = req.headers['x-vercel-forwarded-for'];
+  if (vercelFwd) {
+    const ip = Array.isArray(vercelFwd) ? vercelFwd[0] : vercelFwd.split(',')[0];
     return ip.trim();
   }
 
-  // Check x-real-ip
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    const raw = Array.isArray(forwarded) ? forwarded.join(',') : forwarded;
+    const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+    // Trust the last (proxy-appended) entry, not the first (client-supplied).
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
+
   const realIp = req.headers['x-real-ip'];
   if (realIp) {
     return Array.isArray(realIp) ? realIp[0] : realIp;
   }
 
-  // Fallback to socket address
   return req.socket?.remoteAddress || 'unknown';
 }
 

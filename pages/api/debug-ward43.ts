@@ -1,19 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { verifyCronAuth } from '../../lib/auth-middleware';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Block in production — debug endpoints should not be publicly accessible
-  if (process.env.NODE_ENV === 'production') {
-    const authHeader = req.headers.authorization;
-    const secret = process.env.CRON_SECRET;
-    if (!secret || authHeader !== `Bearer ${secret}`) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  // Always require CRON_SECRET via timing-safe compare. Preview deployments
+  // are non-production but still publicly reachable.
+  if (!verifyCronAuth(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {

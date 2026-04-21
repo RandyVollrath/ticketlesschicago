@@ -1,19 +1,30 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import {
+  checkRateLimit,
+  recordRateLimitAction,
+  getClientIP,
+} from '../../../lib/rate-limiter';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Restrict CORS to same-origin only (no wildcard)
+  // Reject cross-origin requests outright rather than merely omitting the
+  // Allow-Origin header. Prior version processed any origin, only browsers
+  // couldn't read the response.
   const origin = req.headers.origin;
   const allowedOrigins = [
     process.env.NEXT_PUBLIC_BASE_URL || 'https://autopilotamerica.com',
     'https://www.autopilotamerica.com',
     'http://localhost:3000',
   ];
-  if (origin && allowedOrigins.includes(origin)) {
+  const originOk = !origin || allowedOrigins.includes(origin);
+  if (origin && !originOk) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
+  if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -25,6 +36,14 @@ export default async function handler(
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limit per IP — limits brute-force token guessing against emails.
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(ip, 'api');
+  if (!rl.allowed) {
+    return res.status(429).json({ error: 'Too many requests' });
+  }
+  await recordRateLimitAction(ip, 'api');
 
   const { email, token } = req.query;
 

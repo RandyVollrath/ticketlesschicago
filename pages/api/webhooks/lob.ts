@@ -112,10 +112,12 @@ function verifyLobSignature(payload: string, signature: string | undefined): boo
     .update(payload)
     .digest('hex');
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  // timingSafeEqual throws on length mismatch — guard first so an attacker
+  // with a wrong-length signature gets a clean false instead of a 500.
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSignature);
+  if (sigBuf.length !== expBuf.length) return false;
+  return crypto.timingSafeEqual(sigBuf, expBuf);
 }
 
 /**

@@ -86,13 +86,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('✅ Updated user metadata in Autopilot America');
     }
 
-    // Validate redirect URL - only allow safe relative paths
-    let redirectUrl = '/oauth-return'; // Safe default
+    // Validate redirect URL — allow only whitelisted relative paths.
+    // Prior version accepted any relative path, which let OAuth land the user
+    // on any page of the app regardless of whether the flow was supposed to
+    // reach it. Keep this allowlist in sync with set-redirect.ts.
+    let redirectUrl = '/oauth-return';
+    const ALLOWED_REDIRECT_PREFIXES = [
+      '/admin',
+      '/notification-preferences',
+      '/settings',
+      '/profile',
+      '/my-contests',
+      '/contest-ticket',
+      '/submit-ticket',
+      '/protection',
+      '/attorney-dashboard',
+      '/remitter-portal',
+      '/oauth-return',
+      '/dashboard',
+    ];
     const requestedRedirect = req.query.redirect;
     if (typeof requestedRedirect === 'string') {
-      // Only allow relative paths starting with /
-      // Block protocol-relative URLs (//evil.com) and absolute URLs
-      if (requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//')) {
+      const isSafeRelative =
+        requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//');
+      const isAllowedPath = ALLOWED_REDIRECT_PREFIXES.some(p =>
+        requestedRedirect === p ||
+        requestedRedirect.startsWith(`${p}/`) ||
+        requestedRedirect.startsWith(`${p}?`) ||
+        requestedRedirect.startsWith(`${p}#`),
+      );
+      if (isSafeRelative && isAllowedPath) {
         redirectUrl = requestedRedirect;
       }
     }

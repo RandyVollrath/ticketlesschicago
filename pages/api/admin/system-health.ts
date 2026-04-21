@@ -1,22 +1,19 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { isAdminUser } from '../../../lib/auth-middleware';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const ADMIN_EMAILS = [
-  'randy@autopilotamerica.com',
-  'admin@autopilotamerica.com',
-  'randyvollrath@gmail.com',
-  'carenvollrath@gmail.com',
-];
-
 /**
  * Verify the caller is an authenticated admin.
- * Expects Authorization: Bearer <supabase_access_token>
+ * Expects Authorization: Bearer <supabase_access_token>.
+ * Delegates to the central isAdminUser helper so the check matches every
+ * other admin surface (was previously a hardcoded email list that ignored
+ * the user_profiles.is_admin column).
  */
 async function verifyAdmin(req: NextApiRequest): Promise<{ authorized: boolean; error?: string }> {
   const authHeader = req.headers.authorization;
@@ -25,7 +22,10 @@ async function verifyAdmin(req: NextApiRequest): Promise<{ authorized: boolean; 
   }
   const token = authHeader.replace('Bearer ', '');
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user || !ADMIN_EMAILS.includes(user.email || '')) {
+  if (authError || !user) {
+    return { authorized: false, error: 'Not authorized' };
+  }
+  if (!(await isAdminUser(user.id, user.email))) {
     return { authorized: false, error: 'Not authorized' };
   }
   return { authorized: true };

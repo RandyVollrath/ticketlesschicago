@@ -4,6 +4,13 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        {/*
+          Belt-and-suspenders on the server-side Referrer-Policy header.
+          If mobile_access_token / mobile_refresh_token ever reach a URL
+          (legacy mobile WebView behavior), this prevents leaking them via
+          Referer to any cross-origin asset the page loads.
+        */}
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
         {/* Google Fonts: Space Grotesk + Inter */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
