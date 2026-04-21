@@ -484,10 +484,13 @@ export default function LandingPage() {
 
       {/* Personalize the money question — dual CTAs */}
       <section style={{
-        padding: '60px 5% 20px',
-        maxWidth: '1200px',
-        margin: '0 auto',
+        padding: '60px 5%',
+        backgroundColor: '#F8FAFC',
+        borderTop: `1px solid ${COLORS.border}`,
+        borderBottom: `1px solid ${COLORS.border}`,
+        marginTop: '40px',
       }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <h2 style={{
           fontFamily: FONTS.heading,
           fontSize: 'clamp(24px, 3.5vw, 32px)',
@@ -613,6 +616,7 @@ export default function LandingPage() {
             </div>
           </Link>
         </div>
+      </div>
       </section>
 
       {/* Data Section */}
@@ -748,7 +752,7 @@ export default function LandingPage() {
                 'Code-specific contest letters, printed & mailed',
                 'First Dismissal Guarantee',
                 'Street cleaning & snow ban alerts',
-                'Mobile app for Android (iOS coming soon)',
+                'Mobile app for iOS and Android',
                 'Real-time parking detection & smart alerts',
                 'Full dashboard & ticket tracking',
               ].map((item, i) => (

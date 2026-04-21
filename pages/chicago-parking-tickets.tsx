@@ -523,7 +523,7 @@ export default function ChicagoParkingTickets() {
         <div style={{ display: 'grid', gap: '20px', margin: '32px 0' }}>
           {[
             { icon: '🔔', title: 'Street Cleaning Alerts', desc: 'Get notified the day before the sweeper hits your block. One alert = one $60 ticket avoided.' },
-            { icon: '📱', title: 'Mobile App', desc: 'Android app included (iOS coming soon). Real-time parking detection, smart alerts, and instant ticket notifications on your phone.' },
+            { icon: '📱', title: 'Mobile App', desc: 'iOS and Android apps included. Real-time parking detection, smart alerts, and instant ticket notifications on your phone.' },
             { icon: '❄️', title: 'Snow & Winter Ban Alerts', desc: 'Snow route and overnight parking ban warnings. Avoid $60 tickets and towing.' },
             { icon: '🔎', title: 'Plate Monitoring', desc: 'We check your plate twice a week against the city database. New ticket? We catch it within days.' },
             { icon: '✉️', title: 'Auto-Contest Letters', desc: 'When we find a ticket, we generate a code-specific defense letter and mail it to the city before the deadline.' },

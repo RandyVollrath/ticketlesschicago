@@ -337,7 +337,7 @@ async function sendSoftSellEmail(email: string, firstName?: string) {
             '<strong>Twice-weekly plate monitoring</strong> — we catch tickets within days, not months',
             '<strong>Automatic contest letters</strong> — custom legal defense for each violation, mailed for you',
             '<strong>All your parking alerts</strong> — street cleaning and snow ban warnings before they hit',
-            '<strong>Mobile app for Android</strong> — real-time parking detection and smart alerts on your phone (iOS coming soon)',
+            '<strong>Mobile app for iOS and Android</strong> — real-time parking detection and smart alerts on your phone',
             '<strong>First Dismissal Guarantee</strong> — if your first contest isn\'t dismissed, you get your money back',
           ])),
           p("$99 is less than two parking tickets. One dismissed ticket pays for most of the year.", { bold: true }),
