@@ -16,9 +16,15 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 import { diagnose, type DiagnosisReport } from '../../../lib/parking-quality-diagnose';
 import { sendEmailWithRetry } from '../../../lib/resend-with-retry';
 import { Resend } from 'resend';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export const config = { maxDuration: 120 };
 
@@ -192,6 +198,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const report = await diagnose(24);
     const ai = await askClaudeForAnalysis(report);
+
+    // Persist a snapshot row to parking_quality_reports so we preserve the
+    // trend timeline that the (now-deleted) twice-daily cron used to write.
+    // The schema wants flat metric fields; compute them from the
+    // DiagnosisReport failure_counts + per-user aggregates.
+    try {
+      const c = report.overall_failure_counts;
+      const allFeedback = report.per_user.reduce((sum, u) => sum + u.user_feedback_rows, 0);
+      const streetCorrect = report.per_user.reduce(
+        (sum, u) => sum + (u.failure_counts.user_said_street_wrong === 0 ? u.user_feedback_rows : 0),
+        0,
+      );
+      const streetWrong = c.user_said_street_wrong;
+      const sideWrong = c.user_said_side_wrong;
+      const snapshot = {
+        window_start: report.window_start,
+        window_end: report.window_end,
+        total_checks: report.total_rows,
+        // DiagnosisReport doesn't separate auto/manual yet — store totals.
+        auto_checks: report.total_rows,
+        manual_checks: 0,
+        avg_raw_accuracy_m: null as number | null,
+        pct_no_snap: report.total_rows
+          ? Math.round((c.no_snap / report.total_rows) * 1000) / 10
+          : 0,
+        pct_snap_over_20m: report.total_rows
+          ? Math.round((c.snap_far / report.total_rows) * 1000) / 10
+          : 0,
+        pct_nominatim_overrode: report.total_rows
+          ? Math.round((c.nominatim_overrode / report.total_rows) * 1000) / 10
+          : 0,
+        pct_walkaway_guard_fired: report.total_rows
+          ? Math.round((c.walkaway_guard_fired / report.total_rows) * 1000) / 10
+          : 0,
+        pct_parity_forced: report.total_rows
+          ? Math.round((c.parity_forced / report.total_rows) * 1000) / 10
+          : 0,
+        user_feedback_count: allFeedback,
+        street_correct_count: streetCorrect,
+        street_wrong_count: streetWrong,
+        side_wrong_count: sideWrong,
+        autolabel_mismatch_count: c.autolabel_disagreed,
+        raw_metrics: {
+          overall_failure_counts: report.overall_failure_counts,
+          top_signatures: report.top_signatures,
+          ai_headline: ai?.headline || null,
+        },
+      };
+      const { error: insertErr } = await supabaseAdmin
+        .from('parking_quality_reports')
+        .insert(snapshot);
+      if (insertErr) {
+        console.error('parking-quality-daily snapshot insert failed:', insertErr.message);
+      }
+    } catch (snapErr: any) {
+      console.error('parking-quality-daily snapshot build failed:', snapErr?.message);
+    }
 
     const html = renderHtml(report, ai);
     const subject = ai?.headline
