@@ -703,8 +703,10 @@ class BackgroundTaskServiceClass {
               // at where the CAR is, not where the user walked to.
               // Prefer averaged coordinates (multiple low-speed GPS fixes) when available
               // for better accuracy near intersections. Include heading for street disambiguation.
-              let parkingCoords: { latitude: number; longitude: number; accuracy?: number; heading?: number; compassHeading?: number; compassConfidence?: number } | undefined;
-              if (event.averagedLatitude && event.averagedLongitude && event.averagedFixCount >= 3) {
+              // Include driveTrajectory (last ~10 moving fixes) so the server can run
+              // turn-aware street disambiguation even when GPS heading is stale.
+              let parkingCoords: { latitude: number; longitude: number; accuracy?: number; heading?: number; compassHeading?: number; compassConfidence?: number; driveTrajectory?: Array<{latitude: number; longitude: number; heading: number; speed: number}> } | undefined;
+              if (event.averagedLatitude && event.averagedLongitude && (event.averagedFixCount ?? 0) >= 3) {
                 // Use averaged GPS position (more accurate than single fix)
                 parkingCoords = {
                   latitude: event.averagedLatitude,
@@ -713,8 +715,9 @@ class BackgroundTaskServiceClass {
                   heading: event.heading,
                   compassHeading: event.compassHeading,
                   compassConfidence: event.compassConfidence,
+                  driveTrajectory: event.driveTrajectory,
                 };
-                log.info(`Using averaged GPS (${event.averagedFixCount} fixes) for parking location`);
+                log.info(`Using averaged GPS (${event.averagedFixCount} fixes) for parking location; trajectory=${event.driveTrajectory?.length ?? 0} fixes`);
               } else if (
                 event.latitude != null && event.longitude != null &&
                 event.latitude !== 0 && event.longitude !== 0 &&
@@ -732,6 +735,7 @@ class BackgroundTaskServiceClass {
                   heading: event.heading,
                   compassHeading: event.compassHeading,
                   compassConfidence: event.compassConfidence,
+                  driveTrajectory: event.driveTrajectory,
                 };
               }
 
@@ -1576,6 +1580,9 @@ class BackgroundTaskServiceClass {
     longitude: number;
     accuracy?: number;
     heading?: number;
+    compassHeading?: number;
+    compassConfidence?: number;
+    driveTrajectory?: Array<{latitude: number; longitude: number; heading: number; speed: number}>;
   }, nativeTimestamp?: number): Promise<void> {
     const detectionMeta = this.pendingNativeDetectionMeta;
     void this.captureIosHealthSnapshot('handleCarDisconnection', { force: true, includeLogTail: true });
@@ -1743,6 +1750,7 @@ class BackgroundTaskServiceClass {
     heading?: number;
     compassHeading?: number;
     compassConfidence?: number;
+    driveTrajectory?: Array<{latitude: number; longitude: number; heading: number; speed: number}>;
   }, isRealParkingEvent: boolean = true, nativeTimestamp?: number, persistParkingEvent: boolean = true, detectionMeta?: {
     detectionSource?: string;
     locationSource?: string;
@@ -1918,17 +1926,33 @@ class BackgroundTaskServiceClass {
       // Also attach the recent driving GPS trajectory — the self-correction signal.
       // When the stop coords are close to multiple streets, the server can see that
       // all the last-minute-of-driving points were on Wolcott's centerline, not
-      // Lawrence's, and pick Wolcott. Buffer is cleared on DRIVING → PARKED, so
-      // we capture it here before any reset.
+      // Lawrence's, and pick Wolcott.
+      //
+      // Two sources for the trajectory:
+      //   1. Preset coords (iOS native) — BackgroundLocationModule.swift maintains
+      //      its own ring buffer since it's the one running continuous GPS on iOS.
+      //      Always authoritative when present.
+      //   2. JS-side drivingGpsBuffer — populated by Android watchPosition, and
+      //      previously the only source for iOS (via camera-alerts listener, which
+      //      only ran when camera alerts were enabled). Fallback when the native
+      //      payload didn't include one.
       const now = Date.now();
-      const freshTrajectory = this.drivingGpsBuffer
-        .filter((p) => now - p.timestamp <= this.DRIVING_GPS_BUFFER_MAX_AGE_MS)
-        .map((p) => ({
-          latitude: p.latitude,
-          longitude: p.longitude,
-          heading: p.heading,
-          speed: p.speed,
-        }));
+      const nativeTrajectory = (presetCoords as any)?.driveTrajectory;
+      let freshTrajectory: Array<{latitude: number; longitude: number; heading: number; speed: number}>;
+      if (Array.isArray(nativeTrajectory) && nativeTrajectory.length > 0) {
+        freshTrajectory = nativeTrajectory;
+        log.info(`Drive trajectory from native (iOS): ${freshTrajectory.length} fixes`);
+      } else {
+        freshTrajectory = this.drivingGpsBuffer
+          .filter((p) => now - p.timestamp <= this.DRIVING_GPS_BUFFER_MAX_AGE_MS)
+          .map((p) => ({
+            latitude: p.latitude,
+            longitude: p.longitude,
+            heading: p.heading,
+            speed: p.speed,
+          }));
+        log.info(`Drive trajectory from JS buffer: ${freshTrajectory.length} fixes`);
+      }
       const coordsWithMeta: any = {
         ...coords,
         locationSource: detectionMeta?.locationSource,

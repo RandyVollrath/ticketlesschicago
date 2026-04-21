@@ -41,6 +41,24 @@ export interface ParkingDetectedEvent {
   detectionSource?: string;
   locationSource?: 'stop_start' | 'last_driving' | 'last_high_speed' | 'current_fallback' | 'current_refined' | 'stale_retry_candidate' | 'short_drive_recovery' | 'recovery_accurate_gps';
   driftFromParkingMeters?: number;  // How far user walked from car before confirmation
+  /** Last ~10 GPS fixes captured while the car was moving (speed > 0.3 m/s).
+   *  Populated by the iOS native module and sent to the server for
+   *  turn-aware street disambiguation (see check-parking.ts trajectory vote). */
+  driveTrajectory?: Array<{
+    latitude: number;
+    longitude: number;
+    heading: number;   // GPS course in degrees, -1 if invalid
+    speed: number;     // m/s
+  }>;
+  /** Compass heading (magnetometer) captured at park finalization, 0-360°. */
+  compassHeading?: number;
+  /** Compass confidence — std deviation in degrees. < 40 is trustworthy. */
+  compassConfidence?: number;
+  /** Averaged coordinates from multiple low-speed fixes near the stop. */
+  averagedLatitude?: number;
+  averagedLongitude?: number;
+  averagedAccuracy?: number;
+  averagedFixCount?: number;
 }
 
 export interface LocationUpdateEvent {
@@ -319,10 +337,21 @@ class BackgroundLocationServiceClass {
           latitude: pendingEvent.latitude,
           longitude: pendingEvent.longitude,
           accuracy: pendingEvent.accuracy,
+          heading: pendingEvent.heading,
           drivingDurationSec: pendingEvent.drivingDurationSec,
           detectionSource: pendingEvent.detectionSource,
           locationSource: pendingEvent.locationSource,
           driftFromParkingMeters: pendingEvent.driftFromParkingMeters,
+          // Preserve driveTrajectory + compass + averaged coords from the
+          // persisted native event so post-suspension replays still carry the
+          // trajectory/compass/averaged signals the server needs.
+          driveTrajectory: pendingEvent.driveTrajectory,
+          compassHeading: pendingEvent.compassHeading,
+          compassConfidence: pendingEvent.compassConfidence,
+          averagedLatitude: pendingEvent.averagedLatitude,
+          averagedLongitude: pendingEvent.averagedLongitude,
+          averagedAccuracy: pendingEvent.averagedAccuracy,
+          averagedFixCount: pendingEvent.averagedFixCount,
         };
 
         log.info('Processing pending parking event through onParkingDetected handler');
