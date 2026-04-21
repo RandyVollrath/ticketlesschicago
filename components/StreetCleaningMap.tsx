@@ -112,20 +112,10 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
         div.style.fontSize = '12px';
         div.style.fontFamily = 'Arial, sans-serif';
 
-        if (showSnowSafeMode) {
-          div.innerHTML = `
-            <div style="font-weight: bold; margin-bottom: 4px;">❄️ 2″ Snow Ban Routes</div>
-            <div style="display: flex; align-items: center; margin-bottom: 2px;">
-              <div style="width: 12px; height: 12px; background: #ff1493; margin-right: 5px; border: 1px solid #333;"></div>
-              <span>No Parking (2″ Snow Ban)</span>
-            </div>
-            <div style="display: flex; align-items: center;">
-              <div style="width: 12px; height: 12px; background: #10b981; margin-right: 5px; border: 1px solid #333;"></div>
-              <span>Safe to Park</span>
-            </div>
-          `;
-        } else {
-          div.innerHTML = `
+        const sections: string[] = [];
+
+        if (!showSnowSafeMode) {
+          sections.push(`
             <div style="font-weight: bold; margin-bottom: 4px;">Street Cleaning</div>
             <div style="display: flex; align-items: center; margin-bottom: 2px;">
               <div style="width: 12px; height: 12px; background: #dc3545; margin-right: 5px; border: 1px solid #333;"></div>
@@ -143,8 +133,40 @@ const StreetCleaningMap: React.FC<StreetCleaningMapProps> = ({
               <div style="width: 12px; height: 12px; background: #6c757d; margin-right: 5px; border: 1px solid #333;"></div>
               <span>No schedule</span>
             </div>
-          `;
+          `);
         }
+
+        if (showSnowSafeMode) {
+          sections.push(`
+            <div style="font-weight: bold; margin-bottom: 4px;">❄️ 2″ Snow Ban Routes</div>
+            <div style="display: flex; align-items: center; margin-bottom: 2px;">
+              <div style="width: 12px; height: 12px; background: #ff1493; margin-right: 5px; border: 1px solid #333;"></div>
+              <span>No Parking (2″ Snow Ban)</span>
+            </div>
+          `);
+        }
+
+        if (showWinterBanMode) {
+          sections.push(`
+            <div style="font-weight: bold; margin-bottom: 4px;">🌙 Winter Overnight Ban</div>
+            <div style="display: flex; align-items: center; margin-bottom: 2px;">
+              <div style="width: 12px; height: 12px; background: #00ff00; margin-right: 5px; border: 1px solid #333;"></div>
+              <span>3–7 AM (Dec 1 – Apr 1)</span>
+            </div>
+          `);
+        }
+
+        if (showPermitZones) {
+          sections.push(`
+            <div style="font-weight: bold; margin-bottom: 4px;">🅿️ Permit Zones</div>
+            <div style="display: flex; align-items: center; margin-bottom: 2px;">
+              <div style="width: 12px; height: 12px; background: #8B5CF6; margin-right: 5px; border: 1px solid #333;"></div>
+              <span>Residential permit only</span>
+            </div>
+          `);
+        }
+
+        div.innerHTML = sections.join('<div style="height:6px;"></div>');
         return div;
       };
       legend.addTo(mapInstanceRef.current);
