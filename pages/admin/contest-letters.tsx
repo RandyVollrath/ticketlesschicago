@@ -34,6 +34,9 @@ interface ContestLetter {
   evidence_integrated: boolean;
   evidence_integrated_at: string | null;
   mailed_at: string | null;
+  disposition: string | null;
+  disposition_reason: string | null;
+  disposition_date: string | null;
   created_at: string;
   updated_at: string;
   user_email: string | null;
@@ -123,13 +126,18 @@ export default function AdminContestLetters() {
       ready: '#3b82f6',
       approved: '#10b981',
       mailed: '#8b5cf6',
-      delivered: '#059669'
+      delivered: '#059669',
+      cancelled: '#dc2626',
+      failed: '#dc2626',
     };
     return colors[status] || '#9ca3af';
   }
 
-  function getStatusLabel(status: string) {
-    return status.split('_').map(word =>
+  function getStatusLabel(letter: { status: string; disposition?: string | null }) {
+    if (letter.status === 'cancelled' && letter.disposition === 'skipped_past_deadline') {
+      return 'Past 21-Day Window — Not Mailing';
+    }
+    return letter.status.split('_').map(word =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
   }
@@ -455,7 +463,7 @@ export default function AdminContestLetters() {
                         backgroundColor: getStatusColor(letter.status) + '20',
                         color: getStatusColor(letter.status)
                       }}>
-                        {getStatusLabel(letter.status)}
+                        {getStatusLabel(letter)}
                       </span>
                       {letter.evidence_integrated && (
                         <span style={{
@@ -496,6 +504,16 @@ export default function AdminContestLetters() {
                     }}>
                       {letter.user_email || 'Unknown user'}
                     </p>
+                    {letter.status === 'cancelled' && letter.disposition_reason && (
+                      <p style={{
+                        color: '#dc2626',
+                        fontSize: '13px',
+                        marginTop: '6px',
+                        fontStyle: 'italic',
+                      }}>
+                        Why: {letter.disposition_reason}
+                      </p>
+                    )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     {letter.ticket_info?.ticket_amount && (
@@ -612,7 +630,7 @@ export default function AdminContestLetters() {
                     backgroundColor: getStatusColor(selectedLetter.status) + '20',
                     color: getStatusColor(selectedLetter.status)
                   }}>
-                    {getStatusLabel(selectedLetter.status)}
+                    {getStatusLabel(selectedLetter)}
                   </span>
                   {selectedLetter.evidence_integrated && (
                     <span style={{

@@ -54,6 +54,9 @@ export default withAdminAuth(async (req, res, adminUser) => {
           evidence_integrated,
           evidence_integrated_at,
           mailed_at,
+          disposition,
+          disposition_reason,
+          disposition_date,
           created_at,
           updated_at
         `)
