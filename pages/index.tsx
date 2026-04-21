@@ -403,45 +403,14 @@ export default function LandingPage() {
               </svg>
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
-              Never get a camera ticket again.
+              Never get a surprise ticket.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              The app warns you before you park near a red-light or speed camera, a meter about to expire, or a temporary no-parking sign. Camera tickets alone are <strong style={{ color: COLORS.text }}>$183M/year</strong> in Chicago.
+              While you drive, the app warns you as you approach red-light and speed cameras. While you&apos;re parked, it warns you when your spot is about to become a ticket — a meter going active, rush hour kicking in, or a temporary no-parking sign. Camera tickets alone are <strong style={{ color: COLORS.text }}>$183M/year</strong> in Chicago.
             </p>
           </div>
 
-          {/* Card 2: Ticket contesting */}
-          <div style={{
-            backgroundColor: '#fff',
-            padding: '32px 28px',
-            borderRadius: '16px',
-            border: `1px solid ${COLORS.border}`,
-            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
-          }}>
-            <div style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(37, 99, 235, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '18px',
-            }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-            </div>
-            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
-              Every ticket you get, we fight for you.
-            </h3>
-            <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              We scan the City&apos;s database twice a week for any ticket on your plate, pull FOIA evidence, draft a code-specific contest letter, and mail it for you. <strong style={{ color: COLORS.text }}>94%</strong> of Chicago tickets go uncontested — when contested, <strong style={{ color: COLORS.text }}>66% win</strong>.
-            </p>
-          </div>
-
-          {/* Card 3: Address alerts */}
+          {/* Card 2: Street cleaning / address alerts (moved up — higher-value to most Chicago drivers) */}
           <div style={{
             backgroundColor: '#fff',
             padding: '32px 28px',
@@ -471,6 +440,37 @@ export default function LandingPage() {
               Night-before alerts for your home block — street cleaning, snow bans, winter overnight restrictions. Move your car in the morning instead of paying the ticket in the afternoon.
             </p>
           </div>
+
+          {/* Card 3: Ticket contesting */}
+          <div style={{
+            backgroundColor: '#fff',
+            padding: '32px 28px',
+            borderRadius: '16px',
+            border: `1px solid ${COLORS.border}`,
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(37, 99, 235, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '18px',
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
+              Every ticket you get, we fight for you.
+            </h3>
+            <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
+              We scan the City&apos;s database twice a week for any ticket on your plate, pull FOIA evidence, draft a code-specific contest letter, and mail it for you. <strong style={{ color: COLORS.text }}>94%</strong> of Chicago tickets go uncontested — when contested, <strong style={{ color: COLORS.text }}>66% win</strong>.
+            </p>
+          </div>
         </div>
         <p style={{
           textAlign: 'center',
@@ -484,18 +484,16 @@ export default function LandingPage() {
 
       {/* Personalize the money question — dual CTAs */}
       <section style={{
-        padding: '60px 5%',
-        backgroundColor: '#F8FAFC',
-        borderTop: `1px solid ${COLORS.border}`,
-        borderBottom: `1px solid ${COLORS.border}`,
+        padding: '72px 5%',
+        background: 'linear-gradient(180deg, #0F172A 0%, #111827 100%)',
         marginTop: '40px',
       }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <h2 style={{
           fontFamily: FONTS.heading,
-          fontSize: 'clamp(24px, 3.5vw, 32px)',
+          fontSize: 'clamp(26px, 4vw, 36px)',
           fontWeight: 700,
-          color: COLORS.text,
+          color: '#fff',
           textAlign: 'center',
           marginBottom: '8px',
           letterSpacing: '-0.5px',
@@ -504,13 +502,13 @@ export default function LandingPage() {
         </h2>
         <p style={{
           fontSize: '15px',
-          color: COLORS.textMuted,
+          color: '#94A3B8',
           textAlign: 'center',
-          marginBottom: '24px',
+          marginBottom: '32px',
           maxWidth: '560px',
-          margin: '0 auto 24px',
+          margin: '0 auto 32px',
         }}>
-          $420M is abstract. These two free tools show what <strong style={{ color: COLORS.text }}>you personally</strong> are paying — before you pay us a cent.
+          $420M is abstract. These two free tools show what <strong style={{ color: '#fff' }}>you personally</strong> are paying — before you pay us a cent.
         </p>
         <div style={{
           display: 'grid',
