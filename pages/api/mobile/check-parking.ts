@@ -521,6 +521,10 @@ export default async function handler(
             // perpendicular street at an intersection is often outside the
             // tight distance filter (~30m) but within the search radius (50m);
             // trajectory can still identify the correct one.
+            // Log trajectory buffer size even when vote can't run — so post-hoc
+            // diagnostics show whether the client sent trajectory data at all,
+            // and how much of it survived to be useful.
+            diag.trajectory_total_len = driveTrajectory.length;
             if (driveTrajectory.length >= 2 && allCandidates.length > 1 && supabaseAdmin) {
               try {
                 // Build the post-turn segment (most recent consecutive fixes
@@ -550,11 +554,17 @@ export default async function handler(
                   }
                 }
 
-                // Only run trajectory vote if we have ≥3 post-turn fixes.
-                // Fewer means we're in the turn-and-park-immediately edge
-                // case where trajectory isn't reliable — fall back to the
-                // heading disambiguation below.
-                if (postTurn.length >= 3) {
+                // Run trajectory vote when we have ≥2 post-turn fixes. Originally
+                // gated at ≥3 out of caution, but the 2-second turn-and-park case
+                // is common (right-turn at a stoplight → park immediately around
+                // the corner) and at ~1 Hz GPS only yields 2-3 post-turn fixes.
+                // Two fixes agreeing on the same street is a strong signal — and
+                // if they disagree, the vote is declared inconclusive and we
+                // fall through to heading-based disambiguation cleanly.
+                if (postTurn.length >= 2) {
+                  // Always log post-turn length so we can see what happened
+                  // per event, even in the inconclusive-vote branch below.
+                  diag.trajectory_post_turn_len = postTurn.length;
                   // Vote among ALL candidates (including perpendicular streets
                   // just outside the distance filter), not just the close ones.
                   const candidateNames = new Set(allCandidates.map((c: any) => c.street_name));
