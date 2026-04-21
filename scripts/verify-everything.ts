@@ -237,6 +237,35 @@ async function main() {
     }
   }
 
+  // ─── 13. Parking-quality-report handler runs end-to-end ───
+  {
+    try {
+      const { default: handler } = await import('../pages/api/cron/parking-quality-report');
+      const req = { headers: { 'x-vercel-cron': '1', authorization: '' } } as any;
+      let status = 0;
+      let body: any = null;
+      const res = {
+        status(s: number) { status = s; return res; },
+        json(b: any) { body = b; return res; },
+      } as any;
+      await handler(req, res);
+      a('parking-quality-report handler returns 200', status === 200, `status=${status}`);
+      a('parking-quality-report computes total_checks', typeof body?.metrics?.total_checks === 'number');
+    } catch (e: any) {
+      a('parking-quality-report handler runs without throwing', false, e.message?.slice(0, 200));
+    }
+  }
+
+  // ─── 14. parking_quality_reports table exists ───
+  {
+    const dotenv = await import('dotenv');
+    dotenv.config({ path: '/home/randy-vollrath/ticketless-chicago/.env.local' });
+    const { createClient } = await import('@supabase/supabase-js');
+    const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const r = await s.from('parking_quality_reports').select('id').limit(1);
+    a('parking_quality_reports table exists', !r.error, r.error?.message);
+  }
+
   // ─── Summary ───
   console.log('\n═══ VERIFICATION RESULTS ═══\n');
   for (const r of results) {
