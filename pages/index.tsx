@@ -403,10 +403,10 @@ export default function LandingPage() {
               </svg>
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
-              Never get a surprise ticket.
+              Heads-up before your spot becomes a ticket.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              While you&apos;re parked, the app watches your spot and alerts you when it&apos;s about to become a ticket — a meter running down or a temporary no-parking sign kicking in. While you drive, it warns you as you approach red-light and speed cameras (<strong style={{ color: COLORS.text }}>$183M/year</strong> in Chicago).
+              While you&apos;re parked, the app watches your spot and alerts you when a metered zone is about to turn on, your max parking time is almost up, or a temporary no-parking sign kicks in. While you drive, it warns you as you approach red-light and speed cameras (<strong style={{ color: COLORS.text }}>$183M/year</strong> in Chicago).
             </p>
           </div>
 
