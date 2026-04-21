@@ -62,6 +62,10 @@ export default function CheckYourStreet() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [zoneMapData, setZoneMapData] = useState<any[]>([])
+  const [snowRoutes, setSnowRoutes] = useState<any[]>([])
+  const [winterBanRoutes, setWinterBanRoutes] = useState<any[]>([])
+  const [showSnowRoutes, setShowSnowRoutes] = useState(true)
+  const [showWinterBanRoutes, setShowWinterBanRoutes] = useState(true)
   const [mapLoading, setMapLoading] = useState(true)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -69,38 +73,44 @@ export default function CheckYourStreet() {
   const suggestionsRef = useRef<HTMLDivElement>(null)
 
   // Load zone map data: geometry from static GeoJSON + schedule from API
+  // Also pull snow-ban and winter-ban route overlays
   useEffect(() => {
     Promise.all([
       fetch('/api/zone-geojson').then(r => r.ok ? r.json() : null),
       fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null),
-    ]).then(([geojson, scheduleResult]) => {
-      if (!geojson?.features) return
-
-      // Build schedule lookup
-      const schedMap = new Map<string, any>()
-      if (scheduleResult?.data) {
-        for (const z of scheduleResult.data) {
-          schedMap.set(`${z.ward}-${z.section}`, z)
-        }
-      }
-
-      // Merge geometry with schedule status
-      const features = geojson.features.map((f: any) => {
-        const key = `${f.properties.ward}-${f.properties.section}`
-        const sched = schedMap.get(key)
-        return {
-          type: 'Feature' as const,
-          geometry: f.geometry,
-          properties: {
-            id: key,
-            ward: f.properties.ward,
-            section: f.properties.section,
-            cleaningStatus: sched?.cleaningStatus || 'none',
-            nextCleaningDateISO: sched?.nextCleaningDateISO || null,
+      fetch('/api/get-snow-routes').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/get-winter-ban-routes').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([geojson, scheduleResult, snowResult, winterResult]) => {
+      if (geojson?.features) {
+        // Build schedule lookup
+        const schedMap = new Map<string, any>()
+        if (scheduleResult?.data) {
+          for (const z of scheduleResult.data) {
+            schedMap.set(`${z.ward}-${z.section}`, z)
           }
         }
-      })
-      setZoneMapData(features)
+
+        // Merge geometry with schedule status
+        const features = geojson.features.map((f: any) => {
+          const key = `${f.properties.ward}-${f.properties.section}`
+          const sched = schedMap.get(key)
+          return {
+            type: 'Feature' as const,
+            geometry: f.geometry,
+            properties: {
+              id: key,
+              ward: f.properties.ward,
+              section: f.properties.section,
+              cleaningStatus: sched?.cleaningStatus || 'none',
+              nextCleaningDateISO: sched?.nextCleaningDateISO || null,
+            }
+          }
+        })
+        setZoneMapData(features)
+      }
+
+      if (Array.isArray(snowResult?.routes)) setSnowRoutes(snowResult.routes)
+      if (Array.isArray(winterResult?.routes)) setWinterBanRoutes(winterResult.routes)
     }).catch(() => {}).finally(() => setMapLoading(false))
   }, [])
 
@@ -620,12 +630,48 @@ export default function CheckYourStreet() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}>
           <div style={{ padding: '16px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>
-              Parking Map — All Wards
-            </h2>
-            <p style={{ fontSize: '13px', color: COLORS.slate, margin: '4px 0 0' }}>
-              Click any zone to see its next cleaning date. {searchResult?.ward && `Your zone (Ward ${searchResult.ward}, Section ${searchResult.section}) is highlighted.`}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>
+                  Parking Map — All Wards
+                </h2>
+                <p style={{ fontSize: '13px', color: COLORS.slate, margin: '4px 0 0' }}>
+                  Click any zone to see its next cleaning date. {searchResult?.ward && `Your zone (Ward ${searchResult.ward}, Section ${searchResult.section}) is highlighted.`}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSnowRoutes(v => !v)}
+                  aria-pressed={showSnowRoutes}
+                  style={{
+                    padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                    border: `1px solid ${showSnowRoutes ? '#ff1493' : COLORS.border}`,
+                    backgroundColor: showSnowRoutes ? 'rgba(255,20,147,0.08)' : 'white',
+                    color: showSnowRoutes ? '#c71585' : COLORS.slate,
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  }}
+                >
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#ff1493', display: 'inline-block' }} />
+                  2″ Snow Ban
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowWinterBanRoutes(v => !v)}
+                  aria-pressed={showWinterBanRoutes}
+                  style={{
+                    padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                    border: `1px solid ${showWinterBanRoutes ? '#00aa00' : COLORS.border}`,
+                    backgroundColor: showWinterBanRoutes ? 'rgba(0,170,0,0.08)' : 'white',
+                    color: showWinterBanRoutes ? '#006400' : COLORS.slate,
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  }}
+                >
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#00cc00', display: 'inline-block' }} />
+                  Winter Overnight Ban
+                </button>
+              </div>
+            </div>
           </div>
           {mapLoading ? (
             <div style={{ height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.slate }}>
@@ -639,6 +685,10 @@ export default function CheckYourStreet() {
                 userLocation={searchResult?.coordinates ? { lat: searchResult.coordinates.lat, lng: searchResult.coordinates.lng } : undefined}
                 meterLocations={nearbyMeters || []}
                 showMeters={!!nearbyMeters && nearbyMeters.length > 0}
+                snowRoutes={snowRoutes}
+                showSnowSafeMode={showSnowRoutes && snowRoutes.length > 0}
+                winterBanRoutes={winterBanRoutes}
+                showWinterBanMode={showWinterBanRoutes && winterBanRoutes.length > 0}
               />
             </div>
           )}
