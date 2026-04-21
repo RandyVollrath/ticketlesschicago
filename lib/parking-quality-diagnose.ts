@@ -18,7 +18,8 @@ import { createClient } from '@supabase/supabase-js';
 // Failure-signature classifier — each row gets one primary label.
 // Ordered by precedence: more specific / actionable signatures first.
 export type FailureSignature =
-  | 'no_snap'                    // no street matched at all
+  | 'out_of_coverage'            // coordinates are outside Chicago city limits (e.g. Evanston)
+  | 'no_snap'                    // no street matched at all — coverage IS Chicago but snap found nothing
   | 'snap_far'                   // snapped to street > 20m from GPS
   | 'nominatim_overrode'         // Nominatim contradicted the snap
   | 'heading_stale'              // GPS heading used after a turn
@@ -76,7 +77,27 @@ export interface DiagnosisReport {
   prior_reports: Array<{ generated_at: string; total_checks: number; pct_no_snap: number | null; avg_raw_accuracy_m: number | null }>;
 }
 
+// Chicago city limits — matches the guard in pages/api/mobile/check-parking.ts.
+// Rows outside this box are classified as `out_of_coverage` so they don't
+// inflate the no_snap metric (there IS no street to snap to when the user
+// is in Evanston / Oak Park / Cicero).
+const CHICAGO_LAT_MIN = 41.64;
+const CHICAGO_LAT_MAX = 42.023;
+const CHICAGO_LNG_MIN = -87.95;
+const CHICAGO_LNG_MAX = -87.52;
+
+function isOutsideChicago(row: any): boolean {
+  const lat = Number(row.raw_lat);
+  const lng = Number(row.raw_lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  return lat < CHICAGO_LAT_MIN || lat > CHICAGO_LAT_MAX || lng < CHICAGO_LNG_MIN || lng > CHICAGO_LNG_MAX;
+}
+
 function classify(row: any): FailureSignature {
+  // Coverage check comes BEFORE ground-truth-feedback because an Evanston
+  // user saying "street was wrong" is telling us we didn't cover their
+  // address, which is a coverage issue, not a snap-pipeline bug.
+  if (isOutsideChicago(row)) return 'out_of_coverage';
   if (row.user_feedback_at && row.street_correct === false) return 'user_said_street_wrong';
   if (row.user_feedback_at && row.side_correct === false) return 'user_said_side_wrong';
   if (!row.snap_street_name) return 'no_snap';
@@ -94,10 +115,11 @@ function classify(row: any): FailureSignature {
 
 function emptyCounts(): Record<FailureSignature, number> {
   return {
-    no_snap: 0, snap_far: 0, nominatim_overrode: 0, heading_stale: 0,
-    compass_missing: 0, low_accuracy: 0, user_said_street_wrong: 0,
-    user_said_side_wrong: 0, autolabel_disagreed: 0, walkaway_guard_fired: 0,
-    parity_forced: 0, healthy: 0,
+    out_of_coverage: 0, no_snap: 0, snap_far: 0, nominatim_overrode: 0,
+    heading_stale: 0, compass_missing: 0, low_accuracy: 0,
+    user_said_street_wrong: 0, user_said_side_wrong: 0,
+    autolabel_disagreed: 0, walkaway_guard_fired: 0, parity_forced: 0,
+    healthy: 0,
   };
 }
 
