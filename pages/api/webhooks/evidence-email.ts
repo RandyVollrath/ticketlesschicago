@@ -10,6 +10,9 @@ import {
   sendApprovalEmailForEvidence,
   analyzeEvidencePhotos,
   extractTicketFieldsFromPhoto,
+  extractPoliceReportFromPhoto,
+  extractParkChicagoReceiptFromPhoto,
+  extractPoliceReportNumberFromText,
 } from '../../../lib/evidence-processing';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
@@ -660,6 +663,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
           // Stop at the first ticket-like photo to save vision calls.
           break;
+        }
+
+        // ── Police report OCR (stolen-plate defense) ──
+        // Only run for camera / missing-plate tickets where the stolen-plate
+        // defense is the dominant dismissal reason. We skip the Vision call
+        // for violation types where the defense doesn't apply, saving cost.
+        const stolenPlateApplicable = ['red_light', 'speed_camera', 'missing_plate'].includes(
+          ticket.violation_type || ''
+        );
+        if (stolenPlateApplicable && !ticket.plate_stolen) {
+          for (const url of photoUrls) {
+            const report = await extractPoliceReportFromPhoto(url).catch(() => null);
+            if (!report || !report.is_stolen_plate_report || report.confidence < 0.5) continue;
+            console.log(`Police report extracted: RD=${report.report_number}, agency=${report.agency}, stolen=${report.is_stolen_plate_report}`);
+            ticketUpdate.plate_stolen = true;
+            if (report.report_number) ticketUpdate.plate_stolen_report_number = report.report_number;
+            if (report.agency) ticketUpdate.plate_stolen_report_agency = report.agency;
+            if (report.report_date) ticketUpdate.plate_stolen_report_date = report.report_date;
+            if (report.incident_date) ticketUpdate.plate_stolen_incident_date = report.incident_date;
+            break; // one confirmed report is enough
+          }
+        }
+
+        // Text-only fallback: the user might reply with just an RD number
+        // in the email body rather than a photo of the report.
+        if (stolenPlateApplicable && !ticketUpdate.plate_stolen_report_number && evidenceData.text) {
+          const fromText = extractPoliceReportNumberFromText(evidenceData.text);
+          if (fromText) {
+            console.log(`Police report number extracted from email text: ${fromText.report_number} (${fromText.source})`);
+            ticketUpdate.plate_stolen_report_number = fromText.report_number;
+            // Only mark plate_stolen=true if the user's text actually says it was stolen
+            if (/stolen|taken|lost|theft/i.test(evidenceData.text)) {
+              ticketUpdate.plate_stolen = true;
+            }
+          }
+        }
+
+        // ── ParkChicago receipt OCR (expired-meter defense) ──
+        if (ticket.violation_type === 'expired_meter' && !ticket.parkchicago_transaction_id) {
+          for (const url of photoUrls) {
+            const receipt = await extractParkChicagoReceiptFromPhoto(url).catch(() => null);
+            if (!receipt || !receipt.is_parkchicago_receipt || receipt.confidence < 0.5) continue;
+            console.log(`ParkChicago receipt extracted: zone=${receipt.zone}, txn=${receipt.transaction_id}, amount=${receipt.amount_paid}`);
+            if (receipt.zone) ticketUpdate.parkchicago_zone = receipt.zone;
+            if (receipt.start_time) ticketUpdate.parkchicago_start_time = receipt.start_time;
+            if (receipt.end_time) ticketUpdate.parkchicago_end_time = receipt.end_time;
+            if (typeof receipt.amount_paid === 'number') ticketUpdate.parkchicago_amount_paid = receipt.amount_paid;
+            if (receipt.transaction_id) ticketUpdate.parkchicago_transaction_id = receipt.transaction_id;
+            break;
+          }
         }
 
         if (Object.keys(ticketUpdate).length > 0) {
