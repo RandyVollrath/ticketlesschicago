@@ -294,20 +294,6 @@ export default function LandingPage() {
           pointerEvents: 'none'
         }} />
 
-        {/* Badge */}
-        <div style={{
-          display: 'inline-block',
-          padding: '8px 16px',
-          backgroundColor: 'rgba(255,255,255,0.1)',
-          borderRadius: '50px',
-          marginBottom: '30px',
-          fontSize: '14px',
-          fontWeight: 600,
-          border: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <span style={{color: COLORS.accent}}>●</span> 35.7M Tickets Analyzed
-        </div>
-
         <h1 style={{
           fontFamily: FONTS.heading,
           fontSize: 'clamp(40px, 6vw, 72px)',
@@ -337,12 +323,8 @@ export default function LandingPage() {
           </Button>
         </div>
 
-        <p style={{ marginTop: '16px', fontSize: '14px', color: '#CBD5E1' }}>
-          One dismissed ticket pays for the year. The second one is profit.
-        </p>
-
         <div style={{
-          margin: '18px auto 0',
+          margin: '24px auto 0',
           maxWidth: '760px',
           backgroundColor: 'rgba(16, 185, 129, 0.08)',
           border: '1px solid rgba(16, 185, 129, 0.5)',
