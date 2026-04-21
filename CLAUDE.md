@@ -9,6 +9,23 @@ See **[PRODUCT_DECISIONS.md](./PRODUCT_DECISIONS.md)** for finalized product dec
 - **Backend**: Supabase (auth, database, RLS policies)
 - **Domain**: autopilotamerica.com
 
+## Codex reviews every change
+Another AI reviewer (Codex) is auditing this work. Assume every commit is going to be read and challenged by a skeptical second set of eyes. Write like that reviewer is in the room.
+
+- When you cite a dataset, API, field name, or legal statute — it WILL be verified.
+- When you claim something was "tested" or "verified" — the reviewer will grep for the actual test / script / live run that proves it.
+- When you make a claim about production state (env var, DB row, user behavior) — the reviewer will run the actual check.
+- When a subagent reports back with a schema / dataset id / API endpoint, that report is a DRAFT hypothesis, not a fact. Verify it yourself with `curl` before coding against it.
+
+## Ship Rules — no task is "done" until:
+1. **Probe before code.** Any external data integration (Open Data, CTA, city APIs, third-party services) starts with a live `curl` of the real endpoint to confirm: the dataset exists, the schema matches what you expect, the most recent row is recent enough for our use case. Paste the probe output into the module's top-level comment or a companion smoke-test file.
+2. **Live smoke test is acceptance criterion.** `npx tsc --noEmit` passing is NOT sufficient. For anything that touches external services, DB writes, or new user-facing output, there must be a script under `scripts/smoke-test-*.ts` that hits the real thing and that script must exit 0. Run it and paste the last few lines of output into the PR / chat before marking done.
+3. **End-to-end verification when possible.** Before saying "shipped," ask: would this work for a real user right now, with a real ticket, today? If I only know it compiles, I haven't verified it — flag it as "awaiting real-world data" explicitly rather than claiming it's done.
+4. **When in doubt, test it.** Running `curl` once is cheaper than shipping a broken defense into a user's contest letter. If there's any uncertainty about what a dataset returns or what a field is called, check first.
+5. **Honest ledger per ship.** For each commit, be explicit about what was *actually* verified (live smoke ran, DB check passed, real API responded) vs. what merely compiles or only passes pattern-match checks against the source. Never claim more than was tested.
+
+Precedent: three of four external-data integrations I shipped in one session were broken (wrong dataset IDs, wrong schemas, a "no stop found" branch that always fired). They compiled cleanly. Only the user pushing back caught it. These rules exist so that doesn't repeat.
+
 ## Explain things like I'm in fifth grade
 When explaining what changed, what broke, or how a system works, use plain language and everyday analogies. Skip the jargon. Imagine you're telling a curious 10-year-old. Short sentences. No acronyms without spelling them out. If a concept needs a metaphor (door, permission slip, robot, file cabinet), use one.
 
