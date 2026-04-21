@@ -182,11 +182,26 @@ export default async function handler(
     return res.status(400).json({ error: 'Valid latitude and longitude are required' });
   }
 
-  // Validate coordinates are within Chicago area (roughly)
-  if (latitude < 41.6 || latitude > 42.1 || longitude < -88.0 || longitude > -87.5) {
+  // Validate coordinates are within Chicago city limits.
+  //
+  // Actual Chicago boundaries (per city GIS + Wikipedia):
+  //   - Northern border (Howard St at Rogers Park / Evanston line): 42.0222°
+  //   - Southern border: ~41.6445°
+  //   - Western border: ~-87.9402°
+  //   - Eastern border: Lake Michigan shoreline, ~-87.5245°
+  //
+  // Previous bound was latitude > 42.1 which extended ~6 miles INTO Evanston,
+  // letting Northwestern-area coords (e.g. 42.0506 at University Pl, 60208)
+  // through as "inside Chicago" — then the snap pipeline failed because we
+  // don't have Evanston street centerlines, producing confusing no-snap rows
+  // in parking_diagnostics (homsy.r.m@gmail.com case, 2026-04-21).
+  //
+  // We use 42.023 (10m north of Howard St) for a small safety margin on
+  // edge-of-border GPS jitter.
+  if (latitude < 41.64 || latitude > 42.023 || longitude < -87.95 || longitude > -87.52) {
     return res.status(400).json({
       error: 'outside_chicago',
-      message: 'This app monitors Chicago parking restrictions. Your current location appears to be outside the Chicago area. Please use the app when parked in Chicago.',
+      message: 'This app monitors Chicago parking restrictions. Your current location appears to be outside Chicago city limits (e.g., Evanston, Oak Park, Cicero). We don\'t yet check parking rules for suburbs.',
     });
   }
 
