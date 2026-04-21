@@ -82,6 +82,12 @@ const ACTIVE_HOURS_START = parseInt(process.env.WORKER_ACTIVE_HOURS_START || '7'
 const ACTIVE_HOURS_END = parseInt(process.env.WORKER_ACTIVE_HOURS_END || '23');
 const SCREENSHOT_DIR = process.env.PORTAL_CHECK_SCREENSHOT_DIR || path.resolve(__dirname, '../debug-screenshots');
 const EVIDENCE_DEADLINE_DAYS = 17; // Day 17 from ticket issue date (auto-send deadline)
+
+// Chicago MCC 9-100-050: 21 calendar days from violation date to contest by mail.
+// After this window the city issues a determination of liability and a written
+// contest is no longer a valid remedy. See autopilot-check-portal.ts for the
+// same constant and full rationale.
+const CHICAGO_MAIL_CONTEST_WINDOW_DAYS = 21;
 const MAX_CONSECUTIVE_ERRORS = 5; // Back off after this many failures in a row
 const ERROR_BACKOFF_MIN = 15; // Minutes to wait after consecutive errors
 const LONG_PAUSE_EVERY_N = 50; // Every N plates, take a longer break
@@ -664,6 +670,13 @@ async function processFoundTicket(
   const violationType = mapViolationType(ticket.violation_description || '');
   const amount = ticket.current_amount_due || null;
 
+  // Past-contest-window check — see autopilot-check-portal.ts for rationale.
+  const daysSinceViolation = violationDate
+    ? Math.floor((Date.now() - new Date(violationDate).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const isPastContestWindow =
+    daysSinceViolation !== null && daysSinceViolation > CHICAGO_MAIL_CONTEST_WINDOW_DAYS;
+
   // Get user profile
   const { data: profile } = await supabaseAdmin
     .from('user_profiles')
@@ -691,7 +704,7 @@ async function processFoundTicket(
       violation_date: violationDate,
       amount,
       location: null,
-      status: 'pending_evidence',
+      status: isPastContestWindow ? 'skipped' : 'pending_evidence',
       found_at: now,
       source: 'portal_scrape',
       evidence_requested_at: now,
@@ -730,6 +743,26 @@ async function processFoundTicket(
   }
 
   console.log(`      ✓ Created ticket ${ticket.ticket_number} (${violationType}, $${amount || 0})`);
+
+  // Past-contest-window short-circuit — see autopilot-check-portal.ts for details.
+  if (isPastContestWindow) {
+    console.log(
+      `      ⚠️  Ticket ${ticket.ticket_number} is ${daysSinceViolation} days old — past Chicago's 21-day mail-contest window. Skipping letter generation.`,
+    );
+    await supabaseAdmin.from('ticket_audit_log').insert({
+      ticket_id: newTicket.id,
+      action: 'skipped_past_contest_window',
+      details: {
+        user_id,
+        violation_date: violationDate,
+        days_elapsed: daysSinceViolation,
+        window_days: CHICAGO_MAIL_CONTEST_WINDOW_DAYS,
+        reason: 'Ticket past Chicago 21-day mail-contest window at detection; no letter will be mailed',
+      },
+      performed_by: 'autopilot_queue_worker',
+    });
+    return { created: true };
+  }
 
   // Generate contest letter
   const letterProfile = {

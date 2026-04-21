@@ -73,6 +73,14 @@ const SCREENSHOT_DIR = process.env.PORTAL_CHECK_SCREENSHOT_DIR || path.resolve(_
 // Unified across all code paths — auto-send on day 17, hard legal deadline is day 21
 const AUTO_SEND_DAY = 17; // Day 17 from ticket issue date
 
+// Chicago municipal contest window for parking / automated camera tickets is
+// 21 calendar days from the violation date (MCC 9-100-050). After that the
+// city issues a determination of liability and a written mail-contest is no
+// longer a valid remedy. We refuse to auto-mail letters for anything past
+// this window — they'd be rejected, and pretending to contest is worse than
+// telling the user we can't.
+const CHICAGO_MAIL_CONTEST_WINDOW_DAYS = 21;
+
 // Adaptive pacing — adjusts automatically based on plate count
 // The script tunes its own delay and batch size so we never have to
 // manually reconfigure as the user base grows.
@@ -2331,6 +2339,18 @@ async function processFoundTicket(
   const violationType = mapViolationType(ticket.violation_description || '');
   const amount = ticket.current_amount_due || null;
 
+  // Past-contest-window check — if the ticket is older than Chicago's 21-day
+  // mail-contest window, we record the ticket but will NOT generate a contest
+  // letter, queue a FOIA request, or ask the user for evidence. Mailing a
+  // letter to the city after day 21 is worse than useless: the city has
+  // already issued a determination of liability, so the letter is rejected,
+  // and the user is left thinking we're contesting when we aren't.
+  const daysSinceViolation = violationDate
+    ? Math.floor((Date.now() - new Date(violationDate).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const isPastContestWindow =
+    daysSinceViolation !== null && daysSinceViolation > CHICAGO_MAIL_CONTEST_WINDOW_DAYS;
+
   // Calculate evidence deadline based on ticket issue date (day 17 from issue)
   // Auto-send on day 17, leaving 4-day buffer before the 21-day legal deadline
   let evidenceDeadline: Date;
@@ -2373,7 +2393,7 @@ async function processFoundTicket(
       violation_date: violationDate,
       amount,
       location: null,
-      status: 'pending_evidence',
+      status: isPastContestWindow ? 'skipped' : 'pending_evidence',
       found_at: now,
       source: 'portal_scrape',
       evidence_requested_at: now,
@@ -2432,6 +2452,77 @@ async function processFoundTicket(
   }
 
   console.log(`      Created ticket ${ticket.ticket_number} (${violationType}, $${amount || 0})`);
+
+  // ── Past-contest-window short-circuit ─────────────────────────────────────
+  // Ticket was already older than Chicago's 21-day mail-contest window at the
+  // moment we detected it. We still recorded the ticket so it's visible in
+  // the user's dashboard and the admin is notified, but we do not:
+  //   - generate a contest letter (would be rejected by the city)
+  //   - queue a FOIA request (no letter to attach it to)
+  //   - ask the user for evidence (implies we'll contest when we can't)
+  //   - send SMS / push prompting the same
+  if (isPastContestWindow) {
+    console.log(
+      `      ⚠️  Ticket ${ticket.ticket_number} is ${daysSinceViolation} days old — past Chicago's 21-day mail-contest window. Skipping letter generation.`,
+    );
+
+    await supabaseAdmin.from('ticket_audit_log').insert({
+      ticket_id: newTicket.id,
+      action: 'skipped_past_contest_window',
+      details: {
+        user_id,
+        violation_date: violationDate,
+        days_elapsed: daysSinceViolation,
+        window_days: CHICAGO_MAIL_CONTEST_WINDOW_DAYS,
+        reason: 'Ticket past Chicago 21-day mail-contest window at detection; no letter will be mailed',
+      },
+      performed_by: 'portal_scraper',
+    });
+
+    if (process.env.RESEND_API_KEY) {
+      const userName = profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Unknown User';
+      const violationTypeDisplay = violationType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Autopilot America <alerts@autopilotamerica.com>',
+            to: ['randyvollrath@gmail.com'],
+            subject: `[PAST WINDOW] ${ticket.ticket_number} — ${violationTypeDisplay} ($${amount || 0}, ${daysSinceViolation}d old)`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: #6b7280; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+                  <h2 style="margin: 0;">Ticket detected past contest window — NOT auto-contesting</h2>
+                </div>
+                <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                  <p>We found a ticket that's already past Chicago's 21-day mail-contest deadline. No letter will be generated.</p>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 6px 0; color: #6b7280; width: 140px;">User:</td><td style="padding: 6px 0; font-weight: 600;">${userName} (${userEmail || 'no email'})</td></tr>
+                    <tr><td style="padding: 6px 0; color: #6b7280;">Ticket:</td><td style="padding: 6px 0; font-weight: 600;">${ticket.ticket_number}</td></tr>
+                    <tr><td style="padding: 6px 0; color: #6b7280;">Violation:</td><td style="padding: 6px 0;">${violationTypeDisplay}</td></tr>
+                    <tr><td style="padding: 6px 0; color: #6b7280;">Violation date:</td><td style="padding: 6px 0;">${violationDate} (${daysSinceViolation} days ago)</td></tr>
+                    <tr><td style="padding: 6px 0; color: #6b7280;">Amount:</td><td style="padding: 6px 0;">$${amount || 0}</td></tr>
+                    <tr><td style="padding: 6px 0; color: #6b7280;">Plate:</td><td style="padding: 6px 0;">${plate.toUpperCase()} (${state.toUpperCase()})</td></tr>
+                  </table>
+                  <p style="color: #6b7280; font-size: 12px; margin-top: 16px;">
+                    Admin action: if you want to pursue this at an administrative hearing, do it manually. No user email was sent (to avoid implying we're contesting when we can't).
+                  </p>
+                </div>
+              </div>
+            `,
+          }),
+        });
+      } catch (err: any) {
+        console.error(`      Admin past-window email failed: ${err.message}`);
+      }
+    }
+
+    return { created: true };
+  }
 
   // Gather ALL automated evidence FIRST (weather, FOIA, GPS, Street View, alerts, camera checks, kit evaluation)
   // This runs before letter generation so kit evaluation + evidence findings can be injected into the letter.
