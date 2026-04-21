@@ -20,7 +20,7 @@ export default function PricingPage() {
 
           <ul style={{ marginTop: 16, color: '#334155', lineHeight: 1.8 }}>
             <li>Unlimited automated contesting for eligible Chicago tickets</li>
-            <li>Mobile app for Android &amp; iOS (coming soon)</li>
+            <li>Mobile app for iOS and Android</li>
             <li>Real-time parking detection and smart alerts</li>
             <li>Street cleaning &amp; snow ban reminders for your block</li>
             <li>City sticker &amp; plate renewal deadline alerts</li>
