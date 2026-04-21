@@ -683,6 +683,15 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
     // evidence_deadline = Day 17 (auto-send date, unified across all code paths)
     const evidenceDeadline = autoSendDeadline;
 
+    // Past-contest-window check — Chicago MCC 9-100-050 gives 21 calendar days
+    // from violation date to contest by mail. Past that, the city has issued a
+    // determination of liability and a mailed letter will not be considered.
+    // We still record the ticket (so the user can see it) but flag it skipped.
+    const daysSinceViolation = Math.floor(
+      (Date.now() - chicagoTicketDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    const isPastContestWindow = daysSinceViolation > 21;
+
     // Upsert new ticket into evidence collection flow (onConflict prevents duplicates
     // from concurrent cron runs — the unique index on ticket_number ensures atomicity)
     const { data: newTicket, error: insertError } = await supabaseAdmin
@@ -703,7 +712,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         fine_amount: parseFloat(ticket.fine_level1_amount) || amount,
         location: ticket.violation_location || null,
         officer_badge: ticket.officer || null,
-        status: 'pending_evidence',
+        status: isPastContestWindow ? 'skipped' : 'pending_evidence',
         found_at: new Date().toISOString(),
         source: 'chicago_api',
         evidence_requested_at: new Date().toISOString(),
@@ -723,6 +732,23 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
     } else {
       newTickets++;
       console.log(`    NEW: ${ticket.ticket_number} - ${ticket.violation_description} - $${amount}`);
+
+      if (isPastContestWindow) {
+        console.log(`    ⚠️  ${ticket.ticket_number} is ${daysSinceViolation} days old — past Chicago's 21-day mail-contest window. Skipping letter.`);
+        await supabaseAdmin.from('ticket_audit_log').insert({
+          ticket_id: newTicket.id,
+          action: 'skipped_past_contest_window',
+          details: {
+            user_id: plate.user_id,
+            violation_date: ticket.issue_date,
+            days_elapsed: daysSinceViolation,
+            window_days: 21,
+            reason: 'Ticket past Chicago 21-day mail-contest window at detection; no letter will be mailed',
+          },
+          performed_by: 'autopilot_check_plates_cron',
+        });
+        continue;
+      }
 
       // Generate initial contest letter now so mailing cron can send after evidence deadline
       const { letterContent, defenseType } = generateLetterContent(
