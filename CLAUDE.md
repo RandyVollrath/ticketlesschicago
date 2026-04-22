@@ -44,7 +44,7 @@ This applies to end-of-turn summaries, bug diagnoses, and any "what did you do?"
 ## Deployment — MANDATORY after every change
 See **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** for full workflow. Summary:
 1. Commit, push to GitHub
-2. `npx vercel --prod --yes` (web)
+2. `npm run deploy` (web) — runs reliability gate + CSP static check + vercel prod + post-deploy auth smoke. **Use this instead of bare `npx vercel --prod --yes`** so the auth smoke catches regressions before customers do. If you need a fast path without gates, `npm run deploy:fast` still exists.
 3. `./gradlew assembleRelease` → adb install → Firebase App Distribution upload (Android)
 4. iOS: user builds locally via Xcode
 5. **Task is NOT complete until deployed and URL reported**
