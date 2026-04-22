@@ -74,14 +74,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const data = event.data;
-    const fromEmail = data.from;
-    const toEmail = data.to || '';
+    // Resend sends `to` as an array of strings (e.g. ["receipts@foo.com"]).
+    // Prior code did `const toEmail = data.to || ''` which left it as an
+    // array, then later `toEmail.toLowerCase()` crashed with
+    // "m.toLowerCase is not a function". Coerce every address-shaped field
+    // to a lowercased string up front so downstream callers never have to
+    // think about array-vs-string again.
+    const toStr = (v: unknown): string => {
+      if (typeof v === 'string') return v;
+      if (Array.isArray(v)) return v.map(x => typeof x === 'string' ? x : '').filter(Boolean).join(', ');
+      return '';
+    };
+    const fromEmail = toStr(data.from).toLowerCase();
+    const toEmail = toStr(data.to).toLowerCase();
     const subject = data.subject || '(no subject)';
     const text = data.text || data.html || '';
     const html = data.html || '';
     const attachments = data.attachments || []; // Resend provides attachments array
 
     console.log(`📨 Email from ${fromEmail} to ${toEmail}: "${subject}"`);
+
+    // SHORT-CIRCUIT: Resend fires email.received on EVERY configured webhook,
+    // regardless of the destination inbox. If this email wasn't addressed to
+    // an inbox this handler cares about (evidence@, FOIA response inboxes,
+    // general reply-to addresses), bail with 200 so Resend records success.
+    // Prior to this, emails forwarded to receipts@ were reaching both
+    // webhooks and crashing the wrong one.
+    const HANDLED_INBOXES = [
+      'evidence@autopilotamerica.com',
+      'hello@autopilotamerica.com',
+      'support@autopilotamerica.com',
+      'noreply@autopilotamerica.com',
+      'randy@autopilotamerica.com',
+      'appreview@autopilotamerica.com',
+      'playreview@autopilotamerica.com',
+      'documents@autopilotamerica.com',
+    ];
+    const targetedAtUs = HANDLED_INBOXES.some(box => toEmail.includes(box));
+    // Also handle FOIA responses from the city regardless of address.
+    const looksLikeFoia =
+      fromEmail.endsWith('@cityofchicago.org') ||
+      fromEmail.includes('foia') ||
+      subject.toLowerCase().includes('foia');
+    if (!targetedAtUs && !looksLikeFoia) {
+      console.log('⏭️ Not targeted at a handler we own — ignoring', { to: toEmail, from: fromEmail });
+      return res.status(200).json({ ignored: true, reason: 'not our inbox' });
+    }
     console.log(`📎 Attachments: ${attachments.length}`);
 
     if (!supabaseAdmin) {

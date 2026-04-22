@@ -6,8 +6,18 @@
 /**
  * Mask an email address for logging
  * e.g., "john.doe@example.com" -> "j***e@e***.com"
+ *
+ * Accepts string | array | anything so callers that pass raw Resend webhook
+ * payload fields (where `to` is an array of strings) don't crash. Arrays are
+ * joined with commas. Defensive against unexpected shapes because this is a
+ * logging helper — should never throw.
  */
-export function maskEmail(email: string | null | undefined): string {
+export function maskEmail(email: unknown): string {
+  if (email == null) return '[no email]';
+  if (Array.isArray(email)) {
+    return email.map(e => maskEmail(e)).join(', ');
+  }
+  if (typeof email !== 'string') return '[invalid email]';
   if (!email) return '[no email]';
 
   const parts = email.split('@');
@@ -30,8 +40,12 @@ export function maskEmail(email: string | null | undefined): string {
 /**
  * Mask a phone number for logging
  * e.g., "+1234567890" -> "+1***890"
+ *
+ * Defensive against unexpected shapes — never throws.
  */
-export function maskPhone(phone: string | null | undefined): string {
+export function maskPhone(phone: unknown): string {
+  if (phone == null) return '[no phone]';
+  if (typeof phone !== 'string') return '[invalid phone]';
   if (!phone) return '[no phone]';
 
   // Remove all non-digit characters except leading +
