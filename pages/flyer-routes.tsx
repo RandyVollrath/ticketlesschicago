@@ -287,14 +287,14 @@ export default function FlyerRoutes() {
                     </p>
                   </div>
                   {data.justCleanedZones.length > 1 && (
-                    <a href={mapsRouteUrl(data.justCleanedZones, start)} target="_blank" rel="noopener noreferrer"
+                    <a href={mapsRouteUrl(clusterZones(data.justCleanedZones).map(c => ({ lat: c.centerLat, lng: c.centerLng })), start)} target="_blank" rel="noopener noreferrer"
                       style={{ padding: '10px 16px', borderRadius: 8, background: COLORS.danger, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                      Open Route
+                      Drive Route ({clusterZones(data.justCleanedZones).length} stops)
                     </a>
                   )}
                 </div>
               </div>
-              <ZoneList zones={data.justCleanedZones} expandedItems={expandedItems} toggleExpand={toggleExpand} badgeColor={COLORS.danger} />
+              <ZoneList zones={data.justCleanedZones} expandedItems={expandedItems} toggleExpand={toggleExpand} badgeColor={COLORS.danger} start={start} />
             </>
           )}
 
@@ -317,15 +317,15 @@ export default function FlyerRoutes() {
                     </p>
                   </div>
                   {data.tomorrowZones.length > 1 && (
-                    <a href={mapsRouteUrl(data.tomorrowZones, start)} target="_blank" rel="noopener noreferrer"
+                    <a href={mapsRouteUrl(clusterZones(data.tomorrowZones).map(c => ({ lat: c.centerLat, lng: c.centerLng })), start)} target="_blank" rel="noopener noreferrer"
                       style={{ padding: '10px 16px', borderRadius: 8, background: COLORS.signal, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                      Open Route
+                      Drive Route ({clusterZones(data.tomorrowZones).length} stops)
                     </a>
                   )}
                 </div>
-                {data.tomorrowZones.length > 23 && (
+                {clusterZones(data.tomorrowZones).length > 23 && (
                   <div style={{ marginTop: 8, padding: '6px 10px', background: '#FFFBEB', borderRadius: 6, fontSize: 12, color: '#92400E' }}>
-                    Google Maps max 25 stops. Route includes top 23 zones. Full list below.
+                    Google Maps max 25 stops. Route includes the first 23 clusters.
                   </div>
                 )}
               </div>
@@ -335,7 +335,7 @@ export default function FlyerRoutes() {
                   <p style={{ color: COLORS.slate, fontSize: 13, marginTop: 6 }}>Check the Just Ticketed or Hot Blocks tabs instead. Season runs April-November.</p>
                 </div>
               ) : (
-                <ZoneList zones={data.tomorrowZones} expandedItems={expandedItems} toggleExpand={toggleExpand} badgeColor={COLORS.warning} />
+                <ZoneList zones={data.tomorrowZones} expandedItems={expandedItems} toggleExpand={toggleExpand} badgeColor={COLORS.warning} start={start} />
               )}
             </>
           )}
@@ -560,13 +560,61 @@ export default function FlyerRoutes() {
 }
 
 // ============================================================================
+// Cluster zones into walkable stops. Zones within ~0.5 mi get grouped.
+// Each cluster = one place to park, walk, flyer. Then drive to the next.
+// ============================================================================
+interface Cluster {
+  zones: Zone[]
+  centerLat: number
+  centerLng: number
+  allStreets: WalkingStreet[]
+}
+
+function clusterZones(zones: Zone[]): Cluster[] {
+  if (zones.length === 0) return []
+  const WALK_RADIUS = 0.008 // ~0.5 miles in lat degrees at Chicago's latitude
+  const used = new Set<number>()
+  const clusters: Cluster[] = []
+
+  for (let i = 0; i < zones.length; i++) {
+    if (used.has(i)) continue
+    const group: Zone[] = [zones[i]]
+    used.add(i)
+    // Pull in any nearby unused zones
+    for (let j = i + 1; j < zones.length; j++) {
+      if (used.has(j)) continue
+      const dlat = zones[j].lat - zones[i].lat
+      const dlng = (zones[j].lng - zones[i].lng) * Math.cos(zones[i].lat * Math.PI / 180)
+      if (Math.sqrt(dlat * dlat + dlng * dlng) < WALK_RADIUS) {
+        group.push(zones[j])
+        used.add(j)
+      }
+    }
+    const centerLat = group.reduce((s, z) => s + z.lat, 0) / group.length
+    const centerLng = group.reduce((s, z) => s + z.lng, 0) / group.length
+    // Merge and deduplicate walking streets from all zones in cluster
+    const streetMap = new Map<string, WalkingStreet>()
+    group.forEach(z => {
+      (z.walkingStreets || []).forEach(ws => {
+        const existing = streetMap.get(ws.street)
+        if (!existing || ws.tickets > existing.tickets) streetMap.set(ws.street, ws)
+      })
+    })
+    const allStreets = Array.from(streetMap.values()).sort((a, b) => b.tickets - a.tickets)
+    clusters.push({ zones: group, centerLat, centerLng, allStreets })
+  }
+  return clusters
+}
+
+// ============================================================================
 // Zone list component — used by "Just Ticketed" and "Flyer Tomorrow" tabs
 // ============================================================================
-function ZoneList({ zones, expandedItems, toggleExpand, badgeColor }: {
+function ZoneList({ zones, expandedItems, toggleExpand, badgeColor, start }: {
   zones: Zone[]
   expandedItems: Set<string>
   toggleExpand: (key: string) => void
   badgeColor: string
+  start?: { lat: number; lng: number }
 }) {
   if (zones.length === 0) {
     return (
@@ -577,84 +625,134 @@ function ZoneList({ zones, expandedItems, toggleExpand, badgeColor }: {
     )
   }
 
+  const clusters = clusterZones(zones)
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {zones.map((zone, idx) => {
-        const key = `${zone.ward}-${zone.section}-${zone.cleaningDate}`
-        const isExpanded = expandedItems.has(key)
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {clusters.map((cluster, cIdx) => {
+        const clusterKey = `cluster-${cIdx}`
+        const isClusterExpanded = expandedItems.has(clusterKey)
+        const totalZoneStreets = cluster.allStreets.length
+        const estWalkMin = cluster.zones.length * 20 // ~20 min per zone on foot
+
         return (
-          <div key={key} style={{ background: 'white', borderRadius: 10, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
-            <div onClick={() => toggleExpand(key)} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: badgeColor, color: 'white', fontWeight: 700, fontSize: 11, flexShrink: 0,
-              }}>
-                {idx + 1}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.graphite }}>Ward {zone.ward}, Sec {zone.section}</span>
-                  <PriorityBadge score={zone.priorityScore} />
+          <div key={cIdx}>
+            {/* DRIVE separator between clusters */}
+            {cIdx > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', margin: '4px 0' }}>
+                <div style={{ flex: 1, height: 1, background: COLORS.border }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: COLORS.deepHarbor, borderRadius: 20, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>
+                  DRIVE
                 </div>
-                <div style={{ fontSize: 12, color: COLORS.slate, marginTop: 2 }}>
-                  {zone.walkingStreets && zone.walkingStreets.length > 0
-                    ? <>Walk: <strong style={{ color: COLORS.graphite }}>{zone.walkingStreets[0].street}</strong>{zone.walkingStreets.length > 1 ? ` +${zone.walkingStreets.length - 1} more` : ''}</>
-                    : zone.boundaries.north && zone.boundaries.south
-                      ? `${zone.boundaries.north} to ${zone.boundaries.south}`
-                      : `Cleaned ${formatDate(zone.cleaningDate)}`}
-                  <span style={{ marginLeft: 6 }}>
-                    &middot; {zone.wardTickets2024.toLocaleString()} tix/yr
-                  </span>
-                </div>
-              </div>
-              <a href={mapsUrl(zone.lat, zone.lng)} target="_blank" rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                style={{ padding: '5px 10px', borderRadius: 6, background: COLORS.regulatory, color: 'white', fontSize: 11, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>
-                Go
-              </a>
-            </div>
-            {isExpanded && (
-              <div style={{ padding: '0 14px 10px 52px', fontSize: 12, color: COLORS.slate }}>
-                {/* Zone Boundaries */}
-                <div style={{ display: 'grid', gridTemplateColumns: '50px 1fr', gap: '3px 6px', marginBottom: 8 }}>
-                  {zone.boundaries.north && <><span style={{ fontWeight: 600 }}>North:</span><span>{zone.boundaries.north}</span></>}
-                  {zone.boundaries.south && <><span style={{ fontWeight: 600 }}>South:</span><span>{zone.boundaries.south}</span></>}
-                  {zone.boundaries.east && <><span style={{ fontWeight: 600 }}>East:</span><span>{zone.boundaries.east}</span></>}
-                  {zone.boundaries.west && <><span style={{ fontWeight: 600 }}>West:</span><span>{zone.boundaries.west}</span></>}
-                </div>
-
-                {/* Walking Streets */}
-                {zone.walkingStreets && zone.walkingStreets.length > 0 ? (
-                  <div style={{ background: '#F0FDF4', borderRadius: 6, padding: '8px 10px', border: '1px solid #BBF7D0' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.signal, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-                      Streets to Walk (by ticket count)
-                    </div>
-                    {zone.walkingStreets.map((ws, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', borderBottom: i < zone.walkingStreets.length - 1 ? '1px solid #D1FAE5' : 'none' }}>
-                        <span style={{ fontWeight: 700, color: COLORS.graphite, minWidth: 0, flex: 1 }}>
-                          {ws.street}
-                        </span>
-                        <span style={{ color: COLORS.danger, fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap' }}>
-                          {ws.tickets} tix
-                        </span>
-                      </div>
-                    ))}
-                    <div style={{ fontSize: 10, color: COLORS.slate, marginTop: 6, lineHeight: 1.4 }}>
-                      Walk these streets within the zone boundaries. Start with the highest-ticket street.
-                      Each block is ~5 min of flyering.
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ background: COLORS.concrete, borderRadius: 6, padding: '8px 10px', fontSize: 11, color: COLORS.slate }}>
-                    No FOIA hotspot streets matched this zone. Walk all streets within the boundaries above.
-                  </div>
-                )}
-
-                <div style={{ marginTop: 6, fontSize: 11 }}>
-                  Cleaned: {formatDate(zone.cleaningDate)}
-                </div>
+                <div style={{ flex: 1, height: 1, background: COLORS.border }} />
               </div>
             )}
+
+            {/* Cluster header — PARK HERE */}
+            <div style={{
+              background: `linear-gradient(135deg, ${COLORS.graphite}, ${COLORS.deepHarbor})`,
+              borderRadius: '10px 10px 0 0', padding: '10px 14px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              color: 'white', cursor: 'pointer',
+            }} onClick={() => toggleExpand(clusterKey)}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em' }}>
+                  STOP {cIdx + 1}: PARK &amp; WALK
+                </div>
+                <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>
+                  {cluster.zones.length} zone{cluster.zones.length > 1 ? 's' : ''}
+                  {totalZoneStreets > 0 && <> &middot; {totalZoneStreets} street{totalZoneStreets > 1 ? 's' : ''} to hit</>}
+                  {' '}&middot; ~{estWalkMin} min on foot
+                </div>
+              </div>
+              <a href={mapsUrl(cluster.centerLat, cluster.centerLng)} target="_blank" rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                style={{ padding: '5px 12px', borderRadius: 6, background: COLORS.signal, color: 'white', fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                Park Here
+              </a>
+            </div>
+
+            {/* Cluster walking streets summary (collapsed by default) */}
+            {isClusterExpanded && cluster.allStreets.length > 0 && (
+              <div style={{ background: '#F0FDF4', padding: '8px 14px', border: `1px solid #BBF7D0`, borderTop: 'none' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.signal, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                  Walk These Streets (highest tickets first)
+                </div>
+                {cluster.allStreets.slice(0, 10).map((ws, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: COLORS.graphite, flex: 1 }}>{ws.street}</span>
+                    <span style={{ color: COLORS.danger, fontWeight: 700, fontSize: 11 }}>{ws.tickets} tix</span>
+                  </div>
+                ))}
+                {cluster.allStreets.length > 10 && (
+                  <div style={{ fontSize: 11, color: COLORS.slate, marginTop: 4 }}>+{cluster.allStreets.length - 10} more streets</div>
+                )}
+              </div>
+            )}
+
+            {/* Individual zone cards within this cluster */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {cluster.zones.map((zone, zIdx) => {
+                const key = `${zone.ward}-${zone.section}-${zone.cleaningDate}`
+                const isExpanded = expandedItems.has(key)
+                const isLast = zIdx === cluster.zones.length - 1
+                return (
+                  <div key={key} style={{
+                    background: 'white',
+                    borderLeft: `1px solid ${COLORS.border}`, borderRight: `1px solid ${COLORS.border}`,
+                    borderBottom: `1px solid ${COLORS.border}`,
+                    borderRadius: isLast ? '0 0 10px 10px' : 0,
+                    overflow: 'hidden',
+                  }}>
+                    <div onClick={() => toggleExpand(key)} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: badgeColor, color: 'white', fontWeight: 700, fontSize: 10, flexShrink: 0,
+                      }}>
+                        {zone.ward}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: COLORS.graphite }}>Ward {zone.ward}, Sec {zone.section}</span>
+                          <PriorityBadge score={zone.priorityScore} />
+                        </div>
+                        <div style={{ fontSize: 11, color: COLORS.slate, marginTop: 1 }}>
+                          {zone.walkingStreets && zone.walkingStreets.length > 0
+                            ? <>Walk: <strong style={{ color: COLORS.graphite }}>{zone.walkingStreets[0].street}</strong>{zone.walkingStreets.length > 1 ? ` +${zone.walkingStreets.length - 1} more` : ''}</>
+                            : zone.boundaries.north && zone.boundaries.south
+                              ? `${zone.boundaries.north} to ${zone.boundaries.south}`
+                              : `Cleaned ${formatDate(zone.cleaningDate)}`}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 14, color: COLORS.slate }}>{isExpanded ? '-' : '+'}</span>
+                    </div>
+                    {isExpanded && (
+                      <div style={{ padding: '0 14px 10px 48px', fontSize: 12, color: COLORS.slate }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '50px 1fr', gap: '3px 6px', marginBottom: 8 }}>
+                          {zone.boundaries.north && <><span style={{ fontWeight: 600 }}>North:</span><span>{zone.boundaries.north}</span></>}
+                          {zone.boundaries.south && <><span style={{ fontWeight: 600 }}>South:</span><span>{zone.boundaries.south}</span></>}
+                          {zone.boundaries.east && <><span style={{ fontWeight: 600 }}>East:</span><span>{zone.boundaries.east}</span></>}
+                          {zone.boundaries.west && <><span style={{ fontWeight: 600 }}>West:</span><span>{zone.boundaries.west}</span></>}
+                        </div>
+                        {zone.walkingStreets && zone.walkingStreets.length > 0 && (
+                          <div style={{ background: '#F0FDF4', borderRadius: 6, padding: '6px 10px', border: '1px solid #BBF7D0' }}>
+                            {zone.walkingStreets.map((ws, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', fontSize: 12 }}>
+                                <span style={{ fontWeight: 700, color: COLORS.graphite, flex: 1 }}>{ws.street}</span>
+                                <span style={{ color: COLORS.danger, fontWeight: 700, fontSize: 11 }}>{ws.tickets} tix</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div style={{ marginTop: 6, fontSize: 11 }}>
+                          Cleaned: {formatDate(zone.cleaningDate)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )
       })}
