@@ -165,15 +165,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   console.log(`FOIA history request created: ${request.id} for plate ${cleanState} ${cleanPlate} (${cleanEmail})`);
 
-  // Send confirmation email immediately (fire-and-forget — don't block the response)
-  sendFoiaHistoryConfirmationEmail({
-    email: cleanEmail,
-    name: cleanName,
-    licensePlate: cleanPlate,
-    licenseState: cleanState,
-  }).catch((err: any) => {
+  // Send confirmation email BEFORE returning. Fire-and-forget would let Vercel
+  // terminate the function before the fetch to Resend lands, which is what
+  // happened to the test submission on 2026-04-22 (DB row created, no email).
+  try {
+    await sendFoiaHistoryConfirmationEmail({
+      email: cleanEmail,
+      name: cleanName,
+      licensePlate: cleanPlate,
+      licenseState: cleanState,
+    });
+  } catch (err: any) {
     console.error(`Failed to send immediate confirmation email to ${cleanEmail}: ${err.message}`);
-  });
+  }
 
   return res.status(200).json({
     success: true,

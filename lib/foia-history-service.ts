@@ -215,22 +215,22 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
     ].join(''),
   });
 
-  try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Autopilot America <alerts@autopilotamerica.com>',
-        to: [params.email],
-        subject: `FOIA filed on plate ${params.licenseState} ${params.licensePlate} — the city has 5 days to respond`,
-        html,
-      }),
-    });
-  } catch (err: any) {
-    console.error(`Failed to send FOIA history confirmation email: ${err.message}`);
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
+      to: [params.email],
+      subject: `FOIA filed on plate ${params.licenseState} ${params.licensePlate} — the city has 5 days to respond`,
+      html,
+    }),
+  });
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    throw new Error(`Resend ${resp.status}: ${body.slice(0, 300)}`);
   }
 }
 
