@@ -101,6 +101,21 @@ export interface LookupResult {
   captcha_cost: number; // always 0 now — no captcha needed
   lookup_duration_ms: number;
   format_warnings: string[]; // Non-fatal warnings about unexpected API response format
+  boot_eligibility: BootEligibility | null;
+}
+
+// Pre-tow warning signal surfaced by the city's "boot extension" API.
+// A non-null result means the plate is currently booted; tow_eligible_date
+// is when the city is allowed to tow the vehicle if the boot fee isn't paid.
+// The endpoint is POST /payments-web/api/parking/check-boot-extention-eligibility
+// (note the city's spelling: "extention"). Response shape observed in the
+// portal bundle: { towEligibleDate: "YYYY-MM-DD HH:mm:ss.S", towExtensionEligible: "true"|"false" }
+export interface BootEligibility {
+  is_booted: boolean;
+  tow_eligible_date: string | null; // ISO 8601, local Chicago time
+  tow_extension_eligible: boolean | null;
+  api_status: number | null;
+  raw: any;
 }
 
 // Expected field keys in the CHI PAY API itemRow format (2026).
@@ -659,6 +674,119 @@ async function getHCaptchaSiteKey(page: Page): Promise<string | null> {
 }
 
 /**
+ * Probe the city's "boot extension" endpoint to see if a plate is currently
+ * booted, and if so when the vehicle becomes tow-eligible. Runs inside the
+ * authenticated browser context that the search just established.
+ *
+ * Endpoint: POST /payments-web/api/parking/check-boot-extention-eligibility
+ * (the city really spells it "extention") — observed in the portal bundle.
+ *
+ * Response when booted: { towEligibleDate, towExtensionEligible, ... }
+ * Response when not booted: empty array / null / no towEligibleDate.
+ */
+async function probeBootEligibility(page: Page, plate: string): Promise<BootEligibility> {
+  // Drive the boot-extend form as a real user would. The city's backend ties
+  // auth on check-boot-extention-eligibility to session state that only
+  // gets established by actually loading the boot-extend page, entering a
+  // plate, and submitting — direct fetches return 401.
+  let bootApiStatus: number | null = null;
+  let bootApiBody: any = null;
+  const steps: any[] = [];
+
+  const onResp = async (resp: Response) => {
+    const url = resp.url();
+    if (url.includes('/check-boot-extention-eligibility')) {
+      bootApiStatus = resp.status();
+      try { bootApiBody = JSON.parse(await resp.text()); } catch {}
+      steps.push({ kind: 'intercepted', status: resp.status() });
+    }
+  };
+  page.on('response', onResp);
+
+  try {
+    await page.goto('https://webapps1.chicago.gov/payments-web/#/boot-extend?cityServiceId=1', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
+    await page.waitForTimeout(6000); // Angular bootstrap
+
+    // Fill plateNumber. The form has a single input with formControlName or placeholder.
+    const filled = await page.evaluate((p: string) => {
+      const inputs = Array.from(document.querySelectorAll('input')) as HTMLInputElement[];
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+      for (const input of inputs) {
+        const visible = (input as HTMLElement).offsetParent !== null;
+        if (!visible) continue;
+        // boot-extend form has a single plate input; type=text, not disabled
+        if (input.type !== 'text' && input.type !== '') continue;
+        setter.call(input, p);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      }
+      return false;
+    }, plate.toUpperCase());
+    steps.push({ kind: 'fill', ok: filled });
+
+    if (!filled) {
+      return { is_booted: false, tow_eligible_date: null, tow_extension_eligible: null, api_status: null, raw: { error: 'could-not-fill-boot-form', steps } };
+    }
+
+    await page.waitForTimeout(500);
+
+    // Find and click the submit button — commonly labeled "Continue" or "Submit" on city forms.
+    const submitClicked = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button')) as HTMLButtonElement[];
+      for (const b of btns) {
+        const visible = (b as HTMLElement).offsetParent !== null;
+        if (!visible) continue;
+        const t = (b.textContent || '').trim().toLowerCase();
+        if (t === 'continue' || t === 'submit' || t === 'check eligibility' || t === 'next') {
+          b.disabled = false;
+          b.removeAttribute('disabled');
+          b.click();
+          return t;
+        }
+      }
+      return null;
+    });
+    steps.push({ kind: 'submit', clicked: submitClicked });
+
+    // Wait up to 20s for the boot-eligibility response
+    const deadline = Date.now() + 20000;
+    while (Date.now() < deadline && bootApiStatus === null) {
+      await page.waitForTimeout(500);
+    }
+    steps.push({ kind: 'wait-done', status: bootApiStatus });
+  } finally {
+    page.off('response', onResp);
+  }
+
+  const final = { status: bootApiStatus, body: bootApiBody };
+
+  // Empty body / null / array-of-length-zero / missing towEligibleDate ⇒ not booted
+  const body = final?.body;
+  const record = Array.isArray(body) ? body[0] : body;
+  const rawTowDate = record && typeof record === 'object' ? record.towEligibleDate ?? null : null;
+  const isBooted = !!rawTowDate;
+  let isoTowDate: string | null = null;
+  if (rawTowDate) {
+    // City format: "YYYY-MM-DD HH:mm:ss.S" (local Chicago time). Convert to ISO-ish.
+    const m = String(rawTowDate).match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/);
+    isoTowDate = m ? `${m[1]}T${m[2]}` : String(rawTowDate);
+  }
+  const ext = record && typeof record === 'object' ? record.towExtensionEligible : null;
+  const normalizedExt = ext === true || ext === 'true' ? true : ext === false || ext === 'false' ? false : null;
+  return {
+    is_booted: isBooted,
+    tow_eligible_date: isoTowDate,
+    tow_extension_eligible: normalizedExt,
+    api_status: final?.status ?? null,
+    raw: { final, steps },
+  };
+}
+
+/**
  * Look up tickets for a single license plate on the Chicago payment portal.
  *
  * This is the primary entry point. It:
@@ -668,6 +796,7 @@ async function getHCaptchaSiteKey(page: Page): Promise<string | null> {
  * 4. Force-clicks the Search button (bypassing captcha)
  * 5. If bypass fails, falls back to CapSolver (if CAPSOLVER_API_KEY is set)
  * 6. Intercepts the API response to get structured ticket data
+ * 7. Probes the boot-extension endpoint to capture tow-eligible-date for booted plates
  */
 export async function lookupPlateOnPortal(
   plate: string,
@@ -693,6 +822,7 @@ export async function lookupPlateOnPortal(
     captcha_cost: 0, // Always 0 — no captcha needed
     lookup_duration_ms: 0,
     format_warnings: [],
+    boot_eligibility: null,
   };
 
   try {
@@ -885,6 +1015,16 @@ export async function lookupPlateOnPortal(
       result.error = 'API returned 401 Unauthorized - session may have expired';
     } else {
       result.error = `Unexpected API status ${searchApiStatus}: ${JSON.stringify(searchApiResponse).substring(0, 300)}`;
+    }
+
+    // Probe boot eligibility. The city's "boot extension" endpoint exposes
+    // towEligibleDate — when a currently-booted vehicle becomes tow-eligible
+    // if unpaid. For non-booted plates the response is empty/null. Runs in
+    // the browser so it inherits the authenticated session from the search.
+    try {
+      result.boot_eligibility = await probeBootEligibility(page, plate);
+    } catch (bootErr: any) {
+      result.format_warnings.push(`boot-eligibility probe failed: ${bootErr.message}`);
     }
 
     await page.close();
@@ -1185,6 +1325,7 @@ export async function lookupMultiplePlatesParallel(
           captcha_cost: 0,
           lookup_duration_ms: 0,
           format_warnings: [],
+          boot_eligibility: null,
         })));
       }
     });

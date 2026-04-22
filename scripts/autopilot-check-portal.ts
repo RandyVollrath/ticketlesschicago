@@ -2244,6 +2244,148 @@ async function sendEvidenceRequestEmail(
 }
 
 /**
+ * Send a pre-tow warning when the CHI PAY portal reports that a subscriber's
+ * plate is currently booted and has a towEligibleDate set. Dedupes on
+ * (user_id, tow_eligible_date) via notification_logs — if we've already sent
+ * a boot warning for this exact eligibility date, we don't send again.
+ */
+async function sendBootTowWarning(
+  args: {
+    userId: string;
+    plate: string;
+    towEligibleDateIso: string;
+    extensionEligible: boolean | null;
+  }
+): Promise<void> {
+  const { userId, plate, towEligibleDateIso, extensionEligible } = args;
+
+  // Load profile + notify preferences
+  const { data: profile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('first_name, last_name, email, phone_number, notify_tow, notify_sms, notify_email, is_paid')
+    .eq('user_id', userId)
+    .single();
+
+  if (!profile || !profile.is_paid) return;
+  if (!profile.notify_tow && !profile.notify_sms && !profile.notify_email) return;
+
+  // Dedupe: has a boot warning for this exact tow_eligible_date been logged in the last 7 days?
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: existing } = await supabaseAdmin
+    .from('notification_logs')
+    .select('id, status')
+    .eq('user_id', userId)
+    .eq('category', 'towing')
+    .in('status', ['sent', 'delivered'])
+    .gte('created_at', sevenDaysAgo)
+    .contains('metadata', { kind: 'boot_warning', tow_eligible_date: towEligibleDateIso })
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    console.log(`    boot-warning already sent for ${plate} / ${towEligibleDateIso} — skipping`);
+    return;
+  }
+
+  const eligibleDate = new Date(towEligibleDateIso);
+  const hoursUntil = (eligibleDate.getTime() - Date.now()) / (1000 * 60 * 60);
+  const dateStr = eligibleDate.toLocaleString('en-US', {
+    timeZone: 'America/Chicago',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  const firstName = profile.first_name || 'there';
+
+  const smsMessage = extensionEligible
+    ? `Autopilot America: Your plate ${plate} has a boot. The city can tow it as of ${dateStr} CT (~${Math.max(0, Math.round(hoursUntil))}h). You're eligible for a 24-hour extension — pay or request extension at webapps1.chicago.gov, or call 312-744-7275.`
+    : `Autopilot America: Your plate ${plate} has a boot and is tow-eligible as of ${dateStr} CT (~${Math.max(0, Math.round(hoursUntil))}h). Pay the boot fee now in person or online to avoid a tow. Call 312-744-7275.`;
+
+  const htmlBody = `
+    <p>Hi ${firstName},</p>
+    <p>The City of Chicago's payment system shows your plate <strong>${plate}</strong> currently has a boot.</p>
+    <p>Your vehicle becomes <strong>tow-eligible</strong> on:</p>
+    <p style="font-size:18px;"><strong>${dateStr} Central Time</strong> (~${Math.max(0, Math.round(hoursUntil))} hours from now)</p>
+    <p>If you don't pay the boot fee before that time, the city can tow the vehicle. Once it's towed, you'll have to pay the boot fee, the tow fee, and a daily storage fee — and retrieve release documents in person.</p>
+    ${extensionEligible
+      ? '<p>You are currently eligible for a one-time 24-hour extension. You can request it at the City of Chicago payment portal or by calling the Department of Finance at 312-744-7275.</p>'
+      : '<p>You are no longer eligible for the 24-hour extension. Pay the boot fee as soon as possible to avoid the tow.</p>'}
+    <p><a href="https://webapps1.chicago.gov/payments-web/">Pay or extend at webapps1.chicago.gov</a></p>
+    <p>— Autopilot America</p>
+  `;
+
+  let smsExternalId: string | undefined;
+  let emailExternalId: string | undefined;
+  let anySent = false;
+
+  if (profile.phone_number && (profile.notify_tow || profile.notify_sms)) {
+    try {
+      const smsResult = await sendClickSendSMS(profile.phone_number, smsMessage);
+      if (smsResult.success) {
+        anySent = true;
+        smsExternalId = smsResult.messageId;
+        console.log(`    boot-warning SMS sent to ${profile.phone_number}`);
+      } else {
+        console.warn(`    boot-warning SMS failed: ${smsResult.error}`);
+      }
+    } catch (err: any) {
+      console.warn(`    boot-warning SMS exception: ${err.message}`);
+    }
+  }
+
+  if (profile.email && (profile.notify_tow || profile.notify_email) && process.env.RESEND_API_KEY) {
+    try {
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Autopilot America <alerts@autopilotamerica.com>',
+          to: [profile.email],
+          subject: `Boot on ${plate} — tow-eligible ${dateStr} CT`,
+          html: htmlBody,
+        }),
+      });
+      if (resp.ok) {
+        anySent = true;
+        const j = await resp.json().catch(() => ({}));
+        emailExternalId = j?.id;
+        console.log(`    boot-warning email sent to ${profile.email}`);
+      } else {
+        console.warn(`    boot-warning email failed: ${await resp.text()}`);
+      }
+    } catch (err: any) {
+      console.warn(`    boot-warning email exception: ${err.message}`);
+    }
+  }
+
+  if (anySent) {
+    await supabaseAdmin.from('notification_logs').insert({
+      user_id: userId,
+      email: profile.email,
+      phone: profile.phone_number,
+      notification_type: smsExternalId && emailExternalId ? 'sms' : smsExternalId ? 'sms' : 'email',
+      category: 'towing',
+      subject: `Boot on ${plate} tow-eligible ${dateStr}`,
+      content_preview: smsMessage.slice(0, 200),
+      status: 'sent',
+      external_id: smsExternalId || emailExternalId || null,
+      sent_at: new Date().toISOString(),
+      metadata: {
+        kind: 'boot_warning',
+        plate,
+        tow_eligible_date: towEligibleDateIso,
+        extension_eligible: extensionEligible,
+        sms_message_id: smsExternalId || null,
+        email_message_id: emailExternalId || null,
+      },
+    });
+  }
+}
+
+/**
  * Send evidence request via SMS when a new ticket is detected.
  * Tells the user they can reply with photos/text as evidence.
  */
@@ -3085,6 +3227,24 @@ async function main() {
       console.log(`  ${result.plate}: ERROR - ${result.error}`);
       totalErrors++;
       continue;
+    }
+
+    // Pre-tow warning: when the portal reports an active boot with a
+    // towEligibleDate, alert the subscriber before the city can tow them.
+    // Runs independently of ticket detection (booted vehicles may have
+    // zero current-payable tickets but still be tow-eligible).
+    if (result.boot_eligibility?.is_booted && result.boot_eligibility.tow_eligible_date) {
+      console.log(`  ${result.plate}: BOOT DETECTED — tow-eligible ${result.boot_eligibility.tow_eligible_date}`);
+      try {
+        await sendBootTowWarning({
+          userId: plateInfo.userId,
+          plate: plateInfo.plate,
+          towEligibleDateIso: result.boot_eligibility.tow_eligible_date,
+          extensionEligible: result.boot_eligibility.tow_extension_eligible,
+        });
+      } catch (bootErr: any) {
+        console.warn(`    boot-warning send failed: ${bootErr.message}`);
+      }
     }
 
     if (result.tickets.length === 0) {
