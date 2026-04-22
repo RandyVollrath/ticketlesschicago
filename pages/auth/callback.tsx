@@ -284,13 +284,23 @@ export default function AuthCallback() {
           console.log('✅ Existing user profile found');
           setDebugInfo(`✅ Welcome back! Redirecting to app...`);
 
-          // Link any orphaned FOIA history requests (in case user submitted one while logged out)
+          // Link any orphaned FOIA history requests (in case user submitted one while logged out).
+          // MUST send Authorization: Bearer <access_token> because /api/foia/link-user
+          // rejects unauthenticated calls. Fire-and-forget previously swallowed the 401s,
+          // silently dropping pre-signup FOIA links onto the floor for every returning user.
           try {
-            fetch('/api/foia/link-user', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: user.id, email: user.email }),
-            }); // fire-and-forget — don't await
+            const { data: sessionData } = await supabase.auth.getSession();
+            const accessToken = sessionData?.session?.access_token;
+            if (accessToken) {
+              fetch('/api/foia/link-user', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({ userId: user.id, email: user.email }),
+              }).catch(() => { /* non-critical */ });
+            }
           } catch (e) {
             // Non-critical
           }
@@ -403,13 +413,22 @@ export default function AuthCallback() {
               if (result.success) {
                 console.log('✅ Free account created successfully');
 
-                // Link any orphaned FOIA history requests submitted before signup
+                // Link any orphaned FOIA history requests submitted before signup.
+                // MUST send Authorization: Bearer <access_token> because
+                // /api/foia/link-user rejects unauthenticated calls with 401.
                 try {
-                  await fetch('/api/foia/link-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id, email: user.email }),
-                  });
+                  const { data: sessionData } = await supabase.auth.getSession();
+                  const accessToken = sessionData?.session?.access_token;
+                  if (accessToken) {
+                    await fetch('/api/foia/link-user', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`,
+                      },
+                      body: JSON.stringify({ userId: user.id, email: user.email }),
+                    });
+                  }
                 } catch (e) {
                   // Non-critical
                 }
