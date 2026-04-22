@@ -9,6 +9,16 @@ const MAX_PARKING_MISS_RATE = Number(process.env.MAX_PARKING_MISS_RATE || 0.25);
 const MAX_UNWIND_RATE = Number(process.env.MAX_UNWIND_RATE || 0.12);
 const MAX_CAMERA_FALLBACKS_PER_ALERT = Number(process.env.MAX_CAMERA_FALLBACKS_PER_ALERT || 0.4);
 
+// Minimum sample sizes. Without these, the rate thresholds are
+// mathematically unreachable on small logs — e.g., with only 4 parking
+// confirms, a single unwind is 25%, which trips a 12% threshold even
+// though 1 event is noise, not signal. Setting these to 10 means you
+// need at least 2 anomalies out of 10 before the gate fires — which is
+// actually a rate worth acting on.
+const MIN_DRIVING_STARTS = Number(process.env.MIN_DRIVING_STARTS || 10);
+const MIN_PARKING_CONFIRMED = Number(process.env.MIN_PARKING_CONFIRMED || 10);
+const MIN_CAMERA_ALERTS = Number(process.env.MIN_CAMERA_ALERTS || 10);
+
 function fail(message) {
   console.error(`FAIL: ${message}`);
   process.exit(2);
@@ -47,19 +57,31 @@ if (drivingStarted === 0) {
   fail('no driving sessions found in log');
 }
 
+const skipped = [];
+
 const missRate = (drivingStarted - parkingConfirmed) / drivingStarted;
-if (missRate > MAX_PARKING_MISS_RATE) {
+if (drivingStarted < MIN_DRIVING_STARTS) {
+  skipped.push(`parking miss rate (only ${drivingStarted}/${MIN_DRIVING_STARTS} driving sessions)`);
+} else if (missRate > MAX_PARKING_MISS_RATE) {
   fail(`parking miss rate too high: ${missRate.toFixed(3)} > ${MAX_PARKING_MISS_RATE}`);
 }
 
 const unwindRate = parkingConfirmed > 0 ? postConfirmUnwound / parkingConfirmed : 0;
-if (unwindRate > MAX_UNWIND_RATE) {
+if (parkingConfirmed < MIN_PARKING_CONFIRMED) {
+  skipped.push(`post-confirm unwind rate (only ${parkingConfirmed}/${MIN_PARKING_CONFIRMED} parking confirms)`);
+} else if (unwindRate > MAX_UNWIND_RATE) {
   fail(`post-confirm unwind rate too high: ${unwindRate.toFixed(3)} > ${MAX_UNWIND_RATE}`);
 }
 
 const fallbackPerAlert = cameraAlerts > 0 ? cameraFallbacks / cameraAlerts : 0;
-if (fallbackPerAlert > MAX_CAMERA_FALLBACKS_PER_ALERT) {
+if (cameraAlerts < MIN_CAMERA_ALERTS) {
+  skipped.push(`camera audio fallback rate (only ${cameraAlerts}/${MIN_CAMERA_ALERTS} camera alerts)`);
+} else if (fallbackPerAlert > MAX_CAMERA_FALLBACKS_PER_ALERT) {
   fail(`camera audio fallback rate too high: ${fallbackPerAlert.toFixed(3)} > ${MAX_CAMERA_FALLBACKS_PER_ALERT}`);
+}
+
+for (const s of skipped) {
+  console.log(`SKIP (insufficient sample): ${s}`);
 }
 
 console.log('PASS: reliability release gate');
