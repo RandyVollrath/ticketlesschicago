@@ -2287,7 +2287,9 @@ async function sendBootTowWarning(
   }
 
   const eligibleDate = new Date(towEligibleDateIso);
-  const hoursUntil = (eligibleDate.getTime() - Date.now()) / (1000 * 60 * 60);
+  const msUntil = eligibleDate.getTime() - Date.now();
+  const hoursUntil = msUntil / (1000 * 60 * 60);
+  const isPast = msUntil <= 0;
   const dateStr = eligibleDate.toLocaleString('en-US', {
     timeZone: 'America/Chicago',
     month: 'short',
@@ -2295,21 +2297,28 @@ async function sendBootTowWarning(
     hour: 'numeric',
     minute: '2-digit',
   });
+  const timePhrase = isPast
+    ? 'right now'
+    : hoursUntil < 1
+      ? 'in less than an hour'
+      : `in ~${Math.round(hoursUntil)}h`;
   const firstName = profile.first_name || 'there';
 
-  const smsMessage = extensionEligible
-    ? `Autopilot America: Your plate ${plate} has a boot. The city can tow it as of ${dateStr} CT (~${Math.max(0, Math.round(hoursUntil))}h). You're eligible for a 24-hour extension — pay or request extension at webapps1.chicago.gov, or call 312-744-7275.`
-    : `Autopilot America: Your plate ${plate} has a boot and is tow-eligible as of ${dateStr} CT (~${Math.max(0, Math.round(hoursUntil))}h). Pay the boot fee now in person or online to avoid a tow. Call 312-744-7275.`;
+  const smsMessage = isPast
+    ? `Autopilot America: Your plate ${plate} has a boot and is tow-eligible RIGHT NOW (as of ${dateStr} CT). Pay the boot fee immediately or your car may be towed at any time. Call 312-744-7275 or visit a DOF Payment Center in person.`
+    : extensionEligible
+      ? `Autopilot America: Your plate ${plate} has a boot. The city can tow it on ${dateStr} CT (${timePhrase}). You're eligible for a 24-hour extension — pay or request extension at webapps1.chicago.gov, or call 312-744-7275.`
+      : `Autopilot America: Your plate ${plate} has a boot and becomes tow-eligible ${dateStr} CT (${timePhrase}). Pay the boot fee now to avoid a tow. In-person at a DOF Payment Center or call 312-744-7275.`;
 
   const htmlBody = `
     <p>Hi ${firstName},</p>
     <p>The City of Chicago's payment system shows your plate <strong>${plate}</strong> currently has a boot.</p>
-    <p>Your vehicle becomes <strong>tow-eligible</strong> on:</p>
-    <p style="font-size:18px;"><strong>${dateStr} Central Time</strong> (~${Math.max(0, Math.round(hoursUntil))} hours from now)</p>
-    <p>If you don't pay the boot fee before that time, the city can tow the vehicle. Once it's towed, you'll have to pay the boot fee, the tow fee, and a daily storage fee — and retrieve release documents in person.</p>
+    <p>Your vehicle ${isPast ? '<strong>is currently tow-eligible</strong>' : 'becomes <strong>tow-eligible</strong>'} on:</p>
+    <p style="font-size:18px;"><strong>${dateStr} Central Time</strong> ${isPast ? '(past — tow could happen at any time)' : `(${timePhrase})`}</p>
+    <p>If the boot fee isn't paid, the city can tow the vehicle. Once it's towed, you'll have to pay the boot fee, the tow fee, and a daily storage fee — and retrieve release documents in person.</p>
     ${extensionEligible
       ? '<p>You are currently eligible for a one-time 24-hour extension. You can request it at the City of Chicago payment portal or by calling the Department of Finance at 312-744-7275.</p>'
-      : '<p>You are no longer eligible for the 24-hour extension. Pay the boot fee as soon as possible to avoid the tow.</p>'}
+      : '<p>You are no longer eligible for the 24-hour extension. Pay the boot fee as soon as possible to avoid a tow.</p>'}
     <p><a href="https://webapps1.chicago.gov/payments-web/">Pay or extend at webapps1.chicago.gov</a></p>
     <p>— Autopilot America</p>
   `;

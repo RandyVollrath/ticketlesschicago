@@ -112,10 +112,46 @@ export interface LookupResult {
 // portal bundle: { towEligibleDate: "YYYY-MM-DD HH:mm:ss.S", towExtensionEligible: "true"|"false" }
 export interface BootEligibility {
   is_booted: boolean;
-  tow_eligible_date: string | null; // ISO 8601, local Chicago time
+  tow_eligible_date: string | null; // Proper ISO 8601 with Chicago timezone offset
   tow_extension_eligible: boolean | null;
   api_status: number | null;
   raw: any;
+}
+
+// Convert a Chicago wall-clock time string ("YYYY-MM-DD HH:mm:ss[.S]") into
+// a proper ISO 8601 UTC string. Handles DST by asking Intl.DateTimeFormat
+// what the Chicago offset is for that exact moment. Without this, the server
+// (running in UTC) would parse "2026-04-25 08:00:00" as 8am UTC instead of
+// 8am CDT — a 5-hour error that would wreck the tow warning messaging.
+function chicagoWallTimeToIsoUtc(wall: string): string | null {
+  const m = String(wall).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [, yr, mo, dy, hr, mn, sc] = m.map(Number);
+  // Given a candidate UTC Date, compute the Chicago-wall-clock milliseconds it produces.
+  const chicagoAsUtcMs = (d: Date): number => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    }).formatToParts(d);
+    const f: Record<string, string> = {};
+    for (const p of parts) f[p.type] = p.value;
+    const chicagoHour = f.hour === '24' ? 0 : +f.hour;
+    return Date.UTC(+f.year, +f.month - 1, +f.day, chicagoHour, +f.minute, +f.second);
+  };
+  const target = Date.UTC(yr, mo - 1, dy, hr, mn, sc);
+  // Iterate: compute offset, apply, re-check — handles DST transitions where
+  // the offset at the naive moment differs from the offset at the true moment.
+  let candidate = new Date(target);
+  for (let i = 0; i < 3; i++) {
+    const chicago = chicagoAsUtcMs(candidate);
+    const offsetMs = candidate.getTime() - chicago; // UTC - Chicago
+    const next = new Date(target + offsetMs);
+    if (next.getTime() === candidate.getTime()) break;
+    candidate = next;
+  }
+  return candidate.toISOString();
 }
 
 // Expected field keys in the CHI PAY API itemRow format (2026).
@@ -710,25 +746,29 @@ async function probeBootEligibility(page: Page, plate: string): Promise<BootElig
     });
     await page.waitForTimeout(6000); // Angular bootstrap
 
-    // Fill plateNumber. The form has a single input with formControlName or placeholder.
+    // Fill the plateNumber input. Prefer the Angular formControlName; fall
+    // back to the first visible text input if the control name changes.
     const filled = await page.evaluate((p: string) => {
-      const inputs = Array.from(document.querySelectorAll('input')) as HTMLInputElement[];
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-      for (const input of inputs) {
-        const visible = (input as HTMLElement).offsetParent !== null;
-        if (!visible) continue;
-        // boot-extend form has a single plate input; type=text, not disabled
-        if (input.type !== 'text' && input.type !== '') continue;
+      const candidates: HTMLInputElement[] = [];
+      document.querySelectorAll<HTMLInputElement>('input[formcontrolname="plateNumber"], input[name="plateNumber"]').forEach(i => candidates.push(i));
+      if (candidates.length === 0) {
+        document.querySelectorAll<HTMLInputElement>('input').forEach(i => {
+          if ((i as HTMLElement).offsetParent !== null && (i.type === 'text' || i.type === '')) candidates.push(i);
+        });
+      }
+      for (const input of candidates) {
+        if ((input as HTMLElement).offsetParent === null) continue;
         setter.call(input, p);
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
+        return { ok: true, selector: input.getAttribute('formcontrolname') || input.name || input.type };
       }
-      return false;
+      return { ok: false, selector: null };
     }, plate.toUpperCase());
-    steps.push({ kind: 'fill', ok: filled });
+    steps.push({ kind: 'fill', filled });
 
-    if (!filled) {
+    if (!filled?.ok) {
       return { is_booted: false, tow_eligible_date: null, tow_extension_eligible: null, api_status: null, raw: { error: 'could-not-fill-boot-form', steps } };
     }
 
@@ -769,12 +809,7 @@ async function probeBootEligibility(page: Page, plate: string): Promise<BootElig
   const record = Array.isArray(body) ? body[0] : body;
   const rawTowDate = record && typeof record === 'object' ? record.towEligibleDate ?? null : null;
   const isBooted = !!rawTowDate;
-  let isoTowDate: string | null = null;
-  if (rawTowDate) {
-    // City format: "YYYY-MM-DD HH:mm:ss.S" (local Chicago time). Convert to ISO-ish.
-    const m = String(rawTowDate).match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/);
-    isoTowDate = m ? `${m[1]}T${m[2]}` : String(rawTowDate);
-  }
+  const isoTowDate = rawTowDate ? chicagoWallTimeToIsoUtc(String(rawTowDate)) : null;
   const ext = record && typeof record === 'object' ? record.towExtensionEligible : null;
   const normalizedExt = ext === true || ext === 'true' ? true : ext === false || ext === 'false' ? false : null;
   return {
