@@ -15,6 +15,14 @@ const COLORS = {
   purple: '#7C3AED',
 }
 
+interface WalkingStreet {
+  street: string
+  dir: string
+  blockRange: string
+  tickets: number
+  walkingDir: string
+}
+
 interface Zone {
   ward: string
   section: string
@@ -24,6 +32,7 @@ interface Zone {
   priorityScore: number
   wardTickets2024: number
   boundaries: { north: string; south: string; east: string; west: string }
+  walkingStreets: WalkingStreet[]
 }
 
 interface HotBlock {
@@ -588,11 +597,13 @@ function ZoneList({ zones, expandedItems, toggleExpand, badgeColor }: {
                   <PriorityBadge score={zone.priorityScore} />
                 </div>
                 <div style={{ fontSize: 12, color: COLORS.slate, marginTop: 2 }}>
-                  {zone.boundaries.north && zone.boundaries.south
-                    ? `${zone.boundaries.north} to ${zone.boundaries.south}`
-                    : `Cleaned ${formatDate(zone.cleaningDate)}`}
-                  <span style={{ marginLeft: 6, color: COLORS.slate }}>
-                    &middot; {zone.wardTickets2024.toLocaleString()} tickets/yr in ward
+                  {zone.walkingStreets && zone.walkingStreets.length > 0
+                    ? <>Walk: <strong style={{ color: COLORS.graphite }}>{zone.walkingStreets[0].street}</strong>{zone.walkingStreets.length > 1 ? ` +${zone.walkingStreets.length - 1} more` : ''}</>
+                    : zone.boundaries.north && zone.boundaries.south
+                      ? `${zone.boundaries.north} to ${zone.boundaries.south}`
+                      : `Cleaned ${formatDate(zone.cleaningDate)}`}
+                  <span style={{ marginLeft: 6 }}>
+                    &middot; {zone.wardTickets2024.toLocaleString()} tix/yr
                   </span>
                 </div>
               </div>
@@ -604,14 +615,43 @@ function ZoneList({ zones, expandedItems, toggleExpand, badgeColor }: {
             </div>
             {isExpanded && (
               <div style={{ padding: '0 14px 10px 52px', fontSize: 12, color: COLORS.slate }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '50px 1fr', gap: '3px 6px' }}>
+                {/* Zone Boundaries */}
+                <div style={{ display: 'grid', gridTemplateColumns: '50px 1fr', gap: '3px 6px', marginBottom: 8 }}>
                   {zone.boundaries.north && <><span style={{ fontWeight: 600 }}>North:</span><span>{zone.boundaries.north}</span></>}
                   {zone.boundaries.south && <><span style={{ fontWeight: 600 }}>South:</span><span>{zone.boundaries.south}</span></>}
                   {zone.boundaries.east && <><span style={{ fontWeight: 600 }}>East:</span><span>{zone.boundaries.east}</span></>}
                   {zone.boundaries.west && <><span style={{ fontWeight: 600 }}>West:</span><span>{zone.boundaries.west}</span></>}
                 </div>
-                <div style={{ marginTop: 4 }}>
-                  Cleaned: {formatDate(zone.cleaningDate)} &middot; Center: {zone.lat.toFixed(4)}, {zone.lng.toFixed(4)}
+
+                {/* Walking Streets */}
+                {zone.walkingStreets && zone.walkingStreets.length > 0 ? (
+                  <div style={{ background: '#F0FDF4', borderRadius: 6, padding: '8px 10px', border: '1px solid #BBF7D0' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.signal, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                      Streets to Walk (by ticket count)
+                    </div>
+                    {zone.walkingStreets.map((ws, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', borderBottom: i < zone.walkingStreets.length - 1 ? '1px solid #D1FAE5' : 'none' }}>
+                        <span style={{ fontWeight: 700, color: COLORS.graphite, minWidth: 0, flex: 1 }}>
+                          {ws.street}
+                        </span>
+                        <span style={{ color: COLORS.danger, fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap' }}>
+                          {ws.tickets} tix
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 10, color: COLORS.slate, marginTop: 6, lineHeight: 1.4 }}>
+                      Walk these streets within the zone boundaries. Start with the highest-ticket street.
+                      Each block is ~5 min of flyering.
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: COLORS.concrete, borderRadius: 6, padding: '8px 10px', fontSize: 11, color: COLORS.slate }}>
+                    No FOIA hotspot streets matched this zone. Walk all streets within the boundaries above.
+                  </div>
+                )}
+
+                <div style={{ marginTop: 6, fontSize: 11 }}>
+                  Cleaned: {formatDate(zone.cleaningDate)}
                 </div>
               </div>
             )}
