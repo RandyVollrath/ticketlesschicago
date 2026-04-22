@@ -896,7 +896,11 @@ class LocationServiceClass {
       // Provide more specific error messages
       let errorMessage: string;
       if (response.error?.message === 'outside_chicago') {
-        errorMessage = 'This app monitors Chicago parking restrictions. Your current location appears to be outside the Chicago area. Please use the app when parked in Chicago.';
+        // Standard out-of-coverage message — mirrored in HomeScreen,
+        // MapScreen, and BackgroundTaskService notifications. Every entry
+        // point uses the sentinel "[outside_chicago]" prefix so callers can
+        // detect it without fragile substring matching on copy edits.
+        errorMessage = '[outside_chicago] Autopilot only covers Chicago city limits. Your current location looks like a suburb (for example Evanston, Oak Park, Cicero, or Skokie) — we don\'t check parking rules there yet.';
       } else if (response.error?.type === ApiErrorType.AUTH_ERROR) {
         log.error('Parking check auth failure - user may need to re-login', {
           statusCode: response.error.statusCode,

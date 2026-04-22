@@ -137,10 +137,21 @@ const MapScreenContent: React.FC = () => {
         if (isMountedRef.current) {
           setLastLocation(result);
         }
-      } catch (error) {
-        log.error('Error checking notification location', error);
-        if (isMountedRef.current) {
-          Alert.alert('Error', 'Failed to check parking at notification location');
+      } catch (error: any) {
+        const msg = error?.message || '';
+        if (msg.includes('[outside_chicago]')) {
+          log.info('Notification location outside Chicago');
+          if (isMountedRef.current) {
+            Alert.alert(
+              'Outside Chicago',
+              'Autopilot only covers Chicago city limits. It looks like this spot is in a suburb (Evanston, Oak Park, Cicero, Skokie…) — we don\'t check parking rules there yet.',
+            );
+          }
+        } else {
+          log.error('Error checking notification location', error);
+          if (isMountedRef.current) {
+            Alert.alert('Error', 'Failed to check parking at notification location');
+          }
         }
       } finally {
         if (isMountedRef.current) {
@@ -289,10 +300,21 @@ const MapScreenContent: React.FC = () => {
       if (isMountedRef.current) {
         setLastLocation(result);
       }
-    } catch (error) {
-      log.error('Error checking location', error);
-      if (isMountedRef.current) {
-        Alert.alert('Error', 'Failed to check parking restrictions');
+    } catch (error: any) {
+      const msg = error?.message || '';
+      if (msg.includes('[outside_chicago]')) {
+        log.info('Current location outside Chicago');
+        if (isMountedRef.current) {
+          Alert.alert(
+            'Outside Chicago',
+            'Autopilot only covers Chicago city limits. It looks like you\'re in a suburb (Evanston, Oak Park, Cicero, Skokie…) — we don\'t check parking rules there yet.',
+          );
+        }
+      } else {
+        log.error('Error checking location', error);
+        if (isMountedRef.current) {
+          Alert.alert('Error', 'Failed to check parking restrictions');
+        }
       }
     } finally {
       if (isMountedRef.current) {
@@ -330,10 +352,21 @@ const MapScreenContent: React.FC = () => {
       if (isMountedRef.current) {
         setLastLocation(result);
       }
-    } catch (error) {
-      log.error('Error saving current location', error);
-      if (isMountedRef.current) {
-        Alert.alert('Error', 'Failed to save parking location. Please try again.');
+    } catch (error: any) {
+      const msg = error?.message || '';
+      if (msg.includes('[outside_chicago]')) {
+        log.info('Save-location outside Chicago');
+        if (isMountedRef.current) {
+          Alert.alert(
+            'Outside Chicago',
+            'Autopilot only covers Chicago city limits. It looks like you\'re in a suburb (Evanston, Oak Park, Cicero, Skokie…) — we don\'t check parking rules there yet.',
+          );
+        }
+      } else {
+        log.error('Error saving current location', error);
+        if (isMountedRef.current) {
+          Alert.alert('Error', 'Failed to save parking location. Please try again.');
+        }
       }
     } finally {
       if (isMountedRef.current) {

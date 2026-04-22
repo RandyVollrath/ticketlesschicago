@@ -923,11 +923,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     } catch (error: any) {
       if (timedOut) return;
       const msg = error?.message || '';
-      if (msg.includes('outside the Chicago area')) {
+      // LocationService prefixes out-of-Chicago errors with [outside_chicago]
+      // so every entry point can detect it without relying on copy wording.
+      if (msg.includes('[outside_chicago]') || msg.includes('outside the Chicago area')) {
         log.info('User is outside Chicago area');
         Alert.alert(
           'Outside Chicago',
-          'Autopilot monitors Chicago parking restrictions. This feature is available when you are parked in Chicago.',
+          'Autopilot only covers Chicago city limits. It looks like you\'re in a suburb (Evanston, Oak Park, Cicero, Skokie…) — we don\'t check parking rules there yet.',
         );
       } else {
         log.error('Error checking location', error);
