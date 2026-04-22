@@ -1,0 +1,98 @@
+name: QA — Auth
+
+# Prevents silent auth breakage from reaching customers.
+#
+# Runs every 30 minutes and on each push to main. Two gates:
+#   1. Static CSP check (scripts/qa-csp-static.ts) — parses next.config.mjs
+#      and asserts connect-src includes every host the browser needs.
+#   2. End-to-end auth smoke (scripts/qa-auth-smoke.ts) — drives a real
+#      headless Chromium through the magic-link sign-in flow on prod and
+#      asserts the signed-in view renders with no CSP violations in the
+#      browser console.
+#
+# If auth-smoke fails, GitHub emails the commit author and the full
+# rendered page screenshot is uploaded as a workflow artifact.
+
+on:
+  schedule:
+    # Every 30 minutes. If this starts eating too many CI minutes, drop
+    # to hourly. Each run is ~1-2 min.
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      # Surfaces that can break auth. Adding a file here means a push
+      # touching it will trigger an immediate post-deploy smoke.
+      - 'pages/get-started.tsx'
+      - 'pages/start.tsx'
+      - 'pages/login.tsx'
+      - 'pages/auth/**'
+      - 'next.config.mjs'
+      - 'lib/supabase.ts'
+      - 'scripts/qa-csp-static.ts'
+      - 'scripts/qa-auth-smoke.ts'
+      - '.github/workflows/qa-auth.yml'
+
+concurrency:
+  # Only one auth-QA run at a time; collapse rapid pushes.
+  group: qa-auth
+  cancel-in-progress: false
+
+jobs:
+  qa:
+    name: Static CSP + live auth smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci --ignore-scripts
+
+      - name: Static CSP check
+        run: npm run qa:csp
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Playwright system deps (cache hit path)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Wait for Vercel deploy (push trigger only)
+        # On push we want to validate the NEW prod, not the last one.
+        # Vercel typical cold deploy: 60-90s. Two minutes gives comfort.
+        if: github.event_name == 'push'
+        run: sleep 120
+
+      - name: Run auth smoke
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          QA_BOT_EMAIL: ${{ secrets.QA_BOT_EMAIL }}
+          QA_SITE_URL: https://www.autopilotamerica.com
+          QA_SCREENSHOT_PATH: qa-auth-failure.png
+        run: npm run qa:auth:ci
+
+      - name: Upload failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-auth-failure-${{ github.run_id }}
+          path: qa-auth-failure.png
+          if-no-files-found: ignore
+          retention-days: 14

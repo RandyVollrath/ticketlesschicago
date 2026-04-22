@@ -76,3 +76,4 @@ __pycache__/
 # Tow monitor data
 data/tow-portal-monitor.json
 
+qa-auth-failure.png
