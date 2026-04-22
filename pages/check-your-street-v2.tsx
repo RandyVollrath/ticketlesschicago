@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { getHighRiskWardData } from '../lib/high-risk-wards'
 import Footer from '../components/Footer'
 import MobileNav from '../components/MobileNav'
+import AddressAutocomplete from '../components/AddressAutocomplete'
 
 // Brand Colors - Municipal Fintech
 const COLORS = {
@@ -35,6 +36,7 @@ interface SearchResult {
 export default function CheckYourStreet() {
   const router = useRouter()
   const [address, setAddress] = useState('')
+  const formV2Ref = useRef<HTMLFormElement>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -382,24 +384,44 @@ export default function CheckYourStreet() {
 
             {/* Search Pill */}
             <div className={`max-w-2xl mx-auto transition-all duration-500 ${searchResult ? 'scale-100' : 'scale-105'}`}>
-              <form onSubmit={handleSearch} className="relative flex items-center w-full group">
-                <div className="absolute left-6 text-slate group-focus-within:text-regulatory transition-colors">
+              <form onSubmit={handleSearch} ref={formV2Ref} className="relative flex items-center w-full group">
+                <div className="absolute left-6 text-slate group-focus-within:text-regulatory transition-colors z-10 pointer-events-none">
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
-                <input
-                  type="text"
+                <AddressAutocomplete
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(v) => setAddress(v)}
+                  onSelect={(addr) => {
+                    const line = (addr.formatted || addr.street).replace(/,\s*USA$/i, '').replace(/,\s*United States of America$/i, '');
+                    setAddress(line);
+                    setTimeout(() => formV2Ref.current?.requestSubmit(), 50);
+                  }}
                   placeholder="Enter a Chicago address (e.g. 100 N State St)"
-                  className="w-full pl-16 pr-36 py-5 rounded-full border-2 border-white bg-white/80 backdrop-blur-md shadow-lg focus:outline-none focus:border-regulatory focus:ring-4 focus:ring-regulatory/10 text-lg text-deepHarbor placeholder-slate/60 transition-all font-medium"
-                  required
+                  biasChicago
+                  className="w-full"
+                  style={{
+                    width: '100%',
+                    paddingLeft: '4rem',
+                    paddingRight: '9rem',
+                    paddingTop: '1.25rem',
+                    paddingBottom: '1.25rem',
+                    borderRadius: '9999px',
+                    border: '2px solid white',
+                    background: 'rgba(255,255,255,0.8)',
+                    backdropFilter: 'blur(12px)',
+                    boxShadow: '0 10px 20px rgba(0,0,0,0.08)',
+                    fontSize: '1.125rem',
+                    fontWeight: 500,
+                    color: '#0F172A',
+                    outline: 'none',
+                  }}
                 />
                 <button
                   type="submit"
                   disabled={isSearching}
-                  className="absolute right-2 top-2 bottom-2 px-8 bg-deepHarbor hover:bg-black text-white rounded-full font-semibold transition-all disabled:opacity-70 flex items-center"
+                  className="absolute right-2 top-2 bottom-2 px-8 bg-deepHarbor hover:bg-black text-white rounded-full font-semibold transition-all disabled:opacity-70 flex items-center z-10"
                 >
                   {isSearching ? <div className="spinner border-white/30 border-left-white h-5 w-5" /> : 'Check'}
                 </button>

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { getHighRiskWardData } from '../lib/high-risk-wards'
 import Footer from '../components/Footer'
 import MobileNav from '../components/MobileNav'
+import AddressAutocomplete from '../components/AddressAutocomplete'
 
 const StreetCleaningMap = dynamic(() => import('../components/StreetCleaningMap'), {
   ssr: false,
@@ -523,66 +524,31 @@ export default function CheckYourStreet() {
           <form ref={formRef} onSubmit={handleSearch} style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div className="search-form" style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
               <div style={{ flex: 1, position: 'relative' }}>
-                <input
-                  ref={inputRef}
-                  type="text"
+                <AddressAutocomplete
                   value={address}
-                  onChange={(e) => handleAddressInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
+                  onChange={(v) => setAddress(v)}
+                  onSelect={(addr) => {
+                    const line = addr.formatted
+                      ? addr.formatted.replace(/,\s*USA$/i, '').replace(/,\s*United States of America$/i, '')
+                      : addr.street;
+                    setAddress(line);
+                    setTimeout(() => formRef.current?.requestSubmit(), 50);
+                  }}
                   placeholder="Start typing an address..."
-                  autoComplete="off"
+                  biasChicago
+                  inputRef={inputRef}
                   style={{
                     width: '100%',
                     padding: '16px 20px',
                     fontSize: '16px',
                     border: 'none',
-                    borderRadius: showSuggestions ? '12px 12px 0 0' : '12px',
+                    borderRadius: '12px',
                     outline: 'none',
                     backgroundColor: 'white',
                     color: COLORS.graphite,
                     boxSizing: 'border-box',
                   }}
                 />
-                {/* Autocomplete dropdown */}
-                {showSuggestions && suggestions.length > 0 && (
-                  <div
-                    ref={suggestionsRef}
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      backgroundColor: 'white',
-                      borderRadius: '0 0 12px 12px',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                      zIndex: 100,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {suggestions.map((s: any, i: number) => {
-                      const line1 = s.address_line1 || s.formatted?.split(',')[0] || ''
-                      const line2 = [s.city, s.state, s.postcode].filter(Boolean).join(', ')
-                      return (
-                        <div
-                          key={i}
-                          onClick={() => handleSuggestionSelect(s)}
-                          onMouseEnter={() => setSelectedIndex(i)}
-                          style={{
-                            padding: '10px 16px',
-                            cursor: 'pointer',
-                            backgroundColor: selectedIndex === i ? '#F1F5F9' : 'white',
-                            borderTop: i > 0 ? '1px solid #F1F5F9' : 'none',
-                            transition: 'background-color 0.1s',
-                          }}
-                        >
-                          <div style={{ fontSize: '14px', fontWeight: '500', color: COLORS.graphite }}>{line1}</div>
-                          {line2 && <div style={{ fontSize: '12px', color: COLORS.slate, marginTop: '1px' }}>{line2}</div>}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
               </div>
               <button
                 type="submit"

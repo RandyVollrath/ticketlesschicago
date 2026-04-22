@@ -14,6 +14,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import MobileNav from '../components/MobileNav';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import {
   trackPropertyTaxPageViewed,
   trackPropertyTaxAnalysisComplete,
@@ -1438,11 +1439,17 @@ export default function PropertyTax() {
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: COLORS.graphite, marginBottom: '8px' }}>
                   Property Address
                 </label>
-                <input
-                  type="text"
+                <AddressAutocomplete
                   value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
+                  onChange={(v) => setAddressInput(v)}
+                  onSelect={(addr) => {
+                    const line = (addr.formatted || addr.street).replace(/,\s*USA$/i, '').replace(/,\s*United States of America$/i, '');
+                    setAddressInput(line);
+                    setTimeout(() => searchProperty(), 50);
+                  }}
                   placeholder="e.g., 123 N Main St"
+                  biasChicago
+                  onKeyDown={(e) => { if (e.key === 'Enter') searchProperty(); }}
                   style={{
                     width: '100%',
                     padding: '14px 16px',
@@ -1450,9 +1457,8 @@ export default function PropertyTax() {
                     border: `1px solid ${COLORS.border}`,
                     fontSize: '16px',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
                   }}
-                  onKeyDown={(e) => e.key === 'Enter' && searchProperty()}
                 />
               </div>
             ) : (

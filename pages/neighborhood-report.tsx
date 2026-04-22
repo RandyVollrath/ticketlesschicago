@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Footer from '../components/Footer';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import type { NeighborhoodRealityReport } from '../lib/neighborhood-reality-report';
 
 // Brand Colors
@@ -148,22 +149,28 @@ export default function NeighborhoodReport() {
               marginBottom: '32px',
             }}
           >
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Enter a Chicago address (e.g., 1600 N Lake Shore Dr)"
-                style={{
-                  flex: 1,
-                  minWidth: '250px',
-                  padding: '14px 16px',
-                  fontSize: '16px',
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: '8px',
-                  outline: 'none',
-                }}
-              />
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: '250px' }}>
+                <AddressAutocomplete
+                  value={address}
+                  onChange={(v) => setAddress(v)}
+                  onSelect={(addr) => {
+                    const line = (addr.formatted || addr.street).replace(/,\s*USA$/i, '').replace(/,\s*United States of America$/i, '');
+                    setAddress(line);
+                  }}
+                  placeholder="Enter a Chicago address (e.g., 1600 N Lake Shore Dr)"
+                  biasChicago
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    fontSize: '16px',
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: '8px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
               <button
                 type="submit"
                 disabled={loading}

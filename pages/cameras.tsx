@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Footer from '../components/Footer';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import { RED_LIGHT_CAMERAS, RedLightCamera } from '../lib/red-light-cameras';
 import type { SpeedCamera, UserLocation, MeterLocation } from '../components/CameraMap';
 import {
@@ -412,6 +413,7 @@ export default function Neighborhoods() {
   const [selectedRedLightCamera, setSelectedRedLightCamera] = useState<RedLightCamera | null>(null);
   const [cameraSearchQuery, setCameraSearchQuery] = useState('');
   const [addressSearchQuery, setAddressSearchQuery] = useState('');
+  const camerasFormRef = useRef<HTMLFormElement>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -1425,21 +1427,28 @@ export default function Neighborhoods() {
               </svg>
               <span style={{ fontWeight: '600', color: '#1e40af' }}>Search by Address</span>
             </div>
-            <form onSubmit={handleAddressSearch} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                placeholder="Enter your address (e.g., 1234 N State St, Chicago)"
-                value={addressSearchQuery}
-                onChange={(e) => setAddressSearchQuery(e.target.value)}
-                style={{
-                  flex: '1',
-                  minWidth: '250px',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #93c5fd',
-                  fontSize: '14px'
-                }}
-              />
+            <form onSubmit={handleAddressSearch} ref={camerasFormRef} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div style={{ flex: '1', minWidth: '250px' }}>
+                <AddressAutocomplete
+                  value={addressSearchQuery}
+                  onChange={(v) => setAddressSearchQuery(v)}
+                  onSelect={(addr) => {
+                    const line = (addr.formatted || addr.street).replace(/,\s*USA$/i, '').replace(/,\s*United States of America$/i, '');
+                    setAddressSearchQuery(line);
+                    setTimeout(() => camerasFormRef.current?.requestSubmit(), 50);
+                  }}
+                  placeholder="Enter your address (e.g., 1234 N State St, Chicago)"
+                  biasChicago
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #93c5fd',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
               <button
                 type="submit"
                 disabled={isSearching || !addressSearchQuery.trim()}
