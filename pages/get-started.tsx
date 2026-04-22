@@ -29,6 +29,7 @@ export default function GetStarted() {
 
   // Plan selection - only autopilot now (free tier eliminated)
   const [selectedPlan, setSelectedPlan] = useState<'autopilot'>('autopilot');
+  const [billingPlan, setBillingPlan] = useState<'annual' | 'monthly'>('annual');
 
   // Vehicle info
   const [licensePlate, setLicensePlate] = useState('');
@@ -46,13 +47,24 @@ export default function GetStarted() {
   ];
 
   useEffect(() => {
+    // Safety net: never block the page on a hanging auth call. If the session
+    // probe stalls (flaky network, extension interference, cold edge region),
+    // render the signed-out view instead of stranding the user on "Loading...".
+    const loadingTimeout = setTimeout(() => setLoading(false), 3000);
+
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUser(session.user);
-        setEmail(session.user.email || '');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setUser(session.user);
+          setEmail(session.user.email || '');
+        }
+      } catch (err) {
+        console.error('get-started: getSession failed', err);
+      } finally {
+        clearTimeout(loadingTimeout);
+        setLoading(false);
       }
-      setLoading(false);
     };
     checkAuth();
 
@@ -65,7 +77,10 @@ export default function GetStarted() {
       }
     });
 
-    return () => authListener?.subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const handleGoogleSignIn = async () => {
@@ -156,6 +171,7 @@ export default function GetStarted() {
           userId: user.id,
           licensePlate: cleanPlate,
           plateState,
+          billingPlan,
           contestConsent: consentChecked,
           consentSignature: signatureName,
         }),
@@ -261,16 +277,67 @@ export default function GetStarted() {
                 <span style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 12, fontSize: 12 }}>FOUNDING MEMBER</span>
               </div>
               <div style={{ padding: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>$99</span>
-                  <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>/year</span>
+                {/* Billing toggle */}
+                <div style={{
+                  display: 'flex', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 3, marginBottom: 16,
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setBillingPlan('annual')}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+                      fontSize: 14, fontWeight: billingPlan === 'annual' ? 700 : 500,
+                      backgroundColor: billingPlan === 'annual' ? COLORS.white : 'transparent',
+                      color: billingPlan === 'annual' ? COLORS.graphite : COLORS.slate,
+                      boxShadow: billingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    Annual <span style={{ fontSize: 11, color: COLORS.signal, fontWeight: 600 }}>Save 18%</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBillingPlan('monthly')}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+                      fontSize: 14, fontWeight: billingPlan === 'monthly' ? 700 : 500,
+                      backgroundColor: billingPlan === 'monthly' ? COLORS.white : 'transparent',
+                      color: billingPlan === 'monthly' ? COLORS.graphite : COLORS.slate,
+                      boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    Monthly
+                  </button>
                 </div>
-                <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 4px 0' }}>
-                  Founding Member Rate locks while your membership stays active
-                </p>
-                <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 16px 0' }}>
-                  Pays for itself in 1.2 tickets
-                </p>
+
+                <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+                  <span style={{ fontSize: 36, fontWeight: 700, color: COLORS.deepHarbor }}>
+                    {billingPlan === 'annual' ? '$99' : '$10'}
+                  </span>
+                  <span style={{ fontSize: 16, color: COLORS.slate, marginLeft: 8 }}>
+                    {billingPlan === 'annual' ? '/year' : '/month'}
+                  </span>
+                </div>
+                {billingPlan === 'annual' ? (
+                  <>
+                    <p style={{ fontSize: 13, color: COLORS.signal, fontWeight: 500, margin: '0 0 4px 0' }}>
+                      Founding Member Rate locks while your membership stays active
+                    </p>
+                    <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 16px 0' }}>
+                      Pays for itself in 1.2 tickets
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 13, color: COLORS.slate, fontWeight: 500, margin: '0 0 4px 0' }}>
+                      Cancel anytime. No commitment.
+                    </p>
+                    <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 16px 0' }}>
+                      $120/year — save 18% with annual billing
+                    </p>
+                  </>
+                )}
                 <div style={{ fontSize: 14, color: COLORS.graphite, lineHeight: 1.8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
@@ -571,7 +638,11 @@ export default function GetStarted() {
                     opacity: (checkoutLoading || !licensePlate.trim() || !consentChecked) ? 0.7 : 1,
                   }}
                 >
-                  {checkoutLoading ? 'Loading...' : 'Continue to Payment - $99/year'}
+                  {checkoutLoading
+                    ? 'Loading...'
+                    : billingPlan === 'annual'
+                      ? 'Continue to Payment — $99/year'
+                      : 'Continue to Payment — $10/month'}
                 </button>
 
                 <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 16, textAlign: 'center' }}>

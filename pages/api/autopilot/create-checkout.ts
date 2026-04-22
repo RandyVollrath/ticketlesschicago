@@ -150,52 +150,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const selectedPlan = isMonthly ? ACTIVE_MONTHLY_PLAN : ACTIVE_AUTOPILOT_PLAN;
     const priceId = isMonthly ? AUTOPILOT_MONTHLY_PRICE_ID : AUTOPILOT_PRICE_ID;
 
-    // $1-for-30-days promotional intro on the annual plan only.
-    // Stripe charges the one-time $1 line item immediately at checkout, then
-    // the recurring $99/year subscription begins after a 30-day trial.
-    // To revert: drop the trialPromo block + restore the simple line_items array.
-    const trialPromo = !isMonthly;
-
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = trialPromo
-      ? [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: 'Autopilot — first 30 days',
-                description: 'Full plate monitoring, alerts, and contesting for one month.',
-              },
-              unit_amount: 100,
-            },
-            quantity: 1,
-          },
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ]
-      : [
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ];
-
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
-      line_items: lineItems,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/start?checkout=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/start?checkout=canceled`,
       subscription_data: {
-        ...(trialPromo ? { trial_period_days: 30 } : {}),
         metadata: {
           supabase_user_id: userId,
           service: 'autopilot',
           plan_code: selectedPlan.code,
           price_lock: String(selectedPlan.priceLock),
-          intro_promo: trialPromo ? '1usd_30day' : '',
         },
       },
       metadata: {
@@ -204,7 +176,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         plan_code: selectedPlan.code,
         license_plate_number: cleanPlate,
         license_plate_state: cleanState,
-        intro_promo: trialPromo ? '1usd_30day' : '',
       },
     });
 

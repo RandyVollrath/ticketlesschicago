@@ -1154,25 +1154,16 @@ export default function StartFunnel() {
                 background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.card} 100%)`,
                 border: `1px solid ${COLORS.border}`, marginBottom: 24,
               }}>
-                {billingPlan === 'annual' && (
-                  <div style={{
-                    display: 'inline-block', padding: '4px 12px', borderRadius: 20,
-                    backgroundColor: COLORS.primary, color: '#fff', fontSize: 12, fontWeight: 600,
-                    textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16,
-                  }}>
-                    Intro offer · 30 days for $1
-                  </div>
-                )}
                 <div style={{ fontSize: 48, fontWeight: 700, color: COLORS.text, lineHeight: 1.1 }}>
-                  {billingPlan === 'annual' ? '$1' : '$10'}
+                  {billingPlan === 'annual' ? '$99' : '$10'}
                   <span style={{ fontSize: 20, fontWeight: 400, color: COLORS.textSecondary }}>
-                    {billingPlan === 'annual' ? ' for 30 days' : '/month'}
+                    {billingPlan === 'annual' ? '/year' : '/month'}
                   </span>
                 </div>
                 {billingPlan === 'annual' ? (
                   <>
                     <div style={{ fontSize: 14, color: COLORS.textSecondary, marginTop: 8 }}>
-                      Then <strong style={{ color: COLORS.text }}>$99/year</strong>. Cancel anytime in the first 30 days and never get charged again.
+                      Cancel anytime. Founding Member rate locks while your membership stays active.
                     </div>
                     <div style={{ fontSize: 14, color: COLORS.success, fontWeight: 600, marginTop: 6 }}>
                       Skip one ticket and it pays for itself.
@@ -1231,13 +1222,13 @@ export default function StartFunnel() {
                 {loading
                   ? 'Setting up...'
                   : billingPlan === 'annual'
-                    ? 'Start protection — $1 today'
+                    ? 'Start protection — $99/year'
                     : 'Start protection — $10/month'}
               </ContinueButton>
 
               <div style={{ textAlign: 'center', marginTop: 12, fontSize: 13, color: COLORS.textSecondary, fontWeight: 500 }}>
                 {billingPlan === 'annual'
-                  ? '30 days for $1, then $99/year. Cancel anytime in the first 30 days.'
+                  ? '$99/year, billed today. Cancel anytime.'
                   : 'Skip one ticket and you’re ahead.'}
               </div>
               <div style={{ textAlign: 'center', marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>
