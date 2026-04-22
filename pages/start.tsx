@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import { capture } from '../lib/posthog';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 // Cal AI-style funnel: long survey first, auth ONLY at the Stripe handoff.
 // Every step writes to funnel_leads (Supabase) so we keep the data even if the
@@ -763,13 +764,18 @@ export default function StartFunnel() {
                 We use this for street cleaning alerts, snow ban notifications, and as the return address on contest letters.
               </StepSubtext>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <input
-                  ref={inputRef}
-                  type="text"
+                <AddressAutocomplete
                   value={street}
-                  onChange={(e) => { setStreet(e.target.value); setError(''); }}
-                  onKeyDown={(e) => handleKeyDown(e, handleAddressSubmit)}
+                  onChange={(v) => { setStreet(v); setError(''); }}
+                  onSelect={(addr) => {
+                    setStreet(addr.street || addr.formatted);
+                    if (addr.zip) setZip(addr.zip);
+                    setError('');
+                  }}
                   placeholder="Street address"
+                  biasChicago
+                  inputRef={inputRef}
+                  onKeyDown={(e) => handleKeyDown(e, handleAddressSubmit)}
                   autoComplete="street-address"
                   style={inputStyle}
                 />
@@ -854,12 +860,18 @@ export default function StartFunnel() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <input
-                    ref={inputRef}
-                    type="text"
+                  <AddressAutocomplete
                     value={mailingStreet}
-                    onChange={(e) => { setMailingStreet(e.target.value); setError(''); }}
+                    onChange={(v) => { setMailingStreet(v); setError(''); }}
+                    onSelect={(addr) => {
+                      setMailingStreet(addr.street || addr.formatted);
+                      if (addr.city) setMailingCity(addr.city);
+                      if (addr.state) setMailingStateField(addr.state);
+                      if (addr.zip) setMailingZip(addr.zip);
+                      setError('');
+                    }}
                     placeholder="Street address"
+                    inputRef={inputRef}
                     autoComplete="street-address"
                     style={inputStyle}
                   />

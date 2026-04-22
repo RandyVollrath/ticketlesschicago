@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import RegistrationForwardingSetup from '../components/RegistrationForwardingSetup';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 // ─── Error Boundary ─────────────────────────────────────────
 // Catches React render crashes so the user sees a clean fallback
@@ -1818,18 +1819,9 @@ function SettingsPageInner() {
   const handleAddressChange = (newAddress: string) => {
     setHomeAddress(newAddress);
 
-    // Debounce autocomplete suggestions
-    if (homeAutocompleteRef.current) clearTimeout(homeAutocompleteRef.current);
-    homeAutocompleteRef.current = setTimeout(() => {
-      fetchAddressSuggestions(newAddress, setHomeAddressSuggestions, setShowHomeSuggestions);
-    }, 300);
-
-    // Clear previous ward lookup timeout
-    if (addressLookupRef.current) {
-      clearTimeout(addressLookupRef.current);
-    }
-
-    // Debounce the ward/section lookup
+    // Debounce the ward/section lookup. Address autocomplete is handled by
+    // the AddressAutocomplete component; we only need to update ward here.
+    if (addressLookupRef.current) clearTimeout(addressLookupRef.current);
     addressLookupRef.current = setTimeout(() => {
       lookupWardSection(newAddress);
     }, 1000);
@@ -2393,65 +2385,30 @@ function SettingsPageInner() {
             }}>
               Street Address
             </label>
-            <div ref={homeDropdownRef} style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={homeAddress}
-                onChange={(e) => handleAddressChange(e.target.value)}
-                onFocus={() => { if (homeAddressSuggestions.length > 0) setShowHomeSuggestions(true); }}
-                placeholder="Start typing your address..."
-                autoComplete="off"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${wardLookupStatus === 'error' ? COLORS.highlight : COLORS.border}`,
-                  fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                }}
-              />
-              {showHomeSuggestions && homeAddressSuggestions.length > 0 && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  zIndex: 50,
-                  backgroundColor: '#fff',
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-                  marginTop: 4,
-                  maxHeight: 220,
-                  overflowY: 'auto',
-                }}>
-                  {homeAddressSuggestions.map((addr, i) => (
-                    <div
-                      key={i}
-                      onClick={() => selectHomeAddress(addr)}
-                      style={{
-                        padding: '10px 14px',
-                        cursor: 'pointer',
-                        fontSize: 14,
-                        color: COLORS.primary,
-                        borderBottom: i < homeAddressSuggestions.length - 1 ? `1px solid ${COLORS.bgSection}` : 'none',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = COLORS.bgSection)}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
-                    >
-                      <div style={{ fontWeight: 500 }}>{addr.addressLabel || addr.formattedAddress}</div>
-                      {addr.city && (
-                        <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>
-                          {addr.city}{addr.stateCode ? `, ${addr.stateCode}` : ''} {addr.postalCode || ''}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <AddressAutocomplete
+              value={homeAddress}
+              onChange={(v) => handleAddressChange(v)}
+              onSelect={(addr) => {
+                const line = addr.street || addr.formatted;
+                setHomeAddress(line);
+                if (addr.city) setHomeCity(addr.city);
+                if (addr.state) setHomeState(addr.state);
+                if (addr.zip) setHomeZip(addr.zip);
+                lookupWardSection(line);
+              }}
+              placeholder="Start typing your address..."
+              biasChicago
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: `1px solid ${wardLookupStatus === 'error' ? COLORS.highlight : COLORS.border}`,
+                fontSize: 15,
+                color: COLORS.primary,
+                backgroundColor: COLORS.bgLight,
+                boxSizing: 'border-box',
+              }}
+            />
             {wardLookupMessage && (
               <div style={{
                 marginTop: 6,
@@ -2672,66 +2629,33 @@ function SettingsPageInner() {
             }}>
               Street Address
             </label>
-            <div ref={mailingDropdownRef} style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={mailingAddress1}
-                onChange={(e) => handleMailingAddressChange(e.target.value)}
-                onFocus={() => { if (mailingAddressSuggestions.length > 0) setShowMailingSuggestions(true); }}
-                placeholder="Start typing your address..."
-                autoComplete="off"
-                disabled={sameAsHomeAddress}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  fontSize: 15,
-                  color: COLORS.primary,
-                  backgroundColor: COLORS.bgLight,
-                  boxSizing: 'border-box',
-                }}
-              />
-              {showMailingSuggestions && mailingAddressSuggestions.length > 0 && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  zIndex: 50,
-                  backgroundColor: '#fff',
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-                  marginTop: 4,
-                  maxHeight: 220,
-                  overflowY: 'auto',
-                }}>
-                  {mailingAddressSuggestions.map((addr, i) => (
-                    <div
-                      key={i}
-                      onClick={() => selectMailingAddress(addr)}
-                      style={{
-                        padding: '10px 14px',
-                        cursor: 'pointer',
-                        fontSize: 14,
-                        color: COLORS.primary,
-                        borderBottom: i < mailingAddressSuggestions.length - 1 ? `1px solid ${COLORS.bgSection}` : 'none',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = COLORS.bgSection)}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
-                    >
-                      <div style={{ fontWeight: 500 }}>{addr.addressLabel || addr.formattedAddress}</div>
-                      {addr.city && (
-                        <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>
-                          {addr.city}{addr.stateCode ? `, ${addr.stateCode}` : ''} {addr.postalCode || ''}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <AddressAutocomplete
+              value={mailingAddress1}
+              onChange={(v) => {
+                setMailingAddress1(v);
+                if (sameAsHomeAddress) setSameAsHomeAddress(false);
+              }}
+              onSelect={(addr) => {
+                setMailingAddress1(addr.street || addr.formatted);
+                if (addr.city) setMailingCity(addr.city);
+                if (addr.state) setMailingState(addr.state);
+                if (addr.zip) setMailingZip(addr.zip);
+                if (sameAsHomeAddress) setSameAsHomeAddress(false);
+              }}
+              placeholder="Start typing your address..."
+              biasChicago
+              disabled={sameAsHomeAddress}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 8,
+                border: `1px solid ${COLORS.border}`,
+                fontSize: 15,
+                color: COLORS.primary,
+                backgroundColor: COLORS.bgLight,
+                boxSizing: 'border-box',
+              }}
+            />
           </div>
 
           <div style={{ marginBottom: 16 }}>
