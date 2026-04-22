@@ -30,7 +30,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = typeof req.query.session === 'string' ? req.query.session.slice(0, 128) : '';
   const biasChicago = req.query.bias === 'chicago';
 
-  const key = process.env.GOOGLE_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+  // Prefer GOOGLE_MAPS_API_KEY (dedicated Maps Platform key). Fall back to
+  // GOOGLE_API_KEY for local/dev envs that only set one. Separating Maps keys
+  // from Gemini keys is required — Gemini keys bound to a service account
+  // can't hold Places API (New).
+  const key = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
   if (!key) {
     console.error('[places-autocomplete] missing GOOGLE_API_KEY');
     return res.status(500).json({ error: 'server_not_configured' });
