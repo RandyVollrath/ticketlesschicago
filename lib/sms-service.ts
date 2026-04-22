@@ -93,6 +93,9 @@ async function sendClickSendSMSOnce(to: string, message: string): Promise<{succe
     return { success: false, error: 'No credentials' };
   }
 
+  // US carriers reject alphanumeric sender IDs; use the registered toll-free number.
+  const fromNumber = process.env.CLICKSEND_PHONE_NUMBER || '+18335623866';
+
   try {
     const response = await fetch('https://rest.clicksend.com/v3/sms/send', {
       method: 'POST',
@@ -105,7 +108,7 @@ async function sendClickSendSMSOnce(to: string, message: string): Promise<{succe
           {
             to: normalizePhoneForClickSend(to),
             body: message,
-            from: 'Autopilot',
+            from: fromNumber,
             source: 'nodejs'
           }
         ]
