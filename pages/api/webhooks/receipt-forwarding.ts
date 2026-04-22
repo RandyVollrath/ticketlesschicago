@@ -277,7 +277,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // SECURITY: Verify Resend webhook signature to prevent forged receipt submissions.
   // Without this, attackers could inject fake city sticker receipts or utility bills.
-  if (!verifyWebhook('resend', req, rawBody)) {
+  // Uses the 'resend-receipts' provider so this webhook can have its own
+  // signing secret — Resend generates a separate secret per webhook endpoint.
+  if (!verifyWebhook('resend-receipts', req, rawBody)) {
     console.error('⚠️ Receipt forwarding webhook verification failed');
     return res.status(401).json({ error: 'Unauthorized - invalid signature' });
   }
@@ -291,6 +293,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (payload.type !== 'email.received') {
       console.log('❌ Invalid event type:', payload.type);
       return res.status(400).json({ error: 'Invalid event type' });
+    }
+
+    // SHORT-CIRCUIT: Resend forwards ALL inbound email events to every
+    // configured webhook. If this email wasn't addressed to a recognized
+    // receipts inbox, return 200 immediately instead of trying to process
+    // it as a receipt (prior behavior crashed with 500 on system-to-admin
+    // monitoring emails that happened to land here).
+    const ACCEPTED_INBOXES = new Set([
+      'receipts@autopilotamerica.com',
+      'utility-bills@autopilotamerica.com',
+      'utilitybills@autopilotamerica.com',
+      'registration@autopilotamerica.com',
+    ]);
+    const recipients = (payload.data?.to || []).map(t => String(t).toLowerCase().trim());
+    const isForThisHandler = recipients.some(r => ACCEPTED_INBOXES.has(r));
+    if (!isForThisHandler) {
+      console.log('⏭️ Not addressed to a receipts inbox — ignoring', recipients);
+      return res.status(200).json({ ignored: true, reason: 'not a receipts inbox' });
     }
 
     const email = payload.data;

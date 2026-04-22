@@ -172,21 +172,52 @@ export function verifyClickSendWebhook(
  *   back to JSON.stringify(req.body) which may work if Next.js parsed identically.
  */
 export function verifyWebhook(
-  provider: 'resend' | 'resend-evidence' | 'clicksend',
+  provider: 'resend' | 'resend-evidence' | 'resend-receipts' | 'clicksend',
   req: NextApiRequest,
   rawBody?: string,
 ): boolean {
   switch (provider) {
     case 'resend': {
-      const secret = process.env.RESEND_WEBHOOK_SECRET;
-      if (!secret) {
-        // SECURITY: Fail closed. Previously returned true when secret was missing,
-        // meaning any unverified request would be accepted in production if the
-        // env var was accidentally removed.
+      // Each Resend webhook endpoint has its own signing secret. This one is
+      // for /api/webhooks/resend-incoming-email. receipt-forwarding has its
+      // own secret (see 'resend-receipts' below) because Resend generates a
+      // separate secret per webhook.
+      //
+      // As a compatibility fallback, if RESEND_WEBHOOK_SECRET fails but
+      // RESEND_RECEIPTS_WEBHOOK_SECRET is set, try that too — some operators
+      // set them backwards after they're created.
+      const primary = process.env.RESEND_WEBHOOK_SECRET;
+      if (!primary) {
         console.error('RESEND_WEBHOOK_SECRET not set - rejecting webhook (fail closed)');
         return false;
       }
-      return verifyResendWebhook(req, secret, rawBody);
+      if (verifyResendWebhook(req, primary, rawBody)) return true;
+
+      const fallback = process.env.RESEND_RECEIPTS_WEBHOOK_SECRET;
+      if (fallback && verifyResendWebhook(req, fallback, rawBody)) {
+        console.warn('Resend webhook authed via fallback RESEND_RECEIPTS_WEBHOOK_SECRET — the env vars may be set backwards.');
+        return true;
+      }
+      return false;
+    }
+
+    case 'resend-receipts': {
+      // Secret for /api/webhooks/receipt-forwarding. Try the dedicated var
+      // first; fall back to RESEND_WEBHOOK_SECRET if only that is set.
+      const primary = process.env.RESEND_RECEIPTS_WEBHOOK_SECRET;
+      const fallback = process.env.RESEND_WEBHOOK_SECRET;
+      if (!primary && !fallback) {
+        console.error('RESEND_RECEIPTS_WEBHOOK_SECRET / RESEND_WEBHOOK_SECRET not set - rejecting webhook (fail closed)');
+        return false;
+      }
+      if (primary && verifyResendWebhook(req, primary, rawBody)) return true;
+      if (fallback && verifyResendWebhook(req, fallback, rawBody)) {
+        if (primary) {
+          console.warn('Receipts webhook authed via fallback RESEND_WEBHOOK_SECRET — env vars may be set backwards.');
+        }
+        return true;
+      }
+      return false;
     }
 
     case 'resend-evidence': {
