@@ -25,9 +25,10 @@ export default async function handler(
 
   // ── Webhook Authentication ──
   // Fail closed if the secret is not configured.
-  // Accept the secret via header only (query params get logged by every proxy).
-  // Use timing-safe comparison.
-  // ClickSend config: set header X-ClickSend-Token: <secret> on the inbound rule.
+  // ClickSend's inbound rule UI does not support custom headers, so we
+  // accept the secret from either a header OR the ?token= query string.
+  // Query-string secrets are logged — rotate the secret regularly.
+  // Comparison is timing-safe.
   const webhookSecret = process.env.CLICKSEND_WEBHOOK_SECRET;
   if (!webhookSecret) {
     console.error('SMS webhook: CLICKSEND_WEBHOOK_SECRET not configured — rejecting (fail closed)');
@@ -38,9 +39,16 @@ export default async function handler(
     (req.headers.authorization?.startsWith('Bearer ')
       ? req.headers.authorization.slice(7)
       : undefined);
-  if (!safeCompare(headerToken, webhookSecret)) {
-    console.warn('SMS webhook: invalid or missing secret header');
+  const queryTokenRaw = req.query.token;
+  const queryToken = Array.isArray(queryTokenRaw) ? queryTokenRaw[0] : queryTokenRaw;
+  const provided = headerToken || queryToken;
+
+  if (!safeCompare(provided, webhookSecret)) {
+    console.warn('SMS webhook: invalid or missing secret');
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+  if (!headerToken && queryToken) {
+    console.warn('SMS webhook auth via ?token= query param — rotate the secret regularly since query strings are logged.');
   }
 
   try {

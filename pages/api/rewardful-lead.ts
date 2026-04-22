@@ -1,9 +1,23 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import {
+  checkRateLimit,
+  recordRateLimitAction,
+  getClientIP,
+} from '../../lib/rate-limiter';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limit per IP — endpoint is unauthenticated and logs arbitrary
+  // emails; without a limit it's a log-flood / email-harvest channel.
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(ip, 'api');
+  if (!rl.allowed) {
+    return res.status(429).json({ error: 'Too many requests' });
+  }
+  await recordRateLimitAction(ip, 'api');
 
   const { referralId, email } = req.body;
 
@@ -11,7 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Missing referralId or email' });
   }
 
-  console.log('Rewardful lead registration requested for referral:', referralId, 'email:', email);
+  // Don't log raw email — it's a logged oracle otherwise.
+  console.log('Rewardful lead registration requested for referral:', referralId);
   
   // Note: Rewardful automatically tracks leads when referral data reaches Stripe.
   // There's no separate REST API endpoint for lead registration.

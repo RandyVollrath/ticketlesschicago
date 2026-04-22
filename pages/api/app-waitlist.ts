@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import {
+  checkRateLimit,
+  recordRateLimitAction,
+  getClientIP,
+} from '../../lib/rate-limiter';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,6 +19,16 @@ export default async function handler(
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limit per IP so this unauthenticated endpoint can't be used to
+  // flood the app_waitlist table or harvest the system for duplicate-email
+  // responses.
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(ip, 'api');
+  if (!rl.allowed) {
+    return res.status(429).json({ error: 'Too many requests' });
+  }
+  await recordRateLimitAction(ip, 'api');
 
   const { email, phone, source } = req.body;
 

@@ -100,38 +100,58 @@ export function verifyResendWebhook(
 }
 
 /**
- * Verify ClickSend webhook signature
+ * Verify ClickSend webhook signature.
  *
- * ClickSend doesn't have built-in signature verification,
- * but we can verify the request came from ClickSend's IP ranges
- * and add a secret token
+ * ClickSend's inbound SMS rule UI (as of 2026-04) does NOT allow custom
+ * request headers — the only way to authenticate the webhook is to put the
+ * secret directly in the URL. So this function accepts the secret from any
+ * of:
+ *   - header `x-clicksend-token`
+ *   - header `Authorization: Bearer <token>`
+ *   - query string `?token=<secret>`
+ *
+ * URL-query secrets get logged by every proxy, CDN, and Vercel's access
+ * log — so the operator must rotate the secret on a regular cadence.
+ * Comparison is timing-safe.
  */
 export function verifyClickSendWebhook(
   req: NextApiRequest,
   secret?: string
 ): boolean {
   try {
-    // Verify secret token via header only (never query params — they get logged)
     if (secret) {
-      const token = req.headers['x-clicksend-token'] || req.headers.authorization?.replace('Bearer ', '');
+      const headerToken =
+        (req.headers['x-clicksend-token'] as string | undefined) ||
+        (req.headers.authorization?.startsWith('Bearer ')
+          ? req.headers.authorization.slice(7)
+          : undefined);
 
-      if (token !== secret) {
+      const queryTokenRaw = req.query.token;
+      const queryToken = Array.isArray(queryTokenRaw) ? queryTokenRaw[0] : queryTokenRaw;
+
+      const tokenA = headerToken || queryToken;
+      if (!tokenA) {
+        console.error('ClickSend webhook: no token header or query param');
+        return false;
+      }
+
+      // Timing-safe compare.
+      const a = Buffer.from(String(tokenA));
+      const b = Buffer.from(secret);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
         console.error('ClickSend webhook secret token mismatch');
         return false;
       }
+
+      if (!headerToken && queryToken) {
+        console.warn('ClickSend webhook auth via ?token= query param — this is logged by every proxy. Rotate the secret regularly.');
+      }
     }
 
-    // Option 2: Verify IP address is from ClickSend
-    // ClickSend's webhook IPs (you'll need to add these to env or config)
-    const clicksendIPs = [
-      // Add ClickSend's IP ranges here if they provide them
-      // For now, we'll rely on the secret token
-    ];
-
+    // ClickSend IP whitelist (none configured — we rely on the secret token).
+    const clicksendIPs: string[] = [];
     const forwardedFor = req.headers['x-forwarded-for'] as string;
     const clientIP = forwardedFor ? forwardedFor.split(',')[0].trim() : req.socket?.remoteAddress;
-
-    // If we have IP whitelist and IP doesn't match, reject
     if (clicksendIPs.length > 0 && clientIP && !clicksendIPs.includes(clientIP)) {
       console.error('ClickSend webhook from unauthorized IP:', clientIP);
       return false;
