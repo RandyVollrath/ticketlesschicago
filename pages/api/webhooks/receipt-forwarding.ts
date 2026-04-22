@@ -94,13 +94,48 @@ function parseReceiptMetadata(subject: string, text?: string | null, sourceType?
   const haystack = `${subject || ''}\n${text || ''}`;
   const orderMatch = haystack.match(/\b(?:order|confirmation|transaction)\s*(?:#|number|no\.?)?\s*[:\-]?\s*([A-Z0-9\-]{5,})\b/i);
   const amountMatch = haystack.match(/\$\s*([0-9]+(?:\.[0-9]{2})?)/);
-  const dateMatch = haystack.match(/\b(20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}\/[0-9]{1,2}\/20[0-9]{2})\b/);
 
   let parsedPurchaseDate: string | null = null;
+
+  // 1) ISO / US numeric formats (purchase confirmation emails usually have these)
+  const dateMatch = haystack.match(/\b(20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}\/[0-9]{1,2}\/20[0-9]{2})\b/);
   if (dateMatch?.[1]) {
     const parsed = new Date(dateMatch[1]);
     if (!Number.isNaN(parsed.getTime())) {
       parsedPurchaseDate = parsed.toISOString().slice(0, 10);
+    }
+  }
+
+  // 2) Natural-language "sent on November 22, 2022" / "mailed on July 3, 2024"
+  //    Sebis's "IN THE MAIL" shipping notifications use this format — the
+  //    ISO regex above won't catch them. Extract the month/day/year from the
+  //    shipping phrase so the letter generator has a valid purchase_date.
+  if (!parsedPurchaseDate) {
+    const nlMatch = haystack.match(
+      /\b(?:sent|mailed|shipped|purchased|processed|dated|issued)\s+on\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(20\d{2})/i,
+    );
+    if (nlMatch) {
+      const [, monthName, day, year] = nlMatch;
+      const parsed = new Date(`${monthName} ${day}, ${year} 12:00:00`);
+      if (!Number.isNaN(parsed.getTime())) {
+        parsedPurchaseDate = parsed.toISOString().slice(0, 10);
+      }
+    }
+  }
+
+  // 3) Bare "November 22, 2022" anywhere in the body, as a last resort.
+  //    Lower confidence — could be a random date mention — so only apply
+  //    if we also see one of the Sebis shipping keywords somewhere in the email.
+  if (!parsedPurchaseDate && /\b(mailed|sent|shipped|in\s+the\s+mail)\b/i.test(haystack)) {
+    const bareMatch = haystack.match(
+      /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(20\d{2})\b/i,
+    );
+    if (bareMatch) {
+      const [, monthName, day, year] = bareMatch;
+      const parsed = new Date(`${monthName} ${day}, ${year} 12:00:00`);
+      if (!Number.isNaN(parsed.getTime())) {
+        parsedPurchaseDate = parsed.toISOString().slice(0, 10);
+      }
     }
   }
 
