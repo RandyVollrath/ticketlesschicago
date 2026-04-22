@@ -13,9 +13,30 @@ import {
 } from '../../../lib/contest-intelligence';
 import { ContestOutcomeType } from '../../../lib/contest-intelligence/types';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { isAdminUser } from '../../../lib/auth-middleware';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+/**
+ * Require an authenticated user. Returns { userId, isAdmin } or null
+ * (in which case the response has already been sent).
+ */
+async function requireAuthed(req: NextApiRequest, res: NextApiResponse): Promise<{ userId: string; email: string | null; isAdmin: boolean } | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return null;
+  }
+  const admin = createClient(supabaseUrl, supabaseServiceKey);
+  const { data: { user }, error } = await admin.auth.getUser(authHeader.substring(7));
+  if (error || !user) {
+    res.status(401).json({ error: 'Invalid or expired token' });
+    return null;
+  }
+  const isAdmin = await isAdminUser(user.id, user.email);
+  return { userId: user.id, email: user.email || null, isAdmin };
+}
 
 /**
  * Outcome Learning API
@@ -32,6 +53,13 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // SECURITY: Require authentication on all paths. Prior version was
+  // completely unauthenticated — any user_id in the querystring returned
+  // that user's contest outcomes (IDOR), and the POST path let anyone
+  // record arbitrary outcomes and poison the learning data.
+  const auth = await requireAuthed(req, res);
+  if (!auth) return;
 
   try {
     if (req.method === 'GET') {
@@ -129,8 +157,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      // Get user's outcomes
+      // Get user's outcomes — only your own unless you're an admin.
       if (user_id) {
+        if (user_id !== auth.userId && !auth.isAdmin) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
         const outcomes = await getUserOutcomes(supabase, user_id as string, {
           limit: Math.min(Math.max(limit ? parseInt(limit as string, 10) || 20 : 20, 1), 100),
           offset: Math.max(offset ? parseInt(offset as string, 10) || 0 : 0, 0),
@@ -147,6 +178,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === 'POST') {
+      // Only admins can record outcomes directly. The normal user-facing
+      // outcome-reporting flow goes through /api/contest/report-outcome
+      // (which ties the outcome to a contest owned by the authed user).
+      if (!auth.isAdmin) {
+        return res.status(403).json({ error: 'Admin only' });
+      }
       const {
         ticket_id,
         letter_id,

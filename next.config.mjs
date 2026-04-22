@@ -20,6 +20,29 @@ const nextConfig = {
     ];
   },
   async headers() {
+    // Pragmatic CSP — unsafe-inline for scripts/styles (legacy inline
+    // snippets in _document.tsx, Tailwind, Rewardful, Stripe). It's not a
+    // perfect XSS mitigation but it meaningfully shrinks the blast radius
+    // of a stored-XSS bug elsewhere.
+    //
+    // connect-src covers Supabase, Stripe, PostHog, Sentry, Resend, our
+    // APIs, and Google Maps. Tighten these once we know every endpoint.
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://*.stripe.network https://r.wdfl.co https://*.wdfl.co https://*.posthog.com https://*.sentry.io https://maps.googleapis.com https://*.vercel-insights.com https://*.vercel-analytics.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "img-src 'self' data: blob: https: http://localhost:*",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.stripe.com https://*.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://api.resend.com https://maps.googleapis.com https://*.googleapis.com https://data.cityofchicago.org https://nominatim.openstreetmap.org https://*.vercel-insights.com https://*.vercel-analytics.com https://api.wdfl.co https://*.wdfl.co https://r.wdfl.co",
+      "frame-src 'self' https://*.stripe.com https://*.stripe.network",
+      "worker-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self' https://checkout.stripe.com https://*.stripe.com",
+      "frame-ancestors 'self'",
+      'upgrade-insecure-requests',
+    ].join('; ');
+
     const securityHeaders = [
       // Prevent MIME sniffing so a misuploaded file can't be served as HTML/JS.
       { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -31,6 +54,10 @@ const nextConfig = {
       { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
       // Drop permissions we don't use.
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self)' },
+      // Content Security Policy. Report-only would be safer for rollout, but
+      // without reporting infrastructure we just apply in enforce mode — the
+      // policy is loose enough to not break the app today.
+      { key: 'Content-Security-Policy', value: csp },
     ];
     return [
       { source: '/:path*', headers: securityHeaders },

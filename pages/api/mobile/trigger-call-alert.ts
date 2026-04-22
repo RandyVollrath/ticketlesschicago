@@ -59,6 +59,18 @@ export default async function handler(
       return res.status(400).json({ error: 'alert_type and message are required' });
     }
 
+    // Sanitize the message the TTS engine will speak. User supplies this,
+    // so strip anything exotic and cap length to avoid TTS-abuse / long
+    // synth costs. Allow letters, digits, whitespace and common punctuation.
+    const safeMessage = String(message)
+      .replace(/[\x00-\x1F\x7F]/g, ' ') // control chars
+      .replace(/[^A-Za-z0-9\s.,'!?$#%&()\-]/g, '')
+      .trim()
+      .slice(0, 280);
+    if (!safeMessage) {
+      return res.status(400).json({ error: 'message is empty after sanitization' });
+    }
+
     // Check if user has phone call alerts enabled
     const { data: profile } = await supabaseAdmin
       .from('user_profiles')
@@ -133,7 +145,7 @@ export default async function handler(
     }
 
     // Place the call
-    const voiceMessage = `Autopilot parking alert. ${message}. This is an automated call from Autopilot America.`;
+    const voiceMessage = `Autopilot parking alert. ${safeMessage}. This is an automated call from Autopilot America.`;
 
     console.log(`Placing call alert to ${profile.phone_number} for user ${user.id}: ${alert_type}`);
     const callResult = await sendClickSendVoiceCall(profile.phone_number, voiceMessage);

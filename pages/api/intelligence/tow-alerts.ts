@@ -16,9 +16,25 @@ import {
 } from '../../../lib/contest-intelligence';
 import { TowAlertStatus } from '../../../lib/contest-intelligence/types';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { isAdminUser } from '../../../lib/auth-middleware';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+async function requireAuthed(req: NextApiRequest, res: NextApiResponse): Promise<{ userId: string; isAdmin: boolean } | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return null;
+  }
+  const admin = createClient(supabaseUrl, supabaseServiceKey);
+  const { data: { user }, error } = await admin.auth.getUser(authHeader.substring(7));
+  if (error || !user) {
+    res.status(401).json({ error: 'Invalid or expired token' });
+    return null;
+  }
+  return { userId: user.id, isAdmin: await isAdminUser(user.id, user.email) };
+}
 
 /**
  * Tow/Boot Alert API
@@ -35,11 +51,17 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  // SECURITY: require authentication. Prior version was a full IDOR — any
+  // user_id in the query returned that user's tow history; any id returned
+  // that specific alert. POST/PATCH were also unauthenticated.
+  const auth = await requireAuthed(req, res);
+  if (!auth) return;
+
   try {
     if (req.method === 'GET') {
       const { user_id, id, all, status, impound_lots, limit, offset } = req.query;
 
-      // Get impound lot information
+      // Get impound lot information (public static data, OK for any authed user).
       if (impound_lots === 'true') {
         const lots = getAllImpoundLots();
         return res.status(200).json({
@@ -48,20 +70,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      // Get specific alert
+      // Get specific alert — only if you own it (or you're admin).
       if (id) {
         const alert = await getAlert(supabase, id as string);
         if (!alert) {
           return res.status(404).json({ error: 'Alert not found' });
         }
+        if ((alert as any).user_id !== auth.userId && !auth.isAdmin) {
+          return res.status(404).json({ error: 'Alert not found' });
+        }
 
-        // Calculate current fees
         const fees = calculateCurrentFees(alert);
-
-        // Generate retrieval instructions
         const instructions = generateRetrievalInstructions(alert);
-
-        // Evaluate contest eligibility (would need related ticket statuses)
         const eligibility = evaluateTowContestEligibility(alert);
 
         return res.status(200).json({
@@ -73,8 +93,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      // Get user's alerts
+      // Get user's alerts — only your own unless admin.
       if (user_id) {
+        if (user_id !== auth.userId && !auth.isAdmin) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
         if (all === 'true') {
           const alerts = await getUserAlerts(supabase, user_id as string, {
             status: status as TowAlertStatus | undefined,
@@ -101,7 +124,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'POST') {
       const {
-        user_id,
         vehicle_id,
         alert_type,
         plate,
@@ -121,9 +143,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         contesting_tow,
       } = req.body;
 
-      if (!user_id || !alert_type || !plate || !state) {
+      if (!alert_type || !plate || !state) {
         return res.status(400).json({
-          error: 'user_id, alert_type, plate, and state are required',
+          error: 'alert_type, plate, and state are required',
         });
       }
 
@@ -134,8 +156,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
+      // Always attribute the alert to the authed user — clients can no longer
+      // spoof a user_id in the body to plant alerts under someone else's
+      // account.
       const alert = await createTowAlert(supabase, {
-        user_id,
+        user_id: auth.userId,
         vehicle_id,
         alert_type,
         plate,
@@ -179,6 +204,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!id) {
         return res.status(400).json({ error: 'id is required' });
+      }
+
+      // Verify the PATCH target belongs to the authed user (or they're admin).
+      const existing = await getAlert(supabase, id);
+      if (!existing) {
+        return res.status(404).json({ error: 'Alert not found' });
+      }
+      if ((existing as any).user_id !== auth.userId && !auth.isAdmin) {
+        return res.status(404).json({ error: 'Alert not found' });
       }
 
       // Handle different update actions

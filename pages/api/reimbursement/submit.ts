@@ -5,6 +5,16 @@ import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Escape HTML special chars before embedding in the admin email template.
+function esc(str: unknown): string {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -13,9 +23,23 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // SECURITY: Authenticate via Bearer token and use the verified user id.
+  // Prior version trusted a client-supplied `userId` in the body, so anyone
+  // could submit a guarantee claim as any user who had has_contesting=true.
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(
+    authHeader.substring(7),
+  );
+  if (authError || !authUser) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+  const userId = authUser.id;
+
   try {
     const {
-      userId,
       ticketNumber,
       ticketDate,
       ticketAmount,
@@ -28,11 +52,34 @@ export default async function handler(
       paymentDetails
     } = req.body;
 
-    if (!userId || !ticketDate || !ticketAmount || !ticketType || !frontPhotoUrl || !backPhotoUrl) {
+    if (!ticketDate || !ticketAmount || !ticketType || !frontPhotoUrl || !backPhotoUrl) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Get user info
+    // SECURITY: Only accept URLs that live on domains we trust (our own
+    // Supabase/Blob storage). Attacker-supplied URLs could be used for
+    // tracking pixels in the admin email, or to phish with a plausible-looking
+    // "ticket photo" pointing at a credential-harvesting page.
+    const allowedHosts = [
+      'supabase.co',
+      'vercel-storage.com',
+      'vercel.app',
+      'blob.vercel-storage.com',
+    ];
+    const urlHostAllowed = (u: unknown) => {
+      if (typeof u !== 'string') return false;
+      try {
+        const h = new URL(u).hostname;
+        return allowedHosts.some(a => h === a || h.endsWith('.' + a));
+      } catch {
+        return false;
+      }
+    };
+    if (!urlHostAllowed(frontPhotoUrl) || !urlHostAllowed(backPhotoUrl)) {
+      return res.status(400).json({ error: 'Photo URLs must be hosted on our storage' });
+    }
+
+    // Get user info (service role — we trust the JWT above).
     const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (userError || !user) {
       return res.status(400).json({ error: 'User not found' });
@@ -100,31 +147,31 @@ export default async function handler(
       await resend.emails.send({
         from: 'Autopilot America <hello@autopilotamerica.com>',
         to: ['randyvollrath@gmail.com', 'ticketlessamerica@gmail.com'],
-        subject: `🎫 New Guarantee Review Submission - ${profile.first_name} ${profile.last_name}`,
+        subject: `🎫 New Guarantee Review Submission - ${esc(profile.first_name)} ${esc(profile.last_name)}`,
         html: `
           <h2>New Guarantee Review Submission</h2>
 
           <h3>User Information:</h3>
           <ul>
-            <li><strong>Name:</strong> ${profile.first_name} ${profile.last_name}</li>
-            <li><strong>Email:</strong> ${profile.email}</li>
-            <li><strong>License Plate:</strong> ${profile.license_plate}</li>
+            <li><strong>Name:</strong> ${esc(profile.first_name)} ${esc(profile.last_name)}</li>
+            <li><strong>Email:</strong> ${esc(profile.email)}</li>
+            <li><strong>License Plate:</strong> ${esc(profile.license_plate)}</li>
           </ul>
 
           <h3>Ticket Details:</h3>
           <ul>
-            <li><strong>Type:</strong> ${ticketType.replace('_', ' ')}</li>
-            <li><strong>Date:</strong> ${new Date(ticketDate).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })}</li>
+            <li><strong>Type:</strong> ${esc(String(ticketType).replace('_', ' '))}</li>
+            <li><strong>Date:</strong> ${esc(new Date(ticketDate).toLocaleDateString('en-US', { timeZone: 'America/Chicago' }))}</li>
             <li><strong>Amount:</strong> $${parseFloat(ticketAmount).toFixed(2)}</li>
-            <li><strong>Address:</strong> ${ticketAddress || 'Not provided'}</li>
-            ${ticketNumber ? `<li><strong>Ticket #:</strong> ${ticketNumber}</li>` : ''}
-            ${ticketDescription ? `<li><strong>Description:</strong> ${ticketDescription}</li>` : ''}
+            <li><strong>Address:</strong> ${esc(ticketAddress || 'Not provided')}</li>
+            ${ticketNumber ? `<li><strong>Ticket #:</strong> ${esc(ticketNumber)}</li>` : ''}
+            ${ticketDescription ? `<li><strong>Description:</strong> ${esc(ticketDescription)}</li>` : ''}
           </ul>
 
           <h3>Photos:</h3>
-          <p><a href="${frontPhotoUrl}">View Front Photo</a> | <a href="${backPhotoUrl}">View Back Photo</a></p>
+          <p><a href="${esc(frontPhotoUrl)}">View Front Photo</a> | <a href="${esc(backPhotoUrl)}">View Back Photo</a></p>
 
-          <p><a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/profile-updates" style="display: inline-block; padding: 10px 20px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Review in Admin Panel</a></p>
+          <p><a href="${esc(process.env.NEXT_PUBLIC_SITE_URL || '')}/admin/profile-updates" style="display: inline-block; padding: 10px 20px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Review in Admin Panel</a></p>
         `
       });
       console.log('✅ Guarantee review notification email sent');
