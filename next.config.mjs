@@ -33,7 +33,7 @@ const nextConfig = {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https: http://localhost:*",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.stripe.com https://*.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://api.resend.com https://maps.googleapis.com https://*.googleapis.com https://data.cityofchicago.org https://nominatim.openstreetmap.org https://*.vercel-insights.com https://*.vercel-analytics.com https://api.wdfl.co https://*.wdfl.co https://r.wdfl.co",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://auth.autopilotamerica.com wss://auth.autopilotamerica.com https://api.stripe.com https://*.stripe.com https://*.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://api.resend.com https://maps.googleapis.com https://*.googleapis.com https://data.cityofchicago.org https://nominatim.openstreetmap.org https://*.vercel-insights.com https://*.vercel-analytics.com https://api.wdfl.co https://*.wdfl.co https://r.wdfl.co",
       "frame-src 'self' https://*.stripe.com https://*.stripe.network",
       "worker-src 'self' blob:",
       "object-src 'none'",
