@@ -549,7 +549,6 @@ export default function ZoneEditor() {
     <>
       <Head>
         <title>Zone Editor</title>
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       </Head>
       <div style={{ display: 'flex', height: '100vh', fontFamily: 'system-ui, sans-serif' }}>
         {/* Sidebar */}

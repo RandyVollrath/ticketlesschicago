@@ -1,4 +1,4 @@
-@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+/* Leaflet CSS is bundled locally — see `import 'leaflet/dist/leaflet.css'` in pages/_app.tsx. */
 
 @tailwind base;
 @tailwind components;
