@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { PermitZoneDocumentUpload } from '../components/PermitZoneDocumentUpload';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 interface DocumentStatus {
   success: boolean;
@@ -26,6 +27,7 @@ export default function PermitZoneDocuments() {
   const [loading, setLoading] = useState(true);
   const [documentStatus, setDocumentStatus] = useState<DocumentStatus | null>(null);
   const [address, setAddress] = useState('');
+  const permitFormRef = useRef<HTMLFormElement>(null);
   const [hasPermitZone, setHasPermitZone] = useState(false);
   const [checkingAddress, setCheckingAddress] = useState(false);
   const router = useRouter();
@@ -212,22 +214,29 @@ export default function PermitZoneDocuments() {
             }}>
               First, check if your address is in a permit zone
             </h2>
-            <form onSubmit={handleCheckAddress}>
-              <div style={{ display: 'flex', gap: '8px', flexDirection: window.innerWidth < 640 ? 'column' : 'row' }}>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Enter your Chicago address (e.g., 1710 S Clinton St)"
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                  }}
-                  required
-                />
+            <form onSubmit={handleCheckAddress} ref={permitFormRef}>
+              <div style={{ display: 'flex', gap: '8px', flexDirection: window.innerWidth < 640 ? 'column' : 'row', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <AddressAutocomplete
+                    value={address}
+                    onChange={(v) => setAddress(v)}
+                    onSelect={(addr) => {
+                      const line = (addr.formatted || addr.street).replace(/,\s*USA$/i, '').replace(/,\s*United States of America$/i, '');
+                      setAddress(line);
+                      setTimeout(() => permitFormRef.current?.requestSubmit(), 50);
+                    }}
+                    placeholder="Enter your Chicago address (e.g., 1710 S Clinton St)"
+                    biasChicago
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
                 <button
                   type="submit"
                   disabled={checkingAddress}

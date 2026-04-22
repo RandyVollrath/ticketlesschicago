@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import {
   calculateOverallScore,
   getGradeColor,
@@ -23,6 +24,7 @@ export default function BlockGrade() {
 
   const [address, setAddress] = useState('');
   const [searchAddress, setSearchAddress] = useState('');
+  const blockGradeFormRef = useRef<HTMLFormElement>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number; display: string } | null>(null);
@@ -261,22 +263,30 @@ export default function BlockGrade() {
           </div>
 
           {/* Search Form */}
-          <form onSubmit={handleSearch} style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                value={searchAddress}
-                onChange={(e) => setSearchAddress(e.target.value)}
-                placeholder="Enter your Chicago address..."
-                style={{
-                  flex: 1,
-                  padding: '14px 16px',
-                  fontSize: '16px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  outline: 'none'
-                }}
-              />
+          <form onSubmit={handleSearch} ref={blockGradeFormRef} style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <AddressAutocomplete
+                  value={searchAddress}
+                  onChange={(v) => setSearchAddress(v)}
+                  onSelect={(addr) => {
+                    const line = (addr.formatted || addr.street).replace(/,\s*USA$/i, '').replace(/,\s*United States of America$/i, '');
+                    setSearchAddress(line);
+                    setTimeout(() => blockGradeFormRef.current?.requestSubmit(), 50);
+                  }}
+                  placeholder="Enter your Chicago address..."
+                  biasChicago
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    fontSize: '16px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
               <button
                 type="submit"
                 disabled={isSearching || isLoading}

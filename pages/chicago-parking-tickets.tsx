@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -120,72 +121,23 @@ const CTAButton = ({ children, href, big = false, style }: { children: React.Rea
 function AddressInput({ value, onChange, onSelect, placeholder }: {
   value: string; onChange: (v: string) => void; onSelect: (v: string) => void; placeholder: string;
 }) {
-  const [suggestions, setSuggestions] = useState<{ formatted: string }[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [activeIdx, setActiveIdx] = useState(-1);
-  const debounceRef = useRef<NodeJS.Timeout>();
-
-  const fetchSuggestions = useCallback(async (text: string) => {
-    if (text.length < 3 || !GEOAPIFY_KEY) { setSuggestions([]); return; }
-    const params = new URLSearchParams({
-      text, apiKey: GEOAPIFY_KEY,
-      filter: 'circle:-87.6298,41.8781,40000',
-      bias: 'proximity:-87.6298,41.8781',
-      limit: '5', type: 'street',
-    });
-    try {
-      const res = await fetch(`https://api.geoapify.com/v1/geocode/autocomplete?${params}`);
-      const data = await res.json();
-      setSuggestions((data.features || []).map((f: any) => ({ formatted: f.properties.formatted })));
-      setShowSuggestions(true);
-    } catch { setSuggestions([]); }
-  }, []);
-
-  const handleChange = (text: string) => {
-    onChange(text);
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchSuggestions(text), 300);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, suggestions.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx(i => Math.max(i - 1, 0)); }
-    else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); const s = suggestions[activeIdx]; onChange(s.formatted); onSelect(s.formatted); setShowSuggestions(false); }
-    else if (e.key === 'Escape') setShowSuggestions(false);
-  };
-
   return (
-    <div style={{ position: 'relative' }}>
-      <input value={value} onChange={e => handleChange(e.target.value)} onKeyDown={handleKeyDown}
-        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-        placeholder={placeholder}
-        style={{
-          width: '100%', padding: '14px 16px', fontSize: '16px', fontFamily: F.body,
-          border: `2px solid ${C.gray200}`, borderRadius: '10px', outline: 'none',
-          boxSizing: 'border-box', transition: 'border-color 0.2s',
-        }}
-        onFocusCapture={e => (e.target as HTMLInputElement).style.borderColor = C.blue}
-        onBlurCapture={e => (e.target as HTMLInputElement).style.borderColor = C.gray200}
-      />
-      {showSuggestions && suggestions.length > 0 && (
-        <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-          backgroundColor: C.white, border: `1px solid ${C.gray200}`, borderRadius: '8px',
-          marginTop: '4px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden',
-        }}>
-          {suggestions.map((s, i) => (
-            <div key={i}
-              onMouseDown={() => { onChange(s.formatted); onSelect(s.formatted); setShowSuggestions(false); }}
-              style={{
-                padding: '12px 16px', fontSize: '14px', fontFamily: F.body, cursor: 'pointer',
-                backgroundColor: i === activeIdx ? C.gray100 : C.white, color: C.gray800,
-              }}
-            >{s.formatted}</div>
-          ))}
-        </div>
-      )}
-    </div>
+    <AddressAutocomplete
+      value={value}
+      onChange={onChange}
+      onSelect={(addr) => {
+        const line = (addr.formatted || addr.street).replace(/,\s*USA$/i, '').replace(/,\s*United States of America$/i, '');
+        onChange(line);
+        onSelect(line);
+      }}
+      placeholder={placeholder}
+      biasChicago
+      style={{
+        width: '100%', padding: '14px 16px', fontSize: '16px', fontFamily: F.body,
+        border: `2px solid ${C.gray200}`, borderRadius: '10px', outline: 'none',
+        boxSizing: 'border-box', transition: 'border-color 0.2s',
+      }}
+    />
   );
 }
 
