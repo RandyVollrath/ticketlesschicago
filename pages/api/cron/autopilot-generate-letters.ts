@@ -255,6 +255,14 @@ interface EvidenceBundle {
     sameViolationTypeCount: number; // how many past tickets match this violation type
     oldestTicketDate: string | null;
     newestTicketDate: string | null;
+    // Recency-based compliance signals. Even if the user has some old tickets,
+    // a long stretch with no new violations is a powerful argument that they've
+    // changed behavior / become a careful parker.
+    ticketsInLast12Months: number;
+    ticketsInLast24Months: number;
+    sameTypeTicketsInLast12Months: number;
+    monthsSinceMostRecentTicket: number | null;
+    monthsSinceMostRecentSameTypeTicket: number | null;
     parsedTickets: { ticket_number?: string; date?: string; type?: string; amount?: number; status?: string; location?: string }[];
     foiaFulfilledAt: string | null;
   } | null;
@@ -1210,6 +1218,64 @@ async function gatherAllEvidence(
           .filter((d: Date) => !isNaN(d.getTime()))
           .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 
+        // Recency stats — compared to the CURRENT ticket's date when available,
+        // otherwise today. Matters for the "no recent violations" argument:
+        // even if the user has old tickets, a long clean stretch suggests
+        // changed behavior.
+        const referenceDate = ticket.violation_date ? new Date(ticket.violation_date) : new Date();
+        const ms12 = 365 * 24 * 60 * 60 * 1000;
+        const ms24 = 2 * 365 * 24 * 60 * 60 * 1000;
+        const cutoff12 = new Date(referenceDate.getTime() - ms12);
+        const cutoff24 = new Date(referenceDate.getTime() - ms24);
+
+        // Recency is measured strictly against tickets issued BEFORE this ticket,
+        // so the current citation doesn't inflate the "recent tickets" count.
+        const pastTickets = parsedTickets.filter((t: any) => {
+          const d = t.date || t.violation_date;
+          if (!d) return false;
+          const dd = new Date(d);
+          return !isNaN(dd.getTime()) && dd.getTime() < referenceDate.getTime();
+        });
+        const pastSameType = pastTickets.filter((t: any) => {
+          const tType = (t.type || t.violation_type || '').toLowerCase();
+          const violationType = ticket.violation_type || '';
+          const violationDesc = (ticket.violation_description || '').toLowerCase();
+          if (violationType === 'no_city_sticker' && (tType.includes('sticker') || tType.includes('city vehicle'))) return true;
+          if (violationType === 'expired_plates' && (tType.includes('registration') || tType.includes('expired') || tType.includes('plate'))) return true;
+          if (violationType === 'street_cleaning' && (tType.includes('street clean') || tType.includes('sweep'))) return true;
+          if (violationType === 'red_light' && (tType.includes('red light') || tType.includes('traffic signal'))) return true;
+          if (violationType === 'speed_camera' && (tType.includes('speed') || tType.includes('camera'))) return true;
+          if (violationType === 'expired_meter' && (tType.includes('meter') || tType.includes('parking meter'))) return true;
+          if (violationType === 'no_standing' && (tType.includes('standing') || tType.includes('no stand'))) return true;
+          if (violationType === 'snow_route' && (tType.includes('snow') || tType.includes('winter'))) return true;
+          if (violationDesc && tType && violationDesc.split(' ').some((w: string) => w.length > 4 && tType.includes(w))) return true;
+          return false;
+        });
+        const countInWindow = (items: any[], cutoff: Date): number => {
+          return items.filter((t: any) => {
+            const d = new Date(t.date || t.violation_date);
+            return !isNaN(d.getTime()) && d.getTime() >= cutoff.getTime();
+          }).length;
+        };
+        const ticketsInLast12 = countInWindow(pastTickets, cutoff12);
+        const ticketsInLast24 = countInWindow(pastTickets, cutoff24);
+        const sameTypeInLast12 = countInWindow(pastSameType, cutoff12);
+
+        const monthsBetween = (a: Date, b: Date): number =>
+          Math.max(0, Math.round((b.getTime() - a.getTime()) / (30.44 * 24 * 60 * 60 * 1000)));
+        const mostRecentTicketDate = pastTickets.length > 0
+          ? pastTickets
+              .map((t: any) => new Date(t.date || t.violation_date))
+              .filter((d: Date) => !isNaN(d.getTime()))
+              .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0]
+          : null;
+        const mostRecentSameTypeDate = pastSameType.length > 0
+          ? pastSameType
+              .map((t: any) => new Date(t.date || t.violation_date))
+              .filter((d: Date) => !isNaN(d.getTime()))
+              .sort((a: Date, b: Date) => b.getTime() - a.getTime())[0]
+          : null;
+
         bundle.userFoiaHistory = {
           hasData: true,
           totalLifetimeTickets: totalCount,
@@ -1217,6 +1283,11 @@ async function gatherAllEvidence(
           sameViolationTypeCount: sameTypeCount,
           oldestTicketDate: ticketDates.length > 0 ? ticketDates[0].toISOString().split('T')[0] : null,
           newestTicketDate: ticketDates.length > 0 ? ticketDates[ticketDates.length - 1].toISOString().split('T')[0] : null,
+          ticketsInLast12Months: ticketsInLast12,
+          ticketsInLast24Months: ticketsInLast24,
+          sameTypeTicketsInLast12Months: sameTypeInLast12,
+          monthsSinceMostRecentTicket: mostRecentTicketDate ? monthsBetween(mostRecentTicketDate, referenceDate) : null,
+          monthsSinceMostRecentSameTypeTicket: mostRecentSameTypeDate ? monthsBetween(mostRecentSameTypeDate, referenceDate) : null,
           parsedTickets: parsedTickets.slice(0, 20), // Cap at 20 for prompt size
           foiaFulfilledAt: bestMatch.response_received_at || null,
         };
@@ -2350,7 +2421,9 @@ The City of Chicago responded to a FOIA request for this user's complete ticket 
 Summary:
 - Total lifetime tickets on record: ${fh.totalLifetimeTickets}
 - Total lifetime fines: $${fh.totalLifetimeFines.toFixed(2)}
-- Tickets of THIS violation type (${ticket.violation_type?.replace(/_/g, ' ') || 'this type'}): ${fh.sameViolationTypeCount}${fh.oldestTicketDate ? `\n- Record spans: ${fh.oldestTicketDate} to ${fh.newestTicketDate}` : ''}`;
+- Tickets of THIS violation type (${ticket.violation_type?.replace(/_/g, ' ') || 'this type'}): ${fh.sameViolationTypeCount}${fh.oldestTicketDate ? `\n- Record spans: ${fh.oldestTicketDate} to ${fh.newestTicketDate}` : ''}
+- Tickets in last 12 months (before this citation): ${fh.ticketsInLast12Months}
+- Tickets in last 24 months (before this citation): ${fh.ticketsInLast24Months}${fh.monthsSinceMostRecentTicket != null ? `\n- Months since most recent prior ticket: ${fh.monthsSinceMostRecentTicket}` : ''}`;
 
     if (isCleanRecord) {
       foiaHistorySection += `
@@ -2382,6 +2455,43 @@ NEAR-CLEAN RECORD:
 The FOIA response shows only ${fh.totalLifetimeTickets} total lifetime ticket(s). While not a perfect record, this is still a very low count that suggests responsible behavior.
 
 INSTRUCTIONS: If other strong evidence exists, you may briefly mention (1-2 sentences) that the respondent's overall citation history is minimal, suggesting this is not a pattern of non-compliance. Do NOT emphasize this if the total count is high or if many are the same type. Use only as a supporting character reference.`;
+    }
+
+    // Recency argument — fires on top of any of the above (or on its own for
+    // users with more than a near-clean record who have a long clean stretch).
+    // The point: old tickets are less persuasive as evidence of current
+    // non-compliance. A 12+ month clean stretch shows changed behavior.
+    const recentCleanMonths = fh.monthsSinceMostRecentTicket;
+    const hasRecentCleanStretch =
+      fh.ticketsInLast12Months === 0 &&
+      fh.totalLifetimeTickets > 3 && // only if there IS a prior record to contrast against
+      recentCleanMonths != null &&
+      recentCleanMonths >= 12;
+
+    if (hasRecentCleanStretch) {
+      const stretch = recentCleanMonths && recentCleanMonths >= 24
+        ? `${Math.floor(recentCleanMonths / 12)}+ years`
+        : `${recentCleanMonths} months`;
+      foiaHistorySection += `
+
+RECENT COMPLIANCE — NO VIOLATIONS IN ${stretch.toUpperCase()}:
+Although the respondent has ${fh.totalLifetimeTickets} lifetime ticket(s), City records confirm ZERO parking citations in the ${stretch} preceding this citation. This sustained clean stretch demonstrates changed behavior and a pattern of compliance — not a repeat offender.
+
+INSTRUCTIONS: Include this as a mitigating argument:
+- Frame the older record as historical, not current: "While the respondent's earlier driving history includes some parking citations, the City's own FOIA records confirm a sustained ${stretch} without a single violation preceding this one. The respondent has demonstrably changed parking habits and maintained consistent compliance."
+- Pair this with whatever evidence-based defense leads the letter. It strengthens a merit defense by showing the current citation is a genuine exception, not a continuing pattern.
+- Do NOT use this as the sole argument — always ground it in a substantive defense.`;
+    } else if (fh.sameViolationTypeCount > 0 && fh.sameTypeTicketsInLast12Months === 0 && fh.monthsSinceMostRecentSameTypeTicket != null && fh.monthsSinceMostRecentSameTypeTicket >= 12) {
+      // Softer version — if user has prior same-type tickets but none recently,
+      // still useful to argue "I've corrected this specific behavior."
+      const sameTypeGap = fh.monthsSinceMostRecentSameTypeTicket;
+      const sameTypeLabel = sameTypeGap >= 24 ? `${Math.floor(sameTypeGap / 12)}+ years` : `${sameTypeGap} months`;
+      foiaHistorySection += `
+
+RECENT COMPLIANCE FOR THIS VIOLATION TYPE — NO PRIOR ${(ticket.violation_type || 'SAME-TYPE').replace(/_/g, ' ').toUpperCase()} TICKETS IN ${sameTypeLabel.toUpperCase()}:
+The respondent has ${fh.sameViolationTypeCount} prior ${ticket.violation_type?.replace(/_/g, ' ') || 'same-type'} citation(s) on record, but none in the ${sameTypeLabel} leading up to this citation.
+
+INSTRUCTIONS: Brief supporting point — 1-2 sentences showing the respondent has corrected the specific behavior flagged by older same-type tickets, making the current citation an anomaly rather than a pattern.`;
     }
 
     sections.push(foiaHistorySection);
@@ -2437,7 +2547,21 @@ Generate a professional, formal contest letter that:
    ${evidence.alertSubscriptionEvidence?.hasAlerts ? `- Alert subscription: User enrolled in ${evidence.alertSubscriptionEvidence.alertTypes.join(', ')} before citation (${evidence.alertSubscriptionEvidence.relevantToViolation ? 'RELEVANT to this violation — SUPPORTING argument' : 'general compliance — brief mention only'})` : ''}
    ${evidence.userSubmittedEvidence?.hasEvidence ? `- User-submitted evidence: ${evidence.userSubmittedEvidence.text ? 'written statement' : ''}${evidence.userSubmittedEvidence.text && evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? ' + ' : ''}${evidence.userSubmittedEvidence.photoAnalyses.length > 0 ? `${evidence.userSubmittedEvidence.photoAnalyses.length} AI-analyzed photo(s) (STRONGEST — user's own documentation)` : evidence.userSubmittedEvidence.attachmentUrls.length > 0 ? `${evidence.userSubmittedEvidence.attachmentUrls.length} attachment(s)` : ''}` : ''}
    ${evidence.clericalErrorCheck?.hasErrors ? `- CLERICAL ERROR DETECTED: Plate mismatch — ticket says "${evidence.clericalErrorCheck.ticketPlate}" but actual plate is "${evidence.clericalErrorCheck.userPlate}" (STRONGEST — grounds for immediate dismissal)` : evidence.clericalErrorCheck?.checked ? '- Clerical error check: PASSED (ticket plate matches user plate)' : ''}
-   ${evidence.userFoiaHistory?.hasData ? `- FOIA user ticket history: ${evidence.userFoiaHistory.totalLifetimeTickets === 0 ? 'ZERO prior tickets (POWERFUL — first-time offender argument)' : evidence.userFoiaHistory.sameViolationTypeCount === 0 ? `First offense for this type (${evidence.userFoiaHistory.totalLifetimeTickets} total lifetime — SUPPORTING argument)` : evidence.userFoiaHistory.totalLifetimeTickets <= 3 ? `Near-clean record (${evidence.userFoiaHistory.totalLifetimeTickets} total — brief mention)` : `${evidence.userFoiaHistory.totalLifetimeTickets} lifetime tickets (use cautiously)`}` : ''}
+   ${evidence.userFoiaHistory?.hasData ? (() => {
+     const fh = evidence.userFoiaHistory!;
+     if (fh.totalLifetimeTickets === 0) return '- FOIA user ticket history: ZERO prior tickets (POWERFUL — first-time offender argument)';
+     if (fh.sameViolationTypeCount === 0) return `- FOIA user ticket history: First offense for this type (${fh.totalLifetimeTickets} total lifetime — SUPPORTING argument)`;
+     if (fh.totalLifetimeTickets <= 3) return `- FOIA user ticket history: Near-clean record (${fh.totalLifetimeTickets} total — brief mention)`;
+     // User has a non-trivial record. Check for a recent clean stretch.
+     if (fh.ticketsInLast12Months === 0 && fh.monthsSinceMostRecentTicket != null && fh.monthsSinceMostRecentTicket >= 12) {
+       const yrs = Math.floor(fh.monthsSinceMostRecentTicket / 12);
+       return `- FOIA user ticket history: ${fh.totalLifetimeTickets} lifetime tickets BUT ZERO in last ${yrs >= 2 ? yrs + ' years' : fh.monthsSinceMostRecentTicket + ' months'} — RECENT-COMPLIANCE argument (changed behavior)`;
+     }
+     if (fh.sameTypeTicketsInLast12Months === 0 && fh.sameViolationTypeCount > 0) {
+       return `- FOIA user ticket history: ${fh.totalLifetimeTickets} lifetime (${fh.sameViolationTypeCount} same-type) but NONE same-type in last 12 months — supporting recent-compliance point`;
+     }
+     return `- FOIA user ticket history: ${fh.totalLifetimeTickets} lifetime tickets (use cautiously)`;
+   })() : ''}
    ${evidence.zoneBoundaryDefense ? `- ZONE-BOUNDARY DEFENSE (§ ${evidence.zoneBoundaryDefense.cmcSection}, STRONG codified defense): The City rarely produces measurement evidence for ${evidence.zoneBoundaryDefense.statutoryDistanceFt ? `distance-based violations (${evidence.zoneBoundaryDefense.statutoryDistanceFt}-ft radius)` : 'posted-zone violations'}. USE THIS ARGUMENT VERBATIM OR REPHRASED — it invokes § 9-100-060(a)(4): "${evidence.zoneBoundaryDefense.argument.slice(0, 260)}..."` : ''}
    ${(() => {
      const at = ticket as any;
