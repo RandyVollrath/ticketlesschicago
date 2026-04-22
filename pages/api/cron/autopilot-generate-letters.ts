@@ -2170,13 +2170,13 @@ On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submi
 
 The City RESPONDED to the FOIA request and stated that NO RESPONSIVE RECORDS WERE FOUND.
 
-INSTRUCTIONS: This is a STRONG supplementary argument — stronger than non-response because the city affirmatively stated the records don't exist. However, do NOT claim this alone prevents the city from establishing a prima facie case — for automated camera violations, the hearing officer has independent access to the camera photos/video through the city's ticket system. Include a paragraph stating:
+INSTRUCTIONS: This is a STRONG supplementary argument — stronger than non-response because the city affirmatively stated the records don't exist. Do NOT use the phrase "due process violation" — it is too strong as a blanket argument. Do NOT claim this alone prevents the city from establishing a prima facie case — for automated camera violations, the hearing officer has independent access to the camera photos/video through the city's ticket system. Use this safer framing, adapted to the letter: "Respondent timely requested records relevant to preparing a defense. The City failed to produce them, which impaired respondent's ability to evaluate the evidence and present a full defense. Any ambiguity created by the missing records should be construed against the City, and the citation should be dismissed." Include:
 1. A FOIA request was filed on ${sentFormatted} for the enforcement records
 2. The City's Department of Finance responded that no responsive records were found
 3. This means the city has no officer's contemporaneous field notes, device calibration data, or supplementary enforcement documentation for this citation beyond the automated camera images
 4. The absence of any supporting documentation beyond the automated images raises questions about the reliability and completeness of the enforcement record
-5. The respondent was denied the opportunity to review evidence that could corroborate or contradict the alleged violation
-Frame as a transparency and due process concern that strengthens the other substantive arguments in the letter — not as independently dispositive.`);
+5. The respondent was unable to review evidence that could corroborate or contradict the alleged violation, and any ambiguity from those missing records should be construed against the City
+Frame as a transparency and procedural-fairness concern that strengthens the other substantive arguments in the letter — not as independently dispositive.`);
 
     } else if (foiaStatus === 'fulfilled_with_records' || (foiaStatus === 'fulfilled' && !responsePayload?.is_denial)) {
       // City responded with actual records — analyze what was produced
@@ -2203,13 +2203,12 @@ On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submi
 
 As of this letter, ${evidence.foiaRequest.daysElapsed} days have elapsed and the Department has NOT produced the requested records, exceeding the statutory five-business-day response period.
 
-INSTRUCTIONS: This is a SUPPLEMENTARY due process argument — do NOT claim this alone prevents the city from establishing a prima facie case (the hearing officer has independent access to the violation photos/video). Instead, frame it as:
-1. A FOIA request was filed on ${sentFormatted} for the enforcement records and the city failed to respond within the statutory deadline
-2. This denied the respondent the opportunity to review and prepare a defense against the specific evidence the city relies upon
-3. The city's failure to comply with its own transparency obligations under 5 ILCS 140 raises concerns about the completeness and reliability of the enforcement record
-4. The respondent was unable to verify whether officer field notes, device calibration data, or other documentation supports the citation
-5. Frame as a procedural fairness / due process concern: "The city's failure to produce the requested records within the statutory deadline denied the respondent a meaningful opportunity to review the evidence and prepare a defense."
-Do NOT overstate this as a case-killer — it adds credibility to the contest and supports other substantive arguments.`);
+INSTRUCTIONS: This is a SUPPLEMENTARY procedural-fairness argument. Do NOT use the phrase "due process violation" — it is too strong as a blanket argument and invites hearing-officer pushback. Do NOT claim this alone prevents the city from establishing a prima facie case (the hearing officer has independent access to the violation photos/video). Use this safer framing, adapted to the letter: "Respondent timely requested records relevant to preparing a defense. The City failed to timely produce them, which impaired respondent's ability to evaluate the evidence and present a full defense. Any ambiguity created by the missing records should be construed against the City, and the citation should be dismissed." Include:
+1. A FOIA request was filed on ${sentFormatted} for the enforcement records and the city failed to respond within the statutory five-business-day deadline (5 ILCS 140/3)
+2. The respondent was unable to evaluate the enforcement evidence — officer field notes, device calibration data, or other supporting documentation — to prepare a full defense
+3. Any ambiguity created by the missing records should be construed against the City as the party that failed to comply with its own disclosure obligations
+4. Request dismissal on this ground as a supplementary (not sole) argument that reinforces the other substantive defenses in this letter
+Do NOT overstate this as a case-killer — it adds credibility and shifts any evidentiary ambiguity to the City, but the substantive defenses do the primary work.`);
 
     } else if (foiaStatus === 'sent') {
       // FOIA was sent but city still has time to respond
@@ -2265,13 +2264,14 @@ On ${cdotSentFormatted}, a Freedom of Information Act request (5 ILCS 140) was s
 
 As of this letter, ${evidence.cdotFoiaRequest.daysElapsed} days have elapsed and CDOT has NOT produced the requested signal timing records, exceeding the statutory five-business-day response period.
 
-INSTRUCTIONS: This is a STRONG supplementary argument for red light camera tickets. Include a paragraph stating:
+INSTRUCTIONS: This is a STRONG supplementary argument for red light camera tickets. Do NOT use the phrase "due process violation" — it is too strong as a blanket argument. Use this procedural-fairness framing in addition to the substantive point about 625 ILCS 5/11-306(c-5): "Respondent timely requested records relevant to preparing a defense. The City failed to timely produce them, which impaired respondent's ability to evaluate the evidence and present a full defense. Any ambiguity created by the missing records should be construed against the City, and the citation should be dismissed." Include a paragraph stating:
 1. A FOIA request was filed on ${cdotSentFormatted} to CDOT for the signal timing plan
 2. CDOT failed to respond within the statutory deadline (5 ILCS 140 requires 5 business days)
 3. Without the signal timing plan, there is no way to verify that the yellow change interval at this camera-enforced intersection complied with Illinois law (625 ILCS 5/11-306(c-5))
 4. Under that statute, camera-enforced intersections MUST have a yellow interval of at least the MUTCD minimum PLUS ONE ADDITIONAL SECOND — Chicago has been caught violating this before (2014 Inspector General investigation)
-5. The respondent reserves the right to supplement this contest if CDOT eventually produces the records
-6. Frame as: "The city's failure to produce the signal timing plan for this camera-enforced intersection prevents verification of compliance with the statutory yellow light minimum required by 625 ILCS 5/11-306(c-5)."`);
+5. Because the City controls these records and failed to produce them, any ambiguity about whether the signal complied with the statute should be construed against the City
+6. The respondent reserves the right to supplement this contest if CDOT eventually produces the records
+7. Frame as: "The city's failure to produce the signal timing plan for this camera-enforced intersection prevents verification of compliance with the statutory yellow light minimum required by 625 ILCS 5/11-306(c-5), and that ambiguity should be construed against the City."`);
 
     } else if (cdotStatus === 'sent') {
       sections.push(`=== CDOT FOIA — SIGNAL TIMING REQUEST PENDING ===
