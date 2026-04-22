@@ -15,9 +15,12 @@ name: QA — Auth
 
 on:
   schedule:
-    # Every 30 minutes. If this starts eating too many CI minutes, drop
-    # to hourly. Each run is ~1-2 min.
-    - cron: '*/30 * * * *'
+    # Weekly safety-net only — most auth breakage comes from code, which
+    # the push trigger catches within minutes. This weekly run is purely
+    # to catch external breakage (Supabase config change, cert expiry,
+    # Google OAuth policy change) that can happen without a commit.
+    # Mondays 14:00 UTC = 9am Chicago winter / 10am summer.
+    - cron: '0 14 * * 1'
   workflow_dispatch: {}
   push:
     branches: [main]
