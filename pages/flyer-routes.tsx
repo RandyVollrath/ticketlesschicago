@@ -1,81 +1,135 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Head from 'next/head'
 
-const COLORS = {
-  deepHarbor: '#0F172A',
-  regulatory: '#2563EB',
-  regulatoryDark: '#1d4ed8',
-  concrete: '#F8FAFC',
-  signal: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  graphite: '#1E293B',
-  slate: '#64748B',
-  border: '#E2E8F0',
-  purple: '#7C3AED',
+const C = {
+  bg: '#F8FAFC', white: '#FFFFFF', navy: '#0F172A', dark: '#1E293B',
+  slate: '#64748B', border: '#E2E8F0', blue: '#2563EB',
+  green: '#10B981', yellow: '#F59E0B', red: '#EF4444', purple: '#7C3AED',
 }
 
-interface WalkingStreet {
-  street: string
-  dir: string
-  blockRange: string
-  tickets: number
-  walkingDir: string
-}
-
+interface WalkingStreet { street: string; tickets: number }
 interface Zone {
-  ward: string
-  section: string
-  cleaningDate: string
-  lat: number
-  lng: number
-  priorityScore: number
-  wardTickets2024: number
+  ward: string; section: string; cleaningDate: string
+  lat: number; lng: number; priorityScore: number; wardTickets2024: number
   boundaries: { north: string; south: string; east: string; west: string }
   walkingStreets: WalkingStreet[]
 }
-
 interface HotBlock {
-  block: string
-  tickets: number
-  daysTicketed: number
-  lat: number
-  lng: number
-  neighborhood: string
-  ward: string
+  block: string; tickets: number; daysTicketed: number
+  lat: number; lng: number; neighborhood: string; ward: string
 }
-
 interface Neighborhood {
-  name: string
-  totalTickets: number
-  blocks: number
-  avgPerBlock: number
-  topStreets: string[]
-  strategy: string
-  zipcode: string
+  name: string; totalTickets: number; blocks: number; avgPerBlock: number
+  topStreets: string[]; strategy: string
 }
-
 interface RouteData {
-  chicagoDate: string
-  chicagoDateYesterday: string
-  chicagoDateTomorrow: string
-  tomorrowDayOfWeek: string
+  chicagoDate: string; chicagoDateTomorrow: string; tomorrowDayOfWeek: string
   isPeakTicketDay: boolean
-  justCleanedZones: Zone[]
-  justCleanedCount: number
-  tomorrowZones: Zone[]
-  tomorrowCount: number
-  hotBlocks: HotBlock[]
-  towBlocks: HotBlock[]
-  neighborhoods: Neighborhood[]
+  justCleanedZones: Zone[]; justCleanedCount: number
+  tomorrowZones: Zone[]; tomorrowCount: number
+  hotBlocks: HotBlock[]; towBlocks: HotBlock[]; neighborhoods: Neighborhood[]
   startingPoint: { lat: number; lng: number }
 }
 
-type Tab = 'just-ticketed' | 'flyer-tomorrow' | 'hotblocks' | 'towblocks' | 'neighborhoods'
+// ============================================================================
+// Mission planner: builds time-budgeted stops ranked by ROI
+// ============================================================================
+interface Mission {
+  id: string
+  name: string            // e.g. "Pilsen — 18th St corridor"
+  lat: number; lng: number
+  streets: { name: string; tickets: number }[]
+  totalTickets: number    // sum of ticket counts for all streets
+  walkMinutes: number     // estimated time on foot
+  roiPerHour: number      // tickets / hour of walking
+  reason: string          // why this stop is good
+  driveMinFromPrev: number
+}
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T12:00:00Z')
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+function distKm(a: {lat:number;lng:number}, b: {lat:number;lng:number}): number {
+  const dlat = b.lat - a.lat
+  const dlng = (b.lng - a.lng) * Math.cos(a.lat * Math.PI / 180)
+  return Math.sqrt(dlat*dlat + dlng*dlng) * 111
+}
+
+function buildMissions(
+  hotBlocks: HotBlock[],
+  scheduleZones: Zone[],
+  justTicketedZones: Zone[],
+  towBlocks: HotBlock[],
+  start: { lat: number; lng: number }
+): Mission[] {
+  // Step 1: Build "corridors" from hot blocks — group nearby blocks into walkable stops
+  const corridors: Mission[] = []
+  const used = new Set<number>()
+  const CLUSTER_KM = 0.8 // ~0.5 miles
+
+  // Sort hot blocks by tickets desc
+  const sorted = hotBlocks.map((b, i) => ({ ...b, idx: i })).sort((a, b) => b.tickets - a.tickets)
+
+  for (const block of sorted) {
+    if (used.has(block.idx)) continue
+    used.add(block.idx)
+    const cluster = [block]
+
+    // Pull in nearby blocks
+    for (const other of sorted) {
+      if (used.has(other.idx)) continue
+      if (distKm(block, other) < CLUSTER_KM) {
+        cluster.push(other)
+        used.add(other.idx)
+      }
+    }
+
+    const streets = cluster.map(b => ({ name: b.block, tickets: b.tickets }))
+    const totalTickets = streets.reduce((s, st) => s + st.tickets, 0)
+    const walkMin = cluster.length * 5 // ~5 min per block
+    const roiPerHour = walkMin > 0 ? Math.round(totalTickets / (walkMin / 60)) : 0
+    const centerLat = cluster.reduce((s, b) => s + b.lat, 0) / cluster.length
+    const centerLng = cluster.reduce((s, b) => s + b.lng, 0) / cluster.length
+
+    // Check if any schedule zones overlap (cleaning tomorrow or just cleaned)
+    const hasScheduleTomorrow = scheduleZones.some(z => distKm(z, { lat: centerLat, lng: centerLng }) < 1.5)
+    const wasJustCleaned = justTicketedZones.some(z => distKm(z, { lat: centerLat, lng: centerLng }) < 1.5)
+    const hasTowData = towBlocks.some(t => distKm(t, { lat: centerLat, lng: centerLng }) < CLUSTER_KM)
+
+    let reason = `${totalTickets.toLocaleString()} tickets on ${cluster.length} block${cluster.length > 1 ? 's' : ''}`
+    if (hasScheduleTomorrow) reason += ' — CLEANING TOMORROW'
+    else if (wasJustCleaned) reason += ' — just cleaned, fresh tickets'
+    if (hasTowData) reason += ' — cars get towed here'
+
+    // Boost ROI for schedule relevance
+    let boostedRoi = roiPerHour
+    if (hasScheduleTomorrow) boostedRoi = Math.round(roiPerHour * 2.0)
+    else if (wasJustCleaned) boostedRoi = Math.round(roiPerHour * 1.5)
+    if (hasTowData) boostedRoi = Math.round(boostedRoi * 1.3)
+
+    corridors.push({
+      id: `${block.neighborhood}-${block.block}`,
+      name: cluster.length > 1
+        ? `${block.neighborhood} — ${cluster.length} blocks`
+        : `${block.neighborhood} — ${block.block}`,
+      lat: centerLat, lng: centerLng,
+      streets, totalTickets, walkMinutes: walkMin,
+      roiPerHour: boostedRoi,
+      reason,
+      driveMinFromPrev: 0,
+    })
+  }
+
+  // Step 2: Sort by boosted ROI
+  corridors.sort((a, b) => b.roiPerHour - a.roiPerHour)
+
+  // Step 3: Compute drive time from start → first stop, then between stops
+  // Use nearest-neighbor to reorder while preserving top picks
+  // Actually just compute drive times in current (ROI-sorted) order
+  let prev = start
+  for (const m of corridors) {
+    m.driveMinFromPrev = Math.round(distKm(prev, m) / 25 * 60) // 25 km/h city driving
+    prev = { lat: m.lat, lng: m.lng }
+  }
+
+  return corridors
 }
 
 function mapsUrl(lat: number, lng: number): string {
@@ -85,80 +139,39 @@ function mapsUrl(lat: number, lng: number): string {
 function mapsRouteUrl(points: { lat: number; lng: number }[], start: { lat: number; lng: number }): string {
   if (points.length === 0) return ''
   const max = Math.min(points.length, 23)
-  const selected = points.slice(0, max)
+  const sel = points.slice(0, max)
   const origin = `${start.lat},${start.lng}`
-  const dest = `${selected[selected.length - 1].lat},${selected[selected.length - 1].lng}`
-  const waypoints = selected.slice(0, -1).map(p => `${p.lat},${p.lng}`).join('|')
-  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&waypoints=${waypoints}&travelmode=driving`
-}
-
-function estimateDriveMin(points: { lat: number; lng: number }[]): number {
-  if (points.length < 2) return 0
-  let km = 0
-  for (let i = 1; i < points.length; i++) {
-    const dlat = points[i].lat - points[i - 1].lat
-    const dlng = (points[i].lng - points[i - 1].lng) * Math.cos(points[i].lat * Math.PI / 180)
-    km += Math.sqrt(dlat * dlat + dlng * dlng) * 111
-  }
-  return Math.round(km / 25 * 60)
-}
-
-function PriorityBadge({ score }: { score: number }) {
-  const color = score >= 12 ? COLORS.danger : score >= 9 ? COLORS.warning : COLORS.slate
-  const label = score >= 12 ? 'HIGH' : score >= 9 ? 'MED' : 'LOW'
-  return (
-    <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700, color: 'white', background: color, letterSpacing: '0.05em' }}>
-      {label} ROI
-    </span>
-  )
-}
-
-function TicketBar({ value, max }: { value: number; max: number }) {
-  const pct = Math.min(100, (value / max) * 100)
-  return (
-    <div style={{ width: '100%', height: 6, borderRadius: 3, background: '#F1F5F9', overflow: 'hidden' }}>
-      <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: pct > 70 ? COLORS.danger : pct > 40 ? COLORS.warning : COLORS.signal }} />
-    </div>
-  )
+  const dest = `${sel[sel.length - 1].lat},${sel[sel.length - 1].lng}`
+  const wp = sel.slice(0, -1).map(p => `${p.lat},${p.lng}`).join('|')
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&waypoints=${wp}&travelmode=driving`
 }
 
 export default function FlyerRoutes() {
   const [data, setData] = useState<RouteData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<Tab>('flyer-tomorrow')
   const [startAddress, setStartAddress] = useState('')
   const [startCoords, setStartCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+  const [timeBudget, setTimeBudget] = useState(3) // hours
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [activeView, setActiveView] = useState<'plan' | 'all-blocks' | 'strategy'>('plan')
 
-  const toggleExpand = (key: string) => {
-    setExpandedItems(prev => {
-      const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
-      return next
-    })
-  }
+  const toggle = (k: string) => setExpanded(p => {
+    const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n
+  })
 
   const fetchRoutes = useCallback(async (lat?: number, lng?: number) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     try {
       let url = '/api/flyer-routes'
       if (lat && lng) url += `?startLat=${lat}&startLng=${lng}`
       const res = await fetch(url)
-      if (!res.ok) throw new Error('Failed to fetch route data')
+      if (!res.ok) throw new Error('Failed to fetch')
       const json = await res.json()
       if (!json.success) throw new Error(json.error || 'Unknown error')
       setData(json)
-      // Smart default tab
-      if (json.tomorrowCount > 0) setActiveTab('flyer-tomorrow')
-      else if (json.justCleanedCount > 0) setActiveTab('just-ticketed')
-      else setActiveTab('neighborhoods')
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e: any) { setError(e.message) }
+    finally { setLoading(false) }
   }, [])
 
   useEffect(() => { fetchRoutes() }, [fetchRoutes])
@@ -166,12 +179,11 @@ export default function FlyerRoutes() {
   const handleGeocode = async () => {
     if (!startAddress.trim()) return
     try {
-      const query = encodeURIComponent(startAddress + ', Chicago, IL')
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`)
-      const results = await res.json()
-      if (results.length > 0) {
-        const lat = parseFloat(results[0].lat)
-        const lng = parseFloat(results[0].lon)
+      const q = encodeURIComponent(startAddress + ', Chicago, IL')
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`)
+      const r = await res.json()
+      if (r.length > 0) {
+        const lat = parseFloat(r[0].lat), lng = parseFloat(r[0].lon)
         setStartCoords({ lat, lng })
         fetchRoutes(lat, lng)
       }
@@ -180,6 +192,25 @@ export default function FlyerRoutes() {
 
   const start = startCoords || data?.startingPoint || { lat: 41.8781, lng: -87.6298 }
 
+  const missions = useMemo(() => {
+    if (!data) return []
+    return buildMissions(data.hotBlocks, data.tomorrowZones, data.justCleanedZones, data.towBlocks || [], start)
+  }, [data, start])
+
+  // Fit missions into the time budget
+  const plan = useMemo(() => {
+    let totalMin = 0
+    const budgetMin = timeBudget * 60
+    const stops: (Mission & { runningMin: number })[] = []
+    for (const m of missions) {
+      const stopTime = m.driveMinFromPrev + m.walkMinutes
+      if (totalMin + stopTime > budgetMin && stops.length > 0) break
+      totalMin += stopTime
+      stops.push({ ...m, runningMin: totalMin })
+    }
+    return { stops, totalMin, totalTickets: stops.reduce((s, m) => s + m.totalTickets, 0) }
+  }, [missions, timeBudget])
+
   return (
     <>
       <Head>
@@ -187,340 +218,260 @@ export default function FlyerRoutes() {
         <meta name="robots" content="noindex" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      <div style={{ minHeight: '100vh', backgroundColor: COLORS.concrete, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+
         {/* Header */}
-        <div style={{ background: `linear-gradient(135deg, ${COLORS.deepHarbor}, ${COLORS.graphite})`, padding: '20px 16px', color: 'white' }}>
+        <div style={{ background: `linear-gradient(135deg, ${C.navy}, ${C.dark})`, padding: '16px', color: 'white' }}>
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Flyer Route Planner</h1>
-            <p style={{ margin: '6px 0 0', opacity: 0.7, fontSize: 13 }}>
-              Powered by 35.7M ticket records from FOIA data
-            </p>
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Flyer Route Planner</h1>
+            <p style={{ margin: '4px 0 0', opacity: 0.6, fontSize: 12 }}>Powered by 35.7M FOIA ticket records</p>
           </div>
         </div>
 
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '12px 16px' }}>
 
-          {/* Peak Day Alert */}
+          {/* Peak day */}
           {data?.isPeakTicketDay && (
-            <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>!</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#92400E' }}>
-                  {data.tomorrowDayOfWeek} is a peak ticket day
-                </div>
-                <div style={{ fontSize: 12, color: '#92400E' }}>
-                  Tue/Wed/Thu account for 60% of all street cleaning tickets. Maximum flyering impact tonight.
-                </div>
-              </div>
+            <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12 }}>
+              <strong style={{ color: '#92400E' }}>{data.tomorrowDayOfWeek} is a peak ticket day.</strong>{' '}
+              <span style={{ color: '#92400E' }}>Tue-Thu = 60% of all tickets. Maximum impact tonight.</span>
             </div>
           )}
 
-          {/* Starting Point */}
-          <div style={{ background: 'white', borderRadius: 10, padding: 12, marginBottom: 12, border: `1px solid ${COLORS.border}` }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                type="text"
-                placeholder="Your starting address (optional)"
-                value={startAddress}
+          {/* Controls row */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            {/* Time budget */}
+            <div style={{ background: C.white, borderRadius: 8, padding: '8px 12px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 200px' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.dark, whiteSpace: 'nowrap' }}>I have</span>
+              {[1, 2, 3, 4].map(h => (
+                <button key={h} onClick={() => setTimeBudget(h)} style={{
+                  padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                  background: timeBudget === h ? C.navy : '#F1F5F9',
+                  color: timeBudget === h ? 'white' : C.dark,
+                }}>
+                  {h}h
+                </button>
+              ))}
+            </div>
+            {/* Starting location */}
+            <div style={{ background: C.white, borderRadius: 8, border: `1px solid ${C.border}`, display: 'flex', flex: '1 1 250px' }}>
+              <input type="text" placeholder="Starting address" value={startAddress}
                 onChange={e => setStartAddress(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleGeocode()}
-                style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: `1px solid ${COLORS.border}`, fontSize: 14, outline: 'none' }}
+                style={{ flex: 1, padding: '8px 12px', border: 'none', borderRadius: '8px 0 0 8px', fontSize: 13, outline: 'none' }}
               />
-              <button onClick={handleGeocode} style={{ padding: '9px 16px', borderRadius: 8, background: COLORS.regulatory, color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+              <button onClick={handleGeocode} style={{ padding: '8px 14px', background: C.blue, color: 'white', border: 'none', borderRadius: '0 8px 8px 0', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
                 Set
               </button>
             </div>
-            {startCoords && <p style={{ margin: '4px 0 0', fontSize: 11, color: COLORS.signal, fontWeight: 600 }}>Routes optimized from your location</p>}
           </div>
 
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, fontSize: 12, flexWrap: 'wrap' }}>
+          {/* View tabs */}
+          <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
             {([
-              { id: 'flyer-tomorrow' as Tab, label: 'Schedule', count: data?.tomorrowCount, color: COLORS.warning },
-              { id: 'just-ticketed' as Tab, label: 'Just Ticketed', count: data?.justCleanedCount, color: COLORS.danger },
-              { id: 'hotblocks' as Tab, label: 'Top Tickets', count: data?.hotBlocks.length, color: COLORS.purple },
-              { id: 'towblocks' as Tab, label: 'Getting Towed', count: data?.towBlocks?.length, color: COLORS.deepHarbor },
-              { id: 'neighborhoods' as Tab, label: 'Strategy', count: data?.neighborhoods.length, color: COLORS.signal },
-            ]).map(tab => {
-              const active = activeTab === tab.id
-              return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-                  flex: 1, padding: '11px 4px', border: 'none', cursor: 'pointer',
-                  background: active ? tab.color : 'white',
-                  color: active ? 'white' : COLORS.graphite,
-                  fontWeight: 600, fontSize: 12, transition: 'all 0.15s', lineHeight: 1.3,
-                }}>
-                  {tab.label}
-                  {tab.count !== undefined ? ` (${tab.count})` : ''}
-                </button>
-              )
-            })}
+              { id: 'plan' as const, label: 'Tonight\'s Plan' },
+              { id: 'all-blocks' as const, label: 'All Hot Blocks' },
+              { id: 'strategy' as const, label: 'Strategy Guide' },
+            ]).map(t => (
+              <button key={t.id} onClick={() => setActiveView(t.id)} style={{
+                flex: 1, padding: '10px 4px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                background: activeView === t.id ? C.navy : C.white,
+                color: activeView === t.id ? 'white' : C.dark,
+              }}>
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          {loading && (
-            <div style={{ textAlign: 'center', padding: 60, color: COLORS.slate }}>
-              <div style={{ fontSize: 16, fontWeight: 600 }}>Loading route data...</div>
-            </div>
-          )}
+          {loading && <div style={{ textAlign: 'center', padding: 60, color: C.slate, fontSize: 15, fontWeight: 600 }}>Loading...</div>}
+          {error && <div style={{ background: '#FEF2F2', border: `1px solid ${C.red}`, borderRadius: 8, padding: 14, color: C.red, textAlign: 'center', fontSize: 13 }}>{error}</div>}
 
-          {error && (
-            <div style={{ background: '#FEF2F2', border: `1px solid ${COLORS.danger}`, borderRadius: 10, padding: 16, color: COLORS.danger, textAlign: 'center' }}>
-              {error}
-            </div>
-          )}
-
-          {/* ============ JUST TICKETED TAB ============ */}
-          {!loading && !error && data && activeTab === 'just-ticketed' && (
+          {/* ================================================================ */}
+          {/* TONIGHT'S PLAN — the main event                                 */}
+          {/* ================================================================ */}
+          {!loading && !error && data && activeView === 'plan' && (
             <>
-              <div style={{ background: 'white', borderRadius: 10, padding: 14, marginBottom: 12, border: `1px solid ${COLORS.border}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
+              {/* Summary */}
+              <div style={{ background: C.navy, borderRadius: 10, padding: 14, marginBottom: 12, color: 'white' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                   <div>
-                    <div style={{ fontSize: 11, color: COLORS.danger, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Freshly Ticketed Zones
+                    <div style={{ fontSize: 18, fontWeight: 700 }}>
+                      {plan.stops.length} stop{plan.stops.length !== 1 ? 's' : ''} in {timeBudget}h
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.graphite, marginTop: 2 }}>
-                      {data.justCleanedCount} zones cleaned yesterday/today
+                    <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
+                      {plan.totalTickets.toLocaleString()} tickets/yr across these blocks &middot; ~{plan.totalMin} min total
                     </div>
-                    <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 4, marginBottom: 0 }}>
-                      These drivers just got $75 tickets. They&apos;re angry and looking for a solution right now.
-                      This is when people are most likely to download the app.
-                    </p>
                   </div>
-                  {data.justCleanedZones.length > 1 && (
-                    <a href={mapsRouteUrl(clusterZones(data.justCleanedZones).map(c => ({ lat: c.centerLat, lng: c.centerLng })), start)} target="_blank" rel="noopener noreferrer"
-                      style={{ padding: '10px 16px', borderRadius: 8, background: COLORS.danger, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                      Drive Route ({clusterZones(data.justCleanedZones).length} stops)
+                  {plan.stops.length > 1 && (
+                    <a href={mapsRouteUrl(plan.stops, start)} target="_blank" rel="noopener noreferrer"
+                      style={{ padding: '10px 16px', borderRadius: 8, background: C.green, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                      Open Drive Route
                     </a>
                   )}
                 </div>
               </div>
-              <ZoneList zones={data.justCleanedZones} expandedItems={expandedItems} toggleExpand={toggleExpand} badgeColor={COLORS.danger} start={start} />
-            </>
-          )}
 
-          {/* ============ FLYER TOMORROW TAB ============ */}
-          {!loading && !error && data && activeTab === 'flyer-tomorrow' && (
-            <>
-              <div style={{ background: 'white', borderRadius: 10, padding: 14, marginBottom: 12, border: `1px solid ${COLORS.border}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: COLORS.warning, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Flyer Tonight — Cleaning Tomorrow
+              {/* Mission cards */}
+              {plan.stops.map((m, idx) => {
+                const isOpen = expanded.has(m.id)
+                return (
+                  <div key={m.id} style={{ marginBottom: 0 }}>
+                    {/* Drive separator */}
+                    {idx > 0 && m.driveMinFromPrev > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+                        <div style={{ flex: 1, height: 1, background: C.border }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: C.slate, background: '#F1F5F9', padding: '3px 10px', borderRadius: 12 }}>
+                          DRIVE ~{m.driveMinFromPrev} min
+                        </span>
+                        <div style={{ flex: 1, height: 1, background: C.border }} />
+                      </div>
+                    )}
+
+                    {/* Stop card */}
+                    <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: 'hidden', marginBottom: 6 }}>
+                      {/* Header */}
+                      <div onClick={() => toggle(m.id)} style={{ padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: idx < 3 ? C.red : idx < 6 ? C.yellow : C.slate,
+                          color: 'white', fontWeight: 800, fontSize: 15, flexShrink: 0,
+                        }}>
+                          {idx + 1}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: C.dark }}>{m.name}</div>
+                          <div style={{ fontSize: 12, color: C.slate, marginTop: 2 }}>
+                            {m.streets.length} block{m.streets.length > 1 ? 's' : ''} &middot; ~{m.walkMinutes} min walking &middot;{' '}
+                            <strong style={{ color: C.red }}>{m.roiPerHour.toLocaleString()} tix/hr</strong>
+                          </div>
+                          <div style={{ fontSize: 11, color: m.reason.includes('TOMORROW') ? C.red : m.reason.includes('just cleaned') ? C.yellow : C.slate, fontWeight: m.reason.includes('TOMORROW') || m.reason.includes('towed') ? 700 : 400, marginTop: 1 }}>
+                            {m.reason}
+                          </div>
+                        </div>
+                        <a href={mapsUrl(m.lat, m.lng)} target="_blank" rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          style={{ padding: '8px 14px', borderRadius: 8, background: C.green, color: 'white', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                          Park Here
+                        </a>
+                      </div>
+
+                      {/* Expanded: street-by-street walking plan */}
+                      {isOpen && (
+                        <div style={{ padding: '0 14px 12px 60px' }}>
+                          <div style={{ background: '#F0FDF4', borderRadius: 8, padding: '10px 12px', border: '1px solid #BBF7D0' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                              Walk these blocks (start with the first one)
+                            </div>
+                            {m.streets.map((s, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: i < m.streets.length - 1 ? '1px solid #D1FAE5' : 'none' }}>
+                                <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#D1FAE5', color: C.dark, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  {i + 1}
+                                </span>
+                                <span style={{ fontWeight: 600, fontSize: 13, color: C.dark, flex: 1 }}>{s.name}</span>
+                                <span style={{ color: C.red, fontWeight: 700, fontSize: 12 }}>{s.tickets}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Running time */}
+                          <div style={{ marginTop: 8, fontSize: 11, color: C.slate }}>
+                            Cumulative time after this stop: ~{m.runningMin} min of your {timeBudget}h budget
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.graphite, marginTop: 2 }}>
-                      {data.tomorrowCount} zones &middot; {formatDate(data.chicagoDateTomorrow)}
-                      {data.tomorrowCount > 0 && <span style={{ fontSize: 14, fontWeight: 400, color: COLORS.slate }}> &middot; ~{estimateDriveMin(data.tomorrowZones)} min drive</span>}
-                    </div>
-                    <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 4, marginBottom: 0 }}>
-                      Put flyers on cars TONIGHT (5-8 PM). Owners see them in the morning, move their car, and remember your app.
-                      Sorted by ward ticket volume — high-ROI zones first.
-                    </p>
                   </div>
-                  {data.tomorrowZones.length > 1 && (
-                    <a href={mapsRouteUrl(clusterZones(data.tomorrowZones).map(c => ({ lat: c.centerLat, lng: c.centerLng })), start)} target="_blank" rel="noopener noreferrer"
-                      style={{ padding: '10px 16px', borderRadius: 8, background: COLORS.signal, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                      Drive Route ({clusterZones(data.tomorrowZones).length} stops)
-                    </a>
-                  )}
+                )
+              })}
+
+              {/* What's left */}
+              {missions.length > plan.stops.length && (
+                <div style={{ background: '#F1F5F9', borderRadius: 8, padding: 12, marginTop: 8, fontSize: 12, color: C.slate }}>
+                  {missions.length - plan.stops.length} more stops available if you have more time.
+                  Bump the time budget above to see them.
                 </div>
-                {clusterZones(data.tomorrowZones).length > 23 && (
-                  <div style={{ marginTop: 8, padding: '6px 10px', background: '#FFFBEB', borderRadius: 6, fontSize: 12, color: '#92400E' }}>
-                    Google Maps max 25 stops. Route includes the first 23 clusters.
-                  </div>
-                )}
-              </div>
-              {data.tomorrowZones.length === 0 ? (
-                <div style={{ background: 'white', borderRadius: 10, padding: 32, textAlign: 'center', border: `1px solid ${COLORS.border}` }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.graphite }}>No cleaning scheduled for tomorrow</div>
-                  <p style={{ color: COLORS.slate, fontSize: 13, marginTop: 6 }}>Check the Just Ticketed or Hot Blocks tabs instead. Season runs April-November.</p>
-                </div>
-              ) : (
-                <ZoneList zones={data.tomorrowZones} expandedItems={expandedItems} toggleExpand={toggleExpand} badgeColor={COLORS.warning} start={start} />
               )}
             </>
           )}
 
-          {/* ============ HOT BLOCKS TAB ============ */}
-          {!loading && !error && data && activeTab === 'hotblocks' && (
+          {/* ================================================================ */}
+          {/* ALL HOT BLOCKS — the raw ranked list                            */}
+          {/* ================================================================ */}
+          {!loading && !error && data && activeView === 'all-blocks' && (
             <>
-              <div style={{ background: 'white', borderRadius: 10, padding: 14, marginBottom: 12, border: `1px solid ${COLORS.border}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: COLORS.purple, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Highest-Ticket Blocks in Chicago
-                    </div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.graphite, marginTop: 2 }}>
-                      {data.hotBlocks.length} blocks &middot; FOIA 2023-2024
-                    </div>
-                    <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 4, marginBottom: 0 }}>
-                      These specific blocks get ticketed the most in all of Chicago. Any day you&apos;re flyering,
-                      hitting these blocks guarantees you reach people who get ticketed repeatedly.
-                    </p>
-                  </div>
-                  <a href={mapsRouteUrl(data.hotBlocks.slice(0, 15), start)} target="_blank" rel="noopener noreferrer"
-                    style={{ padding: '10px 16px', borderRadius: 8, background: COLORS.purple, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                    Top 15 Route
-                  </a>
+              <div style={{ background: C.white, borderRadius: 10, padding: 14, marginBottom: 10, border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>
+                  {data.hotBlocks.length} highest-ticket blocks + {(data.towBlocks || []).length} highest-tow blocks
                 </div>
+                <p style={{ fontSize: 12, color: C.slate, margin: '4px 0 0' }}>
+                  Every block ranked by raw ticket count. Good any day — not tied to the cleaning schedule.
+                </p>
               </div>
 
-              {data.hotBlocks.map((block, idx) => (
-                <div key={block.block} style={{ background: 'white', borderRadius: 10, padding: '10px 14px', marginBottom: 6, border: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: idx < 5 ? COLORS.danger : idx < 15 ? COLORS.warning : COLORS.slate,
-                    color: 'white', fontWeight: 700, fontSize: 11, flexShrink: 0,
-                  }}>
-                    {idx + 1}
-                  </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, padding: '8px 0 4px', borderBottom: `2px solid ${C.red}`, marginBottom: 6 }}>
+                Top Ticket Blocks
+              </div>
+              {data.hotBlocks.map((b, i) => (
+                <div key={b.block} style={{ background: C.white, borderRadius: 8, padding: '8px 12px', marginBottom: 4, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: i < 5 ? C.red : i < 15 ? C.yellow : '#E2E8F0', color: i < 15 ? 'white' : C.dark, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i+1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.graphite }}>{block.block}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
-                      <span style={{ fontSize: 12, color: COLORS.danger, fontWeight: 700 }}>{block.tickets} tickets</span>
-                      <span style={{ fontSize: 11, color: COLORS.slate }}>
-                        {block.daysTicketed} days &middot; Ward {block.ward} &middot; {block.neighborhood}
-                      </span>
-                    </div>
-                    <div style={{ marginTop: 4 }}>
-                      <TicketBar value={block.tickets} max={700} />
-                    </div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.dark }}>{b.block}</div>
+                    <div style={{ fontSize: 11, color: C.slate }}>{b.neighborhood} &middot; Ward {b.ward} &middot; {b.daysTicketed > 0 ? `${b.daysTicketed} days ticketed` : ''}</div>
                   </div>
-                  <a href={mapsUrl(block.lat, block.lng)} target="_blank" rel="noopener noreferrer"
-                    style={{ padding: '5px 10px', borderRadius: 6, background: COLORS.regulatory, color: 'white', fontSize: 11, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>
-                    Go
-                  </a>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: C.red, whiteSpace: 'nowrap' }}>{b.tickets}</span>
+                  <a href={mapsUrl(b.lat, b.lng)} target="_blank" rel="noopener noreferrer"
+                    style={{ padding: '4px 8px', borderRadius: 6, background: C.blue, color: 'white', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Go</a>
                 </div>
               ))}
 
-              <div style={{ background: '#F0F9FF', borderRadius: 10, padding: 14, marginTop: 12, border: '1px solid #BAE6FD' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.graphite }}>Block flyering tip</div>
-                <p style={{ fontSize: 12, color: COLORS.slate, margin: '4px 0 0' }}>
-                  The &quot;days ticketed&quot; number shows how consistently that block gets hit.
-                  Blocks with high tickets AND high days ticketed (like 18th St in Pilsen: 150-198 days!) get ticketed
-                  on nearly every single cleaning day. The people parked there <strong>will</strong> get ticketed again.
-                </p>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, padding: '16px 0 4px', borderBottom: `2px solid ${C.navy}`, marginBottom: 6 }}>
+                Top Tow/Boot Blocks (seizure-level)
               </div>
-            </>
-          )}
-
-          {/* ============ TOW BLOCKS TAB ============ */}
-          {!loading && !error && data && activeTab === 'towblocks' && data.towBlocks && (
-            <>
-              <div style={{ background: 'white', borderRadius: 10, padding: 14, marginBottom: 12, border: `1px solid ${COLORS.border}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: COLORS.deepHarbor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Cars Actively Getting Booted / Towed
-                    </div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.graphite, marginTop: 2 }}>
-                      {data.towBlocks.length} blocks &middot; Seizure-level tickets
-                    </div>
-                    <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 4, marginBottom: 0 }}>
-                      These blocks have the most tickets that escalated to <strong>SEIZURE notices</strong> — the city
-                      is actively booting and towing cars here. Drivers are paying $260+ in boot fees plus the original
-                      ticket. They will pay anything to make it stop. <strong>Highest possible conversion rate.</strong>
-                    </p>
-                  </div>
-                  <a href={mapsRouteUrl(data.towBlocks.slice(0, 15), start)} target="_blank" rel="noopener noreferrer"
-                    style={{ padding: '10px 16px', borderRadius: 8, background: COLORS.deepHarbor, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                    Top 15 Route
-                  </a>
-                </div>
-              </div>
-
-              {data.towBlocks.map((block, idx) => (
-                <div key={block.block} style={{ background: 'white', borderRadius: 10, padding: '10px 14px', marginBottom: 6, border: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: idx < 5 ? COLORS.deepHarbor : idx < 15 ? COLORS.danger : COLORS.slate,
-                    color: 'white', fontWeight: 700, fontSize: 11, flexShrink: 0,
-                  }}>
-                    {idx + 1}
-                  </div>
+              {(data.towBlocks || []).map((b, i) => (
+                <div key={b.block} style={{ background: C.white, borderRadius: 8, padding: '8px 12px', marginBottom: 4, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: i < 5 ? C.navy : '#E2E8F0', color: i < 5 ? 'white' : C.dark, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i+1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.graphite }}>{block.block}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
-                      <span style={{ fontSize: 12, color: COLORS.deepHarbor, fontWeight: 700 }}>{block.tickets} seizure tickets</span>
-                      <span style={{ fontSize: 11, color: COLORS.slate }}>
-                        Ward {block.ward} &middot; {block.neighborhood}
-                      </span>
-                    </div>
-                    <div style={{ marginTop: 4 }}>
-                      <TicketBar value={block.tickets} max={350} />
-                    </div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.dark }}>{b.block}</div>
+                    <div style={{ fontSize: 11, color: C.slate }}>{b.neighborhood} &middot; Ward {b.ward}</div>
                   </div>
-                  <a href={mapsUrl(block.lat, block.lng)} target="_blank" rel="noopener noreferrer"
-                    style={{ padding: '5px 10px', borderRadius: 6, background: COLORS.regulatory, color: 'white', fontSize: 11, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>
-                    Go
-                  </a>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: C.navy, whiteSpace: 'nowrap' }}>{b.tickets} seiz</span>
+                  <a href={mapsUrl(b.lat, b.lng)} target="_blank" rel="noopener noreferrer"
+                    style={{ padding: '4px 8px', borderRadius: 6, background: C.blue, color: 'white', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Go</a>
                 </div>
               ))}
-
-              <div style={{ background: '#FEF2F2', borderRadius: 10, padding: 14, marginTop: 12, border: '1px solid #FECACA' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.graphite }}>Why this tab beats the others</div>
-                <p style={{ fontSize: 12, color: COLORS.slate, margin: '4px 0 0', lineHeight: 1.5 }}>
-                  A regular ticket is annoying ($75). A seizure means the city is taking your car. Once a driver hits
-                  scofflaw status (3+ unpaid tickets) or gets booted, they&apos;re desperate. The same blocks show up
-                  here as in the Top Tickets tab — but the people there have already escalated. <strong>Lead your
-                  flyer with: &quot;Stop the boots. Never miss street cleaning again.&quot;</strong> 67th St in
-                  South Shore and Granville in Edgewater are the two highest-conversion blocks in Chicago.
-                </p>
-              </div>
             </>
           )}
 
-          {/* ============ NEIGHBORHOODS TAB ============ */}
-          {!loading && !error && data && activeTab === 'neighborhoods' && (
+          {/* ================================================================ */}
+          {/* STRATEGY GUIDE                                                   */}
+          {/* ================================================================ */}
+          {!loading && !error && data && activeView === 'strategy' && (
             <>
-              <div style={{ background: 'white', borderRadius: 10, padding: 14, marginBottom: 12, border: `1px solid ${COLORS.border}` }}>
-                <div style={{ fontSize: 11, color: COLORS.signal, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Where to Spend Your Time
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.graphite, marginTop: 2 }}>
-                  Neighborhood ROI Rankings
-                </div>
-                <p style={{ fontSize: 13, color: COLORS.slate, marginTop: 4, marginBottom: 0 }}>
-                  Ranked by ticket density from FOIA data. Each neighborhood has a specific strategy
-                  for which streets to walk and why the drivers there are good targets.
-                </p>
+              <div style={{ background: C.white, borderRadius: 10, padding: 14, marginBottom: 10, border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>Neighborhood ROI Rankings</div>
+                <p style={{ fontSize: 12, color: C.slate, margin: '4px 0 0' }}>Which areas to prioritize and why. Tap for per-area strategy.</p>
               </div>
 
-              {data.neighborhoods.map((hood, idx) => {
-                const isExpanded = expandedItems.has(hood.name)
+              {data.neighborhoods.map((h, i) => {
+                const isOpen = expanded.has(h.name)
                 return (
-                  <div key={hood.name} style={{ background: 'white', borderRadius: 10, marginBottom: 8, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
-                    <div onClick={() => toggleExpand(hood.name)} style={{ padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{
-                        width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: idx < 3 ? COLORS.danger : idx < 7 ? COLORS.warning : COLORS.slate,
-                        color: 'white', fontWeight: 700, fontSize: 13, flexShrink: 0,
-                      }}>
-                        {idx + 1}
-                      </div>
+                  <div key={h.name} style={{ background: C.white, borderRadius: 8, marginBottom: 6, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
+                    <div onClick={() => toggle(h.name)} style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 24, height: 24, borderRadius: '50%', background: i < 3 ? C.red : i < 7 ? C.yellow : '#E2E8F0', color: i < 7 ? 'white' : C.dark, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i+1}</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.graphite }}>{hood.name}</div>
-                        <div style={{ fontSize: 12, color: COLORS.slate, marginTop: 2 }}>
-                          <span style={{ color: COLORS.danger, fontWeight: 700 }}>{hood.totalTickets.toLocaleString()}</span> tickets
-                          &middot; {hood.blocks} hot block{hood.blocks > 1 ? 's' : ''}
-                          &middot; {hood.avgPerBlock} avg/block
-                        </div>
-                        <div style={{ marginTop: 4 }}>
-                          <TicketBar value={hood.totalTickets} max={4500} />
+                        <div style={{ fontWeight: 700, fontSize: 14, color: C.dark }}>{h.name}</div>
+                        <div style={{ fontSize: 11, color: C.slate }}>
+                          <strong style={{ color: C.red }}>{h.totalTickets.toLocaleString()}</strong> tix &middot; {h.blocks} hot blocks &middot; {h.avgPerBlock}/block avg
                         </div>
                       </div>
-                      <span style={{ color: COLORS.slate, fontSize: 18, flexShrink: 0 }}>{isExpanded ? '-' : '+'}</span>
+                      <span style={{ color: C.slate }}>{isOpen ? '-' : '+'}</span>
                     </div>
-                    {isExpanded && (
-                      <div style={{ padding: '0 14px 14px 56px' }}>
-                        <div style={{ background: COLORS.concrete, borderRadius: 8, padding: 12, marginBottom: 8 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.graphite, marginBottom: 4 }}>STRATEGY</div>
-                          <p style={{ fontSize: 13, color: COLORS.slate, margin: 0, lineHeight: 1.5 }}>{hood.strategy}</p>
+                    {isOpen && (
+                      <div style={{ padding: '0 12px 12px 44px' }}>
+                        <div style={{ background: '#F0FDF4', borderRadius: 6, padding: 10, fontSize: 12, color: C.dark, lineHeight: 1.5 }}>
+                          <strong>Strategy:</strong> {h.strategy}
                         </div>
-                        <div style={{ fontSize: 12, color: COLORS.slate }}>
-                          <strong>Top streets:</strong> {hood.topStreets.join(', ')}
-                        </div>
-                        <div style={{ fontSize: 12, color: COLORS.slate, marginTop: 4 }}>
-                          <strong>ZIP:</strong> {hood.zipcode}
+                        <div style={{ fontSize: 11, color: C.slate, marginTop: 6 }}>
+                          <strong>Top streets:</strong> {h.topStreets.join(', ')}
                         </div>
                       </div>
                     )}
@@ -528,234 +479,28 @@ export default function FlyerRoutes() {
                 )
               })}
 
-              {/* Marketing Playbook */}
-              <div style={{ background: 'white', borderRadius: 10, padding: 14, marginTop: 16, border: `1px solid ${COLORS.border}` }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.graphite, marginBottom: 10 }}>
-                  Flyering Playbook
-                </div>
-                <div style={{ display: 'grid', gap: 6 }}>
-                  {[
-                    { title: 'Two-pronged strategy', detail: 'Best results come from combining both approaches: (1) Flyer TONIGHT in zones being cleaned tomorrow — drivers see it before they get ticketed. (2) Flyer TODAY in zones just cleaned — drivers with fresh $75 tickets are most likely to download.' },
-                    { title: 'Peak days: Tue/Wed/Thu', detail: 'FOIA shows 60% of street cleaning tickets are issued Tue-Thu. Monday and Friday have ~20% fewer. Plan your biggest flyer runs for Mon/Tue/Wed evenings.' },
-                    { title: 'Peak months: Apr-May, Jul-Aug, Oct', detail: 'Ticket volume peaks in spring (season start, people forget) and mid-summer. October is the last big push before season ends in November.' },
-                    { title: '#1 neighborhood: Pilsen', detail: '18th St in Pilsen has TEN blocks in the top 100 citywide — nearly every cleaning day generates tickets. If you can only flyer one area, this is it.' },
-                    { title: 'High-value targets: Gold Coast', detail: 'Gold Coast has fewer total tickets but wealthy drivers with expensive cars. They can afford the app subscription and are more likely to pay to avoid hassle.' },
-                    { title: 'Timing', detail: 'Evening before (5-8 PM): cars parked for the night, flyer stays until morning. Morning of (6-8 AM): more urgent but some cars already gone. After ticketing (9 AM-noon): people are angry and receptive.' },
-                    { title: 'What the flyer should say', detail: 'Lead with the pain: "You just got a $75 ticket" or "Your car will be ticketed $75 tomorrow." Then the solution: "Get free reminders — never forget street cleaning again." QR code to download.' },
-                    { title: 'Per-block budget', detail: '~5 minutes per block to place flyers on all windshields. A 10-block run takes about an hour on foot plus drive time between areas.' },
-                  ].map(tip => (
-                    <div key={tip.title} style={{ padding: '8px 10px', background: COLORS.concrete, borderRadius: 6 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.graphite }}>{tip.title}</div>
-                      <div style={{ fontSize: 12, color: COLORS.slate, marginTop: 2, lineHeight: 1.4 }}>{tip.detail}</div>
-                    </div>
-                  ))}
-                </div>
+              {/* Playbook */}
+              <div style={{ background: C.white, borderRadius: 10, padding: 14, marginTop: 14, border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 8 }}>Flyering Playbook</div>
+                {[
+                  { t: 'Two strategies', d: 'TONIGHT: flyer zones being cleaned tomorrow (prevention message). AFTER CLEANING: flyer zones just cleaned (pain message — "You just got a $75 ticket"). Both work. The plan tab combines both.' },
+                  { t: 'Peak days', d: 'Tue-Thu = 60% of tickets. Plan your biggest runs for Mon/Tue/Wed evenings.' },
+                  { t: 'Peak months', d: 'April-May (season start, people forget), July-August (peak volume), October (last push).' },
+                  { t: 'The flyer', d: '"Your car will be ticketed $75 tomorrow" or "You just got a $75 ticket." Then: "Get free reminders." QR code to download.' },
+                  { t: 'Tow blocks', d: 'Drivers on seizure blocks are paying $260+ in boot fees. Lead with: "Stop the boots."' },
+                  { t: 'Timing', d: 'Evening before (5-8 PM) is best — cars parked for the night. After ticketing (9 AM-noon) for anger-driven conversions.' },
+                  { t: 'Per block', d: '~5 minutes per block. A 3-hour evening = ~20 blocks plus drive time.' },
+                ].map(tip => (
+                  <div key={tip.t} style={{ padding: '6px 0', borderBottom: `1px solid ${C.border}`, fontSize: 12 }}>
+                    <strong style={{ color: C.dark }}>{tip.t}:</strong>{' '}
+                    <span style={{ color: C.slate }}>{tip.d}</span>
+                  </div>
+                ))}
               </div>
             </>
           )}
         </div>
       </div>
     </>
-  )
-}
-
-// ============================================================================
-// Cluster zones into walkable stops. Zones within ~0.5 mi get grouped.
-// Each cluster = one place to park, walk, flyer. Then drive to the next.
-// ============================================================================
-interface Cluster {
-  zones: Zone[]
-  centerLat: number
-  centerLng: number
-  allStreets: WalkingStreet[]
-}
-
-function clusterZones(zones: Zone[]): Cluster[] {
-  if (zones.length === 0) return []
-  const WALK_RADIUS = 0.008 // ~0.5 miles in lat degrees at Chicago's latitude
-  const used = new Set<number>()
-  const clusters: Cluster[] = []
-
-  for (let i = 0; i < zones.length; i++) {
-    if (used.has(i)) continue
-    const group: Zone[] = [zones[i]]
-    used.add(i)
-    // Pull in any nearby unused zones
-    for (let j = i + 1; j < zones.length; j++) {
-      if (used.has(j)) continue
-      const dlat = zones[j].lat - zones[i].lat
-      const dlng = (zones[j].lng - zones[i].lng) * Math.cos(zones[i].lat * Math.PI / 180)
-      if (Math.sqrt(dlat * dlat + dlng * dlng) < WALK_RADIUS) {
-        group.push(zones[j])
-        used.add(j)
-      }
-    }
-    const centerLat = group.reduce((s, z) => s + z.lat, 0) / group.length
-    const centerLng = group.reduce((s, z) => s + z.lng, 0) / group.length
-    // Merge and deduplicate walking streets from all zones in cluster
-    const streetMap = new Map<string, WalkingStreet>()
-    group.forEach(z => {
-      (z.walkingStreets || []).forEach(ws => {
-        const existing = streetMap.get(ws.street)
-        if (!existing || ws.tickets > existing.tickets) streetMap.set(ws.street, ws)
-      })
-    })
-    const allStreets = Array.from(streetMap.values()).sort((a, b) => b.tickets - a.tickets)
-    clusters.push({ zones: group, centerLat, centerLng, allStreets })
-  }
-  return clusters
-}
-
-// ============================================================================
-// Zone list component — used by "Just Ticketed" and "Flyer Tomorrow" tabs
-// ============================================================================
-function ZoneList({ zones, expandedItems, toggleExpand, badgeColor, start }: {
-  zones: Zone[]
-  expandedItems: Set<string>
-  toggleExpand: (key: string) => void
-  badgeColor: string
-  start?: { lat: number; lng: number }
-}) {
-  if (zones.length === 0) {
-    return (
-      <div style={{ background: 'white', borderRadius: 10, padding: 32, textAlign: 'center', border: `1px solid ${COLORS.border}` }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.graphite }}>No zones in this category right now</div>
-        <p style={{ color: COLORS.slate, fontSize: 13, marginTop: 6 }}>Check the other tabs. Street cleaning season runs April-November.</p>
-      </div>
-    )
-  }
-
-  const clusters = clusterZones(zones)
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      {clusters.map((cluster, cIdx) => {
-        const clusterKey = `cluster-${cIdx}`
-        const isClusterExpanded = expandedItems.has(clusterKey)
-        const totalZoneStreets = cluster.allStreets.length
-        const estWalkMin = cluster.zones.length * 20 // ~20 min per zone on foot
-
-        return (
-          <div key={cIdx}>
-            {/* DRIVE separator between clusters */}
-            {cIdx > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', margin: '4px 0' }}>
-                <div style={{ flex: 1, height: 1, background: COLORS.border }} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: COLORS.deepHarbor, borderRadius: 20, color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>
-                  DRIVE
-                </div>
-                <div style={{ flex: 1, height: 1, background: COLORS.border }} />
-              </div>
-            )}
-
-            {/* Cluster header — PARK HERE */}
-            <div style={{
-              background: `linear-gradient(135deg, ${COLORS.graphite}, ${COLORS.deepHarbor})`,
-              borderRadius: '10px 10px 0 0', padding: '10px 14px',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-              color: 'white', cursor: 'pointer',
-            }} onClick={() => toggleExpand(clusterKey)}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em' }}>
-                  STOP {cIdx + 1}: PARK &amp; WALK
-                </div>
-                <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>
-                  {cluster.zones.length} zone{cluster.zones.length > 1 ? 's' : ''}
-                  {totalZoneStreets > 0 && <> &middot; {totalZoneStreets} street{totalZoneStreets > 1 ? 's' : ''} to hit</>}
-                  {' '}&middot; ~{estWalkMin} min on foot
-                </div>
-              </div>
-              <a href={mapsUrl(cluster.centerLat, cluster.centerLng)} target="_blank" rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                style={{ padding: '5px 12px', borderRadius: 6, background: COLORS.signal, color: 'white', fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                Park Here
-              </a>
-            </div>
-
-            {/* Cluster walking streets summary (collapsed by default) */}
-            {isClusterExpanded && cluster.allStreets.length > 0 && (
-              <div style={{ background: '#F0FDF4', padding: '8px 14px', border: `1px solid #BBF7D0`, borderTop: 'none' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.signal, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                  Walk These Streets (highest tickets first)
-                </div>
-                {cluster.allStreets.slice(0, 10).map((ws, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', fontSize: 12 }}>
-                    <span style={{ fontWeight: 700, color: COLORS.graphite, flex: 1 }}>{ws.street}</span>
-                    <span style={{ color: COLORS.danger, fontWeight: 700, fontSize: 11 }}>{ws.tickets} tix</span>
-                  </div>
-                ))}
-                {cluster.allStreets.length > 10 && (
-                  <div style={{ fontSize: 11, color: COLORS.slate, marginTop: 4 }}>+{cluster.allStreets.length - 10} more streets</div>
-                )}
-              </div>
-            )}
-
-            {/* Individual zone cards within this cluster */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {cluster.zones.map((zone, zIdx) => {
-                const key = `${zone.ward}-${zone.section}-${zone.cleaningDate}`
-                const isExpanded = expandedItems.has(key)
-                const isLast = zIdx === cluster.zones.length - 1
-                return (
-                  <div key={key} style={{
-                    background: 'white',
-                    borderLeft: `1px solid ${COLORS.border}`, borderRight: `1px solid ${COLORS.border}`,
-                    borderBottom: `1px solid ${COLORS.border}`,
-                    borderRadius: isLast ? '0 0 10px 10px' : 0,
-                    overflow: 'hidden',
-                  }}>
-                    <div onClick={() => toggleExpand(key)} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{
-                        width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: badgeColor, color: 'white', fontWeight: 700, fontSize: 10, flexShrink: 0,
-                      }}>
-                        {zone.ward}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: COLORS.graphite }}>Ward {zone.ward}, Sec {zone.section}</span>
-                          <PriorityBadge score={zone.priorityScore} />
-                        </div>
-                        <div style={{ fontSize: 11, color: COLORS.slate, marginTop: 1 }}>
-                          {zone.walkingStreets && zone.walkingStreets.length > 0
-                            ? <>Walk: <strong style={{ color: COLORS.graphite }}>{zone.walkingStreets[0].street}</strong>{zone.walkingStreets.length > 1 ? ` +${zone.walkingStreets.length - 1} more` : ''}</>
-                            : zone.boundaries.north && zone.boundaries.south
-                              ? `${zone.boundaries.north} to ${zone.boundaries.south}`
-                              : `Cleaned ${formatDate(zone.cleaningDate)}`}
-                        </div>
-                      </div>
-                      <span style={{ fontSize: 14, color: COLORS.slate }}>{isExpanded ? '-' : '+'}</span>
-                    </div>
-                    {isExpanded && (
-                      <div style={{ padding: '0 14px 10px 48px', fontSize: 12, color: COLORS.slate }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '50px 1fr', gap: '3px 6px', marginBottom: 8 }}>
-                          {zone.boundaries.north && <><span style={{ fontWeight: 600 }}>North:</span><span>{zone.boundaries.north}</span></>}
-                          {zone.boundaries.south && <><span style={{ fontWeight: 600 }}>South:</span><span>{zone.boundaries.south}</span></>}
-                          {zone.boundaries.east && <><span style={{ fontWeight: 600 }}>East:</span><span>{zone.boundaries.east}</span></>}
-                          {zone.boundaries.west && <><span style={{ fontWeight: 600 }}>West:</span><span>{zone.boundaries.west}</span></>}
-                        </div>
-                        {zone.walkingStreets && zone.walkingStreets.length > 0 && (
-                          <div style={{ background: '#F0FDF4', borderRadius: 6, padding: '6px 10px', border: '1px solid #BBF7D0' }}>
-                            {zone.walkingStreets.map((ws, i) => (
-                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', fontSize: 12 }}>
-                                <span style={{ fontWeight: 700, color: COLORS.graphite, flex: 1 }}>{ws.street}</span>
-                                <span style={{ color: COLORS.danger, fontWeight: 700, fontSize: 11 }}>{ws.tickets} tix</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <div style={{ marginTop: 6, fontSize: 11 }}>
-                          Cleaned: {formatDate(zone.cleaningDate)}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
-    </div>
   )
 }
