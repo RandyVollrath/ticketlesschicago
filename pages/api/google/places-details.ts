@@ -26,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   const session = typeof req.query.session === 'string' ? req.query.session.slice(0, 128) : '';
 
-  const key = process.env.GOOGLE_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+  // See places-autocomplete.ts for why Maps key must be separate from Gemini.
+  const key = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
   if (!key) {
     console.error('[places-details] missing GOOGLE_API_KEY');
     return res.status(500).json({ error: 'server_not_configured' });
