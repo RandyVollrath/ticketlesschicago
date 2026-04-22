@@ -2292,8 +2292,11 @@ class BackgroundTaskServiceClass {
             reason = 'No internet connection';
           } else if (errMsg.includes('timed out')) {
             reason = 'Server request timed out';
-          } else if (errMsg.includes('outside') && errMsg.includes('Chicago')) {
-            reason = 'Location appears to be outside Chicago';
+          } else if (errMsg.includes('[outside_chicago]') || (errMsg.includes('outside') && errMsg.includes('Chicago'))) {
+            // Sentinel prefix lets us detect this even when the user-facing
+            // copy changes. Clear message so the notification doesn't look
+            // like a bug — the app worked, we just don't cover this area.
+            reason = 'Outside Chicago — Autopilot only covers Chicago city limits (not suburbs like Evanston, Oak Park, Cicero).';
           } else if (errMsg.includes('Invalid coordinates') || errMsg.includes('coordinate')) {
             reason = 'Could not get a valid GPS fix';
           }
