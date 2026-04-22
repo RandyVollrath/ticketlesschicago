@@ -2267,7 +2267,13 @@ async function sendBootTowWarning(
     .single();
 
   if (!profile || !profile.is_paid) return;
-  if (!profile.notify_tow && !profile.notify_sms && !profile.notify_email) return;
+  // Honor explicit tow opt-out. notify_tow is a dedicated feature-flag: if
+  // the user set it to false we skip regardless of other channel flags.
+  if (profile.notify_tow === false) {
+    console.log(`    boot-warning suppressed: user ${userId} opted out of tow alerts`);
+    return;
+  }
+  if (!profile.phone_number && !profile.email) return;
 
   // Dedupe: has a boot warning for this exact tow_eligible_date been logged in the last 7 days?
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -2327,7 +2333,11 @@ async function sendBootTowWarning(
   let emailExternalId: string | undefined;
   let anySent = false;
 
-  if (profile.phone_number && (profile.notify_tow || profile.notify_sms)) {
+  // Tow alerts are a safety-critical notification — default to sending on
+  // both available channels unless the user has explicitly opted out via
+  // notify_tow (checked above). Channel-level flags (notify_sms / notify_email)
+  // only suppress when they are EXPLICITLY false, not when null/unset.
+  if (profile.phone_number && profile.notify_sms !== false) {
     try {
       const smsResult = await sendClickSendSMS(profile.phone_number, smsMessage);
       if (smsResult.success) {
@@ -2342,7 +2352,7 @@ async function sendBootTowWarning(
     }
   }
 
-  if (profile.email && (profile.notify_tow || profile.notify_email) && process.env.RESEND_API_KEY) {
+  if (profile.email && profile.notify_email !== false && process.env.RESEND_API_KEY) {
     try {
       const resp = await fetch('https://api.resend.com/emails', {
         method: 'POST',
