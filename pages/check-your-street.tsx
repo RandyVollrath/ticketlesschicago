@@ -1189,7 +1189,7 @@ export default function CheckYourStreet() {
           </div>
 
           <div className="protection-grid" style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px',
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '40px',
           }}>
             {/* Card 1 — Smart Parking Alerts */}
             <div style={{ backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '20px' }}>
@@ -1200,7 +1200,7 @@ export default function CheckYourStreet() {
                 <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Smart Parking Alerts</h3>
               </div>
               <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
-                Auto-detects where you parked. Alerts before the sweeper hits (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$60 fine</span>), a 2&quot; snow ban takes effect (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$60 fine + ~$250+ tow</span>), or your permit zone catches you (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$75 fine</span>).
+                Auto-detects where you parked (Bluetooth on Android, motion sensors on iOS) and watches the rules for <em>that</em> block. You get push + email warnings before the sweeper (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$60</span>), a 2&quot; snow ban (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$60 + ~$250+ tow</span>), the 3&ndash;7 AM winter overnight ban (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$60</span>), a permit zone without a sticker (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$75</span>), a rush-hour restriction (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$100</span>), or an expired meter (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$50&ndash;$70</span>) &mdash; plus city-sticker and plate-renewal deadlines before they become tickets.
               </p>
             </div>
 
@@ -1223,10 +1223,10 @@ export default function CheckYourStreet() {
                 <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(37,99,235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 </div>
-                <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Day-17 Auto-Contesting</h3>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Hands-Off Ticket Defense</h3>
               </div>
               <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
-                Get a parking ticket? We draft a USPS defense letter and mail it on Day 17 — four days before the deadline. <span style={{ color: COLORS.graphite, fontWeight: '600' }}>57% of mail-in contested Chicago parking tickets get dismissed.</span> <span style={{ fontSize: '11px', color: COLORS.slate }}>(Camera tickets excluded.)</span>
+                Get a ticket anyway? We pull FOIA signage records and weather data, write a real defense letter, and USPS-mail it <span style={{ color: COLORS.graphite, fontWeight: '600' }}>before the city&apos;s deadline — every time</span>. Zero forms. No phone calls. No hearings to show up to. <span style={{ color: COLORS.graphite, fontWeight: '600' }}>57% of mail-in contests win.</span> <span style={{ fontSize: '11px', color: COLORS.slate }}>(Camera tickets excluded.)</span>
               </p>
             </div>
 
@@ -1239,7 +1239,7 @@ export default function CheckYourStreet() {
                 <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Rapid Tow Tracking</h3>
               </div>
               <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
-                Chicago towed <span style={{ color: COLORS.graphite, fontWeight: '600' }}>81,000 cars in 2024</span>. We scan the city tow portal Mon/Thu and alert you within hours if your plate is logged — so storage fees don&apos;t pile up for days.
+                Chicago towed <span style={{ color: COLORS.graphite, fontWeight: '600' }}>81,000 cars in 2024</span>. We check the city tow database <span style={{ color: COLORS.graphite, fontWeight: '600' }}>every 30 minutes</span> and ping you within the hour if your plate shows up &mdash; so you stop paying storage fees before the second day even starts.
               </p>
             </div>
           </div>
@@ -1254,11 +1254,14 @@ export default function CheckYourStreet() {
               backgroundImage: 'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
               backgroundSize: '40px 40px',
             }} />
-            <div style={{ position: 'relative' }}>
+            <div style={{
+              position: 'relative',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
+            }}>
               <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                display: 'flex', alignItems: 'center', gap: '6px',
                 fontSize: '12px', fontWeight: '600', color: '#93C5FD',
-                marginBottom: '14px', letterSpacing: '0.02em',
+                letterSpacing: '0.02em',
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 Powered by 35.7M Chicago ticket records (2018–2025)
@@ -1271,7 +1274,7 @@ export default function CheckYourStreet() {
               }}>
                 Lock in $99/year Founding Rate
               </a>
-              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: '14px auto 0', maxWidth: '460px', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: 0, maxWidth: '460px', lineHeight: '1.5', textAlign: 'center' }}>
                 <span style={{ color: 'white', fontWeight: '600' }}>First Dismissal Guarantee:</span> if we don&apos;t help you avoid all tickets or get at least one dismissed in your first year, we refund your $99.
               </p>
             </div>
