@@ -115,7 +115,6 @@ export default function FlyerLanding({ flyerKey, eyebrow, headline, subhead, sta
                 'Snow ban routes',
                 'Residential permit zones',
                 'Metered parking',
-                'Tow zones',
                 'Red-light cameras',
                 'Speed cameras',
                 'City sticker / plate renewal',
