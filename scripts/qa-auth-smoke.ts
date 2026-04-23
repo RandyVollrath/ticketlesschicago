@@ -3,14 +3,14 @@
  * QA: End-to-end auth smoke test (Option 3 from the auth-QA plan).
  *
  * Signs in as the QA bot via admin-generated magic link, loads
- * /get-started, and asserts the signed-in view renders cleanly with no
+ * /dashboard, and asserts the signed-in view renders cleanly with no
  * CSP violations in the browser console. This catches the full set of
  * failure modes that can silently break sign-in:
  *
  *   - CSP connect-src drift (today's bug — blocked /auth/v1/user)
  *   - Supabase client misconfiguration
  *   - The /auth/callback → /oauth-return rewrite breaking
- *   - /get-started page crashing on hydrate
+ *   - /dashboard page crashing on hydrate
  *   - Supabase custom domain misrouting
  *
  * Signing in by magic-link rather than Google OAuth is deliberate:
@@ -53,7 +53,7 @@ async function runFlow(page: Page): Promise<Outcome> {
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
     email: BOT_EMAIL,
-    options: { redirectTo: `${SITE_URL}/get-started` },
+    options: { redirectTo: `${SITE_URL}/dashboard` },
   });
 
   if (linkError) {
@@ -73,16 +73,18 @@ async function runFlow(page: Page): Promise<Outcome> {
   // URLs" allowlist — don't assume it's /get-started.
   await page.goto(actionLink, { waitUntil: 'networkidle', timeout: NAV_TIMEOUT_MS });
 
-  // Step 3: navigate to /get-started. Once the session is persisted in
+  // Step 3: navigate to /dashboard. Once the session is persisted in
   // the previous step, any page load will see the signed-in user. The
-  // "Signed in as" literal only renders when `user` is non-null on
-  // /get-started (see pages/get-started.tsx).
-  await page.goto(`${SITE_URL}/get-started`, { waitUntil: 'networkidle', timeout: NAV_TIMEOUT_MS });
+  // dashboard renders the user's email when `user` is non-null; an
+  // unauthenticated visit bounces to /login instead.
+  await page.goto(`${SITE_URL}/dashboard`, { waitUntil: 'networkidle', timeout: NAV_TIMEOUT_MS });
 
+  // Step 4: confirm the bot email is visible on the dashboard — this
+  // both asserts the signed-in render path AND that it's the right
+  // user (guards against a stale session or an alternate render path).
   try {
-    await page.waitForSelector(`text=Signed in as`, { timeout: ASSERT_TIMEOUT_MS });
+    await page.waitForSelector(`text=${BOT_EMAIL}`, { timeout: ASSERT_TIMEOUT_MS });
   } catch {
-    // Capture a screenshot and whatever session state we can see.
     try { await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true }); } catch {}
     const currentUrl = page.url();
     const bodyText = (await page.textContent('body').catch(() => ''))?.slice(0, 500);
@@ -92,19 +94,7 @@ async function runFlow(page: Page): Promise<Outcome> {
     }).catch(() => []);
     return {
       pass: false,
-      reason: `Signed-in view never rendered on /get-started.\n   URL: ${currentUrl}\n   Supabase storage keys: ${JSON.stringify(storageKeys)}\n   Body (first 500c): ${bodyText}`,
-      consoleErrors,
-    };
-  }
-
-  // Step 4: confirm it's the right user signed in (guards against a
-  // stale session or an alternate render path).
-  const hasEmail = await page.locator(`text=${BOT_EMAIL}`).isVisible().catch(() => false);
-  if (!hasEmail) {
-    try { await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true }); } catch {}
-    return {
-      pass: false,
-      reason: `Signed-in view rendered, but bot email "${BOT_EMAIL}" not visible.`,
+      reason: `Signed-in view never rendered on /dashboard (bot email "${BOT_EMAIL}" not found).\n   URL: ${currentUrl}\n   Supabase storage keys: ${JSON.stringify(storageKeys)}\n   Body (first 500c): ${bodyText}`,
       consoleErrors,
     };
   }
