@@ -173,8 +173,8 @@ export default function LandingPage() {
       overflowX: 'hidden'
     }}>
       <Head>
-        <title>Chicago Driver Protection Plan | Autopilot America</title>
-        <meta name="description" content="Chicago's complete ticket protection system — alerts before street cleaning and snow bans, automatic parking detection, and unlimited ticket contesting. $99/year." />
+        <title>Your car&apos;s ticket autopilot | Autopilot America</title>
+        <meta name="description" content="Your car's ticket autopilot for Chicago — street cleaning & snow ban alerts, twice-weekly plate monitoring, and automatic contest letters drafted, printed, and mailed. $99/year or $10/month." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -305,7 +305,9 @@ export default function LandingPage() {
           margin: '0 auto 24px',
           position: 'relative',
         }}>
-          If you park in Chicago, this saves you money.
+          Your car&apos;s ticket autopilot.
+          <br />
+          <span style={{ color: COLORS.accent }}>Running 24/7 in Chicago.</span>
         </h1>
 
         <p style={{

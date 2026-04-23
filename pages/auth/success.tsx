@@ -213,164 +213,95 @@ export default function AuthSuccess() {
                   </p>
                 </div>
 
-                {/* Next steps card */}
-                <div style={{ 
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                {/* Check-your-email card */}
+                <div style={{
+                  backgroundColor: '#EFF6FF',
+                  border: '1px solid #BFDBFE',
                   borderRadius: '12px',
-                  padding: '20px',
-                  marginBottom: '32px'
+                  padding: '24px',
+                  marginBottom: '24px',
+                  textAlign: 'center',
                 }}>
-                  <h3 style={{ 
-                    fontSize: '16px', 
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>📬</div>
+                  <h3 style={{
+                    fontSize: '18px',
                     fontWeight: '700',
-                    color: '#1e293b',
-                    marginBottom: '16px',
-                    margin: '0 0 16px 0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
+                    color: '#1E3A8A',
+                    margin: '0 0 8px 0',
                   }}>
-                    What's Next
+                    Check your email
                   </h3>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <div style={{
-                        width: '24px',
-                        height: '24px',
-                        backgroundColor: '#3b82f6',
-                        borderRadius: '50%',
+                  <p style={{ fontSize: '14px', color: '#1E40AF', margin: 0, lineHeight: 1.5 }}>
+                    We just sent you a one-tap sign-in link. Tap it on your phone to open the app — or on your laptop to open the web dashboard.
+                  </p>
+                </div>
+
+                {/* App store buttons */}
+                <div style={{ marginBottom: '28px' }}>
+                  <p style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center', margin: '0 0 12px 0', fontWeight: 500 }}>
+                    Don&apos;t have the app yet? Install it first:
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <a
+                      href="https://apps.apple.com/us/app/autopilot-america/id6758504333"
+                      style={{
+                        flex: '1 1 180px',
+                        backgroundColor: '#000',
+                        color: '#fff',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        textDecoration: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        flexShrink: 0,
-                        marginTop: '2px'
-                      }}>1</div>
-                      <div>
-                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b', marginBottom: '4px' }}>
-                          Sign in with Google
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#64748b' }}>
-                          Access your personalized dashboard
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <div style={{
-                        width: '24px',
-                        height: '24px',
-                        backgroundColor: '#10b981',
-                        borderRadius: '50%',
+                        gap: '10px',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                      }}
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M17.05 12.536a4.51 4.51 0 012.152-3.784 4.62 4.62 0 00-3.634-1.965c-1.529-.16-2.993.915-3.76.915-.792 0-1.968-.9-3.24-.876a4.839 4.839 0 00-4.072 2.481c-1.754 3.036-.446 7.492 1.234 9.942.84 1.2 1.823 2.54 3.113 2.493 1.254-.053 1.727-.8 3.241-.8 1.505 0 1.944.8 3.264.77 1.35-.022 2.203-1.22 3.02-2.43.649-.856 1.144-1.801 1.478-2.805a4.364 4.364 0 01-2.796-3.941zm-2.47-7.22a4.449 4.449 0 001.02-3.22 4.566 4.566 0 00-2.952 1.524 4.253 4.253 0 00-1.044 3.094 3.773 3.773 0 002.976-1.398z"/></svg>
+                      App Store
+                    </a>
+                    <a
+                      href="https://play.google.com/store/apps/details?id=fyi.ticketless.app"
+                      style={{
+                        flex: '1 1 180px',
+                        backgroundColor: '#000',
+                        color: '#fff',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        textDecoration: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        flexShrink: 0,
-                        marginTop: '2px'
-                      }}>2</div>
-                      <div>
-                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b', marginBottom: '4px' }}>
-                          Review your vehicle info
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#64748b' }}>
-                          We've saved all your details - just verify they're correct
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <div style={{
-                        width: '24px',
-                        height: '24px',
-                        backgroundColor: '#f59e0b',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        flexShrink: 0,
-                        marginTop: '2px'
-                      }}>3</div>
-                      <div>
-                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b', marginBottom: '4px' }}>
-                          Receive your first alert
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#64748b' }}>
-                          Get alerts for street cleaning, snow removal, and renewals
-                        </div>
-                      </div>
-                    </div>
+                        gap: '10px',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                      }}
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#EA4335" d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92z"/><path fill="#FBBC04" d="M16.81 15.019l-2.71-1.566 2.268-2.268 2.71 1.566c1.065.615 1.065 1.653 0 2.268z"/><path fill="#4285F4" d="M13.792 12L3.61 1.814a1 1 0 011.228.086l11.972 6.91L13.792 12z"/><path fill="#34A853" d="M13.792 12l3.018 3.19-11.972 6.91a1 1 0 01-1.228.086L13.792 12z"/></svg>
+                      Google Play
+                    </a>
                   </div>
                 </div>
-                
-                {/* Sign in buttons */}
-                <button
-                  onClick={async () => {
-                    const { error } = await supabase.auth.signInWithOAuth({
-                      provider: 'google',
-                      options: {
-                        redirectTo: `${window.location.origin}/oauth-return`
-                      }
-                    });
-                    if (error) {
-                      console.error('OAuth error:', error);
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    padding: '14px 24px',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    border: 'none',
-                    cursor: 'pointer',
-                    marginBottom: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '12px',
-                    transition: 'background-color 0.15s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
-                >
-                  <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24">
-                    <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  Continue with Google
-                </button>
-                
-                <button
-                  onClick={() => router.push('/login?from=signup')}
-                  style={{
-                    width: '100%',
-                    backgroundColor: '#f3f4f6',
-                    color: '#374151',
-                    padding: '12px 24px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    border: '1px solid #e5e7eb',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.15s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5e7eb'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
-                >
-                  Use Email Instead
-                </button>
+
+                {/* Didn't get the email fallback */}
+                <div style={{
+                  backgroundColor: '#F9FAFB',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  padding: '14px 16px',
+                  marginBottom: '8px',
+                  fontSize: '13px',
+                  color: '#4B5563',
+                  textAlign: 'center',
+                  lineHeight: 1.6,
+                }}>
+                  Didn&apos;t get the email? Check spam, or{' '}
+                  <a href="/login?from=signup" style={{ color: '#2563EB', fontWeight: 600 }}>
+                    sign in manually
+                  </a>.
+                </div>
 
                 {/* Support link */}
                 <p style={{ 

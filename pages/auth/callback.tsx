@@ -19,8 +19,16 @@ export default function AuthCallback() {
         // Mobile app sets a specific parameter or we detect by user agent
         const searchParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+        const isMobileUA = /iPhone|iPad|iPod|Android/i.test(ua);
+        const hasTokens = !!(hashParams.get('access_token') || searchParams.get('access_token'));
+        // If the user tapped a post-checkout magic link on a phone but the
+        // Universal/App Link didn't intercept (e.g. Gmail in-app browser),
+        // bounce the tokens into the custom scheme so the app still picks up
+        // the session.
         const isMobileApp = searchParams.get('mobile') === 'true' ||
-                           searchParams.get('redirect_to')?.startsWith('ticketlesschicago://');
+                           searchParams.get('redirect_to')?.startsWith('ticketlesschicago://') ||
+                           (isMobileUA && hasTokens && searchParams.get('protection') === 'true');
 
         // If this is a mobile app callback, redirect to the app with tokens
         if (isMobileApp) {

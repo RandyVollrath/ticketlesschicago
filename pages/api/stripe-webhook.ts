@@ -811,12 +811,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
 
                 // Generate and send magic link
+                // Uses /auth/callback (app-linkable) so tapping the email on
+                // a phone opens the mobile app via Universal Links / App Links.
                 console.log('📧 Generating magic link for existing auth user (no profile):', email);
                 const { data: linkDataExisting, error: magicLinkErrorExisting } = await supabaseAdmin.auth.admin.generateLink({
                   type: 'magiclink',
                   email: email,
                   options: {
-                    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/oauth-return?protection=true`
+                    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?protection=true`
                   }
                 });
 
@@ -1107,12 +1109,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               }
 
               // Generate and send magic link for new users
+              // /auth/callback is app-linkable — on phones the tap opens the
+              // mobile app directly via Universal Links / App Links.
               console.log('📧 Generating magic link for new user:', email);
               const { data: linkData, error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
                 type: 'magiclink',
                 email: email,
                 options: {
-                  redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/oauth-return?protection=true`
+                  redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?protection=true`
                 }
               });
 
@@ -1505,7 +1509,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'magiclink',
               email: email,
               options: {
-                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/oauth-return?protection=true`
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?protection=true`
               }
             });
 
@@ -2471,7 +2475,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               type: 'magiclink',
               email: email,
               options: {
-                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/oauth-return`
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/auth/callback`
               }
             });
 
