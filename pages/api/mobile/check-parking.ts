@@ -1045,6 +1045,46 @@ export default async function handler(
             console.warn('[check-parking] Nominatim cross-reference failed (non-fatal):', nomErr);
           }
         }
+
+        // --- Mapbox Map Matching (SHADOW MODE) ---
+        // Submit the actual driving trajectory to Mapbox so it can identify
+        // the road segment the car was on at the parking spot using the whole
+        // path, not just the stop point's distance to centerlines. Currently
+        // logs result alongside snap+Nominatim; does NOT change behavior. Once
+        // we see consistent wins on real parks (compare via parking_diagnostics
+        // .native_meta.mapbox.street vs resolved_street_name), promote to
+        // primary by replacing snapResult.streetName with the Mapbox match.
+        // Skipped silently when MAPBOX_ACCESS_TOKEN is not configured.
+        try {
+          const { mapMatchTrajectory } = await import('../../../lib/mapbox-map-matching');
+          const fixes: Array<{ lat: number; lng: number; accuracyMeters?: number }> =
+            driveTrajectory.map((p) => ({ lat: p[0], lng: p[1] }));
+          // Append the actual parking location as the final point so Mapbox
+          // identifies the road at the stop, not just the approach.
+          fixes.push({ lat: latitude, lng: longitude, accuracyMeters: accuracyMeters });
+          const mapboxResult = await mapMatchTrajectory(fixes);
+          if (!diag.native_meta) diag.native_meta = {};
+          diag.native_meta.mapbox = {
+            matched: mapboxResult.matched,
+            street: mapboxResult.finalStreetName,
+            confidence: mapboxResult.confidence,
+            matched_count: mapboxResult.matchedPointCount,
+            input_count: mapboxResult.inputPointCount,
+            skip_reason: mapboxResult.skipReason ?? null,
+            // Pin the alternatives so we can eyeball wins/losses at a glance
+            // when querying parking_diagnostics.
+            snap_winner: snapResult?.streetName ?? null,
+            nominatim_winner: diag.nominatim_street ?? null,
+          };
+          if (mapboxResult.matched) {
+            console.log(`[check-parking] Mapbox map-match (SHADOW): ${mapboxResult.finalStreetName} (confidence=${mapboxResult.confidence?.toFixed(2) ?? 'n/a'}, matched ${mapboxResult.matchedPointCount}/${mapboxResult.inputPointCount} points). Snap winner: ${snapResult?.streetName ?? 'none'}.`);
+          } else if (mapboxResult.skipReason !== 'no_token') {
+            console.log(`[check-parking] Mapbox map-match (SHADOW): no match (${mapboxResult.skipReason ?? 'unknown'}, ${mapboxResult.inputPointCount} input points)`);
+          }
+        } catch (mbErr) {
+          console.warn('[check-parking] Mapbox map-matching failed (non-fatal):', mbErr);
+        }
+
       } catch (snapErr) {
         // Snap is optional - log and continue with original coordinates
         console.warn('[check-parking] Snap-to-street failed (non-fatal):', snapErr);
