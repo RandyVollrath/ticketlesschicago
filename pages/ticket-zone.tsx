@@ -10,7 +10,7 @@ export default function TicketZoneFlyer() {
       stat={{ big: '94%', label: 'of Chicago parking tickets are never contested — even though 66% of contested tickets win (35.7M-ticket FOIA dataset)' }}
       bullets={[
         'Twice-weekly plate monitoring catches tickets before the 21-day contest deadline — most drivers miss the window before they even open the mail.',
-        'Real-time alerts before you park in a ticket trap: street cleaning, snow ban, permit zone, tow zone, and camera zones.',
+        'Real-time alerts before you park in a ticket trap: street cleaning, snow ban, permit zone, metered parking, tow zone, and red-light/speed camera zones.',
         'Every ticket is auto-contested with evidence — weather records, Google Street View signage photos, 311 complaints, construction permits, camera malfunction history.',
         'Judge-tuned letters: we profile all 74 Chicago hearing officers; win rates swing 2× depending on who hears your case.',
       ]}

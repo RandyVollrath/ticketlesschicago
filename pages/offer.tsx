@@ -10,7 +10,7 @@ export default function OfferFlyer() {
       stat={{ big: '$234 vs $99', label: 'what the average Chicago driver loses to the City per year vs. what Autopilot costs — and we keep most of the $234 in your pocket' }}
       bullets={[
         'Every ticket auto-contested — 66% of contested Chicago parking tickets are dismissed (FOIA).',
-        'Real-time prevention alerts for street cleaning, snow ban, permit zones, and red-light/speed camera zones.',
+        'Real-time prevention alerts for street cleaning, snow ban, permit zones, metered parking, tow zones, and red-light/speed camera zones.',
         'Escalation protection — we catch tickets before they double to late fees, or escalate to boot ($100) or tow ($250+).',
         'First Dismissal Guarantee: if we don\'t save you money in your first year, full refund.',
       ]}

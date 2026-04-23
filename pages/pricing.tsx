@@ -75,7 +75,7 @@ export default function PricingPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
               <div>
                 <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Escalation avoidance</div>
-                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Unpaid tickets double. Chicago issues ~48,000 boots a year. We catch tickets before boot ($100) or tow ($250+).</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Unpaid tickets double. Chicago issued 51,000 boots and 81,000 tows in 2024. We catch tickets before they escalate to boot ($100) or tow ($250+).</div>
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#166534', whiteSpace: 'nowrap' }}>~$40+</div>
             </div>
