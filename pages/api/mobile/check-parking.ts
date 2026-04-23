@@ -278,6 +278,14 @@ export default async function handler(
     if (hasCompass && headingDisagreementDeg != null && headingDisagreementDeg > 15) {
       console.log(`[check-parking] GPS ${headingDeg.toFixed(0)}° vs compass ${compassHeadingDeg.toFixed(0)}° disagree by ${headingDisagreementDeg.toFixed(0)}° (same grid orientation). Using GPS.`);
     }
+  } else if (trajectoryMeanHeadingDeg != null) {
+    // Trajectory median is a car-truthful GPS heading (averaged over multiple
+    // driving fixes), so we treat it as `gps` for downstream logic — that
+    // means it's strong enough to pass the Belden walk-away protection check.
+    // Preferred over compass because compass is phone orientation, not car.
+    effectiveHeading = trajectoryMeanHeadingDeg;
+    effectiveHeadingSource = 'gps';
+    console.log(`[check-parking] No per-fix GPS heading — using trajectory median ${trajectoryMeanHeadingDeg.toFixed(1)}° from ${trajectoryMeanHeadingSampleCount} driving points (car-truthful, treated as gps source).`);
   } else if (hasCompass) {
     effectiveHeading = compassHeadingDeg;
     effectiveHeadingSource = 'compass';
@@ -331,22 +339,26 @@ export default async function handler(
       console.warn('[check-parking] Failed to parse drive_trajectory:', e);
     }
   }
+  // Trajectory median heading — circular mean of the last few driving GPS
+  // headings. This is a car-truthful direction signal even when the single
+  // stop-point heading is invalid (CLLocation.course goes -1 below ~1 m/s)
+  // OR when iOS fails to capture lastDrivingHeading entirely (regression
+  // observed in v2.0.7 builds for Randy's Apr 22 parks). Used as a fallback
+  // heading source when the per-fix `heading` body field is missing.
+  let trajectoryMeanHeadingDeg: number | null = null;
+  let trajectoryMeanHeadingSampleCount = 0;
   if (driveTrajectory.length > 0) {
-    // Also fold a median heading from the trajectory into heading disambiguation.
-    // Single-point GPS heading can be noisy (especially the last fix before stop,
-    // where speed is low and heading drifts). A median over the last few moving
-    // fixes is more stable.
     const headings = driveTrajectory.map((p) => p[2]).filter((h) => h >= 0 && h < 360);
     if (headings.length >= 3) {
-      // Circular median approximation: convert to unit vectors, average, convert back.
       let sumX = 0, sumY = 0;
       for (const h of headings) {
         const r = (h * Math.PI) / 180;
         sumX += Math.cos(r);
         sumY += Math.sin(r);
       }
-      const meanDeg = ((Math.atan2(sumY, sumX) * 180) / Math.PI + 360) % 360;
-      console.log(`[check-parking] Trajectory median heading: ${meanDeg.toFixed(0)}° (from ${headings.length} driving points)`);
+      trajectoryMeanHeadingDeg = ((Math.atan2(sumY, sumX) * 180) / Math.PI + 360) % 360;
+      trajectoryMeanHeadingSampleCount = headings.length;
+      console.log(`[check-parking] Trajectory median heading: ${trajectoryMeanHeadingDeg.toFixed(0)}° (from ${headings.length} driving points)`);
     }
   }
 
@@ -1046,15 +1058,22 @@ export default async function handler(
           }
         }
 
-        // --- Mapbox Map Matching (SHADOW MODE) ---
-        // Submit the actual driving trajectory to Mapbox so it can identify
-        // the road segment the car was on at the parking spot using the whole
-        // path, not just the stop point's distance to centerlines. Currently
-        // logs result alongside snap+Nominatim; does NOT change behavior. Once
-        // we see consistent wins on real parks (compare via parking_diagnostics
-        // .native_meta.mapbox.street vs resolved_street_name), promote to
-        // primary by replacing snapResult.streetName with the Mapbox match.
-        // Skipped silently when MAPBOX_ACCESS_TOKEN is not configured.
+        // --- Mapbox Map Matching (PRIMARY) ---
+        // Submit the driving trajectory to Mapbox so it can identify the road
+        // segment the car was on at the parking spot using the whole path,
+        // not just the stop point's distance to centerlines. This sidesteps
+        // the wrong-street class of bugs entirely (Wolcott→Lawrence,
+        // Carmen→Clark) by reasoning about the trajectory.
+        //
+        // When Mapbox returns a confident match, we trust it as the
+        // authoritative street. If Mapbox's street is also a snap candidate,
+        // we adopt that candidate's PostGIS geometry so address interpolation
+        // (house number, side-of-street parity) keeps working. Otherwise we
+        // fall back to raw GPS + Mapbox street name and let the unified
+        // parking checker reverse-geocode for the house number.
+        //
+        // Skipped silently when MAPBOX_ACCESS_TOKEN is not configured —
+        // existing snap + Nominatim path remains the fallback.
         try {
           const { mapMatchTrajectory } = await import('../../../lib/mapbox-map-matching');
           const fixes: Array<{ lat: number; lng: number; accuracyMeters?: number }> =
@@ -1071,15 +1090,86 @@ export default async function handler(
             matched_count: mapboxResult.matchedPointCount,
             input_count: mapboxResult.inputPointCount,
             skip_reason: mapboxResult.skipReason ?? null,
-            // Pin the alternatives so we can eyeball wins/losses at a glance
-            // when querying parking_diagnostics.
-            snap_winner: snapResult?.streetName ?? null,
-            nominatim_winner: diag.nominatim_street ?? null,
+            // Pin the pre-Mapbox winners so we can audit overrides.
+            pre_snap_winner: snapResult?.streetName ?? null,
+            pre_nominatim_winner: diag.nominatim_street ?? null,
+            promoted: false,
           };
-          if (mapboxResult.matched) {
-            console.log(`[check-parking] Mapbox map-match (SHADOW): ${mapboxResult.finalStreetName} (confidence=${mapboxResult.confidence?.toFixed(2) ?? 'n/a'}, matched ${mapboxResult.matchedPointCount}/${mapboxResult.inputPointCount} points). Snap winner: ${snapResult?.streetName ?? 'none'}.`);
-          } else if (mapboxResult.skipReason !== 'no_token') {
-            console.log(`[check-parking] Mapbox map-match (SHADOW): no match (${mapboxResult.skipReason ?? 'unknown'}, ${mapboxResult.inputPointCount} input points)`);
+
+          const MAPBOX_CONFIDENCE_THRESHOLD = 0.5;
+          const confident = mapboxResult.matched
+            && mapboxResult.finalStreetName != null
+            && (mapboxResult.confidence ?? 0) >= MAPBOX_CONFIDENCE_THRESHOLD;
+
+          if (confident) {
+            // Normalize street names for matching against snap candidates.
+            // Mapbox returns "North Wolcott Avenue"; PostGIS returns "N WOLCOTT AVE".
+            const normalize = (s: string) => s.toLowerCase()
+              .replace(/\b(north|south|east|west|n|s|e|w|ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane)\b/g, '')
+              .replace(/[^a-z]+/g, ' ')
+              .trim();
+            const mbNorm = normalize(mapboxResult.finalStreetName!);
+
+            // Try to find the matching snap candidate so we can keep address
+            // interpolation, parity, and side-of-street logic working.
+            const mapboxCandidate = allCandidates.find((c: any) =>
+              normalize(c.street_name) === mbNorm
+            );
+
+            const previousStreet = snapResult?.streetName;
+
+            if (mapboxCandidate) {
+              // Re-snap to the Mapbox-identified candidate. Reuse the same
+              // address-interpolation logic by calling out to a small inline
+              // version (we can't reach back into the loop scope cleanly).
+              const c = mapboxCandidate;
+              checkLat = c.snapped_lat;
+              checkLng = c.snapped_lng;
+              snapResult = {
+                wasSnapped: true,
+                snapDistanceMeters: c.snap_distance_meters,
+                streetName: c.street_name,
+                snapSource: 'mapbox_match_candidate',
+                streetBearing: c.street_bearing,
+                segmentFraction: typeof c.segment_fraction === 'number' ? c.segment_fraction : undefined,
+                lFromAddr: c.l_from_addr ?? null,
+                lToAddr: c.l_to_addr ?? null,
+                rFromAddr: c.r_from_addr ?? null,
+                rToAddr: c.r_to_addr ?? null,
+                onewayDir: c.oneway_dir ?? null,
+                lParity: c.l_parity ?? null,
+                rParity: c.r_parity ?? null,
+                interpolatedNumber: null, // Address interpolation re-runs in unified checker
+              };
+              console.log(`[check-parking] Mapbox PROMOTED: ${c.street_name} (confidence=${mapboxResult.confidence?.toFixed(2)}, matched ${mapboxResult.matchedPointCount}/${mapboxResult.inputPointCount}). Was: ${previousStreet ?? 'none'}.`);
+              diag.native_meta.mapbox.promoted = true;
+              diag.native_meta.mapbox.promoted_via = 'snap_candidate';
+              diag.snap_street_name = c.street_name;
+              diag.snap_distance_meters = c.snap_distance_meters;
+              diag.snap_source = 'mapbox_match_candidate';
+            } else {
+              // Mapbox picked a street outside our candidate set. Trust it
+              // anyway — Mapbox sees roads our 80m PostGIS search may have
+              // missed (or has fresher OSM data). Use Mapbox's snapped point
+              // so the downstream reverse-geocode lands on the right block.
+              checkLat = mapboxResult.finalSnappedLat ?? latitude;
+              checkLng = mapboxResult.finalSnappedLng ?? longitude;
+              snapResult = {
+                wasSnapped: false,
+                snapDistanceMeters: 0,
+                streetName: mapboxResult.finalStreetName!,
+                snapSource: 'mapbox_match_off_grid',
+              };
+              console.log(`[check-parking] Mapbox PROMOTED (off-grid): ${mapboxResult.finalStreetName} (confidence=${mapboxResult.confidence?.toFixed(2)}). Was: ${previousStreet ?? 'none'}. No matching snap candidate — using Mapbox snapped coords.`);
+              diag.native_meta.mapbox.promoted = true;
+              diag.native_meta.mapbox.promoted_via = 'off_grid';
+              diag.snap_street_name = mapboxResult.finalStreetName;
+              diag.snap_source = 'mapbox_match_off_grid';
+            }
+          } else if (mapboxResult.matched) {
+            console.log(`[check-parking] Mapbox match too weak to promote: ${mapboxResult.finalStreetName} (confidence=${mapboxResult.confidence?.toFixed(2)} < ${MAPBOX_CONFIDENCE_THRESHOLD}). Keeping snap winner ${snapResult?.streetName ?? 'none'}.`);
+          } else if (mapboxResult.skipReason && mapboxResult.skipReason !== 'no_token') {
+            console.log(`[check-parking] Mapbox map-match: no match (${mapboxResult.skipReason}, ${mapboxResult.inputPointCount} input points). Keeping snap winner ${snapResult?.streetName ?? 'none'}.`);
           }
         } catch (mbErr) {
           console.warn('[check-parking] Mapbox map-matching failed (non-fatal):', mbErr);
