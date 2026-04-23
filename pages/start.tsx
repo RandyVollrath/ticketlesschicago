@@ -184,6 +184,10 @@ export default function StartFunnel() {
         // Defer to after sessionId is set
         setTimeout(() => upsertFunnel({ utm_source, utm_medium, utm_campaign }), 0);
       }
+      const planParam = url.searchParams.get('plan');
+      if (planParam === 'monthly' || planParam === 'annual') {
+        _setBillingPlan(planParam);
+      }
     } catch { /* ignore */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
