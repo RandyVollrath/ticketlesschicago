@@ -1185,7 +1185,7 @@ export default function StartFunnel() {
                 <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 12 }}>What&apos;s included:</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <IncludedItem text="Street cleaning, winter overnight, snow ban, and temporary no-parking alerts" />
-                  <IncludedItem text="Meter alerts — know when you've parked in a metered zone, when the meter is active, and when you've reached the posted time limit ($47M/yr)" />
+                  <IncludedItem text="Meter alerts — know when you've parked in a metered zone, when the meter zone is active, and when you've reached the posted time limit ($47M/yr)" />
                   <IncludedItem text="Red-light and speed camera alerts as you drive ($183M/yr in Chicago)" />
                   <IncludedItem text="Twice-weekly plate monitoring + automatic contest letters drafted, printed, and mailed" />
                   <IncludedItem text="City sticker and license plate renewal deadline reminders" />
