@@ -103,6 +103,7 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pricingPlan, setPricingPlan] = useState<'annual' | 'monthly'>('annual');
   const router = useRouter();
 
   useEffect(() => {
@@ -498,7 +499,7 @@ export default function LandingPage() {
           marginBottom: '8px',
           letterSpacing: '-0.5px',
         }}>
-          Want proof this applies to you?
+          Curious what this looks like for you?
         </h2>
         <p style={{
           fontSize: '15px',
@@ -508,7 +509,7 @@ export default function LandingPage() {
           maxWidth: '560px',
           margin: '0 auto 32px',
         }}>
-          $420M is abstract. These two free tools show what <strong style={{ color: '#fff' }}>you personally</strong> are paying — before you pay us a cent.
+          $420M across the city is hard to picture. Here are two free tools — no signup — that put <strong style={{ color: '#fff' }}>your own</strong> ticket history and risk in context.
         </p>
         <div style={{
           display: 'grid',
@@ -686,65 +687,137 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" style={{ padding: '80px 5%', maxWidth: '1200px', margin: '0 auto' }}>
+      <section id="pricing" style={{ padding: '100px 5%', maxWidth: '1200px', margin: '0 auto' }}>
         <h2 style={{
           fontFamily: FONTS.heading,
-          fontSize: '36px',
+          fontSize: 'clamp(32px, 5vw, 44px)',
           fontWeight: 700,
           textAlign: 'center',
           marginBottom: '16px',
-          color: COLORS.primary
+          color: COLORS.primary,
+          letterSpacing: '-0.5px',
         }}>
           One Plan. Full Protection.
         </h2>
-        <p style={{ textAlign: 'center', color: COLORS.textMuted, marginBottom: '48px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
-          Everything you need to fight Chicago parking tickets on autopilot
+        <p style={{ textAlign: 'center', color: COLORS.textMuted, marginBottom: '40px', maxWidth: '620px', marginLeft: 'auto', marginRight: 'auto', fontSize: '17px', lineHeight: 1.6 }}>
+          Everything you need to fight Chicago parking tickets on autopilot.
         </p>
 
+        {/* Billing toggle */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '32px' }}>
+          <div style={{ display: 'inline-flex', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4 }}>
+            <button
+              type="button"
+              onClick={() => setPricingPlan('annual')}
+              style={{
+                padding: '12px 22px',
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 15,
+                fontWeight: pricingPlan === 'annual' ? 700 : 500,
+                backgroundColor: pricingPlan === 'annual' ? '#fff' : 'transparent',
+                color: pricingPlan === 'annual' ? COLORS.primary : '#64748B',
+                boxShadow: pricingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Annual <span style={{ fontSize: 12, color: '#10B981', fontWeight: 600, marginLeft: 6 }}>Save 18%</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPricingPlan('monthly')}
+              style={{
+                padding: '12px 22px',
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 15,
+                fontWeight: pricingPlan === 'monthly' ? 700 : 500,
+                backgroundColor: pricingPlan === 'monthly' ? '#fff' : 'transparent',
+                color: pricingPlan === 'monthly' ? COLORS.primary : '#64748B',
+                boxShadow: pricingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Monthly
+            </button>
+          </div>
+        </div>
+
         <div style={{
-          maxWidth: '480px',
+          maxWidth: '560px',
           margin: '0 auto',
         }}>
           <div style={{
             backgroundColor: COLORS.primary,
             color: COLORS.textLight,
-            padding: '40px 32px',
-            borderRadius: '20px',
-            textAlign: 'center',
+            padding: '48px 40px',
+            borderRadius: '24px',
             boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
             position: 'relative',
           }}>
             {/* Founding Member Badge */}
-            <div style={{
-              position: 'absolute',
-              top: '-12px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              backgroundColor: COLORS.accent,
-              color: COLORS.primary,
-              padding: '6px 16px',
-              borderRadius: '20px',
-              fontSize: '12px',
-              fontWeight: 700,
-              letterSpacing: '0.5px',
-            }}>
-              FOUNDING MEMBER RATE
+            {pricingPlan === 'annual' && (
+              <div style={{
+                position: 'absolute',
+                top: '-14px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: COLORS.accent,
+                color: COLORS.primary,
+                padding: '7px 18px',
+                borderRadius: '20px',
+                fontSize: '12px',
+                fontWeight: 700,
+                letterSpacing: '0.5px',
+              }}>
+                FOUNDING MEMBER RATE
+              </div>
+            )}
+
+            <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+              <h3 style={{
+                fontFamily: FONTS.heading,
+                fontSize: '56px',
+                margin: '8px 0 4px 0',
+                color: '#fff',
+                letterSpacing: '-1px',
+              }}>
+                {pricingPlan === 'annual' ? '$99' : '$10'}
+                <span style={{ fontSize: '20px', color: '#94A3B8', fontWeight: 400 }}>
+                  {pricingPlan === 'annual' ? '/year' : '/month'}
+                </span>
+              </h3>
+              {pricingPlan === 'annual' ? (
+                <>
+                  <p style={{ color: '#CBD5E1', marginBottom: '6px', fontSize: '15px' }}>
+                    Year-round protection. Price locked for life while active.
+                  </p>
+                  <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>
+                    Less than the cost of two parking tickets.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p style={{ color: '#CBD5E1', marginBottom: '6px', fontSize: '15px' }}>
+                    Cancel anytime. No commitment.
+                  </p>
+                  <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>
+                    $120/year — save 18% with annual.
+                  </p>
+                </>
+              )}
             </div>
 
-            <h3 style={{
-              fontFamily: FONTS.heading,
-              fontSize: '48px',
-              margin: '8px 0 10px 0',
-              color: '#fff'
+            <div style={{
+              borderTop: '1px solid rgba(255,255,255,0.1)',
+              paddingTop: '28px',
+              marginBottom: '32px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
             }}>
-              $99<span style={{fontSize: '18px', color: '#94A3B8'}}>/year</span>
-            </h3>
-            <p style={{ color: '#CBD5E1', marginBottom: '32px' }}>Year-round protection. Price locked for life while active.</p>
-            <p style={{ color: '#94A3B8', marginTop: '-20px', marginBottom: '28px', fontSize: '13px' }}>
-              Less than the cost of two parking tickets.
-            </p>
-
-            <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {[
                 'Mobile app for iOS and Android',
                 'Real-time parking detection & smart alerts',
@@ -754,22 +827,22 @@ export default function LandingPage() {
                 'Registration renewal deadline reminders',
                 'No Ticket / First Dismissal Guarantee',
               ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff' }}>
-                  <CheckIcon /> <span style={{ fontSize: '15px' }}>{item}</span>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', color: '#fff' }}>
+                  <CheckIcon /> <span style={{ fontSize: '15px', lineHeight: 1.5 }}>{item}</span>
                 </div>
               ))}
             </div>
 
             <Button
               fullWidth
-              href="/get-started"
+              href={`/get-started?plan=${pricingPlan}`}
               style={{ backgroundColor: '#fff', color: COLORS.primary }}
             >
-              Get Started
+              Get Started {pricingPlan === 'annual' ? '— $99/year' : '— $10/month'}
             </Button>
 
-            <p style={{ fontSize: '13px', color: '#64748B', marginTop: '16px' }}>
-              First Dismissal Guarantee: if we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund.
+            <p style={{ fontSize: '13px', color: '#94A3B8', marginTop: '20px', textAlign: 'center', lineHeight: 1.6 }}>
+              First Dismissal Guarantee: if we don&apos;t help you avoid all tickets or get at least 1 dismissed, you get a full refund.
             </p>
           </div>
         </div>
