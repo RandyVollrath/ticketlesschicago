@@ -31,6 +31,13 @@ export default function GetStarted() {
   const [selectedPlan, setSelectedPlan] = useState<'autopilot'>('autopilot');
   const [billingPlan, setBillingPlan] = useState<'annual' | 'monthly'>('annual');
 
+  // Honor ?plan=monthly|annual query from pricing links
+  useEffect(() => {
+    if (!router.isReady) return;
+    const q = router.query.plan;
+    if (q === 'monthly' || q === 'annual') setBillingPlan(q);
+  }, [router.isReady, router.query.plan]);
+
   // Vehicle info
   const [licensePlate, setLicensePlate] = useState('');
   const [plateState, setPlateState] = useState('IL');
