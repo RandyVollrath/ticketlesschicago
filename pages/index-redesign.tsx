@@ -532,7 +532,7 @@ export default function LandingPage() {
           {[
             { text: "Got an alert about my expired city sticker before I got a ticket. Saved me $200 right away.", author: "Maria S." },
             { text: "Got a $100 parking ticket contested automatically. Didn't even know I had it until I got the dismissal notice. Worth every penny.", author: "James T." },
-            { text: "The street cleaning alerts alone are worth it. No more $75 tickets on Tuesday mornings.", author: "David K." },
+            { text: "The street cleaning alerts alone are worth it. No more $60 tickets on Tuesday mornings.", author: "David K." },
           ].map((testimonial, i) => (
             <div key={i} style={{
               flex: '1 1 280px',

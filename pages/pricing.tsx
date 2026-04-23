@@ -60,31 +60,38 @@ export default function PricingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
               <div>
-                <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Ticket contesting (66% win rate)</div>
-                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>We auto-contest every ticket. 66% of contested Chicago parking tickets dismissed (FOIA).</div>
+                <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Automatic ticket contesting (66% win rate)</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Claude AI drafts, we print, we USPS-mail on Day 17 — four days before the deadline. 66% of contested Chicago parking tickets get dismissed (FOIA).</div>
               </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534' }}>~$148</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534', whiteSpace: 'nowrap' }}>~$125</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
               <div>
                 <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Prevention alerts</div>
-                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Street cleaning, snow ban, camera zones, sticker &amp; plate renewals — before you get hit.</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Street cleaning, snow ban, camera zones, permit zones, sticker &amp; plate renewals — before you get hit.</div>
               </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534' }}>~$60+</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534', whiteSpace: 'nowrap' }}>~$60+</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
               <div>
                 <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Escalation avoidance</div>
-                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Unpaid tickets double. We catch them before they escalate to boot ($100) or tow ($250+).</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Unpaid tickets double. Chicago issues ~48,000 boots a year. We catch tickets before boot ($100) or tow ($250+).</div>
               </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534' }}>~$40+</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534', whiteSpace: 'nowrap' }}>~$40+</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
               <div>
                 <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Your time saved</div>
-                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>No research, no letters, no trips to the post office. We handle it all.</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Fighting one ticket end-to-end takes ~3 hours. At 2.2 tickets/year, that&apos;s ~7 hours you keep.</div>
               </div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: '#166534' }}>hours</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534', whiteSpace: 'nowrap' }}>~7 hrs</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Lawyer-equivalent work</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>A ticket lawyer charges $150–$300 per letter. At 2.2 tickets/year that&apos;s $330–$660 of legal work for $99.</div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534', whiteSpace: 'nowrap' }}>~$330+</div>
             </div>
           </div>
 
@@ -93,11 +100,11 @@ export default function PricingPage() {
               <div style={{ fontWeight: 700, color: '#fff', fontSize: 19 }}>Total estimated value</div>
               <div style={{ fontSize: 13, color: '#94A3B8', marginTop: 2 }}>vs. your $99/year membership</div>
             </div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: '#34D399', letterSpacing: '-0.02em' }}>$248+</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: '#34D399', letterSpacing: '-0.02em' }}>$550+</div>
           </div>
 
           <p style={{ marginTop: 18, marginBottom: 0, fontSize: 12, color: '#94A3B8', lineHeight: 1.5 }}>
-            Sources: DOF FOIA F129773 (2025 ticket data, 5,246,241 rows); Chicago 2025 Annual Appropriation Ordinance p.23 (Impoundment Fees $14.7M, Sale of Impounded Autos $2.2M). Chicago-resident share (63.2%) derived from zipcode analysis of 2025 FOIA tickets. 1.18M Chicago vehicles per U.S. Census ACS.
+            Sources: DOF FOIA F129773 (2025 ticket data, 5,246,241 rows; avg initial fine $68.76). Chicago 2025 Annual Appropriation Ordinance p.23 (Impoundment Fees $14.7M, Sale of Impounded Autos $2.2M). Chicago-resident share (63.2%) from zipcode analysis of 2025 FOIA. 1.18M Chicago vehicles per U.S. Census ACS. Street cleaning fine $60 initial / $120 late, verified FOIA violation code 0964040B.
           </p>
         </section>
 
@@ -122,7 +129,7 @@ export default function PricingPage() {
         <section style={{ marginTop: 20, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 16, padding: 24 }}>
           <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#166534' }}>94% of Chicago parking tickets go uncontested.</p>
           <p style={{ margin: '8px 0 0', fontSize: 20, fontWeight: 600, color: '#15803D' }}>But 66% of contested parking tickets win.</p>
-          <p style={{ margin: '12px 0 0', color: '#64748B', fontSize: 14 }}>Based on 2.66 million parking tickets and 35.7 million total records from Chicago FOIA data.</p>
+          <p style={{ margin: '12px 0 0', color: '#64748B', fontSize: 14 }}>Based on 5.25 million Chicago tickets issued in 2025 and 35.7 million total ticket records (2018–2025) from FOIA data.</p>
         </section>
       </main>
     </div>
