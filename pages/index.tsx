@@ -559,7 +559,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <div style={{ fontSize: '14px', color: COLORS.textMuted, lineHeight: 1.5, marginBottom: '12px' }}>
-                Free FOIA lookup. Every citation, fine, and outcome on your plate since 2018. Takes ~5 days.
+                Free FOIA lookup. Every citation, fine, and outcome on your plate — complete history. Takes ~5 days.
               </div>
               <div style={{ fontSize: '14px', color: COLORS.primary, fontWeight: 600 }}>
                 Pull my ticket history →
