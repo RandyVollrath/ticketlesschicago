@@ -89,9 +89,9 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
               marginBottom: '20px'
             }}>
               {[
-                'Unlimited automated contesting',
-                'First Dismissal Guarantee',
-                'Priority support'
+                'Mobile app with parking alerts',
+                'Automatic contest letters',
+                'No Ticket / First Dismissal Guarantee',
               ].map((item, i) => (
                 <div key={i} style={{
                   display: 'flex',
@@ -231,7 +231,7 @@ export default function UpgradeCard({ hasProtection = false }: UpgradeCardProps)
             margin: '0 0 24px 0',
             lineHeight: '1.6'
           }}>
-            Chicago Driver Protection Plan with unlimited automated contesting for eligible tickets.
+            Chicago Driver Protection Plan — mobile alerts, plate monitoring, and automatic contesting.
           </p>
 
           <div style={{

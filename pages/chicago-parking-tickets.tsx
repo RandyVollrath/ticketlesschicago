@@ -366,7 +366,7 @@ export default function ChicagoParkingTickets() {
           <div style={{ padding: '32px 24px', borderRadius: '16px', backgroundColor: C.greenBg, border: '1px solid #A7F3D0', textAlign: 'center' }}>
             <div style={{ fontFamily: F.heading, fontSize: '48px', fontWeight: 800, color: C.greenDark }}>{fmtMoney(STATS.autopilotCost)}</div>
             <div style={{ fontFamily: F.body, fontSize: '16px', color: '#065F46', marginTop: '8px' }}>Autopilot America per year</div>
-            <div style={{ fontFamily: F.body, fontSize: '13px', color: '#047857', marginTop: '4px' }}>Alerts + auto-contest + plate monitoring</div>
+            <div style={{ fontFamily: F.body, fontSize: '13px', color: '#047857', marginTop: '4px' }}>Alerts + plate monitoring + automatic contesting</div>
           </div>
         </div>
 

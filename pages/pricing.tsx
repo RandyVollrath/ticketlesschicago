@@ -19,14 +19,13 @@ export default function PricingPage() {
           <p style={{ marginTop: 8, color: '#64748B' }}>Keep your membership active to keep your price.</p>
 
           <ul style={{ marginTop: 16, color: '#334155', lineHeight: 1.8 }}>
-            <li>Unlimited automated contesting for eligible Chicago tickets</li>
             <li>Mobile app for iOS and Android</li>
             <li>Real-time parking detection and smart alerts</li>
-            <li>Street cleaning &amp; snow ban reminders for your block</li>
-            <li>City sticker &amp; plate renewal deadline alerts</li>
+            <li>Street cleaning &amp; snow ban alerts for your address</li>
             <li>Twice-weekly plate monitoring — we catch tickets fast</li>
-            <li>We handle the paperwork and mail the contest for you</li>
-            <li>First Dismissal Guarantee</li>
+            <li>Automatic contest letters drafted, printed, and mailed</li>
+            <li>City sticker &amp; plate renewal deadline reminders</li>
+            <li>No Ticket / First Dismissal Guarantee</li>
           </ul>
 
           <Link href="/get-started" style={{ display: 'inline-block', marginTop: 10, background: '#2563EB', color: '#fff', textDecoration: 'none', borderRadius: 10, padding: '12px 16px', fontWeight: 600 }}>

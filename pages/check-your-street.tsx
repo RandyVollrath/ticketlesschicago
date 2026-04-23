@@ -1165,15 +1165,15 @@ export default function CheckYourStreet() {
           borderRadius: '12px', textAlign: 'center',
         }}>
           <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', margin: '0 0 8px', fontFamily: '"Space Grotesk", sans-serif' }}>
-            Never worry about parking tickets again
+            Chicago&apos;s complete ticket protection system
           </h3>
-          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>We auto-contest every ticket on your plate. 66% get dismissed. $99/yr.</p>
+          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>Mobile alerts. Plate monitoring. Automatic contesting. 66% of contested tickets get dismissed. $99/yr.</p>
           <a href="/get-started" style={{
             display: 'inline-block', backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '10px',
             padding: '12px 24px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none',
             touchAction: 'manipulation',
           }}>
-            Start Auto-Contesting
+            Get Ticket Protection
           </a>
         </div>
       </section>

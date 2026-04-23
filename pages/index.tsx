@@ -746,13 +746,13 @@ export default function LandingPage() {
 
             <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {[
-                'Twice-weekly ticket monitoring',
-                'Code-specific contest letters, printed & mailed',
-                'First Dismissal Guarantee',
-                'Street cleaning & snow ban alerts',
                 'Mobile app for iOS and Android',
                 'Real-time parking detection & smart alerts',
-                'Full dashboard & ticket tracking',
+                'Street cleaning & snow ban alerts',
+                'Twice-weekly plate monitoring',
+                'Automatic contest letters, printed & mailed',
+                'Registration renewal deadline reminders',
+                'No Ticket / First Dismissal Guarantee',
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff' }}>
                   <CheckIcon /> <span style={{ fontSize: '15px' }}>{item}</span>
@@ -877,7 +877,7 @@ export default function LandingPage() {
                 AUTOPILOT<span style={{color: COLORS.accent}}>.</span>
               </div>
               <p style={{ maxWidth: '280px', lineHeight: 1.6 }}>
-                Automatic ticket contesting for Chicago drivers. Set it and forget it.
+                Ticket protection for Chicago drivers. Alerts. Detection. Contesting. All on autopilot.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '48px' }}>
