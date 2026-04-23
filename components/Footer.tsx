@@ -82,32 +82,9 @@ export default function Footer({ hideDonation = false }: FooterProps) {
               Product
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <a href="/alerts/signup" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Free Alerts</a>
-              <a href="/protection" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Autopilot Protection</a>
               <a href="/guarantee" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Service Guarantee</a>
-              <a href="/check-ticket" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Ticket Analyzer</a>
               <a href="/check-your-street" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Check Your Block</a>
               <a href="/ticket-history" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>FOIA Lookup</a>
-            </div>
-          </div>
-
-          {/* Tools */}
-          <div>
-            <h4 style={{
-              fontSize: '13px',
-              fontWeight: '600',
-              color: 'rgba(255,255,255,0.4)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              marginBottom: '16px'
-            }}>
-              Free Tools
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <a href="/check-your-street" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Chicago Street Cleaning</a>
-              <a href="/sf-street-sweeping" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>San Francisco</a>
-              <a href="/la-street-sweeping" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Los Angeles</a>
-              <a href="/boston-street-sweeping" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px' }}>Boston</a>
             </div>
           </div>
 
