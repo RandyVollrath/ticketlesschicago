@@ -804,7 +804,7 @@ export default function CheckYourStreet() {
                   </div>
                   <h2 className="text-4xl font-black mb-4 leading-tight">Chicago&apos;s complete ticket protection system.</h2>
                   <p className="text-lg text-slate-300 mb-8 font-medium">
-                    Mobile alerts. Plate monitoring. Automatic contesting. 66% of contested tickets get dismissed. $99/yr.
+                    Mobile alerts. Plate monitoring. Automatic contesting. 57% of mail-in contested tickets get dismissed. $99/yr.
                   </p>
 
                   <button

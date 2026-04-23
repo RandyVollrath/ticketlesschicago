@@ -217,7 +217,7 @@ export default function DashboardPage() {
   const avgTicketAmount = tickets.length > 0
     ? Math.round(tickets.filter(t => t.amount).reduce((sum, t) => sum + (t.amount || 0), 0) / tickets.filter(t => t.amount).length)
     : 0;
-  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.66); // 66% parking ticket dismissal rate
+  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.57); // 57% mail-in parking ticket dismissal rate
 
   if (loading) {
     return (
@@ -336,7 +336,7 @@ export default function DashboardPage() {
             label="Estimated Savings"
             value={`$${estimatedSavings}`}
             color={COLORS.accent}
-            subtext="Based on 66% win rate"
+            subtext="Based on 57% mail-in win rate"
           />
           <StatCard label="Next Check" value={nextCheckDate} />
         </div>

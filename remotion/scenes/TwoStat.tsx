@@ -1,7 +1,7 @@
 /**
  * TwoStat — Scene type: "two-stat"
  * Two big numbers revealed sequentially with a kicker line.
- * Great for contrast: "94% just pay" → "66% get dismissed"
+ * Great for contrast: "94% just pay" → "57% get dismissed"
  */
 import React from "react";
 import {
