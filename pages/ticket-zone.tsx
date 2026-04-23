@@ -6,12 +6,13 @@ export default function TicketZoneFlyer() {
       flyerKey="ticket_zone"
       eyebrow="Highest-Ticket Block in Chicago"
       headline="This Area Gets Drivers Ticketed All The Time."
-      subhead="The block you parked on is one of the most-ticketed stretches in all of Chicago — hundreds of tickets every year, year after year. You will get hit again. Unless."
-      stat={{ big: '94%', label: 'of Chicago drivers never contest their tickets — even though 66% of contested tickets win' }}
+      subhead="The block you parked on is one of the most-ticketed stretches in Chicago — hundreds of tickets every year, year after year. Some blocks see the ticketer on nearly every cleaning day. You will get hit again. Unless."
+      stat={{ big: '94%', label: 'of Chicago parking tickets are never contested — even though 66% of contested tickets win (35.7M-ticket FOIA dataset)' }}
       bullets={[
-        'We monitor your plate twice a week. If you get a ticket, we know before you do.',
-        'Real-time alerts before you park in a ticket trap — street cleaning, snow ban, permit zone, tow zone.',
-        'Every ticket is auto-contested with evidence (weather, signage photos, 311 complaints, camera malfunction history).',
+        'Twice-weekly plate monitoring catches tickets before the 21-day contest deadline — most drivers miss the window before they even open the mail.',
+        'Real-time alerts before you park in a ticket trap: street cleaning, snow ban, permit zone, tow zone, and camera zones.',
+        'Every ticket is auto-contested with evidence — weather records, Google Street View signage photos, 311 complaints, construction permits, camera malfunction history.',
+        'Judge-tuned letters: we profile all 74 Chicago hearing officers; win rates swing 2× depending on who hears your case.',
       ]}
     />
   );

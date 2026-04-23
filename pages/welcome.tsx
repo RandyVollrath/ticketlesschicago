@@ -177,8 +177,8 @@ export default function Welcome() {
               title="Address alerts are on"
               desc={
                 address
-                  ? <>You&apos;ll receive notifications before every street cleaning at <strong>{address}</strong> so you can move your car. A street cleaning ticket plus late fee runs <strong>$150</strong>.</>
-                  : <>You&apos;ll receive notifications before every street cleaning at your home address so you can move your car. A street cleaning ticket plus late fee runs <strong>$150</strong>.</>
+                  ? <>You&apos;ll receive notifications before every street cleaning at <strong>{address}</strong> so you can move your car. A street cleaning ticket is $60, and jumps to $120 if unpaid.</>
+                  : <>You&apos;ll receive notifications before every street cleaning at your home address so you can move your car. A street cleaning ticket is $60, and jumps to $120 if unpaid.</>
               }
             />
             <ProtectionCard

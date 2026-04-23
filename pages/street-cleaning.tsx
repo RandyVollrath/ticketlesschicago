@@ -6,12 +6,13 @@ export default function StreetCleaningFlyer() {
       flyerKey="street_cleaning_today"
       eyebrow="Street Cleaning Today"
       headline="Street Cleaning Today"
-      subhead="Your block is getting swept. Cars that don't move between 9 AM and 2 PM get a $75 ticket. We alert you the night before so it never happens again."
-      stat={{ big: '$75', label: 'standard street cleaning ticket — every block, every cleaning day' }}
+      subhead="Your block is being swept. Cars that don't move between the posted hours get a $60 ticket — $120 if you don't catch it in time. We alert you the night before so it never happens again."
+      stat={{ big: '$60 → $120', label: 'Chicago street cleaning ticket: $60 initial fine, doubles to $120 if unpaid (FOIA violation code 0964040B)' }}
       bullets={[
-        'Night-before alert: text + push for your exact address.',
-        'Morning-of alert if your car is still parked there.',
-        'If you get a ticket anyway, we auto-contest it — 66% of contested parking tickets are dismissed in Chicago.',
+        'Night-before alert via text + push for your exact address.',
+        'Morning-of alert if your car is still parked on the wrong side.',
+        'If you get a ticket anyway, we detect it within 3 days and auto-contest — 66% of contested Chicago parking tickets are dismissed.',
+        'Snow-ban, camera-zone, and permit-zone alerts included in the same $99/year.',
       ]}
     />
   );
