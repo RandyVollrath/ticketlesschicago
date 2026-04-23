@@ -540,15 +540,16 @@ export default function LandingPage() {
               Every ticket you get, we fight for you.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              We handle the evidence, the paperwork, and the mailing:
+              We handle everything — the research, the argument, and the mailing:
             </p>
             <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px' }}>
               <li>Scan the City&apos;s database twice a week for any ticket on your plate</li>
-              <li>Pull FOIA evidence &amp; draft a code-specific contest letter</li>
-              <li>Print and mail it for you — you do nothing</li>
+              <li>Gather evidence from 25+ sources — weather records, sweeper GPS data, street view imagery, 311 reports, and more</li>
+              <li>Build a violation-specific legal argument using real Chicago hearing data</li>
+              <li>Print and mail a contest letter — you do nothing</li>
             </ul>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: '14px 0 0', fontSize: '15px' }}>
-              <strong style={{ color: COLORS.textDark }}>94% of drivers just pay the fine.</strong> We fight yours — and contested tickets win <strong style={{ color: COLORS.textDark }}>66% of the time</strong>.
+              <strong style={{ color: COLORS.textDark }}>94% of drivers just pay the fine.</strong> We fight yours — and mail-in contests win <strong style={{ color: COLORS.textDark }}>57% of the time</strong>. Some violations hit <strong style={{ color: COLORS.textDark }}>87%</strong>.
             </p>
           </div>
         </div>
@@ -558,7 +559,7 @@ export default function LandingPage() {
           color: COLORS.textMuted,
           marginTop: '24px',
         }}>
-          Ticket-revenue and win-rate figures from 2025 City of Chicago FOIA data.
+          Revenue and win-rate figures from 2025 City of Chicago FOIA ticket and hearing records.
         </p>
         <div style={{ textAlign: 'center', marginTop: '32px' }}>
           <Link href="/start" style={{
