@@ -79,11 +79,11 @@ function pillarDataShock(db) {
             type: "brand-reveal",
             props: {
               tagline1: "We fight your tickets automatically.",
-              tagline2: "66% of contested tickets get dismissed.",
+              tagline2: "57% of mail-in contested tickets get dismissed.",
             },
             durationFrames: 270,
             voScript:
-              "That's why we built Autopilot America. We contest your tickets automatically. And sixty six percent of contested parking tickets get dismissed. Link in bio.",
+              "That's why we built Autopilot America. We contest your tickets automatically. And fifty seven percent of mail-in contested parking tickets get dismissed. Link in bio.",
           },
           {
             type: "cta",
@@ -229,7 +229,7 @@ function pillarContestSecret(db) {
   const violations = [
     { code: "EXPIRED PLATE%", name: "expired plates", winRate: "89%", fine: "$60" },
     { code: "NO CITY STICKER%", name: "no city sticker", winRate: "85%", fine: "$200" },
-    { code: "EXP. METER%", name: "expired meter", winRate: "66%", fine: "$50-70" },
+    { code: "EXP. METER%", name: "expired meter", winRate: "57%", fine: "$50-70" },
     { code: "RESIDENTIAL PERMIT%", name: "residential permit parking", winRate: "52%", fine: "$75" },
     { code: "DISABLED%", name: "disabled parking zone", winRate: "72%", fine: "$250" },
   ];
@@ -350,11 +350,11 @@ function pillarVehicleMake(db) {
           stats: [
             { number: make.cnt.toLocaleString(), label: `${fullName} tickets issued`, color: "#ff6b2b" },
             { number: `$${millions}M`, label: "in fines", color: "#ff1a1a" },
-            { number: "66%", label: "get dismissed when contested", color: "#00e676" },
+            { number: "57%", label: "get dismissed via mail-in contest", color: "#00e676" },
           ],
         },
         durationFrames: 330,
-        voScript: `${make.cnt.toLocaleString()} tickets. ${millions} million dollars. But here's the thing: sixty six percent of contested parking tickets get dismissed. You just need to actually fight back.`,
+        voScript: `${make.cnt.toLocaleString()} tickets. ${millions} million dollars. But here's the thing: fifty seven percent of mail-in contested parking tickets get dismissed. You just need to actually fight back.`,
       },
       {
         type: "cta",
@@ -379,7 +379,7 @@ function slideshowContest(db) {
     { code: "NO CITY STICKER%", name: "No City Sticker", rate: "85%", fine: "$200" },
     { code: "DISABLED%", name: "Disabled Parking Zone", rate: "72%", fine: "$250" },
     { code: "EXP. METER%CBD", name: "Expired Meter (CBD)", rate: "68%", fine: "$70" },
-    { code: "EXP. METER%NON%", name: "Expired Meter", rate: "66%", fine: "$50" },
+    { code: "EXP. METER%NON%", name: "Expired Meter", rate: "57%", fine: "$50" },
     { code: "RESIDENTIAL PERMIT%", name: "Residential Permit", rate: "52%", fine: "$75" },
     { code: "STREET CLEANING", name: "Street Cleaning", rate: "30%", fine: "$60" },
   ];

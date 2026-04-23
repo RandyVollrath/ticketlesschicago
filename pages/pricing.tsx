@@ -60,8 +60,8 @@ export default function PricingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
               <div>
-                <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Automatic ticket contesting (66% win rate)</div>
-                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Claude AI drafts, we print, we USPS-mail on Day 17 — four days before the deadline. 66% of contested Chicago parking tickets get dismissed (FOIA).</div>
+                <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Automatic ticket contesting (57% mail-in win rate)</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Claude AI drafts, we print, we USPS-mail on Day 17 — four days before the deadline. 57% of mail-in contested Chicago parking tickets get dismissed (FOIA).</div>
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#166534', whiteSpace: 'nowrap' }}>~$125</div>
             </div>
@@ -128,7 +128,7 @@ export default function PricingPage() {
 
         <section style={{ marginTop: 20, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 16, padding: 24 }}>
           <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#166534' }}>94% of Chicago parking tickets go uncontested.</p>
-          <p style={{ margin: '8px 0 0', fontSize: 20, fontWeight: 600, color: '#15803D' }}>But 66% of contested parking tickets win.</p>
+          <p style={{ margin: '8px 0 0', fontSize: 20, fontWeight: 600, color: '#15803D' }}>But 57% of mail-in contested parking tickets win.</p>
           <p style={{ margin: '12px 0 0', color: '#64748B', fontSize: 14 }}>Based on 5.25 million Chicago tickets issued in 2025 and 35.7 million total ticket records (2018–2025) from FOIA data.</p>
         </section>
       </main>
