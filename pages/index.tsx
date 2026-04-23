@@ -352,91 +352,135 @@ export default function LandingPage() {
 
       {/* What you get — 3 benefit cards (app, contest, address) */}
       <section style={{
-        padding: '60px 5% 20px',
+        padding: '72px 5% 32px',
         maxWidth: '1200px',
         margin: '0 auto',
       }}>
+        <p style={{
+          fontFamily: FONTS.heading,
+          fontSize: '13px',
+          fontWeight: 700,
+          color: COLORS.accent,
+          textAlign: 'center',
+          textTransform: 'uppercase' as const,
+          letterSpacing: '2px',
+          marginBottom: '12px',
+        }}>
+          What you get
+        </p>
         <h2 style={{
           fontFamily: FONTS.heading,
-          fontSize: 'clamp(28px, 4vw, 40px)',
+          fontSize: 'clamp(30px, 5vw, 44px)',
           fontWeight: 800,
-          color: COLORS.text,
+          color: COLORS.textDark,
           textAlign: 'center',
-          marginBottom: '10px',
+          marginBottom: '12px',
           letterSpacing: '-0.5px',
+          lineHeight: 1.15,
         }}>
           Here&apos;s how $99/year saves you money.
         </h2>
         <p style={{
-          fontSize: '16px',
+          fontSize: '18px',
           color: COLORS.textMuted,
           textAlign: 'center',
-          marginBottom: '36px',
+          marginBottom: '48px',
           maxWidth: '560px',
-          margin: '0 auto 36px',
+          margin: '0 auto 48px',
+          lineHeight: 1.5,
         }}>
           Three layers of protection, all on autopilot.
         </p>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '20px',
+          gap: '24px',
         }}>
           {/* Card 1: Mobile app (biggest value — $183M camera tickets/yr) */}
           <div style={{
             backgroundColor: '#fff',
-            padding: '32px 28px',
+            padding: '36px 30px',
             borderRadius: '16px',
             border: `1px solid ${COLORS.border}`,
-            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06), 0 10px 15px -3px rgba(0,0,0,0.04)',
           }}>
-            <div style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(37, 99, 235, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '18px',
-            }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-                <line x1="12" y1="18" x2="12.01" y2="18"/>
-              </svg>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+              <div style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                  <line x1="12" y1="18" x2="12.01" y2="18"/>
+                </svg>
+              </div>
+              <span style={{
+                fontFamily: FONTS.heading,
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#2563EB',
+                textTransform: 'uppercase' as const,
+                letterSpacing: '1.5px',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                padding: '4px 10px',
+                borderRadius: '6px',
+              }}>
+                Mobile App
+              </span>
             </div>
-            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
+            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.textDark, marginBottom: '10px', lineHeight: 1.25 }}>
               Heads-up before your spot becomes a ticket.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              While you&apos;re parked, the app watches your spot and alerts you when a metered zone is about to turn on, your max parking time is almost up, or a temporary no-parking sign kicks in. While you drive, it warns you as you approach red-light and speed cameras (<strong style={{ color: COLORS.text }}>$183M/year</strong> in Chicago).
+              While you&apos;re parked, the app watches your spot and alerts you when a metered zone is about to turn on, your max parking time is almost up, or a temporary no-parking sign kicks in. While you drive, it warns you as you approach red-light and speed cameras (<strong style={{ color: COLORS.textDark }}>$183M/year</strong> in Chicago).
             </p>
           </div>
 
-          {/* Card 2: Street cleaning / address alerts (moved up — higher-value to most Chicago drivers) */}
+          {/* Card 2: Street cleaning / address alerts */}
           <div style={{
             backgroundColor: '#fff',
-            padding: '32px 28px',
+            padding: '36px 30px',
             borderRadius: '16px',
             border: `1px solid ${COLORS.border}`,
-            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06), 0 10px 15px -3px rgba(0,0,0,0.04)',
           }}>
-            <div style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(37, 99, 235, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '18px',
-            }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+              <div style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+              </div>
+              <span style={{
+                fontFamily: FONTS.heading,
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#2563EB',
+                textTransform: 'uppercase' as const,
+                letterSpacing: '1.5px',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                padding: '4px 10px',
+                borderRadius: '6px',
+              }}>
+                Address Alerts
+              </span>
             </div>
-            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
+            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.textDark, marginBottom: '10px', lineHeight: 1.25 }}>
               Sleep through street cleaning.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
@@ -447,31 +491,46 @@ export default function LandingPage() {
           {/* Card 3: Ticket contesting */}
           <div style={{
             backgroundColor: '#fff',
-            padding: '32px 28px',
+            padding: '36px 30px',
             borderRadius: '16px',
             border: `1px solid ${COLORS.border}`,
-            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06), 0 10px 15px -3px rgba(0,0,0,0.04)',
           }}>
-            <div style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(37, 99, 235, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '18px',
-            }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+              <div style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </div>
+              <span style={{
+                fontFamily: FONTS.heading,
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#2563EB',
+                textTransform: 'uppercase' as const,
+                letterSpacing: '1.5px',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                padding: '4px 10px',
+                borderRadius: '6px',
+              }}>
+                Ticket Contesting
+              </span>
             </div>
-            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.text, marginBottom: '10px', lineHeight: 1.25 }}>
+            <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.textDark, marginBottom: '10px', lineHeight: 1.25 }}>
               Every ticket you get, we fight for you.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              We scan the City&apos;s database twice a week for any ticket on your plate, pull FOIA evidence, draft a code-specific contest letter, and mail it for you. <strong style={{ color: COLORS.text }}>94%</strong> of Chicago tickets go uncontested — when contested, <strong style={{ color: COLORS.text }}>66% win</strong>.
+              We scan the City&apos;s database twice a week for any ticket on your plate, pull FOIA evidence, draft a code-specific contest letter, and mail it for you. <strong style={{ color: COLORS.textDark }}>94%</strong> of Chicago tickets go uncontested — when contested, <strong style={{ color: COLORS.textDark }}>66% win</strong>.
             </p>
           </div>
         </div>
