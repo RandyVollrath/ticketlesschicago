@@ -67,6 +67,10 @@ export default function CheckYourStreet() {
   const [winterBanRoutes, setWinterBanRoutes] = useState<any[]>([])
   const [showSnowRoutes, setShowSnowRoutes] = useState(false)
   const [showWinterBanRoutes, setShowWinterBanRoutes] = useState(false)
+  const [allMeters, setAllMeters] = useState<any[]>([])
+  const [showMetersToggle, setShowMetersToggle] = useState(false)
+  const [permitZoneLines, setPermitZoneLines] = useState<any[]>([])
+  const [showPermitZones, setShowPermitZones] = useState(false)
   const [mapLoading, setMapLoading] = useState(true)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -81,7 +85,9 @@ export default function CheckYourStreet() {
       fetch('/api/get-street-cleaning-data').then(r => r.ok ? r.json() : null),
       fetch('/api/get-snow-routes').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/get-winter-ban-routes').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([geojson, scheduleResult, snowResult, winterResult]) => {
+      fetch('/api/metered-parking').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/permit-zone-lines').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([geojson, scheduleResult, snowResult, winterResult, meterResult, permitResult]) => {
       if (geojson?.features) {
         // Build schedule lookup
         const schedMap = new Map<string, any>()
@@ -112,6 +118,8 @@ export default function CheckYourStreet() {
 
       if (Array.isArray(snowResult?.routes)) setSnowRoutes(snowResult.routes)
       if (Array.isArray(winterResult?.routes)) setWinterBanRoutes(winterResult.routes)
+      if (Array.isArray(meterResult?.meters)) setAllMeters(meterResult.meters)
+      if (Array.isArray(permitResult?.features || permitResult)) setPermitZoneLines(permitResult?.features || permitResult || [])
     }).catch(() => {}).finally(() => setMapLoading(false))
   }, [])
 
@@ -608,6 +616,36 @@ export default function CheckYourStreet() {
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
+                  onClick={() => setShowMetersToggle(v => !v)}
+                  aria-pressed={showMetersToggle}
+                  style={{
+                    padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                    border: `1px solid ${showMetersToggle ? '#2563EB' : COLORS.border}`,
+                    backgroundColor: showMetersToggle ? 'rgba(37,99,235,0.08)' : 'white',
+                    color: showMetersToggle ? '#1d4ed8' : COLORS.slate,
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  }}
+                >
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#2563EB', display: 'inline-block' }} />
+                  Meters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPermitZones(v => !v)}
+                  aria-pressed={showPermitZones}
+                  style={{
+                    padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                    border: `1px solid ${showPermitZones ? '#9333ea' : COLORS.border}`,
+                    backgroundColor: showPermitZones ? 'rgba(147,51,234,0.08)' : 'white',
+                    color: showPermitZones ? '#7e22ce' : COLORS.slate,
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  }}
+                >
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: '#9333ea', display: 'inline-block' }} />
+                  Permit Zones
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowSnowRoutes(v => !v)}
                   aria-pressed={showSnowRoutes}
                   style={{
@@ -649,8 +687,10 @@ export default function CheckYourStreet() {
                 data={zoneMapData}
                 triggerPopup={searchResult?.ward && searchResult?.section ? { ward: searchResult.ward, section: searchResult.section } : null}
                 userLocation={searchResult?.coordinates ? { lat: searchResult.coordinates.lat, lng: searchResult.coordinates.lng } : undefined}
-                meterLocations={nearbyMeters || []}
-                showMeters={!!nearbyMeters && nearbyMeters.length > 0}
+                meterLocations={showMetersToggle ? allMeters : (nearbyMeters || [])}
+                showMeters={showMetersToggle ? allMeters.length > 0 : (!!nearbyMeters && nearbyMeters.length > 0)}
+                permitZoneLines={permitZoneLines}
+                showPermitZones={showPermitZones && permitZoneLines.length > 0}
                 snowRoutes={snowRoutes}
                 showSnowSafeMode={showSnowRoutes && snowRoutes.length > 0}
                 winterBanRoutes={winterBanRoutes}
@@ -1032,9 +1072,9 @@ export default function CheckYourStreet() {
                           backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center',
                         }}>
                           <div style={{ fontSize: '24px', fontWeight: '700', color: '#6EE7B7', fontFamily: '"Space Grotesk", sans-serif' }}>
-                            66%
+                            57%
                           </div>
-                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>dismissed when contested</div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>dismissed via mail-in contest</div>
                         </div>
                       </div>
 
@@ -1186,7 +1226,7 @@ export default function CheckYourStreet() {
                 <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Day-17 Auto-Contesting</h3>
               </div>
               <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
-                Get a parking ticket? We draft a USPS defense letter and mail it on Day 17 — four days before the deadline. <span style={{ color: COLORS.graphite, fontWeight: '600' }}>66% of contested Chicago parking tickets get dismissed.</span> <span style={{ fontSize: '11px', color: COLORS.slate }}>(Camera tickets excluded.)</span>
+                Get a parking ticket? We draft a USPS defense letter and mail it on Day 17 — four days before the deadline. <span style={{ color: COLORS.graphite, fontWeight: '600' }}>57% of mail-in contested Chicago parking tickets get dismissed.</span> <span style={{ fontSize: '11px', color: COLORS.slate }}>(Camera tickets excluded.)</span>
               </p>
             </div>
 
