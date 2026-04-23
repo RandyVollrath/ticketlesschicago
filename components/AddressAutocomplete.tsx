@@ -72,6 +72,7 @@ export default function AddressAutocomplete({
   const sessionRef = useRef<string>(newSessionToken());
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const justSelectedRef = useRef(false);
 
   // Fetch predictions (debounced)
   const fetchPredictions = useCallback(
@@ -108,6 +109,10 @@ export default function AddressAutocomplete({
 
   // Debounce the user's typing
   useEffect(() => {
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchPredictions(value);
@@ -133,6 +138,7 @@ export default function AddressAutocomplete({
       setOpen(false);
       setPredictions([]);
       setActiveIdx(-1);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       try {
         const params = new URLSearchParams({
           place_id: p.place_id,
@@ -141,6 +147,7 @@ export default function AddressAutocomplete({
         const res = await fetch(`/api/google/places-details?${params.toString()}`);
         if (!res.ok) return;
         const data = (await res.json()) as AddressComponents;
+        justSelectedRef.current = true;
         onChange(data.street || p.description);
         onSelect(data);
       } catch {
