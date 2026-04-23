@@ -580,7 +580,7 @@ export default function BlockGrade() {
                   }}>
                     Appeal Your Property Taxes
                   </Link>
-                  <Link href="/protection" style={{
+                  <Link href="/get-started" style={{
                     display: 'block',
                     padding: '14px',
                     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -592,7 +592,7 @@ export default function BlockGrade() {
                     fontSize: '14px',
                     border: '1px solid rgba(255,255,255,0.2)'
                   }}>
-                    Get Ticket Alerts & Protection
+                    Get Autopilot — $99/year
                   </Link>
                 </div>
               </div>

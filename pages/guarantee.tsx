@@ -20,7 +20,7 @@ export default function GuaranteePage() {
         <title>First Dismissal Guarantee | Autopilot America</title>
         <meta
           name="description"
-          content="First Dismissal Guarantee: If we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund."
+          content="Your $99/year Autopilot America membership is backed by the First Dismissal Guarantee: if we don't help you avoid all tickets or get at least one dismissed in your first year, we refund you."
         />
       </Head>
 
@@ -31,7 +31,11 @@ export default function GuaranteePage() {
 
         <h1 style={{ fontSize: 38, margin: '18px 0 12px 0' }}>First Dismissal Guarantee</h1>
         <p style={{ fontSize: 18, lineHeight: 1.6, color: COLORS.muted, margin: 0 }}>
-          If we don't help you avoid all tickets or get at least 1 dismissed, you get a full refund.
+          Your $99/year Autopilot America membership — parking alerts, camera voice alerts, tow tracking, and
+          automatic mail-in ticket contesting — is backed by this guarantee.
+        </p>
+        <p style={{ fontSize: 18, lineHeight: 1.6, color: COLORS.text, margin: '14px 0 0 0', fontWeight: 500 }}>
+          If we don&apos;t help you avoid all tickets or get at least one dismissed in your first year, you get a full refund.
           Your first dismissed ticket pays for the whole year.
         </p>
         <p style={{ fontSize: 16, lineHeight: 1.6, color: COLORS.muted, marginTop: 10 }}>

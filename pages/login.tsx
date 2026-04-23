@@ -210,7 +210,6 @@ export default function Login() {
         <div className="nav-desktop" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
           <a href="/check-your-street" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Check Your Street</a>
           <a href="/get-started" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Get Started</a>
-          <a href="/protection" style={{ color: COLORS.slate, textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Protection</a>
         </div>
 
         <div className="nav-mobile" style={{ display: 'none', alignItems: 'center' }}>

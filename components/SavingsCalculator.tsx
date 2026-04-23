@@ -367,17 +367,17 @@ export default function SavingsCalculator({ userId, profile }: SavingsCalculator
                   fontWeight: 600,
                   marginBottom: '4px',
                 }}>
-                  Upgrade to Protection
+                  Get Autopilot — $99/year
                 </div>
                 <div style={{
                   color: COLORS.gray400,
                   fontSize: '13px',
                   marginBottom: '12px',
                 }}>
-                  Mobile alerts, plate monitoring, automatic contesting, and the No Ticket / First Dismissal Guarantee.
+                  Mobile alerts, plate monitoring, automatic contesting, and the First Dismissal Guarantee.
                 </div>
                 <a
-                  href="/protection"
+                  href="/get-started"
                   style={{
                     display: 'inline-block',
                     background: COLORS.emerald,
