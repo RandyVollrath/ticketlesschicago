@@ -34,67 +34,71 @@ export default function PricingPage() {
         </section>
 
         {/* Value Breakdown */}
-        <section style={{ marginTop: 20, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24 }}>
-          <h3 style={{ marginTop: 0, fontSize: 22 }}>The Math: Why $99 Is a No-Brainer</h3>
-          <p style={{ color: '#64748B', lineHeight: 1.7, marginBottom: 20 }}>
-            Based on 2.66 million parking tickets issued in Chicago in 2024 (FOIA data, excluding camera/speed violations):
+        <section style={{ marginTop: 20, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 28 }}>
+          <h3 style={{ marginTop: 0, fontSize: 24, letterSpacing: '-0.01em' }}>The Math: Why $99 Is a No-Brainer</h3>
+          <p style={{ color: '#475569', lineHeight: 1.7, marginBottom: 20, fontSize: 15 }}>
+            Based on 2025 FOIA ticket data and the City of Chicago 2025 Budget Appropriation Ordinance (Fund 0300 — Vehicle Tax Fund):
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
-            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 800, color: '#DC2626' }}>2.2</div>
-              <div style={{ fontSize: 13, color: '#991B1B', marginTop: 4 }}>parking tickets per vehicle/year</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 28 }}>
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 14, padding: 18, textAlign: 'center' }}>
+              <div style={{ fontSize: 30, fontWeight: 800, color: '#DC2626', letterSpacing: '-0.02em' }}>5.25M</div>
+              <div style={{ fontSize: 12, color: '#991B1B', marginTop: 6, lineHeight: 1.4 }}>parking &amp; camera tickets issued in Chicago (2025)</div>
             </div>
-            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 800, color: '#DC2626' }}>$77</div>
-              <div style={{ fontSize: 13, color: '#991B1B', marginTop: 4 }}>average ticket fine</div>
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 14, padding: 18, textAlign: 'center' }}>
+              <div style={{ fontSize: 30, fontWeight: 800, color: '#DC2626', letterSpacing: '-0.02em' }}>$420M</div>
+              <div style={{ fontSize: 12, color: '#991B1B', marginTop: 6, lineHeight: 1.4 }}>total billed to Chicago drivers every year</div>
             </div>
-            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 800, color: '#DC2626' }}>$154</div>
-              <div style={{ fontSize: 13, color: '#991B1B', marginTop: 4 }}>avg cost per driver/year</div>
-            </div>
-          </div>
-
-          <h4 style={{ fontSize: 16, marginBottom: 12, color: '#0F172A' }}>What Autopilot saves you:</h4>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F0FDF4', borderRadius: 10, border: '1px solid #BBF7D0' }}>
-              <div>
-                <div style={{ fontWeight: 600, color: '#166534' }}>Ticket contesting (66% win rate)</div>
-                <div style={{ fontSize: 13, color: '#15803D' }}>2.2 tickets × $77 avg × 66% dismissed</div>
-              </div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#166534' }}>~$116</div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F0FDF4', borderRadius: 10, border: '1px solid #BBF7D0' }}>
-              <div>
-                <div style={{ fontWeight: 600, color: '#166534' }}>Escalation avoidance</div>
-                <div style={{ fontSize: 13, color: '#15803D' }}>Unpaid tickets double to $166 avg — we catch them before that</div>
-              </div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#166534' }}>~$40+</div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F0FDF4', borderRadius: 10, border: '1px solid #BBF7D0' }}>
-              <div>
-                <div style={{ fontWeight: 600, color: '#166534' }}>Alerts &amp; avoidance</div>
-                <div style={{ fontSize: 13, color: '#15803D' }}>Street cleaning, snow bans, sticker/plate renewal reminders</div>
-              </div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#166534' }}>~$60+</div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F0FDF4', borderRadius: 10, border: '1px solid #BBF7D0' }}>
-              <div>
-                <div style={{ fontWeight: 600, color: '#166534' }}>Your time saved</div>
-                <div style={{ fontSize: 13, color: '#15803D' }}>No research, no letters, no trips to the post office</div>
-              </div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#166534' }}>hours</div>
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 14, padding: 18, textAlign: 'center' }}>
+              <div style={{ fontSize: 30, fontWeight: 800, color: '#DC2626', letterSpacing: '-0.02em' }}>$234</div>
+              <div style={{ fontSize: 12, color: '#991B1B', marginTop: 6, lineHeight: 1.4 }}>avg avoidable cost per Chicago driver/year (tickets + tow/impound)</div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#1E293B', borderRadius: 12 }}>
+          <h4 style={{ fontSize: 17, marginBottom: 14, color: '#0F172A', fontWeight: 700 }}>What Autopilot saves you:</h4>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Ticket contesting (66% win rate)</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>We auto-contest every ticket. 66% of contested Chicago parking tickets dismissed (FOIA).</div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534' }}>~$148</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Prevention alerts</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Street cleaning, snow ban, camera zones, sticker &amp; plate renewals — before you get hit.</div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534' }}>~$60+</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Escalation avoidance</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Unpaid tickets double. We catch them before they escalate to boot ($100) or tow ($250+).</div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#166534' }}>~$40+</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Your time saved</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>No research, no letters, no trips to the post office. We handle it all.</div>
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: '#166534' }}>hours</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px', background: 'linear-gradient(135deg, #1E293B, #0F172A)', borderRadius: 14, boxShadow: '0 4px 12px rgba(15,23,42,0.15)' }}>
             <div>
-              <div style={{ fontWeight: 700, color: '#fff', fontSize: 18 }}>Total estimated value</div>
-              <div style={{ fontSize: 13, color: '#94A3B8' }}>vs. your $99/year membership</div>
+              <div style={{ fontWeight: 700, color: '#fff', fontSize: 19 }}>Total estimated value</div>
+              <div style={{ fontSize: 13, color: '#94A3B8', marginTop: 2 }}>vs. your $99/year membership</div>
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#34D399' }}>$200+</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: '#34D399', letterSpacing: '-0.02em' }}>$248+</div>
           </div>
+
+          <p style={{ marginTop: 18, marginBottom: 0, fontSize: 12, color: '#94A3B8', lineHeight: 1.5 }}>
+            Sources: DOF FOIA F129773 (2025 ticket data, 5,246,241 rows); Chicago 2025 Annual Appropriation Ordinance p.23 (Impoundment Fees $14.7M, Sale of Impounded Autos $2.2M). Chicago-resident share (63.2%) derived from zipcode analysis of 2025 FOIA tickets. 1.18M Chicago vehicles per U.S. Census ACS.
+          </p>
         </section>
 
         <section style={{ marginTop: 20, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24 }}>
