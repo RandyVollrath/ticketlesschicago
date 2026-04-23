@@ -144,8 +144,8 @@ export default function FlyerLanding({ flyerKey, eyebrow, headline, subhead, sta
                 body="Four days before the legal deadline. No printer, no stamp, no downtown hearing. You don&rsquo;t lift a finger."
               />
               <Fact
-                title="Judge-tuned arguments."
-                body="We profile all 74 Chicago hearing officers from 1.2M historical outcomes. Win rates swing 2× depending on who hears your case — we tune the letter to the judge."
+                title="Built to win with whichever judge you get."
+                body="We studied 1.2M past Chicago hearings across all 74 officers. Win rates swing 2× depending on who hears your case — you don&rsquo;t know who you&rsquo;ll get. So your letter leads with arguments that hold up under the strictest graders, not just the average, and backs them with documentary evidence that neutralizes judge variance."
               />
               <Fact
                 title="Competitors would charge $150+ per ticket."
