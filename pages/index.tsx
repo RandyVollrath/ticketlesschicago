@@ -378,18 +378,18 @@ export default function LandingPage() {
           letterSpacing: '-0.5px',
           lineHeight: 1.15,
         }}>
-          Here&apos;s how $99/year saves you money.
+          $99/year pays for itself after one avoided ticket.
         </h2>
         <p style={{
           fontSize: '18px',
           color: COLORS.textMuted,
           textAlign: 'center',
           marginBottom: '48px',
-          maxWidth: '560px',
+          maxWidth: '620px',
           margin: '0 auto 48px',
           lineHeight: 1.5,
         }}>
-          Three layers of protection, all on autopilot.
+          Three layers of protection, all on autopilot. No other service combines all three.
         </p>
         <div style={{
           display: 'grid',
@@ -431,15 +431,21 @@ export default function LandingPage() {
                 padding: '4px 10px',
                 borderRadius: '6px',
               }}>
-                Mobile App
+                Proactive Spot Monitor
               </span>
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.textDark, marginBottom: '10px', lineHeight: 1.25 }}>
               Heads-up before your spot becomes a ticket.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              While you&apos;re parked, the app watches your spot and alerts you when a metered zone is about to turn on, your max parking time is almost up, or a temporary no-parking sign kicks in. While you drive, it warns you as you approach red-light and speed cameras (<strong style={{ color: COLORS.textDark }}>$183M/year</strong> in Chicago).
+              The app watches your car and warns you before you get a ticket:
             </p>
+            <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px' }}>
+              <li>Metered zone about to turn on</li>
+              <li>Max parking time almost up</li>
+              <li>Temporary no-parking sign kicks in</li>
+              <li>Red-light &amp; speed cameras ahead (<strong style={{ color: COLORS.textDark }}>$183M/year</strong> in Chicago)</li>
+            </ul>
           </div>
 
           {/* Card 2: Street cleaning / address alerts */}
@@ -477,15 +483,19 @@ export default function LandingPage() {
                 padding: '4px 10px',
                 borderRadius: '6px',
               }}>
-                Address Alerts
+                Neighborhood Sweep Alerts
               </span>
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.textDark, marginBottom: '10px', lineHeight: 1.25 }}>
               Sleep through street cleaning.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              Night-before alerts for your home block — street cleaning, snow bans, winter overnight restrictions. Move your car in the morning instead of paying the ticket in the afternoon.
+              Night-before alerts for your home block. Move your car in the morning instead of paying the ticket in the afternoon.
             </p>
+            <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px' }}>
+              <li>Street cleaning, snow bans &amp; winter overnight restrictions</li>
+              <li>Email, SMS, push notification &amp; phone call alerts</li>
+            </ul>
           </div>
 
           {/* Card 3: Ticket contesting */}
@@ -523,14 +533,22 @@ export default function LandingPage() {
                 padding: '4px 10px',
                 borderRadius: '6px',
               }}>
-                Ticket Contesting
+                Done-For-You Ticket Fighting
               </span>
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.textDark, marginBottom: '10px', lineHeight: 1.25 }}>
               Every ticket you get, we fight for you.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
-              We scan the City&apos;s database twice a week for any ticket on your plate, pull FOIA evidence, draft a code-specific contest letter, and mail it for you. <strong style={{ color: COLORS.textDark }}>94%</strong> of Chicago tickets go uncontested — when contested, <strong style={{ color: COLORS.textDark }}>66% win</strong>.
+              We handle the evidence, the paperwork, and the mailing:
+            </p>
+            <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px' }}>
+              <li>Scan the City&apos;s database twice a week for any ticket on your plate</li>
+              <li>Pull FOIA evidence &amp; draft a code-specific contest letter</li>
+              <li>Print and mail it for you — you do nothing</li>
+            </ul>
+            <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: '14px 0 0', fontSize: '15px' }}>
+              <strong style={{ color: COLORS.textDark }}>94% of drivers just pay the fine.</strong> We fight yours — and contested tickets win <strong style={{ color: COLORS.textDark }}>66% of the time</strong>.
             </p>
           </div>
         </div>
@@ -542,6 +560,23 @@ export default function LandingPage() {
         }}>
           Ticket-revenue and win-rate figures from 2025 City of Chicago FOIA data.
         </p>
+        <div style={{ textAlign: 'center', marginTop: '32px' }}>
+          <Link href="/start" style={{
+            display: 'inline-block',
+            backgroundColor: COLORS.accent,
+            color: '#fff',
+            fontFamily: FONTS.heading,
+            fontWeight: 700,
+            fontSize: '16px',
+            padding: '14px 32px',
+            borderRadius: '10px',
+            textDecoration: 'none',
+            letterSpacing: '0.3px',
+            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+          }}>
+            Get Protected for $99/year
+          </Link>
+        </div>
       </section>
 
       {/* Personalize the money question — dual CTAs */}
