@@ -1037,17 +1037,8 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                 e.currentTarget.style.backgroundColor = '#2563eb';
               }}
             >
-              Get Protection - $80/year →
+              Get Autopilot - $99/year →
             </button>
-
-            <p style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              margin: 0,
-              textAlign: 'center'
-            }}>
-              Or <a href="/alerts/signup" style={{ color: '#3b82f6', textDecoration: 'underline' }}>try free alerts first</a>
-            </p>
           </div>
 
           <button

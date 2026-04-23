@@ -119,7 +119,6 @@ export default function EarlyAccessPage() {
         {/* Desktop Nav */}
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }} className="desktop-nav">
           <Link href="/check-your-street" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>Check Your Street</Link>
-          <Link href="/protection" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>Protection</Link>
           <Link href="/ticket-history" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, opacity: 0.8 }}>FOIA Lookup</Link>
           <Link href="/start" style={{
             padding: '10px 20px',
@@ -167,7 +166,6 @@ export default function EarlyAccessPage() {
           gap: '16px',
         }}>
           <Link href="/check-your-street" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Check Your Street</Link>
-          <Link href="/protection" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>Protection</Link>
           <Link href="/ticket-history" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500 }}>FOIA Lookup</Link>
           <Link href="/start" style={{
             padding: '14px 24px',
