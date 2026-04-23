@@ -548,9 +548,6 @@ export default function LandingPage() {
               <li>Build a violation-specific legal argument using real Chicago hearing data</li>
               <li>Print, mail, and fight it for you — every ticket, every time</li>
             </ul>
-            <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: '14px 0 0', fontSize: '15px' }}>
-              <strong style={{ color: COLORS.textDark }}>94% of drivers just pay the fine.</strong> We fight yours — and mail-in contests win <strong style={{ color: COLORS.textDark }}>57% of the time</strong>. Some violations hit <strong style={{ color: COLORS.textDark }}>87%</strong>.
-            </p>
           </div>
         </div>
         <p style={{
