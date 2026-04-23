@@ -92,7 +92,7 @@ Received: ${new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })}
           },
           body: JSON.stringify({
             from: 'partnerships@autopilotamerica.com',
-            to: 'support@autopilotamerica.com',
+            to: ['support@autopilotamerica.com', 'randyvollrath@gmail.com'],
             subject: emailSubject,
             text: emailBody
           })

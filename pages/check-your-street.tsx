@@ -1213,7 +1213,7 @@ export default function CheckYourStreet() {
                 <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Native Voice Warnings</h3>
               </div>
               <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
-                Background voice alerts through CarPlay and Android Auto before you trigger a <span style={{ color: COLORS.graphite, fontWeight: '600' }}>$35–$100</span> speed camera or a <span style={{ color: COLORS.graphite, fontWeight: '600' }}>$100</span> red-light camera. Works with the phone locked.
+                Chicago billed drivers <span style={{ color: COLORS.graphite, fontWeight: '600' }}>$183M in camera tickets in 2025</span>. We play background voice alerts through CarPlay and Android Auto before you trigger a <span style={{ color: COLORS.graphite, fontWeight: '600' }}>$35–$100</span> speed camera or a <span style={{ color: COLORS.graphite, fontWeight: '600' }}>$100</span> red-light camera &mdash; works with the phone locked.
               </p>
             </div>
 
@@ -1226,7 +1226,7 @@ export default function CheckYourStreet() {
                 <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Hands-Off Ticket Defense</h3>
               </div>
               <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
-                Get a ticket anyway? We pull FOIA signage records and weather data, write a real defense letter, and USPS-mail it <span style={{ color: COLORS.graphite, fontWeight: '600' }}>before the city&apos;s deadline — every time</span>. Zero forms. No phone calls. No hearings to show up to. <span style={{ color: COLORS.graphite, fontWeight: '600' }}>57% of mail-in contests win.</span> <span style={{ fontSize: '11px', color: COLORS.slate }}>(Camera tickets excluded.)</span>
+                Get a ticket anyway? We pull Street View photos of your actual signage, cross-reference weather records, attach any FOIA responses we&apos;ve gotten back from City agencies, and USPS-mail a real defense letter <span style={{ color: COLORS.graphite, fontWeight: '600' }}>before the city&apos;s deadline — every time</span>. Zero forms. No phone calls. No hearings to show up to. <span style={{ color: COLORS.graphite, fontWeight: '600' }}>57% of mail-in contests win.</span> <span style={{ fontSize: '11px', color: COLORS.slate }}>(Camera tickets excluded.)</span>
               </p>
             </div>
 
