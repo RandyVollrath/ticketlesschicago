@@ -232,7 +232,7 @@ export default function GetStarted() {
               The parking app Chicago drivers need
             </h1>
             <p style={{ fontSize: 16, color: COLORS.slate, margin: 0 }}>
-              Address alerts. Car location alerts. Automatic ticket contesting.
+              Mobile parking alerts. Address alerts. Automatic ticket contesting.
             </p>
           </div>
 
@@ -373,7 +373,7 @@ export default function GetStarted() {
                     <svg width="16" height="16" viewBox="0 0 16 16" fill={COLORS.signal}>
                       <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
                     </svg>
-                    <strong>First Dismissal Guarantee</strong>
+                    <strong>No Ticket / First Dismissal Guarantee</strong>
                   </div>
                 </div>
               </div>

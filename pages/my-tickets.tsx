@@ -570,7 +570,7 @@ export default function MyTickets() {
                   { label: 'Paid', value: fmtMoney(paidAmount), count: `${paidTickets.length} tickets`, color: COLORS.danger },
                   { label: 'Unpaid', value: fmtMoney(unpaidAmount), count: `${unpaidTickets.length} tickets`, color: COLORS.warning },
                   { label: 'Dismissed', value: fmtMoney(dismissedAmount), count: `${dismissedTickets.length} tickets`, color: COLORS.signal },
-                  { label: 'Could Have Saved', value: fmtMoney(potentialSavings), count: 'with auto-contesting', color: COLORS.signal },
+                  { label: 'Could Have Saved', value: fmtMoney(potentialSavings), count: 'with Ticket Protection', color: COLORS.signal },
                 ].map((s, i) => (
                   <div key={i} style={{
                     backgroundColor: i === 3 ? 'rgba(16,185,129,0.08)' : '#F8FAFC',

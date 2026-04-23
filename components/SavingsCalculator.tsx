@@ -374,8 +374,7 @@ export default function SavingsCalculator({ userId, profile }: SavingsCalculator
                   fontSize: '13px',
                   marginBottom: '12px',
                 }}>
-                  Get automated contesting plus the First Dismissal Guarantee.
-                  Peace of Mind Parking, always.
+                  Mobile alerts, plate monitoring, automatic contesting, and the No Ticket / First Dismissal Guarantee.
                 </div>
                 <a
                   href="/protection"

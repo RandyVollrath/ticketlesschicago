@@ -802,16 +802,16 @@ export default function CheckYourStreet() {
                   <div className="inline-flex px-3 py-1 rounded-full bg-white/10 text-white text-xs font-bold uppercase tracking-wider mb-6 backdrop-blur-sm border border-white/20">
                     Peace of Mind
                   </div>
-                  <h2 className="text-4xl font-black mb-4 leading-tight">Never pay a parking ticket again.</h2>
+                  <h2 className="text-4xl font-black mb-4 leading-tight">Chicago&apos;s complete ticket protection system.</h2>
                   <p className="text-lg text-slate-300 mb-8 font-medium">
-                    We auto-contest every ticket on your plate. $99/yr.
+                    Mobile alerts. Plate monitoring. Automatic contesting. 66% of contested tickets get dismissed. $99/yr.
                   </p>
 
                   <button
                     onClick={() => router.push('/get-started')}
                     className="w-full sm:w-auto px-8 py-4 bg-regulatory hover:bg-regulatoryDark text-white rounded-xl font-bold text-lg transition-all hover-lift shadow-lg shadow-regulatory/30 flex items-center justify-center"
                   >
-                    Start Auto-Contesting
+                    Get Ticket Protection
                     <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
