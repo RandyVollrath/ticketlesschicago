@@ -440,7 +440,7 @@ export default function LandingPage() {
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
               The app watches your car and warns you before you get a ticket:
             </p>
-            <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px' }}>
+            <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px', listStyleType: 'disc' }}>
               <li>Metered zone about to turn on</li>
               <li>Max parking time almost up</li>
               <li>Temporary no-parking sign kicks in</li>
@@ -492,7 +492,7 @@ export default function LandingPage() {
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
               Night-before alerts for your home block. Move your car in the morning instead of paying the ticket in the afternoon.
             </p>
-            <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px' }}>
+            <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px', listStyleType: 'disc' }}>
               <li>Street cleaning, snow bans &amp; winter overnight restrictions</li>
               <li>Email, SMS, push notification &amp; phone call alerts</li>
             </ul>
@@ -542,7 +542,7 @@ export default function LandingPage() {
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
               We handle everything — the research, the argument, and the mailing:
             </p>
-            <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px' }}>
+            <ul style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: '10px 0 0', fontSize: '15px', paddingLeft: '20px', listStyleType: 'disc' }}>
               <li>Scan the City&apos;s database twice a week for any ticket on your plate</li>
               <li>Gather evidence from 25+ sources — weather records, sweeper GPS data, street view imagery, 311 reports, and more</li>
               <li>Build a violation-specific legal argument using real Chicago hearing data</li>
