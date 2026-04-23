@@ -1534,7 +1534,6 @@ class BackgroundTaskServiceClass {
           interval: 1000, // 1s — fast enough for immediate 200m alerts
           fastestInterval: 500,
           forceRequestLocation: true,
-          forceLocationManager: true,
           showLocationDialog: false,
         }
       );

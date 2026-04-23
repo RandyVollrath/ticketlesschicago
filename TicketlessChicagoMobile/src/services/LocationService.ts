@@ -165,7 +165,7 @@ class LocationServiceClass {
             resolve(true); // Services enabled but other error
           }
         },
-        { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity, forceLocationManager: true }
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
       );
     });
   }
@@ -258,13 +258,20 @@ class LocationServiceClass {
    */
   private getLocationOptions(accuracy: LocationAccuracy): GeoOptions {
     switch (accuracy) {
+      // Default (forceLocationManager omitted) lets the library use
+      // FusedLocationProviderClient, which on Android enables Google's
+      // 3D Mapping-Aided GPS Corrections in supported cities (Chicago
+      // is in coverage). Google claims ~75% reduction in wrong-side-of-
+      // street errors from this alone. The older "forceLocationManager:
+      // true" config here was a defensive workaround for a Play Services
+      // crash that was never actually observed in our logs — removing
+      // it 2026-04-23 to unlock FusedLocationProvider accuracy gains.
       case 'high':
         return {
           enableHighAccuracy: true,
           timeout: 15000, // 15 seconds for GPS
           maximumAge: 5000, // Only accept 5-second old cache for high accuracy
           forceRequestLocation: true, // Force new GPS reading
-          forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
           showLocationDialog: true, // Show dialog if location is off (Android)
         };
       case 'balanced':
@@ -273,7 +280,6 @@ class LocationServiceClass {
           timeout: 12000, // 12 seconds
           maximumAge: 15000, // Accept 15-second old cache
           forceRequestLocation: true, // Force fresh location
-          forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
           showLocationDialog: true,
         };
       case 'low':
@@ -282,7 +288,6 @@ class LocationServiceClass {
           timeout: 8000, // 8 seconds
           maximumAge: 30000, // Accept 30-second old cache
           forceRequestLocation: false,
-          forceLocationManager: true, // Use location manager
           showLocationDialog: true,
         };
     }
@@ -313,7 +318,6 @@ class LocationServiceClass {
         interval: 1000,
         fastestInterval: 500,
         forceRequestLocation: true,
-        forceLocationManager: true,
         showLocationDialog: true,
       };
 
@@ -416,7 +420,6 @@ class LocationServiceClass {
         interval: 800,
         fastestInterval: 400,
         forceRequestLocation: true,
-        forceLocationManager: true,
         showLocationDialog: true,
       };
 
@@ -651,7 +654,6 @@ class LocationServiceClass {
       interval: 5000, // Android: 5 second intervals
       fastestInterval: 2000, // Android: accept faster if available
       forceRequestLocation: true,
-      forceLocationManager: true, // Use Android LocationManager to avoid Play Services crash
       showLocationDialog: true,
     };
 
