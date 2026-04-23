@@ -470,6 +470,12 @@ export default async function handler(
     // Hoisted so downstream building-footprint parity constraint can read it.
     let userSideFromGps: 'L' | 'R' | null = null;
 
+    // Hoisted so the Nominatim cross-reference (later in this try) can check
+    // whether OSM's identified street is one of the snap candidates we already
+    // saw — two independent signals agreeing on the same street is stronger
+    // than any single heading-based disambiguation.
+    let allCandidates: any[] = [];
+
     if (shouldSnap && supabaseAdmin) {
       try {
         // Search radius must be wide enough that the PERPENDICULAR street at
@@ -493,7 +499,7 @@ export default async function handler(
         );
 
         if (!snapError && snapData && snapData.length > 0 && snapData[0].was_snapped) {
-          const allCandidates = snapData.filter((s: any) => s.was_snapped);
+          allCandidates = snapData.filter((s: any) => s.was_snapped);
           // Max distance for the "obvious best" filter. Keep close candidates
           // here; far perpendicular ones (30-60m) are still available in
           // allCandidates for heading/trajectory disambiguation below.
@@ -886,11 +892,32 @@ export default async function handler(
 
               if (snapOrientation && nominatimOrientation && snapOrientation !== nominatimOrientation) {
                 // Snap and Nominatim disagree on which street we're on.
-                // Key question: did heading CONFIRM the snap's orientation?
-                // If heading matched the snap (e.g., heading=89° E-W, snap=Belden E-W),
-                // that's strong evidence the snap was correct and Nominatim is looking
-                // at a walked-away GPS position. DON'T override in that case.
-                const headingConfirmedSnap = hasEffectiveHeading && (
+                //
+                // Strongest cross-confirmation: Nominatim picks a street that's
+                // ALSO in our snap candidates (PostGIS already saw it as a
+                // nearby centerline). Two independent geometric signals agree.
+                // Trust this over heading-based disambiguation UNLESS we have a
+                // trustworthy driving heading that contradicts Nominatim's
+                // orientation (the Belden walk-away case).
+                const nominatimMatchesCandidate = allCandidates.some((c: any) =>
+                  c.street_name === nominatimResult.street_name
+                );
+                // hasHeading == GPS driving heading present (not compass). If
+                // the user was actively driving on Belden right before parking,
+                // the GPS course will say E-W and protect the Belden snap from
+                // being overridden by Nominatim's walked-away N-S read. Compass
+                // is intentionally excluded — phone orientation isn't car
+                // orientation, so compass agreement is too noisy to block OSM.
+                const drivingHeadingContradictsNominatim = hasHeading && (
+                  (nominatimOrientation === 'N-S' && !isHeadingNorthSouth(headingDeg)) ||
+                  (nominatimOrientation === 'E-W' && isHeadingNorthSouth(headingDeg))
+                );
+
+                // Fallback to original logic for cases where Nominatim picked
+                // a street outside our candidate set (likely walk-away drift).
+                // Heading source restricted to GPS — compass agreement on
+                // grid orientation alone is too weak to block Nominatim.
+                const headingConfirmedSnap = hasEffectiveHeading && effectiveHeadingSource === 'gps' && (
                   (snapOrientation === 'N-S' && isHeadingNorthSouth(effectiveHeading)) ||
                   (snapOrientation === 'E-W' && !isHeadingNorthSouth(effectiveHeading))
                 );
@@ -907,7 +934,34 @@ export default async function handler(
                 const snapWasExtended = snapResult.snapSource?.includes('heading_extended') ||
                   (snapResult.snapDistanceMeters > 25 && effectiveHeadingSource !== 'compass');
 
-                if (headingConfirmedSnap && !snapWasExtended) {
+                if (nominatimMatchesCandidate && !drivingHeadingContradictsNominatim) {
+                  // Two independent geometric signals agree: PostGIS snap saw
+                  // this street as a candidate AND OSM identified it from the
+                  // raw GPS. No driving heading contradicts. Override regardless
+                  // of compass agreement on grid orientation.
+                  console.log(
+                    `[check-parking] Nominatim cross-reference: ${nominatimResult.street_name} (${nominatimOrientation}) ` +
+                    `is in snap candidate set and no driving heading contradicts — ` +
+                    `overriding snap winner ${snapResult.streetName} (${snapOrientation}).`
+                  );
+                  diag.nominatim_street = nominatimResult.street_name;
+                  diag.nominatim_orientation = nominatimOrientation;
+                  diag.nominatim_agreed = false;
+                  diag.nominatim_overrode = true;
+                  diag.heading_confirmed_snap = false;
+                  checkLat = latitude;
+                  checkLng = longitude;
+                  snapResult = {
+                    wasSnapped: false,
+                    snapDistanceMeters: 0,
+                    streetName: nominatimResult.street_name,
+                    snapSource: 'nominatim_override_candidate_match',
+                  };
+                  if (hasHeading && !hasCompass) {
+                    console.log(`[check-parking] Discarding GPS heading ${headingDeg.toFixed(0)}° — Nominatim candidate-match override`);
+                    hasHeading = false;
+                  }
+                } else if (headingConfirmedSnap && !snapWasExtended) {
                   // Close snap + heading agree, Nominatim disagrees.
                   // This is likely walk-away drift: the raw GPS point has moved toward
                   // a cross street, making Nominatim identify the wrong road.
