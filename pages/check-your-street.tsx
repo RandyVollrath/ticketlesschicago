@@ -407,6 +407,7 @@ export default function CheckYourStreet() {
             .stat-grid-3 { grid-template-columns: 1fr !important; }
             .block-headline { font-size: 28px !important; }
             .savings-cta-row { flex-direction: column !important; text-align: center !important; }
+            .protection-grid { grid-template-columns: 1fr !important; }
           }
           .nav-mobile { display: none; }
         `}</style>
@@ -976,7 +977,6 @@ export default function CheckYourStreet() {
                 ? `${Math.min(...blockStats.by_year.map((y: any) => y.year))}-${Math.max(...blockStats.by_year.map((y: any) => y.year))}`
                 : '2019-2024';
               const avgTicketsPerYear = blockStats.avg_tickets_per_year || 0;
-              const isActiveBlock = avgTicketsPerYear >= 20; // 20+ tickets/yr ≈ one every other week — top ~9% of Chicago blocks, covers 92.8% of all citywide tickets
 
               return (
                 <>
@@ -1037,32 +1037,6 @@ export default function CheckYourStreet() {
                           <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>dismissed when contested</div>
                         </div>
                       </div>
-
-                      {/* CTA — show on active blocks */}
-                      {isActiveBlock && (
-                        <div className="savings-cta-row" style={{
-                          backgroundColor: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',
-                          borderRadius: '10px', padding: '14px 18px', marginBottom: '16px',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          flexWrap: 'wrap', gap: '12px',
-                        }}>
-                          <div>
-                            <div style={{ fontSize: '15px', color: 'white', fontWeight: '600', lineHeight: '1.4' }}>
-                              This block gets a parking ticket roughly every other week. One <span style={{ color: '#FCA5A5' }}>$65-$200 ticket</span> costs more than a full year of Autopilot.
-                            </div>
-                            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
-                              We contest every ticket on your plate automatically. 66% get dismissed. $99/yr.
-                            </div>
-                          </div>
-                          <a href="/get-started" style={{
-                            display: 'inline-block', backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '8px',
-                            padding: '12px 24px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap',
-                            textDecoration: 'none', touchAction: 'manipulation',
-                          }}>
-                            Start Auto-Contesting
-                          </a>
-                        </div>
-                      )}
 
                       {/* Data source badge */}
                       <div style={{
@@ -1159,23 +1133,110 @@ export default function CheckYourStreet() {
         )}
 
 
-        {/* Bottom CTA */}
-        <div style={{
-          marginTop: '32px', padding: '24px', backgroundColor: COLORS.deepHarbor,
-          borderRadius: '12px', textAlign: 'center',
-        }}>
-          <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', margin: '0 0 8px', fontFamily: '"Space Grotesk", sans-serif' }}>
-            Chicago&apos;s complete ticket protection system
-          </h3>
-          <p style={{ fontSize: '14px', color: COLORS.slate, margin: '0 0 16px' }}>Mobile alerts. Plate monitoring. Automatic contesting. 66% of contested tickets get dismissed. $99/yr.</p>
-          <a href="/get-started" style={{
-            display: 'inline-block', backgroundColor: COLORS.signal, color: 'white', border: 'none', borderRadius: '10px',
-            padding: '12px 24px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none',
-            touchAction: 'manipulation',
+        {/* === WHAT WE HELP YOU AVOID — 2×2 Protection Grid === */}
+        <section style={{ marginTop: '48px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <h2 style={{
+              fontSize: '28px', fontWeight: '700', color: COLORS.graphite,
+              margin: '0 0 12px', letterSpacing: '-0.5px', lineHeight: '1.2',
+              fontFamily: '"Space Grotesk", sans-serif',
+            }}>
+              The average Chicago driver loses $234 a year to avoidable tickets and tows.
+            </h2>
+            <p style={{ fontSize: '16px', color: COLORS.slate, margin: 0, maxWidth: '640px', marginLeft: 'auto', marginRight: 'auto', lineHeight: '1.55' }}>
+              The city bills drivers $420M a year, and 94% of tickets go uncontested. Autopilot covers 9 of the top 10 ticket categories — 82% of the city&apos;s ticket revenue.
+            </p>
+          </div>
+
+          <div className="protection-grid" style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px',
           }}>
-            Get Ticket Protection
-          </a>
-        </div>
+            {/* Card 1 — Smart Parking Alerts */}
+            <div style={{ backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(37,99,235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                </div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Smart Parking Alerts</h3>
+              </div>
+              <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
+                Auto-detects where you parked. Alerts before the sweeper hits (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$60 fine</span>), a 2&quot; snow ban takes effect (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$60 fine + ~$250+ tow</span>), or your permit zone catches you (<span style={{ color: COLORS.graphite, fontWeight: '600' }}>$75 fine</span>).
+              </p>
+            </div>
+
+            {/* Card 2 — Native Voice Warnings */}
+            <div style={{ backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(37,99,235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                </div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Native Voice Warnings</h3>
+              </div>
+              <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
+                Background voice alerts through CarPlay and Android Auto before you trigger a <span style={{ color: COLORS.graphite, fontWeight: '600' }}>$35–$100</span> speed camera or a <span style={{ color: COLORS.graphite, fontWeight: '600' }}>$100</span> red-light camera. Works with the phone locked.
+              </p>
+            </div>
+
+            {/* Card 3 — Day-17 Auto-Contesting */}
+            <div style={{ backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(37,99,235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Day-17 Auto-Contesting</h3>
+              </div>
+              <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
+                Get a parking ticket? We draft a USPS defense letter and mail it on Day 17 — four days before the deadline. <span style={{ color: COLORS.graphite, fontWeight: '600' }}>66% of contested Chicago parking tickets get dismissed.</span> <span style={{ fontSize: '11px', color: COLORS.slate }}>(Camera tickets excluded.)</span>
+              </p>
+            </div>
+
+            {/* Card 4 — Rapid Tow Tracking */}
+            <div style={{ backgroundColor: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(37,99,235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLORS.regulatory} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                </div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Rapid Tow Tracking</h3>
+              </div>
+              <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
+                Chicago towed <span style={{ color: COLORS.graphite, fontWeight: '600' }}>81,000 cars in 2024</span>. We scan the city tow portal Mon/Thu and alert you within hours if your plate is logged — so storage fees don&apos;t pile up for days.
+              </p>
+            </div>
+          </div>
+
+          {/* Conversion Zone */}
+          <div style={{
+            backgroundColor: COLORS.deepHarbor, borderRadius: '16px',
+            padding: '28px 24px', textAlign: 'center', position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', inset: 0, opacity: 0.06, pointerEvents: 'none',
+              backgroundImage: 'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+            }} />
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                fontSize: '12px', fontWeight: '600', color: '#93C5FD',
+                marginBottom: '14px', letterSpacing: '0.02em',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Powered by 35.7M Chicago ticket records (2018–2025)
+              </div>
+              <a href="/get-started" style={{
+                display: 'inline-block', backgroundColor: COLORS.signal, color: 'white', border: 'none',
+                borderRadius: '10px', padding: '14px 28px', fontSize: '16px', fontWeight: '700',
+                cursor: 'pointer', textDecoration: 'none', touchAction: 'manipulation',
+                boxShadow: '0 4px 16px rgba(16,185,129,0.3)',
+              }}>
+                Lock in $99/year Founding Rate
+              </a>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: '14px auto 0', maxWidth: '460px', lineHeight: '1.5' }}>
+                <span style={{ color: 'white', fontWeight: '600' }}>First Dismissal Guarantee:</span> if we don&apos;t help you avoid all tickets or get at least one dismissed in your first year, we refund your $99.
+              </p>
+            </div>
+          </div>
+        </section>
       </section>
 
       <Footer />
