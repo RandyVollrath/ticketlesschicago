@@ -546,7 +546,7 @@ export default function LandingPage() {
               <li>Scan the City&apos;s database twice a week for any ticket on your plate</li>
               <li>Gather evidence from 25+ sources — weather records, sweeper GPS data, street view imagery, 311 reports, and more</li>
               <li>Build a violation-specific legal argument using real Chicago hearing data</li>
-              <li>Print and mail a contest letter — you do nothing</li>
+              <li>Print, mail, and fight it for you — every ticket, every time</li>
             </ul>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: '14px 0 0', fontSize: '15px' }}>
               <strong style={{ color: COLORS.textDark }}>94% of drivers just pay the fine.</strong> We fight yours — and mail-in contests win <strong style={{ color: COLORS.textDark }}>57% of the time</strong>. Some violations hit <strong style={{ color: COLORS.textDark }}>87%</strong>.
