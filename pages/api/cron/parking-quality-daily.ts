@@ -25,6 +25,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { diagnose, type DiagnosisReport } from '../../../lib/parking-quality-diagnose';
+import {
+  verifyRecentShips,
+  renderVerificationsHtml,
+  type ShipVerification,
+} from '../../../lib/parking-quality-ship-verifications';
 import { sendEmailWithRetry } from '../../../lib/resend-with-retry';
 import { Resend } from 'resend';
 
@@ -48,7 +53,10 @@ interface AiAnalysis {
   proposed_solutions: Array<{ for: string; solution: string; file_hint?: string }>;
 }
 
-async function askClaudeForAnalysis(report: DiagnosisReport): Promise<AiAnalysis | null> {
+async function askClaudeForAnalysis(
+  report: DiagnosisReport,
+  verifications: ShipVerification[],
+): Promise<AiAnalysis | null> {
   if (!anthropic) return null;
   // Keep the prompt compact — the model performs better on focused input.
   // We include the full per-user breakdown but trim native_meta blobs.
@@ -84,6 +92,8 @@ async function askClaudeForAnalysis(report: DiagnosisReport): Promise<AiAnalysis
 
   const prompt = `You are reading a ${WINDOW_HOURS}-hour parking-detection quality report for Autopilot America (Chicago parking app). This is one of TWO daily reports — each covers a non-overlapping 12-hour window (morning report covers overnight 8pm→8am Chicago; evening report covers daytime 8am→8pm Chicago). Produce a SHORT, plain-language digest for the founder grounded in the actual rows — do not speculate beyond what the rows show.
 
+Also verify the ship status of recent code changes. The SHIP_VERIFICATIONS array below shows each recent fix and whether data suggests it's working. If any verdict is "degraded", that's the #1 thing to mention in the headline. If all are "working" or "no_signal", don't dwell on them.
+
 Output STRICT JSON with this exact shape (no prose outside the JSON):
 
 {
@@ -100,6 +110,9 @@ Rules:
 - Never propose a solution backed by fewer than 2 example rows — if the data is thin, say so.
 - Only include users with at least 3 checks in per-user callouts.
 - Keep every string under 400 characters.
+
+SHIP_VERIFICATIONS:
+${JSON.stringify(verifications, null, 2)}
 
 REPORT DATA:
 ${JSON.stringify(compactReport, null, 2)}`;
@@ -122,7 +135,11 @@ ${JSON.stringify(compactReport, null, 2)}`;
   }
 }
 
-function renderHtml(report: DiagnosisReport, ai: AiAnalysis | null): string {
+function renderHtml(
+  report: DiagnosisReport,
+  ai: AiAnalysis | null,
+  verifications: ShipVerification[],
+): string {
   const windowLabel = `${report.window_start.slice(0, 16).replace('T', ' ')} → ${report.window_end.slice(0, 16).replace('T', ' ')} UTC`;
   const topSigRows = report.top_signatures.map(s =>
     `<tr><td>${s.signature}</td><td>${s.count}</td><td>${s.userCount}</td></tr>`
@@ -176,6 +193,7 @@ function renderHtml(report: DiagnosisReport, ai: AiAnalysis | null): string {
         <strong>${report.total_rows - report.overall_failure_counts.healthy}</strong> failures
       </p>
       ${aiBlock}
+      ${renderVerificationsHtml(verifications)}
       <h3 style="margin-top: 24px; color: #0f172a;">Top failure signatures</h3>
       <table style="border-collapse: collapse; font-size: 13px;">
         <thead><tr style="background: #f3f4f6;"><th style="padding: 6px 10px; text-align: left;">Signature</th><th style="padding: 6px 10px;">Count</th><th style="padding: 6px 10px;">Users affected</th></tr></thead>
@@ -204,7 +222,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const report = await diagnose(WINDOW_HOURS);
-    const ai = await askClaudeForAnalysis(report);
+    const verifications = await verifyRecentShips(
+      supabaseAdmin,
+      report.window_start,
+      report.window_end,
+    );
+    const ai = await askClaudeForAnalysis(report, verifications);
 
     // Persist a snapshot row to parking_quality_reports so we preserve the
     // trend timeline that the (now-deleted) twice-daily cron used to write.
@@ -263,7 +286,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('parking-quality-daily snapshot build failed:', snapErr?.message);
     }
 
-    const html = renderHtml(report, ai);
+    const html = renderHtml(report, ai, verifications);
     // Label the window in the subject so the two daily emails don't look
     // identical when skimming inbox. The UTC hour of the run tells us
     // which slice of the day we're summarizing.
@@ -289,6 +312,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       total_rows: report.total_rows,
       total_users: report.total_users,
       has_ai_analysis: !!ai,
+      ship_verifications: verifications,
     });
   } catch (e: any) {
     console.error('parking-quality-daily failed:', e?.message);
