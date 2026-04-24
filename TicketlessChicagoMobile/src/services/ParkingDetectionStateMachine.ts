@@ -41,6 +41,8 @@ export type DetectionEventType =
   | 'PARKING_CONFIRMED'      // Parking check completed successfully (auto-detected)
   | 'MANUAL_PARKING_SET'     // User manually checked parking (sets state to PARKED)
   | 'IOS_NATIVE_PARKING_CONFIRMED' // iOS CoreMotion+GPS confirmed parking (forces PARKED from any state)
+  | 'IOS_POSSIBLE_PARKING'   // iOS GPS speed hit zero — inside 13s debounce window (show "Detecting parking..." UI)
+  | 'IOS_PARKING_CHECK_CANCELLED' // iOS debounce cancelled (speed resumed — was a red light)
   | 'DEPARTURE_DETECTED'     // User started driving again (BT reconnect)
   | 'MONITORING_STARTED'     // User started monitoring (car paired)
   | 'MONITORING_STOPPED'     // User stopped monitoring
@@ -89,8 +91,8 @@ const DEBOUNCE_DURATION_MS = 10_000; // 10 seconds — filters BT signal glitche
 // ---------------------------------------------------------------------------
 
 const VALID_TRANSITIONS: Record<ParkingState, ParkingState[]> = {
-  INITIALIZING: ['IDLE', 'DRIVING', 'PARKED'],
-  IDLE:         ['DRIVING', 'INITIALIZING', 'PARKED'], // PARKED added for manual parking checks
+  INITIALIZING: ['IDLE', 'DRIVING', 'PARKED', 'PARKING_PENDING'], // PARKING_PENDING allowed for iOS (no BT-based DRIVING entry)
+  IDLE:         ['DRIVING', 'INITIALIZING', 'PARKED', 'PARKING_PENDING'], // PARKING_PENDING allowed for iOS
   DRIVING:      ['PARKING_PENDING', 'IDLE'],
   PARKING_PENDING: ['DRIVING', 'PARKED', 'IDLE'],
   PARKED:       ['DRIVING', 'IDLE'],
@@ -367,6 +369,43 @@ class ParkingDetectionStateMachineClass {
       this._debounceTimer = null;
     }
     this.transition('PARKED', 'IOS_NATIVE_PARKING_CONFIRMED', 'ios_native', metadata);
+  }
+
+  /**
+   * iOS has detected GPS speed ≈ 0 and started the ~13s parking-confirmation
+   * debounce. Transition to PARKING_PENDING so the UI can show
+   * "Detecting parking..." — this closes the UX gap where a user opens the
+   * app inside that 13s window, sees no activity, and manual-checks.
+   *
+   * Unlike Android's btDisconnected(), this does NOT start a JS-side debounce
+   * timer — the iOS native side owns that timing and will fire
+   * iosNativeParkingConfirmed() (or iosParkingCheckCancelled()) when the
+   * native debounce resolves.
+   */
+  iosPossibleParking(metadata?: Record<string, any>): void {
+    if (this._state === 'PARKING_PENDING') {
+      log.debug('iosPossibleParking: already PARKING_PENDING, no-op');
+      return;
+    }
+    if (this._state === 'PARKED') {
+      log.debug('iosPossibleParking: already PARKED, no-op');
+      return;
+    }
+    log.info(`iosPossibleParking: transitioning from ${this._state} to PARKING_PENDING`);
+    this.transition('PARKING_PENDING', 'IOS_POSSIBLE_PARKING', 'ios_native', metadata);
+  }
+
+  /**
+   * iOS debounce cancelled — GPS speed resumed (it was a red light).
+   * Roll the state back to DRIVING so the "Detecting parking..." UI clears.
+   */
+  iosParkingCheckCancelled(metadata?: Record<string, any>): void {
+    if (this._state !== 'PARKING_PENDING') {
+      log.debug(`iosParkingCheckCancelled: current state is ${this._state}, not PARKING_PENDING — no-op`);
+      return;
+    }
+    log.info(`iosParkingCheckCancelled: transitioning from PARKING_PENDING back to DRIVING`);
+    this.transition('DRIVING', 'IOS_PARKING_CHECK_CANCELLED', 'ios_native', metadata);
   }
 
   /**

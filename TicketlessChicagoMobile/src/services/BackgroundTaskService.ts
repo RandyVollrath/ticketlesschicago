@@ -344,7 +344,15 @@ class BackgroundTaskServiceClass {
   private registerStateMachineCallbacks(): void {
     // When parking is confirmed (debounce expired after BT disconnect):
     // -> trigger the parking rules check
-    ParkingDetectionStateMachine.onTransition('PARKING_PENDING->PARKED', async () => {
+    ParkingDetectionStateMachine.onTransition('PARKING_PENDING->PARKED', async (event) => {
+      // Skip iOS native path — the onParkingDetected handler already ran
+      // handleCarDisconnection() with the authoritative stop_start GPS coords
+      // (see line ~766). Running it again here would trigger a duplicate
+      // parking check against the unified API.
+      if (event.source === 'ios_native') {
+        log.info('StateMachine: PARKING_PENDING -> PARKED via iOS native — parking check already ran, skipping duplicate');
+        return;
+      }
       log.info('StateMachine: PARKING_PENDING -> PARKED -> triggering parking check');
       this.stopCameraAlerts();
       await this.sendDiagnosticNotification(
@@ -800,6 +808,20 @@ class BackgroundTaskServiceClass {
                 void CameraAlertService.prewarmAudio('onPossibleDriving');
               }
               this.startCameraAlerts();
+            },
+            // onPossibleParking - iOS GPS speed hit zero; ~13s debounce window.
+            // Transitions state machine to PARKING_PENDING so HomeScreen can
+            // show "Detecting parking..." instead of looking inactive while
+            // the user waits for the auto-confirmation.
+            () => {
+              log.info('POSSIBLE PARKING - GPS speed≈0, debounce started');
+              ParkingDetectionStateMachine.iosPossibleParking({ source: 'ios_native_speed_zero' });
+            },
+            // onParkingCheckCancelled - speed resumed (red light). Roll the
+            // "Detecting parking..." UI back to driving state.
+            () => {
+              log.info('PARKING CHECK CANCELLED - speed resumed, was a red light');
+              ParkingDetectionStateMachine.iosParkingCheckCancelled({ source: 'ios_native_speed_resumed' });
             }
           );
           log.info(`BackgroundLocationService.startMonitoring returned: ${bgStarted}`);
