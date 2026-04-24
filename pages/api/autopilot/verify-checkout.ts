@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { sendWelcomeEmailOnce } from '../../../lib/welcome-email';
+import { ACTIVE_AUTOPILOT_PLAN } from '../../../lib/autopilot-plans';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -182,4 +184,25 @@ async function activateUser(userId: string, customerId: string, subscriptionId: 
     }, { onConflict: 'user_id' });
 
   console.log(`✅ User ${userId} activated successfully`);
+
+  // Send welcome email (idempotent — webhook path may have already sent)
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('email, first_name')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (profile?.email) {
+      await sendWelcomeEmailOnce({
+        userId,
+        email: profile.email,
+        firstName: profile.first_name,
+        planLabel: ACTIVE_AUTOPILOT_PLAN.name || ACTIVE_AUTOPILOT_PLAN.code,
+        source: 'stripe',
+      });
+    }
+  } catch (e) {
+    console.error('verify-checkout welcome email failed (non-fatal):', e);
+  }
 }

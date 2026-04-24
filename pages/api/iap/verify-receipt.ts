@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin, supabase } from '../../../lib/supabase';
 import { Resend } from 'resend';
+import { sendWelcomeEmailOnce } from '../../../lib/welcome-email';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -261,11 +262,11 @@ export default async function handler(
     // Send confirmation + notification emails (non-blocking)
     try {
       await Promise.all([
-        resend.emails.send({
-          from: 'Autopilot America <hello@autopilotamerica.com>',
-          to: user.email!,
-          subject: 'Welcome to Autopilot America!',
-          text: `Hi there!\n\nYour Autopilot America account is now active. You're all set to start using the app.\n\nIf you have any questions, just reply to this email.\n\nBest,\nThe Autopilot America Team`,
+        sendWelcomeEmailOnce({
+          userId: user.id,
+          email: user.email!,
+          planLabel,
+          source: finalProductId.includes('annual') || finalProductId.includes('monthly') ? 'ios_iap' : 'ios_iap',
         }),
         resend.emails.send({
           from: 'Alerts <alerts@autopilotamerica.com>',
