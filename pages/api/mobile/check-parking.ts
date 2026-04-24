@@ -488,6 +488,133 @@ export default async function handler(
     // than any single heading-based disambiguation.
     let allCandidates: any[] = [];
 
+    // Helper: adopt a street_centerlines candidate as the winning snap and run
+    // block-aware segment interpolation. Used when the initial snap winner is
+    // overridden by Nominatim or Mapbox — without this helper those override
+    // paths drop address-range geometry and force downstream to fall back to
+    // raw reverse-geocoding (which produces wrong house numbers off the block
+    // start, e.g. "4755" when the user is actually ~4715 on the 4700 block).
+    async function adoptCandidateAsSnap(candidate: any, snapSource: string): Promise<{
+      snapResult: any;
+      snappedLat: number;
+      snappedLng: number;
+      userSide: 'L' | 'R' | null;
+    }> {
+      // Derive user's side of centerline from raw GPS offset vs candidate bearing.
+      let side: 'L' | 'R' | null = null;
+      if (
+        typeof candidate.snapped_lat === 'number' &&
+        typeof candidate.snapped_lng === 'number' &&
+        typeof candidate.street_bearing === 'number' &&
+        candidate.street_bearing >= 0
+      ) {
+        const cosLat = Math.cos((latitude * Math.PI) / 180);
+        const dE = (longitude - candidate.snapped_lng) * cosLat * 111000;
+        const dN = (latitude - candidate.snapped_lat) * 111000;
+        const br = (candidate.street_bearing * Math.PI) / 180;
+        const rightDot = dE * Math.cos(br) - dN * Math.sin(br);
+        const acc = typeof accuracyMeters === 'number' && accuracyMeters > 0 ? accuracyMeters : 5;
+        const sideThreshold = Math.max(1, acc * 0.5);
+        if (Math.abs(rightDot) >= sideThreshold) {
+          side = rightDot > 0 ? 'R' : 'L';
+        }
+      }
+
+      // Block-aware segment interpolation — mirrors the initial-snap branch.
+      let interpolatedNumber: number | null = null;
+      const frac = typeof candidate.segment_fraction === 'number' ? candidate.segment_fraction : null;
+      const ranges = [
+        { from: candidate.l_from_addr, to: candidate.l_to_addr, side: 'L' as const },
+        { from: candidate.r_from_addr, to: candidate.r_to_addr, side: 'R' as const },
+      ].filter((r) => typeof r.from === 'number' && typeof r.to === 'number' && r.from > 0 && r.to > 0);
+
+      if (frac != null && ranges.length > 0 && supabaseAdmin) {
+        let isStandardBlock = false;
+        try {
+          const { data: nextSeg } = await supabaseAdmin
+            .from('street_centerlines')
+            .select('l_from_addr')
+            .eq('street_name', candidate.street_name)
+            .gt('l_from_addr', candidate.l_from_addr)
+            .order('l_from_addr', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          if (nextSeg?.l_from_addr) {
+            const currentBase = Math.floor(candidate.l_from_addr / 100) * 100;
+            const nextBase = Math.floor(nextSeg.l_from_addr / 100) * 100;
+            isStandardBlock = nextBase - currentBase === 100;
+          }
+        } catch (e) { /* non-fatal */ }
+
+        let pick: any = ranges[0];
+        if (side) {
+          const sideMatch = ranges.find((r) => r.side === side);
+          if (sideMatch) pick = sideMatch;
+        }
+        if (pick === ranges[0] && !side) {
+          pick = ranges.sort((a, b) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from))[0];
+        }
+        const parityTarget = pick.from % 2;
+        const blockBase = Math.floor(pick.from / 100) * 100;
+        const effectiveLow = pick.from;
+        const effectiveHigh = isStandardBlock ? blockBase + (parityTarget === 0 ? 98 : 99) : pick.to;
+        const raw = effectiveLow + (effectiveHigh - effectiveLow) * frac;
+        let n = Math.round(raw);
+        if (n % 2 !== parityTarget) n += n > raw ? -1 : 1;
+        n = Math.min(Math.max(n, effectiveLow), effectiveHigh);
+        interpolatedNumber = n;
+        console.log(`[check-parking] adoptCandidateAsSnap interpolated (${snapSource}): side=${pick.side}, range=${pick.from}-${pick.to}, frac=${frac.toFixed(3)} → ${interpolatedNumber}`);
+      }
+
+      return {
+        snapResult: {
+          wasSnapped: true,
+          snapDistanceMeters: candidate.snap_distance_meters,
+          streetName: candidate.street_name,
+          snapSource,
+          streetBearing: candidate.street_bearing,
+          segmentFraction: frac ?? undefined,
+          lFromAddr: candidate.l_from_addr ?? null,
+          lToAddr: candidate.l_to_addr ?? null,
+          rFromAddr: candidate.r_from_addr ?? null,
+          rToAddr: candidate.r_to_addr ?? null,
+          interpolatedNumber,
+          onewayDir: candidate.oneway_dir ?? null,
+          lParity: candidate.l_parity ?? null,
+          rParity: candidate.r_parity ?? null,
+        },
+        snappedLat: candidate.snapped_lat,
+        snappedLng: candidate.snapped_lng,
+        userSide: side,
+      };
+    }
+
+    // Helper: find a street_centerlines segment on a specific street near the
+    // user. Used when Nominatim identifies a street outside our 80m snap
+    // candidate pool (walk-away drift, sparse-coverage blocks). A widened
+    // 200m PostGIS lookup lets us still recover address-range geometry so
+    // segment interpolation works end-to-end.
+    async function findCenterlineSegmentByName(streetName: string): Promise<any | null> {
+      if (!supabaseAdmin) return null;
+      try {
+        const { data, error } = await supabaseAdmin.rpc('snap_to_nearest_street', {
+          user_lat: latitude,
+          user_lng: longitude,
+          search_radius_meters: 200,
+        });
+        if (error || !Array.isArray(data)) return null;
+        const match = data.find((c: any) => c.street_name === streetName && c.was_snapped) ?? null;
+        // Guard against adopting a segment that's very far away (wrong block
+        // entirely). 150m is ~one block in Chicago's grid.
+        if (match && typeof match.snap_distance_meters === 'number' && match.snap_distance_meters > 150) {
+          return null;
+        }
+        return match;
+      } catch (e) {
+        return null;
+      }
+    }
+
     if (shouldSnap && supabaseAdmin) {
       try {
         // Search radius must be wide enough that the PERPENDICULAR street at
@@ -911,9 +1038,10 @@ export default async function handler(
                 // Trust this over heading-based disambiguation UNLESS we have a
                 // trustworthy driving heading that contradicts Nominatim's
                 // orientation (the Belden walk-away case).
-                const nominatimMatchesCandidate = allCandidates.some((c: any) =>
+                const nominatimCandidate = allCandidates.find((c: any) =>
                   c.street_name === nominatimResult.street_name
-                );
+                ) ?? null;
+                const nominatimMatchesCandidate = nominatimCandidate !== null;
                 // hasHeading == GPS driving heading present (not compass). If
                 // the user was actively driving on Belden right before parking,
                 // the GPS course will say E-W and protect the Belden snap from
@@ -946,29 +1074,33 @@ export default async function handler(
                 const snapWasExtended = snapResult.snapSource?.includes('heading_extended') ||
                   (snapResult.snapDistanceMeters > 25 && effectiveHeadingSource !== 'compass');
 
-                if (nominatimMatchesCandidate && !drivingHeadingContradictsNominatim) {
+                if (nominatimMatchesCandidate && !drivingHeadingContradictsNominatim && nominatimCandidate) {
                   // Two independent geometric signals agree: PostGIS snap saw
                   // this street as a candidate AND OSM identified it from the
                   // raw GPS. No driving heading contradicts. Override regardless
                   // of compass agreement on grid orientation.
+                  //
+                  // Adopt the matching candidate's full geometry (snap coords,
+                  // address ranges, parity) so downstream segment interpolation
+                  // produces a position-aware house number. Without this, the
+                  // override dropped address-range fields and forced Nominatim's
+                  // block-start reverse-geocode (the "4755 at ~4715" failure).
+                  const adopted = await adoptCandidateAsSnap(nominatimCandidate, 'nominatim_override_candidate_match');
                   console.log(
                     `[check-parking] Nominatim cross-reference: ${nominatimResult.street_name} (${nominatimOrientation}) ` +
                     `is in snap candidate set and no driving heading contradicts — ` +
-                    `overriding snap winner ${snapResult.streetName} (${snapOrientation}).`
+                    `overriding snap winner ${snapResult.streetName} (${snapOrientation}). ` +
+                    `Adopted candidate geometry → interpolated ${adopted.snapResult.interpolatedNumber ?? 'n/a'}.`
                   );
                   diag.nominatim_street = nominatimResult.street_name;
                   diag.nominatim_orientation = nominatimOrientation;
                   diag.nominatim_agreed = false;
                   diag.nominatim_overrode = true;
                   diag.heading_confirmed_snap = false;
-                  checkLat = latitude;
-                  checkLng = longitude;
-                  snapResult = {
-                    wasSnapped: false,
-                    snapDistanceMeters: 0,
-                    streetName: nominatimResult.street_name,
-                    snapSource: 'nominatim_override_candidate_match',
-                  };
+                  checkLat = adopted.snappedLat;
+                  checkLng = adopted.snappedLng;
+                  snapResult = adopted.snapResult;
+                  if (adopted.userSide) userSideFromGps = adopted.userSide;
                   if (hasHeading && !hasCompass) {
                     console.log(`[check-parking] Discarding GPS heading ${headingDeg.toFixed(0)}° — Nominatim candidate-match override`);
                     hasHeading = false;
@@ -994,46 +1126,73 @@ export default async function handler(
                   // Extended/far snap + heading agree, but Nominatim disagrees.
                   // The heading likely drove the extended search to the WRONG street
                   // (stale heading from before a turn). Nominatim is more reliable here.
+                  //
+                  // Try to recover full geometry via a 200m PostGIS lookup on
+                  // the Nominatim-identified street so interpolation still runs.
+                  const wideCandidate = nominatimCandidate ?? await findCenterlineSegmentByName(nominatimResult.street_name);
+                  const adopted = wideCandidate ? await adoptCandidateAsSnap(wideCandidate, 'nominatim_override_extended') : null;
                   console.log(
                     `[check-parking] Nominatim cross-reference: extended snap says ${snapResult.streetName} (${snapOrientation}, ${snapResult.snapDistanceMeters?.toFixed(1)}m), ` +
                     `Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). ` +
                     `Heading ${effectiveHeading.toFixed(0)}° confirmed snap but snap was far/extended — ` +
-                    `preferring Nominatim (heading likely stale after turn).`
+                    `preferring Nominatim (heading likely stale after turn).${adopted ? ` Adopted geometry → interpolated ${adopted.snapResult.interpolatedNumber ?? 'n/a'}.` : ' No matching centerline segment within 150m.'}`
                   );
                   diag.nominatim_street = nominatimResult.street_name;
                   diag.nominatim_orientation = nominatimOrientation;
                   diag.nominatim_agreed = false;
                   diag.nominatim_overrode = true;
                   diag.heading_confirmed_snap = false;
-                  checkLat = latitude;
-                  checkLng = longitude;
-                  snapResult = {
-                    wasSnapped: false,
-                    snapDistanceMeters: 0,
-                    streetName: nominatimResult.street_name,
-                    snapSource: 'nominatim_override_extended',
-                  };
+                  if (adopted) {
+                    checkLat = adopted.snappedLat;
+                    checkLng = adopted.snappedLng;
+                    snapResult = adopted.snapResult;
+                    if (adopted.userSide) userSideFromGps = adopted.userSide;
+                  } else {
+                    checkLat = latitude;
+                    checkLng = longitude;
+                    snapResult = {
+                      wasSnapped: false,
+                      snapDistanceMeters: 0,
+                      streetName: nominatimResult.street_name,
+                      snapSource: 'nominatim_override_extended',
+                    };
+                  }
                   if (hasHeading && !hasCompass) {
                     console.log(`[check-parking] Discarding GPS heading ${headingDeg.toFixed(0)}° — stale (extended snap overridden)`);
                     hasHeading = false;
                   }
                 } else {
-                  console.log(`[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). Heading does NOT confirm snap — preferring Nominatim.`);
+                  // Try to recover full geometry via a 200m PostGIS lookup so
+                  // interpolation still runs. Without this, Nominatim's direct
+                  // reverse-geocode produces the block-start house number
+                  // ("4755" when the user is actually ~4715 on the 4700 block).
+                  const wideCandidate = nominatimCandidate ?? await findCenterlineSegmentByName(nominatimResult.street_name);
+                  const adopted = wideCandidate ? await adoptCandidateAsSnap(wideCandidate, 'nominatim_override') : null;
+                  console.log(
+                    `[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). Heading does NOT confirm snap — preferring Nominatim.${adopted ? ` Adopted geometry → interpolated ${adopted.snapResult.interpolatedNumber ?? 'n/a'}.` : ' No matching centerline segment within 150m.'}`
+                  );
                   diag.nominatim_street = nominatimResult.street_name;
                   diag.nominatim_orientation = nominatimOrientation;
                   diag.nominatim_agreed = false;
                   diag.nominatim_overrode = true;
                   diag.heading_confirmed_snap = false;
-                  // Use original coords (not snapped) since Nominatim identified a different street.
-                  checkLat = latitude;
-                  checkLng = longitude;
-                  snapResult = {
-                    wasSnapped: false,
-                    snapDistanceMeters: 0,
-                    streetName: nominatimResult.street_name,
-                    snapSource: 'nominatim_override',
-                    // No streetBearing — snap was for a different street
-                  };
+                  if (adopted) {
+                    checkLat = adopted.snappedLat;
+                    checkLng = adopted.snappedLng;
+                    snapResult = adopted.snapResult;
+                    if (adopted.userSide) userSideFromGps = adopted.userSide;
+                  } else {
+                    // Use original coords (not snapped) since Nominatim identified a different street.
+                    checkLat = latitude;
+                    checkLng = longitude;
+                    snapResult = {
+                      wasSnapped: false,
+                      snapDistanceMeters: 0,
+                      streetName: nominatimResult.street_name,
+                      snapSource: 'nominatim_override',
+                      // No streetBearing — snap was for a different street
+                    };
+                  }
                   // GPS heading is provably stale — discard it. But compass heading
                   // is fresh (captured at park time), so keep it.
                   if (hasHeading && !hasCompass) {
@@ -1119,33 +1278,19 @@ export default async function handler(
             const previousStreet = snapResult?.streetName;
 
             if (mapboxCandidate) {
-              // Re-snap to the Mapbox-identified candidate. Reuse the same
-              // address-interpolation logic by calling out to a small inline
-              // version (we can't reach back into the loop scope cleanly).
-              const c = mapboxCandidate;
-              checkLat = c.snapped_lat;
-              checkLng = c.snapped_lng;
-              snapResult = {
-                wasSnapped: true,
-                snapDistanceMeters: c.snap_distance_meters,
-                streetName: c.street_name,
-                snapSource: 'mapbox_match_candidate',
-                streetBearing: c.street_bearing,
-                segmentFraction: typeof c.segment_fraction === 'number' ? c.segment_fraction : undefined,
-                lFromAddr: c.l_from_addr ?? null,
-                lToAddr: c.l_to_addr ?? null,
-                rFromAddr: c.r_from_addr ?? null,
-                rToAddr: c.r_to_addr ?? null,
-                onewayDir: c.oneway_dir ?? null,
-                lParity: c.l_parity ?? null,
-                rParity: c.r_parity ?? null,
-                interpolatedNumber: null, // Address interpolation re-runs in unified checker
-              };
-              console.log(`[check-parking] Mapbox PROMOTED: ${c.street_name} (confidence=${mapboxResult.confidence?.toFixed(2)}, matched ${mapboxResult.matchedPointCount}/${mapboxResult.inputPointCount}). Was: ${previousStreet ?? 'none'}.`);
+              // Re-snap to the Mapbox-identified candidate and run address
+              // interpolation via the shared helper (so rule-match house
+              // numbers are position-aware, not block-start from reverse-geocode).
+              const adopted = await adoptCandidateAsSnap(mapboxCandidate, 'mapbox_match_candidate');
+              checkLat = adopted.snappedLat;
+              checkLng = adopted.snappedLng;
+              snapResult = adopted.snapResult;
+              if (adopted.userSide) userSideFromGps = adopted.userSide;
+              console.log(`[check-parking] Mapbox PROMOTED: ${mapboxCandidate.street_name} (confidence=${mapboxResult.confidence?.toFixed(2)}, matched ${mapboxResult.matchedPointCount}/${mapboxResult.inputPointCount}). Was: ${previousStreet ?? 'none'}. Interpolated ${adopted.snapResult.interpolatedNumber ?? 'n/a'}.`);
               diag.native_meta.mapbox.promoted = true;
               diag.native_meta.mapbox.promoted_via = 'snap_candidate';
-              diag.snap_street_name = c.street_name;
-              diag.snap_distance_meters = c.snap_distance_meters;
+              diag.snap_street_name = mapboxCandidate.street_name;
+              diag.snap_distance_meters = mapboxCandidate.snap_distance_meters;
               diag.snap_source = 'mapbox_match_candidate';
             } else {
               // Mapbox picked a street outside our candidate set. Trust it

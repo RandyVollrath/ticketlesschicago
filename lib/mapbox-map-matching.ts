@@ -52,10 +52,21 @@ export async function mapMatchTrajectory(
     .map((f) => `${f.lng.toFixed(6)},${f.lat.toFixed(6)}`)
     .join(';');
 
-  // Per-point search radius improves matches when GPS is noisy. Mapbox
-  // accepts 0-50m. Default to GPS accuracy when known, floor at 5m.
+  // Per-point search radius. Mapbox accepts 0-50m.
+  //
+  // CRITICAL: radius is the distance from the GPS fix within which Mapbox will
+  // search for a matching road — NOT a GPS-accuracy indicator. A car parked at
+  // the curb sits 6-12m from the street centerline (half ROW + parking lane),
+  // so a radius below ~20m fails to reach the actual street and either matches
+  // a nameless parallel feature (alley, service road) or returns NoMatch.
+  //
+  // Before 2026-04: floor was 5m. Result: on clean grid streets Mapbox
+  // returned matched=true with empty street name and ~0 confidence (parking
+  // GPS snapped to an unnamed OSM way within 5m instead of the real street
+  // 6-12m away). Fixed by bumping the floor to 25m — comfortably covers a
+  // Chicago ROW (60ft ≈ 18m) plus parking lane.
   const radiusesParam = trimmed
-    .map((f) => Math.max(5, Math.min(50, Math.round(f.accuracyMeters ?? 10))))
+    .map((f) => Math.max(25, Math.min(50, Math.round((f.accuracyMeters ?? 10) + 20))))
     .join(';');
 
   // Timestamps (seconds since epoch) let Mapbox use speed information.
