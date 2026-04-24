@@ -255,7 +255,7 @@ export default function TermsOfService() {
             </h2>
             <ul style={{ paddingLeft: '24px' }}>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Subscription billing:</strong> Founding Member Annual plan at $99/year
+                <strong>Subscription billing:</strong> Founding Member Annual plan at $79/year
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Renewal fees:</strong> City sticker ($100), License plate ($155 standard, $164 vanity)
@@ -265,7 +265,7 @@ export default function TermsOfService() {
                 <strong>Permit fees:</strong> $30 one-time fee for residential parking permit filing (if applicable)
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>Automatic renewal:</strong> Subscriptions renew automatically at $99/year while membership remains active
+                <strong>Automatic renewal:</strong> Subscriptions renew automatically at $79/year while membership remains active
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Refunds:</strong> Membership-fee refunds are available only through approved First Dismissal Guarantee claims

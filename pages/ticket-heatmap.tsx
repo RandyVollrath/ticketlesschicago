@@ -228,7 +228,7 @@ export default function TicketHeatmap() {
                 marginRight: '12px'
               }}
             >
-              Get Protection (Includes Alerts) - $120/year
+              Get Protection (Includes Alerts) - $79/year
             </button>
             <button
               onClick={() => router.push('/start')}

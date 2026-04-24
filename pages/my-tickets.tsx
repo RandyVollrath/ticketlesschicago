@@ -198,7 +198,7 @@ export default function MyTickets() {
 
   // Potential savings (57% of parking tickets get dismissed via mail-in contest)
   const potentialSavings = Math.round(totalFines * 0.57);
-  const autopilotCost = sortedYears.length > 0 ? sortedYears.length * 99 : 99;
+  const autopilotCost = sortedYears.length > 0 ? sortedYears.length * 79 : 79;
 
   const animatedFines = useAnimatedNumber(totalFines);
 
@@ -717,7 +717,7 @@ export default function MyTickets() {
                   Based on the 57% mail-in parking ticket dismissal rate from our FOIA data.
                 </p>
                 <p style={{ fontSize: '14px', color: '#64748B', margin: '0 0 24px 0' }}>
-                  Autopilot would have cost {fmtMoney(autopilotCost)} ({sortedYears.length || 1} year{(sortedYears.length || 1) !== 1 ? 's' : ''} @ $99/yr) and potentially saved you <strong style={{ color: COLORS.signal }}>{fmtMoney(potentialSavings)}</strong>.
+                  Autopilot would have cost {fmtMoney(autopilotCost)} ({sortedYears.length || 1} year{(sortedYears.length || 1) !== 1 ? 's' : ''} @ $79/yr) and potentially saved you <strong style={{ color: COLORS.signal }}>{fmtMoney(potentialSavings)}</strong>.
                 </p>
 
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -733,7 +733,7 @@ export default function MyTickets() {
                     fontWeight: 700,
                     fontSize: '16px',
                   }}>
-                    Start Auto-Contesting - $99/year
+                    Start Auto-Contesting - $79/year
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
@@ -831,7 +831,7 @@ export default function MyTickets() {
               </p>
               <p style={{ fontSize: '14px', color: '#15803D', lineHeight: 1.6, margin: '0 0 16px 0', maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>
                 From 35.7M ticket records in City of Chicago FOIA data (2018-2025).
-                Yet 94% of Chicagoans never contest. Autopilot does it automatically for $99/year.
+                Yet 94% of Chicagoans never contest. Autopilot does it automatically for $79/year.
               </p>
               <Link href="/get-started" style={{
                 display: 'inline-flex',
@@ -845,7 +845,7 @@ export default function MyTickets() {
                 fontWeight: 700,
                 fontSize: '15px',
               }}>
-                Get Protected - $99/year
+                Get Protected - $79/year
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>

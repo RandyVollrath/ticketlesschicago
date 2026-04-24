@@ -5,8 +5,8 @@
  * Users who signed up on the website already have active accounts and skip this.
  *
  * Products:
- *   - "autopilot_annual_v2" — $119.99/year (auto-renewable subscription)
- *   - "autopilot_monthly_v2" — $14.99/month (auto-renewable subscription)
+ *   - "autopilot_annual_v3" — $79/year (auto-renewable subscription)
+ *   - "autopilot_monthly_v3" — $9/month (auto-renewable subscription)
  *
  * Apple takes 15% (Small Business Program rate).
  *
@@ -29,8 +29,8 @@ import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('IAPService');
 
-const PRODUCT_ID_ANNUAL = 'autopilot_annual_v2';
-const PRODUCT_ID_MONTHLY = 'autopilot_monthly_v2';
+const PRODUCT_ID_ANNUAL = 'autopilot_annual_v3';
+const PRODUCT_ID_MONTHLY = 'autopilot_monthly_v3';
 
 export type BillingPlan = 'annual' | 'monthly';
 

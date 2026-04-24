@@ -1272,10 +1272,10 @@ export default function CheckYourStreet() {
                 cursor: 'pointer', textDecoration: 'none', touchAction: 'manipulation',
                 boxShadow: '0 4px 16px rgba(16,185,129,0.3)',
               }}>
-                Lock in $99/year Founding Rate
+                Lock in $79/year Founding Rate
               </a>
               <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: 0, maxWidth: '460px', lineHeight: '1.5', textAlign: 'center' }}>
-                <span style={{ color: 'white', fontWeight: '600' }}>First Dismissal Guarantee:</span> if we don&apos;t help you avoid all tickets or get at least one dismissed in your first year, we refund your $99.
+                <span style={{ color: 'white', fontWeight: '600' }}>First Dismissal Guarantee:</span> if we don&apos;t help you avoid all tickets or get at least one dismissed in your first year, we refund your $79.
               </p>
             </div>
           </div>

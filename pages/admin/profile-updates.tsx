@@ -926,7 +926,7 @@ export default function ProfileUpdates() {
                       <div>
                         <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Annual Fee Refund</p>
                         <p style={{ fontSize: '14px', color: '#059669', margin: 0, fontWeight: '600' }}>
-                          $99.00
+                          $79.00
                         </p>
                       </div>
                       <div>

@@ -389,7 +389,7 @@ export default function TicketHistory() {
                   fontWeight: 700,
                   fontSize: '15px',
                 }}>
-                  Get Protected - $99/year
+                  Get Protected - $79/year
                 </Link>
               </div>
 
@@ -878,7 +878,7 @@ export default function TicketHistory() {
               fontWeight: 700,
               fontSize: '16px',
             }}>
-              Get Protected - $99/year
+              Get Protected - $79/year
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M12 5l7 7-7 7"/>
               </svg>
@@ -941,7 +941,7 @@ export default function TicketHistory() {
             },
             {
               q: 'Can I contest tickets you find?',
-              a: 'If the FOIA results show unpaid tickets that were issued incorrectly, you may have grounds to contest them. Our $99/year Autopilot service handles this automatically.',
+              a: 'If the FOIA results show unpaid tickets that were issued incorrectly, you may have grounds to contest them. Our $79/year Autopilot service handles this automatically.',
             },
           ].map((faq, i) => (
             <div key={i} style={{

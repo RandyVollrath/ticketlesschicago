@@ -333,14 +333,14 @@ async function sendSoftSellEmail(email: string, firstName?: string) {
           p("<strong>But alerts only protect you from tickets you can prevent.</strong> What about the ones you can't?"),
           p("The meter that expired 2 minutes early. The sign you didn't see. The street cleaning that started at 7am instead of 9am. Those tickets still land on your plate — and at $75-$200 each, they add up fast."),
           callout('success', 'Autopilot Protection closes the gap', "We monitor your plate twice a week. When a new ticket appears, we generate a custom contest letter citing the specific legal defense for that violation — and mail it to the city before the deadline. <strong>68% of contested tickets get dismissed.</strong> You don't lift a finger."),
-          section('What $99/year gets you', bulletList([
+          section('What $79/year gets you', bulletList([
             '<strong>Twice-weekly plate monitoring</strong> — we catch tickets within days, not months',
             '<strong>Automatic contest letters</strong> — custom legal defense for each violation, mailed for you',
             '<strong>All your parking alerts</strong> — street cleaning and snow ban warnings before they hit',
             '<strong>Mobile app for iOS and Android</strong> — real-time parking detection and smart alerts on your phone',
             '<strong>First Dismissal Guarantee</strong> — if your first contest isn\'t dismissed, you get your money back',
           ])),
-          p("$99 is less than two parking tickets. One dismissed ticket pays for most of the year.", { bold: true }),
+          p("$79 is less than two parking tickets. One dismissed ticket pays for most of the year.", { bold: true }),
           button('Start Autopilot Protection', `${process.env.NEXT_PUBLIC_SITE_URL}/get-started`),
           signature('Randy'),
           divider(),

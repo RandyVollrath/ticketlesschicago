@@ -82,7 +82,7 @@ export default function FlyerLanding({ flyerKey, eyebrow, headline, subhead, sta
             padding: '18px 22px', borderRadius: 14, fontWeight: 800, fontSize: 18, marginBottom: 12,
             boxShadow: '0 6px 16px rgba(15,23,42,0.22)',
           }}>
-            Become a Founding Member — $99/year
+            Become a Founding Member — $79/year
           </Link>
           <div style={{ textAlign: 'center', fontSize: 13, color: C.muted, marginBottom: 36 }}>
             First Dismissal Guarantee · Cancel anytime · Chicago only
@@ -149,7 +149,7 @@ export default function FlyerLanding({ flyerKey, eyebrow, headline, subhead, sta
               />
               <Fact
                 title="Competitors would charge $150+ per ticket."
-                body="A ticket lawyer charges $150–$300 to draft one letter. The average Chicago driver has 2.2 tickets/year. At $99/year unlimited, Autopilot is 3–6× cheaper than hiring it out once."
+                body="A ticket lawyer charges $150–$300 to draft one letter. The average Chicago driver has 2.2 tickets/year. At $79/year unlimited, Autopilot is 4–8× cheaper than hiring it out once."
               />
             </div>
           </Card>
@@ -184,7 +184,7 @@ export default function FlyerLanding({ flyerKey, eyebrow, headline, subhead, sta
             padding: '18px 22px', borderRadius: 14, fontWeight: 800, fontSize: 18, marginTop: 8,
             boxShadow: '0 6px 16px rgba(16,185,129,0.28)',
           }}>
-            Start Protecting Your Car → $99/yr
+            Start Protecting Your Car → $79/yr
           </Link>
           <div style={{ textAlign: 'center', marginTop: 22 }}>
             <Link href="/pricing" style={{ color: C.muted, fontSize: 13, textDecoration: 'underline' }}>

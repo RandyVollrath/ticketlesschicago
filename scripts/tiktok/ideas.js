@@ -414,8 +414,8 @@ function slideshowContest(db) {
               accentColor: "#ff1a1a",
             },
             {
-              text: "We contest your tickets automatically.\n$99/year. Link in bio.",
-              highlight: "$99/year",
+              text: "We contest your tickets automatically.\n$79/year. Link in bio.",
+              highlight: "$79/year",
               fontSize: 50,
               accentColor: "#00e676",
             },
@@ -427,7 +427,7 @@ function slideshowContest(db) {
         voScript:
           "We filed a Freedom of Information Act request with the City of Chicago and got the actual dismissal rates for every parking ticket type. Thirty five point seven million records. " +
           violations.map((v) => `${v.name}: ${v.rate} get dismissed. That's a ${v.fine} fine.`).join(" ") +
-          " Ninety four percent of people never even try to contest. The city is counting on that. We contest your tickets automatically. Ninety nine dollars a year. Link in bio.",
+          " Ninety four percent of people never even try to contest. The city is counting on that. We contest your tickets automatically. Seventy nine dollars a year. Link in bio.",
       },
     ],
   };
@@ -438,7 +438,7 @@ function slideshowFeatures(db) {
     id: `slideshow-features-${Date.now() % 10000}`,
     pillar: "slideshow-features",
     caption:
-      "Here's everything Autopilot America does for Chicago drivers. Camera alerts, parking detection, automatic ticket contesting, and more. $99/year. #chicago #parkingticket #app #fyp",
+      "Here's everything Autopilot America does for Chicago drivers. Camera alerts, parking detection, automatic ticket contesting, and more. $79/year. #chicago #parkingticket #app #fyp",
     hashtags: "#chicago #parkingticket #app #carlife #fyp",
     scenes: [
       {
@@ -447,7 +447,7 @@ function slideshowFeatures(db) {
           slides: [
             {
               text: "What does Autopilot America\nactually do?",
-              subtext: "Here's everything you get for $99/year.",
+              subtext: "Here's everything you get for $79/year.",
               fontSize: 52,
             },
             {
@@ -499,8 +499,8 @@ function slideshowFeatures(db) {
               accentColor: "#00e676",
             },
             {
-              text: "$99/year.\nPays for itself in 1.2 tickets.\nLink in bio.",
-              highlight: "$99/year",
+              text: "$79/year.\nPays for itself in 1.2 tickets.\nLink in bio.",
+              highlight: "$79/year",
               fontSize: 52,
               accentColor: "#00e676",
             },
@@ -550,7 +550,7 @@ function slideshowCameraMap(db) {
       accentColor: "#ff1a1a",
     })),
     {
-      text: "We alert you before every camera.\n$99/year. Link in bio.",
+      text: "We alert you before every camera.\n$79/year. Link in bio.",
       highlight: "every camera",
       fontSize: 50,
       accentColor: "#00e676",

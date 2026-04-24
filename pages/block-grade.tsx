@@ -592,7 +592,7 @@ export default function BlockGrade() {
                     fontSize: '14px',
                     border: '1px solid rgba(255,255,255,0.2)'
                   }}>
-                    Get Autopilot — $99/year
+                    Get Autopilot — $79/year
                   </Link>
                 </div>
               </div>

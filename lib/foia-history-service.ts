@@ -210,7 +210,7 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
         `The city has <strong>5 business days</strong> to respond. When they do, we'll email you the full breakdown — every ticket, every fine, every outcome — and post it to your dashboard at <a href="https://autopilotamerica.com/my-tickets" style="color: #2563EB;">autopilotamerica.com/my-tickets</a>.`),
       callout('danger', 'Here\'s what most people find out',
         'The average Chicago driver has tickets they forgot about, tickets they never knew existed, and fines that doubled while sitting in collections. <strong>68% of contested parking tickets in Chicago get dismissed.</strong> Many of yours could have been fought — and won.'),
-      button('Get Protected — $99/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
+      button('Get Protected — $79/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
       p("One dismissed ticket pays for the entire year.", { size: '13px', color: '#6B7280', center: true }),
     ].join(''),
   });
@@ -281,13 +281,13 @@ export async function sendFoiaHistoryResultsEmail(params: {
         : p("But here's the reality: Chicago writes <strong>4.5 million tickets a year</strong>. It's not a matter of if — it's when. And when it happens, most people just pay because contesting feels like too much work."),
       callout('success', params.ticketCount > 0 ? 'Never pay full price again' : 'Be ready when it happens',
         "Autopilot monitors your plate twice a week. New ticket? We generate a custom contest letter with the specific legal defense for that violation and mail it before the deadline. <strong>68% get dismissed.</strong> You don't do anything."),
-      section('What $99/year gets you', bulletList([
+      section('What $79/year gets you', bulletList([
         '<strong>Twice-weekly plate monitoring</strong> — we catch tickets within days, not months',
         '<strong>Automatic contest letters</strong> — custom legal defense for each violation, mailed for you',
         '<strong>Street cleaning, snow ban, and sticker alerts</strong> — stop tickets before they happen',
         '<strong>First Dismissal Guarantee</strong> — if your first contest isn\'t dismissed, full refund',
       ])),
-      button('Start Autopilot Protection — $99/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
+      button('Start Autopilot Protection — $79/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
       p(params.ticketCount > 0
         ? `That's less than a single $${avgPerTicket} ticket. One dismissal pays for itself.`
         : 'Less than the cost of a single parking ticket. One dismissal pays for itself.',

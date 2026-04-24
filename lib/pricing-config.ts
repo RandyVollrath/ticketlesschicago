@@ -12,17 +12,17 @@
 // ==========================================
 export const SUBSCRIPTION_PRICING = {
   monthly: {
-    amount: 8,
-    displayAmount: '$8',
+    amount: 9,
+    displayAmount: '$9',
     interval: 'month',
-    stripePriceEnvKey: 'STRIPE_PROTECTION_MONTHLY_PRICE_ID',
+    stripePriceEnvKey: 'STANDARD_MONTHLY_9',
   },
   annual: {
-    amount: 80,
-    displayAmount: '$80',
+    amount: 79,
+    displayAmount: '$79',
     interval: 'year',
-    stripePriceEnvKey: 'STRIPE_PROTECTION_ANNUAL_PRICE_ID',
-    savings: '$16', // 2 months free
+    stripePriceEnvKey: 'STANDARD_ANNUAL_79',
+    savings: '$29', // ~27% off vs monthly × 12
   },
 } as const;
 
