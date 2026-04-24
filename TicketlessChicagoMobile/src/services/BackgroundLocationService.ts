@@ -109,7 +109,11 @@ class BackgroundLocationServiceClass {
   private onParkingDetected: ((event: ParkingDetectedEvent) => void) | null = null;
   private onDrivingStarted: ((timestamp?: number) => void) | null = null;
   private onPossibleDriving: (() => void) | null = null;
+  private onPossibleParking: (() => void) | null = null;
+  private onParkingCheckCancelled: (() => void) | null = null;
   private possibleDrivingSubscription: any = null;
+  private possibleParkingSubscription: any = null;
+  private parkingCheckCancelledSubscription: any = null;
   private groundTruthSubscription: any = null;
   private isStarted = false;
 
@@ -202,7 +206,9 @@ class BackgroundLocationServiceClass {
   async startMonitoring(
     onParkingDetected: (event: ParkingDetectedEvent) => void,
     onDrivingStarted?: (timestamp?: number) => void,
-    onPossibleDriving?: () => void
+    onPossibleDriving?: () => void,
+    onPossibleParking?: () => void,
+    onParkingCheckCancelled?: () => void
   ): Promise<boolean> {
     if (!this.isAvailable()) {
       log.warn('Background location not available on this platform');
@@ -219,6 +225,8 @@ class BackgroundLocationServiceClass {
       this.onParkingDetected = onParkingDetected;
       this.onDrivingStarted = onDrivingStarted || null;
       this.onPossibleDriving = onPossibleDriving || null;
+      this.onPossibleParking = onPossibleParking || null;
+      this.onParkingCheckCancelled = onParkingCheckCancelled || null;
 
       // Subscribe to native events
       if (this.eventEmitter) {
@@ -261,6 +269,31 @@ class BackgroundLocationServiceClass {
             log.info('Possible driving detected (pre-GPS)', { source: event?.source });
             if (this.onPossibleDriving) {
               this.onPossibleDriving();
+            }
+          }
+        );
+
+        // onPossibleParking — GPS speed hit zero, 13s debounce started.
+        // UI should show "Detecting parking..." until onParkingDetected
+        // confirms or onParkingCheckCancelled clears.
+        this.possibleParkingSubscription = this.eventEmitter.addListener(
+          'onPossibleParking',
+          (event: { timestamp?: number; latitude?: number; longitude?: number; source?: string }) => {
+            log.info('Possible parking detected (debounce started)', { source: event?.source });
+            if (this.onPossibleParking) {
+              this.onPossibleParking();
+            }
+          }
+        );
+
+        // onParkingCheckCancelled — speed resumed, was a red light.
+        // UI clears back to driving state.
+        this.parkingCheckCancelledSubscription = this.eventEmitter.addListener(
+          'onParkingCheckCancelled',
+          (event: { timestamp?: number; reason?: string }) => {
+            log.info('Parking check cancelled (debounce aborted)', { reason: event?.reason });
+            if (this.onParkingCheckCancelled) {
+              this.onParkingCheckCancelled();
             }
           }
         );
@@ -395,6 +428,14 @@ class BackgroundLocationServiceClass {
       this.possibleDrivingSubscription.remove();
       this.possibleDrivingSubscription = null;
     }
+    if (this.possibleParkingSubscription) {
+      this.possibleParkingSubscription.remove();
+      this.possibleParkingSubscription = null;
+    }
+    if (this.parkingCheckCancelledSubscription) {
+      this.parkingCheckCancelledSubscription.remove();
+      this.parkingCheckCancelledSubscription = null;
+    }
     if (this.groundTruthSubscription) {
       this.groundTruthSubscription.remove();
       this.groundTruthSubscription = null;
@@ -404,6 +445,8 @@ class BackgroundLocationServiceClass {
     this.onParkingDetected = null;
     this.onDrivingStarted = null;
     this.onPossibleDriving = null;
+    this.onPossibleParking = null;
+    this.onParkingCheckCancelled = null;
     log.info('Background location monitoring stopped');
   }
 

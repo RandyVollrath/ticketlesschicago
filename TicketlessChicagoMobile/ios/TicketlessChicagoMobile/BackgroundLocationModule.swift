@@ -1602,7 +1602,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   }
 
   override func supportedEvents() -> [String]! {
-    return ["onParkingDetected", "onDrivingStarted", "onLocationUpdate", "onPossibleDriving", "onParkingGroundTruth"]
+    return ["onParkingDetected", "onDrivingStarted", "onLocationUpdate", "onPossibleDriving", "onPossibleParking", "onParkingCheckCancelled", "onParkingGroundTruth"]
   }
 
   // MARK: - Public API
@@ -3146,6 +3146,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
         self.log("GPS speed≈0 after \(String(format: "%.0f", Date().timeIntervalSince(drivingStart)))s driving. Starting parking check (every \(speedCheckIntervalSec)s).")
         maybeRecordIntersectionDwellCandidate(lastDrivingLocation ?? location)
+        // Fire onPossibleParking so JS can show "Detecting parking..." UI
+        // during the ~13s debounce window. Keeps the user from thinking
+        // nothing is happening and manual-checking before auto fires.
+        sendEvent(withName: "onPossibleParking", body: [
+          "timestamp": Date().timeIntervalSince1970 * 1000,
+          "latitude": location.coordinate.latitude,
+          "longitude": location.coordinate.longitude,
+          "source": "speed_zero_timer_started",
+        ])
+        self.log("Emitted onPossibleParking — JS UI should show debounce state")
         speedZeroTimer = Timer.scheduledTimer(withTimeInterval: speedCheckIntervalSec, repeats: true) { [weak self] timer in
           guard let self = self else { timer.invalidate(); return }
 
@@ -3178,6 +3188,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             self.stopWindowMaxSpeedMps = 0
             self.stationaryLocation = nil
             self.stationaryStartTime = nil
+            // Let JS clear the "Detecting parking..." UI state.
+            self.sendEvent(withName: "onParkingCheckCancelled", body: [
+              "timestamp": Date().timeIntervalSince1970 * 1000,
+              "reason": "speed_resumed",
+            ])
             return
           }
 

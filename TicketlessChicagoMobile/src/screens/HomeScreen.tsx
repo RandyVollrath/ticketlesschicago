@@ -1177,6 +1177,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     if (Platform.OS === 'android' && parkingState === 'PARKED' && !lastParkingCheck) {
       return 'checking';
     }
+    // iOS: during the ~13s parking-confirmation debounce, force 'driving' so
+    // the PARKING_PENDING override (below) has the right base state to
+    // replace with "Detecting parking...". Without this the hero would fall
+    // through to a stale lastParkingCheck or 'ready' and the override misses.
+    if (Platform.OS === 'ios' && parkingState === 'PARKING_PENDING') {
+      return 'driving';
+    }
     if (isDriving) return 'driving';
 
     // Show last parking result if available and we're not currently driving
@@ -1233,11 +1240,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     heroAddress,
   );
 
-  // Override hero for PARKING_PENDING: show the debounce in progress
-  if (Platform.OS === 'android' && parkingState === 'PARKING_PENDING' && heroState === 'driving') {
+  // Override hero for PARKING_PENDING: show the debounce in progress.
+  // Android: BT disconnected, waiting 10s before triggering parking check.
+  // iOS: GPS speed hit zero, waiting ~13s for CoreMotion+GPS to confirm.
+  if (parkingState === 'PARKING_PENDING' && heroState === 'driving') {
     heroConfig.icon = 'car-brake-parking';
     heroConfig.title = 'Detecting parking...';
-    heroConfig.subtitle = `${savedCarName || 'Car'} disconnected — confirming`;
+    heroConfig.subtitle = Platform.OS === 'ios'
+      ? 'Car stopped — confirming in a few seconds'
+      : `${savedCarName || 'Car'} disconnected — confirming`;
     heroConfig.bgColor = colors.warning;
   }
 
