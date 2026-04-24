@@ -18,6 +18,10 @@ import { Resend } from 'resend';
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') });
 
@@ -35,8 +39,17 @@ async function main() {
   console.log('═══════════════════════════════════════════════\n');
 
   // Check if a specific ticket was provided via CLI arg
-  const ticketArg = process.argv.find(a => a.startsWith('--ticket'));
-  const specificTicket = ticketArg ? process.argv[process.argv.indexOf(ticketArg) + 1] : null;
+  // Supports both --ticket 9205305523 and --ticket=9205305523
+  const ticketArgIdx = process.argv.findIndex(a => a.startsWith('--ticket'));
+  let specificTicket: string | null = null;
+  if (ticketArgIdx !== -1) {
+    const arg = process.argv[ticketArgIdx];
+    if (arg.includes('=')) {
+      specificTicket = arg.split('=')[1];
+    } else if (process.argv[ticketArgIdx + 1]) {
+      specificTicket = process.argv[ticketArgIdx + 1];
+    }
+  }
 
   let ticketNumber: string;
   let ownerName: string;
@@ -97,30 +110,36 @@ async function main() {
     }
 
     // Try each ticket until we find one that's eligible on the portal
+    // Reuse a single browser to avoid launching 20 separate instances
     let found = false;
-    for (const t of tickets) {
-      console.log(`\nTrying ticket ${t.ticket_number} (${t.violation_description})...`);
+    const eligBrowser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+    try {
+      for (const t of tickets) {
+        console.log(`\nTrying ticket ${t.ticket_number} (${t.violation_description})...`);
 
-      const eligibility = await quickEligibilityCheck(t.ticket_number);
-      if (eligibility.eligible) {
-        ticketNumber = t.ticket_number;
-        ownerName = t.registered_owner_name || '';
-        violationDesc = t.violation_description || 'unknown';
-        amount = t.amount || 0;
+        const eligibility = await quickEligibilityCheck(t.ticket_number, eligBrowser);
+        if (eligibility.eligible) {
+          ticketNumber = t.ticket_number;
+          ownerName = t.registered_owner_name || '';
+          violationDesc = t.violation_description || 'unknown';
+          amount = t.amount || 0;
 
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('email')
-          .eq('user_id', t.user_id)
-          .maybeSingle();
-        userEmail = profile?.email || 'probe@autopilotamerica.com';
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('email')
+            .eq('user_id', t.user_id)
+            .maybeSingle();
+          userEmail = profile?.email || 'probe@autopilotamerica.com';
 
-        console.log(`✓ Ticket ${ticketNumber} is eligible! Proceeding with probe.`);
-        found = true;
-        break;
-      } else {
-        console.log(`  ✗ Not eligible: ${eligibility.reason}`);
+          console.log(`✓ Ticket ${ticketNumber} is eligible! Proceeding with probe.`);
+          found = true;
+          break;
+        } else {
+          console.log(`  ✗ Not eligible: ${eligibility.reason}`);
+        }
       }
+    } finally {
+      await eligBrowser.close();
     }
 
     if (!found) {
@@ -406,11 +425,15 @@ async function main() {
   }
 }
 
-/** Quick eligibility check without going past step 2 */
-async function quickEligibilityCheck(ticketNumber: string): Promise<{ eligible: boolean; reason?: string }> {
-  let browser;
+/** Quick eligibility check without going past step 2.
+ *  If a browser is provided, reuses it (caller manages lifecycle). */
+async function quickEligibilityCheck(ticketNumber: string, existingBrowser?: import('playwright').Browser): Promise<{ eligible: boolean; reason?: string }> {
+  const ownsBrowser = !existingBrowser;
+  let browser = existingBrowser;
   try {
-    browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+    if (!browser) {
+      browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+    }
     const page = await browser.newPage();
     page.setDefaultTimeout(15000);
 
@@ -423,28 +446,31 @@ async function quickEligibilityCheck(ticketNumber: string): Promise<{ eligible: 
     const url = page.url();
 
     if (text.includes('not eligible') || !url.includes('eligibleTicketsDisplay')) {
-      await browser.close();
+      await page.close();
+      if (ownsBrowser) await browser.close();
       return { eligible: false, reason: 'not eligible on portal' };
     }
 
-    // Check if Continue button is enabled (not disabled)
+    // Check if Continue button is enabled (disabled = already decided)
     const continueDisabled = await page.evaluate(() => {
       const btn = document.getElementById('continue') as HTMLInputElement | null;
       return btn ? btn.disabled : true;
     });
 
-    // Check if there's a checkbox (eligible tickets have one)
-    const hasCheckbox = await page.$('input[type="checkbox"]');
+    // Check if there's a contest checkbox (eligible tickets have one)
+    const hasCheckbox = !!(await page.$('input[type="checkbox"]'));
 
-    await browser.close();
+    await page.close();
 
     if (continueDisabled && !hasCheckbox) {
+      if (ownsBrowser) await browser.close();
       return { eligible: false, reason: 'Continue disabled, no checkbox — already decided' };
     }
 
+    if (ownsBrowser) await browser.close();
     return { eligible: true };
   } catch (err: any) {
-    if (browser) try { await browser.close(); } catch {}
+    if (ownsBrowser && browser) try { await browser.close(); } catch {}
     return { eligible: false, reason: err.message };
   }
 }
