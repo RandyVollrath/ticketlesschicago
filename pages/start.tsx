@@ -544,7 +544,7 @@ export default function StartFunnel() {
     }}>
       <Head>
         <title>Get Protected - Autopilot America</title>
-        <meta name="description" content="Set up automatic parking ticket protection. $99/year — first ticket pays for it." />
+        <meta name="description" content="Set up automatic parking ticket protection. $79/year — first ticket pays for it." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -1089,7 +1089,7 @@ export default function StartFunnel() {
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>The math, plainly:</div>
                 <div style={{ color: COLORS.textSecondary }}>
-                  Autopilot is <strong style={{ color: COLORS.text }}>$99/year</strong>.
+                  Autopilot is <strong style={{ color: COLORS.text }}>$79/year</strong>.
                   One contested city sticker dismissed saves <strong style={{ color: COLORS.text }}>$200</strong>; one red-light camera dismissed saves <strong style={{ color: COLORS.text }}>$156</strong>.
                   Dismiss <strong>one</strong> ticket and you&apos;re ahead for the year.
                 </div>
@@ -1159,7 +1159,7 @@ export default function StartFunnel() {
                 border: `1px solid ${COLORS.border}`, marginBottom: 24,
               }}>
                 <div style={{ fontSize: 48, fontWeight: 700, color: COLORS.text, lineHeight: 1.1 }}>
-                  {billingPlan === 'annual' ? '$99' : '$10'}
+                  {billingPlan === 'annual' ? '$79' : '$9'}
                   <span style={{ fontSize: 20, fontWeight: 400, color: COLORS.textSecondary }}>
                     {billingPlan === 'annual' ? '/year' : '/month'}
                   </span>
@@ -1179,7 +1179,7 @@ export default function StartFunnel() {
                       Cancel anytime. No commitment.
                     </div>
                     <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 6 }}>
-                      $120/year — save 18% with annual billing
+                      $108/year — save 27% with annual billing
                     </div>
                   </>
                 )}
@@ -1226,13 +1226,13 @@ export default function StartFunnel() {
                 {loading
                   ? 'Setting up...'
                   : billingPlan === 'annual'
-                    ? 'Start protection — $99/year'
-                    : 'Start protection — $10/month'}
+                    ? 'Start protection — $79/year'
+                    : 'Start protection — $9/month'}
               </ContinueButton>
 
               <div style={{ textAlign: 'center', marginTop: 12, fontSize: 13, color: COLORS.textSecondary, fontWeight: 500 }}>
                 {billingPlan === 'annual'
-                  ? '$99/year, billed today. Cancel anytime.'
+                  ? '$79/year, billed today. Cancel anytime.'
                   : 'Skip one ticket and you’re ahead.'}
               </div>
               <div style={{ textAlign: 'center', marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>

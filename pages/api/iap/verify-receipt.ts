@@ -194,13 +194,22 @@ export default async function handler(
 
     // Record the transaction with correct amounts per product
     const finalProductId = validation.productId || productId;
-    const isMonthly = finalProductId === 'autopilot_monthly' || finalProductId === 'autopilot_monthly_v2';
-    const amountCents = isMonthly ? 1499 : 11999;
+    const isMonthly =
+      finalProductId === 'autopilot_monthly' ||
+      finalProductId === 'autopilot_monthly_v2' ||
+      finalProductId === 'autopilot_monthly_v3';
+    const isLegacyV2 = finalProductId === 'autopilot_monthly_v2' || finalProductId === 'autopilot_annual_v2';
+    // v2 grandfathered at old prices ($14.99/mo, $119.99/yr); v3 new tier ($9/mo, $79/yr)
+    const amountCents = isLegacyV2
+      ? (isMonthly ? 1499 : 11999)
+      : (isMonthly ? 900 : 7900);
     const appleFeeCents = Math.round(amountCents * 0.15); // 15% Small Business Program
     const netCents = amountCents - appleFeeCents;
     const netDollars = (netCents / 100).toFixed(2);
     const grossDollars = (amountCents / 100).toFixed(2);
-    const planLabel = isMonthly ? 'Monthly ($14.99/mo)' : 'Annual ($119.99/yr)';
+    const planLabel = isLegacyV2
+      ? (isMonthly ? 'Monthly ($14.99/mo)' : 'Annual ($119.99/yr)')
+      : (isMonthly ? 'Monthly ($9/mo)' : 'Annual ($79/yr)');
 
     await supabaseAdmin
       .from('iap_transactions')

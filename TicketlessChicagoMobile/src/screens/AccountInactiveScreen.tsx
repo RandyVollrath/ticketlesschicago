@@ -50,7 +50,7 @@ const VALUE_PROPS = [
 /**
  * Shown when a user logs in but doesn't have an active account.
  *
- * On iOS: Shows In-App Purchase button ($119.99) to activate account via Apple IAP.
+ * On iOS: Shows In-App Purchase button ($79/yr) to activate account via Apple IAP.
  * On Android: Shows a clickable "Set Up on Website" button linking to autopilotamerica.com.
  */
 export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: AccountInactiveScreenProps) {
@@ -210,12 +210,12 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
               {/* Price display */}
               <Text style={styles.priceText}>
                 {billingPlan === 'annual'
-                  ? (annualPrice || '$119.99') + '/year'
-                  : (monthlyPrice || '$14.99') + '/month'}
+                  ? (annualPrice || '$79') + '/year'
+                  : (monthlyPrice || '$9') + '/month'}
               </Text>
               {billingPlan === 'monthly' && (
                 <Text style={styles.savingsHint}>
-                  $179.88/year — save 45% with annual
+                  $108/year — save 27% with annual
                 </Text>
               )}
 
@@ -231,8 +231,8 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
                     <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
                     <Text style={styles.primaryButtonText}>
                       Subscribe — {billingPlan === 'annual'
-                        ? (annualPrice || '$119.99') + '/year'
-                        : (monthlyPrice || '$14.99') + '/month'}
+                        ? (annualPrice || '$79') + '/year'
+                        : (monthlyPrice || '$9') + '/month'}
                     </Text>
                   </>
                 )}

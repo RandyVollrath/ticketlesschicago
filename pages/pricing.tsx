@@ -14,8 +14,8 @@ export default function PricingPage() {
 
         <section style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24 }}>
           <p style={{ margin: 0, fontSize: 14, color: '#2563EB', fontWeight: 700, letterSpacing: '0.04em' }}>FOUNDING MEMBER (ANNUAL)</p>
-          <h2 style={{ fontSize: 44, margin: '8px 0 6px 0' }}>$99<span style={{ fontSize: 20, color: '#64748B' }}>/year</span></h2>
-          <p style={{ margin: 0, color: '#64748B' }}>$99/year - Founding Member Rate (locks in forever).</p>
+          <h2 style={{ fontSize: 44, margin: '8px 0 6px 0' }}>$79<span style={{ fontSize: 20, color: '#64748B' }}>/year</span></h2>
+          <p style={{ margin: 0, color: '#64748B' }}>$79/year - Founding Member Rate (locks in forever).</p>
           <p style={{ marginTop: 8, color: '#64748B' }}>Keep your membership active to keep your price.</p>
 
           <ul style={{ marginTop: 16, color: '#334155', lineHeight: 1.8 }}>
@@ -35,7 +35,7 @@ export default function PricingPage() {
 
         {/* Value Breakdown */}
         <section style={{ marginTop: 20, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 28 }}>
-          <h3 style={{ marginTop: 0, fontSize: 24, letterSpacing: '-0.01em' }}>The Math: Why $99 Is a No-Brainer</h3>
+          <h3 style={{ marginTop: 0, fontSize: 24, letterSpacing: '-0.01em' }}>The Math: Why $79 Is a No-Brainer</h3>
           <p style={{ color: '#475569', lineHeight: 1.7, marginBottom: 20, fontSize: 15 }}>
             Based on 2025 FOIA ticket data and the City of Chicago 2025 Budget Appropriation Ordinance (Fund 0300 — Vehicle Tax Fund):
           </p>
@@ -89,7 +89,7 @@ export default function PricingPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
               <div>
                 <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Lawyer-equivalent work</div>
-                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>A ticket lawyer charges $150–$300 per letter. At 2.2 tickets/year that&apos;s $330–$660 of legal work for $99.</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>A ticket lawyer charges $150–$300 per letter. At 2.2 tickets/year that&apos;s $330–$660 of legal work for $79.</div>
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#166534', whiteSpace: 'nowrap' }}>~$330+</div>
             </div>
@@ -98,7 +98,7 @@ export default function PricingPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px', background: 'linear-gradient(135deg, #1E293B, #0F172A)', borderRadius: 14, boxShadow: '0 4px 12px rgba(15,23,42,0.15)' }}>
             <div>
               <div style={{ fontWeight: 700, color: '#fff', fontSize: 19 }}>Total estimated value</div>
-              <div style={{ fontSize: 13, color: '#94A3B8', marginTop: 2 }}>vs. your $99/year membership</div>
+              <div style={{ fontSize: 13, color: '#94A3B8', marginTop: 2 }}>vs. your $79/year membership</div>
             </div>
             <div style={{ fontSize: 32, fontWeight: 800, color: '#34D399', letterSpacing: '-0.02em' }}>$550+</div>
           </div>
@@ -111,7 +111,7 @@ export default function PricingPage() {
         <section style={{ marginTop: 20, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24 }}>
           <h3 style={{ marginTop: 0 }}>Founding Member Rate</h3>
           <p style={{ color: '#64748B', lineHeight: 1.7 }}>
-            Founding Members pay $99/year. Your rate is locked as long as you keep an active membership.
+            Founding Members pay $79/year. Your rate is locked as long as you keep an active membership.
             If your membership is canceled or lapses beyond a 7-day renewal grace period, you may lose your Founding rate
             and re-subscribe at the then-current price.
           </p>

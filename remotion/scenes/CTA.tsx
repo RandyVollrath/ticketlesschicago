@@ -25,7 +25,7 @@ export const CTA: React.FC<CTAProps> = ({
   headline = "Every day you wait",
   headlineSub = "is another ticket you'll pay for",
   buttonText = "GET PROTECTED",
-  price = "$99/year  ·  First Dismissal Guarantee",
+  price = "$79/year  ·  First Dismissal Guarantee",
   guarantee,
   url = "autopilotamerica.com",
 }) => {

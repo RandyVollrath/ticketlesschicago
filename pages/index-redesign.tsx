@@ -139,11 +139,11 @@ export default function LandingPage() {
   const faqs = [
     {
       q: "What's included?",
-      a: "Autopilot Protection includes all alerts (street cleaning, snow bans, renewal deadlines) plus automatic ticket monitoring and contesting. For $99/year, we monitor Chicago's database twice a week and automatically mail contest letters when tickets are found."
+      a: "Autopilot Protection includes all alerts (street cleaning, snow bans, renewal deadlines) plus automatic ticket monitoring and contesting. For $79/year, we monitor Chicago's database twice a week and automatically mail contest letters when tickets are found."
     },
     {
       q: "How does Autopilot work?",
-      a: "For $99/year, we monitor Chicago's database twice a week for tickets on your plate. When found, we automatically generate and mail contest letters using our database of 35.7M ticket records."
+      a: "For $79/year, we monitor Chicago's database twice a week for tickets on your plate. When found, we automatically generate and mail contest letters using our database of 35.7M ticket records."
     },
     {
       q: "Is this legal?",
@@ -170,7 +170,7 @@ export default function LandingPage() {
     }}>
       <Head>
         <title>Autopilot America - Chicago Driver Protection System</title>
-        <meta name="description" content="Chicago's complete ticket protection — alerts for street cleaning, snow bans, and renewals, automatic parking detection, and unlimited ticket contesting. $99/year. Based on 35.7M Chicago ticket records." />
+        <meta name="description" content="Chicago's complete ticket protection — alerts for street cleaning, snow bans, and renewals, automatic parking detection, and unlimited ticket contesting. $79/year. Based on 35.7M Chicago ticket records." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -303,7 +303,7 @@ export default function LandingPage() {
           fontWeight: 600,
           border: '1px solid rgba(255,255,255,0.2)'
         }}>
-          <span style={{color: COLORS.accent}}>●</span> Autopilot Protection $99/year
+          <span style={{color: COLORS.accent}}>●</span> Autopilot Protection $79/year
         </div>
 
         <h1 style={{
@@ -344,7 +344,7 @@ export default function LandingPage() {
             Get Started <ArrowRight />
           </Button>
           <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff' }}>
-            Become a Founding Member - $99/yr
+            Become a Founding Member - $79/yr
           </Button>
         </div>
 
@@ -413,7 +413,7 @@ export default function LandingPage() {
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}>
-              $99/year
+              $79/year
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '28px', marginBottom: '12px', color: '#fff' }}>
               Autopilot Protection
@@ -443,7 +443,7 @@ export default function LandingPage() {
             </div>
 
             <Button fullWidth href="/get-started" style={{ backgroundColor: COLORS.accent, color: COLORS.primary }}>
-              Become a Founding Member - $99/yr
+              Become a Founding Member - $79/yr
             </Button>
             <p style={{ fontSize: '12px', color: '#64748B', marginTop: '12px', textAlign: 'center' }}>
               Founding Member rate. Keep membership active to keep your price.
@@ -618,14 +618,14 @@ export default function LandingPage() {
             Start protecting yourself today
           </h2>
           <p style={{ color: '#94A3B8', marginBottom: '32px', fontSize: '18px' }}>
-            Founding Member rate - $99/year for complete protection.
+            Founding Member rate - $79/year for complete protection.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button primary href="/get-started">
               Get Started <ArrowRight />
             </Button>
             <Button href="/get-started" style={{ backgroundColor: COLORS.highlight, color: '#fff', border: 'none' }}>
-              Become a Founding Member - $99/yr
+              Become a Founding Member - $79/yr
             </Button>
           </div>
         </div>

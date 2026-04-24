@@ -367,7 +367,7 @@ export default function SavingsCalculator({ userId, profile }: SavingsCalculator
                   fontWeight: 600,
                   marginBottom: '4px',
                 }}>
-                  Get Autopilot — $99/year
+                  Get Autopilot — $79/year
                 </div>
                 <div style={{
                   color: COLORS.gray400,

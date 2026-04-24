@@ -1245,7 +1245,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* About */}
         <Section title="About">
-          {/* Website link hidden on iOS — autopilotamerica.com shows $99/year pricing,
+          {/* Website link hidden on iOS — autopilotamerica.com shows $79/year pricing,
               which Apple flags as paid content not available via IAP (Guideline 3.1.1) */}
           {Platform.OS !== 'ios' && (
             <>

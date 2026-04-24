@@ -163,7 +163,7 @@ export default async function handler(
               )
             : false;
 
-          // SMS backup. Protection members pay $99/yr — we will not rely
+          // SMS backup. Protection members pay $79/yr — we will not rely
           // on email alone for a $200 plate violation deadline.
           const phone = user.phone_number || user.phone;
           const smsSent = (user.notify_sms && phone)

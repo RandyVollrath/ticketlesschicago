@@ -160,7 +160,7 @@ export default async function handler(
     // - Permit fees are charged when user submits permit zone documents
     // - These are all one-time charges handled by /api/cron/process-all-renewals
     //
-    // Initial checkout = ONLY the $12/month (or $99/year) subscription
+    // Initial checkout = ONLY the $9/month (or $79/year) subscription
     // User gets protection service immediately
     // Renewal charges happen automatically before due dates
 

@@ -19,7 +19,7 @@ export default function Support() {
         },
         {
           q: 'How much does it cost?',
-          a: 'Founding Member pricing is $99/year. The rate stays locked while your membership remains active.'
+          a: 'Founding Member pricing is $79/year. The rate stays locked while your membership remains active.'
         },
         {
           q: 'Can I cancel anytime?',

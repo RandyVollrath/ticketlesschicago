@@ -52,7 +52,7 @@ const STATS = {
   streetCleaningTickets: '323,144',
   outstanding8yr: '$1,211,031,469',
   registeredVehicles: 1180000,
-  autopilotCost: 99,
+  autopilotCost: 79,
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ function BlockLookup() {
               )}
               <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: C.greenBg, borderRadius: '8px', border: `1px solid #A7F3D0` }}>
                 <span style={{ fontSize: '14px', color: '#065F46' }}>
-                  Autopilot would have contested these automatically. 57% of mail-in contested parking tickets get dismissed. <Link href="/get-started" style={{ color: C.greenDark, fontWeight: 700 }}>Protect your car for $99/yr &rarr;</Link>
+                  Autopilot would have contested these automatically. 57% of mail-in contested parking tickets get dismissed. <Link href="/get-started" style={{ color: C.greenDark, fontWeight: 700 }}>Protect your car for $79/yr &rarr;</Link>
                 </span>
               </div>
             </>
@@ -280,7 +280,7 @@ export default function ChicagoParkingTickets() {
           </p>
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <CTAButton href="/get-started" big>Stop Overpaying &mdash; $99/year</CTAButton>
+            <CTAButton href="/get-started" big>Stop Overpaying &mdash; $79/year</CTAButton>
             <Link href="#the-data" style={{
               display: 'inline-block', padding: '18px 32px', color: C.white,
               fontFamily: F.heading, fontSize: '18px', fontWeight: 600, textDecoration: 'none',
@@ -407,7 +407,7 @@ export default function ChicagoParkingTickets() {
         <Body><strong>Autopilot does it for you.</strong> We monitor your plate, catch new tickets within days, and mail a custom contest letter before the deadline. You don't lift a finger.</Body>
 
         <div style={{ textAlign: 'center', marginTop: '32px' }}>
-          <CTAButton href="/get-started" big>Start Contesting Automatically &mdash; $99/yr</CTAButton>
+          <CTAButton href="/get-started" big>Start Contesting Automatically &mdash; $79/yr</CTAButton>
         </div>
       </Section>
 
@@ -465,12 +465,12 @@ export default function ChicagoParkingTickets() {
         <Body color={C.gray400} size="16px" style={{ maxWidth: '500px', margin: '0 auto 32px' }}>
           44,014 vehicles were booted in 2025. Don't let yours be next.
         </Body>
-        <CTAButton href="/get-started" big>Protect My Car &mdash; $99/year</CTAButton>
+        <CTAButton href="/get-started" big>Protect My Car &mdash; $79/year</CTAButton>
       </Section>
 
       {/* ════════ WHAT YOU GET ════════ */}
       <Section>
-        <Headline>What $99/Year Gets You</Headline>
+        <Headline>What $79/Year Gets You</Headline>
 
         <div style={{ display: 'grid', gap: '20px', margin: '32px 0' }}>
           {[
@@ -514,7 +514,7 @@ export default function ChicagoParkingTickets() {
           One city sticker ticket pays for two years. Two street cleaning tickets pay for the year. The average driver saves <strong style={{ color: C.white }}>{autopilotROI.toFixed(0)}x what they pay</strong>.
         </Body>
 
-        <CTAButton href="/get-started" big style={{ marginBottom: '16px' }}>Start Protecting My Car &mdash; $99/year</CTAButton>
+        <CTAButton href="/get-started" big style={{ marginBottom: '16px' }}>Start Protecting My Car &mdash; $79/year</CTAButton>
         <br />
         <Link href="/check-your-street" style={{ fontFamily: F.body, fontSize: '14px', color: C.gray400, textDecoration: 'underline' }}>
           or check your street for free first

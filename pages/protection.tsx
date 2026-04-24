@@ -455,7 +455,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              Founding Member rate: $99/year. Unlimited automated contesting for eligible tickets.
+              Founding Member rate: $79/year. Unlimited automated contesting for eligible tickets.
             </p>
           </div>
 

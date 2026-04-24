@@ -1037,7 +1037,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                 e.currentTarget.style.backgroundColor = '#2563eb';
               }}
             >
-              Get Autopilot - $99/year →
+              Get Autopilot - $79/year →
             </button>
           </div>
 

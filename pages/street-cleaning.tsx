@@ -12,7 +12,7 @@ export default function StreetCleaningFlyer() {
         'Night-before alert via text + push for your exact address.',
         'Morning-of alert if your car is still parked on the wrong side.',
         'If you get a ticket anyway, we detect it within 3 days and auto-contest — 57% of mail-in contested Chicago parking tickets are dismissed.',
-        'Snow ban, metered parking, permit zone, and red-light/speed camera alerts — all included in the same $99/year.',
+        'Snow ban, metered parking, permit zone, and red-light/speed camera alerts — all included in the same $79/year.',
       ]}
     />
   );

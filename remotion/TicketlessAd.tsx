@@ -452,9 +452,9 @@ const Scene7: React.FC = () => {
             <div style={{ fontSize: 30, fontWeight: 600, color: C.gray, fontFamily: font, textTransform: "uppercase", letterSpacing: 6, marginBottom: 15 }}>
               Full protection
             </div>
-            <div style={{ fontSize: 190, fontWeight: 900, color: C.green, fontFamily: font, lineHeight: 1 }}>$99</div>
+            <div style={{ fontSize: 190, fontWeight: 900, color: C.green, fontFamily: font, lineHeight: 1 }}>$79</div>
             <div style={{ fontSize: 40, fontWeight: 700, color: C.green, fontFamily: font, letterSpacing: 4, marginTop: 5 }}>PER YEAR</div>
-            <div style={{ fontSize: 30, fontWeight: 600, color: C.gray, fontFamily: font, marginTop: 15 }}>That's 27 cents a day.</div>
+            <div style={{ fontSize: 30, fontWeight: 600, color: C.gray, fontFamily: font, marginTop: 15 }}>That's 22 cents a day.</div>
           </div>
 
           {/* Guarantee */}
@@ -516,7 +516,7 @@ const Scene8: React.FC = () => {
           </div>
 
           <div style={{ ...slideUp(frame, 50, 25), fontSize: 30, fontWeight: 600, color: C.dim, fontFamily: font, marginTop: 35 }}>
-            $99/year  ·  First Dismissal Guarantee
+            $79/year  ·  First Dismissal Guarantee
           </div>
 
           <div style={{ ...slideUp(frame, 60, 25), fontSize: 36, fontWeight: 700, color: C.gold, fontFamily: font, marginTop: 25, letterSpacing: 1 }}>
