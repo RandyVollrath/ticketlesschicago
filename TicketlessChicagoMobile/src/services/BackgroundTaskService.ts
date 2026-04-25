@@ -38,6 +38,7 @@ import { isCoordinateAddress, resolveAddress, formatCoordinateFallback } from '.
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
 import { ParkingFeedbackService } from './ParkingFeedbackService';
+import { evaluateRailGuard, logRailGuardDecision } from './RailCorridorGuard';
 
 // Native module for persistent Android BT monitoring foreground service
 const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
@@ -766,6 +767,37 @@ class BackgroundTaskServiceClass {
                   timestamp: event.timestamp,
                 });
                 return;  // Don't create a parking record at the wrong location
+              }
+
+              // Rail-corridor guard: Metra / CTA 'L' / South Shore / Amtrak rides
+              // all register as `automotive` in CoreMotion and otherwise fire a
+              // parking event at the destination station. The guard requires the
+              // final coord, the trajectory shape, AND a sustained rail-speed
+              // sample to align — a car on a street that merely parallels rail
+              // won't match all three. See services/RailCorridorGuard.ts.
+              if (parkingCoords) {
+                const railDecision = evaluateRailGuard(
+                  { latitude: parkingCoords.latitude, longitude: parkingCoords.longitude },
+                  parkingCoords.driveTrajectory,
+                );
+                logRailGuardDecision(railDecision);
+                void BackgroundLocationService.appendToDecisionLog('rail_guard_evaluated', {
+                  ...railDecision,
+                  latitude: parkingCoords.latitude,
+                  longitude: parkingCoords.longitude,
+                  timestamp: event.timestamp,
+                  // Persist the trajectory so a remote debug report lets us
+                  // replay the full guard end-to-end. The native event only
+                  // ships ~10 fixes, so this stays small (<2KB).
+                  driveTrajectory: parkingCoords.driveTrajectory,
+                });
+                if (railDecision.suppress) {
+                  await this.sendDiagnosticNotification(
+                    'Rail trip detected — parking skipped',
+                    `Looks like a train ride, not driving. Skipped parking check. (${railDecision.reason})`,
+                  );
+                  return;
+                }
               }
 
               this.lastAcceptedParkingEventAt = Date.now();
