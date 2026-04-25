@@ -196,6 +196,8 @@ class BackgroundTaskServiceClass {
   private lastCameraFallbackNotificationAt: number = 0;
   private cameraHeartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private lastCameraHeartbeatGpsCount: number = 0;
+  private railTripEvalInterval: ReturnType<typeof setInterval> | null = null;
+  private railTripActive: boolean = false;
   private logUploadInFlight: boolean = false;
   private lastLogUploadTime: number = 0;
   private readonly logUploadMinIntervalMs: number = 2 * 60 * 1000; // 2 minutes between uploads
@@ -1497,9 +1499,76 @@ class BackgroundTaskServiceClass {
         }
       );
       log.info('Camera alerts: subscribed to iOS location updates');
+      this.startRailTripEvaluator();
     } else if (Platform.OS === 'android') {
       // Start continuous GPS watching for camera proximity while driving
       this.startAndroidDrivingGps();
+    }
+  }
+
+  /**
+   * Periodically check whether the current trip looks like a passenger
+   * rail ride (Metra, CTA L, South Shore). When it does, set the native
+   * railTripActive flag to suppress trackside camera alerts. iOS only:
+   * Android camera alerts go through a different path and the BT-tied
+   * detection model means a "drive" already implies a real car.
+   *
+   * Cadence: 45s. Fast enough that a Metra rider only hears at most one
+   * camera alert before suppression kicks in; slow enough that battery
+   * cost is negligible.
+   */
+  private startRailTripEvaluator(): void {
+    if (Platform.OS !== 'ios') return;
+    if (this.railTripEvalInterval) return;
+    // Run once immediately (covers re-entry after onPossibleDriving), then
+    // every 45s while the camera-alerts pipeline is active.
+    void this.evaluateRailTrip();
+    this.railTripEvalInterval = setInterval(() => { void this.evaluateRailTrip(); }, 45 * 1000);
+  }
+
+  private stopRailTripEvaluator(): void {
+    if (this.railTripEvalInterval) {
+      clearInterval(this.railTripEvalInterval);
+      this.railTripEvalInterval = null;
+    }
+    if (this.railTripActive) {
+      this.railTripActive = false;
+      void BackgroundLocationService.setRailTripActive(false, 'trip_ended');
+    }
+  }
+
+  private async evaluateRailTrip(): Promise<void> {
+    try {
+      const snapshot = await BackgroundLocationService.getRecentDrivingTrajectory();
+      if (!snapshot || snapshot.trajectory.length < 4) return;
+      // Use the latest trajectory point as the parking proxy — for a rail
+      // trip in progress there's no parking yet, but evaluateRailGuard's
+      // suppression rules don't depend on parkDistance anyway.
+      const last = snapshot.trajectory[snapshot.trajectory.length - 1];
+      const decision = evaluateRailGuard(
+        { latitude: last.latitude, longitude: last.longitude },
+        snapshot.trajectory,
+      );
+      void BackgroundLocationService.appendToDecisionLog('rail_trip_eval', {
+        suppress: decision.suppress,
+        rule: decision.rule,
+        reason: decision.reason,
+        trajectoryDistanceM: decision.trajectoryDistanceM,
+        fractionOnRail: decision.fractionOnRail,
+        maxSpeedMps: decision.maxSpeedMps,
+        endDistanceM: decision.endDistanceM,
+        stationDistanceM: decision.stationDistanceM,
+        pointsChecked: decision.pointsChecked,
+      });
+      if (decision.suppress && !this.railTripActive) {
+        this.railTripActive = true;
+        void BackgroundLocationService.setRailTripActive(true, decision.rule);
+      } else if (!decision.suppress && this.railTripActive) {
+        this.railTripActive = false;
+        void BackgroundLocationService.setRailTripActive(false, 'trajectory_no_longer_rail');
+      }
+    } catch (error) {
+      log.warn('rail trip evaluation failed', error);
     }
   }
 
@@ -1520,6 +1589,7 @@ class BackgroundTaskServiceClass {
 
     CameraAlertService.stop();
     this.stopCameraHeartbeat();
+    this.stopRailTripEvaluator();
     this.currentDriveSessionId = null;
 
     if (this.cameraLocationUnsubscribe) {
