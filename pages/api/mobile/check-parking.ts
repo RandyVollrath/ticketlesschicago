@@ -1217,12 +1217,87 @@ export default async function handler(
           }
         }
 
-        // --- Mapbox Map Matching (PRIMARY) ---
+        // --- Mapbox Reverse Geocoding (Geocoding v6) ---
+        // Single-point reverse lookup at the parking spot. Replaces the
+        // map-matching block below as the primary Mapbox signal because
+        // map-matching expects a moving trajectory and returns matched=true /
+        // confidence=0 / street="" for stationary parked-car traces (verified
+        // from rows 48/50/55 on 2026-04-23..24).
+        //
+        // Used here as a third independent voice next to snap and Nominatim:
+        //   * Mapbox-reverse agrees with snap → record agreement only
+        //   * Mapbox-reverse agrees with Nominatim against snap → CONFIRM
+        //     a Nominatim override (mark `confirmed_by_mapbox: true`); we do
+        //     not flip override direction on Mapbox alone, so this only
+        //     strengthens existing two-of-three calls.
+        try {
+          const { mapboxReverseGeocode } = await import('../../../lib/mapbox-reverse-geocode');
+          const mbRev = await mapboxReverseGeocode(latitude, longitude);
+          if (!diag.native_meta) diag.native_meta = {};
+          const normalize = (s: string) => s.toLowerCase()
+            .replace(/\b(north|south|east|west|n|s|e|w|ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane)\b/g, '')
+            .replace(/[^a-z]+/g, ' ')
+            .trim();
+          const snapNorm = snapResult ? normalize(snapResult.streetName) : '';
+          const nomNorm = diag.nominatim_street ? normalize(diag.nominatim_street as string) : '';
+          const mbNorm = mbRev.streetName ? normalize(mbRev.streetName) : '';
+
+          const agreesWithSnap = !!mbNorm && !!snapNorm && mbNorm === snapNorm;
+          const agreesWithNominatim = !!mbNorm && !!nomNorm && mbNorm === nomNorm;
+
+          diag.native_meta.mapbox_reverse = {
+            matched: mbRev.matched,
+            street: mbRev.streetName,
+            house_number: mbRev.houseNumber,
+            full_address: mbRev.fullAddress,
+            feature_type: mbRev.featureType,
+            match_confidence: mbRev.matchConfidence,
+            skip_reason: mbRev.skipReason ?? null,
+            agrees_with_snap: agreesWithSnap,
+            agrees_with_nominatim: agreesWithNominatim,
+          };
+
+          if (mbRev.matched && mbNorm) {
+            console.log(
+              `[check-parking] Mapbox reverse: ${mbRev.streetName}` +
+              `${mbRev.houseNumber ? ` ${mbRev.houseNumber}` : ''}` +
+              ` (${mbRev.matchConfidence ?? 'no-confidence'}, ${mbRev.featureType ?? 'no-type'})` +
+              ` — snap=${snapResult?.streetName ?? 'none'}` +
+              `${diag.nominatim_street ? `, nominatim=${diag.nominatim_street}` : ''}` +
+              ` — agrees_snap=${agreesWithSnap}, agrees_nominatim=${agreesWithNominatim}`
+            );
+          } else {
+            console.log(`[check-parking] Mapbox reverse: skipped (${mbRev.skipReason ?? 'unknown'})`);
+          }
+
+          // Confirm an existing Nominatim override when Mapbox-reverse agrees
+          // with Nominatim against snap. We do NOT flip override here; this is
+          // a strengthening signal recorded for future analysis.
+          if (
+            diag.nominatim_overrode === true &&
+            agreesWithNominatim &&
+            !agreesWithSnap
+          ) {
+            diag.native_meta.mapbox_reverse.confirmed_nominatim_override = true;
+            console.log('[check-parking] Mapbox reverse CONFIRMS Nominatim override (2-of-3 against snap).');
+          }
+        } catch (mbRevErr) {
+          console.warn('[check-parking] Mapbox reverse-geocode failed (non-fatal):', mbRevErr);
+        }
+
+        // --- Mapbox Map Matching (TRAJECTORY DISAMBIGUATION) ---
+        // Demoted from PRIMARY: real-world data (rows 48/50/55) shows that
+        // map-matching returns matched=true with empty street name and
+        // confidence ≈ 0 for our typical parking traces. The Geocoding v6
+        // reverse-lookup block above is now the primary Mapbox signal.
+        // Map-matching stays for rare cases where the trajectory is genuinely
+        // a long moving drive ending at the stop and the confidence threshold
+        // can fire — keeping the promote path lets that path activate when it
+        // actually does work.
+        //
         // Submit the driving trajectory to Mapbox so it can identify the road
         // segment the car was on at the parking spot using the whole path,
-        // not just the stop point's distance to centerlines. This sidesteps
-        // the wrong-street class of bugs entirely (Wolcott→Lawrence,
-        // Carmen→Clark) by reasoning about the trajectory.
+        // not just the stop point's distance to centerlines.
         //
         // When Mapbox returns a confident match, we trust it as the
         // authoritative street. If Mapbox's street is also a snap candidate,
