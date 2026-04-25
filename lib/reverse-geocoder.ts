@@ -42,12 +42,17 @@ const geocodeCache = new Map<string, { result: GeocodeResult; timestamp: number 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (reduced from 24h — addresses don't change but we want fresh results during debugging)
 const MAX_CACHE_SIZE = 1000;
 
-function getCacheKey(lat: number, lng: number): string {
-  return `${lat.toFixed(5)},${lng.toFixed(5)}`;
+function getCacheKey(lat: number, lng: number, disableGridEstimate?: boolean): string {
+  // Suffix with the policy flag so disabled-grid results don't pollute the
+  // standard-grid cache and vice-versa. Without this, a disableGridEstimate
+  // call could short-circuit a normal call (returning street-only when grid
+  // was wanted), or a normal call could short-circuit a disable call
+  // (returning a grid-invented number when the caller said don't invent).
+  return `${lat.toFixed(5)},${lng.toFixed(5)}${disableGridEstimate ? '|noGrid' : ''}`;
 }
 
-function getCached(lat: number, lng: number): GeocodeResult | null {
-  const key = getCacheKey(lat, lng);
+function getCached(lat: number, lng: number, disableGridEstimate?: boolean): GeocodeResult | null {
+  const key = getCacheKey(lat, lng, disableGridEstimate);
   const entry = geocodeCache.get(key);
   if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
     return entry.result;
@@ -55,9 +60,9 @@ function getCached(lat: number, lng: number): GeocodeResult | null {
   return null;
 }
 
-function setCache(lat: number, lng: number, result: GeocodeResult): void {
+function setCache(lat: number, lng: number, result: GeocodeResult, disableGridEstimate?: boolean): void {
   cleanupCache();
-  geocodeCache.set(getCacheKey(lat, lng), { result, timestamp: Date.now() });
+  geocodeCache.set(getCacheKey(lat, lng, disableGridEstimate), { result, timestamp: Date.now() });
 }
 
 // ---------------------------------------------------------------------------
@@ -249,11 +254,26 @@ export async function reverseGeocode(
   snapGeometry?: SnapGeometry | null,
   rawLat?: number,
   rawLng?: number,
+  options?: {
+    /**
+     * Skip the GPS-grid house-number estimate fallback. Use when the caller
+     * knows the street identification came from an override (Nominatim picked
+     * a different street than snap) and the GPS point may not actually be on
+     * that street — e.g., user near an intersection where GPS dropped near
+     * the cross street's centerline. Without this guard the grid math
+     * computes a wildly wrong number anchored on the wrong-street position
+     * (Lawrence regression 2026-04-25: lng -87.6756 → grid said "2030 W
+     * Lawrence" when the user was actually at 1866 W Lawrence; segment
+     * interpolation on the real Lawrence centerline got 1866 right).
+     */
+    disableGridEstimate?: boolean;
+  },
 ): Promise<GeocodeResult | null> {
-  // Check cache first
-  const cached = getCached(latitude, longitude);
+  // Cache key includes the disableGridEstimate flag so disabled-grid and
+  // standard-grid results don't pollute each other.
+  const cached = getCached(latitude, longitude, options?.disableGridEstimate);
   if (cached) {
-    console.log('[reverse-geocoder] Cache hit:', getCacheKey(latitude, longitude));
+    console.log('[reverse-geocoder] Cache hit:', getCacheKey(latitude, longitude, options?.disableGridEstimate));
     return cached;
   }
 
@@ -267,7 +287,7 @@ export async function reverseGeocode(
     let source: GeocodeResult['source'] = 'nominatim';
 
     // If Nominatim didn't return a house number, estimate from GPS grid
-    if (!streetNumber) {
+    if (!streetNumber && !options?.disableGridEstimate) {
       const gridEstimate = estimateAddressFromGps(
         latitude,
         longitude,
@@ -285,6 +305,10 @@ export async function reverseGeocode(
             `(${gridEstimate.direction} ${streetName}, orientation=${gridEstimate.orientation})`,
         );
       }
+    } else if (!streetNumber && options?.disableGridEstimate) {
+      console.log(
+        `[reverse-geocoder] Grid estimate refused (caller passed disableGridEstimate) for "${nominatim.road}" — keeping street-only.`,
+      );
     }
 
     // Build formatted address
@@ -312,7 +336,7 @@ export async function reverseGeocode(
       `[reverse-geocoder] Nominatim → "${formattedAddress}" (source=${source})`,
     );
 
-    setCache(latitude, longitude, result);
+    setCache(latitude, longitude, result, options?.disableGridEstimate);
     return result;
   }
 
@@ -323,7 +347,7 @@ export async function reverseGeocode(
     console.log(
       `[reverse-geocoder] Google fallback → "${google.formatted_address}"`,
     );
-    setCache(latitude, longitude, google);
+    setCache(latitude, longitude, google, options?.disableGridEstimate);
     return google;
   }
 

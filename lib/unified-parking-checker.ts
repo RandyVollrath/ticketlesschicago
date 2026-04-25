@@ -116,6 +116,15 @@ export async function checkAllParkingRestrictions(
    * positives on dense residential blocks and false negatives on arterials.
    */
   streetClass?: string | null,
+  /**
+   * When the caller knows the chosen street came from a Nominatim override
+   * with no validated centerline geometry (snapResult.wasSnapped === false
+   * and a streetName-only fallback), pass true to refuse the GPS-grid
+   * house-number estimate. Without this guard the grid math anchored on
+   * a GPS point that's actually on the WRONG street produces wildly wrong
+   * numbers (e.g., 2030 W Lawrence when the user is at 1866 W Lawrence).
+   */
+  disableGridEstimate?: boolean,
 ): Promise<UnifiedParkingResult> {
   const timestamp = new Date().toISOString();
 
@@ -187,7 +196,7 @@ export async function checkAllParkingRestrictions(
     // ==========================================
     // STEP 1: ONE reverse geocode call
     // ==========================================
-    const geocodeResult = await reverseGeocode(latitude, longitude, snapGeometry, rawLat, rawLng).catch(() => null);
+    const geocodeResult = await reverseGeocode(latitude, longitude, snapGeometry, rawLat, rawLng, { disableGridEstimate }).catch(() => null);
 
     if (geocodeResult) {
       result.location.address = geocodeResult.formatted_address || result.location.address;
@@ -219,17 +228,33 @@ export async function checkAllParkingRestrictions(
           // for the correct street using Chicago's address grid so we get a real
           // number for the actual block (e.g., "1040 W Belden" near Kenmore).
           // Fall back to the Nominatim number only if re-estimation fails.
-          const gridForSnap = estimateAddressFromGps(
-            rawLat ?? latitude,
-            rawLng ?? longitude,
-            overrideStreetName,
-            null,
-            snapGeometry,
-            rawLat,
-            rawLng,
-          );
+          //
+          // BUT: when disableGridEstimate is set, the caller has told us the
+          // GPS point may not actually be on this override street (no
+          // validated centerline geometry was found). Grid math is anchored
+          // on the GPS lat/lng — anchored on the wrong street, the answer is
+          // wildly off (Lawrence regression: 2030 vs 1866). Refuse and show
+          // street-only.
+          const gridForSnap = disableGridEstimate
+            ? null
+            : estimateAddressFromGps(
+                rawLat ?? latitude,
+                rawLng ?? longitude,
+                overrideStreetName,
+                null,
+                snapGeometry,
+                rawLat,
+                rawLng,
+              );
 
-          const correctedNumber = gridForSnap ? String(gridForSnap.houseNumber) : geocodeResult.street_number;
+          // When grid is disabled, also reject Nominatim's grid-derived
+          // number (it was computed by reverse-geocoder.ts at the same
+          // wrong-street GPS point). Only accept Nominatim's number when it
+          // came from real OSM data, not the grid fallback.
+          const fallbackNominatimNumber = disableGridEstimate && geocodeResult.source === 'nominatim+grid'
+            ? null
+            : geocodeResult.street_number;
+          const correctedNumber = gridForSnap ? String(gridForSnap.houseNumber) : fallbackNominatimNumber;
           result.location.streetNumber = correctedNumber;
 
           if (correctedNumber) {
@@ -241,6 +266,9 @@ export async function checkAllParkingRestrictions(
           } else {
             // No house number available for either street — fall back to street-only display.
             result.location.address = `${overrideStreetName}, Chicago, IL${geocodeResult.zip_code ? ' ' + geocodeResult.zip_code : ''}`;
+            if (disableGridEstimate) {
+              console.log(`[unified-checker] Override to ${overrideStreetName} but no validated centerline geometry — refusing grid estimate, showing street-only.`);
+            }
           }
         }
       }
@@ -254,9 +282,17 @@ export async function checkAllParkingRestrictions(
       // grid-estimated 2070 W Ainslie missed Zone 62's 1901-1949 range for
       // a user actually at 1901).
       const streetNameForParsing = result.location.streetName || geocodeResult.street_name;
+      // Same guard as the override block above: reject the grid-derived
+      // Nominatim number when caller signaled the position-vs-street
+      // relationship is unvalidated. result.location.streetNumber is
+      // already correctly set above; reuse it instead of falling through
+      // to the rejected grid number.
+      const fallbackForParsing = disableGridEstimate && geocodeResult.source === 'nominatim+grid'
+        ? (result.location.streetNumber || null)
+        : (geocodeResult.street_number || null);
       const authoritativeNumber = overrideHouseNumber != null && overrideHouseNumber > 0
         ? String(overrideHouseNumber)
-        : (geocodeResult.street_number || null);
+        : fallbackForParsing;
       if (authoritativeNumber && streetNameForParsing) {
         const fullAddress = `${authoritativeNumber} ${streetNameForParsing}`;
         result.location.parsedAddress = parseChicagoAddress(fullAddress);

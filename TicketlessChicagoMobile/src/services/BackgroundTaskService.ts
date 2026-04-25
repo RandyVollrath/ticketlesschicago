@@ -157,7 +157,11 @@ class BackgroundTaskServiceClass {
     speed: number;
     timestamp: number;
   }> = [];
-  private readonly DRIVING_GPS_BUFFER_MAX = 10;
+  // 90 fixes ≈ 60-90 seconds of pre-stop trajectory at 1 Hz, enough for
+  // Mapbox map-matching to identify the actual road the car drove on
+  // before parking (vs. the previous 10 fixes / ~10 seconds, which
+  // missed the final-turn signal in Lincoln Park dense-grid blocks).
+  private readonly DRIVING_GPS_BUFFER_MAX = 90;
   private readonly DRIVING_GPS_BUFFER_MAX_AGE_MS = 120000; // 2 min — discard stale fixes
   // Native BT monitor service event subscriptions (Android only)
   private nativeBtDisconnectSub: any = null;
