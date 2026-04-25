@@ -1161,10 +1161,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       Alert.alert('Missing Info', 'Please enter the hours shown on the sign.');
       return;
     }
-    if (!reportPhotoBase64) {
-      Alert.alert('Photo Required', 'Please take a photo of the permit zone sign. This verifies the location and hours.');
-      return;
-    }
+    // Photo is optional. Without a photo we still apply the correction
+    // for THIS block (per-block, not zone-wide) using the user's GPS as
+    // the location verification — same blocks of the same zone can have
+    // different posted hours, so the override is anchored on the block.
 
     setReportSubmitting(true);
     try {
@@ -2303,7 +2303,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.sheetTitle}>Update Permit Hours</Text>
               </View>
               <Text style={styles.zoneReportHint}>
-                Help us keep this block accurate. If the posted sign shows different hours, enter them below and we'll update instantly.
+                Hours apply per block — same zone can have different posted hours block-to-block. Enter what's actually on the sign and we'll update this block. A photo speeds up review but isn't required.
               </Text>
 
               {/* Current schedule */}
@@ -2348,7 +2348,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   color={reportPhotoUri ? colors.success : colors.primary}
                 />
                 <Text style={[styles.zoneReportPhotoText, reportPhotoUri && { color: colors.success }]}>
-                  {reportPhotoUri ? 'Photo attached' : 'Take photo of sign (required)'}
+                  {reportPhotoUri ? 'Photo attached' : 'Add photo of sign (optional, speeds up apply)'}
                 </Text>
               </TouchableOpacity>
               {reportPhotoUri && (
@@ -2893,15 +2893,17 @@ const styles = StyleSheet.create({
   },
   heroFeedbackRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     marginTop: spacing.xs,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   heroFeedbackButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
     backgroundColor: 'rgba(255,255,255,0.16)',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
   },

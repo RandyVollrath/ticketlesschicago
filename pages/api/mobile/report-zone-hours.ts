@@ -335,8 +335,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let applied = false;
 
     if (!photoBase64) {
-      // No photo — always requires admin review
-      status = 'pending_review';
+      // No photo — accept and apply per-block when we have a real location
+      // signal. The user's parking lat/lng IS the location verification:
+      // they had to be on this block (and authenticated) for the parking
+      // check that produced this address. The override is per-block, so
+      // a wrong submission only affects one block, and rate limits +
+      // audit trail let admins bulk-revert if a user goes rogue.
+      //
+      // confidence='user_reported_no_photo' marks these as lower-trust
+      // than photo-verified ones — admins can review and downgrade if
+      // needed. Without this auto-apply, the existing pending_review
+      // queue piled up and the user-facing hours never actually changed.
+      if (latitude && longitude && blockNumber && streetName) {
+        status = 'applied';
+        applied = true;
+      } else {
+        status = 'pending_review';
+      }
     } else if (gpsDistance !== null && !gpsVerified) {
       // Photo was taken too far from the stated block
       status = 'rejected_gps';
@@ -453,7 +468,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           street_type: streetType,
           restriction_schedule: effectiveSchedule,
           source: 'user_report',
-          confidence: 'user_reported',
+          confidence: photoBase64 ? 'user_reported' : 'user_reported_no_photo',
           reported_by: userId,
           raw_sign_text: rawSignText || null,
           photo_url: photoUrl,
