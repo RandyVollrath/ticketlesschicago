@@ -500,6 +500,40 @@ class BackgroundLocationServiceClass {
   }
 
   /**
+   * Get the recent driving trajectory (last ~10 GPS fixes captured while
+   * the vehicle was moving). Used by RailCorridorGuard during driving to
+   * detect passenger rail trips so camera alerts can be suppressed.
+   */
+  async getRecentDrivingTrajectory(): Promise<{
+    trajectory: Array<{ latitude: number; longitude: number; speed: number; heading: number; accuracy: number; timestamp: number }>;
+    isDriving: boolean;
+    coreMotionAutomotive: boolean;
+  } | null> {
+    if (Platform.OS !== 'ios' || !BackgroundLocationModule?.getRecentDrivingTrajectory) return null;
+    try {
+      return await BackgroundLocationModule.getRecentDrivingTrajectory();
+    } catch (error) {
+      log.error('Error getting recent driving trajectory', error);
+      return null;
+    }
+  }
+
+  /**
+   * Toggle the ephemeral rail-trip flag on the native module. When true,
+   * native camera alerts are suppressed for the rest of the trip. The
+   * flag auto-clears on parking confirmation and after 90 minutes — JS
+   * still owns turning it off explicitly.
+   */
+  async setRailTripActive(active: boolean, reason: string): Promise<void> {
+    if (Platform.OS !== 'ios' || !BackgroundLocationModule?.setRailTripActive) return;
+    try {
+      BackgroundLocationModule.setRailTripActive(active, reason);
+    } catch (error) {
+      log.error('Error setting rail trip flag', error);
+    }
+  }
+
+  /**
    * Get recent accelerometer data from the native rolling buffer.
    * Returns last N seconds of accelerometer + gravity data at 10Hz.
    * Used for red light camera evidence (deceleration/stop proof).

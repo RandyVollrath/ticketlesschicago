@@ -837,6 +837,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var lastCameraDisabledLogAt: Date? = nil
   private var lastCameraScanLogAt: Date? = nil
 
+  // Ephemeral suppression set by JS when trajectory analysis says
+  // "this is a train, not a car." Reset on every parking confirmation /
+  // departure so it never persists past a single trip. Distinct from
+  // cameraAlertsEnabled (the user's persisted preference).
+  private var railTripActive: Bool = false
+  private var railTripActiveSince: Date? = nil
+  private var railTripReason: String = ""
+  private var lastRailSuppressionLogAt: Date? = nil
+
   // Native TTS for background camera alerts (AVSpeechSynthesizer runs natively,
   // unlike JS SpeechModule which is suspended when the app is backgrounded)
   private let speechSynthesizer = AVSpeechSynthesizer()
@@ -2264,6 +2273,48 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "speed": loc.speed,
       "timestamp": loc.timestamp.timeIntervalSince1970 * 1000,
     ])
+  }
+
+  /// Returns the recent driving GPS trajectory (last ~10 fixes captured while
+  /// the vehicle was moving). JS uses this with RailCorridorGuard to detect
+  /// passenger rail trips during driving so we can suppress camera alerts.
+  @objc func getRecentDrivingTrajectory(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let trajectory: [[String: Any]] = recentDrivingLocations.map { loc in
+      [
+        "latitude": loc.coordinate.latitude,
+        "longitude": loc.coordinate.longitude,
+        "speed": loc.speed,
+        "heading": loc.course,
+        "accuracy": loc.horizontalAccuracy,
+        "timestamp": loc.timestamp.timeIntervalSince1970 * 1000,
+      ]
+    }
+    resolve([
+      "trajectory": trajectory,
+      "isDriving": isDriving,
+      "coreMotionAutomotive": coreMotionSaysAutomotive,
+    ])
+  }
+
+  /// Set the ephemeral rail-trip flag. When true, native camera alerts are
+  /// suppressed for the rest of this trip. Reset automatically on parking
+  /// confirmation / departure; JS may also clear it explicitly.
+  /// `active` is NSNumber because RN's bridge encodes Bool that way.
+  @objc func setRailTripActive(_ active: NSNumber, reason: NSString) {
+    let on = active.boolValue
+    let wasActive = railTripActive
+    railTripActive = on
+    railTripReason = reason as String
+    if on && !wasActive {
+      railTripActiveSince = Date()
+      log("Rail trip detected — suppressing camera alerts. reason=\(reason)")
+      decision("rail_trip_suppression_on", ["reason": reason])
+    } else if !on && wasActive {
+      let durationSec = railTripActiveSince.map { Date().timeIntervalSince($0) } ?? 0
+      railTripActiveSince = nil
+      log("Rail trip cleared after \(Int(durationSec))s. reason=\(reason)")
+      decision("rail_trip_suppression_off", ["reason": reason, "durationSec": durationSec])
+    }
   }
 
   // MARK: - Battery Management: GPS on-demand
@@ -4004,6 +4055,34 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
 
   private func maybeSendNativeCameraAlert(_ location: CLLocation, isBackgrounded: Bool = true) {
     guard cameraAlertsEnabled else { return }
+    if railTripActive {
+      // 90-minute auto-expiry: covers the longest Metra ride (BNSF Aurora is
+      // ~70 min) with margin. Protects against the flag getting stuck if JS
+      // crashes mid-trip without clearing it.
+      let activeSec = railTripActiveSince.map { Date().timeIntervalSince($0) } ?? 0
+      if activeSec > 5400 {
+        railTripActive = false
+        railTripActiveSince = nil
+        decision("rail_trip_suppression_off", ["reason": "auto_expire_90min", "activeSec": activeSec])
+      } else {
+        // JS rail-corridor analysis classified this trip as passenger rail.
+        // Skip alerts to avoid beeping at trackside cameras on Metra/CTA L.
+        // Log periodically so the suppression is visible in decision logs
+        // without spamming on every GPS fix.
+        let shouldLog = lastRailSuppressionLogAt.map { Date().timeIntervalSince($0) >= 30 } ?? true
+        if shouldLog {
+          lastRailSuppressionLogAt = Date()
+          decision("camera_alert_rail_suppressed", [
+            "reason": railTripReason,
+            "lat": location.coordinate.latitude,
+            "lng": location.coordinate.longitude,
+            "speed": location.speed,
+            "activeSinceSec": activeSec,
+          ])
+        }
+        return
+      }
+    }
     let speed = location.speed
     let rawHeading = location.course  // -1 if invalid
     let heading = camSmoothHeading(rawHeading)  // Circular mean of recent headings
@@ -5703,6 +5782,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       self.log("confirmParking(\(source)) skipped: isDriving=\(isDriving), drivingStartTime=\(drivingStartTime != nil)")
       decision("confirm_parking_skipped_not_driving", ["source": source])
       return
+    }
+    // Trip is ending — clear the rail-trip flag so the next trip starts
+    // with camera alerts unsuppressed. JS also clears this explicitly,
+    // but resetting here protects against JS crashes mid-trip.
+    if railTripActive {
+      railTripActive = false
+      railTripActiveSince = nil
+      decision("rail_trip_suppression_off", ["reason": "parking_confirmation"])
     }
     guard isMonitoring else {
       self.log("confirmParking(\(source)) skipped: monitoring stopped")
