@@ -266,6 +266,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [reportPhotoBase64, setReportPhotoBase64] = useState<string | null>(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
+  // Wrong-street correction modal state — lets the user fix the parking
+  // address when the auto-detection picks the wrong street (GPS drift onto
+  // an adjacent road in dense Chicago grid blocks). The user knows where
+  // they parked; the system doesn't always.
+  const [showWrongStreetModal, setShowWrongStreetModal] = useState(false);
+  const [wrongStreetInput, setWrongStreetInput] = useState('');
+  const [wrongStreetSubmitting, setWrongStreetSubmitting] = useState(false);
+
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
   // User preference: show "All Clear" alerts (defaults to true, synced from profile)
@@ -1030,6 +1038,74 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [lastParkingCheck]);
 
+  // Open the wrong-street correction modal pre-filled with the current address.
+  const openWrongStreetModal = useCallback(() => {
+    if (!lastParkingCheck) return;
+    setWrongStreetInput(lastParkingCheck.address || '');
+    setShowWrongStreetModal(true);
+  }, [lastParkingCheck]);
+
+  // Submit a user-corrected address. Records ground-truth so we can train on
+  // the correction, updates the local parking display, and persists the new
+  // address so it survives an app restart. We don't re-run rule checks here:
+  // the user is fixing the STREET name, and the lat/lng we captured is still
+  // the right block — the existing rules result is usually still valid for
+  // their actual street if it's a parallel one.
+  const submitStreetCorrection = useCallback(async () => {
+    if (!lastParkingCheck) return;
+    const trimmed = wrongStreetInput.trim();
+    if (!trimmed) {
+      Alert.alert('Empty address', 'Type the street where you actually parked.');
+      return;
+    }
+    if (trimmed === lastParkingCheck.address) {
+      setShowWrongStreetModal(false);
+      return;
+    }
+    setWrongStreetSubmitting(true);
+    try {
+      await GroundTruthService.recordEvent({
+        type: 'parking_street_correction' as any,
+        timestamp: Date.now(),
+        latitude: lastParkingCheck.coords.latitude,
+        longitude: lastParkingCheck.coords.longitude,
+        metadata: {
+          system_address: lastParkingCheck.address,
+          system_street: lastParkingCheck.rawApiData?.location?.streetName ?? null,
+          system_number: lastParkingCheck.rawApiData?.location?.streetNumber ?? null,
+          corrected_address: trimmed,
+        },
+      });
+      const updated: ParkingCheckResult = {
+        ...lastParkingCheck,
+        address: trimmed,
+        rawApiData: lastParkingCheck.rawApiData
+          ? {
+              ...lastParkingCheck.rawApiData,
+              location: {
+                ...(lastParkingCheck.rawApiData.location ?? {}),
+                address: trimmed,
+                userCorrected: true,
+              },
+            }
+          : lastParkingCheck.rawApiData,
+      };
+      setLastParkingCheck(updated);
+      try {
+        await AsyncStorage.setItem(StorageKeys.LAST_PARKING_LOCATION, JSON.stringify(updated));
+      } catch {
+        // Non-fatal: in-memory state still updated.
+      }
+      setShowWrongStreetModal(false);
+      Alert.alert('Thanks', 'Updated to your actual address. We logged this so detection improves.');
+    } catch (e) {
+      log.warn('Failed to submit street correction', e);
+      Alert.alert('Error', 'Could not save the correction. Try again.');
+    } finally {
+      setWrongStreetSubmitting(false);
+    }
+  }, [lastParkingCheck, wrongStreetInput]);
+
   // ──────────────────────────────────────────────────────
   // Zone hours report — let users correct wrong hours
   // ──────────────────────────────────────────────────────
@@ -1772,6 +1848,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.heroFeedbackButton}
+                  onPress={openWrongStreetModal}
+                  accessibilityLabel="Fix the parking street if it is wrong"
+                  accessibilityRole="button"
+                >
+                  <MaterialCommunityIcons name="pencil-outline" size={14} color={colors.white} />
+                  <Text style={styles.heroFeedbackText}>Wrong street?</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.heroFeedbackButton}
                   onPress={confirmParkingHere}
                   accessibilityLabel="Confirm this parked location"
                   accessibilityRole="button"
@@ -2301,6 +2386,78 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.sheetDismiss}
                 onPress={() => setShowZoneReportModal(false)}
+              >
+                <Text style={styles.sheetDismissText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* ──── Wrong-Street Correction Modal ──── */}
+        <Modal
+          visible={showWrongStreetModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowWrongStreetModal(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.sheetOverlay}
+          >
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={1}
+              onPress={() => setShowWrongStreetModal(false)}
+            />
+            <View style={styles.zoneReportContainer} onStartShouldSetResponder={() => true}>
+              <View style={styles.sheetHandle} />
+              <View style={styles.sheetHeader}>
+                <MaterialCommunityIcons name="map-marker-question-outline" size={28} color={colors.primary} />
+                <Text style={styles.sheetTitle}>Fix Parking Street</Text>
+              </View>
+              <Text style={styles.zoneReportHint}>
+                If we picked the wrong street, type your actual parking address. This corrects the display now and helps detection get it right next time.
+              </Text>
+
+              {lastParkingCheck?.address && (
+                <View style={styles.zoneReportCurrentRow}>
+                  <Text style={styles.zoneReportCurrentLabel}>Detected:</Text>
+                  <Text style={styles.zoneReportCurrentValue}>
+                    {lastParkingCheck.address}
+                  </Text>
+                </View>
+              )}
+
+              <Text style={styles.zoneReportFieldLabel}>Your actual address</Text>
+              <TextInput
+                style={styles.zoneReportInput}
+                placeholder="e.g. 1820 N Fremont St"
+                placeholderTextColor={colors.textTertiary}
+                value={wrongStreetInput}
+                onChangeText={setWrongStreetInput}
+                autoCapitalize="words"
+                returnKeyType="done"
+                onSubmitEditing={submitStreetCorrection}
+              />
+
+              <TouchableOpacity
+                style={[styles.zoneReportSubmitButton, wrongStreetSubmitting && { opacity: 0.6 }]}
+                onPress={submitStreetCorrection}
+                disabled={wrongStreetSubmitting}
+              >
+                {wrongStreetSubmitting ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="check-circle-outline" size={18} color={colors.white} />
+                    <Text style={styles.zoneReportSubmitText}>Save correction</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetDismiss}
+                onPress={() => setShowWrongStreetModal(false)}
               >
                 <Text style={styles.sheetDismissText}>Cancel</Text>
               </TouchableOpacity>

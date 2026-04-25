@@ -856,11 +856,18 @@ class LocationServiceClass {
     // before stopping, every point in the trajectory will sit on Wolcott's
     // centerline, not Lawrence's. Server uses this to disambiguate between
     // candidate streets when the stop coords are close to multiple.
-    // Compact format [[lat,lng,heading,speed],...] — up to ~10 points, URL-safe size.
+    // Compact format [[lat,lng,heading,speed],...] — up to ~90 points
+    // (~60-90s of pre-stop driving), under the URL-length cap.
+    //
+    // Capped at 90: each compact point is ~30 chars, 90 × 30 = 2.7KB raw,
+    // ~3.5KB url-encoded — well under Vercel's 14KB URL limit. Map-matching
+    // needs the trajectory shape to identify the parked street; 10 points
+    // (~10s) wasn't enough to capture the final turn for the Webster/Fremont
+    // failure on 2026-04-25.
     let trajectoryParam = '';
     if (Array.isArray(anyCoords.driveTrajectory) && anyCoords.driveTrajectory.length > 0) {
       const compact = anyCoords.driveTrajectory
-        .slice(-10) // Last 10 points
+        .slice(-90)
         .map((p: any) => [
           Number(p.latitude?.toFixed(6) ?? 0),
           Number(p.longitude?.toFixed(6) ?? 0),

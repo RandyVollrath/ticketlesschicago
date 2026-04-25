@@ -665,7 +665,47 @@ export default async function handler(
           if (candidates.length > 0) {
             let bestCandidate = candidates[0]; // Default: closest
 
+            // ── EARLY LOCK: close snap + Nominatim agreement ──
+            // When the closest snap is very close (≤15m) AND Nominatim
+            // independently identifies the same street from raw GPS, we have
+            // two-of-two close geometric agreement. Lock the answer and skip
+            // ALL override paths (trajectory voting, heading-extended search,
+            // Nominatim override). Those paths exist to recover from wrong
+            // close snaps — but we don't have one, and stale post-turn heading
+            // can otherwise drag a correct close snap onto a cross street
+            // (Lawrence regression 2026-04-25: 11.5m close snap to Lawrence
+            // was abandoned for Wolcott at 46.7m because heading 217° was
+            // stale from before the final turn).
+            //
+            // Two-of-two beats heading every time. Result is cached for the
+            // downstream Nominatim cross-reference block (built-in 1h TTL).
+            let lockedByCloseSnap = false;
+            const CLOSE_LOCK_THRESHOLD_M = 15;
+            if (candidates[0].snap_distance_meters <= CLOSE_LOCK_THRESHOLD_M) {
+              try {
+                const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
+                const earlyNom = await reverseGeocode(latitude, longitude);
+                if (earlyNom?.street_name) {
+                  const normName = (s: string) => s.toLowerCase()
+                    .replace(/\b(north|south|east|west|n|s|e|w|ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane|pkwy|parkway|hwy|highway)\b/g, '')
+                    .replace(/[^a-z]+/g, ' ')
+                    .trim();
+                  if (normName(candidates[0].street_name) === normName(earlyNom.street_name)) {
+                    lockedByCloseSnap = true;
+                    bestCandidate = candidates[0];
+                    console.log(`[check-parking] LOCK: close snap ${candidates[0].snap_distance_meters.toFixed(1)}m to ${candidates[0].street_name} agrees with Nominatim "${earlyNom.street_name}" — skipping cascade.`);
+                    diag.locked_by_close_snap = true;
+                  }
+                }
+              } catch (e) {
+                console.warn('[check-parking] Early close-snap lock check failed (non-fatal):', e);
+              }
+            }
+
             // ── TRAJECTORY-BASED DISAMBIGUATION (turn-aware) ──
+            // Skipped when locked by close-snap+Nominatim agreement: we
+            // already know the street, no need to override.
+            if (!lockedByCloseSnap) {
             // The car may have driven a long stretch on street A, then turned
             // onto street B and parked seconds later. Voting across the whole
             // trajectory would incorrectly pick A. We need to find the LAST
@@ -851,6 +891,7 @@ export default async function handler(
                 }
               }
             }
+            } // end if (!lockedByCloseSnap) — close lock skips disambiguation
 
             if (bestCandidate) {
               checkLat = bestCandidate.snapped_lat;
@@ -1494,11 +1535,21 @@ export default async function handler(
 
     // NOW run the unified checker with the RULE-MATCH number + street class.
     // Display number override happens AFTER, on the final address string only.
+    //
+    // disableGridEstimate fires when the snap pipeline produced a streetName
+    // via Nominatim/Mapbox override but couldn't recover real centerline
+    // geometry (snapResult.wasSnapped === false). In that case the GPS point
+    // may not actually be on the chosen street — grid math anchored on the
+    // wrong-street position invents fake house numbers (Lawrence regression
+    // 2026-04-25: 2030 W Lawrence at coords that segment-interpolate to 1866
+    // when the real Lawrence centerline is found).
+    const overrideWithoutGeometry = !!snapResult && snapResult.wasSnapped === false && !!snapResult.streetName;
     const result = await checkAllParkingRestrictions(
       checkLat, checkLng, snapResult?.streetName || undefined,
       snapGeometry, latitude, longitude,
       ruleMatchNumber,
       snapStreetClass,
+      overrideWithoutGeometry,
     );
 
     // Step 2b: Metered parking check uses the shared parsed address from step 2.

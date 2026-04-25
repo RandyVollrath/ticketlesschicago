@@ -806,7 +806,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   // otherwise. Before this buffer existed, iOS parks had no turn-detection signal
   // to send to the server — only Android did.
   private var recentDrivingLocations: [CLLocation] = []
-  private let maxRecentDrivingLocations = 10
+  // 90 fixes ≈ 60-90 seconds of trajectory at 1 Hz GPS, enough for Mapbox
+  // map-matching to identify the actual road from a real driving path
+  // (vs. snapping a stationary parked-car cluster, which fails at 0
+  // confidence). Bumped from 10 on 2026-04-25 after Webster→Fremont
+  // failure: 10 fixes was only ~10s, so the south turn off Webster onto
+  // Fremont wasn't in the trajectory the server received.
+  private let maxRecentDrivingLocations = 90
   private let drivingBufferMinSpeedMps = 0.3  // Match Android: capture slow-creep before stop
 
   // GPS trace ring buffer for camera evidence capture.
