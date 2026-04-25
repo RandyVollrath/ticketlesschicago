@@ -603,7 +603,24 @@ export default async function handler(
           search_radius_meters: 200,
         });
         if (error || !Array.isArray(data)) return null;
-        const match = data.find((c: any) => c.street_name === streetName && c.was_snapped) ?? null;
+
+        // Normalize before comparing — PostGIS returns "W LAWRENCE AVE",
+        // Nominatim returns "West Lawrence Avenue". Without normalization,
+        // exact-match silently fails for every Nominatim-driven override
+        // and we fall back to grid math (which is wrong by ~10% in
+        // Lincoln Square / Ravenswood — that's the 200-number Lawrence
+        // regression on 2026-04-25).
+        //
+        // Anchored regexes avoid clobbering street names that contain
+        // direction or type words mid-name (e.g. North Avenue at 1600N
+        // — naive global strip would empty its name out and false-match).
+        const normName = (s: string) => s.toLowerCase()
+          .replace(/^\s*(north|south|east|west|n|s|e|w)\s+/, '')
+          .replace(/\s+(ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane|pkwy|parkway|hwy|highway|ter|terrace|way)\.?\s*$/, '')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim();
+        const target = normName(streetName);
+        const match = data.find((c: any) => c.was_snapped && normName(c.street_name) === target) ?? null;
         // Guard against adopting a segment that's very far away (wrong block
         // entirely). 150m is ~one block in Chicago's grid.
         if (match && typeof match.snap_distance_meters === 'number' && match.snap_distance_meters > 150) {
@@ -686,9 +703,12 @@ export default async function handler(
                 const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
                 const earlyNom = await reverseGeocode(latitude, longitude);
                 if (earlyNom?.street_name) {
+                  // Anchored direction/type stripping so we don't clobber
+                  // names like "North Avenue" (1600N) by removing both words.
                   const normName = (s: string) => s.toLowerCase()
-                    .replace(/\b(north|south|east|west|n|s|e|w|ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane|pkwy|parkway|hwy|highway)\b/g, '')
-                    .replace(/[^a-z]+/g, ' ')
+                    .replace(/^\s*(north|south|east|west|n|s|e|w)\s+/, '')
+                    .replace(/\s+(ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane|pkwy|parkway|hwy|highway|ter|terrace|way)\.?\s*$/, '')
+                    .replace(/[^a-z0-9]+/g, ' ')
                     .trim();
                   if (normName(candidates[0].street_name) === normName(earlyNom.street_name)) {
                     lockedByCloseSnap = true;
