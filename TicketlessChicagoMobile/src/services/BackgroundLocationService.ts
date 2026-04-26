@@ -59,6 +59,15 @@ export interface ParkingDetectedEvent {
   averagedLongitude?: number;
   averagedAccuracy?: number;
   averagedFixCount?: number;
+  /** Apple's CLGeocoder reverse-geocode at park time (iOS only). Independent
+   *  address signal — different DB than OSM/Mapbox used server-side. */
+  appleGeocode?: {
+    thoroughfare?: string;
+    subThoroughfare?: string;
+    subLocality?: string;
+    name?: string;
+    postalCode?: string;
+  };
 }
 
 export interface LocationUpdateEvent {
@@ -385,6 +394,7 @@ class BackgroundLocationServiceClass {
           averagedLongitude: pendingEvent.averagedLongitude,
           averagedAccuracy: pendingEvent.averagedAccuracy,
           averagedFixCount: pendingEvent.averagedFixCount,
+          appleGeocode: pendingEvent.appleGeocode,
         };
 
         log.info('Processing pending parking event through onParkingDetected handler');

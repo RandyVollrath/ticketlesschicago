@@ -885,6 +885,13 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let maxRecentDrivingLocations = 90
   private let drivingBufferMinSpeedMps = 0.3  // Match Android: capture slow-creep before stop
 
+  // Apple's reverse geocoder. Independent address signal at park time using
+  // Apple's own address DB (different source than OSM/Nominatim and Mapbox
+  // used server-side). Attached to the parking event as appleGeocode so the
+  // server can record it as a 4th vote in disambiguation diagnostics.
+  // Apple rate-limits to ~1 req/min; that's fine for parking events.
+  private let appleGeocoder = CLGeocoder()
+
   // GPS trace ring buffer for camera evidence capture.
   // Keeps last 60 seconds of driving GPS fixes so evidence has a multi-point
   // trace showing approach path, speed changes, and deceleration — not just a single snapshot.
@@ -1486,6 +1493,48 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var lastEmittedParkingAt: Date? = nil
   private var lastEmittedParkingCoord: CLLocation? = nil
 
+  /// Synchronous Apple reverse-geocode with a short timeout. Returns nil if
+  /// timed out, errored, or called from main thread (where blocking would
+  /// risk deadlock with CLGeocoder's main-queue completion handler).
+  /// Used only at parking-event emit time — never on a hot loop.
+  private func reverseGeocodeWithApple(
+    latitude: Double,
+    longitude: Double,
+    timeoutSeconds: TimeInterval = 1.5
+  ) -> [String: Any]? {
+    guard latitude != 0 || longitude != 0 else { return nil }
+    if Thread.isMainThread {
+      self.log("Apple geocode skipped — called on main thread")
+      return nil
+    }
+    let location = CLLocation(latitude: latitude, longitude: longitude)
+    var result: [String: Any]?
+    let semaphore = DispatchSemaphore(value: 0)
+    appleGeocoder.reverseGeocodeLocation(location) { placemarks, error in
+      defer { semaphore.signal() }
+      if let error = error {
+        self.log("Apple reverseGeocode error: \(error.localizedDescription)")
+        return
+      }
+      guard let p = placemarks?.first else { return }
+      var dict: [String: Any] = [:]
+      if let s = p.thoroughfare { dict["thoroughfare"] = s }
+      if let n = p.subThoroughfare { dict["subThoroughfare"] = n }
+      if let l = p.subLocality { dict["subLocality"] = l }
+      if let n = p.name { dict["name"] = n }
+      if let pc = p.postalCode { dict["postalCode"] = pc }
+      result = dict
+    }
+    let waitResult = semaphore.wait(timeout: .now() + timeoutSeconds)
+    if waitResult == .timedOut {
+      self.log("Apple geocode timed out after \(timeoutSeconds)s")
+      // Cancel the in-flight request so the next call isn't queued behind it.
+      appleGeocoder.cancelGeocode()
+      return nil
+    }
+    return result
+  }
+
   @discardableResult
   private func emitParkingEventIfNew(
     body: [String: Any],
@@ -1584,6 +1633,16 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       }
       emitBody["driveTrajectory"] = trajectory
       self.log("EMIT GATE [\(source)]: attaching driveTrajectory with \(trajectory.count) fixes")
+    }
+
+    // Apple reverse-geocode — independent address signal using Apple's DB.
+    // Server logs it as a 4th vote against PostGIS snap / OSM Nominatim /
+    // Mapbox map-matching. Up to 1.5s blocking wait; nil on timeout.
+    if hasCoords {
+      if let apple = reverseGeocodeWithApple(latitude: latitude, longitude: longitude) {
+        emitBody["appleGeocode"] = apple
+        self.log("EMIT GATE [\(source)]: Apple geocode: \(apple)")
+      }
     }
 
     // Emit to JS

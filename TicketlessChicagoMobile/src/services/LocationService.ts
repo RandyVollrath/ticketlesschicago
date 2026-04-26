@@ -884,7 +884,14 @@ class LocationServiceClass {
     // Name: "distance" not "meters" to avoid confusion with paid parking meters.
     const driftParam = typeof anyCoords.driftFromParkingMeters === 'number' ? `&drift_from_parking_distance=${anyCoords.driftFromParkingMeters.toFixed(1)}` : '';
     const nativeTimestampParam = typeof anyCoords.nativeTimestamp === 'number' ? `&native_ts=${anyCoords.nativeTimestamp}` : '';
-    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}${trajectoryParam}`;
+    // Apple's CLGeocoder result captured at park time on iOS — independent
+    // address signal using Apple's DB. Server logs it as a 4th vote against
+    // PostGIS snap / OSM Nominatim / Mapbox.
+    let appleGeocodeParam = '';
+    if (anyCoords.appleGeocode && typeof anyCoords.appleGeocode === 'object') {
+      appleGeocodeParam = `&apple_geocode=${encodeURIComponent(JSON.stringify(anyCoords.appleGeocode))}`;
+    }
+    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}${trajectoryParam}${appleGeocodeParam}`;
 
     // Use rate-limited request with caching
     const response = await RateLimiter.rateLimitedRequest(

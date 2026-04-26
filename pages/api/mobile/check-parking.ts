@@ -485,6 +485,21 @@ export default async function handler(
     console.log(`[check-parking] Native meta: locationSource=${nativeLocationSource}${nativeDetectionSource ? `, detectionSource=${nativeDetectionSource}` : ''}${durStr}${driftStr}`);
   }
 
+  // Apple CLGeocoder result captured at park time on iOS. 4th independent
+  // address signal — different DB than PostGIS snap / OSM Nominatim / Mapbox.
+  // For v1 we just log it to native_meta.apple so we can measure agreement;
+  // promotion to a disambiguation vote comes after we have data.
+  let appleGeocode: { thoroughfare?: string; subThoroughfare?: string; subLocality?: string; name?: string; postalCode?: string } | null = null;
+  const appleGeocodeRaw = (req.method === 'GET' ? req.query.apple_geocode : req.body.apple_geocode) as string | undefined;
+  if (appleGeocodeRaw) {
+    try {
+      const parsed = JSON.parse(appleGeocodeRaw);
+      if (parsed && typeof parsed === 'object') appleGeocode = parsed;
+    } catch (e) {
+      console.warn('[check-parking] Failed to parse apple_geocode:', e);
+    }
+  }
+
   // Drive trajectory — last ~10 GPS fixes while the car was moving. Used for
   // trajectory-based street disambiguation: if the car was on Wolcott for 6
   // blocks before stopping, every trajectory point will be near Wolcott's
@@ -2167,6 +2182,35 @@ export default async function handler(
     // --- Log diagnostic row (non-blocking, fire-and-forget) ---
     if (supabaseAdmin) {
       const pa = result.location.parsedAddress;
+
+      // Apple CLGeocoder vote — record what Apple's address DB thought the
+      // street was at park time, plus whether it agreed with our resolved
+      // street. 4th independent signal alongside snap / Nominatim / Mapbox.
+      // Stored under native_meta.apple so we can measure agreement before
+      // promoting it to a disambiguation vote.
+      if (appleGeocode) {
+        if (!diag.native_meta) diag.native_meta = {};
+        const appleStreet = (appleGeocode.thoroughfare || appleGeocode.name || '').trim();
+        const resolvedStreet = (pa?.name || '').trim();
+        const normalize = (s: string) => s.toLowerCase()
+          .replace(/\b(north|south|east|west|n|s|e|w|ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane|pkwy|parkway)\b/g, '')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim();
+        const appleNorm = normalize(appleStreet);
+        const resolvedNorm = normalize(resolvedStreet);
+        const agreed = appleNorm.length > 0 && resolvedNorm.length > 0 && appleNorm === resolvedNorm;
+        diag.native_meta.apple = {
+          thoroughfare: appleGeocode.thoroughfare ?? null,
+          subThoroughfare: appleGeocode.subThoroughfare ?? null,
+          subLocality: appleGeocode.subLocality ?? null,
+          name: appleGeocode.name ?? null,
+          postalCode: appleGeocode.postalCode ?? null,
+          agreed_with_resolved: agreed,
+          resolved_street: resolvedStreet || null,
+        };
+        console.log(`[check-parking] Apple geocode: street="${appleStreet}" #=${appleGeocode.subThoroughfare ?? '?'} agreed=${agreed} (resolved="${resolvedStreet}")`);
+      }
+
       supabaseAdmin.from('parking_diagnostics').insert({
         user_id: user?.id || null,
         raw_lat: latitude,

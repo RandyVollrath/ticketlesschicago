@@ -720,7 +720,7 @@ class BackgroundTaskServiceClass {
               // for better accuracy near intersections. Include heading for street disambiguation.
               // Include driveTrajectory (last ~10 moving fixes) so the server can run
               // turn-aware street disambiguation even when GPS heading is stale.
-              let parkingCoords: { latitude: number; longitude: number; accuracy?: number; heading?: number; compassHeading?: number; compassConfidence?: number; driveTrajectory?: Array<{latitude: number; longitude: number; heading: number; speed: number}> } | undefined;
+              let parkingCoords: { latitude: number; longitude: number; accuracy?: number; heading?: number; compassHeading?: number; compassConfidence?: number; driveTrajectory?: Array<{latitude: number; longitude: number; heading: number; speed: number}>; appleGeocode?: { thoroughfare?: string; subThoroughfare?: string; subLocality?: string; name?: string; postalCode?: string } } | undefined;
               if (event.averagedLatitude && event.averagedLongitude && (event.averagedFixCount ?? 0) >= 3) {
                 // Use averaged GPS position (more accurate than single fix)
                 parkingCoords = {
@@ -731,6 +731,7 @@ class BackgroundTaskServiceClass {
                   compassHeading: event.compassHeading,
                   compassConfidence: event.compassConfidence,
                   driveTrajectory: event.driveTrajectory,
+                  appleGeocode: event.appleGeocode,
                 };
                 log.info(`Using averaged GPS (${event.averagedFixCount} fixes) for parking location; trajectory=${event.driveTrajectory?.length ?? 0} fixes`);
               } else if (
@@ -751,6 +752,7 @@ class BackgroundTaskServiceClass {
                   compassHeading: event.compassHeading,
                   compassConfidence: event.compassConfidence,
                   driveTrajectory: event.driveTrajectory,
+                  appleGeocode: event.appleGeocode,
                 };
               }
 
@@ -1878,6 +1880,7 @@ class BackgroundTaskServiceClass {
     compassHeading?: number;
     compassConfidence?: number;
     driveTrajectory?: Array<{latitude: number; longitude: number; heading: number; speed: number}>;
+    appleGeocode?: { thoroughfare?: string; subThoroughfare?: string; subLocality?: string; name?: string; postalCode?: string };
   }, isRealParkingEvent: boolean = true, nativeTimestamp?: number, persistParkingEvent: boolean = true, detectionMeta?: {
     detectionSource?: string;
     locationSource?: string;
@@ -2088,6 +2091,7 @@ class BackgroundTaskServiceClass {
         nativeTimestamp: detectionMeta?.nativeTimestamp,
         driftFromParkingMeters: (presetCoords as any)?.driftFromParkingMeters,
         driveTrajectory: freshTrajectory,
+        appleGeocode: (presetCoords as any)?.appleGeocode,
       };
 
       // Check parking rules
