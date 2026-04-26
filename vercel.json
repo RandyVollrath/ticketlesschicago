@@ -78,6 +78,9 @@
     "pages/api/cron/sync-metered-parking.ts": {
       "maxDuration": 60
     },
+    "pages/api/cron/build-gps-corrections.ts": {
+      "maxDuration": 60
+    },
     "pages/api/cron/send-foia-history-requests.ts": {
       "maxDuration": 120
     },
@@ -116,6 +119,10 @@
     }
   },
   "crons": [
+    {
+      "path": "/api/cron/build-gps-corrections",
+      "schedule": "30 9 * * *"
+    },
     {
       "path": "/api/notifications/process",
       "schedule": "0 13 * * *"
