@@ -151,6 +151,30 @@ interface MobileCheckParkingResponse {
   addressConfidence?: number;
   /** Human-readable factors that drove the confidence score (debug-friendly). */
   addressConfidenceReasons?: string[];
+  /**
+   * Up to 2 plausible alternate parking addresses when the snap pipeline had
+   * a genuinely competitive runner-up street/segment. Empty when the winner
+   * was clear (e.g. closest candidate is 3x closer than next). The mobile
+   * "Wrong street?" modal renders these as one-tap correction buttons so the
+   * user doesn't have to type the cross-street name.
+   *
+   * Only populated when:
+   *   - candidate #2 is within 1.5x the distance of candidate #1 + 5m, AND
+   *   - candidate #2 is itself within 50m of raw GPS
+   * (Same threshold for #3.) These were tuned against real Chicago events
+   * — Lawrence/Wolcott (3.6x ratio) won't trigger; Webster/Sheffield
+   * (1.25x ratio) will.
+   */
+  addressAlternates?: Array<{
+    /** Display label, e.g. "1820 W Lawrence Ave" — block midpoint when address ranges available, else street name only. */
+    label: string;
+    /** Full address string ready to submit as a street correction. */
+    address: string;
+    /** Raw street name from centerlines, useful for analytics. */
+    streetName: string;
+    /** Distance from raw GPS to this candidate's centerline, in meters. */
+    distanceM: number;
+  }>;
   /** Map-snap metadata - if the GPS coordinate was snapped to a known street */
   locationSnap?: {
     wasSnapped: boolean;
@@ -1973,6 +1997,65 @@ export default async function handler(
     diag.address_confidence = addressConfidence;
     diag.address_confidence_reasons = confidenceReasons;
 
+    // Surface the runner-up candidates as one-tap correction options for the
+    // mobile "Wrong street?" modal. Only emitted when there's genuine
+    // ambiguity — a clear winner means we don't need to prompt the user.
+    //
+    // Threshold tuned against real Randy parkings: Lawrence/Wolcott at 1866
+    // (11.5m vs 41.7m, ratio 3.6x) is a clear winner and stays empty;
+    // Webster/Sheffield at 1075 (30.8m vs 38.4m, ratio 1.25x) is genuinely
+    // close and surfaces Sheffield as an alternate. The +5m floor stops us
+    // from spamming alternates when both candidates are very close (e.g.
+    // 4m vs 7m at the same intersection).
+    const addressAlternates: NonNullable<MobileCheckParkingResponse['addressAlternates']> = [];
+    try {
+      if (allCandidates.length >= 2) {
+        const COMPETITIVE_RATIO = 1.5;
+        const COMPETITIVE_FLOOR_M = 5;
+        const COMPETITIVE_MAX_M = 50;
+        const winnerName = normChicagoStreet(snapResult?.streetName || '');
+        const winnerDist = allCandidates[0]?.snap_distance_meters ?? 0;
+        for (const c of allCandidates) {
+          if (addressAlternates.length >= 2) break;
+          if (!c?.street_name) continue;
+          if (normChicagoStreet(c.street_name) === winnerName) continue;
+          const d = Number(c.snap_distance_meters);
+          if (!Number.isFinite(d)) continue;
+          if (d > COMPETITIVE_MAX_M) continue;
+          if (d > winnerDist * COMPETITIVE_RATIO + COMPETITIVE_FLOOR_M) continue;
+
+          // Block midpoint via segment_fraction + l/r ranges. Falls back to
+          // street-name-only when address ranges aren't available (snow_route
+          // candidates have NULL ranges).
+          let approxNum: number | null = null;
+          const frac = Number(c.segment_fraction);
+          if (Number.isFinite(frac)) {
+            const lFrom = c.l_from_addr, lTo = c.l_to_addr;
+            const rFrom = c.r_from_addr, rTo = c.r_to_addr;
+            const lMid = (lFrom != null && lTo != null) ? lFrom + Math.round((lTo - lFrom) * frac) : null;
+            const rMid = (rFrom != null && rTo != null) ? rFrom + Math.round((rTo - rFrom) * frac) : null;
+            if (lMid != null && rMid != null) approxNum = Math.round((lMid + rMid) / 2);
+            else if (lMid != null) approxNum = lMid;
+            else if (rMid != null) approxNum = rMid;
+          }
+          const cleanName = String(c.street_name).trim().replace(/\s+/g, ' ');
+          const label = approxNum ? `${approxNum} ${cleanName}` : cleanName;
+          const address = `${label}, Chicago, IL`;
+          addressAlternates.push({
+            label,
+            address,
+            streetName: cleanName,
+            distanceM: Math.round(d * 10) / 10,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[check-parking] addressAlternates computation failed (non-fatal):', e);
+    }
+    if (addressAlternates.length > 0) {
+      diag.native_meta = { ...(diag.native_meta || {}), address_alternates: addressAlternates };
+    }
+
     // Transform to mobile API response format
     const streetCleaningTiming: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE' =
       result.streetCleaning.isActiveNow || result.streetCleaning.severity === 'critical'
@@ -1989,6 +2072,7 @@ export default async function handler(
       coordinates: { latitude: checkLat, longitude: checkLng },
       addressConfidence,
       addressConfidenceReasons: confidenceReasons,
+      addressAlternates: addressAlternates.length > 0 ? addressAlternates : undefined,
 
       streetCleaning: {
         hasRestriction: result.streetCleaning.found,
