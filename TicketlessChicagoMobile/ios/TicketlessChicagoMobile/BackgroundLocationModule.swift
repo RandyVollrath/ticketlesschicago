@@ -441,6 +441,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       output.portType == .bluetoothHFP ||
       output.portType == .bluetoothLE
     }
+    let hasCarPlayRoute = route.outputs.contains { $0.portType == .carAudio }
+
     if hasVehicleRoute != carAudioConnected {
       carAudioConnected = hasVehicleRoute
       if hasVehicleRoute {
@@ -473,6 +475,64 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         }
       }
     }
+
+    if hasCarPlayRoute != carPlayConnected {
+      carPlayConnected = hasCarPlayRoute
+      if hasCarPlayRoute {
+        lastCarPlayConnectedAt = now
+        decision("carplay_connected", [
+          "reason": reason,
+          "isMonitoring": isMonitoring,
+          "isDriving": isDriving,
+          "hasConfirmedParking": hasConfirmedParkingThisSession,
+        ])
+        log("CarPlay connected — phone paired to car head unit")
+        if isMonitoring && !isDriving {
+          markDrivingStartedFromCarPlay(reason: reason)
+        }
+      } else {
+        lastCarPlayDisconnectedAt = now
+        decision("carplay_disconnected", [
+          "reason": reason,
+          "isMonitoring": isMonitoring,
+          "isDriving": isDriving,
+        ])
+        log("CarPlay disconnected — phone unpaired from car head unit")
+        if isMonitoring && isDriving {
+          if let stopCandidate = lastDrivingLocation ?? locationManager.location {
+            updateStopLocationCandidate(stopCandidate, reason: "carplay_disconnect")
+          }
+          handlePotentialParking(userIsWalking: false)
+        }
+      }
+    }
+  }
+
+  /// Fast-path drive start triggered by CarPlay pairing. CarPlay (`.carAudio` port)
+  /// only fires for actual head-unit pairing — wired or wireless — so it is a
+  /// near-certain "user is in their car" signal. We mirror the CoreMotion automotive
+  /// drive-start path so camera alerts arm immediately instead of waiting 5–30s for
+  /// CoreMotion to settle on automotive.
+  private func markDrivingStartedFromCarPlay(reason: String) {
+    guard isMonitoring, !isDriving else { return }
+    isDriving = true
+    drivingStartTime = Date()
+    automotiveSessionStart = Date()
+    lastDrivingLocation = nil
+    locationAtStopStart = nil
+    recentLowSpeedLocations.removeAll()
+    recentDrivingLocations.removeAll()
+    startContinuousGps()
+    startAccelerometerRecording()
+
+    let departureTimestamp = Date().timeIntervalSince1970 * 1000
+    log("Driving started (CarPlay connected, source: carplay_connected, reason: \(reason))")
+    beginTripSummary(source: "carplay_connected", departureTimestampMs: departureTimestamp)
+    sendEvent(withName: "onDrivingStarted", body: [
+      "timestamp": departureTimestamp,
+      "source": "carplay_connected",
+    ])
+    extendCameraPrewarm(reason: "driving_started_carplay", seconds: cameraPrewarmStrongSec)
   }
 
   private func hasRecentVehicleSignal(_ windowSec: TimeInterval = 180) -> Bool {
@@ -566,6 +626,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "currentAccuracy": currentLoc?.horizontalAccuracy ?? -1,
       "carAudioConnected": carAudioConnected,
       "recentVehicleSignal": hasRecentVehicleSignal(180),
+      "carPlayConnected": carPlayConnected,
       "cameraPrewarmRemainingSec": cameraPrewarmUntil.map { max(0, $0.timeIntervalSinceNow) } ?? 0,
       "lockoutRemainingSec": lockoutRemainingSec,
       "hotspotCount": 0,  // Hotspot system removed Mar 2026
@@ -728,6 +789,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var lastCarAudioConnectedAt: Date? = nil
   private var lastCarAudioDisconnectedAt: Date? = nil
   private var lastVehicleSignalPollAt: Date? = nil
+  // CarPlay-specific signal: AVAudioSession.Port.carAudio fires for both wired and
+  // wireless CarPlay. This is far higher-confidence than generic BT audio (A2DP/HFP),
+  // which also fires for AirPods, home speakers, etc. We use CarPlay connect to
+  // fast-start driving (camera alerts arm before CoreMotion can confirm automotive)
+  // and CarPlay disconnect to eagerly kick parking detection through the standard
+  // handlePotentialParking() path (minDriving + GPS zero-speed guards still apply).
+  private var carPlayConnected = false
+  private var lastCarPlayConnectedAt: Date? = nil
+  private var lastCarPlayDisconnectedAt: Date? = nil
   // falsePositiveHotspots removed Mar 2026 — hotspot system had a fundamental flaw:
   // blocking prevents the very parking event that would let the user "Correct" an incorrect hotspot.
   private var healthRecoveryCount = 0
@@ -1939,6 +2009,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     lastCarAudioConnectedAt = nil
     lastCarAudioDisconnectedAt = nil
     lastVehicleSignalPollAt = nil
+    carPlayConnected = false
+    lastCarPlayConnectedAt = nil
+    lastCarPlayDisconnectedAt = nil
     cameraPrewarmUntil = nil
     healthRecoveryCount = 0
     healthRecoveryWindowStart = nil
@@ -2008,6 +2081,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       "lowPowerModeEnabled": ProcessInfo.processInfo.isLowPowerModeEnabled,
       "vehicleSignalConnected": carAudioConnected,
       "recentVehicleSignal": hasRecentVehicleSignal(180),
+      "carPlayConnected": carPlayConnected,
+      "lastCarPlayConnectedAt": lastCarPlayConnectedAt?.timeIntervalSince1970 ?? NSNull(),
+      "lastCarPlayDisconnectedAt": lastCarPlayDisconnectedAt?.timeIntervalSince1970 ?? NSNull(),
       "parkingFinalizationPending": parkingFinalizationPending,
       "queueActive": queuedParkingAt != nil,
       "queueAgeSec": queuedParkingAt.map { Date().timeIntervalSince($0) } ?? NSNull(),
