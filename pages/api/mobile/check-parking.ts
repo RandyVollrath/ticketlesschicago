@@ -548,46 +548,33 @@ export default async function handler(
     }
 
     // Step 0: Apply per-block GPS correction if available (Layer 4).
-    // The correction model learns systematic GPS offset per block from meter locations
-    // and user feedback. Applied before snap-to-street to shift the GPS point closer
-    // to the actual street, making snap more reliable.
+    // Single-roundtrip RPC: find_gps_correction does spatial proximity against
+    // block_centroid_lat/lng (populated from meter averages) and returns the
+    // nearest learned offset. Replaces the old in-JS half-broken grid math
+    // that hardcoded the perpendicular axis to State/Madison and never matched.
     let correctedLat = latitude;
     let correctedLng = longitude;
     if (supabaseAdmin) {
       try {
-        // Quick lookup: find correction for any block near this GPS point.
-        // We don't know the block yet, so we look up by proximity.
-        const { data: corrections } = await supabaseAdmin
-          .from('gps_block_corrections')
-          .select('offset_lat, offset_lng, sample_count, street_direction, street_name, block_number')
-          .gte('sample_count', 3); // Only use corrections with enough data
-
-        if (corrections && corrections.length > 0) {
-          // Find the nearest block correction by estimating which block we're on
-          // Use a simple grid estimate to narrow down candidates
-          let bestCorr = null;
-          let bestDist = Infinity;
-          for (const c of corrections) {
-            // Rough distance check using grid math
-            const blockLat = 41.88185 + (c.street_direction === 'N' ? 1 : c.street_direction === 'S' ? -1 : 0) * (c.block_number + 50) / 55700;
-            const blockLng = -87.62755 - (c.street_direction === 'W' ? 1 : c.street_direction === 'E' ? -1 : 0) * (c.block_number + 50) / 42200;
-            const dist = Math.sqrt(Math.pow((latitude - blockLat) * 111000, 2) + Math.pow((longitude - blockLng) * 85000, 2));
-            if (dist < 200 && dist < bestDist) { // Within 200m
-              bestDist = dist;
-              bestCorr = c;
-            }
-          }
-          if (bestCorr) {
-            correctedLat = latitude + bestCorr.offset_lat;
-            correctedLng = longitude + bestCorr.offset_lng;
-            const correctionM = Math.sqrt(Math.pow(bestCorr.offset_lat * 111000, 2) + Math.pow(bestCorr.offset_lng * 85000, 2));
-            console.log(`[check-parking] GPS correction applied: ${bestCorr.street_direction} ${bestCorr.street_name} ${bestCorr.block_number} block, ${correctionM.toFixed(1)}m shift (${bestCorr.sample_count} samples)`);
-            diag.gps_correction_applied = true;
-            diag.gps_correction_meters = correctionM;
-          }
+        const { data: corrRows, error: corrErr } = await supabaseAdmin.rpc('find_gps_correction', {
+          p_lat: latitude,
+          p_lng: longitude,
+        });
+        if (corrErr) {
+          console.warn('[check-parking] GPS correction RPC failed (non-fatal):', corrErr.message);
+        } else if (Array.isArray(corrRows) && corrRows.length > 0) {
+          const corr = corrRows[0];
+          correctedLat = latitude + corr.offset_lat;
+          correctedLng = longitude + corr.offset_lng;
+          const correctionM = Math.sqrt(
+            Math.pow(corr.offset_lat * 111000, 2) +
+            Math.pow(corr.offset_lng * 111000 * Math.cos(latitude * Math.PI / 180), 2)
+          );
+          console.log(`[check-parking] GPS correction applied: ${corr.street_direction} ${corr.street_name} ${corr.block_number} block, ${correctionM.toFixed(1)}m shift (${corr.sample_count} events, ${Number(corr.distance_m).toFixed(0)}m from centroid)`);
+          diag.gps_correction_applied = true;
+          diag.gps_correction_meters = correctionM;
         }
       } catch (corrErr) {
-        // Correction is optional — don't block parking check
         console.warn('[check-parking] GPS correction lookup failed (non-fatal):', corrErr);
       }
     }
