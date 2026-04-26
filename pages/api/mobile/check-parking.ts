@@ -146,6 +146,34 @@ interface MobileCheckParkingResponse {
   error?: string;
 }
 
+/**
+ * Normalize a Chicago street name so the same street in PostGIS
+ * ("W LAWRENCE AVE") and Nominatim ("West Lawrence Avenue") forms
+ * compares equal. Strips a leading direction word and a trailing
+ * street-type word, then collapses any remaining punctuation /
+ * whitespace.
+ *
+ * Anchored at start/end so direction/type words that appear MID-name
+ * (e.g. "North Avenue" at 1600N where "North" IS the street name)
+ * survive — without anchors a naive global strip would empty those
+ * names out and produce false matches.
+ *
+ * Type list covers every suffix that appears in Chicago's street
+ * centerlines + OSM data (incl. CIR, XING, SQ, ALY, ROW, WALK, PATH,
+ * TRL, PIKE, PASS, RUN, BR, EXPY, EXT, GRN, HTS, etc.). Any new suffix
+ * that shows up later just needs to be appended here.
+ */
+function normChicagoStreet(s: string): string {
+  return s.toLowerCase()
+    .replace(/^\s*(north|south|east|west|n|s|e|w)\s+/, '')
+    .replace(
+      /\s+(ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane|pkwy|parkway|hwy|highway|ter|terrace|way|cir|circle|xing|crossing|sq|square|aly|alley|row|walk|path|trl|trail|pike|pass|run|br|branch|expy|expressway|ext|extension|grn|green|hts|heights|spur|loop|plaza|plz|cv|cove|crk|creek|hl|hill|pt|point|rdg|ridge|vis|vista)\.?\s*$/,
+      ''
+    )
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<MobileCheckParkingResponse | { error: string }>
@@ -604,23 +632,8 @@ export default async function handler(
         });
         if (error || !Array.isArray(data)) return null;
 
-        // Normalize before comparing — PostGIS returns "W LAWRENCE AVE",
-        // Nominatim returns "West Lawrence Avenue". Without normalization,
-        // exact-match silently fails for every Nominatim-driven override
-        // and we fall back to grid math (which is wrong by ~10% in
-        // Lincoln Square / Ravenswood — that's the 200-number Lawrence
-        // regression on 2026-04-25).
-        //
-        // Anchored regexes avoid clobbering street names that contain
-        // direction or type words mid-name (e.g. North Avenue at 1600N
-        // — naive global strip would empty its name out and false-match).
-        const normName = (s: string) => s.toLowerCase()
-          .replace(/^\s*(north|south|east|west|n|s|e|w)\s+/, '')
-          .replace(/\s+(ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane|pkwy|parkway|hwy|highway|ter|terrace|way)\.?\s*$/, '')
-          .replace(/[^a-z0-9]+/g, ' ')
-          .trim();
-        const target = normName(streetName);
-        const match = data.find((c: any) => c.was_snapped && normName(c.street_name) === target) ?? null;
+        const target = normChicagoStreet(streetName);
+        const match = data.find((c: any) => c.was_snapped && normChicagoStreet(c.street_name) === target) ?? null;
         // Guard against adopting a segment that's very far away (wrong block
         // entirely). 150m is ~one block in Chicago's grid.
         if (match && typeof match.snap_distance_meters === 'number' && match.snap_distance_meters > 150) {
@@ -703,14 +716,7 @@ export default async function handler(
                 const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
                 const earlyNom = await reverseGeocode(latitude, longitude);
                 if (earlyNom?.street_name) {
-                  // Anchored direction/type stripping so we don't clobber
-                  // names like "North Avenue" (1600N) by removing both words.
-                  const normName = (s: string) => s.toLowerCase()
-                    .replace(/^\s*(north|south|east|west|n|s|e|w)\s+/, '')
-                    .replace(/\s+(ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane|pkwy|parkway|hwy|highway|ter|terrace|way)\.?\s*$/, '')
-                    .replace(/[^a-z0-9]+/g, ' ')
-                    .trim();
-                  if (normName(candidates[0].street_name) === normName(earlyNom.street_name)) {
+                  if (normChicagoStreet(candidates[0].street_name) === normChicagoStreet(earlyNom.street_name)) {
                     lockedByCloseSnap = true;
                     bestCandidate = candidates[0];
                     console.log(`[check-parking] LOCK: close snap ${candidates[0].snap_distance_meters.toFixed(1)}m to ${candidates[0].street_name} agrees with Nominatim "${earlyNom.street_name}" — skipping cascade.`);
