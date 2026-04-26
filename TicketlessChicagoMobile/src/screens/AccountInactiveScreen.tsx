@@ -263,7 +263,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
           {Platform.OS !== 'ios' && (
             <TouchableOpacity style={styles.primaryButton} onPress={handleOpenWebsite}>
               <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
-              <Text style={styles.primaryButtonText}>Get Started — From $9.99/mo</Text>
+              <Text style={styles.primaryButtonText}>Get Started — From $9/mo</Text>
             </TouchableOpacity>
           )}
 

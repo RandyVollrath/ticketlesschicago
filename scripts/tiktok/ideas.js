@@ -90,7 +90,7 @@ function pillarDataShock(db) {
             props: {},
             durationFrames: 210,
             voScript:
-              "Ninety nine dollars a year. Pays for itself with one avoided ticket. autopilot america dot com.",
+              "Seventy nine dollars a year. Pays for itself with one avoided ticket. autopilot america dot com.",
           },
         ],
       };
@@ -149,7 +149,7 @@ function pillarDataShock(db) {
             },
             durationFrames: 240,
             voScript:
-              "Autopilot America scans your plate twice a week, so you know about tickets before the late fees hit. Ninety nine dollars a year. Link in bio.",
+              "Autopilot America scans your plate twice a week, so you know about tickets before the late fees hit. Seventy nine dollars a year. Link in bio.",
           },
         ],
       };
@@ -218,7 +218,7 @@ function pillarCameraTrap(db) {
           headlineSub: "speed cameras and red light cameras",
         },
         durationFrames: 240,
-        voScript: "Autopilot America alerts you before every speed camera and red light camera in Chicago. Real time, on your phone. Ninety nine dollars a year. Link in bio.",
+        voScript: "Autopilot America alerts you before every speed camera and red light camera in Chicago. Real time, on your phone. Seventy nine dollars a year. Link in bio.",
       },
     ],
   };
@@ -292,7 +292,7 @@ function pillarContestSecret(db) {
         type: "cta",
         props: {},
         durationFrames: 210,
-        voScript: "Ninety nine dollars a year. First dismissal guarantee. If we don't save you money, you pay nothing. Link in bio.",
+        voScript: "Seventy nine dollars a year. First dismissal guarantee. If we don't save you money, you pay nothing. Link in bio.",
       },
     ],
   };
@@ -363,7 +363,7 @@ function pillarVehicleMake(db) {
           headlineSub: "before the next ticket hits",
         },
         durationFrames: 240,
-        voScript: `${fullName} drivers, protect yourself before the next ticket hits. Autopilot America. Ninety nine dollars a year. Link in bio.`,
+        voScript: `${fullName} drivers, protect yourself before the next ticket hits. Autopilot America. Seventy nine dollars a year. Link in bio.`,
       },
     ],
   };
@@ -510,14 +510,14 @@ function slideshowFeatures(db) {
         },
         durationFrames: 960,
         voScript:
-          "What does Autopilot America actually do? Here's everything you get for ninety nine dollars a year. " +
+          "What does Autopilot America actually do? Here's everything you get for seventy nine dollars a year. " +
           "Speed and red light camera alerts. Real time warnings before you reach every camera in Chicago. " +
           "Smart parking detection. It knows when you park and checks street cleaning schedules for your exact location. " +
           "Ticket radar. We scan the Chicago finance portal for new tickets on your plate, twice a week. You know before late fees hit. " +
           "Automatic contest letters. When you get a ticket, we draft the letter, print it, and mail it to the city. You don't lift a finger. " +
           "Registration and sticker reminders so you never get an expired plate ticket again. " +
           "First dismissal guarantee. If we don't save you money, full refund. " +
-          "Ninety nine dollars a year. Pays for itself in one point two tickets. Link in bio.",
+          "Seventy nine dollars a year. Pays for itself in one point two tickets. Link in bio.",
       },
     ],
   };
@@ -583,7 +583,7 @@ function slideshowCameraMap(db) {
                 `Number ${i + 1}: ${cam.street_num} ${cam.street_dir} ${cam.street_name}. ${cam.cnt.toLocaleString()} tickets. ${(cam.revenue / 1000000).toFixed(1)} million dollars in fines.`
             )
             .join(" ") +
-          ` That's ${totalTickets.toLocaleString()} tickets from just eight cameras. We alert you before every camera in Chicago. Ninety nine dollars a year. Link in bio.`,
+          ` That's ${totalTickets.toLocaleString()} tickets from just eight cameras. We alert you before every camera in Chicago. Seventy nine dollars a year. Link in bio.`,
       },
     ],
   };
