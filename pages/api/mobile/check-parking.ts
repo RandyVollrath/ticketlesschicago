@@ -15,6 +15,7 @@ import type { SnapGeometry } from '../../../lib/chicago-grid-estimator';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { parseChicagoAddress } from '../../../lib/address-parser';
 
 /** Enforcement risk data from FOIA ticket analysis */
 interface EnforcementRisk {
@@ -133,6 +134,23 @@ interface MobileCheckParkingResponse {
   };
   /** Enforcement risk scoring based on 1.18M FOIA ticket records */
   enforcementRisk?: EnforcementRisk;
+  /**
+   * Confidence in the address identification, 0-100.
+   *
+   * Aggregates independent signals: snap distance, snap+Nominatim agreement,
+   * trajectory vote consistency, compass+GPS heading agreement, Mapbox
+   * promotion, user-anchor lock. Mobile UI can use this to decide whether
+   * to surface a "verify this" prompt — e.g. show the Wrong street? modal
+   * pre-opened when confidence < 70.
+   *
+   * Rough thresholds:
+   *   90-100  high confidence, no friction
+   *   70-89   show subtle hint
+   *   <70     prompt user to verify
+   */
+  addressConfidence?: number;
+  /** Human-readable factors that drove the confidence score (debug-friendly). */
+  addressConfidenceReasons?: string[];
   /** Map-snap metadata - if the GPS coordinate was snapped to a known street */
   locationSnap?: {
     wasSnapped: boolean;
@@ -163,6 +181,101 @@ interface MobileCheckParkingResponse {
  * TRL, PIKE, PASS, RUN, BR, EXPY, EXT, GRN, HTS, etc.). Any new suffix
  * that shows up later just needs to be appended here.
  */
+/** Haversine distance in meters between two lat/lng points. */
+function haversineMeters(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number,
+): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Look up this user's most-recent confirmed or corrected parking address near
+ * the given coordinates. Returns the bare street name (e.g. "fremont") that
+ * the snap pipeline can preferentially match against.
+ *
+ * Why: most parking is repeat parking — home, work, friend's house. Once the
+ * user has tapped "I parked here" or used "Wrong street?" at a spot, future
+ * detections within 50m of that exact lat/lng should trust the previously-
+ * confirmed answer over whatever the snap cascade comes up with this time.
+ *
+ * The 50m window keeps it tight (a single Chicago block face) so an anchor
+ * for one spot doesn't bleed into the next block over. We pull recent
+ * candidates in a bbox first (uses existing user_id index) then filter by
+ * Haversine for true 50m radius.
+ */
+async function lookupUserParkingAnchor(
+  supabase: NonNullable<typeof supabaseAdmin>,
+  userId: string,
+  lat: number,
+  lng: number,
+): Promise<{ street: string; address: string; eventType: string; ageMs: number } | null> {
+  const ANCHOR_RADIUS_M = 50;
+  const ANCHOR_HORIZON_DAYS = 180;
+  // Bbox slightly wider than the radius so we don't miss boundary cases.
+  const latRange = 0.0006;   // ~67m
+  const lngRange = 0.0008;   // ~67m at Chicago latitude
+  const since = new Date(Date.now() - ANCHOR_HORIZON_DAYS * 86400 * 1000).toISOString();
+
+  try {
+    // Cast query builder to any — Supabase's generated types choke on this
+    // chain length with TS2589 ("excessively deep"). Same pattern used
+    // elsewhere in this file for similar queries.
+    const { data, error } = await (supabase as any)
+      .from('mobile_ground_truth_events')
+      .select('event_type, latitude, longitude, metadata, event_ts')
+      .eq('user_id', userId)
+      .in('event_type', ['parking_street_correction', 'parking_confirmed'])
+      .gte('latitude', lat - latRange)
+      .lte('latitude', lat + latRange)
+      .gte('longitude', lng - lngRange)
+      .lte('longitude', lng + lngRange)
+      .gte('event_ts', since)
+      .order('event_ts', { ascending: false })
+      .limit(20);
+
+    if (error || !data || data.length === 0) return null;
+
+    for (const row of data as any[]) {
+      if (typeof row.latitude !== 'number' || typeof row.longitude !== 'number') continue;
+      const dist = haversineMeters(lat, lng, row.latitude, row.longitude);
+      if (dist > ANCHOR_RADIUS_M) continue;
+
+      const md = row.metadata ?? {};
+      let address: string | null = null;
+      if (row.event_type === 'parking_street_correction') {
+        // Set by HomeScreen.submitStreetCorrection.
+        address = md.corrected_address ?? null;
+      } else if (row.event_type === 'parking_confirmed') {
+        // Set by HomeScreen.confirmParkingHere (added 2026-04-25).
+        address = md.confirmed_address ?? null;
+      }
+      if (!address || typeof address !== 'string') continue;
+
+      const parsed = parseChicagoAddress(address);
+      const streetName = parsed?.name;
+      if (!streetName) continue;
+
+      const street = normChicagoStreet(streetName);
+      if (!street) continue;
+
+      const ageMs = Date.now() - new Date(row.event_ts).getTime();
+      return { street, address, eventType: row.event_type, ageMs };
+    }
+    return null;
+  } catch (e) {
+    console.warn('[check-parking] User anchor lookup failed (non-fatal):', e);
+    return null;
+  }
+}
+
 function normChicagoStreet(s: string): string {
   return s.toLowerCase()
     .replace(/^\s*(north|south|east|west|n|s|e|w)\s+/, '')
@@ -695,6 +808,46 @@ export default async function handler(
           if (candidates.length > 0) {
             let bestCandidate = candidates[0]; // Default: closest
 
+            // ── HIGHEST PRECEDENCE: user anchor from prior corrections ──
+            // Most parking is repeat parking (home, work, friend's). Once
+            // the user has explicitly tapped "Wrong street?" or "I parked
+            // here" at a spot, the address they confirmed is ground truth
+            // for any future detection within 50m. The cascade can be
+            // wrong; the user is not wrong about where they parked.
+            //
+            // We try the anchor street against three pools, widest first:
+            //   1. allCandidates (≤80m PostGIS snap pool)
+            //   2. extended findCenterlineSegmentByName (≤200m, then 150m
+            //      sanity-distance cap)
+            // If found, adopt the matching segment so block-aware
+            // interpolation still produces a real house number.
+            let lockedByUserAnchor = false;
+            try {
+              const anchor = await lookupUserParkingAnchor(supabaseAdmin!, user.id, latitude, longitude);
+              if (anchor) {
+                const anchorMatch = allCandidates.find((c: any) =>
+                  normChicagoStreet(c.street_name) === anchor.street
+                );
+                let anchorCandidate: any = anchorMatch;
+                if (!anchorCandidate) {
+                  const ext = await findCenterlineSegmentByName(anchor.address);
+                  if (ext) anchorCandidate = ext;
+                }
+                if (anchorCandidate) {
+                  bestCandidate = anchorCandidate;
+                  lockedByUserAnchor = true;
+                  diag.locked_by_user_anchor = true;
+                  diag.user_anchor_street = anchor.street;
+                  diag.user_anchor_age_days = Math.round(anchor.ageMs / 86400000);
+                  console.log(`[check-parking] ANCHOR LOCK: user previously confirmed "${anchor.address}" within 50m (${anchor.eventType}, ${diag.user_anchor_age_days}d ago) → snap to ${anchorCandidate.street_name} at ${anchorCandidate.snap_distance_meters.toFixed(1)}m. Skipping cascade.`);
+                } else {
+                  console.log(`[check-parking] User anchor "${anchor.address}" found but no matching centerline within 200m — falling through to normal pipeline.`);
+                }
+              }
+            } catch (e) {
+              console.warn('[check-parking] User anchor lookup failed (non-fatal):', e);
+            }
+
             // ── EARLY LOCK: close snap + Nominatim agreement ──
             // When the closest snap is very close (≤15m) AND Nominatim
             // independently identifies the same street from raw GPS, we have
@@ -711,7 +864,8 @@ export default async function handler(
             // downstream Nominatim cross-reference block (built-in 1h TTL).
             let lockedByCloseSnap = false;
             const CLOSE_LOCK_THRESHOLD_M = 15;
-            if (candidates[0].snap_distance_meters <= CLOSE_LOCK_THRESHOLD_M) {
+            // Skip the close-snap lock if user anchor already locked the answer.
+            if (!lockedByUserAnchor && candidates[0].snap_distance_meters <= CLOSE_LOCK_THRESHOLD_M) {
               try {
                 const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
                 const earlyNom = await reverseGeocode(latitude, longitude);
@@ -731,7 +885,7 @@ export default async function handler(
             // ── TRAJECTORY-BASED DISAMBIGUATION (turn-aware) ──
             // Skipped when locked by close-snap+Nominatim agreement: we
             // already know the street, no need to override.
-            if (!lockedByCloseSnap) {
+            if (!lockedByCloseSnap && !lockedByUserAnchor) {
             // The car may have driven a long stretch on street A, then turned
             // onto street B and parked seconds later. Voting across the whole
             // trajectory would incorrectly pick A. We need to find the LAST
@@ -917,7 +1071,7 @@ export default async function handler(
                 }
               }
             }
-            } // end if (!lockedByCloseSnap) — close lock skips disambiguation
+            } // end if (!lockedByCloseSnap && !lockedByUserAnchor) — locks skip disambiguation
 
             if (bestCandidate) {
               checkLat = bestCandidate.snapped_lat;
@@ -1377,8 +1531,39 @@ export default async function handler(
         // existing snap + Nominatim path remains the fallback.
         try {
           const { mapMatchTrajectory } = await import('../../../lib/mapbox-map-matching');
+
+          // TIDIED TRAJECTORY: Mapbox map-matching identifies "what road
+          // is the FINAL point on?" much more reliably when given only
+          // the post-final-turn segment than when given a 90-fix path
+          // that crossed multiple roads. Walk back from the most recent
+          // fix while heading deltas stay within 30°; stop at the first
+          // jump (the final turn). Send only the post-turn run + the
+          // parking point. This is the same algorithm used for trajectory
+          // voting against PostGIS centerlines.
+          //
+          // For Webster→Fremont kind of failures: pre-tidied, 90 fixes
+          // mostly on Webster + 5 on Fremont let Mapbox match-match the
+          // trajectory to Webster (where the bulk of points are). Tidied,
+          // only the 5 Fremont fixes + parking point go in — Mapbox
+          // unambiguously matches Fremont.
+          let postTurnIdx = 0;
+          for (let i = driveTrajectory.length - 1; i > 0; i--) {
+            const curr = driveTrajectory[i];
+            const prev = driveTrajectory[i - 1];
+            if (curr[2] < 0 || prev[2] < 0) continue;
+            const diff = Math.abs(curr[2] - prev[2]);
+            const delta = Math.min(diff, 360 - diff);
+            if (delta >= 30) { postTurnIdx = i; break; }
+          }
+          const tidiedTrajectory = driveTrajectory.slice(postTurnIdx);
+          // Need at least 2 input points for Mapbox map-matching. If the
+          // post-turn run is too short, fall through to the full trajectory.
+          const inputTrajectory = tidiedTrajectory.length >= 2 ? tidiedTrajectory : driveTrajectory;
+          if (postTurnIdx > 0) {
+            console.log(`[check-parking] Mapbox tidied trajectory: using ${tidiedTrajectory.length}/${driveTrajectory.length} post-turn fixes (turn at index ${postTurnIdx}).`);
+          }
           const fixes: Array<{ lat: number; lng: number; accuracyMeters?: number }> =
-            driveTrajectory.map((p) => ({ lat: p[0], lng: p[1] }));
+            inputTrajectory.map((p) => ({ lat: p[0], lng: p[1] }));
           // Append the actual parking location as the final point so Mapbox
           // identifies the road at the stop, not just the approach.
           fixes.push({ lat: latitude, lng: longitude, accuracyMeters: accuracyMeters });
@@ -1740,6 +1925,67 @@ export default async function handler(
     }
     diag.native_meta = nm;
 
+    // ── Address-confidence score ──
+    // Combine independent signals into a 0-100 confidence. Mobile UI can
+    // surface a "Verify this" prompt when low. Each factor is additive,
+    // capped at 100. Rationale per factor in the comment.
+    let addressConfidence = 0;
+    const confidenceReasons: string[] = [];
+    if (diag.locked_by_user_anchor) {
+      // User has previously confirmed/corrected this exact spot — strongest signal we have.
+      addressConfidence += 60;
+      confidenceReasons.push('user-anchor');
+    }
+    if (diag.locked_by_close_snap) {
+      // Close snap (≤15m) AND Nominatim agree on the same street.
+      addressConfidence += 50;
+      confidenceReasons.push('close-snap+nominatim-agree');
+    }
+    if (snapResult?.wasSnapped) {
+      const d = snapResult.snapDistanceMeters ?? 999;
+      if (d <= 5)        { addressConfidence += 30; confidenceReasons.push('snap≤5m'); }
+      else if (d <= 10)  { addressConfidence += 22; confidenceReasons.push('snap≤10m'); }
+      else if (d <= 15)  { addressConfidence += 15; confidenceReasons.push('snap≤15m'); }
+      else if (d <= 25)  { addressConfidence += 8;  confidenceReasons.push('snap≤25m'); }
+      else               { addressConfidence += 2;  confidenceReasons.push(`snap@${d.toFixed(0)}m`); }
+    } else if (snapResult?.streetName) {
+      // Override-without-geometry path — we have a street name but no centerline match.
+      addressConfidence -= 25;
+      confidenceReasons.push('override-no-geometry');
+    } else {
+      addressConfidence -= 10;
+      confidenceReasons.push('no-snap');
+    }
+    if (diag.nominatim_agreed === true) {
+      addressConfidence += 15;
+      confidenceReasons.push('nominatim-agrees');
+    } else if (diag.nominatim_overrode === true) {
+      addressConfidence -= 5;
+      confidenceReasons.push('nominatim-overrode');
+    }
+    if (diag.trajectory_confirmed === true) {
+      addressConfidence += 15;
+      confidenceReasons.push('trajectory-confirms');
+    } else if (diag.trajectory_override === true) {
+      addressConfidence += 5;
+      confidenceReasons.push('trajectory-override');
+    }
+    if (diag.native_meta?.mapbox?.promoted === true) {
+      addressConfidence += 15;
+      confidenceReasons.push('mapbox-promoted');
+    }
+    if (diag.near_intersection === true) {
+      addressConfidence -= 10;
+      confidenceReasons.push('intersection-ambiguity');
+    }
+    if (typeof accuracyMeters === 'number' && accuracyMeters > 25) {
+      addressConfidence -= 15;
+      confidenceReasons.push(`gps-accuracy-${Math.round(accuracyMeters)}m`);
+    }
+    addressConfidence = Math.max(0, Math.min(100, addressConfidence));
+    diag.address_confidence = addressConfidence;
+    diag.address_confidence_reasons = confidenceReasons;
+
     // Transform to mobile API response format
     const streetCleaningTiming: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE' =
       result.streetCleaning.isActiveNow || result.streetCleaning.severity === 'critical'
@@ -1754,6 +2000,8 @@ export default async function handler(
       success: true,
       address: finalAddress,
       coordinates: { latitude: checkLat, longitude: checkLng },
+      addressConfidence,
+      addressConfidenceReasons: confidenceReasons,
 
       streetCleaning: {
         hasRestriction: result.streetCleaning.found,

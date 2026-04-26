@@ -1030,6 +1030,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         timestamp: Date.now(),
         latitude: lastParkingCheck.coords.latitude,
         longitude: lastParkingCheck.coords.longitude,
+        // Include the confirmed address so server-side parking-anchor
+        // lookup can use this as ground truth on future detections at
+        // this spot. Without metadata.confirmed_address, the anchor
+        // table only fills from explicit corrections.
+        metadata: {
+          confirmed_address: lastParkingCheck.address,
+          confirmed_street: lastParkingCheck.rawApiData?.location?.streetName ?? null,
+          confirmed_number: lastParkingCheck.rawApiData?.location?.streetNumber ?? null,
+        },
       });
       setShowGroundTruthBanner(false);
       Alert.alert('Thanks', 'Confirmed. This helps tune parking detection at this location.');
@@ -1836,6 +1845,25 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   {formatTimeSince(lastParkingCheck.timestamp)}
                 </Text>
               </View>
+              {/* Low-confidence verify prompt — shown when the server's
+                  combined-signal confidence score is below 70, as a clear
+                  CTA to correct rather than letting the wrong address sit.
+                  At ≥ 70 we stay quiet so the prompt doesn't get in the
+                  way of confident detections. */}
+              {typeof lastParkingCheck.rawApiData?.addressConfidence === 'number' &&
+                lastParkingCheck.rawApiData.addressConfidence < 70 && (
+                <TouchableOpacity
+                  style={styles.heroVerifyPrompt}
+                  onPress={openWrongStreetModal}
+                  accessibilityLabel="Address may be wrong — tap to fix"
+                  accessibilityRole="button"
+                >
+                  <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#FFD700" />
+                  <Text style={styles.heroVerifyPromptText}>
+                    Not 100% sure about this address — tap to fix
+                  </Text>
+                </TouchableOpacity>
+              )}
               <View style={styles.heroFeedbackRow}>
                 <TouchableOpacity
                   style={styles.heroFeedbackButton}
@@ -2897,6 +2925,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.xs,
     gap: spacing.xs,
+  },
+  heroVerifyPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 215, 0, 0.18)',
+    borderColor: 'rgba(255, 215, 0, 0.45)',
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  heroVerifyPromptText: {
+    color: '#FFD700',
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
   },
   heroFeedbackButton: {
     flexDirection: 'row',
