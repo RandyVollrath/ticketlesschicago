@@ -1060,9 +1060,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // the user is fixing the STREET name, and the lat/lng we captured is still
   // the right block — the existing rules result is usually still valid for
   // their actual street if it's a parallel one.
-  const submitStreetCorrection = useCallback(async () => {
+  //
+  // `source` distinguishes manual typing ("typed") from one-tap alternate-
+  // street selection ("alternate_tap") so we can analyze which path users
+  // prefer and tune the alternate-detection threshold.
+  const applyStreetCorrection = useCallback(async (correctedAddress: string, source: 'typed' | 'alternate_tap') => {
     if (!lastParkingCheck) return;
-    const trimmed = wrongStreetInput.trim();
+    const trimmed = correctedAddress.trim();
     if (!trimmed) {
       Alert.alert('Empty address', 'Type the street where you actually parked.');
       return;
@@ -1083,6 +1087,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           system_street: lastParkingCheck.rawApiData?.location?.streetName ?? null,
           system_number: lastParkingCheck.rawApiData?.location?.streetNumber ?? null,
           corrected_address: trimmed,
+          correction_source: source,
         },
       });
       const updated: ParkingCheckResult = {
@@ -1113,7 +1118,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     } finally {
       setWrongStreetSubmitting(false);
     }
-  }, [lastParkingCheck, wrongStreetInput]);
+  }, [lastParkingCheck]);
+
+  const submitStreetCorrection = useCallback(() => {
+    return applyStreetCorrection(wrongStreetInput, 'typed');
+  }, [applyStreetCorrection, wrongStreetInput]);
 
   // ──────────────────────────────────────────────────────
   // Zone hours report — let users correct wrong hours
@@ -2456,7 +2465,25 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 </View>
               )}
 
-              <Text style={styles.zoneReportFieldLabel}>Your actual address</Text>
+              {Array.isArray(lastParkingCheck?.rawApiData?.addressAlternates) &&
+                lastParkingCheck!.rawApiData!.addressAlternates!.length > 0 && (
+                  <View style={styles.altSection}>
+                    <Text style={styles.altSectionLabel}>Or did you actually park here?</Text>
+                    {lastParkingCheck!.rawApiData!.addressAlternates!.slice(0, 3).map((alt: any) => (
+                      <TouchableOpacity
+                        key={alt.address}
+                        style={[styles.altButton, wrongStreetSubmitting && { opacity: 0.5 }]}
+                        onPress={() => applyStreetCorrection(alt.address, 'alternate_tap')}
+                        disabled={wrongStreetSubmitting}
+                      >
+                        <MaterialCommunityIcons name="map-marker-check-outline" size={18} color={colors.primary} />
+                        <Text style={styles.altButtonText}>{alt.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+              <Text style={styles.zoneReportFieldLabel}>Or type a different address</Text>
               <TextInput
                 style={styles.zoneReportInput}
                 placeholder="e.g. 1820 N Fremont St"
@@ -3395,6 +3422,34 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
     color: colors.white,
+  },
+  altSection: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  altSectionLabel: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  altButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
+    gap: 10,
+    marginBottom: spacing.xs,
+  },
+  altButtonText: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+    flex: 1,
   },
 
   // ──── Pause link (subtle, bottom of page) ────
