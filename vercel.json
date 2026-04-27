@@ -192,10 +192,6 @@
       "schedule": "30 14 * * *"
     },
     {
-      "path": "/api/cron/parking-quality-daily",
-      "schedule": "0 1,13 * * *"
-    },
-    {
       "path": "/api/cron/autopilot-send-foia-requests",
       "schedule": "30 15 * * *"
     },
