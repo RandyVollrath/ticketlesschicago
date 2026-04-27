@@ -52,6 +52,13 @@ export default function CheckYourStreet() {
   const [nearbyMeters, setNearbyMeters] = useState<any[] | null>(null)
   const [statsExpanded, setStatsExpanded] = useState(false)
   const [tripExpanded, setTripExpanded] = useState(false)
+  // Precise coordinates from Google Places Details (set when the user picks
+  // an autocomplete suggestion). When set, we pass these to find-section
+  // instead of letting it re-geocode the address string. The legacy Geocoding
+  // API and the new Places API can disagree by a full block on Chicago grid
+  // streets — Places Details is correct, the legacy geocoder is not. Cleared
+  // on every onChange so stale coords can't survive when the user edits.
+  const [placeCoords, setPlaceCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   // Check URL parameters
   useEffect(() => {
@@ -84,9 +91,17 @@ export default function CheckYourStreet() {
     setNearbyMeters(null)
 
     try {
+      // Build find-section URL — when we have precise Place Details coords
+      // from the autocomplete pick, pass them so find-section skips its
+      // legacy Geocoding API call (which can be a full block off on Chicago
+      // grid streets like Fullerton).
+      const findSectionUrl = placeCoords
+        ? `/api/find-section?address=${encodeURIComponent(address)}&lat=${placeCoords.lat}&lng=${placeCoords.lng}`
+        : `/api/find-section?address=${encodeURIComponent(address)}`;
+
       // Fetch section data, permit zone data, snow forecast, and block stats in parallel
       const [sectionResponse, permitResponse, snowResponse, blockStatsResponse] = await Promise.all([
-        fetch(`/api/find-section?address=${encodeURIComponent(address)}`),
+        fetch(findSectionUrl),
         fetch(`/api/check-permit-zone?address=${encodeURIComponent(address)}`).catch(() => null),
         fetch(`/api/snow-forecast?lat=41.8781&lng=-87.6298`).catch(() => null),
         fetch(`/api/block-stats?address=${encodeURIComponent(address)}`).catch(() => null),
@@ -391,10 +406,20 @@ export default function CheckYourStreet() {
                 </div>
                 <AddressAutocomplete
                   value={address}
-                  onChange={(v) => setAddress(v)}
+                  onChange={(v) => {
+                    setAddress(v);
+                    // User is editing — any previously-stored Place coords no
+                    // longer correspond to what they're typing.
+                    setPlaceCoords(null);
+                  }}
                   onSelect={(addr) => {
                     const line = (addr.formatted || addr.street).replace(/,\s*USA$/i, '').replace(/,\s*United States of America$/i, '');
                     setAddress(line);
+                    if (typeof addr.lat === 'number' && typeof addr.lng === 'number') {
+                      setPlaceCoords({ lat: addr.lat, lng: addr.lng });
+                    } else {
+                      setPlaceCoords(null);
+                    }
                     setTimeout(() => formV2Ref.current?.requestSubmit(), 50);
                   }}
                   placeholder="Enter a Chicago address (e.g. 100 N State St)"
