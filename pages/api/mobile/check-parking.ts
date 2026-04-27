@@ -2254,18 +2254,57 @@ export default async function handler(
     // close and surfaces Sheffield as an alternate. The +5m floor stops us
     // from spamming alternates when both candidates are very close (e.g.
     // 4m vs 7m at the same intersection).
+    //
+    // Uses the multi-block snap RPC (snap_to_nearest_street_with_blocks) so
+    // wrong-block-of-Wolcott shows up as a tappable alternate, not just
+    // wrong-street. Falls back to allCandidates (street-only) when the new
+    // RPC isn't available — graceful degradation if migration not applied.
     const addressAlternates: NonNullable<MobileCheckParkingResponse['addressAlternates']> = [];
     try {
-      if (allCandidates.length >= 2) {
+      let altCandidates: any[] = [];
+      if (supabaseAdmin) {
+        try {
+          const { data: blockSnap, error: blockSnapErr } = await supabaseAdmin.rpc(
+            'snap_to_nearest_street_with_blocks',
+            {
+              user_lat: correctedLat,
+              user_lng: correctedLng,
+              search_radius_meters: 80,
+              max_per_street: 2,
+              max_total: 8,
+            }
+          );
+          if (!blockSnapErr && Array.isArray(blockSnap) && blockSnap.length > 0) {
+            altCandidates = (blockSnap as any[]).filter((s: any) => s.was_snapped);
+            diag.alternates_source = 'multi_block_rpc';
+          } else if (blockSnapErr) {
+            console.warn('[check-parking] snap_to_nearest_street_with_blocks failed (likely migration not yet applied), falling back to allCandidates:', blockSnapErr.message);
+            diag.alternates_source = 'fallback_all_candidates';
+          }
+        } catch (e) {
+          console.warn('[check-parking] snap_to_nearest_street_with_blocks call threw, falling back to allCandidates:', e);
+          diag.alternates_source = 'fallback_all_candidates';
+        }
+      }
+      if (altCandidates.length === 0) altCandidates = allCandidates;
+
+      if (altCandidates.length >= 2) {
         const COMPETITIVE_RATIO = 1.5;
         const COMPETITIVE_FLOOR_M = 5;
         const COMPETITIVE_MAX_M = 50;
         const winnerName = normChicagoStreet(snapResult?.streetName || '');
-        const winnerDist = allCandidates[0]?.snap_distance_meters ?? 0;
-        for (const c of allCandidates) {
+        // Block-aware dedup key: same street + same address range = same block.
+        // This lets us surface a DIFFERENT block of the same street as a
+        // tappable alternate (the wrong-block-of-Wolcott case) while still
+        // skipping the actual winning block we already returned.
+        const blockKey = (c: any) =>
+          `${normChicagoStreet(c?.street_name || '')}|${c?.l_from_addr ?? ''}|${c?.l_to_addr ?? ''}`;
+        const winnerBlockKey = `${winnerName}|${snapResult?.lFromAddr ?? ''}|${snapResult?.lToAddr ?? ''}`;
+        const winnerDist = altCandidates[0]?.snap_distance_meters ?? 0;
+        for (const c of altCandidates) {
           if (addressAlternates.length >= 2) break;
           if (!c?.street_name) continue;
-          if (normChicagoStreet(c.street_name) === winnerName) continue;
+          if (blockKey(c) === winnerBlockKey) continue;
           const d = Number(c.snap_distance_meters);
           if (!Number.isFinite(d)) continue;
           if (d > COMPETITIVE_MAX_M) continue;
