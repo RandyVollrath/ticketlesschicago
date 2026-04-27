@@ -319,6 +319,12 @@ export default function DestinationMapView() {
   const [showWinterBan, setShowWinterBan] = useState(false);
   const [showPermitZones, setShowPermitZones] = useState(false);
   const [showMeters, setShowMeters] = useState(false);
+  // Cleaning is the highest-blast-radius layer (most users get ticketed for
+  // cleaning violations), so it's ON by default — unlike the optional layers
+  // above. Users can turn it off for visual decluttering, but we surface a
+  // warning chip while it's hidden so it's hard to forget that you switched
+  // off the most important layer.
+  const [showCleaning, setShowCleaning] = useState(true);
   const touchStartY = useRef(0);
   const touchMoved = useRef(false);
 
@@ -484,6 +490,14 @@ export default function DestinationMapView() {
     if (showPermitZones) { if (!map.hasLayer(permitLayer)) permitLayer.addTo(map); }
     else { if (map.hasLayer(permitLayer)) map.removeLayer(permitLayer); }
   }, [showPermitZones]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const { cleaningLayer } = layersRef.current;
+    if (!map || !cleaningLayer) return;
+    if (showCleaning) { if (!map.hasLayer(cleaningLayer)) cleaningLayer.addTo(map); }
+    else { if (map.hasLayer(cleaningLayer)) map.removeLayer(cleaningLayer); }
+  }, [showCleaning]);
 
   // Meters: only render when the user has the chip on AND zoom >= 15.
   // Rendering 38k circle markers at city-wide zoom is useless and freezes
@@ -1092,6 +1106,7 @@ export default function DestinationMapView() {
           }}
         >
           {([
+            { label: 'Cleaning', active: showCleaning, toggle: () => setShowCleaning(s => !s), color: LAYER_COLORS.cleaningToday },
             { label: 'Meters', active: showMeters, toggle: () => setShowMeters(s => !s), color: LAYER_COLORS.meter },
             { label: 'Snow Routes', active: showSnowRoutes, toggle: () => setShowSnowRoutes(s => !s), color: LAYER_COLORS.snowRoute },
             { label: 'Winter Ban', active: showWinterBan, toggle: () => setShowWinterBan(s => !s), color: LAYER_COLORS.winterBan },
@@ -1118,6 +1133,37 @@ export default function DestinationMapView() {
             </button>
           ))}
         </div>
+      )}
+
+      {/* Warning when cleaning is off — cleaning is the most-ticketed layer
+          and turning it off is a real footgun, so we keep a persistent visible
+          reminder and let users tap it to switch the layer back on. */}
+      {!loading && !showCleaning && (
+        <button
+          onClick={() => setShowCleaning(true)}
+          style={{
+            position: 'absolute',
+            top: '46px',
+            left: '10px',
+            zIndex: 1000,
+            padding: '6px 12px',
+            backgroundColor: '#FEF3C7',
+            color: '#92400E',
+            border: '1.5px solid #F59E0B',
+            borderRadius: '14px',
+            fontFamily: 'system-ui',
+            fontSize: '11px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+            WebkitTapHighlightColor: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+        >
+          ⚠ Cleaning hidden — tap to show
+        </button>
       )}
 
 
