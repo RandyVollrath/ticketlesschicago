@@ -2288,6 +2288,31 @@ export default async function handler(
       }
       if (altCandidates.length === 0) altCandidates = allCandidates;
 
+      // Cross-source dedup: snap_to_nearest_street_with_blocks can return both
+      // a street_centerlines row and a snow_route row for the same physical
+      // block (e.g. W LAWRENCE AVE appearing twice — once with [1801-1837]
+      // address range, once with NULL ranges from snow_routes). The original
+      // snap_to_nearest_street collapsed these via DISTINCT ON. We replicate
+      // that here without losing genuine multi-block diversity: when the same
+      // street has both a ranged row and a no-range row very close to each
+      // other (≤5m distance gap), drop the no-range one. Different BLOCKS of
+      // the same street keep BOTH rows because they have different ranges.
+      altCandidates = (() => {
+        const out: any[] = [];
+        for (const c of altCandidates) {
+          if (c?.l_from_addr == null) {
+            const sameNameRanged = out.find((o) =>
+              normChicagoStreet(o?.street_name || '') === normChicagoStreet(c?.street_name || '')
+              && o?.l_from_addr != null
+              && Math.abs((o?.snap_distance_meters ?? 0) - (c?.snap_distance_meters ?? 0)) <= 5
+            );
+            if (sameNameRanged) continue;
+          }
+          out.push(c);
+        }
+        return out;
+      })();
+
       if (altCandidates.length >= 2) {
         const COMPETITIVE_RATIO = 1.5;
         const COMPETITIVE_FLOOR_M = 5;
