@@ -283,6 +283,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // for that one event. The "Wrong street?" feedback button stays visible so
   // the user can still re-open the modal manually.
   const [correctionDismissedTs, setCorrectionDismissedTs] = useState<number | null>(null);
+  // Pending pin-drag correction posted by the embedded WebView map. When the
+  // user drops the draggable marker on a different spot, the web side posts
+  // {type:'pin_corrected', lat, lng, address} and we stage it here until the
+  // user confirms the move. Cleared on confirm, cancel, or when the map is
+  // hidden. Each new drag replaces the previous pending move.
+  const [pinCorrectionPending, setPinCorrectionPending] = useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  } | null>(null);
 
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
@@ -331,6 +341,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       if (Number.isFinite(n)) setCorrectionDismissedTs(n);
     }).catch(() => {});
   }, []);
+
+  // Clear any pending pin-drag confirmation whenever the map is hidden so the
+  // banner can't survive across map open/close cycles. Each new drag posts a
+  // fresh message and re-stages the pending state.
+  useEffect(() => {
+    if (!showParkingMap && pinCorrectionPending) {
+      setPinCorrectionPending(null);
+    }
+  }, [showParkingMap, pinCorrectionPending]);
 
   // Subscribe to network status
   useEffect(() => {
@@ -1091,43 +1110,64 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   // Submit a user-corrected address. Records ground-truth so we can train on
   // the correction, updates the local parking display, and persists the new
-  // address so it survives an app restart. We don't re-run rule checks here:
-  // the user is fixing the STREET name, and the lat/lng we captured is still
-  // the right block — the existing rules result is usually still valid for
-  // their actual street if it's a parallel one.
+  // address so it survives an app restart.
   //
-  // `source` distinguishes manual typing ("typed") from one-tap alternate-
-  // street selection ("alternate_tap") so we can analyze which path users
-  // prefer and tune the alternate-detection threshold.
-  const applyStreetCorrection = useCallback(async (correctedAddress: string, source: 'typed' | 'alternate_tap') => {
+  // For `typed` and `alternate_tap` sources we don't change the captured
+  // lat/lng — the user is fixing the STREET name, and the GPS we captured
+  // is usually still on the right block. For `pin_drag`, the user has
+  // explicitly moved to a new spot on the map, so we update lat/lng to the
+  // dropped pin and post both the original and corrected coords as ground
+  // truth. The server's anchor lookup matches future detects against the
+  // corrected coords (50m radius), so a pin-drag here = correct rules at
+  // this exact spot for the next 180 days.
+  //
+  // `source` lets us analyze which correction path users prefer and tune
+  // each one independently (alternate-detection threshold, pin-drag UX).
+  const applyStreetCorrection = useCallback(async (
+    correctedAddress: string,
+    source: 'typed' | 'alternate_tap' | 'pin_drag',
+    correctedCoords?: { latitude: number; longitude: number },
+  ) => {
     if (!lastParkingCheck) return;
     const trimmed = correctedAddress.trim();
     if (!trimmed) {
       Alert.alert('Empty address', 'Type the street where you actually parked.');
       return;
     }
-    if (trimmed === lastParkingCheck.address) {
+    const noAddressChange = trimmed === lastParkingCheck.address;
+    const noCoordChange = !correctedCoords;
+    if (noAddressChange && noCoordChange) {
       setShowWrongStreetModal(false);
       return;
     }
     setWrongStreetSubmitting(true);
     try {
+      const eventLat = correctedCoords?.latitude ?? lastParkingCheck.coords.latitude;
+      const eventLng = correctedCoords?.longitude ?? lastParkingCheck.coords.longitude;
       await GroundTruthService.recordEvent({
         type: 'parking_street_correction' as any,
         timestamp: Date.now(),
-        latitude: lastParkingCheck.coords.latitude,
-        longitude: lastParkingCheck.coords.longitude,
+        latitude: eventLat,
+        longitude: eventLng,
         metadata: {
           system_address: lastParkingCheck.address,
           system_street: lastParkingCheck.rawApiData?.location?.streetName ?? null,
           system_number: lastParkingCheck.rawApiData?.location?.streetNumber ?? null,
+          system_lat: lastParkingCheck.coords.latitude,
+          system_lng: lastParkingCheck.coords.longitude,
           corrected_address: trimmed,
+          ...(correctedCoords
+            ? { corrected_lat: correctedCoords.latitude, corrected_lng: correctedCoords.longitude }
+            : {}),
           correction_source: source,
         },
       });
       const updated: ParkingCheckResult = {
         ...lastParkingCheck,
         address: trimmed,
+        coords: correctedCoords
+          ? { ...lastParkingCheck.coords, ...correctedCoords }
+          : lastParkingCheck.coords,
         rawApiData: lastParkingCheck.rawApiData
           ? {
               ...lastParkingCheck.rawApiData,
@@ -1159,6 +1199,43 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const submitStreetCorrection = useCallback(() => {
     return applyStreetCorrection(wrongStreetInput, 'typed');
   }, [applyStreetCorrection, wrongStreetInput]);
+
+  // Listen for postMessage from the embedded WebView map. The web side
+  // (DestinationMapView) posts a JSON envelope when the user drops the
+  // draggable pin AND the reverse-geocode succeeded with a real street
+  // address. We never accept a coordinate-style fallback as the corrected
+  // address (per the address-display rule).
+  const handleMapMessage = useCallback((event: any) => {
+    try {
+      const raw = event?.nativeEvent?.data;
+      if (typeof raw !== 'string') return;
+      const data = JSON.parse(raw);
+      if (
+        data?.type === 'pin_corrected' &&
+        typeof data.lat === 'number' &&
+        typeof data.lng === 'number' &&
+        typeof data.address === 'string' &&
+        data.address.trim().length > 0
+      ) {
+        setPinCorrectionPending({ lat: data.lat, lng: data.lng, address: data.address });
+      }
+    } catch {
+      // Non-fatal: ignore malformed messages.
+    }
+  }, []);
+
+  // User confirmed the pin-drag — write it through the same correction path
+  // as alternates and typed input, then clear the pending state.
+  const confirmPinCorrection = useCallback(() => {
+    if (!pinCorrectionPending) return;
+    const { lat, lng, address } = pinCorrectionPending;
+    setPinCorrectionPending(null);
+    applyStreetCorrection(address, 'pin_drag', { latitude: lat, longitude: lng });
+  }, [pinCorrectionPending, applyStreetCorrection]);
+
+  const cancelPinCorrection = useCallback(() => {
+    setPinCorrectionPending(null);
+  }, []);
 
   // ──────────────────────────────────────────────────────
   // Zone hours report — let users correct wrong hours
@@ -2006,6 +2083,52 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.parkingMapDirectionsText}>Directions</Text>
               </TouchableOpacity>
             </View>
+            {/* Pin-drag confirmation banner. Appears when the user drops the
+                draggable marker on a different spot inside the WebView and a
+                reverse-geocode comes back with a real street address. The
+                banner is the only path that mutates parking state from the
+                map — confirmed taps go through applyStreetCorrection just like
+                alternates and typed input. */}
+            {pinCorrectionPending && (
+              <View style={styles.pinCorrectionBanner}>
+                <View style={styles.pinCorrectionTextWrap}>
+                  <MaterialCommunityIcons name="map-marker-radius" size={18} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pinCorrectionTitle}>Move parking here?</Text>
+                    <Text style={styles.pinCorrectionAddress} numberOfLines={2}>
+                      {pinCorrectionPending.address}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.pinCorrectionActions}>
+                  <TouchableOpacity
+                    style={[styles.pinCorrectionCancelBtn, wrongStreetSubmitting && { opacity: 0.5 }]}
+                    onPress={cancelPinCorrection}
+                    disabled={wrongStreetSubmitting}
+                    accessibilityLabel="Cancel moving the parking pin"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.pinCorrectionCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.pinCorrectionConfirmBtn, wrongStreetSubmitting && { opacity: 0.6 }]}
+                    onPress={confirmPinCorrection}
+                    disabled={wrongStreetSubmitting}
+                    accessibilityLabel="Move parking to the dropped pin"
+                    accessibilityRole="button"
+                  >
+                    {wrongStreetSubmitting ? (
+                      <ActivityIndicator size="small" color={colors.white} />
+                    ) : (
+                      <>
+                        <MaterialCommunityIcons name="check" size={16} color={colors.white} />
+                        <Text style={styles.pinCorrectionConfirmText}>Move</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             <View style={styles.parkingMapContainer}>
               <WebView
                 source={{
@@ -2018,6 +2141,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 nestedScrollEnabled
                 scalesPageToFit={false}
                 overScrollMode="never"
+                onMessage={handleMapMessage}
                 renderLoading={() => (
                   <View style={styles.parkingMapLoading}>
                     <ActivityIndicator size="small" color={colors.primary} />
@@ -2035,7 +2159,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               />
             </View>
             <Text style={styles.parkingMapHint}>
-              Pinch to zoom · Tap zones for cleaning schedules
+              Drag the pin to fix the spot · Pinch to zoom · Tap zones for cleaning schedules
             </Text>
           </View>
         )}
@@ -3617,6 +3741,62 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+  },
+  // Pin-drag confirmation banner — sits between the map header and the
+  // WebView container so the user sees it appear right where their attention
+  // is when they drop the pin.
+  pinCorrectionBanner: {
+    backgroundColor: '#EFF6FF',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  pinCorrectionTextWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  pinCorrectionTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  pinCorrectionAddress: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
+  pinCorrectionActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
+  pinCorrectionCancelBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  pinCorrectionCancelText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
+  },
+  pinCorrectionConfirmBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  pinCorrectionConfirmText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.white,
   },
   // Cross-pollination prompt
   crossPollCard: {

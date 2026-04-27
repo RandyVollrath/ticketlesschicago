@@ -601,16 +601,39 @@ export default function DestinationMapView() {
           </div>
         `, { maxWidth: 280 }).openPopup();
 
+        // Bridge to the React Native host (when this page is loaded inside the
+        // mobile app's WebView). We only post a message after a SUCCESSFUL
+        // reverse geocode — never with a coordinate-style fallback string,
+        // because the host treats this address as ground truth and the
+        // address-display rule prohibits raw coordinates in user-facing copy.
+        const postPinCorrection = (address: string) => {
+          try {
+            const rnWebView = (window as any).ReactNativeWebView;
+            if (rnWebView && typeof rnWebView.postMessage === 'function') {
+              rnWebView.postMessage(JSON.stringify({
+                type: 'pin_corrected',
+                lat: updated.lat,
+                lng: updated.lng,
+                address,
+              }));
+            }
+          } catch {
+            // Non-fatal: postMessage bridge is best-effort.
+          }
+        };
+
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${updated.lat}&lon=${updated.lng}&format=json&addressdetails=1`);
           const data = await res.json();
-          const addr = data.display_name?.split(',').slice(0, 3).join(',') || `${updated.lat.toFixed(6)}, ${updated.lng.toFixed(6)}`;
+          const geocoded = data.display_name?.split(',').slice(0, 3).join(',');
+          const addr = geocoded || `${updated.lat.toFixed(6)}, ${updated.lng.toFixed(6)}`;
           marker.bindPopup(`
             <div style="font-family:system-ui;min-width:180px">
               <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">${addr}</div>
               <div style="color:#94A3B8;font-size:12px;margin-top:4px">Inspect colored blocks around this point.</div>
             </div>
           `, { maxWidth: 280 }).openPopup();
+          if (geocoded) postPinCorrection(geocoded);
         } catch {
           marker.bindPopup(`
             <div style="font-family:system-ui;min-width:180px">
