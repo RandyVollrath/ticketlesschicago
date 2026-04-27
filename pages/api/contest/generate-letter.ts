@@ -22,6 +22,7 @@ import { getStreetViewEvidence, StreetViewResult, getStreetViewEvidenceWithAnaly
 import { getOfficerIntelligence } from '../../../lib/contest-outcome-tracker';
 import { analyzeRedLightDefense, analyzeFactualInconsistency, type AnalysisInput, type RedLightDefenseAnalysis, type FactualInconsistencyAnalysis } from '../../../lib/red-light-defense-analysis';
 import { verifySweeperVisit, type SweeperVerification } from '../../../lib/sweeper-tracker';
+import { geocodeChicagoAddress } from '../../../lib/places-geocoder';
 
 // Weather relevance by violation type
 // PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
@@ -873,32 +874,29 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
           let ward: string | null = null;
           let section: string | null = null;
 
-          // Step 1: Geocode ticket_location to get coordinates, then find ward/section
+          // Step 1: Geocode ticket_location via the Places API
+          // (autocomplete + details — see lib/places-geocoder.ts) so the
+          // coords land on the actual building, not the legacy Geocoding
+          // API's interpolated midpoint. That bug was sending "1237 W
+          // Fullerton" tickets to Ward 43 / Section 1 instead of Ward 2 /
+          // Section 1, which would have made the contest letter argue
+          // against the wrong cleaning schedule.
           const ticketAddress = contest.ticket_location || contest.extracted_data?.location;
           if (ticketAddress) {
-            const googleApiKey = process.env.GOOGLE_API_KEY;
-            if (googleApiKey) {
-              try {
-                const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ticketAddress + ', Chicago, IL, USA')}&key=${googleApiKey}`;
-                const geocodeResponse = await fetch(geocodeUrl);
-                if (geocodeResponse.ok) {
-                  const geocodeData = await geocodeResponse.json();
-                  if (geocodeData.status === 'OK' && geocodeData.results?.length > 0) {
-                    const { lat, lng } = geocodeData.results[0].geometry.location;
-                    // Use PostGIS to find ward/section from coordinates
-                    const { data: zoneData, error: zoneError } = await supabase.rpc(
-                      'find_section_for_point',
-                      { lon: lng, lat: lat }
-                    );
-                    if (!zoneError && zoneData && zoneData.length > 0) {
-                      ward = zoneData[0].ward;
-                      section = zoneData[0].section;
-                    }
-                  }
+            try {
+              const geo = await geocodeChicagoAddress(ticketAddress);
+              if (geo.status === 'OK' && typeof geo.lat === 'number' && typeof geo.lng === 'number') {
+                const { data: zoneData, error: zoneError } = await supabase.rpc(
+                  'find_section_for_point',
+                  { lon: geo.lng, lat: geo.lat }
+                );
+                if (!zoneError && zoneData && zoneData.length > 0) {
+                  ward = zoneData[0].ward;
+                  section = zoneData[0].section;
                 }
-              } catch (geocodeErr) {
-                console.error('Geocoding for schedule verification failed:', geocodeErr);
               }
+            } catch (geocodeErr) {
+              console.error('Geocoding for schedule verification failed:', geocodeErr);
             }
           }
 

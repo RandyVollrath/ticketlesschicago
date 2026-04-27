@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
+import { geocodeChicagoAddress } from '../../lib/places-geocoder';
 
 // Main DB (has 2026 schedule + PostGIS functions). MSC is deprecated; don't
 // read from it or this endpoint returns stale/null cleaning info.
@@ -25,30 +26,15 @@ interface AlternativeSection {
   compass_direction?: string;
 }
 
-// Geocode address to get coordinates
+// Geocode address to get coordinates. Uses the shared Places API
+// autocomplete+details pipeline so Chicago grid addresses (Fullerton,
+// Lincoln, Lakewood, etc.) land on the actual building, not the
+// interpolated midpoint the legacy API used to return.
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
-  const googleApiKey = process.env.GOOGLE_API_KEY;
-
-  if (!googleApiKey) {
-    console.error('❌ Google API key not configured');
-    return null;
+  const result = await geocodeChicagoAddress(address);
+  if (result.status === 'OK' && typeof result.lat === 'number' && typeof result.lng === 'number') {
+    return { lat: result.lat, lng: result.lng };
   }
-
-  const normalizedAddress = `${address}, Chicago, IL, USA`;
-  const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(normalizedAddress)}&key=${googleApiKey}`;
-
-  try {
-    const response = await fetch(geocodeUrl);
-    const data = await response.json();
-
-    if (data.status === 'OK' && data.results.length > 0) {
-      const location = data.results[0].geometry.location;
-      return { lat: location.lat, lng: location.lng };
-    }
-  } catch (error) {
-    console.error('Geocoding error:', error);
-  }
-
   return null;
 }
 
