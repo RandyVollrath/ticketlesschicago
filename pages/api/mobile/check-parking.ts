@@ -311,6 +311,41 @@ function normChicagoStreet(s: string): string {
     .trim();
 }
 
+/**
+ * Convert any Chicago street name format to the centerline/building-footprint
+ * canonical format ("N LAKEWOOD AVE", "W BELDEN AVE"). This lets us pass
+ * snapResult.streetName — which can be either OSM friendly format ("North
+ * Lakewood Avenue", post-Nominatim-override) or centerline format ("N
+ * LAKEWOOD AVE", direct PostGIS snap) — to nearest_address_point without
+ * the strict-equality miss the SQL-side comparison enforces.
+ *
+ * Until 20260427_normalize_nearest_address_point.sql is applied this is
+ * the only thing keeping the building-footprint lookup working when the
+ * snap winner came from a Nominatim override.
+ */
+function toCenterlineFormat(name: string): string {
+  if (!name) return name;
+  const upper = name.toUpperCase().trim();
+  const DIR_FULL: Record<string, string> = { NORTH: 'N', SOUTH: 'S', EAST: 'E', WEST: 'W' };
+  const TYPE_FULL: Record<string, string> = {
+    AVENUE: 'AVE', STREET: 'ST', BOULEVARD: 'BLVD', ROAD: 'RD', DRIVE: 'DR',
+    PLACE: 'PL', COURT: 'CT', LANE: 'LN', PARKWAY: 'PKWY', HIGHWAY: 'HWY',
+    TERRACE: 'TER', CIRCLE: 'CIR', SQUARE: 'SQ', PLAZA: 'PLZ', CROSSING: 'XING',
+    EXPRESSWAY: 'EXPY', TRAIL: 'TRL', BRANCH: 'BR',
+  };
+  const tokens = upper.replace(/\./g, '').split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return upper;
+
+  // Normalize leading direction.
+  if (DIR_FULL[tokens[0]]) tokens[0] = DIR_FULL[tokens[0]];
+
+  // Normalize trailing street type.
+  const last = tokens.length - 1;
+  if (TYPE_FULL[tokens[last]]) tokens[last] = TYPE_FULL[tokens[last]];
+
+  return tokens.join(' ');
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<MobileCheckParkingResponse | { error: string }>
@@ -1300,8 +1335,17 @@ export default async function handler(
                 // Trust this over heading-based disambiguation UNLESS we have a
                 // trustworthy driving heading that contradicts Nominatim's
                 // orientation (the Belden walk-away case).
+                //
+                // Use normChicagoStreet for fuzzy matching — PostGIS stores
+                // names as "N LAKEWOOD AVE" while Nominatim returns "North
+                // Lakewood Avenue". Strict equality (the prior implementation)
+                // never matched these so the wide-search fallback ran for
+                // every override, sometimes timing out and dropping geometry
+                // entirely (Belden row #71, Lakewood row #73 — both had the
+                // correct candidate sitting in allCandidates within ~10m).
+                const nomNormForCandidate = normChicagoStreet(nominatimResult.street_name);
                 const nominatimCandidate = allCandidates.find((c: any) =>
-                  c.street_name === nominatimResult.street_name
+                  normChicagoStreet(c.street_name) === nomNormForCandidate
                 ) ?? null;
                 const nominatimMatchesCandidate = nominatimCandidate !== null;
                 // hasHeading == GPS driving heading present (not compass). If
@@ -1745,11 +1789,23 @@ export default async function handler(
 
     if (snapResult?.streetName && supabaseAdmin) {
       try {
+        // 50m radius covers corner parking on blocks where the nearest
+        // registered Chicago building footprint is set back from the curb
+        // (e.g., DePaul-area Lakewood: closest building 75m away; Belden +
+        // Kenmore: 31m). 25m was too tight in those cases — the lookup
+        // returned nothing and we fell through to grid math. The parity
+        // constraint still prevents wrong-side hits when we know the user's
+        // side; without parity we still get the closest match on the
+        // resolved street so the address lands on the right block.
+        // Convert street name to centerline format ("West Belden Avenue" →
+        // "W BELDEN AVE") so the SQL-side strict equality matches the row
+        // format stored in chicago_building_addresses.
+        const expectedStreetCenterlineFmt = toCenterlineFormat(snapResult.streetName);
         const { data: bld, error: bldErr } = await supabaseAdmin.rpc('nearest_address_point', {
           user_lat: latitude,
           user_lng: longitude,
-          search_radius_meters: 25,
-          expected_street: snapResult.streetName,
+          search_radius_meters: 50,
+          expected_street: expectedStreetCenterlineFmt,
           expected_parity: expectedParity,
         });
         if (!bldErr && bld && bld.length > 0 && bld[0].house_number > 0) {
@@ -1760,7 +1816,7 @@ export default async function handler(
             console.log(`[check-parking] Building lookup (no parity constraint — insufficient GPS offset or missing parity data): ${bld[0].house_number} ${bld[0].full_street_name} (${bld[0].distance_meters.toFixed(1)}m)`);
           }
         } else if (expectedParity) {
-          console.log(`[check-parking] Building lookup: no ${expectedParity}-parity building within 25m on ${snapResult.streetName} — will fall back to segment interpolation`);
+          console.log(`[check-parking] Building lookup: no ${expectedParity}-parity building within 50m on ${snapResult.streetName} — will fall back to segment interpolation`);
         }
       } catch (bldErr) {
         console.warn('[check-parking] Building footprint lookup failed (non-fatal):', bldErr);
