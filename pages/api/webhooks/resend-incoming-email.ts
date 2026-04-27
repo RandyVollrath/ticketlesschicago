@@ -35,6 +35,30 @@ export const config = {
   },
 };
 
+// Resend's email.received webhook only ships metadata. Body, headers, and
+// attachments must be fetched via the Received Emails API. New attachments
+// arrive with `download_url` instead of inline base64 `content`.
+async function getAttachmentBuffer(attachment: any): Promise<Buffer | null> {
+  if (attachment?.download_url) {
+    try {
+      const resp = await fetch(attachment.download_url);
+      if (!resp.ok) {
+        console.error(`  ❌ Attachment download failed (${attachment.filename}): ${resp.status}`);
+        return null;
+      }
+      const arr = await resp.arrayBuffer();
+      return Buffer.from(arr);
+    } catch (e: any) {
+      console.error(`  ❌ Attachment fetch error (${attachment?.filename}):`, e.message);
+      return null;
+    }
+  }
+  if (attachment?.content) {
+    return Buffer.from(attachment.content, 'base64');
+  }
+  return null;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -74,6 +98,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const data = event.data;
+
+    // Webhook only sends metadata — fetch body + attachment URLs from the
+    // Received Emails API. Without this, data.text/data.html are empty,
+    // attachments have no download_url, and notifications show "(no text content)".
+    const fetchEmailId = data?.email_id;
+    if (fetchEmailId && process.env.RESEND_API_KEY) {
+      try {
+        const fetchResp = await fetch(`https://api.resend.com/emails/receiving/${fetchEmailId}`, {
+          headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` },
+        });
+        if (fetchResp.ok) {
+          const full = await fetchResp.json();
+          data.text = full.text || data.text || '';
+          data.html = full.html || data.html || '';
+          if (full.headers) data.headers = full.headers;
+          if (Array.isArray(full.attachments)) data.attachments = full.attachments;
+          console.log(`📥 Fetched email content from Resend API: text=${(data.text||'').length}b html=${(data.html||'').length}b attachments=${data.attachments?.length || 0}`);
+        } else {
+          const errBody = await fetchResp.text();
+          console.error(`❌ Failed to fetch received email ${fetchEmailId}: ${fetchResp.status} ${errBody.slice(0, 200)}`);
+        }
+      } catch (fetchErr: any) {
+        console.error('❌ Error fetching received email body:', fetchErr.message);
+      }
+    }
+
     // Resend sends `to` as an array of strings (e.g. ["receipts@foo.com"]).
     // Prior code did `const toEmail = data.to || ''` which left it as an
     // array, then later `toEmail.toLowerCase()` crashed with
@@ -162,7 +212,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Sanitize filename to prevent path traversal and special characters
             const rawFilename = attachment.filename || `foia-doc-${Date.now()}`;
             const filename = rawFilename.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/^\.+/, '') || 'attachment';
-            const buffer = Buffer.from(attachment.content, 'base64');
+            const buffer = await getAttachmentBuffer(attachment);
+            if (!buffer) {
+              console.warn(`  ⚠️ Skipping FOIA attachment ${filename} — no content available`);
+              continue;
+            }
 
             const blobPath = `foia-responses/${Date.now()}-${filename}`;
             const blob = await put(blobPath, buffer, {
@@ -635,7 +689,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             for (const attachment of attachments) {
               const filename = attachment.filename || `evidence-${Date.now()}`;
               const contentType = attachment.content_type || 'application/octet-stream';
-              const buffer = Buffer.from(attachment.content, 'base64');
+              const buffer = await getAttachmentBuffer(attachment);
+              if (!buffer) {
+                console.warn(`  ⚠️ Skipping evidence attachment ${filename} — no content available`);
+                continue;
+              }
 
               const blobPath = `ticket-evidence/${matchedUserId}/${pendingTicket.id}/${Date.now()}-${filename}`;
               const blob = await put(blobPath, buffer, {
@@ -963,8 +1021,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const filename = attachment.filename || 'document';
           const contentType = attachment.content_type || 'application/octet-stream';
 
-          // Resend provides base64 encoded content
-          const buffer = Buffer.from(attachment.content, 'base64');
+          const buffer = await getAttachmentBuffer(attachment);
+          if (!buffer) {
+            console.warn(`⚠️ Skipping permit doc ${filename} — no content available`);
+            continue;
+          }
 
           // Upload to Vercel Blob
           const timestamp = Date.now();
@@ -1114,11 +1175,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      const adminTo = (process.env.ADMIN_NOTIFICATION_EMAILS || process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || 'randyvollrath@gmail.com')
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
-
       const resendResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -1127,7 +1183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         body: JSON.stringify({
           from: 'Autopilot America <alerts@autopilotamerica.com>',
-          to: adminTo,
+          to: process.env.ADMIN_NOTIFICATION_EMAIL || 'hiautopilotamerica@gmail.com',
           subject: emailSubject,
           html: emailHtml
         }),
