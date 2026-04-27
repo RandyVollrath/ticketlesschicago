@@ -29,6 +29,7 @@ import { clearUserData } from '../utils/storage';
 import { StorageKeys } from '../constants';
 import CameraAlertService from '../services/CameraAlertService';
 import BackgroundLocationService from '../services/BackgroundLocationService';
+import { submitDebugReport } from '../services/DebugReportService';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { MainTabParamList } from '../../App';
 
@@ -220,6 +221,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [allClearAlerts, setAllClearAlerts] = useState(true);
   const [sweeperPassedAlerts, setSweeperPassedAlerts] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isSubmittingDebugReport, setIsSubmittingDebugReport] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [homePermitZone, setHomePermitZone] = useState<string>('');
@@ -1263,6 +1265,40 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           } />
           <Divider />
           <LinkRow icon="email-outline" title="Contact Support" onPress={() => Linking.openURL('mailto:support@autopilotamerica.com?subject=Autopilot Mobile App Support')} />
+          <Divider />
+          <LinkRow
+            icon="bug-outline"
+            title={isSubmittingDebugReport ? 'Sending Debug Report...' : 'Send Debug Report'}
+            onPress={() => {
+              if (isSubmittingDebugReport) return;
+              Alert.alert(
+                'Send Debug Report',
+                'Uploads native parking-detection logs from your phone. Helpful when something feels off.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Send',
+                    onPress: async () => {
+                      setIsSubmittingDebugReport(true);
+                      try {
+                        const result = await submitDebugReport('manual:profile_button');
+                        if (result.success) {
+                          Alert.alert('Sent', `Debug report uploaded.${result.id ? '\n\nID: ' + result.id : ''}`);
+                        } else {
+                          Alert.alert('Failed', result.error || 'Could not send debug report.');
+                        }
+                      } catch (e) {
+                        log.warn('Debug report submit failed', e);
+                        Alert.alert('Failed', String(e));
+                      } finally {
+                        setIsSubmittingDebugReport(false);
+                      }
+                    },
+                  },
+                ],
+              );
+            }}
+          />
         </Section>
 
         {/* Danger Zone */}
