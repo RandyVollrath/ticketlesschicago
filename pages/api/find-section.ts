@@ -27,20 +27,28 @@ async function validateWardAgainstCityApi(lat: number, lng: number, ourWard: str
 }
 
 // Enhanced geocoding function with retry logic and better error handling
-// Geocode a typed address to lat/lng using the Places API (New) searchText
-// endpoint. We deliberately do NOT use the legacy Maps Geocoding API
-// (https://maps.googleapis.com/maps/api/geocode/json) — on Chicago grid
-// streets like Fullerton, the legacy API interpolates along OSM-style
-// segments and returns a midpoint that can be a full block (~1500 ft) east
-// of the actual building. That bug routed users into the wrong ward+section
-// (e.g. Ward 43 / Section 1 instead of Ward 2 / Section 1 for 1237 W
-// Fullerton), so they were getting the wrong cleaning schedule. Places API
-// returns the precise Place coordinate (same as the autocomplete-pick path).
+// Geocode a typed address to lat/lng using the Places API (New) autocomplete
+// + details two-step pipeline.
 //
-// Same return shape as before so every caller (find-section's lat/lng
-// pipeline, stripe-webhook signups, StreetCleaningSettings home address,
-// mobile CheckDestinationScreen, contest-letter generation, the v1
-// check-your-street page) gets the fix automatically.
+// Why not the legacy Maps Geocoding API: on Chicago grid streets like
+// Fullerton, the legacy API interpolates along OSM-style segments and
+// returns a midpoint that can be a full block (~1500 ft) east of the actual
+// building. For "1237 W Fullerton Ave" it returned Sheffield/Fullerton
+// (-87.6537), routing users into Ward 43 / Section 1 instead of the correct
+// Ward 2 / Section 1 — they were getting the wrong cleaning schedule.
+//
+// Why not Places searchText either: it ALSO returns the wrong coordinate
+// for that address. Google has two different Places at "1237 W Fullerton" —
+// an interpolated one at -87.6537 (what searchText picks) and the actual
+// building at -87.6599 (what autocomplete picks first, because autocomplete
+// ranks established buildings ahead of interpolated points).
+//
+// So we do the same thing the website's AddressAutocomplete component does:
+// autocomplete → first prediction → Place Details. Two upstream calls per
+// geocode, sharing one session token so Google bills the pair as one search.
+// Same return shape as before, so every caller of find-section is fixed:
+// check-your-street v1+v2, stripe-webhook signups, StreetCleaningSettings
+// home address, mobile CheckDestinationScreen, contest-letter generation.
 async function geocodeAddress(address: string, retryCount = 0): Promise<{ status: string; coordinates: { lat: number; lng: number }; retries?: number }> {
   // Maps Platform key, separate from the Gemini key (Gemini service-account
   // keys can't hold Places API (New)).
@@ -52,18 +60,25 @@ async function geocodeAddress(address: string, retryCount = 0): Promise<{ status
   }
 
   const normalizedAddress = `${address}, Chicago, IL, USA`;
-  console.log(`🔍 Places searchText (attempt ${retryCount + 1}):`, normalizedAddress);
+  // Per-request session token so Google bills the autocomplete + details
+  // pair as one search.
+  const sessionToken = `srv-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  console.log(`🔍 Places autocomplete (attempt ${retryCount + 1}):`, normalizedAddress);
 
   try {
-    const upstream = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    // Step 1 — autocomplete to find the best Place ID for this typed string.
+    const acRes = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': googleApiKey,
-        'X-Goog-FieldMask': 'places.location,places.formattedAddress,places.addressComponents',
+        'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text',
       },
       body: JSON.stringify({
-        textQuery: normalizedAddress,
+        input: normalizedAddress,
+        sessionToken,
+        includedPrimaryTypes: ['street_address', 'premise', 'subpremise'],
+        includedRegionCodes: ['us'],
         // Bias to Chicago — 50 km radius covers the city + nearby suburbs.
         locationBias: {
           circle: {
@@ -71,43 +86,64 @@ async function geocodeAddress(address: string, retryCount = 0): Promise<{ status
             radius: 50000,
           },
         },
-        pageSize: 1,
-        languageCode: 'en',
-        regionCode: 'US',
       }),
     });
 
-    if (!upstream.ok) {
-      // Treat 429/5xx as retryable
-      if ((upstream.status === 429 || upstream.status >= 500) && retryCount < 2) {
-        console.log(`⏰ Places API ${upstream.status}, retrying...`);
+    if (!acRes.ok) {
+      if ((acRes.status === 429 || acRes.status >= 500) && retryCount < 2) {
+        console.log(`⏰ Autocomplete ${acRes.status}, retrying...`);
         await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
         return geocodeAddress(address, retryCount + 1);
       }
-      const errBody = await upstream.text().catch(() => '');
-      console.error('❌ Places API error', upstream.status, errBody.slice(0, 300));
-      return {
-        status: 'ZERO_RESULTS',
-        coordinates: { lat: 0, lng: 0 },
-        retries: retryCount,
-      };
+      const errBody = await acRes.text().catch(() => '');
+      console.error('❌ Autocomplete error', acRes.status, errBody.slice(0, 300));
+      return { status: 'ZERO_RESULTS', coordinates: { lat: 0, lng: 0 }, retries: retryCount };
     }
 
-    const data = await upstream.json();
-    const place = Array.isArray(data?.places) ? data.places[0] : null;
+    const acData = await acRes.json();
+    const suggestions = Array.isArray(acData?.suggestions) ? acData.suggestions : [];
+    const placeId = suggestions[0]?.placePrediction?.placeId;
+    const description = suggestions[0]?.placePrediction?.text?.text || '';
 
-    if (!place || typeof place.location?.latitude !== 'number' || typeof place.location?.longitude !== 'number') {
-      console.log('🔍 Places API returned no usable result for:', normalizedAddress);
-      return {
-        status: 'ZERO_RESULTS',
-        coordinates: { lat: 0, lng: 0 },
-        retries: retryCount,
-      };
+    if (!placeId) {
+      console.log('🔍 No autocomplete predictions for:', normalizedAddress);
+      return { status: 'ZERO_RESULTS', coordinates: { lat: 0, lng: 0 }, retries: retryCount };
+    }
+
+    // Step 2 — fetch precise location for that place_id.
+    const detailsRes = await fetch(
+      `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?sessionToken=${encodeURIComponent(sessionToken)}`,
+      {
+        method: 'GET',
+        headers: {
+          'X-Goog-Api-Key': googleApiKey,
+          'X-Goog-FieldMask': 'location,formattedAddress,addressComponents',
+        },
+      },
+    );
+
+    if (!detailsRes.ok) {
+      if ((detailsRes.status === 429 || detailsRes.status >= 500) && retryCount < 2) {
+        console.log(`⏰ Details ${detailsRes.status}, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return geocodeAddress(address, retryCount + 1);
+      }
+      const errBody = await detailsRes.text().catch(() => '');
+      console.error('❌ Details error', detailsRes.status, errBody.slice(0, 300));
+      return { status: 'ZERO_RESULTS', coordinates: { lat: 0, lng: 0 }, retries: retryCount };
+    }
+
+    const place = await detailsRes.json();
+    const lat = place?.location?.latitude;
+    const lng = place?.location?.longitude;
+
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      console.log('🔍 Place Details has no usable location for:', description);
+      return { status: 'ZERO_RESULTS', coordinates: { lat: 0, lng: 0 }, retries: retryCount };
     }
 
     // Verify the result is actually in Chicago (the locationBias is a hint,
-    // not a hard filter — a typed "1237 Fullerton Boston" would still be
-    // returned as a Boston result).
+    // not a hard filter — a typed "1237 Fullerton Boston" might still match).
     const comps: Array<{ longText: string; types: string[] }> = place.addressComponents || [];
     const isInChicago = comps.some(c =>
       c.types?.includes('locality') &&
@@ -117,16 +153,12 @@ async function geocodeAddress(address: string, retryCount = 0): Promise<{ status
 
     if (!isInChicago) {
       console.log('⚠️ Places result is not in Chicago:', place.formattedAddress);
-      return {
-        status: 'ZERO_RESULTS',
-        coordinates: { lat: 0, lng: 0 },
-        retries: retryCount,
-      };
+      return { status: 'ZERO_RESULTS', coordinates: { lat: 0, lng: 0 }, retries: retryCount };
     }
 
     return {
       status: 'OK',
-      coordinates: { lat: place.location.latitude, lng: place.location.longitude },
+      coordinates: { lat, lng },
       retries: retryCount,
     };
   } catch (error: any) {
