@@ -27,93 +27,117 @@ async function validateWardAgainstCityApi(lat: number, lng: number, ourWard: str
 }
 
 // Enhanced geocoding function with retry logic and better error handling
+// Geocode a typed address to lat/lng using the Places API (New) searchText
+// endpoint. We deliberately do NOT use the legacy Maps Geocoding API
+// (https://maps.googleapis.com/maps/api/geocode/json) — on Chicago grid
+// streets like Fullerton, the legacy API interpolates along OSM-style
+// segments and returns a midpoint that can be a full block (~1500 ft) east
+// of the actual building. That bug routed users into the wrong ward+section
+// (e.g. Ward 43 / Section 1 instead of Ward 2 / Section 1 for 1237 W
+// Fullerton), so they were getting the wrong cleaning schedule. Places API
+// returns the precise Place coordinate (same as the autocomplete-pick path).
+//
+// Same return shape as before so every caller (find-section's lat/lng
+// pipeline, stripe-webhook signups, StreetCleaningSettings home address,
+// mobile CheckDestinationScreen, contest-letter generation, the v1
+// check-your-street page) gets the fix automatically.
 async function geocodeAddress(address: string, retryCount = 0): Promise<{ status: string; coordinates: { lat: number; lng: number }; retries?: number }> {
-  const googleApiKey = process.env.GOOGLE_API_KEY;
-  
+  // Maps Platform key, separate from the Gemini key (Gemini service-account
+  // keys can't hold Places API (New)).
+  const googleApiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
+
   if (!googleApiKey) {
     console.error('❌ Google API key not configured');
     throw new Error('Google API key not configured');
   }
-  
-  console.log('🔑 Google API key configured:', googleApiKey ? 'YES' : 'NO');
-  console.log('🔑 API key preview:', googleApiKey ? `${googleApiKey.slice(0, 8)}...` : 'NONE');
 
-  // Normalize the address for better geocoding success
   const normalizedAddress = `${address}, Chicago, IL, USA`;
-  const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(normalizedAddress)}&key=${googleApiKey}`;
-  
-  console.log(`🔍 Geocoding address (attempt ${retryCount + 1}):`, normalizedAddress);
-  console.log('🌐 Geocoding URL:', geocodeUrl.replace(googleApiKey, '[API_KEY_HIDDEN]'));
-  
+  console.log(`🔍 Places searchText (attempt ${retryCount + 1}):`, normalizedAddress);
+
   try {
-    const geocodeResponse = await fetch(geocodeUrl);
-    
-    if (!geocodeResponse.ok) {
-      throw new Error(`Geocoding API returned ${geocodeResponse.status}`);
-    }
-    
-    const geocodeData = await geocodeResponse.json();
-    console.log('🔍 Geocoding response status:', geocodeData.status);
-    
-    if (geocodeData.error_message) {
-      console.error('❌ Google API Error:', geocodeData.error_message);
-    }
+    const upstream = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': googleApiKey,
+        'X-Goog-FieldMask': 'places.location,places.formattedAddress,places.addressComponents',
+      },
+      body: JSON.stringify({
+        textQuery: normalizedAddress,
+        // Bias to Chicago — 50 km radius covers the city + nearby suburbs.
+        locationBias: {
+          circle: {
+            center: { latitude: 41.8781, longitude: -87.6298 },
+            radius: 50000,
+          },
+        },
+        pageSize: 1,
+        languageCode: 'en',
+        regionCode: 'US',
+      }),
+    });
 
-    // Handle rate limiting
-    if (geocodeData.status === 'OVER_QUERY_LIMIT' && retryCount < 2) {
-      console.log('⏰ Rate limited, retrying in 1 second...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return geocodeAddress(address, retryCount + 1);
-    }
-
-    // Handle temporary failures
-    if (geocodeData.status === 'UNKNOWN_ERROR' && retryCount < 1) {
-      console.log('❓ Unknown error, retrying...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return geocodeAddress(address, retryCount + 1);
-    }
-
-    if (geocodeData.status !== 'OK' || !geocodeData.results.length) {
-      return { 
-        status: geocodeData.status, 
-        coordinates: { lat: 0, lng: 0 },
-        retries: retryCount
-      };
-    }
-
-    const result = geocodeData.results[0];
-    
-    // Validate that the result is actually in Chicago
-    const isInChicago = result.address_components.some((component: any) => 
-      component.types.includes('locality') && 
-      component.long_name.toLowerCase().includes('chicago')
-    );
-    
-    if (!isInChicago) {
-      console.log('⚠️ Geocoded address is not in Chicago');
+    if (!upstream.ok) {
+      // Treat 429/5xx as retryable
+      if ((upstream.status === 429 || upstream.status >= 500) && retryCount < 2) {
+        console.log(`⏰ Places API ${upstream.status}, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return geocodeAddress(address, retryCount + 1);
+      }
+      const errBody = await upstream.text().catch(() => '');
+      console.error('❌ Places API error', upstream.status, errBody.slice(0, 300));
       return {
         status: 'ZERO_RESULTS',
         coordinates: { lat: 0, lng: 0 },
-        retries: retryCount
+        retries: retryCount,
       };
     }
-    
+
+    const data = await upstream.json();
+    const place = Array.isArray(data?.places) ? data.places[0] : null;
+
+    if (!place || typeof place.location?.latitude !== 'number' || typeof place.location?.longitude !== 'number') {
+      console.log('🔍 Places API returned no usable result for:', normalizedAddress);
+      return {
+        status: 'ZERO_RESULTS',
+        coordinates: { lat: 0, lng: 0 },
+        retries: retryCount,
+      };
+    }
+
+    // Verify the result is actually in Chicago (the locationBias is a hint,
+    // not a hard filter — a typed "1237 Fullerton Boston" would still be
+    // returned as a Boston result).
+    const comps: Array<{ longText: string; types: string[] }> = place.addressComponents || [];
+    const isInChicago = comps.some(c =>
+      c.types?.includes('locality') &&
+      typeof c.longText === 'string' &&
+      c.longText.toLowerCase().includes('chicago')
+    );
+
+    if (!isInChicago) {
+      console.log('⚠️ Places result is not in Chicago:', place.formattedAddress);
+      return {
+        status: 'ZERO_RESULTS',
+        coordinates: { lat: 0, lng: 0 },
+        retries: retryCount,
+      };
+    }
+
     return {
-      status: geocodeData.status,
-      coordinates: { lat: result.geometry.location.lat, lng: result.geometry.location.lng },
-      retries: retryCount
+      status: 'OK',
+      coordinates: { lat: place.location.latitude, lng: place.location.longitude },
+      retries: retryCount,
     };
-    
   } catch (error: any) {
-    console.error('🚨 Geocoding fetch error:', error.message);
-    
-    // Retry on network errors
+    console.error('🚨 Places API fetch error:', error?.message);
+
     if (retryCount < 2) {
-      console.log(`🔄 Retrying geocoding due to network error (attempt ${retryCount + 2})...`);
+      console.log(`🔄 Retrying Places API due to network error (attempt ${retryCount + 2})...`);
       await new Promise(resolve => setTimeout(resolve, 1000));
       return geocodeAddress(address, retryCount + 1);
     }
-    
+
     throw error;
   }
 }
