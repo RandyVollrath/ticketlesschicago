@@ -461,13 +461,18 @@ export default async function handler(
   const cpDisconnectLngRaw = (req.method === 'GET' ? req.query.cp_disconnect_lng : req.body.cp_disconnect_lng) as string | number | undefined;
   const cpConnectedAtRaw = (req.method === 'GET' ? req.query.cp_connected_at : req.body.cp_connected_at) as string | number | undefined;
   const cpActiveDuringDriveRaw = (req.method === 'GET' ? req.query.cp_active_during_drive : req.body.cp_active_during_drive) as string | number | undefined;
-  // Head unit identity from AVAudioSessionPortDescription. Apple does not
-  // expose VIN/speed/fuel to third-party apps; portUid + portName are what
-  // is actually obtainable without an entitlement, and portUid is stable
-  // per CarPlay pairing — useful for "this car parked at this GPS on N
-  // prior occasions" pattern matching analytics.
-  const cpPortUidRaw = (req.method === 'GET' ? req.query.cp_port_uid : req.body.cp_port_uid) as string | undefined;
-  const cpPortNameRaw = (req.method === 'GET' ? req.query.cp_port_name : req.body.cp_port_name) as string | undefined;
+  // Unified vehicle identity — per-car key for "this car parked at this GPS
+  // on N prior occasions" pattern matching analytics. Both platforms send
+  // the same wire fields:
+  //   iOS:     source='carplay',    id = AVAudioSession port.uid (Apple does
+  //                                      not expose VIN/speed/fuel without
+  //                                      an entitlement — portUid is what's
+  //                                      obtainable, and is stable per
+  //                                      CarPlay pairing)
+  //   Android: source='android_bt', id = configured BT MAC address
+  const vehicleIdRaw = (req.method === 'GET' ? req.query.vehicle_id : req.body.vehicle_id) as string | undefined;
+  const vehicleIdSourceRaw = (req.method === 'GET' ? req.query.vehicle_id_source : req.body.vehicle_id_source) as string | undefined;
+  const vehicleNameRaw = (req.method === 'GET' ? req.query.vehicle_name : req.body.vehicle_name) as string | undefined;
   const cpDisconnectAt = cpDisconnectAtRaw != null ? Number(cpDisconnectAtRaw) : NaN;
   const cpDisconnectLat = cpDisconnectLatRaw != null ? Number(cpDisconnectLatRaw) : NaN;
   const cpDisconnectLng = cpDisconnectLngRaw != null ? Number(cpDisconnectLngRaw) : NaN;
@@ -477,13 +482,17 @@ export default async function handler(
     && cpDisconnectLng >= -87.95 && cpDisconnectLng <= -87.52;
   const hasCarPlayDisconnectTs = Number.isFinite(cpDisconnectAt) && cpDisconnectAt > 0;
   const carPlayActiveDuringDrive = cpActiveDuringDriveRaw === '1' || cpActiveDuringDriveRaw === 1;
-  // Cap incoming strings — defensive against malformed clients. Real CarPlay
-  // uids are short (typically <64 chars); names are short user-visible labels.
-  const carPlayPortUid = typeof cpPortUidRaw === 'string' && cpPortUidRaw.length > 0 && cpPortUidRaw.length <= 128
-    ? cpPortUidRaw
+  // Cap incoming strings — defensive against malformed clients. Real
+  // identifiers are short (BT MACs are 17 chars; CarPlay port uids are
+  // typically <64 chars); names are short user-visible labels.
+  const vehicleId = typeof vehicleIdRaw === 'string' && vehicleIdRaw.length > 0 && vehicleIdRaw.length <= 128
+    ? vehicleIdRaw
     : undefined;
-  const carPlayPortName = typeof cpPortNameRaw === 'string' && cpPortNameRaw.length > 0 && cpPortNameRaw.length <= 128
-    ? cpPortNameRaw
+  const vehicleIdSource = typeof vehicleIdSourceRaw === 'string' && (vehicleIdSourceRaw === 'carplay' || vehicleIdSourceRaw === 'android_bt')
+    ? vehicleIdSourceRaw
+    : undefined;
+  const vehicleName = typeof vehicleNameRaw === 'string' && vehicleNameRaw.length > 0 && vehicleNameRaw.length <= 128
+    ? vehicleNameRaw
     : undefined;
 
   // Heading source preference (updated 2026-04-21 after Randy's Wolcott/Lawrence park):
@@ -699,13 +708,14 @@ export default async function handler(
       nativeMeta.headingDisagreementDeg = Math.round(headingDisagreementDeg);
       nativeMeta.headingPreferredSource = effectiveHeadingSource;
     }
-    // CarPlay head unit identity — persisted in parking_diagnostics.native_meta
-    // (JSONB) so future analytics can do "this same car parked at this same
-    // GPS on N prior occasions" pattern matching. Apple does NOT expose VIN /
-    // speed / fuel to third-party apps; portUid is what's actually obtainable
-    // without an entitlement, and is stable per CarPlay pairing.
-    if (carPlayPortUid) nativeMeta.carPlayPortUid = carPlayPortUid;
-    if (carPlayPortName) nativeMeta.carPlayPortName = carPlayPortName;
+    // Unified vehicle identity — persisted in parking_diagnostics.native_meta
+    // (JSONB) so analytics can do "this same car parked at this same GPS on
+    // N prior occasions" pattern matching across iOS + Android. Source is
+    // 'carplay' (AVAudioSession port.uid) on iOS, 'android_bt' (Bluetooth
+    // MAC) on Android.
+    if (vehicleId) nativeMeta.vehicleId = vehicleId;
+    if (vehicleIdSource) nativeMeta.vehicleIdSource = vehicleIdSource;
+    if (vehicleName) nativeMeta.vehicleName = vehicleName;
     if (Object.keys(nativeMeta).length > 0) {
       diag.native_meta = nativeMeta;
     }
@@ -782,8 +792,6 @@ export default async function handler(
     if (Number.isFinite(cpConnectedAt)) diag.carplay_connected_at = cpConnectedAt;
     if (hasCarPlayDisconnectTs) diag.carplay_disconnect_at = cpDisconnectAt;
     if (trajectoryDroppedByCarPlayTruncation > 0) diag.carplay_trajectory_dropped = trajectoryDroppedByCarPlayTruncation;
-    if (carPlayPortUid) diag.carplay_port_uid = carPlayPortUid;
-    if (carPlayPortName) diag.carplay_port_name = carPlayPortName;
 
     // Step 1: Attempt to snap GPS coordinate to nearest known street segment.
     // This corrects for urban canyon drift (10-30m) that can put you on the wrong block.

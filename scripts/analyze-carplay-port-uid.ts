@@ -1,20 +1,26 @@
 #!/usr/bin/env npx tsx
 /**
- * Analyze CarPlay port_uid coverage and revisit patterns to inform the
- * "carplay-known-spot" confidence bump in pages/api/mobile/check-parking.ts.
+ * Analyze unified vehicle_id coverage and revisit patterns to inform the
+ * "vehicle-known-spot" confidence bump in pages/api/mobile/check-parking.ts.
  *
- * Background: starting 2026-04-27 (commit d998ba86) we capture
- * AVAudioSessionPortDescription.uid + portName from CarPlay-paired drives
- * and persist them in parking_diagnostics.native_meta as carPlayPortUid +
- * carPlayPortName. Apple does NOT expose VIN/speed/fuel — portUid is what's
- * available without an entitlement, and is stable per CarPlay pairing.
+ * Background: starting 2026-04-27 we capture a unified per-vehicle
+ * identifier from both platforms and persist it in
+ * parking_diagnostics.native_meta as `vehicleId` (string),
+ * `vehicleIdSource` ('carplay' | 'android_bt'), `vehicleName` (string).
  *
- * This script answers: how often is CarPlay actually used, how many
- * (user, port_uid, spot) triples have enough revisits to be diagnostic,
- * and what threshold + confidence delta should the live lookup use.
+ *   iOS source = 'carplay'    : AVAudioSession port.uid (no entitlement
+ *                                required; Apple does NOT expose VIN/speed/
+ *                                fuel to third-party apps — portUid is the
+ *                                closest stable per-vehicle identifier).
+ *   Android source = 'android_bt' : configured BT MAC of the user's car.
  *
- * Output is human-readable plain text. Re-run any time after data
- * accumulates: `npx tsx scripts/analyze-carplay-port-uid.ts`
+ * This script answers: how often is per-vehicle identification actually
+ * happening, how many (user, vehicle, spot) triples have enough revisits
+ * to be diagnostic, and what threshold + confidence delta the live lookup
+ * should use.
+ *
+ * (File still named analyze-carplay-port-uid.ts to match the cron entry
+ * already installed; the analysis itself is platform-agnostic.)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -56,54 +62,63 @@ function pct(values: number[], p: number): number {
 }
 
 (async () => {
-  console.log('=== CarPlay port_uid analytics ===');
+  console.log('=== Unified vehicle_id analytics ===');
   console.log(`Window: ${SINCE} → now`);
   console.log(`Spot bucket: ${SPOT_BUCKET_M}m\n`);
 
-  // Step 1: Coverage. How many parking_diagnostics rows have carPlayPortUid?
   const { count: totalCount, error: tErr } = await s
     .from('parking_diagnostics')
     .select('*', { count: 'exact', head: true })
     .gte('created_at', SINCE);
   if (tErr) { console.error('Total count failed:', tErr.message); process.exit(1); }
 
-  const { count: cpCount, error: cErr } = await (s as any)
+  const { count: vCount, error: vErr } = await (s as any)
     .from('parking_diagnostics')
     .select('*', { count: 'exact', head: true })
     .gte('created_at', SINCE)
-    .not('native_meta->>carPlayPortUid', 'is', null);
-  if (cErr) { console.error('CarPlay count failed:', cErr.message); process.exit(1); }
+    .not('native_meta->>vehicleId', 'is', null);
+  if (vErr) { console.error('Vehicle count failed:', vErr.message); process.exit(1); }
 
-  const coverage = totalCount ? ((cpCount! / totalCount) * 100).toFixed(1) : '0';
-  console.log(`Coverage: ${cpCount}/${totalCount} parking diagnostics carry a CarPlay port_uid (${coverage}%)\n`);
+  const coverage = totalCount ? ((vCount! / totalCount) * 100).toFixed(1) : '0';
+  console.log(`Coverage: ${vCount}/${totalCount} parking diagnostics carry a vehicle_id (${coverage}%)\n`);
 
-  if (!cpCount || cpCount === 0) {
-    console.log('NO CARPLAY DATA YET — feature may not have rolled out, or no users on CarPlay drives.');
-    console.log('Re-run this script once parking_diagnostics has CarPlay rows.');
+  if (!vCount || vCount === 0) {
+    console.log('NO VEHICLE_ID DATA YET — feature may not have rolled out, or no users on');
+    console.log('CarPlay/configured-BT drives. Re-run after parking_diagnostics has rows.');
     process.exit(0);
   }
 
-  // Step 2: Pull all CarPlay rows for in-memory analysis. ~weeks of data
-  // should be small enough to fit in memory. If this grows, paginate.
   const { data: rows, error: rErr } = await (s as any)
     .from('parking_diagnostics')
     .select('user_id, raw_lat, raw_lng, snapped_lat, snapped_lng, native_meta, created_at')
     .gte('created_at', SINCE)
-    .not('native_meta->>carPlayPortUid', 'is', null)
+    .not('native_meta->>vehicleId', 'is', null)
     .order('created_at', { ascending: true })
     .limit(20000);
   if (rErr) { console.error('Pull failed:', rErr.message); process.exit(1); }
 
-  console.log(`Pulled ${rows!.length} CarPlay rows for in-memory analysis.\n`);
+  console.log(`Pulled ${rows!.length} vehicle_id rows for in-memory analysis.\n`);
 
-  // Step 3: Group by (user_id, port_uid). For each group, collapse parks
-  // into ~30m spots greedily.
+  // Coverage per source.
+  const sourceCounts: Map<string, number> = new Map();
+  for (const r of rows as any[]) {
+    const src = r.native_meta?.vehicleIdSource ?? 'unknown';
+    sourceCounts.set(src, (sourceCounts.get(src) ?? 0) + 1);
+  }
+  console.log('Source split:');
+  for (const [src, n] of sourceCounts) {
+    const pctOfV = ((n / vCount) * 100).toFixed(1);
+    console.log(`  ${src}: ${n} rows (${pctOfV}% of identified)`);
+  }
+  console.log();
+
   type Row = {
-    user_id: string | null;
+    user_id: string;
     lat: number;
     lng: number;
-    portUid: string;
-    portName: string | null;
+    vehicleId: string;
+    vehicleIdSource: string;
+    vehicleName: string | null;
     createdAt: string;
   };
   const byPair: Map<string, Row[]> = new Map();
@@ -112,15 +127,15 @@ function pct(values: number[], p: number): number {
     const lat = r.snapped_lat ?? r.raw_lat;
     const lng = r.snapped_lng ?? r.raw_lng;
     if (typeof lat !== 'number' || typeof lng !== 'number') continue;
-    const portUid = r.native_meta?.carPlayPortUid;
-    const portName = r.native_meta?.carPlayPortName ?? null;
-    if (typeof portUid !== 'string' || portUid.length === 0) continue;
-    const key = `${r.user_id}|${portUid}`;
+    const vehicleId = r.native_meta?.vehicleId;
+    if (typeof vehicleId !== 'string' || vehicleId.length === 0) continue;
+    const vehicleIdSource = r.native_meta?.vehicleIdSource ?? 'unknown';
+    const vehicleName = r.native_meta?.vehicleName ?? null;
+    const key = `${r.user_id}|${vehicleId}`;
     if (!byPair.has(key)) byPair.set(key, []);
-    byPair.get(key)!.push({ user_id: r.user_id, lat, lng, portUid, portName, createdAt: r.created_at });
+    byPair.get(key)!.push({ user_id: r.user_id, lat, lng, vehicleId, vehicleIdSource, vehicleName, createdAt: r.created_at });
   }
 
-  // Step 4: For each pair, greedy spot clustering.
   type Spot = { lat: number; lng: number; visits: number };
   const spotsPerPair: Map<string, Spot[]> = new Map();
   for (const [key, parks] of byPair) {
@@ -129,7 +144,6 @@ function pct(values: number[], p: number): number {
       let matched = false;
       for (const sp of spots) {
         if (haversineMeters(p.lat, p.lng, sp.lat, sp.lng) <= SPOT_BUCKET_M) {
-          // Update centroid via running mean
           sp.lat = (sp.lat * sp.visits + p.lat) / (sp.visits + 1);
           sp.lng = (sp.lng * sp.visits + p.lng) / (sp.visits + 1);
           sp.visits++;
@@ -142,7 +156,6 @@ function pct(values: number[], p: number): number {
     spotsPerPair.set(key, spots);
   }
 
-  // Step 5: Distributions.
   const distinctSpotsPerPair: number[] = [];
   const visitsPerSpot: number[] = [];
   let totalSpots = 0;
@@ -158,68 +171,63 @@ function pct(values: number[], p: number): number {
     }
   }
 
-  console.log(`Unique (user, port_uid) pairs: ${byPair.size}`);
+  console.log(`Unique (user, vehicle_id) pairs: ${byPair.size}`);
   console.log(`Total distinct spots across all pairs: ${totalSpots}`);
-  console.log(`Spots with ≥3 visits: ${spotsWith3PlusVisits} (${((spotsWith3PlusVisits / totalSpots) * 100).toFixed(1)}%)`);
-  console.log(`Spots with ≥5 visits: ${spotsWith5PlusVisits} (${((spotsWith5PlusVisits / totalSpots) * 100).toFixed(1)}%)\n`);
+  console.log(`Spots with ≥3 visits: ${spotsWith3PlusVisits} (${totalSpots ? ((spotsWith3PlusVisits / totalSpots) * 100).toFixed(1) : '0'}%)`);
+  console.log(`Spots with ≥5 visits: ${spotsWith5PlusVisits} (${totalSpots ? ((spotsWith5PlusVisits / totalSpots) * 100).toFixed(1) : '0'}%)\n`);
 
-  console.log('Distinct spots per (user, port_uid):');
+  console.log('Distinct spots per (user, vehicle_id):');
   console.log(`  median=${pct(distinctSpotsPerPair, 50)}  p90=${pct(distinctSpotsPerPair, 90)}  max=${Math.max(...distinctSpotsPerPair, 0)}\n`);
 
   console.log('Visits per spot (all pairs pooled):');
   console.log(`  median=${pct(visitsPerSpot, 50)}  p90=${pct(visitsPerSpot, 90)}  max=${Math.max(...visitsPerSpot, 0)}\n`);
 
-  // Step 6: Anomalies.
-  const portUidToUsers: Map<string, Set<string>> = new Map();
-  const userToPortUids: Map<string, Set<string>> = new Map();
+  // Anomalies.
+  const vehicleIdToUsers: Map<string, Set<string>> = new Map();
+  const userToVehicleIds: Map<string, Set<string>> = new Map();
   for (const key of byPair.keys()) {
-    const [userId, portUid] = key.split('|');
-    if (!portUidToUsers.has(portUid)) portUidToUsers.set(portUid, new Set());
-    portUidToUsers.get(portUid)!.add(userId);
-    if (!userToPortUids.has(userId)) userToPortUids.set(userId, new Set());
-    userToPortUids.get(userId)!.add(portUid);
+    const [userId, vehicleId] = key.split('|');
+    if (!vehicleIdToUsers.has(vehicleId)) vehicleIdToUsers.set(vehicleId, new Set());
+    vehicleIdToUsers.get(vehicleId)!.add(userId);
+    if (!userToVehicleIds.has(userId)) userToVehicleIds.set(userId, new Set());
+    userToVehicleIds.get(userId)!.add(vehicleId);
   }
 
-  const sharedPortUids = Array.from(portUidToUsers.entries()).filter(([_, users]) => users.size > 1);
-  const usersWithManyPortUids = Array.from(userToPortUids.entries()).filter(([_, uids]) => uids.size > 5);
+  const sharedVehicleIds = Array.from(vehicleIdToUsers.entries()).filter(([_, users]) => users.size > 1);
+  const usersWithManyVehicleIds = Array.from(userToVehicleIds.entries()).filter(([_, ids]) => ids.size > 5);
 
   console.log('=== Anomalies ===');
-  if (sharedPortUids.length > 0) {
-    console.log(`⚠️  ${sharedPortUids.length} port_uids appear across MULTIPLE users (uid may not be stable per pairing as expected):`);
-    for (const [uid, users] of sharedPortUids.slice(0, 5)) {
-      console.log(`    ${uid.slice(0, 32)}... → ${users.size} users`);
+  if (sharedVehicleIds.length > 0) {
+    console.log(`⚠️  ${sharedVehicleIds.length} vehicle_ids appear across MULTIPLE users (id may not be stable per pairing as expected):`);
+    for (const [vid, users] of sharedVehicleIds.slice(0, 5)) {
+      console.log(`    ${vid.slice(0, 32)}... → ${users.size} users`);
     }
   } else {
-    console.log('✅ No port_uid is shared across users — uid appears stable per pairing.');
+    console.log('✅ No vehicle_id is shared across users — id appears stable per pairing.');
   }
-  if (usersWithManyPortUids.length > 0) {
-    console.log(`⚠️  ${usersWithManyPortUids.length} users have >5 distinct port_uids (multi-vehicle households, or uid churn?):`);
-    for (const [u, uids] of usersWithManyPortUids.slice(0, 5)) {
-      console.log(`    user=${u.slice(0, 8)}... → ${uids.size} distinct port_uids`);
+  if (usersWithManyVehicleIds.length > 0) {
+    console.log(`⚠️  ${usersWithManyVehicleIds.length} users have >5 distinct vehicle_ids (multi-vehicle households, or id churn?):`);
+    for (const [u, ids] of usersWithManyVehicleIds.slice(0, 5)) {
+      console.log(`    user=${u.slice(0, 8)}... → ${ids.size} distinct vehicle_ids`);
     }
   } else {
-    console.log('✅ No user with >5 distinct port_uids — single-vehicle pattern dominates.');
+    console.log('✅ No user with >5 distinct vehicle_ids — single-vehicle pattern dominates.');
   }
   console.log();
 
-  // Step 7: Recommendation. Pick threshold so that "known spot" is rare
-  // enough not to false-positive on coincidental visits, common enough to
-  // matter. p50 visits-per-spot tells us where the bulk lives.
   const medianVisits = pct(visitsPerSpot, 50);
   const recommendedThreshold = medianVisits >= 3 ? 5 : Math.max(3, medianVisits + 1);
-  // Confidence delta: small when threshold is loose, larger when tight.
-  // Existing carplay-anchored = +12, carplay-active-drive = +4.
   const recommendedDelta = recommendedThreshold >= 5 ? 12 : recommendedThreshold === 4 ? 9 : 6;
 
   console.log('=== Recommendation ===');
-  console.log(`Threshold: ≥${recommendedThreshold} prior visits at the same spot in the same car.`);
-  console.log(`Confidence delta: +${recommendedDelta}  (reason: "carplay-known-spot")`);
+  console.log(`Threshold: ≥${recommendedThreshold} prior visits at the same spot in the same vehicle.`);
+  console.log(`Confidence delta: +${recommendedDelta}  (reason: "vehicle-known-spot")`);
   console.log();
 
   console.log('Lookup query for check-parking.ts:');
   console.log(`  SELECT count(*) FROM parking_diagnostics`);
   console.log(`  WHERE user_id = $1`);
-  console.log(`    AND native_meta->>'carPlayPortUid' = $2`);
+  console.log(`    AND native_meta->>'vehicleId' = $2`);
   console.log(`    AND raw_lat BETWEEN $3-0.0003 AND $3+0.0003   -- ~33m bbox`);
   console.log(`    AND raw_lng BETWEEN $4-0.0004 AND $4+0.0004`);
   console.log(`    AND created_at >= now() - interval '180 days'`);
@@ -227,9 +235,9 @@ function pct(values: number[], p: number): number {
   console.log();
 
   console.log('Recommended index (apply via dashboard):');
-  console.log(`  CREATE INDEX IF NOT EXISTS idx_pd_user_carplay_uid_lat`);
-  console.log(`    ON parking_diagnostics (user_id, (native_meta->>'carPlayPortUid'), raw_lat)`);
-  console.log(`    WHERE native_meta->>'carPlayPortUid' IS NOT NULL;`);
+  console.log(`  CREATE INDEX IF NOT EXISTS idx_pd_user_vehicle_id_lat`);
+  console.log(`    ON parking_diagnostics (user_id, (native_meta->>'vehicleId'), raw_lat)`);
+  console.log(`    WHERE native_meta->>'vehicleId' IS NOT NULL;`);
   console.log();
 
   console.log('Re-run after design review: edit pages/api/mobile/check-parking.ts to add the lookup + bump.');

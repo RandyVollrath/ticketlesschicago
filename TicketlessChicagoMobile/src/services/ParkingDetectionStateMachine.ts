@@ -147,6 +147,10 @@ class ParkingDetectionStateMachineClass {
     return this._carName;
   }
 
+  get carAddress(): string | null {
+    return this._carAddress;
+  }
+
   get snapshot(): ParkingDetectionSnapshot {
     return {
       state: this._state,
