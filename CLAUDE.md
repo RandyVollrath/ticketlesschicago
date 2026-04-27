@@ -45,12 +45,24 @@ This applies to end-of-turn summaries, bug diagnoses, and any "what did you do?"
 See **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** for full workflow. Summary:
 1. Commit, push to GitHub
 2. `npm run deploy` (web) — runs reliability gate + CSP static check + vercel prod + post-deploy auth smoke. **Use this instead of bare `npx vercel --prod --yes`** so the auth smoke catches regressions before customers do. If you need a fast path without gates, `npm run deploy:fast` still exists.
-3. `./gradlew assembleRelease` → adb install → Firebase App Distribution upload (Android)
-4. iOS: user builds locally via Xcode
-5. **Task is NOT complete until deployed and URL reported**
-6. No dirty working tree at handoff
+3. **Promote BOTH production aliases manually.** Vercel does NOT auto-promote `autopilotamerica.com` or `www.autopilotamerica.com` on this project — every deploy stays on its `*-randyvollraths-projects.vercel.app` URL until you alias it. After step 2 capture the new deploy URL and run BOTH:
+   ```bash
+   npx vercel alias set <deploy-url> autopilotamerica.com --scope randyvollraths-projects
+   npx vercel alias set <deploy-url> www.autopilotamerica.com --scope randyvollraths-projects
+   ```
+   If you skip this, the code is "deployed" but no real user sees it. That has happened multiple times — it is the #1 way work silently fails.
+4. **Verify the change is actually live.** Curl the affected endpoint on `www.autopilotamerica.com` (apex 307s to www) and confirm the response reflects the new code. If it's a UI change, hit the page and grep for the new copy/component. Pasting the curl output (or "I saw X in the response") into the end-of-turn message is required — don't say "shipped" without it. Example after a find-section change:
+   ```bash
+   curl -sS 'https://www.autopilotamerica.com/api/find-section?address=...' | python3 -m json.tool | head
+   ```
+5. `./gradlew assembleRelease` → adb install → Firebase App Distribution upload (Android)
+6. iOS: user builds locally via Xcode
+7. **Task is NOT complete until deployed, aliased, verified live, and URL reported.** "It compiled," "it deployed," and "the alias was set" are three different things. Don't conflate them.
+8. No dirty working tree at handoff
 
 **NEVER ask "deploy now?" — just deploy.** If a code change ships, deployment is part of the change. Asking for permission to deploy wastes the user's time. The only exception is if the user has explicitly said "don't deploy yet" in this conversation.
+
+**NEVER claim something is "live" without curling the new alias and seeing the new behavior in the response.** "Saw it work" means saw the new response — not "the deploy succeeded."
 
 Connected devices: Moto G 2025 (`ZT4224LFTZ`), Moto E5 Play (`ZY326L2GKG`)
 
