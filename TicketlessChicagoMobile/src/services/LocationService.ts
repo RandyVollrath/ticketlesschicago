@@ -897,6 +897,17 @@ class LocationServiceClass {
       if (typeof cp.disconnectLongitude === 'number') parts.push(`cp_disconnect_lng=${cp.disconnectLongitude.toFixed(6)}`);
       if (typeof cp.connectedAt === 'number') parts.push(`cp_connected_at=${Math.round(cp.connectedAt)}`);
       if (cp.activeDuringDrive === true) parts.push('cp_active_during_drive=1');
+      // Head unit identity — stable per-car key for "this car parked at this
+      // GPS on N prior Tuesdays" pattern matching server-side. Apple does NOT
+      // expose VIN/speed/fuel; this is what's actually available without an
+      // entitlement. portUid encodes per-CarPlay-pairing identity; portName
+      // is the user-visible label (e.g. "Honda Civic").
+      if (typeof cp.portUid === 'string' && cp.portUid.length > 0) {
+        parts.push(`cp_port_uid=${encodeURIComponent(cp.portUid)}`);
+      }
+      if (typeof cp.portName === 'string' && cp.portName.length > 0) {
+        parts.push(`cp_port_name=${encodeURIComponent(cp.portName)}`);
+      }
       if (parts.length > 0) carPlayParam = `&${parts.join('&')}`;
     }
 

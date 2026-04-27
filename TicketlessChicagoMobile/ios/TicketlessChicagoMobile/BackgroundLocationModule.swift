@@ -482,11 +482,21 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         lastCarPlayConnectedAt = now
         // Fresh CarPlay session — clear stale fixes from any previous drive.
         recentCarPlayInVehicleLocations.removeAll()
+        // Capture the head unit's stable identity from the audio port. uid is
+        // typically a deterministic per-car string (Apple does not document the
+        // exact format); portName is the user-visible label set by the car.
+        // Both come for free from AVAudioSession — no entitlement required.
+        if let carPlayPort = route.outputs.first(where: { $0.portType == .carAudio }) {
+          lastCarPlayPortUid = carPlayPort.uid
+          lastCarPlayPortName = carPlayPort.portName
+          log("CarPlay port: name=\"\(carPlayPort.portName)\" uid=\(carPlayPort.uid)")
+        }
         decision("carplay_connected", [
           "reason": reason,
           "isMonitoring": isMonitoring,
           "isDriving": isDriving,
           "hasConfirmedParking": hasConfirmedParkingThisSession,
+          "portName": lastCarPlayPortName ?? "",
         ])
         log("CarPlay connected — phone paired to car head unit")
         if isMonitoring && !isDriving {
@@ -838,6 +848,14 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   // lastCarPlayDisconnectLatitude/Longitude — more robust than a single fix.
   private var recentCarPlayInVehicleLocations: [CLLocation] = []
   private let maxCarPlayInVehicleLocations = 8
+  // Identity of the connected CarPlay head unit, captured from
+  // AVAudioSessionPortDescription. Apple's third-party CarPlay APIs do NOT
+  // expose VIN, speed, or fuel — but `port.uid` is a stable per-head-unit
+  // identifier and `portName` is the user-visible name (e.g. "Honda Civic").
+  // Sent to the server so future analytics can do "this same car parked at
+  // this same GPS on N prior Tuesdays" pattern matching for confidence.
+  private var lastCarPlayPortUid: String? = nil
+  private var lastCarPlayPortName: String? = nil
   // falsePositiveHotspots removed Mar 2026 — hotspot system had a fundamental flaw:
   // blocking prevents the very parking event that would let the user "Correct" an incorrect hotspot.
   private var healthRecoveryCount = 0
@@ -1699,6 +1717,17 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           }
         }
         carPlayContext["activeDuringDrive"] = connectedDuringDrive || carPlayConnected
+        // Head unit identity — only emit when CarPlay was actually involved in
+        // this drive. Stale uid from a previous CarPlay drive doesn't belong on
+        // a CoreMotion-only park event.
+        if connectedDuringDrive || disconnectedDuringDrive || carPlayConnected {
+          if let uid = lastCarPlayPortUid, !uid.isEmpty {
+            carPlayContext["portUid"] = uid
+          }
+          if let name = lastCarPlayPortName, !name.isEmpty {
+            carPlayContext["portName"] = name
+          }
+        }
         emitBody["carPlay"] = carPlayContext
       }
     }

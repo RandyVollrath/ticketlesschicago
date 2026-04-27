@@ -729,7 +729,7 @@ class BackgroundTaskServiceClass {
                 compassConfidence?: number;
                 driveTrajectory?: Array<{latitude: number; longitude: number; heading: number; speed: number; timestamp?: number}>;
                 appleGeocode?: { thoroughfare?: string; subThoroughfare?: string; subLocality?: string; name?: string; postalCode?: string };
-                carPlay?: { connectedAt?: number; disconnectedAt?: number; disconnectLatitude?: number; disconnectLongitude?: number; activeDuringDrive?: boolean };
+                carPlay?: { connectedAt?: number; disconnectedAt?: number; disconnectLatitude?: number; disconnectLongitude?: number; activeDuringDrive?: boolean; portUid?: string; portName?: string };
               } | undefined;
               if (event.averagedLatitude && event.averagedLongitude && (event.averagedFixCount ?? 0) >= 3) {
                 // Use averaged GPS position (more accurate than single fix)
