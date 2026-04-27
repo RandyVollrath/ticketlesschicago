@@ -85,8 +85,8 @@ android {
         applicationId "fyi.ticketless.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 42
-        versionName "2.0.9"
+        versionCode 43
+        versionName "2.0.10"
     }
     signingConfigs {
         debug {
