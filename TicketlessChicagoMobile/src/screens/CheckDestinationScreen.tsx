@@ -1269,7 +1269,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    // Generous vertical breathing room so the close button sits well below
+    // the iPhone Dynamic Island / notch and isn't crowded against the top
+    // edge — previously the button was just 12px below the safe-area top
+    // and felt untappable on devices with intrusive top hardware.
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
     gap: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -1282,7 +1287,14 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   fullscreenCloseButton: {
-    padding: 4,
+    // 44×44 minimum touch target (Apple HIG) — the previous 4px padding gave
+    // a 32×32-ish target which was too small to hit reliably with a thumb,
+    // especially when the button sat against the screen edge.
+    padding: spacing.sm,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Directions
