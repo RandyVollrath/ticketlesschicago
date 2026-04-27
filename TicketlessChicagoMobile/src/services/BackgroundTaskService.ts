@@ -720,7 +720,17 @@ class BackgroundTaskServiceClass {
               // for better accuracy near intersections. Include heading for street disambiguation.
               // Include driveTrajectory (last ~10 moving fixes) so the server can run
               // turn-aware street disambiguation even when GPS heading is stale.
-              let parkingCoords: { latitude: number; longitude: number; accuracy?: number; heading?: number; compassHeading?: number; compassConfidence?: number; driveTrajectory?: Array<{latitude: number; longitude: number; heading: number; speed: number}>; appleGeocode?: { thoroughfare?: string; subThoroughfare?: string; subLocality?: string; name?: string; postalCode?: string } } | undefined;
+              let parkingCoords: {
+                latitude: number;
+                longitude: number;
+                accuracy?: number;
+                heading?: number;
+                compassHeading?: number;
+                compassConfidence?: number;
+                driveTrajectory?: Array<{latitude: number; longitude: number; heading: number; speed: number; timestamp?: number}>;
+                appleGeocode?: { thoroughfare?: string; subThoroughfare?: string; subLocality?: string; name?: string; postalCode?: string };
+                carPlay?: { connectedAt?: number; disconnectedAt?: number; disconnectLatitude?: number; disconnectLongitude?: number; activeDuringDrive?: boolean };
+              } | undefined;
               if (event.averagedLatitude && event.averagedLongitude && (event.averagedFixCount ?? 0) >= 3) {
                 // Use averaged GPS position (more accurate than single fix)
                 parkingCoords = {
@@ -732,6 +742,7 @@ class BackgroundTaskServiceClass {
                   compassConfidence: event.compassConfidence,
                   driveTrajectory: event.driveTrajectory,
                   appleGeocode: event.appleGeocode,
+                  carPlay: (event as any).carPlay,
                 };
                 log.info(`Using averaged GPS (${event.averagedFixCount} fixes) for parking location; trajectory=${event.driveTrajectory?.length ?? 0} fixes`);
               } else if (
@@ -753,6 +764,7 @@ class BackgroundTaskServiceClass {
                   compassConfidence: event.compassConfidence,
                   driveTrajectory: event.driveTrajectory,
                   appleGeocode: event.appleGeocode,
+                  carPlay: (event as any).carPlay,
                 };
               }
 

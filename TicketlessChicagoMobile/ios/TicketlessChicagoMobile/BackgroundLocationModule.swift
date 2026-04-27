@@ -499,8 +499,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         ])
         log("CarPlay disconnected — phone unpaired from car head unit")
         if isMonitoring && isDriving {
-          if let stopCandidate = lastDrivingLocation ?? locationManager.location {
-            updateStopLocationCandidate(stopCandidate, reason: "carplay_disconnect")
+          let stopCandidate = lastDrivingLocation ?? locationManager.location
+          if let loc = stopCandidate {
+            lastCarPlayDisconnectLatitude = loc.coordinate.latitude
+            lastCarPlayDisconnectLongitude = loc.coordinate.longitude
+            updateStopLocationCandidate(loc, reason: "carplay_disconnect")
           }
           handlePotentialParking(userIsWalking: false)
         }
@@ -798,6 +801,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var carPlayConnected = false
   private var lastCarPlayConnectedAt: Date? = nil
   private var lastCarPlayDisconnectedAt: Date? = nil
+  // Snapshot of where the car was when CarPlay disconnected. Used by the
+  // address-resolution pipeline as the canonical "parking moment" coordinate
+  // — sharper than the eventual finalizedLocation which can drift during the
+  // 10-20s parking confirmation window if the user starts walking.
+  private var lastCarPlayDisconnectLatitude: Double? = nil
+  private var lastCarPlayDisconnectLongitude: Double? = nil
   // falsePositiveHotspots removed Mar 2026 — hotspot system had a fundamental flaw:
   // blocking prevents the very parking event that would let the user "Correct" an incorrect hotspot.
   private var healthRecoveryCount = 0
@@ -1623,16 +1632,44 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // compresses to [lat, lng, heading, speed] tuples before sending to server).
     var emitBody = body
     if !recentDrivingLocations.isEmpty {
+      // timestamp is per-fix wall-clock ms — server uses it to truncate the
+      // trajectory at carPlay.disconnectAt so post-disconnect walking samples
+      // can't contaminate the trajectory vote during street disambiguation.
       let trajectory: [[String: Any]] = recentDrivingLocations.map { loc in
         return [
           "latitude": loc.coordinate.latitude,
           "longitude": loc.coordinate.longitude,
           "heading": loc.course >= 0 ? loc.course : -1,
           "speed": max(0, loc.speed),
+          "timestamp": loc.timestamp.timeIntervalSince1970 * 1000,
         ]
       }
       emitBody["driveTrajectory"] = trajectory
       self.log("EMIT GATE [\(source)]: attaching driveTrajectory with \(trajectory.count) fixes")
+    }
+
+    // CarPlay context — gated so we only emit timestamps/coords from THIS
+    // drive. Without gating, a stale lastCarPlayDisconnectedAt from a previous
+    // CarPlay drive (e.g. the user later parked via CoreMotion without
+    // CarPlay) would feed the server obsolete coords from yesterday's park.
+    if let driveStart = drivingStartTime {
+      let connectedDuringDrive = lastCarPlayConnectedAt.map { $0 >= driveStart } ?? false
+      let disconnectedDuringDrive = lastCarPlayDisconnectedAt.map { $0 >= driveStart } ?? false
+      if connectedDuringDrive || disconnectedDuringDrive || carPlayConnected {
+        var carPlayContext: [String: Any] = [:]
+        if connectedDuringDrive, let connAt = lastCarPlayConnectedAt {
+          carPlayContext["connectedAt"] = connAt.timeIntervalSince1970 * 1000
+        }
+        if disconnectedDuringDrive, let discAt = lastCarPlayDisconnectedAt {
+          carPlayContext["disconnectedAt"] = discAt.timeIntervalSince1970 * 1000
+          if let lat = lastCarPlayDisconnectLatitude, let lng = lastCarPlayDisconnectLongitude {
+            carPlayContext["disconnectLatitude"] = lat
+            carPlayContext["disconnectLongitude"] = lng
+          }
+        }
+        carPlayContext["activeDuringDrive"] = connectedDuringDrive || carPlayConnected
+        emitBody["carPlay"] = carPlayContext
+      }
     }
 
     // Apple reverse-geocode — independent address signal using Apple's DB.
@@ -2071,6 +2108,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     carPlayConnected = false
     lastCarPlayConnectedAt = nil
     lastCarPlayDisconnectedAt = nil
+    lastCarPlayDisconnectLatitude = nil
+    lastCarPlayDisconnectLongitude = nil
     cameraPrewarmUntil = nil
     healthRecoveryCount = 0
     healthRecoveryWindowStart = nil

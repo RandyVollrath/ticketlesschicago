@@ -866,15 +866,38 @@ class LocationServiceClass {
     // failure on 2026-04-25.
     let trajectoryParam = '';
     if (Array.isArray(anyCoords.driveTrajectory) && anyCoords.driveTrajectory.length > 0) {
+      // 5-element form when timestamp is present — server filters fixes
+      // newer than carPlay.disconnectAt to avoid post-park trajectory
+      // contamination. 4-element form is back-compat for older clients.
+      const hasTs = anyCoords.driveTrajectory.some((p: any) => typeof p?.timestamp === 'number');
       const compact = anyCoords.driveTrajectory
         .slice(-90)
-        .map((p: any) => [
-          Number(p.latitude?.toFixed(6) ?? 0),
-          Number(p.longitude?.toFixed(6) ?? 0),
-          Number(p.heading?.toFixed(0) ?? -1),
-          Number(p.speed?.toFixed(1) ?? 0),
-        ]);
+        .map((p: any) => {
+          const base = [
+            Number(p.latitude?.toFixed(6) ?? 0),
+            Number(p.longitude?.toFixed(6) ?? 0),
+            Number(p.heading?.toFixed(0) ?? -1),
+            Number(p.speed?.toFixed(1) ?? 0),
+          ];
+          return hasTs ? [...base, Math.round(Number(p.timestamp ?? 0))] : base;
+        });
       trajectoryParam = `&drive_trajectory=${encodeURIComponent(JSON.stringify(compact))}`;
+    }
+
+    // CarPlay context: when CarPlay was paired during this drive, native
+    // captured the disconnect timestamp + GPS fix. Server uses these as a
+    // sharper "parking moment" anchor than post-drift GPS, and to truncate
+    // the driveTrajectory at disconnect time.
+    let carPlayParam = '';
+    const cp = anyCoords.carPlay;
+    if (cp && typeof cp === 'object') {
+      const parts: string[] = [];
+      if (typeof cp.disconnectedAt === 'number') parts.push(`cp_disconnect_at=${Math.round(cp.disconnectedAt)}`);
+      if (typeof cp.disconnectLatitude === 'number') parts.push(`cp_disconnect_lat=${cp.disconnectLatitude.toFixed(6)}`);
+      if (typeof cp.disconnectLongitude === 'number') parts.push(`cp_disconnect_lng=${cp.disconnectLongitude.toFixed(6)}`);
+      if (typeof cp.connectedAt === 'number') parts.push(`cp_connected_at=${Math.round(cp.connectedAt)}`);
+      if (cp.activeDuringDrive === true) parts.push('cp_active_during_drive=1');
+      if (parts.length > 0) carPlayParam = `&${parts.join('&')}`;
     }
 
     // Distance (in meters) the user had walked from the previously-saved parking
@@ -891,7 +914,7 @@ class LocationServiceClass {
     if (anyCoords.appleGeocode && typeof anyCoords.appleGeocode === 'object') {
       appleGeocodeParam = `&apple_geocode=${encodeURIComponent(JSON.stringify(anyCoords.appleGeocode))}`;
     }
-    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}${trajectoryParam}${appleGeocodeParam}`;
+    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}${trajectoryParam}${appleGeocodeParam}${carPlayParam}`;
 
     // Use rate-limited request with caching
     const response = await RateLimiter.rateLimitedRequest(
