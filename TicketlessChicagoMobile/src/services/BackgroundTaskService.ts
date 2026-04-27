@@ -2095,6 +2095,29 @@ class BackgroundTaskServiceClass {
           }));
         log.info(`Drive trajectory from JS buffer: ${freshTrajectory.length} fixes`);
       }
+      // Vehicle identity — unified per-car key for "this car parked at this
+      // GPS on N prior occasions" pattern matching server-side. iOS sources
+      // it from CarPlay's AVAudioSession port (no entitlement required);
+      // Android sources it from the configured Bluetooth car's MAC address.
+      // Both platforms send the same wire fields so analytics is one query.
+      const carPlayMeta = (presetCoords as any)?.carPlay;
+      let vehicleId: string | undefined;
+      let vehicleIdSource: 'carplay' | 'android_bt' | undefined;
+      let vehicleName: string | undefined;
+      if (Platform.OS === 'ios' && typeof carPlayMeta?.portUid === 'string' && carPlayMeta.portUid.length > 0) {
+        vehicleId = carPlayMeta.portUid;
+        vehicleIdSource = 'carplay';
+        vehicleName = typeof carPlayMeta.portName === 'string' ? carPlayMeta.portName : undefined;
+      } else if (Platform.OS === 'android') {
+        const btAddr = ParkingDetectionStateMachine.carAddress;
+        const btName = ParkingDetectionStateMachine.carName;
+        if (btAddr && btAddr.length > 0) {
+          vehicleId = btAddr;
+          vehicleIdSource = 'android_bt';
+          vehicleName = btName ?? undefined;
+        }
+      }
+
       const coordsWithMeta: any = {
         ...coords,
         locationSource: detectionMeta?.locationSource,
@@ -2104,6 +2127,9 @@ class BackgroundTaskServiceClass {
         driftFromParkingMeters: (presetCoords as any)?.driftFromParkingMeters,
         driveTrajectory: freshTrajectory,
         appleGeocode: (presetCoords as any)?.appleGeocode,
+        vehicleId,
+        vehicleIdSource,
+        vehicleName,
       };
 
       // Check parking rules

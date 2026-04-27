@@ -897,18 +897,25 @@ class LocationServiceClass {
       if (typeof cp.disconnectLongitude === 'number') parts.push(`cp_disconnect_lng=${cp.disconnectLongitude.toFixed(6)}`);
       if (typeof cp.connectedAt === 'number') parts.push(`cp_connected_at=${Math.round(cp.connectedAt)}`);
       if (cp.activeDuringDrive === true) parts.push('cp_active_during_drive=1');
-      // Head unit identity — stable per-car key for "this car parked at this
-      // GPS on N prior Tuesdays" pattern matching server-side. Apple does NOT
-      // expose VIN/speed/fuel; this is what's actually available without an
-      // entitlement. portUid encodes per-CarPlay-pairing identity; portName
-      // is the user-visible label (e.g. "Honda Civic").
-      if (typeof cp.portUid === 'string' && cp.portUid.length > 0) {
-        parts.push(`cp_port_uid=${encodeURIComponent(cp.portUid)}`);
-      }
-      if (typeof cp.portName === 'string' && cp.portName.length > 0) {
-        parts.push(`cp_port_name=${encodeURIComponent(cp.portName)}`);
-      }
       if (parts.length > 0) carPlayParam = `&${parts.join('&')}`;
+    }
+
+    // Unified vehicle identity — per-car key for "this car parked at this
+    // GPS on N prior occasions" pattern matching server-side. Both platforms
+    // populate this via BackgroundTaskService.coordsWithMeta:
+    //   iOS:     vehicleIdSource='carplay',    id = AVAudioSession port.uid
+    //   Android: vehicleIdSource='android_bt', id = configured BT MAC
+    // Apple does NOT expose VIN/speed/fuel; portUid is the closest stable
+    // per-vehicle identifier obtainable without a CarPlay entitlement.
+    let vehicleParam = '';
+    const vid = (anyCoords as any).vehicleId;
+    const vsrc = (anyCoords as any).vehicleIdSource;
+    const vname = (anyCoords as any).vehicleName;
+    if (typeof vid === 'string' && vid.length > 0) {
+      const vparts: string[] = [`vehicle_id=${encodeURIComponent(vid)}`];
+      if (typeof vsrc === 'string' && vsrc.length > 0) vparts.push(`vehicle_id_source=${encodeURIComponent(vsrc)}`);
+      if (typeof vname === 'string' && vname.length > 0) vparts.push(`vehicle_name=${encodeURIComponent(vname)}`);
+      vehicleParam = `&${vparts.join('&')}`;
     }
 
     // Distance (in meters) the user had walked from the previously-saved parking
@@ -925,7 +932,7 @@ class LocationServiceClass {
     if (anyCoords.appleGeocode && typeof anyCoords.appleGeocode === 'object') {
       appleGeocodeParam = `&apple_geocode=${encodeURIComponent(JSON.stringify(anyCoords.appleGeocode))}`;
     }
-    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}${trajectoryParam}${appleGeocodeParam}${carPlayParam}`;
+    const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}${trajectoryParam}${appleGeocodeParam}${carPlayParam}${vehicleParam}`;
 
     // Use rate-limited request with caching
     const response = await RateLimiter.rateLimitedRequest(
