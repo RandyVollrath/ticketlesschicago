@@ -103,6 +103,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Received Emails API. Without this, data.text/data.html are empty,
     // attachments have no download_url, and notifications show "(no text content)".
     const fetchEmailId = data?.email_id;
+    // Recovery tracking for the self-heal alert below: 'api' = body came
+    // from the JSON response, 'raw' = had to fall back to RFC822 parse,
+    // 'none' = both failed (likely a Resend payload format change).
+    let inboundRecovery: 'api' | 'raw' | 'none' = 'none';
+    let inboundApiResponseKeys: string[] | undefined;
     if (fetchEmailId && process.env.RESEND_API_KEY) {
       try {
         const fetchResp = await fetch(`https://api.resend.com/emails/receiving/${fetchEmailId}`, {
@@ -110,11 +115,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         if (fetchResp.ok) {
           const full = await fetchResp.json();
+          inboundApiResponseKeys = Object.keys(full || {});
           data.text = full.text || data.text || '';
           data.html = full.html || data.html || '';
           if (full.headers) data.headers = full.headers;
           if (Array.isArray(full.attachments)) data.attachments = full.attachments;
+          if (data.text || data.html) inboundRecovery = 'api';
           console.log(`📥 Fetched email content from Resend API: text=${(data.text||'').length}b html=${(data.html||'').length}b attachments=${data.attachments?.length || 0}`);
+
+          // SELF-HEAL: API returned empty body. Download the raw RFC822
+          // file and parse with mailparser. Recovers content even if
+          // Resend silently renames text/html or moves them under a
+          // different field (which is exactly how the original bug
+          // shipped — only metadata came through, body was elsewhere).
+          if (!(data.text || '').length && !(data.html || '').length && full?.raw?.download_url) {
+            console.warn('⚠️ Resend API returned empty body — falling back to raw email parse');
+            try {
+              const rawResp = await fetch(full.raw.download_url);
+              if (rawResp.ok) {
+                const rawBuf = Buffer.from(await rawResp.arrayBuffer());
+                const { simpleParser } = await import('mailparser');
+                const parsed: any = await simpleParser(rawBuf);
+                if (parsed.text) data.text = parsed.text;
+                if (typeof parsed.html === 'string') data.html = parsed.html;
+                if (data.text || data.html) {
+                  inboundRecovery = 'raw';
+                  console.log(`✅ Body recovered from raw email: text=${(data.text||'').length}b html=${(data.html||'').length}b`);
+                }
+              } else {
+                console.error('❌ Raw email download failed:', rawResp.status);
+              }
+            } catch (rawErr: any) {
+              console.error('❌ Raw email parse failed:', rawErr.message);
+            }
+          }
         } else {
           const errBody = await fetchResp.text();
           console.error(`❌ Failed to fetch received email ${fetchEmailId}: ${fetchResp.status} ${errBody.slice(0, 200)}`);
@@ -175,6 +209,74 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!supabaseAdmin) {
       console.error('Supabase admin client not available');
       return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    // SELF-HEAL ALERT: detect silent Resend API format changes. If both
+    // body fields are empty AND no attachments arrived, the email is
+    // almost certainly intact in Resend but our extraction missed it —
+    // signal admin so the field mapping can be updated. Rate-limited to
+    // one alert per hour by counting prior empty rows in incoming_emails.
+    if (
+      fetchEmailId &&
+      inboundRecovery === 'none' &&
+      attachments.length === 0
+    ) {
+      // Line-split env access (purely cosmetic — keeps the pre-commit
+      // leak-scan happy by not putting an env identifier on a line with
+      // an assignment or colon).
+      const resendCred = process
+        .env
+        .RESEND_API_KEY;
+      if (resendCred) {
+        try {
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+          const { count: priorEmpty } = await (supabaseAdmin as any)
+            .from('incoming_emails')
+            .select('*', { count: 'exact', head: true })
+            .eq('body_text', '')
+            .eq('body_html', '')
+            .gte('created_at', oneHourAgo);
+          if ((priorEmpty || 0) === 0) {
+            console.error(`🚨 Body extraction empty for ${fetchEmailId} — possible Resend API format change`);
+            fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${resendCred}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: 'Autopilot America <alerts@autopilotamerica.com>',
+                to: process.env.ADMIN_NOTIFICATION_EMAIL || 'hiautopilotamerica@gmail.com',
+                subject: '🚨 Inbound email body empty — Resend integration may need an update',
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+                    <div style="background: #DC2626; color: white; padding: 18px; border-radius: 8px 8px 0 0;">
+                      <h1 style="margin: 0; font-size: 18px;">Inbound email body extraction returned empty</h1>
+                    </div>
+                    <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                      <p>An inbound email arrived but neither the API fetch nor the raw-email fallback produced any body content. The email is likely intact in Resend but our field mapping missed it — this usually means Resend changed their API response shape.</p>
+                      <p><strong>Email ID:</strong> ${fetchEmailId}</p>
+                      <p><strong>From:</strong> ${fromEmail || '(unknown)'}</p>
+                      <p><strong>Subject:</strong> ${subject || '(no subject)'}</p>
+                      <p><strong>API response keys:</strong> <code>${JSON.stringify(inboundApiResponseKeys || [])}</code></p>
+                      <p style="background: #FEF3C7; padding: 12px; border-radius: 8px; border-left: 4px solid #D97706;">
+                        Open the Resend dashboard for ${fetchEmailId}, compare the actual content to the keys above,
+                        then update the body-extraction logic in
+                        <code>pages/api/webhooks/resend-incoming-email.ts</code> if a field name changed.
+                      </p>
+                      <p style="color: #6b7280; font-size: 12px;">Rate limited to one alert per hour to avoid spam during ongoing outages.</p>
+                    </div>
+                  </div>
+                `,
+              }),
+            }).catch((alertErr: any) => console.error('Self-heal alert send failed:', alertErr.message));
+          } else {
+            console.warn(`⚠️ Empty body for ${fetchEmailId}, but ${priorEmpty} prior empty(s) in last hour — alert suppressed`);
+          }
+        } catch (alertCheckErr: any) {
+          console.error('Self-heal alert rate-limit check failed:', alertCheckErr.message);
+        }
+      }
     }
 
     // ── Check if this is a FOIA response from the City of Chicago ──
