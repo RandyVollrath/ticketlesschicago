@@ -2240,6 +2240,17 @@ export default async function handler(
       addressConfidence += 12;
       confidenceReasons.push('carplay-anchored');
     }
+    // CarPlay-active-drive bump: when CarPlay was paired for the whole drive,
+    // the trajectory is 100% in-vehicle by construction (no walking samples
+    // could have entered). That makes the snap winner more trustworthy
+    // independent of whether we used the disconnect coords as the snap
+    // anchor (which only fires when disconnect drift is ≤ 100m). Smaller
+    // than the anchor bonus because it's a weaker per-fix signal — but
+    // still meaningful and additive.
+    if (carPlayActiveDuringDrive) {
+      addressConfidence += 4;
+      confidenceReasons.push('carplay-active-drive');
+    }
     addressConfidence = Math.max(0, Math.min(100, addressConfidence));
     diag.address_confidence = addressConfidence;
     diag.address_confidence_reasons = confidenceReasons;

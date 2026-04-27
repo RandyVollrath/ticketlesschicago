@@ -480,6 +480,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       carPlayConnected = hasCarPlayRoute
       if hasCarPlayRoute {
         lastCarPlayConnectedAt = now
+        // Fresh CarPlay session — clear stale fixes from any previous drive.
+        recentCarPlayInVehicleLocations.removeAll()
         decision("carplay_connected", [
           "reason": reason,
           "isMonitoring": isMonitoring,
@@ -500,9 +502,29 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         log("CarPlay disconnected — phone unpaired from car head unit")
         if isMonitoring && isDriving {
           let stopCandidate = lastDrivingLocation ?? locationManager.location
-          if let loc = stopCandidate {
+          // Prefer median of recent in-vehicle fixes over the single
+          // lastDrivingLocation. The single-fix path picks the most recent
+          // fix, which is often the worst-accuracy one (GPS quality drops as
+          // the car slows and stops). Median across 3+ recent good fixes is
+          // robust to per-fix accuracy variance and pulls the anchor toward
+          // the true parking-moment position.
+          let goodFixes = recentCarPlayInVehicleLocations.filter {
+            $0.horizontalAccuracy > 0 && $0.horizontalAccuracy <= 20
+          }
+          if goodFixes.count >= 3 {
+            let lats = goodFixes.map { $0.coordinate.latitude }.sorted()
+            let lngs = goodFixes.map { $0.coordinate.longitude }.sorted()
+            let medLat = lats[lats.count / 2]
+            let medLng = lngs[lngs.count / 2]
+            lastCarPlayDisconnectLatitude = medLat
+            lastCarPlayDisconnectLongitude = medLng
+            log("CarPlay disconnect anchor: median of \(goodFixes.count) in-vehicle fixes → (\(String(format: "%.6f", medLat)), \(String(format: "%.6f", medLng)))")
+          } else if let loc = stopCandidate {
             lastCarPlayDisconnectLatitude = loc.coordinate.latitude
             lastCarPlayDisconnectLongitude = loc.coordinate.longitude
+            log("CarPlay disconnect anchor: only \(goodFixes.count) good in-vehicle fixes, falling back to lastDrivingLocation")
+          }
+          if let loc = stopCandidate {
             updateStopLocationCandidate(loc, reason: "carplay_disconnect")
           }
           handlePotentialParking(userIsWalking: false)
@@ -807,6 +829,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   // 10-20s parking confirmation window if the user starts walking.
   private var lastCarPlayDisconnectLatitude: Double? = nil
   private var lastCarPlayDisconnectLongitude: Double? = nil
+  // Ring buffer of GPS fixes captured during the current CarPlay session,
+  // regardless of speed. The trajectory buffer (recentDrivingLocations) gates
+  // on speed >= 0.3 m/s so it can't help with the final 1-3 seconds of slow-
+  // creep into a parking spot. CarPlay-on is an in-vehicle guarantee, so we
+  // can safely capture sub-threshold fixes here without walking contamination.
+  // On disconnect, we take the median of recent good-accuracy fixes to set
+  // lastCarPlayDisconnectLatitude/Longitude — more robust than a single fix.
+  private var recentCarPlayInVehicleLocations: [CLLocation] = []
+  private let maxCarPlayInVehicleLocations = 8
   // falsePositiveHotspots removed Mar 2026 — hotspot system had a fundamental flaw:
   // blocking prevents the very parking event that would let the user "Correct" an incorrect hotspot.
   private var healthRecoveryCount = 0
@@ -2110,6 +2141,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     lastCarPlayDisconnectedAt = nil
     lastCarPlayDisconnectLatitude = nil
     lastCarPlayDisconnectLongitude = nil
+    recentCarPlayInVehicleLocations.removeAll()
     cameraPrewarmUntil = nil
     healthRecoveryCount = 0
     healthRecoveryWindowStart = nil
@@ -3147,6 +3179,17 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       gpsFallbackDrivingSince = nil
       gpsFallbackStartLocation = nil
       gpsFallbackPossibleDrivingEmitted = false
+    }
+
+    // CarPlay-on in-vehicle ring buffer — captures fixes regardless of speed
+    // for use as a robust median-based parking anchor at disconnect time.
+    // Gated on carPlayConnected so walking samples can never enter; bounded
+    // accuracy gate prevents trash fixes from polluting the median.
+    if carPlayConnected && location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 30 {
+      recentCarPlayInVehicleLocations.append(location)
+      if recentCarPlayInVehicleLocations.count > maxCarPlayInVehicleLocations {
+        recentCarPlayInVehicleLocations.removeFirst()
+      }
     }
 
     // --- Update driving location continuously while in driving state ---
