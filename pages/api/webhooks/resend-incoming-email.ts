@@ -1114,6 +1114,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
+      const adminTo = (process.env.ADMIN_NOTIFICATION_EMAILS || process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || 'randyvollrath@gmail.com')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
       const resendResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -1122,7 +1127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         body: JSON.stringify({
           from: 'Autopilot America <alerts@autopilotamerica.com>',
-          to: process.env.ADMIN_NOTIFICATION_EMAIL || 'hiautopilotamerica@gmail.com',
+          to: adminTo,
           subject: emailSubject,
           html: emailHtml
         }),
