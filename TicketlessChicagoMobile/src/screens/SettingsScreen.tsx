@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import AnalyticsService from '../services/AnalyticsService';
+import { submitDebugReport } from '../services/DebugReportService';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import Logger from '../utils/Logger';
 
@@ -43,6 +44,7 @@ const SettingsScreen: React.FC = () => {
   const [savedCar, setSavedCar] = useState<SavedCarDevice | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isSubmittingDebugReport, setIsSubmittingDebugReport] = useState(false);
   const isMountedRef = useRef(true);
   const loadingRef = useRef(false);
   const selectingRef = useRef(false);
@@ -344,6 +346,54 @@ const SettingsScreen: React.FC = () => {
             </Text>
           </View>
         )}
+
+        {/* Debug report — manual fallback when something feels broken. */}
+        {/* Auto-reports also fire on parking-pipeline failure thresholds. */}
+        <View style={styles.debugSection}>
+          <Text style={styles.debugHint}>
+            Detection acting up? Send native logs so we can see what happened.
+          </Text>
+          <TouchableOpacity
+            style={[styles.debugButton, isSubmittingDebugReport && { opacity: 0.6 }]}
+            disabled={isSubmittingDebugReport}
+            onPress={() => {
+              Alert.alert(
+                'Send Debug Report',
+                'This uploads native parking-detection logs from your phone. Helpful when something feels broken.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Send',
+                    onPress: async () => {
+                      setIsSubmittingDebugReport(true);
+                      try {
+                        const result = await submitDebugReport('manual:settings_button');
+                        if (result.success) {
+                          Alert.alert('Sent', `Debug report uploaded.${result.id ? '\n\nID: ' + result.id : ''}`);
+                        } else {
+                          Alert.alert('Failed', result.error || 'Could not send debug report.');
+                        }
+                      } catch (e) {
+                        log.warn('Debug report submit failed', e);
+                        Alert.alert('Failed', String(e));
+                      } finally {
+                        if (isMountedRef.current) setIsSubmittingDebugReport(false);
+                      }
+                    },
+                  },
+                ],
+              );
+            }}
+            accessibilityLabel="Send debug report"
+            accessibilityRole="button"
+          >
+            {isSubmittingDebugReport ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.debugButtonText}>Send Debug Report</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
