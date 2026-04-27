@@ -651,15 +651,28 @@ export default async function handler(
           console.warn('[check-parking] GPS correction RPC failed (non-fatal):', corrErr.message);
         } else if (Array.isArray(corrRows) && corrRows.length > 0) {
           const corr = corrRows[0];
-          correctedLat = latitude + corr.offset_lat;
-          correctedLng = longitude + corr.offset_lng;
           const correctionM = Math.sqrt(
             Math.pow(corr.offset_lat * 111000, 2) +
             Math.pow(corr.offset_lng * 111000 * Math.cos(latitude * Math.PI / 180), 2)
           );
-          console.log(`[check-parking] GPS correction applied: ${corr.street_direction} ${corr.street_name} ${corr.block_number} block, ${correctionM.toFixed(1)}m shift (${corr.sample_count} events, ${Number(corr.distance_m).toFixed(0)}m from centroid)`);
-          diag.gps_correction_applied = true;
-          diag.gps_correction_meters = correctionM;
+          // Sanity cap. Plausible urban-canyon GPS bias is 10-30m. Anything
+          // above ~50m is the aggregator getting fooled by snap miss-matches
+          // (events resolved to the wrong block of the same street). Applying
+          // a 400m "correction" would teleport the GPS half a kilometer off.
+          // Found in production immediately after first cron run: W LAWRENCE
+          // 2000 had a 401m offset from 5 mis-snapped events.
+          const MAX_PLAUSIBLE_CORRECTION_M = 50;
+          if (correctionM > MAX_PLAUSIBLE_CORRECTION_M) {
+            console.warn(`[check-parking] GPS correction REJECTED: ${corr.street_direction} ${corr.street_name} ${corr.block_number} offset is ${correctionM.toFixed(0)}m (cap ${MAX_PLAUSIBLE_CORRECTION_M}m). Sample of ${corr.sample_count} events likely contained snap miss-matches.`);
+            diag.gps_correction_rejected = true;
+            diag.gps_correction_meters = correctionM;
+          } else {
+            correctedLat = latitude + corr.offset_lat;
+            correctedLng = longitude + corr.offset_lng;
+            console.log(`[check-parking] GPS correction applied: ${corr.street_direction} ${corr.street_name} ${corr.block_number} block, ${correctionM.toFixed(1)}m shift (${corr.sample_count} events, ${Number(corr.distance_m).toFixed(0)}m from centroid)`);
+            diag.gps_correction_applied = true;
+            diag.gps_correction_meters = correctionM;
+          }
         }
       } catch (corrErr) {
         console.warn('[check-parking] GPS correction lookup failed (non-fatal):', corrErr);
