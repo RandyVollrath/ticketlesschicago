@@ -1162,7 +1162,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           correction_source: source,
         },
       });
-      const updated: ParkingCheckResult = {
+      // Optimistic update so the address swaps in immediately. For pin-drag
+      // with new coords, we'll then re-run the parking check at the dropped
+      // location to refresh restrictions (street cleaning, permit zone,
+      // meters, snow ban) — without it the warnings reflect the old spot.
+      const optimistic: ParkingCheckResult = {
         ...lastParkingCheck,
         address: trimmed,
         coords: correctedCoords
@@ -1179,15 +1183,58 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             }
           : lastParkingCheck.rawApiData,
       };
-      setLastParkingCheck(updated);
+      setLastParkingCheck(optimistic);
       try {
-        await AsyncStorage.setItem(StorageKeys.LAST_PARKING_LOCATION, JSON.stringify(updated));
+        await AsyncStorage.setItem(StorageKeys.LAST_PARKING_LOCATION, JSON.stringify(optimistic));
       } catch {
         // Non-fatal: in-memory state still updated.
       }
       setShowWrongStreetModal(false);
       markCorrectionEngaged();
-      Alert.alert('Thanks', 'Updated to your actual address. We logged this so detection improves.');
+
+      // Re-check rules at the corrected coordinates whenever the user
+      // moved the pin. Without this, a pin-drag that changes the block
+      // (e.g. 2401 → 2380 N Lakewood) would still show the old block's
+      // permit-zone / cleaning state. Also gives us the authoritative
+      // address from the snap pipeline (block-aware, street-snapped) — so
+      // a pin dropped on a building corner gets resolved to the correct
+      // street-side address rather than the building's official address.
+      let finalAddress = trimmed;
+      if (source === 'pin_drag' && correctedCoords) {
+        try {
+          const fresh = await LocationService.checkParkingLocation({
+            latitude: correctedCoords.latitude,
+            longitude: correctedCoords.longitude,
+            accuracy: lastParkingCheck.coords.accuracy,
+          } as any);
+          // Preserve the userCorrected flag so we can show the anchor badge.
+          const merged: ParkingCheckResult = {
+            ...fresh,
+            rawApiData: fresh.rawApiData
+              ? {
+                  ...fresh.rawApiData,
+                  location: {
+                    ...(fresh.rawApiData.location ?? {}),
+                    userCorrected: true,
+                  },
+                }
+              : fresh.rawApiData,
+          };
+          setLastParkingCheck(merged);
+          try {
+            await AsyncStorage.setItem(StorageKeys.LAST_PARKING_LOCATION, JSON.stringify(merged));
+          } catch { /* non-fatal */ }
+          finalAddress = fresh.address || trimmed;
+        } catch (recheckErr) {
+          log.warn('Re-check at corrected coords failed; keeping optimistic update', recheckErr);
+        }
+      }
+
+      const anchorMsg =
+        source === 'pin_drag' && correctedCoords
+          ? `\n\nFuture parks within ~half a block of here will lock to this address for the next 6 months. We re-checked the parking rules for this exact spot.`
+          : `\n\nWe logged this so detection improves.`;
+      Alert.alert('Anchored', `${finalAddress}${anchorMsg}`);
     } catch (e) {
       log.warn('Failed to submit street correction', e);
       Alert.alert('Error', 'Could not save the correction. Try again.');
@@ -1866,6 +1913,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   Parked {formatTimeSince(lastParkingCheck.timestamp)}
                 </Text>
               </View>
+              {/* Anchor badge — appears when this detect was locked to a
+                  previously-confirmed user correction. Tells the user that
+                  their pin-drag / "Wrong street?" fix from a prior visit is
+                  being honored at this spot. */}
+              {(lastParkingCheck.rawApiData?.parkingAnchor?.lockedByUserAnchor ||
+                lastParkingCheck.rawApiData?.location?.userCorrected) && (
+                <View style={styles.anchorBadge}>
+                  <MaterialCommunityIcons name="map-marker-check" size={12} color={colors.white} />
+                  <Text style={styles.anchorBadgeText}>Anchored</Text>
+                </View>
+              )}
               {isDriving && (
                 <View style={styles.drivingBadge}>
                   <MaterialCommunityIcons name="car" size={12} color={colors.white} />
@@ -2094,9 +2152,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <View style={styles.pinCorrectionTextWrap}>
                   <MaterialCommunityIcons name="map-marker-radius" size={18} color={colors.primary} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.pinCorrectionTitle}>Move parking here?</Text>
+                    <Text style={styles.pinCorrectionTitle}>Save this spot?</Text>
                     <Text style={styles.pinCorrectionAddress} numberOfLines={2}>
                       {pinCorrectionPending.address}
+                    </Text>
+                    <Text style={styles.pinCorrectionHint} numberOfLines={2}>
+                      We'll re-check parking rules here and remember this spot for the next 6 months.
                     </Text>
                   </View>
                 </View>
@@ -3233,6 +3294,21 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: typography.weights.semibold,
   },
+  anchorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+    gap: 4,
+  },
+  anchorBadgeText: {
+    fontSize: typography.sizes.xs,
+    color: colors.white,
+    fontWeight: typography.weights.semibold,
+  },
 
   // ──── Quick Start Tips ────
   quickStartCard: {
@@ -3768,6 +3844,12 @@ const styles = StyleSheet.create({
   pinCorrectionAddress: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
+  },
+  pinCorrectionHint: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   pinCorrectionActions: {
     flexDirection: 'row',

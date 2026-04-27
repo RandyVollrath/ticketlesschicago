@@ -184,6 +184,19 @@ interface MobileCheckParkingResponse {
     /** The original (pre-snap) coordinates */
     originalCoordinates: { latitude: number; longitude: number };
   };
+  /**
+   * Set when the result was locked to a previously-confirmed user anchor
+   * (a "Wrong street?" correction or pin-drag confirmation within 50m of
+   * this spot in the last 180 days). When present, the displayed address
+   * came from the user's own correction, not the cascade. The mobile UI
+   * surfaces a small "📍 Anchored" badge so the user knows their prior
+   * correction is being honored.
+   */
+  parkingAnchor?: {
+    lockedByUserAnchor: boolean;
+    street?: string;
+    ageDays?: number;
+  };
   timestamp: string;
   error?: string;
 }
@@ -2203,6 +2216,13 @@ export default async function handler(
       addressConfidence,
       addressConfidenceReasons: confidenceReasons,
       addressAlternates: addressAlternates.length > 0 ? addressAlternates : undefined,
+      parkingAnchor: diag.locked_by_user_anchor
+        ? {
+            lockedByUserAnchor: true,
+            street: typeof diag.user_anchor_street === 'string' ? diag.user_anchor_street : undefined,
+            ageDays: typeof diag.user_anchor_age_days === 'number' ? diag.user_anchor_age_days : undefined,
+          }
+        : undefined,
 
       streetCleaning: {
         hasRestriction: result.streetCleaning.found,

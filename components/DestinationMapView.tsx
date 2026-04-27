@@ -592,7 +592,46 @@ export default function DestinationMapView() {
         // Don't auto-open popup — let user tap the pin to see details
         // This reduces initial clutter on the map
       }
+
+      // Lock the map so it doesn't pan around while the user is dragging
+      // the pin. Without this, single-finger drag on the pin propagates to
+      // the map below and the whole map slides — making it nearly
+      // impossible to land the pin precisely on the curb where the user
+      // actually parked.
+      marker.on('dragstart', () => {
+        try {
+          map.dragging.disable();
+          map.scrollWheelZoom.disable();
+          map.doubleClickZoom.disable();
+          map.boxZoom.disable();
+          map.keyboard.disable();
+          if ((map as any).tap) (map as any).tap.disable();
+          // Live preview during drag: show coords until reverse-geocode
+          // resolves. The actual address comes back on dragend.
+          marker.bindPopup(`
+            <div style="font-family:system-ui;min-width:180px">
+              <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">Drag to the curb where you parked</div>
+              <div style="color:#6C727A;font-size:12px">Release to look up the address</div>
+            </div>
+          `, { maxWidth: 280 }).openPopup();
+        } catch {
+          // Non-fatal: dragging may not be present in older Leaflet builds.
+        }
+      });
+
       marker.on('dragend', async () => {
+        // Re-enable map interaction first so the user isn't trapped if the
+        // reverse-geocode hangs.
+        try {
+          map.dragging.enable();
+          map.scrollWheelZoom.enable();
+          map.doubleClickZoom.enable();
+          map.boxZoom.enable();
+          map.keyboard.enable();
+          if ((map as any).tap) (map as any).tap.enable();
+        } catch {
+          // Non-fatal.
+        }
         const updated = marker.getLatLng();
         marker.bindPopup(`
           <div style="font-family:system-ui;min-width:180px">
