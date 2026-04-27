@@ -2039,16 +2039,52 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {showDetails && lastParkingCheck && (
             <View style={styles.heroExpanded}>
               <View style={styles.heroDivider} />
-              {lastParkingCheck.rules.length > 0 ? (
-                lastParkingCheck.rules.map((rule, index) => (
-                  <View key={index} style={styles.heroRuleRow}>
-                    <MaterialCommunityIcons name="alert" size={14} color="rgba(255,255,255,0.9)" />
-                    <Text style={styles.heroRuleText}>{rule.message || rule.type}</Text>
+              {/* Rules list — split into the active alerts (critical/warning)
+                  and a quieter "info" tier so an info-only permit zone
+                  doesn't render with the same red alert glyph as a real
+                  violation. */}
+              {(() => {
+                const activeRules = lastParkingCheck.rules.filter(r => r.severity !== 'info');
+                if (activeRules.length === 0) {
+                  return (
+                    <Text style={styles.heroExpandedText}>No active restrictions right now.</Text>
+                  );
+                }
+                return activeRules.map((rule, index) => {
+                  // Per-severity icon so the user can tell at a glance whether
+                  // a rule is active NOW (critical, red alert) or starts later
+                  // today (warning, clock).
+                  const iconName = rule.severity === 'critical' ? 'alert' : 'clock-alert-outline';
+                  return (
+                    <View key={index} style={styles.heroRuleRow}>
+                      <MaterialCommunityIcons name={iconName as any} size={14} color="rgba(255,255,255,0.95)" />
+                      <Text style={styles.heroRuleText}>{rule.message || rule.type}</Text>
+                    </View>
+                  );
+                });
+              })()}
+
+              {/* Info-tier permit zone chip — appears when the user is in a
+                  permit zone but it's not currently restricted and isn't
+                  starting within 3 hours. Rendered as a small italic chip
+                  rather than an alert: it's a heads-up so the user isn't
+                  surprised to find a permit zone, not an active warning. */}
+              {(() => {
+                const infoPermit = lastParkingCheck.rules.find(
+                  r => r.type === 'permit_zone' && r.severity === 'info',
+                ) as any;
+                if (!infoPermit) return null;
+                const sched = infoPermit.schedule ? ` · ${infoPermit.schedule}` : '';
+                return (
+                  <View style={styles.heroInfoChipRow}>
+                    <MaterialCommunityIcons name="information-outline" size={12} color="rgba(255,255,255,0.7)" />
+                    <Text style={styles.heroInfoChipText}>
+                      In permit zone {infoPermit.zoneName?.replace(/^Zone\s*/i, '') ?? ''}{sched} · not active now
+                    </Text>
                   </View>
-                ))
-              ) : (
-                <Text style={styles.heroExpandedText}>No restrictions. Park with peace of mind.</Text>
-              )}
+                );
+              })()}
+
               {!!permitZoneSummary && (
                 <View style={styles.heroPermitSummaryRow}>
                   <MaterialCommunityIcons name="card-account-details-outline" size={14} color="rgba(255,255,255,0.9)" />
@@ -3260,6 +3296,23 @@ const styles = StyleSheet.create({
     color: colors.white,
     opacity: 0.9,
     flex: 1,
+  },
+  heroInfoChipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    gap: 4,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  heroInfoChipText: {
+    fontSize: typography.sizes.xs,
+    color: 'rgba(255,255,255,0.85)',
+    fontStyle: 'italic',
   },
   heroRiskSection: {
     marginTop: spacing.sm,

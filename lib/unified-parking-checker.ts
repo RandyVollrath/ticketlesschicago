@@ -574,7 +574,13 @@ export async function checkAllParkingRestrictions(
             result.permitZone.message = `PERMIT REQUIRED NOW - Zone ${zone.zone} (${effectiveSchedule})${sourceNote}. $75 fine.`;
           } else if (zoneStatus.hours_until_restriction <= 3) {
             result.permitZone.severity = 'warning';
-            result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts soon (${effectiveSchedule})${sourceNote}.`;
+            // Round to whole hours for display ("starts in 2h"); when under
+            // an hour, show minutes so the user knows it's imminent.
+            const h = zoneStatus.hours_until_restriction;
+            const countdown = h < 1
+              ? `${Math.max(1, Math.round(h * 60))}m`
+              : `${Math.round(h)}h`;
+            result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts in ${countdown} (${effectiveSchedule})${sourceNote}.`;
           } else {
             result.permitZone.severity = 'info';
             result.permitZone.message = `Zone ${zone.zone} - Permit required ${effectiveSchedule}${sourceNote}.`;

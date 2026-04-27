@@ -1008,18 +1008,27 @@ class LocationServiceClass {
       });
     }
 
-    // Permit zones - show if in zone (even if not currently restricted)
+    // Permit zones — three tiers, server-decided:
+    //   critical  permit required NOW (red)
+    //   warning   permit enforcement starts within 3 hours (orange)
+    //   info      in a permit zone but not currently/imminently restricted
+    //             (gray chip — no alarm, just an FYI so the user knows
+    //             this block has a permit zone they should plan around)
+    //
+    // Trust the server's severity verbatim. The previous logic forced
+    // permitRequired=true to 'warning' which downgraded a real violation
+    // (critical) to a cautionary tone — flat wrong.
     if (data?.permitZone?.inPermitZone) {
-      const severity = data.permitZone.permitRequired ? 'warning' :
-                       (data.permitZone.severity || 'info');
+      const severity = (data.permitZone.severity || 'info') as 'critical' | 'warning' | 'info';
       rules.push({
         type: 'permit_zone',
         message: data.permitZone.message,
-        severity: severity as 'critical' | 'warning' | 'info',
+        severity,
         zoneName: data.permitZone.zoneName,
         schedule: data.permitZone.restrictionSchedule,
         isActiveNow: data.permitZone.permitRequired,
-      });
+        hoursUntilRestriction: (data.permitZone as any).hoursUntilRestriction,
+      } as any);
     }
 
     // DOT permit — show if any active or upcoming permit found near parking spot
