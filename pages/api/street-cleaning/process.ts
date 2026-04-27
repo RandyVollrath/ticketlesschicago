@@ -183,6 +183,7 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
   let failed = 0;
   const errors: string[] = [];
   let totalUsersQueried = 0;
+  let eligible = 0;
 
   try {
     // BUG FIX: Query ALL users with ward/section assigned, regardless of notify_sms.
@@ -349,6 +350,7 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
         }
 
         if (!shouldSend) continue;
+        eligible++;
 
         // Dedup per (user, keyed cleaning_date, type, today).
         const { data: existingNotification } = await supabaseAdmin
@@ -445,11 +447,15 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
     errors.push(`General error: ${sanitizeErrorMessage(error)}`);
   }
 
-  console.log(`\nResults: ${successful} sent, ${failed} failed, ${processed} evaluated`);
+  console.log(`\nResults: ${successful} sent, ${failed} failed, ${eligible} eligible, ${processed} evaluated`);
 
-  // Zero-notification admin alert: if we had users to process but sent nothing, something is wrong
-  if (successful === 0 && totalUsersQueried > 3) {
-    console.warn('ALERT: Zero notifications sent despite having users to process!');
+  // Zero-notification admin alert: only fire when at least one user actually
+  // passed the per-type shouldSend gate but nothing went out. Without the
+  // eligibility check, this paged on legitimate quiet windows — e.g. a 3pm
+  // follow_up where every user with cleaning today is on day 1 of a 2-day
+  // cycle (follow-up correctly defers to day 2).
+  if (eligible > 0 && successful === 0) {
+    console.warn('ALERT: Zero notifications sent despite having eligible users!');
     try {
       await notificationService.sendEmail({
         to: 'randy@autopilotamerica.com',
@@ -457,25 +463,21 @@ async function processStreetCleaningReminders(type: string, chicagoDateISO: stri
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px;">
             <h2 style="color: red;">Zero Notification Alert</h2>
-            <p>The street cleaning notification pipeline processed <strong>${totalUsersQueried} users</strong> but sent <strong>0 notifications</strong>.</p>
+            <p>The street cleaning notification pipeline had <strong>${eligible} eligible user(s)</strong> but sent <strong>0 notifications</strong>.</p>
             <h3>Details</h3>
             <ul>
               <li><strong>Type:</strong> ${type}</li>
               <li><strong>Chicago Date:</strong> ${chicagoDateISO}</li>
+              <li><strong>Users Queried:</strong> ${totalUsersQueried}</li>
               <li><strong>Users Evaluated:</strong> ${processed}</li>
+              <li><strong>Eligible (passed shouldSend):</strong> ${eligible}</li>
               <li><strong>Failed:</strong> ${failed}</li>
               <li><strong>Errors:</strong> ${errors.length > 0 ? errors.join('<br>') : 'None captured'}</li>
             </ul>
-            <p>This likely means:</p>
-            <ol>
-              <li>No users had cleaning dates matching today's schedule</li>
-              <li>All notifications were deduplicated (already sent)</li>
-              <li>A bug is silently filtering everyone out</li>
-            </ol>
-            <p>Check <a href="https://vercel.com/randy-vollrath/ticketless-chicago/logs">Vercel logs</a> for details.</p>
+            <p>This likely means a bug is filtering eligible users out at the dedup or send stage. Check <a href="https://vercel.com/randy-vollrath/ticketless-chicago/logs">Vercel logs</a>.</p>
           </div>
         `,
-        text: `ZERO NOTIFICATION ALERT\n\nType: ${type}\nChicago Date: ${chicagoDateISO}\nUsers: ${totalUsersQueried}\nProcessed: ${processed}\nFailed: ${failed}\nErrors: ${errors.join(', ') || 'None'}\n\nCheck Vercel logs for details.`
+        text: `ZERO NOTIFICATION ALERT\n\nType: ${type}\nChicago Date: ${chicagoDateISO}\nQueried: ${totalUsersQueried}\nEvaluated: ${processed}\nEligible: ${eligible}\nFailed: ${failed}\nErrors: ${errors.join(', ') || 'None'}\n\nCheck Vercel logs for details.`
       });
     } catch (alertError) {
       console.error('Failed to send zero-notification admin alert:', alertError);
