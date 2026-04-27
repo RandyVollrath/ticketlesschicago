@@ -442,6 +442,27 @@ export default async function handler(
   const hasCompass = !isNaN(compassHeadingDeg) && compassHeadingDeg >= 0 && compassHeadingDeg < 360
     && !isNaN(compassConfidenceDeg) && compassConfidenceDeg < 40; // only trust if std < 40°
 
+  // CarPlay context — when the iPhone was paired to a CarPlay head unit during
+  // this drive, native captured the disconnect timestamp + GPS fix. We use
+  // these as a sharper "parking moment" anchor than post-drift GPS, and to
+  // truncate the trajectory vote at disconnect time so post-park walking
+  // samples can't contaminate street disambiguation. Empty for non-CarPlay
+  // drives — pipeline falls back to existing behavior.
+  const cpDisconnectAtRaw = (req.method === 'GET' ? req.query.cp_disconnect_at : req.body.cp_disconnect_at) as string | number | undefined;
+  const cpDisconnectLatRaw = (req.method === 'GET' ? req.query.cp_disconnect_lat : req.body.cp_disconnect_lat) as string | number | undefined;
+  const cpDisconnectLngRaw = (req.method === 'GET' ? req.query.cp_disconnect_lng : req.body.cp_disconnect_lng) as string | number | undefined;
+  const cpConnectedAtRaw = (req.method === 'GET' ? req.query.cp_connected_at : req.body.cp_connected_at) as string | number | undefined;
+  const cpActiveDuringDriveRaw = (req.method === 'GET' ? req.query.cp_active_during_drive : req.body.cp_active_during_drive) as string | number | undefined;
+  const cpDisconnectAt = cpDisconnectAtRaw != null ? Number(cpDisconnectAtRaw) : NaN;
+  const cpDisconnectLat = cpDisconnectLatRaw != null ? Number(cpDisconnectLatRaw) : NaN;
+  const cpDisconnectLng = cpDisconnectLngRaw != null ? Number(cpDisconnectLngRaw) : NaN;
+  const cpConnectedAt = cpConnectedAtRaw != null ? Number(cpConnectedAtRaw) : NaN;
+  const hasCarPlayDisconnectCoords = Number.isFinite(cpDisconnectLat) && Number.isFinite(cpDisconnectLng)
+    && cpDisconnectLat >= 41.64 && cpDisconnectLat <= 42.023
+    && cpDisconnectLng >= -87.95 && cpDisconnectLng <= -87.52;
+  const hasCarPlayDisconnectTs = Number.isFinite(cpDisconnectAt) && cpDisconnectAt > 0;
+  const carPlayActiveDuringDrive = cpActiveDuringDriveRaw === '1' || cpActiveDuringDriveRaw === 1;
+
   // Heading source preference (updated 2026-04-21 after Randy's Wolcott/Lawrence park):
   //   - GPS heading is the default — it reflects actual direction of motion.
   //   - BUT GPS heading at park time is frequently STALE (last driving direction
@@ -553,19 +574,44 @@ export default async function handler(
   // blocks before stopping, every trajectory point will be near Wolcott's
   // centerline, not Lawrence's, even if the stop point's nearest centerline
   // happens to be Lawrence.
+  // Trajectory tuple is 4-element [lat, lng, heading, speed]. Newer iOS
+  // clients append a 5th element [..., timestampMs] which we use here to
+  // truncate the trajectory at carPlay.disconnectAt (post-disconnect samples
+  // are walking, not driving — they pollute the trajectory vote). The
+  // downstream pipeline only reads indices 0-3, so we strip the timestamp
+  // after filtering to keep the existing 4-tuple type.
   let driveTrajectory: Array<[number, number, number, number]> = [];
+  let trajectoryDroppedByCarPlayTruncation = 0;
   const trajectoryRaw = (req.method === 'GET' ? req.query.drive_trajectory : req.body.drive_trajectory) as string | undefined;
   if (trajectoryRaw) {
     try {
       const parsed = JSON.parse(trajectoryRaw);
       if (Array.isArray(parsed)) {
-        driveTrajectory = parsed
-          .filter((p) => Array.isArray(p) && p.length >= 2 && typeof p[0] === 'number' && typeof p[1] === 'number')
-          .slice(-10); // defensive cap
+        let valid = parsed
+          .filter((p: any) => Array.isArray(p) && p.length >= 2 && typeof p[0] === 'number' && typeof p[1] === 'number');
+        if (hasCarPlayDisconnectTs) {
+          const before = valid.length;
+          // 1.5s grace window — the disconnect notification can land
+          // microseconds after the last legitimate driving fix; we don't want
+          // to drop the final-block fix we want most.
+          const cutoff = cpDisconnectAt + 1500;
+          valid = valid.filter((p: any) => {
+            const ts = typeof p[4] === 'number' ? p[4] : null;
+            if (ts == null) return true; // older client — no timestamp, can't filter
+            return ts <= cutoff;
+          });
+          trajectoryDroppedByCarPlayTruncation = before - valid.length;
+        }
+        driveTrajectory = valid.slice(-10).map((p: any) => [
+          Number(p[0]), Number(p[1]), Number(p[2]), Number(p[3]),
+        ] as [number, number, number, number]);
       }
     } catch (e) {
       console.warn('[check-parking] Failed to parse drive_trajectory:', e);
     }
+  }
+  if (trajectoryDroppedByCarPlayTruncation > 0) {
+    console.log(`[check-parking] CarPlay trajectory truncation: dropped ${trajectoryDroppedByCarPlayTruncation} post-disconnect fixes`);
   }
   // Trajectory median heading — circular mean of the last few driving GPS
   // headings. This is a car-truthful direction signal even when the single
@@ -678,6 +724,34 @@ export default async function handler(
         console.warn('[check-parking] GPS correction lookup failed (non-fatal):', corrErr);
       }
     }
+
+    // CarPlay-anchored snap input: when CarPlay disconnect coords are present
+    // and within 100m of the post-correction GPS, use them as the snap input.
+    // This is the canonical "where the car was when the engine turned off"
+    // location — sharper than the post-confirmation GPS, which can drift
+    // 10-50m during the 10-20s parking confirmation window if the user starts
+    // walking before confirmParking() fires. Empty for non-CarPlay drives —
+    // pipeline keeps using correctedLat/Lng as before.
+    let carPlaySnapAnchorApplied = false;
+    if (hasCarPlayDisconnectCoords) {
+      const driftFromCorrected = haversineMeters(correctedLat, correctedLng, cpDisconnectLat, cpDisconnectLng);
+      if (driftFromCorrected <= 100) {
+        console.log(`[check-parking] CarPlay-anchored snap: replacing (${correctedLat.toFixed(6)}, ${correctedLng.toFixed(6)}) with disconnect coords (${cpDisconnectLat.toFixed(6)}, ${cpDisconnectLng.toFixed(6)}) — drift ${driftFromCorrected.toFixed(1)}m`);
+        correctedLat = cpDisconnectLat;
+        correctedLng = cpDisconnectLng;
+        carPlaySnapAnchorApplied = true;
+        diag.carplay_snap_anchor_applied = true;
+        diag.carplay_snap_anchor_drift_m = Math.round(driftFromCorrected * 10) / 10;
+      } else {
+        console.warn(`[check-parking] CarPlay disconnect coords ${driftFromCorrected.toFixed(0)}m from corrected GPS — too far, NOT using as snap anchor (likely stale or wrong-drive)`);
+        diag.carplay_snap_anchor_rejected = true;
+        diag.carplay_snap_anchor_drift_m = Math.round(driftFromCorrected * 10) / 10;
+      }
+    }
+    if (carPlayActiveDuringDrive) diag.carplay_active_during_drive = true;
+    if (Number.isFinite(cpConnectedAt)) diag.carplay_connected_at = cpConnectedAt;
+    if (hasCarPlayDisconnectTs) diag.carplay_disconnect_at = cpDisconnectAt;
+    if (trajectoryDroppedByCarPlayTruncation > 0) diag.carplay_trajectory_dropped = trajectoryDroppedByCarPlayTruncation;
 
     // Step 1: Attempt to snap GPS coordinate to nearest known street segment.
     // This corrects for urban canyon drift (10-30m) that can put you on the wrong block.
@@ -2148,6 +2222,15 @@ export default async function handler(
     if (typeof accuracyMeters === 'number' && accuracyMeters > 25) {
       addressConfidence -= 15;
       confidenceReasons.push(`gps-accuracy-${Math.round(accuracyMeters)}m`);
+    }
+    // CarPlay agreement bump: when the snap winner sits within 20m of where
+    // CarPlay actually disconnected, we have two independent strong signals
+    // agreeing on the location — the GPS at engine-off matches a real
+    // centerline. Worth more than a generic accuracy bonus because it rules
+    // out the post-park-walking-drift class of errors.
+    if (carPlaySnapAnchorApplied && snapResult?.snapDistanceMeters != null && snapResult.snapDistanceMeters <= 20) {
+      addressConfidence += 12;
+      confidenceReasons.push('carplay-anchored');
     }
     addressConfidence = Math.max(0, Math.min(100, addressConfidence));
     diag.address_confidence = addressConfidence;
