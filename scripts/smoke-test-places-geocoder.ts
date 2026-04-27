@@ -37,6 +37,25 @@ interface ValidateAddressResp {
   coordinates?: { lat: number; lng: number };
 }
 
+interface AutocompletePrediction {
+  place_id: string;
+  description: string;
+}
+
+interface AutocompleteResp {
+  predictions: AutocompletePrediction[];
+}
+
+interface PlaceDetailsResp {
+  street?: string;
+  city?: string;
+  state?: string;
+  formatted?: string;
+  lat?: number;
+  lng?: number;
+  place_id?: string;
+}
+
 let passes = 0;
 let failures = 0;
 const failed: string[] = [];
@@ -64,6 +83,18 @@ async function validateAddress(address: string): Promise<ValidateAddressResp> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ address }),
   });
+  return res.json();
+}
+
+async function placesAutocomplete(input: string): Promise<AutocompleteResp> {
+  const url = `${BASE}/api/google/places-autocomplete?input=${encodeURIComponent(input)}&bias=chicago`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function placesDetails(placeId: string): Promise<PlaceDetailsResp> {
+  const url = `${BASE}/api/google/places-details?place_id=${encodeURIComponent(placeId)}`;
+  const res = await fetch(url);
   return res.json();
 }
 
@@ -112,6 +143,46 @@ async function main() {
     typeof va2.message === 'string' && /evanston/i.test(va2.message),
     `got: ${va2.message}`,
   );
+
+  // Mobile autocomplete bridge — what the iOS/Android app calls. The first
+  // prediction must be the actual building (ChIJayk... place_id), and
+  // calling places-details on it must return lat/lng west of -87.658.
+  console.log('\nmobile bridge: places-autocomplete + places-details for "1237 Fullerton"');
+  const ac = await placesAutocomplete('1237 Fullerton');
+  const firstPlaceId = ac.predictions?.[0]?.place_id;
+  assert('autocomplete returns a first prediction', !!firstPlaceId, JSON.stringify(ac).slice(0, 200));
+  assert(
+    'first prediction is the Lakewood building (not Sheffield interpolation)',
+    firstPlaceId === 'ChIJayk6xeLSD4gRrxeeLf9ONoQ',
+    `got place_id=${firstPlaceId}`,
+  );
+  if (firstPlaceId) {
+    const details = await placesDetails(firstPlaceId);
+    assert(
+      'places-details lat in Fullerton/Lakewood range',
+      typeof details.lat === 'number' && details.lat > 41.92 && details.lat < 41.93,
+      `got lat=${details.lat}`,
+    );
+    assert(
+      'places-details lng west of -87.658 (real building)',
+      typeof details.lng === 'number' && details.lng < -87.658,
+      `got lng=${details.lng}`,
+    );
+    assert(
+      'places-details city is Chicago',
+      details.city === 'Chicago',
+      `got city=${details.city}`,
+    );
+  }
+
+  // Coordinates path — when the client has lat/lng (e.g. from a map drag
+  // or autocomplete pick), find-section should skip geocoding and just hit
+  // PostGIS. Confirms the bypass still works after the geocoder refactor.
+  console.log('\nfind-section: coordinates-only path (bypasses geocoder)');
+  const coordRes = await fetch(`${BASE}/api/find-section?lat=41.9249&lng=-87.6599`);
+  const coordJson: FindSectionResp = await coordRes.json();
+  assert('coord-path ward is "2"', coordJson.ward === '2', `got ward=${coordJson.ward}`);
+  assert('coord-path section is "1"', coordJson.section === '1', `got section=${coordJson.section}`);
 
   console.log(`\nResult: ${passes} passed, ${failures} failed`);
   if (failures) {
