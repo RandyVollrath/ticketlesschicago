@@ -655,6 +655,21 @@ export default async function handler(
     // than any single heading-based disambiguation.
     let allCandidates: any[] = [];
 
+    // Mapbox Geocoding v6 reverse house number, captured later in the
+    // mapbox-reverse block. Used as a 3rd-tier address-number source between
+    // building footprint / segment interpolation and the grid-estimator
+    // fallback. Only set when Mapbox returned a real `address`-type feature
+    // whose street agrees with the post-override snap winner — so we don't
+    // borrow a house number from a different street.
+    //
+    // Why this matters (Belden row #71, 2026-04-26): user parked at
+    // Belden+Kenmore, snap got overridden by Nominatim, the wide centerline
+    // recovery missed Belden, and segment interpolation never fired. With
+    // both higher-precedence sources null, the grid estimator returned 1139
+    // W Belden — over a block off — when Mapbox-reverse already had the
+    // real "1035 W Belden Ave" sitting unused in diag.native_meta.
+    let mapboxReverseAddressNumber: number | null = null;
+
     // Helper: adopt a street_centerlines candidate as the winning snap and run
     // block-aware segment interpolation. Used when the initial snap winner is
     // overridden by Nominatim or Mapbox — without this helper those override
@@ -1528,6 +1543,29 @@ export default async function handler(
             diag.native_meta.mapbox_reverse.confirmed_nominatim_override = true;
             console.log('[check-parking] Mapbox reverse CONFIRMS Nominatim override (2-of-3 against snap).');
           }
+
+          // Capture Mapbox-reverse house number for use as a fallback
+          // address-number source. Three guards:
+          //   1. Real address feature (not a "street" or "block" centerline) —
+          //      Mapbox returns address_number only on interpolated address
+          //      features.
+          //   2. House number is a valid positive integer.
+          //   3. Mapbox-reverse street agrees with snap's POST-OVERRIDE winner
+          //      (snapResult.streetName by this point). This avoids borrowing
+          //      a number from the wrong street when snap and mapbox-reverse
+          //      disagree.
+          if (
+            mbRev.matched &&
+            mbRev.featureType === 'address' &&
+            mbRev.houseNumber &&
+            agreesWithSnap
+          ) {
+            const parsed = Number.parseInt(mbRev.houseNumber, 10);
+            if (Number.isFinite(parsed) && parsed > 0) {
+              mapboxReverseAddressNumber = parsed;
+              console.log(`[check-parking] Captured Mapbox-reverse address number ${parsed} on ${mbRev.streetName} (agrees with snap winner ${snapResult?.streetName ?? 'none'}).`);
+            }
+          }
         } catch (mbRevErr) {
           console.warn('[check-parking] Mapbox reverse-geocode failed (non-fatal):', mbRevErr);
         }
@@ -1743,13 +1781,22 @@ export default async function handler(
     //   see. Builds trust, matches signage.
     //
     // When only one source is available, both fall through to that.
+    //
+    // Mapbox-reverse address number is the 3rd tier: only used when neither
+    // building footprint nor segment interpolation produced a number. It is
+    // a real interpolated address from Mapbox's address database — strictly
+    // better than the grid estimator on blocks where the Chicago grid math
+    // diverges from the actual numbering (e.g., Lincoln Park's Belden where
+    // the longitude→address scale runs ~100 numbers off).
     const ruleMatchNumber: number | null =
       snapResult?.interpolatedNumber ??
       buildingFootprintResult?.house_number ??
+      mapboxReverseAddressNumber ??
       null;
     const displayNumber: number | null =
       buildingFootprintResult?.house_number ??
       snapResult?.interpolatedNumber ??
+      mapboxReverseAddressNumber ??
       null;
 
     // Look up the snapped street's class (1=expressway, 2=arterial, 3=collector,
@@ -1912,9 +1959,10 @@ export default async function handler(
     // Address-number precedence for the DISPLAY string, best → fallback:
     //   1. Building footprint (already queried at Step 2a)
     //   2. Block-aware segment interpolation (already computed on snapResult)
-    //   3. unified-parking-checker's address (grid estimator / Nominatim)
+    //   3. Mapbox Geocoding v6 reverse address feature (captured above)
+    //   4. unified-parking-checker's address (grid estimator / Nominatim)
     let finalAddress = result.location.address;
-    let addressNumberSource: 'building_footprint' | 'segment_interpolation' | 'fallback' = 'fallback';
+    let addressNumberSource: 'building_footprint' | 'segment_interpolation' | 'mapbox_reverse_address' | 'fallback' = 'fallback';
     if (buildingFootprintResult) {
       const b = buildingFootprintResult;
       const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
@@ -1929,6 +1977,17 @@ export default async function handler(
       finalAddress = `${snapResult.interpolatedNumber} ${streetForDisplay}, Chicago, IL${zip}`;
       addressNumberSource = 'segment_interpolation';
       console.log(`[check-parking] Display address from block-aware interpolation: ${finalAddress}`);
+    } else if (mapboxReverseAddressNumber != null && result.location.streetName) {
+      // Mapbox returned a real interpolated address feature on the same
+      // street as the resolved snap winner. Strictly better than the grid
+      // estimator's longitude/latitude math on blocks where the Chicago
+      // grid scale is off (Lincoln Park, parts of the South Side).
+      const streetForDisplay = result.location.streetName;
+      const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
+      const zip = zipMatch ? ` ${zipMatch[1]}` : '';
+      finalAddress = `${mapboxReverseAddressNumber} ${streetForDisplay}, Chicago, IL${zip}`;
+      addressNumberSource = 'mapbox_reverse_address';
+      console.log(`[check-parking] Display address from Mapbox-reverse: ${finalAddress} (no building footprint or segment interpolation available).`);
     }
     // Log which source we ended up using for the house number + side-detection.
     const nm: Record<string, any> = diag.native_meta || {};
