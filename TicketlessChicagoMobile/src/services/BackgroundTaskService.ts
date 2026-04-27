@@ -4219,6 +4219,13 @@ class BackgroundTaskServiceClass {
             ? new Date(this.lastParkingSuccessTime).toISOString()
             : 'never',
         });
+        // Auto-ship native logs so we can see what broke without waiting for the
+        // user to discover the (often-missing) Send Debug Report button.
+        triggerAutoDebugReport('parking_health_threshold_exceeded', {
+          consecutiveFailures: this.consecutiveParkingFailures,
+          lastReason: this.lastParkingFailureReason,
+          lastSuccessAt: this.lastParkingSuccessTime,
+        });
       }
     }
   }
@@ -4268,6 +4275,13 @@ class BackgroundTaskServiceClass {
         if (staleness > BackgroundTaskServiceClass.HEALTH_STALE_THRESHOLD_MS) {
           const daysSinceSuccess = Math.floor(staleness / (24 * 60 * 60 * 1000));
           log.warn(`PARKING HEALTH: Pipeline stale — last success was ${daysSinceSuccess} days ago`);
+          // Stale pipeline = the "stuck on Waiting" symptom. Auto-ship logs.
+          // triggerAutoDebugReport rate-limits internally so this is safe to
+          // call on every foreground health check while staleness persists.
+          triggerAutoDebugReport('parking_pipeline_stale', {
+            daysSinceSuccess,
+            lastSuccessAt: this.lastParkingSuccessTime,
+          });
         }
       }
     } catch (e) {
