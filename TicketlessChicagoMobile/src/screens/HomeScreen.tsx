@@ -273,6 +273,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [showWrongStreetModal, setShowWrongStreetModal] = useState(false);
   const [wrongStreetInput, setWrongStreetInput] = useState('');
   const [wrongStreetSubmitting, setWrongStreetSubmitting] = useState(false);
+  // When the modal has alternates, the typed-address input is hidden behind a
+  // disclosure so the tap-an-alternate path is the visually dominant one. This
+  // tracks whether the user revealed the typed fallback for the current open.
+  const [showTypedFallback, setShowTypedFallback] = useState(false);
+  // Timestamp (ms) of the most recent parking event whose low-confidence prompt
+  // the user has engaged with (dismissed or corrected). When this matches the
+  // current `lastParkingCheck.timestamp`, we suppress the inline yellow prompt
+  // for that one event. The "Wrong street?" feedback button stays visible so
+  // the user can still re-open the modal manually.
+  const [correctionDismissedTs, setCorrectionDismissedTs] = useState<number | null>(null);
 
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
@@ -314,6 +324,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       if (dismissed !== 'true' && lastParking) {
         setShowCrossPollinationPrompt(true);
       }
+    }).catch(() => {});
+
+    AsyncStorage.getItem(StorageKeys.PARKING_CORRECTION_DISMISSED_TS).then((v) => {
+      const n = v ? Number(v) : NaN;
+      if (Number.isFinite(n)) setCorrectionDismissedTs(n);
     }).catch(() => {});
   }, []);
 
@@ -1047,12 +1062,32 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [lastParkingCheck]);
 
+  // Mark the current parking event as "user has engaged with the correction
+  // prompt" so the inline yellow hint stops auto-showing for this one event.
+  // Idempotent — safe to call from any dismiss/save path.
+  const markCorrectionEngaged = useCallback(() => {
+    const ts = lastParkingCheck?.timestamp;
+    if (!ts) return;
+    setCorrectionDismissedTs(ts);
+    AsyncStorage.setItem(StorageKeys.PARKING_CORRECTION_DISMISSED_TS, String(ts)).catch(() => {});
+  }, [lastParkingCheck]);
+
   // Open the wrong-street correction modal pre-filled with the current address.
+  // Reset the typed-fallback disclosure each open so the alternate-tap flow is
+  // dominant by default — users only see the text input if they explicitly ask.
   const openWrongStreetModal = useCallback(() => {
     if (!lastParkingCheck) return;
     setWrongStreetInput(lastParkingCheck.address || '');
+    setShowTypedFallback(false);
     setShowWrongStreetModal(true);
   }, [lastParkingCheck]);
+
+  // Close the wrong-street modal without saving — also marks the event as
+  // engaged so the yellow inline prompt doesn't keep re-appearing for it.
+  const dismissWrongStreetModal = useCallback(() => {
+    setShowWrongStreetModal(false);
+    markCorrectionEngaged();
+  }, [markCorrectionEngaged]);
 
   // Submit a user-corrected address. Records ground-truth so we can train on
   // the correction, updates the local parking display, and persists the new
@@ -1111,6 +1146,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         // Non-fatal: in-memory state still updated.
       }
       setShowWrongStreetModal(false);
+      markCorrectionEngaged();
       Alert.alert('Thanks', 'Updated to your actual address. We logged this so detection improves.');
     } catch (e) {
       log.warn('Failed to submit street correction', e);
@@ -1118,7 +1154,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     } finally {
       setWrongStreetSubmitting(false);
     }
-  }, [lastParkingCheck]);
+  }, [lastParkingCheck, markCorrectionEngaged]);
 
   const submitStreetCorrection = useCallback(() => {
     return applyStreetCorrection(wrongStreetInput, 'typed');
@@ -1857,10 +1893,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {/* Low-confidence verify prompt — shown when the server's
                   combined-signal confidence score is below 70, as a clear
                   CTA to correct rather than letting the wrong address sit.
-                  At ≥ 70 we stay quiet so the prompt doesn't get in the
-                  way of confident detections. */}
+                  At ≥ 70 we stay quiet so the prompt doesn't get in the way
+                  of confident detections. Also suppressed once the user has
+                  engaged with this specific event's correction modal (saved
+                  or dismissed) — they shouldn't have to re-dismiss the same
+                  hint every render. The "Wrong street?" feedback button
+                  below stays visible so the modal is always re-openable. */}
               {typeof lastParkingCheck.rawApiData?.addressConfidence === 'number' &&
-                lastParkingCheck.rawApiData.addressConfidence < 70 && (
+                lastParkingCheck.rawApiData.addressConfidence < 70 &&
+                correctionDismissedTs !== lastParkingCheck.timestamp && (
                 <TouchableOpacity
                   style={styles.heroVerifyPrompt}
                   onPress={openWrongStreetModal}
@@ -2431,94 +2472,128 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </Modal>
 
         {/* ──── Wrong-Street Correction Modal ──── */}
-        <Modal
-          visible={showWrongStreetModal}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowWrongStreetModal(false)}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.sheetOverlay}
-          >
-            <TouchableOpacity
-              style={{ flex: 1 }}
-              activeOpacity={1}
-              onPress={() => setShowWrongStreetModal(false)}
-            />
-            <View style={styles.zoneReportContainer} onStartShouldSetResponder={() => true}>
-              <View style={styles.sheetHandle} />
-              <View style={styles.sheetHeader}>
-                <MaterialCommunityIcons name="map-marker-question-outline" size={28} color={colors.primary} />
-                <Text style={styles.sheetTitle}>Fix Parking Street</Text>
-              </View>
-              <Text style={styles.zoneReportHint}>
-                If we picked the wrong street, type your actual parking address. This corrects the display now and helps detection get it right next time.
-              </Text>
-
-              {lastParkingCheck?.address && (
-                <View style={styles.zoneReportCurrentRow}>
-                  <Text style={styles.zoneReportCurrentLabel}>Detected:</Text>
-                  <Text style={styles.zoneReportCurrentValue}>
-                    {lastParkingCheck.address}
+        {/* Layout priority: when the server returns alternate addresses, the
+            tap-an-alternate row is the primary action — most low-confidence
+            corrections are an adjacent street the user can recognize at a
+            glance. Free-text input is hidden behind a "Type a different
+            address" disclosure to keep the visual hierarchy honest about
+            which path is faster and more accurate. If no alternates are
+            available we fall back to showing the text input directly. */}
+        {(() => {
+          const altsRaw = lastParkingCheck?.rawApiData?.addressAlternates;
+          const alternates = Array.isArray(altsRaw) ? altsRaw.slice(0, 3) : [];
+          const hasAlternates = alternates.length > 0;
+          const showTypedSection = !hasAlternates || showTypedFallback;
+          return (
+            <Modal
+              visible={showWrongStreetModal}
+              transparent
+              animationType="slide"
+              onRequestClose={dismissWrongStreetModal}
+            >
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={styles.sheetOverlay}
+              >
+                <TouchableOpacity
+                  style={{ flex: 1 }}
+                  activeOpacity={1}
+                  onPress={dismissWrongStreetModal}
+                />
+                <View style={styles.zoneReportContainer} onStartShouldSetResponder={() => true}>
+                  <View style={styles.sheetHandle} />
+                  <View style={styles.sheetHeader}>
+                    <MaterialCommunityIcons name="map-marker-question-outline" size={28} color={colors.primary} />
+                    <Text style={styles.sheetTitle}>Fix Parking Street</Text>
+                  </View>
+                  <Text style={styles.zoneReportHint}>
+                    {hasAlternates
+                      ? 'Tap your actual parking spot below — this corrects the display now and helps detection get it right next time.'
+                      : 'Type your actual parking address. This corrects the display now and helps detection get it right next time.'}
                   </Text>
-                </View>
-              )}
 
-              {Array.isArray(lastParkingCheck?.rawApiData?.addressAlternates) &&
-                lastParkingCheck!.rawApiData!.addressAlternates!.length > 0 && (
-                  <View style={styles.altSection}>
-                    <Text style={styles.altSectionLabel}>Or did you actually park here?</Text>
-                    {lastParkingCheck!.rawApiData!.addressAlternates!.slice(0, 3).map((alt: any) => (
+                  {lastParkingCheck?.address && (
+                    <View style={styles.zoneReportCurrentRow}>
+                      <Text style={styles.zoneReportCurrentLabel}>Detected:</Text>
+                      <Text style={styles.zoneReportCurrentValue}>
+                        {lastParkingCheck.address}
+                      </Text>
+                    </View>
+                  )}
+
+                  {hasAlternates && (
+                    <View style={styles.altSection}>
+                      <Text style={styles.altSectionLabel}>Did you park at one of these?</Text>
+                      {alternates.map((alt: any) => (
+                        <TouchableOpacity
+                          key={alt.address}
+                          style={[styles.altButton, wrongStreetSubmitting && { opacity: 0.5 }]}
+                          onPress={() => applyStreetCorrection(alt.address, 'alternate_tap')}
+                          disabled={wrongStreetSubmitting}
+                        >
+                          <MaterialCommunityIcons name="map-marker-check-outline" size={18} color={colors.primary} />
+                          <Text style={styles.altButtonText}>{alt.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {hasAlternates && !showTypedFallback && (
+                    <TouchableOpacity
+                      style={styles.altTypedDisclosure}
+                      onPress={() => setShowTypedFallback(true)}
+                      accessibilityLabel="None of these — type a different address"
+                      accessibilityRole="button"
+                    >
+                      <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.primary} />
+                      <Text style={styles.altTypedDisclosureText}>None of these — type a different address</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {showTypedSection && (
+                    <>
+                      <Text style={styles.zoneReportFieldLabel}>
+                        {hasAlternates ? 'Type the correct address' : 'Type a different address'}
+                      </Text>
+                      <TextInput
+                        style={styles.zoneReportInput}
+                        placeholder="e.g. 1820 N Fremont St"
+                        placeholderTextColor={colors.textTertiary}
+                        value={wrongStreetInput}
+                        onChangeText={setWrongStreetInput}
+                        autoCapitalize="words"
+                        returnKeyType="done"
+                        onSubmitEditing={submitStreetCorrection}
+                      />
+
                       <TouchableOpacity
-                        key={alt.address}
-                        style={[styles.altButton, wrongStreetSubmitting && { opacity: 0.5 }]}
-                        onPress={() => applyStreetCorrection(alt.address, 'alternate_tap')}
+                        style={[styles.zoneReportSubmitButton, wrongStreetSubmitting && { opacity: 0.6 }]}
+                        onPress={submitStreetCorrection}
                         disabled={wrongStreetSubmitting}
                       >
-                        <MaterialCommunityIcons name="map-marker-check-outline" size={18} color={colors.primary} />
-                        <Text style={styles.altButtonText}>{alt.label}</Text>
+                        {wrongStreetSubmitting ? (
+                          <ActivityIndicator size="small" color={colors.white} />
+                        ) : (
+                          <>
+                            <MaterialCommunityIcons name="check-circle-outline" size={18} color={colors.white} />
+                            <Text style={styles.zoneReportSubmitText}>Save correction</Text>
+                          </>
+                        )}
                       </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+                    </>
+                  )}
 
-              <Text style={styles.zoneReportFieldLabel}>Or type a different address</Text>
-              <TextInput
-                style={styles.zoneReportInput}
-                placeholder="e.g. 1820 N Fremont St"
-                placeholderTextColor={colors.textTertiary}
-                value={wrongStreetInput}
-                onChangeText={setWrongStreetInput}
-                autoCapitalize="words"
-                returnKeyType="done"
-                onSubmitEditing={submitStreetCorrection}
-              />
-
-              <TouchableOpacity
-                style={[styles.zoneReportSubmitButton, wrongStreetSubmitting && { opacity: 0.6 }]}
-                onPress={submitStreetCorrection}
-                disabled={wrongStreetSubmitting}
-              >
-                {wrongStreetSubmitting ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons name="check-circle-outline" size={18} color={colors.white} />
-                    <Text style={styles.zoneReportSubmitText}>Save correction</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.sheetDismiss}
-                onPress={() => setShowWrongStreetModal(false)}
-              >
-                <Text style={styles.sheetDismissText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
+                  <TouchableOpacity
+                    style={styles.sheetDismiss}
+                    onPress={dismissWrongStreetModal}
+                  >
+                    <Text style={styles.sheetDismissText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            </Modal>
+          );
+        })()}
 
         {/* ──── Pause (subtle, at the bottom) ──── */}
         {isMonitoring && (
@@ -3450,6 +3525,22 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
     color: colors.primary,
     flex: 1,
+  },
+  altTypedDisclosure: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  altTypedDisclosureText: {
+    fontSize: typography.sizes.sm,
+    color: colors.primary,
+    fontWeight: typography.weights.medium,
+    textDecorationLine: 'underline',
   },
 
   // ──── Pause link (subtle, bottom of page) ────

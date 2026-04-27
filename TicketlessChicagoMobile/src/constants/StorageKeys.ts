@@ -73,6 +73,12 @@ export const StorageKeys = {
   // One-time nudges
   PLATE_COMPLIANCE_NUDGE_DISMISSED: 'plateComplianceNudgeDismissed', // 'true' if user dismissed the front plate nudge
   CROSS_POLL_PROMPT_DISMISSED: 'crossPollPromptDismissed', // 'true' if user dismissed the advance-alerts cross-pollination prompt
+
+  // Per-event UX state: timestamp (ms) of the parking event whose low-confidence
+  // correction prompt the user has dismissed or acted on. Used so we don't keep
+  // re-showing the yellow "Not 100% sure" hint for the same event after the user
+  // has already engaged with it once.
+  PARKING_CORRECTION_DISMISSED_TS: 'parkingCorrectionDismissedTs',
 } as const;
 
 // Type for storage keys
