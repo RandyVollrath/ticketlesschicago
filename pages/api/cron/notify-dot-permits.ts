@@ -19,6 +19,7 @@ import { Resend } from 'resend';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { sms, email } from '../../../lib/message-templates';
 import { EMAIL } from '../../../lib/config';
+import { geocodeChicagoAddress } from '../../../lib/places-geocoder';
 import {
   logMessageSent,
   logMessageSkipped,
@@ -27,7 +28,6 @@ import {
 } from '../../../lib/message-audit-logger';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
 const GEOCODE_BATCH_SIZE = 10; // Don't hammer Google API
 const PERMIT_RADIUS_METERS = 30; // Same block face only
 
@@ -64,36 +64,19 @@ interface DotPermit {
 }
 
 /**
- * Geocode an address via Google Maps API
+ * Geocode an address via the shared Places API pipeline
+ * (lib/places-geocoder.ts) so the proximity search lands on the actual
+ * building, not the legacy API's interpolated midpoint.
  */
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
-  if (!GOOGLE_API_KEY) {
-    console.warn('[notify-dot-permits] No GOOGLE_API_KEY configured');
-    return null;
+  const geo = await geocodeChicagoAddress(address);
+  if (geo.status === 'OK' && typeof geo.lat === 'number' && typeof geo.lng === 'number') {
+    return { lat: geo.lat, lng: geo.lng };
   }
-
-  const normalizedAddress = address.toLowerCase().includes('chicago')
-    ? address
-    : `${address}, Chicago, IL`;
-
-  try {
-    const response = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(normalizedAddress)}&key=${GOOGLE_API_KEY}`,
-      { signal: AbortSignal.timeout(10000) }
-    );
-    const data = await response.json();
-
-    if (data.status === 'OK' && data.results?.length > 0) {
-      const location = data.results[0].geometry.location;
-      return { lat: location.lat, lng: location.lng };
-    }
-
-    console.warn(`[notify-dot-permits] Geocode failed for "${address}": ${data.status}`);
-    return null;
-  } catch (err) {
-    console.error(`[notify-dot-permits] Geocode error for "${address}":`, err);
-    return null;
+  if (geo.status !== 'OK') {
+    console.warn(`[notify-dot-permits] Geocode failed for "${address}": ${geo.status}`);
   }
+  return null;
 }
 
 /**
