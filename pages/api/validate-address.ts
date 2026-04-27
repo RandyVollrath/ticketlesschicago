@@ -8,6 +8,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/rate-limiter';
+import { geocodeChicagoAddress } from '../../lib/places-geocoder';
 
 // Main DB (has 2026 schedule + PostGIS functions). Legacy MSC left one endpoint
 // returning null cleaning dates on the web + mobile check-your-street flow.
@@ -64,7 +65,9 @@ function validateAddressFormat(address: string): { valid: boolean; message?: str
   return { valid: true };
 }
 
-// Geocode address with caching
+// Geocode address with caching. Backed by the shared Places API
+// autocomplete+details pipeline (lib/places-geocoder.ts) so signups for
+// Chicago grid addresses land on the correct ward+section.
 async function geocodeAddress(address: string): Promise<{
   success: boolean;
   coordinates?: { lat: number; lng: number };
@@ -73,88 +76,41 @@ async function geocodeAddress(address: string): Promise<{
 }> {
   const cacheKey = address.toLowerCase().trim();
 
-  // Check cache
   const cached = geocodeCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.result;
   }
 
-  const googleApiKey = process.env.GOOGLE_API_KEY;
-  if (!googleApiKey) {
-    console.error('GOOGLE_API_KEY not configured');
-    return { success: false, error: 'Address verification service temporarily unavailable. Please try again later.' };
-  }
+  const geo = await geocodeChicagoAddress(address);
 
-  // Always add Chicago context for better results
-  const normalizedAddress = address.toLowerCase().includes('chicago')
-    ? address
-    : `${address}, Chicago, IL`;
-
-  const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(normalizedAddress)}&key=${googleApiKey}`;
-
-  try {
-    const response = await fetch(geocodeUrl);
-    const data = await response.json();
-
-    if (data.status !== 'OK' || !data.results?.length) {
-      let errorMessage = 'Unable to verify address. Please try again.';
-
-      if (data.status === 'ZERO_RESULTS') {
-        errorMessage = 'Address not found. Please check the spelling and try again.';
-      } else if (data.status === 'REQUEST_DENIED') {
-        console.error('Google Geocode API key issue:', data.error_message);
-        errorMessage = 'Address verification service temporarily unavailable.';
-      } else if (data.status === 'OVER_QUERY_LIMIT') {
-        errorMessage = 'Too many requests. Please wait a moment and try again.';
-      } else if (data.status === 'INVALID_REQUEST') {
-        errorMessage = 'Invalid address format. Please enter a complete street address.';
-      }
-
-      console.log('Geocode failed:', data.status, data.error_message);
-
-      const result = {
-        success: false,
-        error: errorMessage
-      };
-      geocodeCache.set(cacheKey, { result, timestamp: Date.now() });
-      return result;
-    }
-
-    const location = data.results[0];
-
-    // Verify the address is in Chicago
-    const isChicago = location.address_components.some((comp: any) =>
-      comp.types.includes('locality') &&
-      comp.long_name.toLowerCase() === 'chicago'
-    );
-
-    if (!isChicago) {
-      const city = location.address_components.find((comp: any) =>
-        comp.types.includes('locality')
-      )?.long_name || 'this location';
-
-      const result = {
-        success: false,
-        error: `This address appears to be in ${city}, not Chicago. Our service currently only covers Chicago.`
-      };
-      geocodeCache.set(cacheKey, { result, timestamp: Date.now() });
-      return result;
-    }
-
+  if (geo.status === 'NOT_CHICAGO') {
     const result = {
-      success: true,
-      coordinates: {
-        lat: location.geometry.location.lat,
-        lng: location.geometry.location.lng
-      },
-      formattedAddress: location.formatted_address
+      success: false,
+      error: `This address appears to be in ${geo.city || 'another city'}, not Chicago. Our service currently only covers Chicago.`,
     };
-
     geocodeCache.set(cacheKey, { result, timestamp: Date.now() });
     return result;
-  } catch (error) {
-    return { success: false, error: 'Unable to verify address. Please try again.' };
   }
+
+  if (geo.status !== 'OK' || typeof geo.lat !== 'number' || typeof geo.lng !== 'number') {
+    let errorMessage = 'Unable to verify address. Please try again.';
+    if (geo.status === 'ZERO_RESULTS') {
+      errorMessage = 'Address not found. Please check the spelling and try again.';
+    } else if (geo.status === 'ERROR') {
+      errorMessage = 'Address verification service temporarily unavailable. Please try again later.';
+    }
+    const result = { success: false, error: errorMessage };
+    geocodeCache.set(cacheKey, { result, timestamp: Date.now() });
+    return result;
+  }
+
+  const result = {
+    success: true,
+    coordinates: { lat: geo.lat, lng: geo.lng },
+    formattedAddress: geo.formattedAddress,
+  };
+  geocodeCache.set(cacheKey, { result, timestamp: Date.now() });
+  return result;
 }
 
 // Look up ward/section from coordinates

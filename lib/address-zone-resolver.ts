@@ -1,13 +1,18 @@
 import { supabaseAdmin } from './supabase';
+import { geocodeChicagoAddress } from './places-geocoder';
 
 /**
- * Resolve a Chicago address to ward + section. Geocodes via Google, then runs
+ * Resolve a Chicago address to ward + section. Geocodes via the Places API
+ * (autocomplete + details — see lib/places-geocoder.ts for why), then runs
  * the PostGIS find_section_for_point function on the main Supabase DB.
  *
  * Every code path that saves a user's home address must call this (or the
  * /api/find-section endpoint) to populate home_address_ward + section — if we
  * skip it, the user falls out of the street-cleaning cron's ward/section
- * filter and silently stops receiving alerts.
+ * filter and silently stops receiving alerts. And if the geocoder lands a
+ * block off (which the legacy Maps Geocoding API did on Chicago grid
+ * streets), the user gets the wrong section's schedule — same outcome,
+ * silent failure.
  */
 export async function resolveAddressZone(address: string): Promise<{
   lat: number;
@@ -18,37 +23,27 @@ export async function resolveAddressZone(address: string): Promise<{
   const trimmed = address.trim();
   if (!trimmed) return null;
 
-  const googleKey = process.env.GOOGLE_API_KEY;
-  if (!googleKey) {
-    console.error('[resolveAddressZone] GOOGLE_API_KEY missing');
-    return null;
-  }
   if (!supabaseAdmin) {
     console.error('[resolveAddressZone] supabaseAdmin missing');
     return null;
   }
 
-  const normalized = /,\s*(IL|Illinois)/i.test(trimmed) ? trimmed : `${trimmed}, Chicago, IL, USA`;
-  const u = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(normalized)}&key=${googleKey}`;
+  const geo = await geocodeChicagoAddress(trimmed);
+  if (geo.status !== 'OK' || typeof geo.lat !== 'number' || typeof geo.lng !== 'number') {
+    return null;
+  }
 
   try {
-    const resp = await fetch(u);
-    if (!resp.ok) return null;
-    const body: any = await resp.json();
-    if (body.status !== 'OK' || !body.results?.length) return null;
-    const loc = body.results[0].geometry?.location;
-    if (!loc) return null;
-
     const { data, error } = await (supabaseAdmin.rpc as any)('find_section_for_point', {
-      lon: loc.lng,
-      lat: loc.lat,
+      lon: geo.lng,
+      lat: geo.lat,
     });
     if (error || !data?.length) {
-      return { lat: loc.lat, lng: loc.lng, ward: null, section: null };
+      return { lat: geo.lat, lng: geo.lng, ward: null, section: null };
     }
     return {
-      lat: loc.lat,
-      lng: loc.lng,
+      lat: geo.lat,
+      lng: geo.lng,
       ward: String(data[0].ward),
       section: String(data[0].section),
     };

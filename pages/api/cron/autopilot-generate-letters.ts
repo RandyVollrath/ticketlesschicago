@@ -13,6 +13,7 @@ import { getZoneBoundaryDefense } from '../../../lib/parking-intersection-defens
 import { getCameraMalfunctionSignal, type CameraMalfunctionFinding } from '../../../lib/camera-malfunction-detector';
 import { getCtaBusActivityFinding, type CtaBusActivityFinding } from '../../../lib/cta-bus-activity';
 import { getResidentialPermitZoneFinding, type PermitZoneFinding } from '../../../lib/residential-permit-zone-check';
+import { geocodeChicagoAddress } from '../../../lib/places-geocoder';
 import {
   lookupParkingEvidence,
   generateEvidenceParagraph,
@@ -979,19 +980,15 @@ async function gatherAllEvidence(
   if (ticket.location && ticket.violation_date) {
     promises.push((async () => {
       try {
-        // Geocode the address to get lat/lng for 311 search
-        const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
-        if (apiKey) {
-          const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ticket.location + ', Chicago, IL')}&key=${apiKey}`;
-          const geoRes = await fetch(geoUrl);
-          const geoData = await geoRes.json();
-          const loc = geoData.results?.[0]?.geometry?.location;
-          if (loc) {
-            bundle.nearbyServiceRequests = await get311Evidence(loc.lat, loc.lng, ticket.violation_date!, 500);
-            bundle.serviceRequest311Summary = build311DefenseParagraph(bundle.nearbyServiceRequests);
-            if (bundle.serviceRequest311Summary) {
-              console.log(`    311 Evidence: defense-relevant issues found near ticket location`);
-            }
+        // Places API autocomplete+details (lib/places-geocoder.ts) so the
+        // 500m search radius lands on the actual building, not the
+        // legacy API's interpolated midpoint.
+        const geo = await geocodeChicagoAddress(ticket.location);
+        if (geo.status === 'OK' && typeof geo.lat === 'number' && typeof geo.lng === 'number') {
+          bundle.nearbyServiceRequests = await get311Evidence(geo.lat, geo.lng, ticket.violation_date!, 500);
+          bundle.serviceRequest311Summary = build311DefenseParagraph(bundle.nearbyServiceRequests);
+          if (bundle.serviceRequest311Summary) {
+            console.log(`    311 Evidence: defense-relevant issues found near ticket location`);
           }
         }
       } catch (e) { console.error('    311 evidence lookup failed:', e); }
@@ -1017,43 +1014,38 @@ async function gatherAllEvidence(
   if (ticket.location && ticket.violation_date) {
     promises.push((async () => {
       try {
-        const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
-        if (apiKey) {
-          const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ticket.location + ', Chicago, IL')}&key=${apiKey}`;
-          const geoRes = await fetch(geoUrl);
-          const geoData = await geoRes.json();
-          const loc = geoData.results?.[0]?.geometry?.location;
-          if (loc) {
-            bundle.constructionPermits = await getConstructionPermits(loc.lat, loc.lng, ticket.violation_date!, 300);
-            if (bundle.constructionPermits?.defenseSummary) {
-              console.log(`    Construction permits: ${bundle.constructionPermits.totalActivePermits} found, defense-relevant`);
-            }
+        const geo = await geocodeChicagoAddress(ticket.location);
+        if (geo.status === 'OK' && typeof geo.lat === 'number' && typeof geo.lng === 'number') {
+          const loc = { lat: geo.lat, lng: geo.lng };
+          bundle.constructionPermits = await getConstructionPermits(loc.lat, loc.lng, ticket.violation_date!, 300);
+          if (bundle.constructionPermits?.defenseSummary) {
+            console.log(`    Construction permits: ${bundle.constructionPermits.totalActivePermits} found, defense-relevant`);
+          }
 
-            // 14b. CTA bus activity — only for bus_stop / bus_lane tickets.
-            if (ticket.violation_type === 'bus_stop' || ticket.violation_type === 'bus_lane') {
-              try {
-                bundle.ctaBusActivity = await getCtaBusActivityFinding(loc.lat, loc.lng, ticket.violation_date);
-                if (bundle.ctaBusActivity?.defenseSummary) {
-                  console.log(`    CTA bus activity: ${bundle.ctaBusActivity.defenseSummary.slice(0, 80)}...`);
-                }
-              } catch (e) { console.error('    CTA bus-activity lookup failed:', e); }
-            }
+          // 14b. CTA bus activity — only for bus_stop / bus_lane tickets.
+          if (ticket.violation_type === 'bus_stop' || ticket.violation_type === 'bus_lane') {
+            try {
+              bundle.ctaBusActivity = await getCtaBusActivityFinding(loc.lat, loc.lng, ticket.violation_date);
+              if (bundle.ctaBusActivity?.defenseSummary) {
+                console.log(`    CTA bus activity: ${bundle.ctaBusActivity.defenseSummary.slice(0, 80)}...`);
+              }
+            } catch (e) { console.error('    CTA bus-activity lookup failed:', e); }
+          }
 
-            // 14c. Residential permit zone cross-check — only for
-            // residential_permit tickets. Uses string addresses (not
-            // coordinates) because the u9xt-hiju dataset is address-
-            // range-based, not polygon-based.
-            if (ticket.violation_type === 'residential_permit') {
-              try {
-                bundle.permitZone = await getResidentialPermitZoneFinding(
-                  profile?.mailing_address || null,
-                  ticket.location || null,
-                );
-                if (bundle.permitZone?.defenseSummary) {
-                  console.log(`    Permit zone: ${bundle.permitZone.defenseSummary.slice(0, 80)}...`);
-                }
-              } catch (e) { console.error('    Residential permit-zone lookup failed:', e); }
-            }
+          // 14c. Residential permit zone cross-check — only for
+          // residential_permit tickets. Uses string addresses (not
+          // coordinates) because the u9xt-hiju dataset is address-
+          // range-based, not polygon-based.
+          if (ticket.violation_type === 'residential_permit') {
+            try {
+              bundle.permitZone = await getResidentialPermitZoneFinding(
+                profile?.mailing_address || null,
+                ticket.location || null,
+              );
+              if (bundle.permitZone?.defenseSummary) {
+                console.log(`    Permit zone: ${bundle.permitZone.defenseSummary.slice(0, 80)}...`);
+              }
+            } catch (e) { console.error('    Residential permit-zone lookup failed:', e); }
           }
         }
       } catch (e) { console.error('    Construction permit lookup failed:', e); }
