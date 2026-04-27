@@ -97,6 +97,14 @@ interface MobileCheckParkingResponse {
     permitRequired?: boolean;
     severity?: 'critical' | 'warning' | 'info' | 'none';
     restrictionSchedule?: string;
+    /**
+     * Hours until enforcement becomes active. 0 when permitRequired is true
+     * (already active). 999 when no schedule data is known. The mobile UI
+     * uses this for the "active now / active later today / not active"
+     * tier display so the user sees "starts in 4h" instead of just a
+     * generic schedule string.
+     */
+    hoursUntilRestriction?: number;
   };
   meteredParking: {
     inMeteredZone: boolean;
@@ -2358,6 +2366,7 @@ export default async function handler(
         permitRequired: result.permitZone.isCurrentlyRestricted,
         severity: result.permitZone.severity,
         restrictionSchedule: result.permitZone.restrictionSchedule || undefined,
+        hoursUntilRestriction: result.permitZone.hoursUntilRestriction,
       },
 
       meteredParking: {
