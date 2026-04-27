@@ -293,6 +293,22 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     lng: number;
     address: string;
   } | null>(null);
+  // Address autocomplete state for the wrong-street modal's typed input.
+  // Mirrors the website's AddressAutocomplete UX: 350ms debounce, Chicago-
+  // biased predictions from /api/google/places-autocomplete, tappable list.
+  // Picking a suggestion fetches /api/google/places-details for precise
+  // coords, so the correction lands at the actual building (not the legacy
+  // Geocoding API's interpolated midpoint — see Fullerton bug fix).
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{
+    place_id: string;
+    description: string;
+    main_text: string;
+    secondary_text: string;
+  }>>([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  // Session token shared across one autocomplete + details pair so Google
+  // bills it as one search. Regenerated on each modal open and after a pick.
+  const [autocompleteSession, setAutocompleteSession] = useState<string>('');
 
   // Guard against double-tap on parking check
   const isCheckingRef = useRef(false);
@@ -1094,11 +1110,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // Open the wrong-street correction modal pre-filled with the current address.
   // Reset the typed-fallback disclosure each open so the alternate-tap flow is
   // dominant by default — users only see the text input if they explicitly ask.
+  // Also generates a fresh autocomplete session token (Google bills one
+  // autocomplete + details pair as one search if they share a session) and
+  // clears any stale suggestion list from a previous open.
   const openWrongStreetModal = useCallback(() => {
     if (!lastParkingCheck) return;
     setWrongStreetInput(lastParkingCheck.address || '');
     setShowTypedFallback(false);
     setShowWrongStreetModal(true);
+    setAddressSuggestions([]);
+    setSuggestLoading(false);
+    setAutocompleteSession(`s${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
   }, [lastParkingCheck]);
 
   // Close the wrong-street modal without saving — also marks the event as
@@ -1125,7 +1147,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // each one independently (alternate-detection threshold, pin-drag UX).
   const applyStreetCorrection = useCallback(async (
     correctedAddress: string,
-    source: 'typed' | 'alternate_tap' | 'pin_drag',
+    source: 'typed' | 'alternate_tap' | 'pin_drag' | 'autocomplete',
     correctedCoords?: { latitude: number; longitude: number },
   ) => {
     if (!lastParkingCheck) return;
@@ -1246,6 +1268,78 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const submitStreetCorrection = useCallback(() => {
     return applyStreetCorrection(wrongStreetInput, 'typed');
   }, [applyStreetCorrection, wrongStreetInput]);
+
+  // Tapping an autocomplete suggestion: fetch precise coords from the Place
+  // Details endpoint, then route through applyStreetCorrection with the
+  // 'autocomplete' source so the ground-truth log can attribute the path.
+  // We pass the corrected coords so the server-side anchor lookup binds
+  // future detects to the actual building, not the typed-string-only midpoint.
+  const pickAddressSuggestion = useCallback(async (place_id: string, fallbackLabel: string) => {
+    if (wrongStreetSubmitting) return;
+    setWrongStreetSubmitting(true);
+    try {
+      const url = `${Config.API_BASE_URL}/api/google/places-details?place_id=${encodeURIComponent(place_id)}&session=${encodeURIComponent(autocompleteSession)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`places-details ${res.status}`);
+      const data = await res.json();
+      const lat = typeof data.lat === 'number' ? data.lat : null;
+      const lng = typeof data.lng === 'number' ? data.lng : null;
+      const address = (typeof data.formatted === 'string' && data.formatted.trim())
+        ? data.formatted.replace(/,\s*USA$/i, '').replace(/,\s*United States.*$/i, '').trim()
+        : fallbackLabel;
+      // Reset session before applyStreetCorrection re-renders the modal.
+      setAutocompleteSession(`s${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+      setAddressSuggestions([]);
+      const coords = (lat !== null && lng !== null) ? { latitude: lat, longitude: lng } : undefined;
+      await applyStreetCorrection(address, 'autocomplete', coords);
+    } catch (e) {
+      log.warn('Failed to fetch place details', e);
+      Alert.alert('Could not fetch address', 'Try typing the address directly instead.');
+    } finally {
+      setWrongStreetSubmitting(false);
+    }
+  }, [autocompleteSession, wrongStreetSubmitting, applyStreetCorrection]);
+
+  // Debounced autocomplete fetch. Only runs while the wrong-street modal is
+  // open AND the typed fallback section is visible. Skips the lastParkingCheck
+  // address itself (avoid suggesting the very thing the user is trying to
+  // correct away from).
+  useEffect(() => {
+    if (!showWrongStreetModal || !showTypedFallback) {
+      setAddressSuggestions([]);
+      return;
+    }
+    const trimmed = wrongStreetInput.trim();
+    const detectedAddress = (lastParkingCheck?.address || '').trim();
+    if (trimmed.length < 3 || trimmed === detectedAddress) {
+      setAddressSuggestions([]);
+      setSuggestLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSuggestLoading(true);
+    const handle = setTimeout(async () => {
+      try {
+        const url = `${Config.API_BASE_URL}/api/google/places-autocomplete?input=${encodeURIComponent(trimmed)}&session=${encodeURIComponent(autocompleteSession)}&bias=chicago`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`autocomplete ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+        const preds = Array.isArray(data?.predictions) ? data.predictions : [];
+        setAddressSuggestions(preds.slice(0, 5).map((p: any) => ({
+          place_id: String(p.place_id || ''),
+          description: String(p.description || ''),
+          main_text: String(p.structured_formatting?.main_text || p.description || ''),
+          secondary_text: String(p.structured_formatting?.secondary_text || ''),
+        })).filter((p: any) => p.place_id));
+      } catch {
+        if (!cancelled) setAddressSuggestions([]);
+      } finally {
+        if (!cancelled) setSuggestLoading(false);
+      }
+    }, 350);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [wrongStreetInput, showWrongStreetModal, showTypedFallback, autocompleteSession, lastParkingCheck]);
 
   // Listen for postMessage from the embedded WebView map. The web side
   // (DestinationMapView) posts a JSON envelope when the user drops the
@@ -2751,6 +2845,40 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                         onSubmitEditing={submitStreetCorrection}
                       />
 
+                      {/* Autocomplete suggestions — Chicago-biased Google
+                          Places predictions, debounced. Tapping a suggestion
+                          fetches precise Place coords so the correction
+                          binds to the actual building, not an interpolated
+                          street midpoint. */}
+                      {(suggestLoading || addressSuggestions.length > 0) && (
+                        <View style={styles.suggestList}>
+                          {suggestLoading && addressSuggestions.length === 0 && (
+                            <View style={styles.suggestLoadingRow}>
+                              <ActivityIndicator size="small" color={colors.primary} />
+                              <Text style={styles.suggestLoadingText}>Searching addresses…</Text>
+                            </View>
+                          )}
+                          {addressSuggestions.map((s) => (
+                            <TouchableOpacity
+                              key={s.place_id}
+                              style={[styles.suggestRow, wrongStreetSubmitting && { opacity: 0.5 }]}
+                              onPress={() => pickAddressSuggestion(s.place_id, s.description)}
+                              disabled={wrongStreetSubmitting}
+                              accessibilityLabel={`Use address ${s.description}`}
+                              accessibilityRole="button"
+                            >
+                              <MaterialCommunityIcons name="map-marker-outline" size={16} color={colors.textSecondary} />
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.suggestMain} numberOfLines={1}>{s.main_text}</Text>
+                                {s.secondary_text ? (
+                                  <Text style={styles.suggestSecondary} numberOfLines={1}>{s.secondary_text}</Text>
+                                ) : null}
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+
                       <TouchableOpacity
                         style={[styles.zoneReportSubmitButton, wrongStreetSubmitting && { opacity: 0.6 }]}
                         onPress={submitStreetCorrection}
@@ -3741,6 +3869,45 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: typography.weights.medium,
     textDecorationLine: 'underline',
+  },
+  // Address autocomplete suggestion list (under the typed input)
+  suggestList: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+    overflow: 'hidden',
+  },
+  suggestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  suggestMain: {
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: typography.weights.medium,
+  },
+  suggestSecondary: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  suggestLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+  },
+  suggestLoadingText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
   },
 
   // ──── Pause link (subtle, bottom of page) ────
