@@ -60,11 +60,17 @@ export function getFirebaseAdmin(): admin.app.App | null {
       // the private_key string natively — DO NOT pre-decode \\n → \n on the
       // raw blob first or you'll convert escape sequences into raw newlines
       // (which are illegal inside JSON string literals → SyntaxError).
+      //
+      // When the JSON is present it is the canonical source of truth: it
+      // OVERRIDES FIREBASE_CLIENT_EMAIL and FIREBASE_PROJECT_ID. The env-var
+      // siblings have historically drifted (FIREBASE_CLIENT_EMAIL was set to
+      // a personal Gmail at one point, which made Google reject every push
+      // with "invalid_grant: account not found" even after the key parsed).
       try {
         const parsed = JSON.parse(privateKey);
         if (parsed.private_key) privateKey = parsed.private_key as string;
-        if (parsed.client_email && !clientEmail) clientEmail = parsed.client_email;
-        if (parsed.project_id && !projectId) projectId = parsed.project_id;
+        if (parsed.client_email) clientEmail = parsed.client_email;
+        if (parsed.project_id) projectId = parsed.project_id;
       } catch (err) {
         console.error(
           '[firebase-admin] FIREBASE_PRIVATE_KEY looks like JSON but failed to parse:',
