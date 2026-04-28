@@ -431,7 +431,7 @@
 				CODE_SIGN_ENTITLEMENTS = TicketlessChicagoMobile/TicketlessChicagoMobile.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 43;
+				CURRENT_PROJECT_VERSION = 44;
 				DEVELOPMENT_TEAM = V22BMBQJ67;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = TicketlessChicagoMobile/Info.plist;
@@ -440,7 +440,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.8;
+				MARKETING_VERSION = 2.0.11;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -464,7 +464,7 @@
 				CODE_SIGN_ENTITLEMENTS = TicketlessChicagoMobile/TicketlessChicagoMobile.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 43;
+				CURRENT_PROJECT_VERSION = 44;
 				DEVELOPMENT_TEAM = V22BMBQJ67;
 				INFOPLIST_FILE = TicketlessChicagoMobile/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -472,7 +472,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.8;
+				MARKETING_VERSION = 2.0.11;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
