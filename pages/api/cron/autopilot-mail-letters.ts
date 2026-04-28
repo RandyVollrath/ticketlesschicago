@@ -188,6 +188,30 @@ function validateLetterContent(
     issues.push('Letter does not reference the Department of Finance or City of Chicago');
   }
 
+  // ── 5b. Mail-in safety check — no in-person hearing language ──
+  // This is a written mail-in contest. The letter must NOT request a hearing,
+  // ask to appear, or schedule anything in person. If it does, the City may
+  // route the case to an in-person administrative hearing, which breaks the
+  // user's "no hearing required" expectation.
+  // Note: phrases like "hearing officer" (the role that adjudicates mail-in
+  // contests) and "hearings won" (FOIA stats reference) are fine.
+  const hearingRequestPatterns: { regex: RegExp; label: string }[] = [
+    { regex: /\brequest(?:ing|ed)?\s+(?:a|an|my|the)?\s*hearing\b/i, label: '"request a hearing"' },
+    { regex: /\bschedul(?:e|ing|ed)\s+(?:a|an|my|the)?\s*hearing\b/i, label: '"schedule a hearing"' },
+    { regex: /\b(?:appear|attend|attendance)\s+(?:in\s+person|at\s+(?:a|an|my|the)\s+hearing)\b/i, label: 'request to appear/attend in person' },
+    { regex: /\blook\s+forward\s+to\s+(?:my|the|a|an)?\s*hearing\b/i, label: '"look forward to my hearing"' },
+    { regex: /\bat\s+(?:my|the)\s+hearing\b/i, label: '"at my/the hearing"' },
+    { regex: /\bduring\s+(?:my|the)\s+hearing\b/i, label: '"during my/the hearing"' },
+    { regex: /\bwhen\s+I\s+appear\b/i, label: '"when I appear"' },
+    { regex: /\bin\s+court\b/i, label: '"in court"' },
+    { regex: /\bhearing\s+date\b/i, label: '"hearing date"' },
+  ];
+  for (const { regex, label } of hearingRequestPatterns) {
+    if (regex.test(letterContent)) {
+      issues.push(`Letter contains in-person hearing language (${label}) — mail-in contest must request a written determination, not a hearing`);
+    }
+  }
+
   // ── 6. Date consistency ──
   if (ticketData.violation_date) {
     const vDate = new Date(ticketData.violation_date);

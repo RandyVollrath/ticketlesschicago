@@ -57,9 +57,9 @@ export async function generateLetterPDF(data: LetterData): Promise<Buffer> {
 
       // Recipient
       doc.text('City of Chicago');
-      doc.text('Department of Administrative Hearings');
-      doc.text('400 W. Superior Street');
-      doc.text('Chicago, IL 60654');
+      doc.text('Department of Finance');
+      doc.text('P.O. Box 88292');
+      doc.text('Chicago, IL 60680-1292');
       doc.moveDown(2);
 
       // Subject
@@ -153,9 +153,9 @@ export async function generateBatchLettersPDF(letters: LetterData[]): Promise<Bu
         doc.moveDown(1.5);
 
         doc.text('City of Chicago');
-        doc.text('Department of Administrative Hearings');
-        doc.text('400 W. Superior Street');
-        doc.text('Chicago, IL 60654');
+        doc.text('Department of Finance');
+        doc.text('P.O. Box 88292');
+        doc.text('Chicago, IL 60680-1292');
         doc.moveDown(1.5);
 
         doc.font('Helvetica-Bold').text(`RE: Contest of Parking Ticket #${data.ticketNumber}`);
