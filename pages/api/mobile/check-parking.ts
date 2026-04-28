@@ -2098,7 +2098,27 @@ export default async function handler(
         //
         // Skipped silently when MAPBOX_ACCESS_TOKEN is not configured —
         // existing snap + Nominatim path remains the fallback.
-        try {
+        //
+        // Latency-budget bail: when snap + Nominatim + Mapbox-reverse all
+        // agree on the same street, three independent geocoders concur
+        // and map-matching can only confirm the same answer at a 4s cost.
+        // 2026-04-28: client times out at 20s and we were piling up
+        // Nominatim + Mapbox-reverse + Mapbox map-matching back-to-back
+        // (up to ~12s of external-call latency before any DB work).
+        // Skipping map-matching on three-way agreement keeps the typical
+        // happy path well under budget without changing the answer.
+        const mapboxReverseAgreesWithSnap =
+          diag.native_meta?.mapbox_reverse?.matched === true &&
+          diag.native_meta?.mapbox_reverse?.agrees_with_snap === true;
+        const nominatimAgreesWithSnap = diag.nominatim_agreed === true;
+        if (snapResult && mapboxReverseAgreesWithSnap && nominatimAgreesWithSnap) {
+          console.log(
+            `[check-parking] Skipping Mapbox map-matching: three-way agreement on ${snapResult.streetName} ` +
+            `(snap+Nominatim+Mapbox-reverse). Saved ~4s of external latency.`,
+          );
+          if (!diag.native_meta) diag.native_meta = {};
+          diag.native_meta.mapbox_match_skipped = 'three_way_agreement';
+        } else try {
           const { mapMatchTrajectory } = await import('../../../lib/mapbox-map-matching');
 
           // TIDIED TRAJECTORY: Mapbox map-matching identifies "what road
