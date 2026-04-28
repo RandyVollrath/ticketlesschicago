@@ -285,13 +285,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [correctionDismissedTs, setCorrectionDismissedTs] = useState<number | null>(null);
   // Pending pin-drag correction posted by the embedded WebView map. When the
   // user drops the draggable marker on a different spot, the web side posts
-  // {type:'pin_corrected', lat, lng, address} and we stage it here until the
-  // user confirms the move. Cleared on confirm, cancel, or when the map is
-  // hidden. Each new drag replaces the previous pending move.
+  // either a resolved address or a "look this up on save" payload and we
+  // stage it here until the user confirms the move. Cleared on confirm,
+  // cancel, or when the map is hidden. Each new drag replaces the previous
+  // pending move.
   const [pinCorrectionPending, setPinCorrectionPending] = useState<{
     lat: number;
     lng: number;
-    address: string;
+    address?: string;
+    needsLookup?: boolean;
   } | null>(null);
   // Address autocomplete state for the wrong-street modal's typed input.
   // Mirrors the website's AddressAutocomplete UX: 350ms debounce, Chicago-
@@ -1152,7 +1154,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   ) => {
     if (!lastParkingCheck) return;
     const trimmed = correctedAddress.trim();
-    if (!trimmed) {
+    const isCoordinateCorrection = !!correctedCoords;
+    if (!trimmed && !isCoordinateCorrection) {
       Alert.alert('Empty address', 'Type the street where you actually parked.');
       return;
     }
@@ -1164,6 +1167,41 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
     setWrongStreetSubmitting(true);
     try {
+      let authoritativeResult: ParkingCheckResult | null = null;
+      let authoritativeAddress = trimmed;
+      if (correctedCoords) {
+        try {
+          const fresh = await LocationService.checkParkingLocation({
+            latitude: correctedCoords.latitude,
+            longitude: correctedCoords.longitude,
+            accuracy: lastParkingCheck.coords.accuracy,
+          } as any);
+          authoritativeResult = {
+            ...fresh,
+            rawApiData: fresh.rawApiData
+              ? {
+                  ...fresh.rawApiData,
+                  location: {
+                    ...(fresh.rawApiData.location ?? {}),
+                    userCorrected: true,
+                  },
+                }
+              : fresh.rawApiData,
+          };
+          authoritativeAddress = fresh.address?.trim() || authoritativeAddress;
+        } catch (recheckErr) {
+          if (!authoritativeAddress) {
+            log.warn('Re-check at corrected coords failed and no fallback address is available', recheckErr);
+            Alert.alert('Could not verify spot', 'We could not look up the dropped pin. Try again in a moment.');
+            return;
+          }
+          log.warn('Re-check at corrected coords failed; falling back to provided address', recheckErr);
+        }
+      }
+      if (!authoritativeAddress) {
+        Alert.alert('Empty address', 'We could not verify that parking spot yet. Try again.');
+        return;
+      }
       const eventLat = correctedCoords?.latitude ?? lastParkingCheck.coords.latitude;
       const eventLng = correctedCoords?.longitude ?? lastParkingCheck.coords.longitude;
       await GroundTruthService.recordEvent({
@@ -1177,20 +1215,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           system_number: lastParkingCheck.rawApiData?.location?.streetNumber ?? null,
           system_lat: lastParkingCheck.coords.latitude,
           system_lng: lastParkingCheck.coords.longitude,
-          corrected_address: trimmed,
+          corrected_address: authoritativeAddress,
           ...(correctedCoords
             ? { corrected_lat: correctedCoords.latitude, corrected_lng: correctedCoords.longitude }
             : {}),
           correction_source: source,
         },
       });
-      // Optimistic update so the address swaps in immediately. For pin-drag
-      // with new coords, we'll then re-run the parking check at the dropped
-      // location to refresh restrictions (street cleaning, permit zone,
-      // meters, snow ban) — without it the warnings reflect the old spot.
       const optimistic: ParkingCheckResult = {
         ...lastParkingCheck,
-        address: trimmed,
+        address: authoritativeAddress,
         coords: correctedCoords
           ? { ...lastParkingCheck.coords, ...correctedCoords }
           : lastParkingCheck.coords,
@@ -1199,61 +1233,26 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               ...lastParkingCheck.rawApiData,
               location: {
                 ...(lastParkingCheck.rawApiData.location ?? {}),
-                address: trimmed,
+                address: authoritativeAddress,
                 userCorrected: true,
               },
             }
           : lastParkingCheck.rawApiData,
       };
-      setLastParkingCheck(optimistic);
+      const nextParkingCheck = authoritativeResult ?? optimistic;
+      setLastParkingCheck(nextParkingCheck);
       try {
-        await AsyncStorage.setItem(StorageKeys.LAST_PARKING_LOCATION, JSON.stringify(optimistic));
+        await AsyncStorage.setItem(StorageKeys.LAST_PARKING_LOCATION, JSON.stringify(nextParkingCheck));
       } catch {
         // Non-fatal: in-memory state still updated.
       }
       setShowWrongStreetModal(false);
       markCorrectionEngaged();
 
-      // Re-check rules at the corrected coordinates whenever the user
-      // moved the pin. Without this, a pin-drag that changes the block
-      // (e.g. 2401 → 2380 N Lakewood) would still show the old block's
-      // permit-zone / cleaning state. Also gives us the authoritative
-      // address from the snap pipeline (block-aware, street-snapped) — so
-      // a pin dropped on a building corner gets resolved to the correct
-      // street-side address rather than the building's official address.
-      let finalAddress = trimmed;
-      if (source === 'pin_drag' && correctedCoords) {
-        try {
-          const fresh = await LocationService.checkParkingLocation({
-            latitude: correctedCoords.latitude,
-            longitude: correctedCoords.longitude,
-            accuracy: lastParkingCheck.coords.accuracy,
-          } as any);
-          // Preserve the userCorrected flag so we can show the anchor badge.
-          const merged: ParkingCheckResult = {
-            ...fresh,
-            rawApiData: fresh.rawApiData
-              ? {
-                  ...fresh.rawApiData,
-                  location: {
-                    ...(fresh.rawApiData.location ?? {}),
-                    userCorrected: true,
-                  },
-                }
-              : fresh.rawApiData,
-          };
-          setLastParkingCheck(merged);
-          try {
-            await AsyncStorage.setItem(StorageKeys.LAST_PARKING_LOCATION, JSON.stringify(merged));
-          } catch { /* non-fatal */ }
-          finalAddress = fresh.address || trimmed;
-        } catch (recheckErr) {
-          log.warn('Re-check at corrected coords failed; keeping optimistic update', recheckErr);
-        }
-      }
+      const finalAddress = nextParkingCheck.address || authoritativeAddress;
 
       const anchorMsg =
-        source === 'pin_drag' && correctedCoords
+        correctedCoords
           ? `\n\nFuture parks within ~half a block of here will lock to this address for the next 6 months. We re-checked the parking rules for this exact spot.`
           : `\n\nWe logged this so detection improves.`;
       Alert.alert('Anchored', `${finalAddress}${anchorMsg}`);
@@ -1352,13 +1351,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       if (typeof raw !== 'string') return;
       const data = JSON.parse(raw);
       if (
-        data?.type === 'pin_corrected' &&
+        (data?.type === 'pin_corrected' || data?.type === 'pin_corrected_lookup') &&
         typeof data.lat === 'number' &&
-        typeof data.lng === 'number' &&
-        typeof data.address === 'string' &&
-        data.address.trim().length > 0
+        typeof data.lng === 'number'
       ) {
-        setPinCorrectionPending({ lat: data.lat, lng: data.lng, address: data.address });
+        const address = typeof data.address === 'string' && data.address.trim().length > 0
+          ? data.address.trim()
+          : undefined;
+        if (!address && data?.type !== 'pin_corrected_lookup') return;
+        setPinCorrectionPending({
+          lat: data.lat,
+          lng: data.lng,
+          address,
+          needsLookup: data?.type === 'pin_corrected_lookup',
+        });
       }
     } catch {
       // Non-fatal: ignore malformed messages.
@@ -1371,7 +1377,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     if (!pinCorrectionPending) return;
     const { lat, lng, address } = pinCorrectionPending;
     setPinCorrectionPending(null);
-    applyStreetCorrection(address, 'pin_drag', { latitude: lat, longitude: lng });
+    applyStreetCorrection(address ?? '', 'pin_drag', { latitude: lat, longitude: lng });
   }, [pinCorrectionPending, applyStreetCorrection]);
 
   const cancelPinCorrection = useCallback(() => {
@@ -2284,10 +2290,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.pinCorrectionTitle}>Save this spot?</Text>
                     <Text style={styles.pinCorrectionAddress} numberOfLines={2}>
-                      {pinCorrectionPending.address}
+                      {pinCorrectionPending.address ?? 'Dropped pin location'}
                     </Text>
                     <Text style={styles.pinCorrectionHint} numberOfLines={2}>
-                      We'll re-check parking rules here and remember this spot for the next 6 months.
+                      {pinCorrectionPending.needsLookup
+                        ? 'We will look up the exact block when you save, then re-check parking rules here and remember this spot for the next 6 months.'
+                        : 'We\'ll re-check parking rules here and remember this spot for the next 6 months.'}
                     </Text>
                   </View>
                 </View>

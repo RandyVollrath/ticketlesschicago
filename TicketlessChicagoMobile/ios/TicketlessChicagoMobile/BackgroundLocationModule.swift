@@ -195,6 +195,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       emitTripSummary(outcome: "park_missed_possible")
     }
     let now = Date()
+    carPlayWasActiveThisDrive = carPlayConnected
     tripSummaryId = UUID().uuidString
     tripSummaryStart = now
     tripSummaryDepartureMs = departureTimestampMs
@@ -480,6 +481,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       carPlayConnected = hasCarPlayRoute
       if hasCarPlayRoute {
         lastCarPlayConnectedAt = now
+        carPlayWasActiveThisDrive = true
         // Fresh CarPlay session — clear stale fixes from any previous drive.
         recentCarPlayInVehicleLocations.removeAll()
         // Capture the head unit's stable identity from the audio port. uid is
@@ -848,6 +850,9 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   // lastCarPlayDisconnectLatitude/Longitude — more robust than a single fix.
   private var recentCarPlayInVehicleLocations: [CLLocation] = []
   private let maxCarPlayInVehicleLocations = 8
+  // Per-drive latch so a drive still counts as "CarPlay active" even when the
+  // initial connect predated drivingStartTime or disconnect happened before emit.
+  private var carPlayWasActiveThisDrive = false
   // Identity of the connected CarPlay head unit, captured from
   // AVAudioSessionPortDescription. Apple's third-party CarPlay APIs do NOT
   // expose VIN, speed, or fuel — but `port.uid` is a stable per-head-unit
@@ -1704,7 +1709,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     if let driveStart = drivingStartTime {
       let connectedDuringDrive = lastCarPlayConnectedAt.map { $0 >= driveStart } ?? false
       let disconnectedDuringDrive = lastCarPlayDisconnectedAt.map { $0 >= driveStart } ?? false
-      if connectedDuringDrive || disconnectedDuringDrive || carPlayConnected {
+      let carPlayInvolvedThisDrive = connectedDuringDrive || disconnectedDuringDrive || carPlayConnected || carPlayWasActiveThisDrive
+      if carPlayInvolvedThisDrive {
         var carPlayContext: [String: Any] = [:]
         if connectedDuringDrive, let connAt = lastCarPlayConnectedAt {
           carPlayContext["connectedAt"] = connAt.timeIntervalSince1970 * 1000
@@ -1716,11 +1722,11 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             carPlayContext["disconnectLongitude"] = lng
           }
         }
-        carPlayContext["activeDuringDrive"] = connectedDuringDrive || carPlayConnected
+        carPlayContext["activeDuringDrive"] = carPlayInvolvedThisDrive
         // Head unit identity — only emit when CarPlay was actually involved in
         // this drive. Stale uid from a previous CarPlay drive doesn't belong on
         // a CoreMotion-only park event.
-        if connectedDuringDrive || disconnectedDuringDrive || carPlayConnected {
+        if carPlayInvolvedThisDrive {
           if let uid = lastCarPlayPortUid, !uid.isEmpty {
             carPlayContext["portUid"] = uid
           }
@@ -2170,6 +2176,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     lastCarPlayDisconnectedAt = nil
     lastCarPlayDisconnectLatitude = nil
     lastCarPlayDisconnectLongitude = nil
+    carPlayWasActiveThisDrive = false
     recentCarPlayInVehicleLocations.removeAll()
     cameraPrewarmUntil = nil
     healthRecoveryCount = 0
@@ -6873,6 +6880,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     gpsFallbackDrivingSince = nil
     gpsFallbackStartLocation = nil
     gpsFallbackPossibleDrivingEmitted = false
+    carPlayWasActiveThisDrive = false
     queuedParkingBody = nil
     queuedParkingSource = nil
     queuedParkingAt = nil

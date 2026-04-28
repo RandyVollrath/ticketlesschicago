@@ -659,15 +659,15 @@ export default function DestinationMapView() {
         // reverse geocode — never with a coordinate-style fallback string,
         // because the host treats this address as ground truth and the
         // address-display rule prohibits raw coordinates in user-facing copy.
-        const postPinCorrection = (address: string) => {
+        const postPinCorrection = (payload: { type: 'pin_corrected' | 'pin_corrected_lookup'; address?: string }) => {
           try {
             const rnWebView = (window as any).ReactNativeWebView;
             if (rnWebView && typeof rnWebView.postMessage === 'function') {
               rnWebView.postMessage(JSON.stringify({
-                type: 'pin_corrected',
+                type: payload.type,
                 lat: updated.lat,
                 lng: updated.lng,
-                address,
+                ...(payload.address ? { address: payload.address } : {}),
               }));
             }
           } catch {
@@ -686,15 +686,17 @@ export default function DestinationMapView() {
               <div style="color:#94A3B8;font-size:12px;margin-top:4px">Inspect colored blocks around this point.</div>
             </div>
           `, { maxWidth: 280 }).openPopup();
-          if (geocoded) postPinCorrection(geocoded);
+          if (geocoded) postPinCorrection({ type: 'pin_corrected', address: geocoded });
+          else postPinCorrection({ type: 'pin_corrected_lookup' });
         } catch {
           marker.bindPopup(`
             <div style="font-family:system-ui;min-width:180px">
               <div style="font-weight:700;font-size:14px;color:#1A1C1E;margin-bottom:4px">Adjusted pin location</div>
               <div style="color:#6C727A;font-size:12px">${updated.lat.toFixed(6)}, ${updated.lng.toFixed(6)}</div>
-              <div style="color:#94A3B8;font-size:12px;margin-top:4px">Inspect colored blocks around this point.</div>
+              <div style="color:#94A3B8;font-size:12px;margin-top:4px">Use the in-app banner to save this dropped pin and look up the exact block.</div>
             </div>
           `, { maxWidth: 280 }).openPopup();
+          postPinCorrection({ type: 'pin_corrected_lookup' });
         }
       });
 

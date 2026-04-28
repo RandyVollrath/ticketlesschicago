@@ -321,6 +321,92 @@ async function lookupUserParkingAnchor(
   }
 }
 
+/**
+ * Look up whether THIS USER + THIS VEHICLE has parked at essentially the same
+ * spot repeatedly in the recent past. Unlike user anchors, this is not
+ * explicit ground truth from the user, so we only use it as:
+ *   1. a tie-breaker when the current snap result is genuinely ambiguous, and
+ *   2. a confidence bump when the resolved street agrees with the repeat spot.
+ *
+ * Why: most users repeat-park the same car at home/work. If the same car has
+ * landed within ~30m of this spot five prior times and every one of those
+ * resolves to the same street, that's a strong signal against occasional
+ * intersection wrong-street flips.
+ */
+async function lookupVehicleKnownSpot(
+  supabase: NonNullable<typeof supabaseAdmin>,
+  userId: string,
+  vehicleId: string,
+  lat: number,
+  lng: number,
+): Promise<{ street: string; visits: number; address: string | null; latestAt: string | null } | null> {
+  const KNOWN_SPOT_RADIUS_M = 30;
+  const KNOWN_SPOT_HORIZON_DAYS = 180;
+  const MIN_VISITS = 5;
+  // ~33-34m bbox in Chicago latitude; matches the analysis script's recommendation.
+  const latRange = 0.0003;
+  const lngRange = 0.0004;
+  const since = new Date(Date.now() - KNOWN_SPOT_HORIZON_DAYS * 86400 * 1000).toISOString();
+
+  try {
+    const { data, error } = await (supabase as any)
+      .from('parking_diagnostics')
+      .select('raw_lat, raw_lng, snapped_lat, snapped_lng, resolved_street_name, resolved_address, created_at')
+      .eq('user_id', userId)
+      .eq('native_meta->>vehicleId', vehicleId)
+      .gte('raw_lat', lat - latRange)
+      .lte('raw_lat', lat + latRange)
+      .gte('raw_lng', lng - lngRange)
+      .lte('raw_lng', lng + lngRange)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(40);
+
+    if (error || !data || data.length === 0) return null;
+
+    const streetStats = new Map<string, { visits: number; latestAt: string | null; address: string | null }>();
+    for (const row of data as any[]) {
+      const rowLat = typeof row.snapped_lat === 'number' ? row.snapped_lat : row.raw_lat;
+      const rowLng = typeof row.snapped_lng === 'number' ? row.snapped_lng : row.raw_lng;
+      if (typeof rowLat !== 'number' || typeof rowLng !== 'number') continue;
+      if (haversineMeters(lat, lng, rowLat, rowLng) > KNOWN_SPOT_RADIUS_M) continue;
+
+      const resolvedStreet = typeof row.resolved_street_name === 'string' ? row.resolved_street_name : null;
+      const street = resolvedStreet ? normChicagoStreet(resolvedStreet) : null;
+      if (!street) continue;
+
+      const stat = streetStats.get(street) ?? {
+        visits: 0,
+        latestAt: row.created_at ?? null,
+        address: typeof row.resolved_address === 'string' ? row.resolved_address : null,
+      };
+      stat.visits += 1;
+      if (!stat.latestAt || (row.created_at && row.created_at > stat.latestAt)) stat.latestAt = row.created_at;
+      if (!stat.address && typeof row.resolved_address === 'string') stat.address = row.resolved_address;
+      streetStats.set(street, stat);
+    }
+
+    if (streetStats.size === 0) return null;
+
+    const winner = Array.from(streetStats.entries())
+      .sort((a, b) => {
+        if (b[1].visits !== a[1].visits) return b[1].visits - a[1].visits;
+        return (b[1].latestAt || '').localeCompare(a[1].latestAt || '');
+      })[0];
+    if (!winner || winner[1].visits < MIN_VISITS) return null;
+
+    return {
+      street: winner[0],
+      visits: winner[1].visits,
+      address: winner[1].address,
+      latestAt: winner[1].latestAt,
+    };
+  } catch (e) {
+    console.warn('[check-parking] Vehicle-known-spot lookup failed (non-fatal):', e);
+    return null;
+  }
+}
+
 function normChicagoStreet(s: string): string {
   return s.toLowerCase()
     .replace(/^\s*(north|south|east|west|n|s|e|w)\s+/, '')
@@ -1064,6 +1150,60 @@ export default async function handler(
               console.warn('[check-parking] User anchor lookup failed (non-fatal):', e);
             }
 
+            // ── HIGH PRECEDENCE TIE-BREAKER: same vehicle repeatedly parked here ──
+            // We only use this when ambiguity is real. This is observational
+            // history, not explicit user ground truth, so it should break ties
+            // and reinforce confidence, not steamroll a clear geometric winner.
+            let lockedByVehicleKnownSpot = false;
+            if (!lockedByUserAnchor && vehicleId) {
+              try {
+                const knownSpot = await lookupVehicleKnownSpot(supabaseAdmin!, user.id, vehicleId, correctedLat, correctedLng);
+                if (knownSpot) {
+                  diag.vehicle_known_spot_street = knownSpot.street;
+                  diag.vehicle_known_spot_visits = knownSpot.visits;
+                  if (knownSpot.latestAt) {
+                    diag.vehicle_known_spot_age_days = Math.round((Date.now() - new Date(knownSpot.latestAt).getTime()) / 86400000);
+                  }
+                  const knownSpotMatch = allCandidates.find((c: any) =>
+                    normChicagoStreet(c.street_name) === knownSpot.street
+                  );
+                  let knownSpotCandidate: any = knownSpotMatch;
+                  if (!knownSpotCandidate && knownSpot.address) {
+                    const ext = await findCenterlineSegmentByName(knownSpot.address);
+                    if (ext) knownSpotCandidate = ext;
+                  }
+                  if (knownSpotCandidate) {
+                    const defaultDist = Number(candidates[0]?.snap_distance_meters ?? Number.POSITIVE_INFINITY);
+                    const knownDist = Number(knownSpotCandidate.snap_distance_meters ?? Number.POSITIVE_INFINITY);
+                    const COMPETITIVE_RATIO = 1.5;
+                    const COMPETITIVE_FLOOR_M = 5;
+                    const ambiguitySupportsLock =
+                      diag.near_intersection === true ||
+                      knownDist <= defaultDist * COMPETITIVE_RATIO + COMPETITIVE_FLOOR_M;
+                    if (ambiguitySupportsLock) {
+                      bestCandidate = knownSpotCandidate;
+                      lockedByVehicleKnownSpot = true;
+                      diag.locked_by_vehicle_known_spot = true;
+                      console.log(
+                        `[check-parking] VEHICLE KNOWN-SPOT LOCK: ${knownSpot.visits} prior visits by same vehicle at this spot` +
+                        `${diag.vehicle_known_spot_age_days != null ? ` (${diag.vehicle_known_spot_age_days}d since latest)` : ''}` +
+                        ` → prefer ${knownSpotCandidate.street_name} at ${knownDist.toFixed(1)}m over ${candidates[0].street_name} at ${defaultDist.toFixed(1)}m`
+                      );
+                    } else {
+                      console.log(
+                        `[check-parking] Vehicle-known spot found (${knownSpot.visits} visits to ${knownSpotCandidate.street_name})` +
+                        ` but current snap winner is clear (${defaultDist.toFixed(1)}m vs ${knownDist.toFixed(1)}m). Keeping normal cascade.`
+                      );
+                    }
+                  } else {
+                    console.log(`[check-parking] Vehicle-known spot "${knownSpot.address ?? knownSpot.street}" found but no matching centerline within 200m — falling through to normal pipeline.`);
+                  }
+                }
+              } catch (e) {
+                console.warn('[check-parking] Vehicle-known-spot lookup failed (non-fatal):', e);
+              }
+            }
+
             // ── EARLY LOCK: close snap + Nominatim agreement ──
             // When the closest snap is very close (≤15m) AND Nominatim
             // independently identifies the same street from raw GPS, we have
@@ -1081,7 +1221,7 @@ export default async function handler(
             let lockedByCloseSnap = false;
             const CLOSE_LOCK_THRESHOLD_M = 15;
             // Skip the close-snap lock if user anchor already locked the answer.
-            if (!lockedByUserAnchor && candidates[0].snap_distance_meters <= CLOSE_LOCK_THRESHOLD_M) {
+            if (!lockedByUserAnchor && !lockedByVehicleKnownSpot && candidates[0].snap_distance_meters <= CLOSE_LOCK_THRESHOLD_M) {
               try {
                 const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
                 const earlyNom = await reverseGeocode(latitude, longitude);
@@ -1678,7 +1818,12 @@ export default async function handler(
         //     strengthens existing two-of-three calls.
         try {
           const { mapboxReverseGeocode } = await import('../../../lib/mapbox-reverse-geocode');
-          const mbRev = await mapboxReverseGeocode(latitude, longitude);
+          // Use the best current parking-point estimate, not the original raw
+          // GPS fix. By this point correctedLat/Lng already incorporates any
+          // accepted per-block correction and CarPlay anchor sharpening, so
+          // Mapbox should evaluate the same parked point the rest of the
+          // resolver is using.
+          const mbRev = await mapboxReverseGeocode(correctedLat, correctedLng);
           if (!diag.native_meta) diag.native_meta = {};
           const normalize = (s: string) => s.toLowerCase()
             .replace(/\b(north|south|east|west|n|s|e|w|ave|avenue|st|street|blvd|boulevard|rd|road|dr|drive|pl|place|ct|court|ln|lane)\b/g, '')
@@ -1699,6 +1844,8 @@ export default async function handler(
             feature_type: mbRev.featureType,
             match_confidence: mbRev.matchConfidence,
             skip_reason: mbRev.skipReason ?? null,
+            lookup_lat: correctedLat,
+            lookup_lng: correctedLng,
             agrees_with_snap: agreesWithSnap,
             agrees_with_nominatim: agreesWithNominatim,
           };
@@ -1708,6 +1855,7 @@ export default async function handler(
               `[check-parking] Mapbox reverse: ${mbRev.streetName}` +
               `${mbRev.houseNumber ? ` ${mbRev.houseNumber}` : ''}` +
               ` (${mbRev.matchConfidence ?? 'no-confidence'}, ${mbRev.featureType ?? 'no-type'})` +
+              ` @ ${correctedLat.toFixed(6)},${correctedLng.toFixed(6)}` +
               ` — snap=${snapResult?.streetName ?? 'none'}` +
               `${diag.nominatim_street ? `, nominatim=${diag.nominatim_street}` : ''}` +
               ` — agrees_snap=${agreesWithSnap}, agrees_nominatim=${agreesWithNominatim}`
@@ -1814,7 +1962,7 @@ export default async function handler(
             inputTrajectory.map((p) => ({ lat: p[0], lng: p[1] }));
           // Append the actual parking location as the final point so Mapbox
           // identifies the road at the stop, not just the approach.
-          fixes.push({ lat: latitude, lng: longitude, accuracyMeters: accuracyMeters });
+          fixes.push({ lat: correctedLat, lng: correctedLng, accuracyMeters: accuracyMeters });
           const mapboxResult = await mapMatchTrajectory(fixes);
           if (!diag.native_meta) diag.native_meta = {};
           diag.native_meta.mapbox = {
@@ -1929,6 +2077,15 @@ export default async function handler(
 
     if (snapResult?.streetName && supabaseAdmin) {
       try {
+        // Use the best available car-location estimate for building lookup,
+        // not the original raw GPS. At this point correctedLat/Lng already
+        // includes any accepted per-block GPS correction and CarPlay parking
+        // anchor, which are specifically meant to sharpen "where the car was
+        // when parked". Using raw latitude/longitude here can still land us
+        // 20-50m up/down the block even after the street itself was resolved
+        // correctly, producing the right street but the wrong house number.
+        const buildingLookupLat = correctedLat;
+        const buildingLookupLng = correctedLng;
         // 50m radius covers corner parking on blocks where the nearest
         // registered Chicago building footprint is set back from the curb
         // (e.g., DePaul-area Lakewood: closest building 75m away; Belden +
@@ -1942,8 +2099,8 @@ export default async function handler(
         // format stored in chicago_building_addresses.
         const expectedStreetCenterlineFmt = toCenterlineFormat(snapResult.streetName);
         const { data: bld, error: bldErr } = await supabaseAdmin.rpc('nearest_address_point', {
-          user_lat: latitude,
-          user_lng: longitude,
+          user_lat: buildingLookupLat,
+          user_lng: buildingLookupLng,
           search_radius_meters: 50,
           expected_street: expectedStreetCenterlineFmt,
           expected_parity: expectedParity,
@@ -1951,9 +2108,9 @@ export default async function handler(
         if (!bldErr && bld && bld.length > 0 && bld[0].house_number > 0) {
           buildingFootprintResult = bld[0];
           if (expectedParity) {
-            console.log(`[check-parking] Building lookup (parity-constrained to ${expectedParity}, user on ${userSideFromGps} side): ${bld[0].house_number} ${bld[0].full_street_name} (${bld[0].distance_meters.toFixed(1)}m)`);
+            console.log(`[check-parking] Building lookup (parity-constrained to ${expectedParity}, user on ${userSideFromGps} side, lookup=${buildingLookupLat.toFixed(6)},${buildingLookupLng.toFixed(6)}): ${bld[0].house_number} ${bld[0].full_street_name} (${bld[0].distance_meters.toFixed(1)}m)`);
           } else {
-            console.log(`[check-parking] Building lookup (no parity constraint — insufficient GPS offset or missing parity data): ${bld[0].house_number} ${bld[0].full_street_name} (${bld[0].distance_meters.toFixed(1)}m)`);
+            console.log(`[check-parking] Building lookup (no parity constraint — insufficient GPS offset or missing parity data, lookup=${buildingLookupLat.toFixed(6)},${buildingLookupLng.toFixed(6)}): ${bld[0].house_number} ${bld[0].full_street_name} (${bld[0].distance_meters.toFixed(1)}m)`);
           }
         } else if (expectedParity) {
           console.log(`[check-parking] Building lookup: no ${expectedParity}-parity building within 50m on ${snapResult.streetName} — will fall back to segment interpolation`);
@@ -1972,9 +2129,12 @@ export default async function handler(
     //   the nearest registered building's address — which matters for narrow
     //   sub-block meter ranges like Wolcott's 4804-4810 meter at Lawrence.
     //
-    // Display number (what we show the user) prefers the building footprint.
-    //   That's an address that really exists on a house/business the user can
-    //   see. Builds trust, matches signage.
+    // Display number now follows the SAME priority. Earlier builds preferred
+    //   the nearest building footprint for user-facing copy, which could make
+    //   the map look "right" while the shown address landed on the wrong part
+    //   of the block (e.g. nearest setback building vs actual curb segment).
+    //   For parking, segment-accurate block position is more important than
+    //   matching a nearby postal address.
     //
     // When only one source is available, both fall through to that.
     //
@@ -1990,8 +2150,8 @@ export default async function handler(
       mapboxReverseAddressNumber ??
       null;
     const displayNumber: number | null =
-      buildingFootprintResult?.house_number ??
       snapResult?.interpolatedNumber ??
+      buildingFootprintResult?.house_number ??
       mapboxReverseAddressNumber ??
       null;
 
@@ -2153,26 +2313,26 @@ export default async function handler(
     }
 
     // Address-number precedence for the DISPLAY string, best → fallback:
-    //   1. Building footprint (already queried at Step 2a)
-    //   2. Block-aware segment interpolation (already computed on snapResult)
+    //   1. Block-aware segment interpolation (actual curb/block position)
+    //   2. Building footprint (nearest real registered address on that street)
     //   3. Mapbox Geocoding v6 reverse address feature (captured above)
     //   4. unified-parking-checker's address (grid estimator / Nominatim)
     let finalAddress = result.location.address;
     let addressNumberSource: 'building_footprint' | 'segment_interpolation' | 'mapbox_reverse_address' | 'fallback' = 'fallback';
-    if (buildingFootprintResult) {
-      const b = buildingFootprintResult;
-      const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
-      const zip = zipMatch ? ` ${zipMatch[1]}` : '';
-      finalAddress = `${b.house_number} ${b.full_street_name}, Chicago, IL${zip}`;
-      addressNumberSource = 'building_footprint';
-      console.log(`[check-parking] Display address from building footprint: ${finalAddress} (${b.distance_meters.toFixed(1)}m to building centroid)`);
-    } else if (snapResult?.interpolatedNumber && result.location.streetName) {
+    if (snapResult?.interpolatedNumber && result.location.streetName) {
       const streetForDisplay = result.location.streetName;
       const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
       const zip = zipMatch ? ` ${zipMatch[1]}` : '';
       finalAddress = `${snapResult.interpolatedNumber} ${streetForDisplay}, Chicago, IL${zip}`;
       addressNumberSource = 'segment_interpolation';
       console.log(`[check-parking] Display address from block-aware interpolation: ${finalAddress}`);
+    } else if (buildingFootprintResult) {
+      const b = buildingFootprintResult;
+      const zipMatch = (result.location.address || '').match(/\b(\d{5})\b/);
+      const zip = zipMatch ? ` ${zipMatch[1]}` : '';
+      finalAddress = `${b.house_number} ${b.full_street_name}, Chicago, IL${zip}`;
+      addressNumberSource = 'building_footprint';
+      console.log(`[check-parking] Display address from building footprint: ${finalAddress} (${b.distance_meters.toFixed(1)}m to building centroid)`);
     } else if (mapboxReverseAddressNumber != null && result.location.streetName) {
       // Mapbox returned a real interpolated address feature on the same
       // street as the resolved snap winner. Strictly better than the grid
@@ -2197,6 +2357,10 @@ export default async function handler(
     nm.snap_r_parity = snapResult?.rParity || null;
     nm.building_constrained_match = buildingFootprintResult ? (expectedParity ? 'parity_constrained' : 'no_parity_constraint') : 'no_building_in_range';
     nm.display_and_rule_match_numbers_differ = (displayNumber != null && ruleMatchNumber != null && displayNumber !== ruleMatchNumber);
+    if (typeof diag.vehicle_known_spot_street === 'string') nm.vehicle_known_spot_street = diag.vehicle_known_spot_street;
+    if (typeof diag.vehicle_known_spot_visits === 'number') nm.vehicle_known_spot_visits = diag.vehicle_known_spot_visits;
+    if (typeof diag.vehicle_known_spot_age_days === 'number') nm.vehicle_known_spot_age_days = diag.vehicle_known_spot_age_days;
+    if (diag.locked_by_vehicle_known_spot === true) nm.locked_by_vehicle_known_spot = true;
     if (snapResult?.interpolatedNumber) {
       nm.interpolated_number = snapResult.interpolatedNumber;
       nm.segment_fraction = snapResult.segmentFraction;
@@ -2216,6 +2380,24 @@ export default async function handler(
       // User has previously confirmed/corrected this exact spot — strongest signal we have.
       addressConfidence += 60;
       confidenceReasons.push('user-anchor');
+    }
+    if (diag.locked_by_vehicle_known_spot) {
+      // Same user + same vehicle has repeatedly parked this exact spot before,
+      // and we used that history to break an otherwise ambiguous tie.
+      addressConfidence += 25;
+      confidenceReasons.push('vehicle-known-spot-lock');
+    } else if (
+      typeof diag.vehicle_known_spot_visits === 'number' &&
+      diag.vehicle_known_spot_visits >= 5 &&
+      snapResult?.streetName &&
+      typeof diag.vehicle_known_spot_street === 'string' &&
+      normChicagoStreet(snapResult.streetName) === diag.vehicle_known_spot_street
+    ) {
+      // Repeated same-car/same-spot history agrees with today's resolved street.
+      // Stronger than a generic close snap, weaker than explicit user anchor.
+      const delta = diag.vehicle_known_spot_visits >= 7 ? 12 : 9;
+      addressConfidence += delta;
+      confidenceReasons.push(`vehicle-known-spot@${diag.vehicle_known_spot_visits}`);
     }
     if (diag.locked_by_close_snap) {
       // Close snap (≤15m) AND Nominatim agree on the same street.
@@ -2331,6 +2513,19 @@ export default async function handler(
       }
       if (altCandidates.length === 0) altCandidates = allCandidates;
 
+      // Normalize ordering before dedup/thresholding. The block-aware RPC
+      // ranks by a centerline-preferred sort distance internally, but returns
+      // rows ordered by raw geographic distance. Sorting ranged rows first
+      // keeps the centerline version of a block ahead of the snow-route copy
+      // during cross-source dedup, while raw distance still breaks ties within
+      // the same quality bucket.
+      altCandidates = [...altCandidates].sort((a, b) => {
+        const aHasRange = a?.l_from_addr != null || a?.r_from_addr != null;
+        const bHasRange = b?.l_from_addr != null || b?.r_from_addr != null;
+        if (aHasRange !== bHasRange) return aHasRange ? -1 : 1;
+        return (Number(a?.snap_distance_meters) || 0) - (Number(b?.snap_distance_meters) || 0);
+      });
+
       // Cross-source dedup: snap_to_nearest_street_with_blocks can return both
       // a street_centerlines row and a snow_route row for the same physical
       // block (e.g. W LAWRENCE AVE appearing twice — once with [1801-1837]
@@ -2361,6 +2556,10 @@ export default async function handler(
         const COMPETITIVE_FLOOR_M = 5;
         const COMPETITIVE_MAX_M = 50;
         const winnerName = normChicagoStreet(snapResult?.streetName || '');
+        const winnerDist =
+          Number.isFinite(Number(snapResult?.snapDistanceMeters))
+            ? Number(snapResult?.snapDistanceMeters)
+            : Number(altCandidates[0]?.snap_distance_meters) || 0;
         // Block-aware dedup key: same street + same address range = same block.
         // This lets us surface a DIFFERENT block of the same street as a
         // tappable alternate (the wrong-block-of-Wolcott case) while still
@@ -2368,7 +2567,6 @@ export default async function handler(
         const blockKey = (c: any) =>
           `${normChicagoStreet(c?.street_name || '')}|${c?.l_from_addr ?? ''}|${c?.l_to_addr ?? ''}`;
         const winnerBlockKey = `${winnerName}|${snapResult?.lFromAddr ?? ''}|${snapResult?.lToAddr ?? ''}`;
-        const winnerDist = altCandidates[0]?.snap_distance_meters ?? 0;
         for (const c of altCandidates) {
           if (addressAlternates.length >= 2) break;
           if (!c?.street_name) continue;
