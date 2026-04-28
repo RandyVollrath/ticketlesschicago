@@ -14,6 +14,7 @@ interface RewardfulAffiliate {
   email: string;
   first_name: string;
   last_name: string;
+  token?: string;
   links: Array<{
     id: string;
     url: string;
@@ -150,6 +151,58 @@ export async function getRewardfulAffiliate(
     return data;
   } catch (error) {
     console.error('Error getting Rewardful affiliate:', error);
+    return null;
+  }
+}
+
+/**
+ * Look up an affiliate by their referral token (the short code in `?via=TOKEN` links,
+ * also exposed on each affiliate.link.token). Used to validate codes captured
+ * outside the Stripe flow (e.g. iOS IAP paywall input) before crediting them.
+ *
+ * Returns the affiliate if any of their links has a matching token; null otherwise.
+ */
+export async function findAffiliateByToken(
+  token: string
+): Promise<RewardfulAffiliate | null> {
+  if (!REWARDFUL_API_KEY) {
+    console.error('REWARDFUL_API_SECRET not configured');
+    return null;
+  }
+
+  const cleanToken = (token || '').trim();
+  if (!cleanToken) return null;
+
+  try {
+    // Rewardful's /v1/affiliates supports filtering by `link_token`.
+    // Falls back to scanning the first page if the filter isn't honored.
+    const response = await fetch(
+      `${REWARDFUL_API_URL}/affiliates?link_token=${encodeURIComponent(cleanToken)}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${REWARDFUL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000),
+      },
+    );
+
+    if (!response.ok) {
+      console.error('Failed to find affiliate by token:', response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    const affiliates: RewardfulAffiliate[] = Array.isArray(data?.data) ? data.data : [];
+
+    const match = affiliates.find((aff) =>
+      aff.token === cleanToken ||
+      (aff.links || []).some((link) => link.token === cleanToken),
+    );
+
+    return match || null;
+  } catch (error) {
+    console.error('Error finding affiliate by token:', error);
     return null;
   }
 }

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin, supabase } from '../../../lib/supabase';
 import { Resend } from 'resend';
 import { sendWelcomeEmailOnce } from '../../../lib/welcome-email';
+import { findAffiliateByToken } from '../../../lib/rewardful-helper';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -141,11 +142,20 @@ export default async function handler(
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { purchaseToken, receipt, productId, transactionId } = req.body;
+  const { purchaseToken, receipt, productId, transactionId, referralCode } = req.body;
 
   if (!purchaseToken && !receipt) {
     return res.status(400).json({ error: 'Purchase token or receipt is required' });
   }
+
+  // Sanitize the optional Rewardful affiliate token (the short ?via= code).
+  // Tokens are alphanumeric; trim and cap length to keep junk out of the DB.
+  const cleanReferralCode: string | null = (() => {
+    if (typeof referralCode !== 'string') return null;
+    const trimmed = referralCode.trim();
+    if (!trimmed) return null;
+    return trimmed.slice(0, 64);
+  })();
 
   console.log(`[IAP] Verifying purchase for user ${user.id}, product: ${productId}, txn: ${transactionId}`);
 
@@ -212,18 +222,38 @@ export default async function handler(
       ? (isMonthly ? 'Monthly ($14.99/mo)' : 'Annual ($119.99/yr)')
       : (isMonthly ? 'Monthly ($9/mo)' : 'Annual ($79/yr)');
 
+    const insertedTxnId = finalTransactionId || `unknown_${Date.now()}`;
     await supabaseAdmin
       .from('iap_transactions')
       .insert({
         user_id: user.id,
         product_id: finalProductId,
-        transaction_id: finalTransactionId || `unknown_${Date.now()}`,
+        transaction_id: insertedTxnId,
         receipt_data: (purchaseToken || receipt || '').substring(0, 500),
         environment: validation.environment || 'unknown',
         amount_cents: amountCents,
         apple_fee_cents: appleFeeCents,
         net_cents: netCents,
       });
+
+    // Best-effort: persist referral_code in a separate UPDATE so the activation
+    // insert above stays compatible with environments where the column hasn't
+    // been added yet (migration: supabase/migrations/20260428_iap_referral_code.sql).
+    // If the column is missing, this silently no-ops and we still credit the
+    // affiliate via affiliate_commission_tracker + email below.
+    if (cleanReferralCode) {
+      try {
+        const { error: updErr } = await supabaseAdmin
+          .from('iap_transactions')
+          .update({ referral_code: cleanReferralCode } as any)
+          .eq('transaction_id', insertedTxnId);
+        if (updErr) {
+          console.warn('[IAP] Could not store referral_code on iap_transactions (column may be missing):', updErr.message);
+        }
+      } catch (e: any) {
+        console.warn('[IAP] referral_code update threw:', e?.message || e);
+      }
+    }
 
     // Activate the user's account
     const { error: profileError } = await supabaseAdmin
@@ -277,6 +307,82 @@ export default async function handler(
       ]);
     } catch (e) {
       console.error('[IAP] Email send failed (non-fatal):', e);
+    }
+
+    // Rewardful attribution for IAP — Apple/Google purchases never touch Stripe,
+    // so Rewardful's automatic Stripe integration can't see them. We capture the
+    // affiliate token in the iOS paywall, validate it here, and log it to the
+    // same affiliate_commission_tracker table the Stripe webhook uses, then
+    // email Randy with the manual-commission-adjustment ping. Non-blocking.
+    if (cleanReferralCode) {
+      try {
+        const affiliate = await findAffiliateByToken(cleanReferralCode);
+
+        if (!affiliate) {
+          console.warn(`[IAP] Referral code "${cleanReferralCode}" did not match any Rewardful affiliate — logged but not credited`);
+          await resend.emails.send({
+            from: 'Alerts <alerts@autopilotamerica.com>',
+            to: 'randyvollrath@gmail.com',
+            subject: `[IAP] Unmatched referral code on iOS sale: ${cleanReferralCode}`,
+            text: `iOS IAP customer entered referral code "${cleanReferralCode}" but no Rewardful affiliate has a link with that token.\n\nCustomer: ${user.email}\nUser ID: ${user.id}\nTransaction: ${finalTransactionId}\nGross: $${grossDollars}\n\nIf this should be credited, look up the intended affiliate manually in the Rewardful dashboard.`,
+          });
+        } else {
+          // Mirror what the Stripe path does: 20% on the subscription portion.
+          // For IAP, "subscription portion" == gross (no Protection upsell on iOS).
+          const expectedCommission = (amountCents * 0.20) / 100;
+          const sourceId = `iap_${finalTransactionId || `unknown_${Date.now()}`}`;
+
+          const { error: trackerError } = await supabaseAdmin
+            .from('affiliate_commission_tracker')
+            .insert({
+              stripe_session_id: sourceId, // synthetic key — table predates IAP
+              customer_email: user.email || 'Unknown',
+              plan: isMonthly ? 'monthly' : 'annual',
+              total_amount: amountCents / 100,
+              expected_commission: expectedCommission,
+              referral_id: affiliate.id,
+              commission_adjusted: false,
+            });
+
+          if (trackerError) {
+            console.error('[IAP] Failed to log affiliate commission:', trackerError);
+          } else {
+            console.log(`[IAP] ✅ Logged affiliate commission for ${affiliate.email} (token=${cleanReferralCode})`);
+          }
+
+          await resend.emails.send({
+            from: 'Autopilot America <hello@autopilotamerica.com>',
+            to: ['randyvollrath@gmail.com', 'ticketlessamerica@gmail.com'],
+            subject: '🎉 Affiliate Sale (iOS IAP) — Manual Commission Entry Needed',
+            html: `
+              <h2>Affiliate Sale via iOS IAP</h2>
+              <p>An Apple In-App Purchase was just completed using an affiliate referral code.</p>
+              <p><strong>Rewardful does NOT auto-track this</strong> — Apple bypasses Stripe entirely. Add the conversion manually in the Rewardful dashboard.</p>
+
+              <h3>Sale Details</h3>
+              <ul>
+                <li><strong>Customer:</strong> ${user.email}</li>
+                <li><strong>Plan:</strong> ${planLabel}</li>
+                <li><strong>Gross (Apple charge):</strong> $${grossDollars}</li>
+                <li><strong>Net (after Apple's 15%):</strong> $${netDollars}</li>
+                <li><strong>Apple Transaction ID:</strong> ${finalTransactionId}</li>
+              </ul>
+
+              <h3>Affiliate</h3>
+              <ul>
+                <li><strong>Affiliate Email:</strong> ${affiliate.email}</li>
+                <li><strong>Affiliate ID:</strong> ${affiliate.id}</li>
+                <li><strong>Referral Token Used:</strong> ${cleanReferralCode}</li>
+                <li><strong>Expected Commission (20%):</strong> $${expectedCommission.toFixed(2)}</li>
+              </ul>
+
+              <p><a href="https://app.getrewardful.com/affiliates/${affiliate.id}" style="display: inline-block; padding: 10px 20px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Open Affiliate in Rewardful</a></p>
+            `,
+          });
+        }
+      } catch (e) {
+        console.error('[IAP] Rewardful attribution failed (non-fatal):', e);
+      }
     }
 
     return res.status(200).json({ activated: true });

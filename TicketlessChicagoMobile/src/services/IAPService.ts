@@ -14,6 +14,7 @@
  */
 
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   initConnection,
   endConnection,
@@ -31,6 +32,10 @@ const log = Logger.createLogger('IAPService');
 
 const PRODUCT_ID_ANNUAL = 'autopilot_annual_v3';
 const PRODUCT_ID_MONTHLY = 'autopilot_monthly_v3';
+
+// Persisted across app launches so a user can paste a referral code on the
+// paywall, kill the app, come back, and still get attribution at purchase time.
+const REFERRAL_CODE_STORAGE_KEY = 'autopilot.iap.referral_code.v1';
 
 export type BillingPlan = 'annual' | 'monthly';
 
@@ -50,6 +55,28 @@ class IAPService {
    */
   getLastError(): string | null {
     return this.lastInitError;
+  }
+
+  /**
+   * Persist a Rewardful affiliate referral code (the short ?via= token) so it
+   * gets attached to the next successful IAP. Pass empty/null to clear.
+   * Apple/Google IAPs bypass Stripe, so this is the only attribution channel.
+   */
+  async setReferralCode(code: string | null): Promise<void> {
+    const trimmed = (code || '').trim();
+    if (!trimmed) {
+      await AsyncStorage.removeItem(REFERRAL_CODE_STORAGE_KEY);
+      return;
+    }
+    await AsyncStorage.setItem(REFERRAL_CODE_STORAGE_KEY, trimmed.slice(0, 64));
+  }
+
+  async getReferralCode(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(REFERRAL_CODE_STORAGE_KEY);
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -187,6 +214,9 @@ class IAPService {
         return;
       }
 
+      // Pull any persisted Rewardful affiliate code; backend validates + credits.
+      const referralCode = await this.getReferralCode();
+
       // Send the purchase token (JWS on iOS) to backend for validation
       const response = await ApiClient.authPost<{ activated: boolean }>(
         '/api/iap/verify-receipt',
@@ -194,13 +224,18 @@ class IAPService {
           purchaseToken: purchase?.purchaseToken ?? purchase?.jwsRepresentationIos,
           productId: purchase?.productId ?? purchase?.id,
           transactionId: purchase?.id ?? purchase?.transactionId,
+          referralCode: referralCode || undefined,
         },
       );
 
       if (response.success && response.data?.activated) {
         // Finish the transaction with Apple (acknowledge delivery)
         await finishTransaction({ purchase, isConsumable: false });
-        log.info('Purchase verified and account activated');
+        log.info('Purchase verified and account activated', { referralCode: referralCode || null });
+        // Clear the referral code so it can't be double-credited on a future purchase.
+        if (referralCode) {
+          await this.setReferralCode(null);
+        }
         this.pendingCallback?.(true);
       } else {
         log.error('Backend rejected receipt', response.error);
