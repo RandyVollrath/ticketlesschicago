@@ -811,11 +811,11 @@ export default async function handler(
         ) {
           const parkedAtMs = new Date(vehicle.parked_at).getTime();
           const expiresAtMs = parkedAtMs + vehicle.meter_max_time_minutes * 60 * 1000;
-          const fireAtMs = expiresAtMs - 15 * 60 * 1000;
+          const fireAtMs = expiresAtMs - 30 * 60 * 1000;
           const nowMs = chicagoTime.getTime();
-          // Cron runs every 15 min, so fire if we're within ±7.5 min of fireAt
-          // and not already past expiry by more than 5 min (avoids late-fires
-          // for sessions that have been parked for hours).
+          // Cron runs every 15 min, so fire any time between 30-min-before and
+          // 5-min-after the expiry so the user has lead time to walk back to
+          // the car and we still catch sessions whose cron tick lands late.
           const inWindow = nowMs >= fireAtMs && nowMs <= expiresAtMs + 5 * 60 * 1000;
 
           // Re-check enforcement using stored schedule text
@@ -837,7 +837,7 @@ export default async function handler(
           if (inWindow && stillEnforced) {
             const result = await sendPushNotification(vehicle.fcm_token, {
               title: 'Meter Expiring Soon',
-              body: `Your meter at ${vehicle.address} hits its ${vehicle.meter_max_time_minutes / 60}-hour max in 15 min. Move your car or risk a $50 ticket.`,
+              body: `Your meter at ${vehicle.address} hits its ${vehicle.meter_max_time_minutes / 60}-hour max in 30 min. Head back to your car or feed the meter to avoid a $50 ticket.`,
               data: {
                 type: 'meter_max_expiring',
                 lat: vehicle.latitude?.toString(),
