@@ -168,6 +168,8 @@ export interface DilemmaZoneAnalysis {
   decelRateUsed: number;
   /** Intersection width used (ft) */
   intersectionWidthFt: number;
+  /** Approach speed at yellow onset (mph), if available from the GPS trace */
+  speedAtOnsetMph?: number;
 }
 
 export interface LateNoticeAnalysis {
