@@ -320,9 +320,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               continue;
             }
 
+            // SECURITY: Vercel Blob v2 dropped 'private'. addRandomSuffix
+            // makes URLs unguessable (FOIA city responses can include vehicle
+            // owner names/addresses).
             const blobPath = `foia-responses/${Date.now()}-${filename}`;
             const blob = await put(blobPath, buffer, {
-              access: 'private',
+              access: 'public',
+              addRandomSuffix: true,
               contentType: contentType,
             });
 
@@ -771,7 +775,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Find the user's most recent pending_evidence ticket
       const { data: pendingTicket } = await supabaseAdmin
         .from('detected_tickets')
-        .select('id, ticket_number, violation_type, evidence_requested_at')
+        .select('id, ticket_number, violation_type, evidence_requested_at, evidence_deadline')
         .eq('user_id', matchedUserId)
         .eq('status', 'pending_evidence')
         .order('created_at', { ascending: false })
@@ -797,9 +801,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 continue;
               }
 
+              // SECURITY: Vercel Blob v2 dropped 'private'. addRandomSuffix
+              // makes the URL unguessable (predictable userId/ticketId path
+              // alone is enumerable).
               const blobPath = `ticket-evidence/${matchedUserId}/${pendingTicket.id}/${Date.now()}-${filename}`;
               const blob = await put(blobPath, buffer, {
-                access: 'private',
+                access: 'public',
+                addRandomSuffix: true,
                 contentType: contentType,
               });
 
@@ -1133,8 +1141,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const timestamp = Date.now();
           const blobPath = `permit-docs/${matchedUser.user_id}/email-${timestamp}-${filename}`;
 
+          // SECURITY: Vercel Blob v2 dropped 'private'. addRandomSuffix gives
+          // ~120 bits of entropy so the URL is effectively unguessable.
           const blob = await put(blobPath, buffer, {
-            access: 'private', // SECURITY: Utility bills must be private
+            access: 'public',
+            addRandomSuffix: true,
             contentType: contentType,
           });
 

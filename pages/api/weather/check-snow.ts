@@ -86,8 +86,12 @@ export default async function handler(
           .update({
             snow_amount_inches: Math.max(existingEvent.snow_amount_inches, snowData.snowAmountInches),
             is_active: true,
+            // metadata is typed Json — guard against null/array/scalar so the
+            // spread doesn't throw and silently break snow-ban activation.
             metadata: {
-              ...existingEvent.metadata,
+              ...(existingEvent.metadata && typeof existingEvent.metadata === 'object' && !Array.isArray(existingEvent.metadata)
+                ? existingEvent.metadata
+                : {}),
               latest_forecast_period: snowData.forecastPeriod,
               latest_detailed_forecast: snowData.detailedForecast,
               latest_check_at: new Date().toISOString()
