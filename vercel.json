@@ -48,6 +48,9 @@
     "pages/api/cron/notify-renewal-pushes.ts": {
       "maxDuration": 60
     },
+    "pages/api/cron/firebase-push-health.ts": {
+      "maxDuration": 30
+    },
     "pages/api/cron/autopilot-check-plates.ts": {
       "maxDuration": 300
     },
@@ -181,6 +184,10 @@
     {
       "path": "/api/cron/notify-renewal-pushes",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/firebase-push-health",
+      "schedule": "0 12 * * *"
     },
     {
       "path": "/api/cron/autopilot-check-plates",
