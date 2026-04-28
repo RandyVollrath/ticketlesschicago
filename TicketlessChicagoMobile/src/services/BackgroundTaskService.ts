@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import BluetoothService from './BluetoothService';
 import ParkingDetectionStateMachine from './ParkingDetectionStateMachine';
+import ActivityRecognitionService, { ActivityRecognitionListener } from './ActivityRecognitionService';
 import MotionActivityService from './MotionActivityService';
 import BackgroundLocationService, { ParkingDetectedEvent } from './BackgroundLocationService';
 import LocationService from './LocationService';
@@ -166,6 +167,12 @@ class BackgroundTaskServiceClass {
   // Native BT monitor service event subscriptions (Android only)
   private nativeBtDisconnectSub: any = null;
   private nativeBtConnectSub: any = null;
+  // Activity Recognition listener (Android only) — supplemental motion-based
+  // parking signal that supplements (or replaces, when no BT) the BT pipeline.
+  private activityRecognitionListener: ActivityRecognitionListener | null = null;
+  // Cross-source dedup: ignore AR events fired within this window of a real BT
+  // ACL event, since ACL is faster and authoritative when available.
+  private readonly AR_BT_DEDUP_WINDOW_MS = 60 * 1000;
   // Periodic rescan timer (re-checks parking rules at last parked location)
   private rescanInterval: ReturnType<typeof setInterval> | null = null;
   // Snow forecast monitoring timers
@@ -1089,6 +1096,13 @@ class BackgroundTaskServiceClass {
           await this.startJsSideBluetoothMonitoring(savedDevice);
         }
       }
+
+      // Start Activity Recognition (Android) regardless of whether the user has
+      // car BT configured. AR is a supplemental motion-based parking signal:
+      // - With BT: AR catches cases where BT fails to disconnect (flaky pairing).
+      // - Without BT: AR is the primary parking signal.
+      // Cross-source dedup in the AR listener avoids double-firing when both fire.
+      await this.startActivityRecognition();
     }
 
     // Also run periodic checks as a backup
@@ -1347,6 +1361,9 @@ class BackgroundTaskServiceClass {
       this.nativeBtConnectSub = null;
     }
 
+    // Stop Activity Recognition listener (Android)
+    this.stopActivityRecognition();
+
     // Stop platform-specific monitoring
     if (Platform.OS === 'ios') {
       BackgroundLocationService.stopMonitoring();
@@ -1357,6 +1374,113 @@ class BackgroundTaskServiceClass {
         log.warn('Error stopping native BT monitor:', e)
       );
     }
+  }
+
+  /**
+   * Start Google Activity Recognition (Android only). Subscribes to IN_VEHICLE
+   * ENTER and EXIT transitions and routes them into the parking state machine
+   * with cross-source dedup against BT ACL events.
+   *
+   * Behavior:
+   * - IN_VEHICLE EXIT (parking signal) → btDisconnected('activity_recognition')
+   *   ONLY if no BT ACL event fired within the dedup window. The state machine
+   *   itself only acts on this if currently DRIVING.
+   * - IN_VEHICLE ENTER (departure signal) → btConnected('activity_recognition')
+   *   ONLY if no BT ACL event fired within the dedup window AND state is not
+   *   already DRIVING (prevents AR from clobbering BT-driven DRIVING state).
+   */
+  private async startActivityRecognition(): Promise<void> {
+    if (!ActivityRecognitionService.isAvailable()) return;
+
+    // If we previously attached a listener (e.g. monitoring was restarted),
+    // remove it before re-attaching to avoid duplicate notifications.
+    this.stopActivityRecognition();
+
+    // Request ACTIVITY_RECOGNITION permission opportunistically. The system
+    // shows the permission dialog at most once; if the user previously denied
+    // it, requestPermission() returns false and we silently fall back to BT.
+    let granted = await ActivityRecognitionService.hasPermission();
+    if (!granted) {
+      granted = await ActivityRecognitionService.requestPermission();
+    }
+    if (!granted) {
+      log.info('AR permission not granted — skipping AR monitoring (BT-only fallback)');
+      return;
+    }
+
+    const listener: ActivityRecognitionListener = {
+      onDrivingStarted: (timestamp: number) => {
+        const sinceLastBt = Date.now() - this.lastNativeBtEventTime;
+        if (this.lastNativeBtEventTime > 0 && sinceLastBt < this.AR_BT_DEDUP_WINDOW_MS) {
+          log.info(`AR DrivingStarted ignored: BT event fired ${sinceLastBt}ms ago (dedup)`);
+          return;
+        }
+        const smState = ParkingDetectionStateMachine.state;
+        if (smState === 'DRIVING') {
+          log.debug('AR DrivingStarted ignored: state machine already DRIVING');
+          return;
+        }
+        log.info('AR DrivingStarted → feeding state machine (no BT car or BT silent)');
+        ParkingDetectionStateMachine.btConnected('activity_recognition', {
+          source: 'activity_recognition',
+          timestamp,
+        });
+      },
+      onParkingDetected: (timestamp: number) => {
+        const sinceLastBt = Date.now() - this.lastNativeBtEventTime;
+        if (this.lastNativeBtEventTime > 0 && sinceLastBt < this.AR_BT_DEDUP_WINDOW_MS) {
+          log.info(`AR ParkingDetected ignored: BT event fired ${sinceLastBt}ms ago (dedup)`);
+          return;
+        }
+        const smState = ParkingDetectionStateMachine.state;
+        if (smState !== 'DRIVING') {
+          log.debug(`AR ParkingDetected ignored: state machine is ${smState}, not DRIVING`);
+          return;
+        }
+        log.info('AR ParkingDetected → feeding state machine (BT silent)');
+        ParkingDetectionStateMachine.btDisconnected('activity_recognition', {
+          source: 'activity_recognition',
+          timestamp,
+        });
+      },
+    };
+    this.activityRecognitionListener = listener;
+    ActivityRecognitionService.addListener(listener);
+
+    const started = await ActivityRecognitionService.startMonitoring();
+    if (!started) {
+      log.warn('AR startMonitoring returned false — listener attached but updates not registered');
+      return;
+    }
+
+    // Drain any events that fired while JS was paused. Same pattern as BT.
+    try {
+      const pending = await ActivityRecognitionService.checkPendingEvents();
+      if (pending.pendingDrivingStarted) {
+        log.info('AR pending DrivingStarted on resume → feeding listener');
+        listener.onDrivingStarted(Date.now());
+      }
+      if (pending.pendingParkingDetected) {
+        log.info('AR pending ParkingDetected on resume → feeding listener');
+        listener.onParkingDetected(Date.now());
+      }
+    } catch (e) {
+      log.warn('Error draining AR pending events:', e);
+    }
+
+    log.info('Activity Recognition monitoring active (supplemental to BT)');
+  }
+
+  private stopActivityRecognition(): void {
+    if (!ActivityRecognitionService.isAvailable()) return;
+    if (this.activityRecognitionListener) {
+      try { ActivityRecognitionService.removeListener(this.activityRecognitionListener); }
+      catch (e) { /* ignore */ }
+      this.activityRecognitionListener = null;
+    }
+    ActivityRecognitionService.stopMonitoring().catch((e: any) =>
+      log.warn('Error stopping AR monitoring:', e)
+    );
   }
 
   /**
@@ -2154,11 +2278,19 @@ class BackgroundTaskServiceClass {
       try {
         const pa = result.parsedAddress || result.rawData?.parsedAddress;
         if (pa?.name) {
+          const alternates = Array.isArray(result.rawApiData?.addressAlternates)
+            ? result.rawApiData.addressAlternates
+            : [];
           await ParkingFeedbackService.recordParkingEvent({
             address: result.address || 'Unknown',
             streetName: pa.name || '',
             streetDirection: pa.direction || '',
             resolvedSide: result.rawData?.meteredParking?.resolvedSide || '',
+            verifyRecommended: result.rawApiData?.needsVerification === true,
+            addressConfidence: typeof result.rawApiData?.addressConfidence === 'number'
+              ? result.rawApiData.addressConfidence
+              : null,
+            alternatesCount: alternates.length,
           });
         }
       } catch (fbErr) {
