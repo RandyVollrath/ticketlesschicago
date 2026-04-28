@@ -560,7 +560,9 @@ export default function DestinationMapView() {
         scrollWheelZoom: true,
         touchZoom: true,
         dragging: true,
-        tap: true,
+        // Leaflet 2.x removed the `tap` option (deprecated in 1.9) —
+        // tap handling is native now and the option was being silently
+        // ignored. Removed.
         attributionControl: false,
       });
 
