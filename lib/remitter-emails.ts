@@ -123,7 +123,10 @@ export async function sendRemitterDailyEmail(
       subject: `${renewals.length} Renewal${renewals.length !== 1 ? 's' : ''} Ready for Submission - ${new Date().toLocaleDateString()}`,
       html: emailHtml,
       text: emailText,
-      reply_to: 'support@autopilotamerica.com',
+      // Resend's API field is camelCase replyTo; reply_to is silently
+      // ignored, which means remitter replies were going to the from-
+      // address inbox instead of support.
+      replyTo: 'support@autopilotamerica.com',
       headers: {
         'List-Unsubscribe': '<https://autopilotamerica.com/unsubscribe>',
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',

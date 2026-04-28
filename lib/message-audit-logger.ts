@@ -19,13 +19,16 @@ export type MessageResult = 'sent' | 'skipped' | 'blocked' | 'error' | 'queued';
 
 export interface MessageContext {
   plate?: string;
-  zone?: number;
+  // Permit zone IDs in DB are stored as string (e.g. "043", "1305") —
+  // some leading-zero zones would lose info if coerced to number.
+  zone?: string | number;
   registration_id?: string;
   days_until?: number;
   street?: string;
   date?: string;
+  // Ward similarly stored as string in user_profiles; allow both.
   time?: string;
-  ward?: number;
+  ward?: string | number;
   [key: string]: any; // Allow additional context
 }
 

@@ -14,7 +14,10 @@ export const initPostHog = () => {
         posthog.init(apiKey, {
           api_host: apiHost,
           person_profiles: 'identified_only',
-          capture_pageviews: true,
+          // Singular: posthog-js's option is "capture_pageview", not
+          // "capture_pageviews". The plural was being silently dropped
+          // — pageviews were not being auto-captured by the SDK.
+          capture_pageview: true,
           capture_pageleave: true,
           loaded: (ph) => {
             isInitialized = true
