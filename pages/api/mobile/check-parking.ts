@@ -157,6 +157,13 @@ interface MobileCheckParkingResponse {
    *   <70     prompt user to verify
    */
   addressConfidence?: number;
+  /**
+   * Server-side abstention signal. When true, the resolver thinks the answer
+   * is plausible but not trustworthy enough to present as unqualified fact.
+   * Mobile should ask the user to verify/correct this block rather than
+   * pretending confidence.
+   */
+  needsVerification?: boolean;
   /** Human-readable factors that drove the confidence score (debug-friendly). */
   addressConfidenceReasons?: string[];
   /**
@@ -909,6 +916,11 @@ export default async function handler(
 
     // Hoisted so downstream building-footprint parity constraint can read it.
     let userSideFromGps: 'L' | 'R' | null = null;
+    // Tracks when the chosen candidate came only from coarse heading/orientation
+    // logic rather than a strong geometric confirmation. Used to prevent a
+    // sub-5m GPS fix from being pulled onto a 25m+ parallel segment just
+    // because both streets share the same N-S / E-W bucket.
+    let selectedByWeakHeading = false;
 
     // Hoisted so the Nominatim cross-reference (later in this try) can check
     // whether OSM's identified street is one of the snap candidates we already
@@ -1401,6 +1413,7 @@ export default async function handler(
                 const streetDir = getChicagoStreetOrientation(c.street_name);
                 if (streetDir === headingDir) {
                   bestCandidate = c;
+                  selectedByWeakHeading = c !== candidates[0];
                   console.log(`[check-parking] Heading disambiguation: ${effectiveHeading.toFixed(0)}° (${headingDir}${hdgSrc}) → chose ${c.street_name} over ${candidates[0].street_name}`);
                   found = true;
                   break;
@@ -1416,6 +1429,7 @@ export default async function handler(
                   const cDir = getChicagoStreetOrientation(c.street_name);
                   if (cDir === headingDir && c.snap_distance_meters <= 50) {
                     bestCandidate = c;
+                    selectedByWeakHeading = true;
                     console.log(`[check-parking] Heading disambiguation (extended search): ${effectiveHeading.toFixed(0)}° (${headingDir}${hdgSrc}) → chose ${c.street_name} at ${c.snap_distance_meters.toFixed(1)}m`);
                     found = true;
                     break;
@@ -1442,6 +1456,7 @@ export default async function handler(
                 if (headingMatch) {
                   console.log(`[check-parking] Heading mismatch with closest (${candidates[0].street_name}, ${streetDir}), but found heading-matching candidate: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${effectiveHeading.toFixed(0)}° → ${headingDir}${hdgSrc})`);
                   bestCandidate = headingMatch;
+                  selectedByWeakHeading = true;
                 } else if (candidates[0].snap_distance_meters <= 15) {
                   // Close snap (< 15m) is strong geometric evidence even if heading disagrees.
                   // Heading can be stale after a turn (e.g., drove west on Webster, turned onto
@@ -1457,6 +1472,29 @@ export default async function handler(
             } // end if (!lockedByCloseSnap && !lockedByUserAnchor) — locks skip disambiguation
 
             if (bestCandidate) {
+              const closestCandidate = candidates[0] ?? null;
+              const accurateGps = typeof accuracyMeters === 'number' && accuracyMeters <= 8;
+              const weakHeadingLikelyParallelMiss =
+                selectedByWeakHeading &&
+                accurateGps &&
+                closestCandidate &&
+                bestCandidate !== closestCandidate &&
+                typeof bestCandidate.snap_distance_meters === 'number' &&
+                typeof closestCandidate.snap_distance_meters === 'number' &&
+                closestCandidate.snap_distance_meters <= 15 &&
+                bestCandidate.snap_distance_meters > 20 &&
+                bestCandidate.snap_distance_meters >= closestCandidate.snap_distance_meters + 10;
+              if (weakHeadingLikelyParallelMiss) {
+                console.log(
+                  `[check-parking] Rejecting weak heading override: closest ${closestCandidate.street_name} is ${closestCandidate.snap_distance_meters.toFixed(1)}m` +
+                  ` but heading-only candidate ${bestCandidate.street_name} is ${bestCandidate.snap_distance_meters.toFixed(1)}m with ${accuracyMeters?.toFixed(1)}m GPS.` +
+                  ` Keeping closer geometry to avoid parallel-segment snap_far.`
+                );
+                diag.weak_heading_override_rejected = true;
+                bestCandidate = closestCandidate;
+                selectedByWeakHeading = false;
+              }
+
               checkLat = bestCandidate.snapped_lat;
               checkLng = bestCandidate.snapped_lng;
 
@@ -1597,16 +1635,26 @@ export default async function handler(
                 .find((s: any) => getChicagoStreetOrientation(s.street_name) === headingDir);
 
               if (headingMatch) {
-                checkLat = headingMatch.snapped_lat;
-                checkLng = headingMatch.snapped_lng;
-                snapResult = {
-                  wasSnapped: true,
-                  snapDistanceMeters: headingMatch.snap_distance_meters,
-                  streetName: headingMatch.street_name,
-                  snapSource: `${headingMatch.snap_source}+heading_extended`,
-                  streetBearing: headingMatch.street_bearing,
-                };
-                console.log(`[check-parking] Extended heading search found: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${effectiveHeading.toFixed(0)}° → ${headingDir}${hasCompass ? ', compass' : ''})`);
+                const accurateGps = typeof accuracyMeters === 'number' && accuracyMeters <= 8;
+                if (accurateGps && headingMatch.snap_distance_meters > 20) {
+                  console.log(
+                    `[check-parking] Extended heading search found ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m,` +
+                    ` but GPS accuracy is ${accuracyMeters?.toFixed(1)}m. Rejecting far heading-only snap.`
+                  );
+                  diag.extended_heading_snap_rejected = true;
+                } else {
+                  checkLat = headingMatch.snapped_lat;
+                  checkLng = headingMatch.snapped_lng;
+                  snapResult = {
+                    wasSnapped: true,
+                    snapDistanceMeters: headingMatch.snap_distance_meters,
+                    streetName: headingMatch.street_name,
+                    snapSource: `${headingMatch.snap_source}+heading_extended`,
+                    streetBearing: headingMatch.street_bearing,
+                  };
+                  selectedByWeakHeading = true;
+                  console.log(`[check-parking] Extended heading search found: ${headingMatch.street_name} at ${headingMatch.snap_distance_meters.toFixed(1)}m (heading ${effectiveHeading.toFixed(0)}° → ${headingDir}${hasCompass ? ', compass' : ''})`);
+                }
               } else {
                 console.log(`[check-parking] Extended heading search: no ${headingDir} street found within 150m`);
               }
@@ -1901,6 +1949,104 @@ export default async function handler(
           ) {
             diag.native_meta.mapbox_reverse.confirmed_nominatim_override = true;
             console.log('[check-parking] Mapbox reverse CONFIRMS Nominatim override (2-of-3 against snap).');
+          }
+
+          // Far-Nominatim-override rescue with Mapbox + compass.
+          //
+          // Real example (row #79, 2026-04-28): GPS at urban canyon drift
+          // landed snap+Nominatim both on W Wellington (E-W) at 89m, while
+          // compass=179° (south = N-S) and Mapbox-reverse correctly identified
+          // N Ashland (N-S). Snap had been forced to the Wellington centerline
+          // by a `nominatim_override` path that does findCenterlineSegmentByName
+          // up to ~150m, so the reported snap_distance is essentially how
+          // far we had to reach to find Nominatim's name — not how confident
+          // the geometry is.
+          //
+          // When ALL three of these hold, prefer Mapbox:
+          //   1. Current snap source is `nominatim_override` (or _extended)
+          //      AND its distance is > 50m (clearly off-grid, plausibly drift)
+          //   2. Mapbox-reverse identified a DIFFERENT street whose orientation
+          //      contradicts the snap+Nominatim winner
+          //   3. Compass heading exists AND its orientation matches Mapbox's
+          //      street (i.e., compass + Mapbox both vote against snap+Nominatim)
+          //
+          // We require compass — not GPS heading — because compass is
+          // captured fresh at park time, immune to the stale-after-turn
+          // failure mode that produced #79's misleading 179° read in the
+          // first place. (179° was correct here, but using compass is the
+          // safer general rule.)
+          //
+          // The 50m floor avoids touching healthy snaps; the orientation
+          // contradiction avoids flipping on a same-orientation neighbor
+          // (where Mapbox just picked the parallel street one block over).
+          try {
+            const currentSnapSource = snapResult?.snapSource ?? '';
+            const isFarNominatimOverride =
+              (currentSnapSource === 'nominatim_override' ||
+                currentSnapSource === 'nominatim_override_extended') &&
+              typeof snapResult?.snapDistanceMeters === 'number' &&
+              (snapResult?.snapDistanceMeters ?? 0) > 50;
+            const mapboxOrientation = getChicagoStreetOrientation(mbRev.streetName);
+            const snapOrient = getChicagoStreetOrientation(snapResult?.streetName ?? null);
+            const compassMatchesMapbox =
+              hasCompass &&
+              mapboxOrientation != null &&
+              ((mapboxOrientation === 'N-S' && isHeadingNorthSouth(compassHeadingDeg)) ||
+                (mapboxOrientation === 'E-W' && !isHeadingNorthSouth(compassHeadingDeg)));
+            const orientationContradicts =
+              mapboxOrientation != null &&
+              snapOrient != null &&
+              mapboxOrientation !== snapOrient;
+            if (
+              isFarNominatimOverride &&
+              !agreesWithSnap &&
+              !agreesWithNominatim &&
+              mbRev.matched &&
+              mbRev.streetName &&
+              orientationContradicts &&
+              compassMatchesMapbox
+            ) {
+              const previousStreet = snapResult?.streetName;
+              const previousDist = snapResult?.snapDistanceMeters;
+              // Try to adopt geometry for the Mapbox street so address
+              // interpolation still works. Reuse the same fallback chain
+              // used elsewhere: candidate pool first, then 200m centerline
+              // lookup by name.
+              const mapboxNorm = normalize(mbRev.streetName);
+              const mapboxCandidate =
+                allCandidates.find((c: any) => normalize(c.street_name) === mapboxNorm) ??
+                (await findCenterlineSegmentByName(mbRev.streetName));
+              if (mapboxCandidate) {
+                const adopted = await adoptCandidateAsSnap(
+                  mapboxCandidate,
+                  'mapbox_match_candidate',
+                );
+                checkLat = adopted.snappedLat;
+                checkLng = adopted.snappedLng;
+                snapResult = adopted.snapResult;
+                if (adopted.userSide) userSideFromGps = adopted.userSide;
+                diag.snap_street_name = mapboxCandidate.street_name;
+                diag.snap_distance_meters = mapboxCandidate.snap_distance_meters;
+                diag.snap_source = 'mapbox_match_candidate';
+                // The Nominatim override is now retracted — we're picking
+                // a third (Mapbox) street, not Nominatim's.
+                diag.nominatim_overrode = false;
+                diag.native_meta.mapbox_reverse.promoted_over_nominatim = true;
+                console.log(
+                  `[check-parking] Mapbox PROMOTED over far Nominatim override: ` +
+                  `was ${previousStreet} (${snapOrient}) at ${previousDist?.toFixed(1)}m via ${currentSnapSource}, ` +
+                  `now ${mapboxCandidate.street_name} (${mapboxOrientation}) — ` +
+                  `compass ${compassHeadingDeg.toFixed(0)}° ${isHeadingNorthSouth(compassHeadingDeg) ? 'N-S' : 'E-W'} confirms Mapbox.`,
+                );
+              } else {
+                // No centerline geometry within 150m — keep snap but log it.
+                console.log(
+                  `[check-parking] Far Nominatim override conflict but no Mapbox centerline within 150m for "${mbRev.streetName}". Keeping ${previousStreet}.`,
+                );
+              }
+            }
+          } catch (promoteErr) {
+            console.warn('[check-parking] Mapbox-over-Nominatim promotion check failed (non-fatal):', promoteErr);
           }
 
           // Capture Mapbox-reverse house number for use as a fallback
@@ -2494,8 +2640,10 @@ export default async function handler(
       confidenceReasons.push('carplay-active-drive');
     }
     addressConfidence = Math.max(0, Math.min(100, addressConfidence));
+    const needsVerification = addressConfidence < 70;
     diag.address_confidence = addressConfidence;
     diag.address_confidence_reasons = confidenceReasons;
+    diag.needs_verification = needsVerification;
 
     // Surface the runner-up candidates as one-tap correction options for the
     // mobile "Wrong street?" modal. Only emitted when there's genuine
@@ -2635,6 +2783,12 @@ export default async function handler(
     if (addressAlternates.length > 0) {
       diag.native_meta = { ...(diag.native_meta || {}), address_alternates: addressAlternates };
     }
+    diag.native_meta = {
+      ...(diag.native_meta || {}),
+      address_confidence: addressConfidence,
+      address_confidence_reasons: confidenceReasons,
+      needs_verification: needsVerification,
+    };
 
     // Transform to mobile API response format
     const streetCleaningTiming: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE' =
@@ -2651,6 +2805,7 @@ export default async function handler(
       address: finalAddress,
       coordinates: { latitude: checkLat, longitude: checkLng },
       addressConfidence,
+      needsVerification,
       addressConfidenceReasons: confidenceReasons,
       addressAlternates: addressAlternates.length > 0 ? addressAlternates : undefined,
       parkingAnchor: diag.locked_by_user_anchor

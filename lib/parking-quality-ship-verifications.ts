@@ -61,7 +61,7 @@ function verifyMapboxRadius(rows: DiagnosticRow[]): ShipVerification {
     shipped_at: '2026-04-24',
   };
 
-  const mapboxRows = rows.filter((r) => r.native_meta?.mapbox);
+  const mapboxRows = rows.filter((r) => r.native_meta?.mapbox_reverse || r.native_meta?.mapbox);
   if (mapboxRows.length < 3) {
     return {
       ...meta,
@@ -71,15 +71,46 @@ function verifyMapboxRadius(rows: DiagnosticRow[]): ShipVerification {
     };
   }
 
-  const matched = mapboxRows.filter((r) => r.native_meta.mapbox.matched).length;
+  const confidenceScore = (r: DiagnosticRow): number => {
+    const revConfidence = r.native_meta?.mapbox_reverse?.match_confidence;
+    if (typeof revConfidence === 'string') {
+      if (revConfidence === 'exact') return 1;
+      if (revConfidence === 'high') return 0.85;
+      if (revConfidence === 'medium') return 0.6;
+      if (revConfidence === 'low') return 0.25;
+    }
+    return typeof r.native_meta?.mapbox?.confidence === 'number'
+      ? r.native_meta.mapbox.confidence
+      : 0;
+  };
+  const streetValue = (r: DiagnosticRow): string | null =>
+    r.native_meta?.mapbox_reverse?.street ?? r.native_meta?.mapbox?.street ?? null;
+  const matchedValue = (r: DiagnosticRow): boolean =>
+    Boolean(r.native_meta?.mapbox_reverse?.matched ?? r.native_meta?.mapbox?.matched);
+  const promotedValue = (r: DiagnosticRow): boolean =>
+    Boolean(r.native_meta?.mapbox_reverse?.confirmed_nominatim_override ?? r.native_meta?.mapbox?.promoted);
+
+  const matched = mapboxRows.filter((r) => matchedValue(r)).length;
   const emptyStreet = mapboxRows.filter(
-    (r) => r.native_meta.mapbox.matched && !r.native_meta.mapbox.street,
+    (r) => matchedValue(r) && !streetValue(r),
   ).length;
+  // Cross-source agreement is the strongest practical confidence signal
+  // for v6 reverse-geocode because match_code.confidence is null for
+  // non-building points (the typical parking case). When Mapbox-reverse
+  // matches AND agrees with both snap and Nominatim, three independent
+  // geocoders concur — that's strictly stronger than match_code='medium'.
+  const crossSourceAgrees = (r: DiagnosticRow): boolean => {
+    const rev = r.native_meta?.mapbox_reverse;
+    if (!rev) return false;
+    return rev.matched === true && rev.agrees_with_snap === true && rev.agrees_with_nominatim === true;
+  };
   const confidentMatches = mapboxRows.filter(
-    (r) => (r.native_meta.mapbox.confidence ?? 0) >= 0.5,
+    (r) => confidenceScore(r) >= 0.5 || crossSourceAgrees(r),
   ).length;
-  const promoted = mapboxRows.filter((r) => r.native_meta.mapbox.promoted).length;
-  const noMatch = mapboxRows.filter((r) => !r.native_meta.mapbox.matched).length;
+  const promoted = mapboxRows.filter((r) => promotedValue(r)).length;
+  const noMatch = mapboxRows.filter((r) => !matchedValue(r)).length;
+  const reverseRows = mapboxRows.filter((r) => r.native_meta?.mapbox_reverse).length;
+  const mapMatchRows = mapboxRows.filter((r) => r.native_meta?.mapbox).length;
 
   const pctEmpty = (emptyStreet / mapboxRows.length) * 100;
   const pctConfident = (confidentMatches / mapboxRows.length) * 100;
@@ -91,13 +122,13 @@ function verifyMapboxRadius(rows: DiagnosticRow[]): ShipVerification {
   let summary: string;
   if (pctEmpty < 25 && pctConfident >= 25) {
     verdict = 'working';
-    summary = `Mapbox returning real results — ${pctConfident.toFixed(0)}% with confidence ≥ 0.5, ${promoted} promoted (${pctEmpty.toFixed(0)}% empty street).`;
+    summary = `Mapbox returning real results — ${pctConfident.toFixed(0)}% with confidence ≥ 0.5, ${promoted} confirmed/promoted (${pctEmpty.toFixed(0)}% empty street).`;
   } else if (pctEmpty > 60 || pctConfident < 10) {
     verdict = 'degraded';
     summary = `Mapbox still mostly unusable — ${pctEmpty.toFixed(0)}% empty street, only ${pctConfident.toFixed(0)}% confident. Radius bump may not be enough.`;
   } else {
     verdict = 'unclear';
-    summary = `Partial improvement — ${pctEmpty.toFixed(0)}% empty, ${pctConfident.toFixed(0)}% confident, ${promoted} promoted.`;
+    summary = `Partial improvement — ${pctEmpty.toFixed(0)}% empty, ${pctConfident.toFixed(0)}% confident, ${promoted} confirmed/promoted.`;
   }
 
   return {
@@ -111,6 +142,8 @@ function verifyMapboxRadius(rows: DiagnosticRow[]): ShipVerification {
       empty_street: emptyStreet,
       confident_matches: confidentMatches,
       promoted,
+      reverse_rows: reverseRows,
+      map_match_rows: mapMatchRows,
       pct_empty: round1(pctEmpty),
       pct_confident: round1(pctConfident),
     },
