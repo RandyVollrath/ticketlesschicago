@@ -212,6 +212,8 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [cameraAlertVolume, setCameraAlertVolume] = useState(1.0);
   const [cameraSettingsLoaded, setCameraSettingsLoaded] = useState(false);
   const [meterExpiryAlertsEnabled, setMeterExpiryAlertsEnabled] = useState(true);
+  const [cityStickerAlerts, setCityStickerAlerts] = useState(true);
+  const [licensePlateAlerts, setLicensePlateAlerts] = useState(true);
   const [streetCleaningAlerts, setStreetCleaningAlerts] = useState(true);
   const [twoInchSnowAlerts, setTwoInchSnowAlerts] = useState(true);
   const [winterOvernightAlerts, setWinterOvernightAlerts] = useState(true);
@@ -331,10 +333,16 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const loadMeterExpiryAlertSetting = useCallback(async () => {
     try {
-      const stored = await AsyncStorage.getItem('meterExpiryAlertsEnabled');
+      const [meter, citySticker, licensePlate] = await Promise.all([
+        AsyncStorage.getItem('meterExpiryAlertsEnabled'),
+        AsyncStorage.getItem('pushAlert_citySticker'),
+        AsyncStorage.getItem('pushAlert_licensePlate'),
+      ]);
       if (!isMountedRef.current) return;
       // Default to true if never set
-      setMeterExpiryAlertsEnabled(stored === null ? true : stored === 'true');
+      setMeterExpiryAlertsEnabled(meter === null ? true : meter === 'true');
+      setCityStickerAlerts(citySticker === null ? true : citySticker === 'true');
+      setLicensePlateAlerts(licensePlate === null ? true : licensePlate === 'true');
     } catch (error) {
       log.error('Error loading meter expiry alert setting', error);
     }
@@ -345,8 +353,57 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setMeterExpiryAlertsEnabled(value);
       await AsyncStorage.setItem('meterExpiryAlertsEnabled', value.toString());
       showFeedback(value ? 'Meter alerts enabled' : 'Meter alerts disabled');
+      // Sync both meter push types together (one user-facing toggle covers both
+      // "max-time expiring" and "zone activates in the morning" notifications).
+      if (AuthService.isAuthenticated()) {
+        try {
+          await ApiClient.authPost('/api/mobile/update-push-alert-settings', {
+            push_alert_preferences: { meter_max_expiring: value, meter_zone_active: value },
+          }, { retries: 1, timeout: 10000, showErrorAlert: false });
+        } catch {
+          log.debug('Failed to sync meter alert pref to server (non-fatal)');
+        }
+      }
     } catch (error) {
       log.error('Error toggling meter expiry alerts', error);
+    }
+  }, [showFeedback]);
+
+  const toggleCityStickerAlerts = useCallback(async (value: boolean) => {
+    try {
+      setCityStickerAlerts(value);
+      await AsyncStorage.setItem('pushAlert_citySticker', String(value));
+      showFeedback(value ? 'City sticker reminders enabled' : 'City sticker reminders disabled');
+      if (AuthService.isAuthenticated()) {
+        try {
+          await ApiClient.authPost('/api/mobile/update-push-alert-settings', {
+            push_alert_preferences: { city_sticker: value },
+          }, { retries: 1, timeout: 10000, showErrorAlert: false });
+        } catch {
+          log.debug('Failed to sync city sticker alert pref to server (non-fatal)');
+        }
+      }
+    } catch (error) {
+      log.error('Error toggling city sticker alerts', error);
+    }
+  }, [showFeedback]);
+
+  const toggleLicensePlateAlerts = useCallback(async (value: boolean) => {
+    try {
+      setLicensePlateAlerts(value);
+      await AsyncStorage.setItem('pushAlert_licensePlate', String(value));
+      showFeedback(value ? 'License plate reminders enabled' : 'License plate reminders disabled');
+      if (AuthService.isAuthenticated()) {
+        try {
+          await ApiClient.authPost('/api/mobile/update-push-alert-settings', {
+            push_alert_preferences: { license_plate: value },
+          }, { retries: 1, timeout: 10000, showErrorAlert: false });
+        } catch {
+          log.debug('Failed to sync license plate alert pref to server (non-fatal)');
+        }
+      }
+    } catch (error) {
+      log.error('Error toggling license plate alerts', error);
     }
   }, [showFeedback]);
 
@@ -940,9 +997,27 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             icon="timer-alert-outline"
             iconColor={colors.warning}
             title="Meter Alerts"
-            subtitle="Meter expiry and free-to-paid time transitions"
+            subtitle="30 min before max time, and when free overnight zones turn on"
             value={meterExpiryAlertsEnabled}
             onValueChange={toggleMeterExpiryAlerts}
+          />
+          <Divider />
+          <SettingRow
+            icon="card-account-details-outline"
+            iconColor="#0EA5E9"
+            title="City Sticker Renewal"
+            subtitle="Reminders 30, 14, 7, and 1 day before expiry"
+            value={cityStickerAlerts}
+            onValueChange={toggleCityStickerAlerts}
+          />
+          <Divider />
+          <SettingRow
+            icon="car-info"
+            iconColor="#0EA5E9"
+            title="License Plate Sticker Renewal"
+            subtitle="Reminders 30, 14, 7, and 1 day before expiry"
+            value={licensePlateAlerts}
+            onValueChange={toggleLicensePlateAlerts}
           />
           <Divider />
           <SettingRow
