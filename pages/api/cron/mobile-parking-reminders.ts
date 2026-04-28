@@ -34,12 +34,19 @@ interface ParkedVehicle {
   dot_permit_active: boolean;
   dot_permit_type: string | null;
   dot_permit_start_date: string | null;
+  // Meter zone fields
+  meter_zone_active: boolean;
+  meter_max_time_minutes: number | null;
+  meter_schedule_text: string | null;
+  meter_was_enforced_at_park_time: boolean | null;
   // Notification tracking
   winter_ban_notified_at: string | null;
   snow_ban_notified_at: string | null;
   street_cleaning_notified_at: string | null;
   permit_zone_notified_at: string | null;
   dot_permit_notified_at: string | null;
+  meter_max_notified_at: string | null;
+  meter_active_notified_at: string | null;
 }
 
 /**
@@ -125,9 +132,61 @@ interface ReminderUserProfile {
 
 function isPushAlertEnabled(
   prefs: Record<string, boolean> | null | undefined,
-  key: 'street_cleaning' | 'winter_ban' | 'snow_route' | 'permit_zone' | 'dot_permit'
+  key: 'street_cleaning' | 'winter_ban' | 'snow_route' | 'permit_zone' | 'dot_permit' | 'meter_max_expiring' | 'meter_zone_active'
 ): boolean {
   return prefs?.[key] !== false;
+}
+
+/**
+ * Parse the FIRST enforcement-start hour from a meter schedule_text string,
+ * for the current Chicago day-of-week. Returns null if no daytime enforcement
+ * applies today.
+ *
+ * Schedule strings come from parseEnforcementSchedule in metered-parking-checker.ts
+ * and look like: "Mon-Sat 8am-10pm", "Mon-Fri 7am-7pm, Sun 10am-8pm", "24/7", etc.
+ *
+ * For the "becomes active in the morning" notification we only care about the
+ * first daytime start (typically 8am or 9am Mon-Sat). 24/7 returns null because
+ * there's no overnight free window to wake up from.
+ */
+function getMeterEnforcementStartTodayLocal(scheduleText: string | null, chicagoTime: Date): Date | null {
+  if (!scheduleText) return null;
+  const day = chicagoTime.getDay();
+
+  // 24/7 has no morning-activation moment
+  if (/^24\/7$/i.test(scheduleText.trim())) return null;
+
+  // Normalize en-dashes to plain hyphens — metered-parking-checker formats
+  // schedule strings like "Mon–Sat 8am–10pm" using en-dash, but the existing
+  // parseDayRange splits only on '-'. Normalize first so both sides agree.
+  const normalized = scheduleText.replace(/–/g, '-');
+  const parts = normalized.split(',').map(s => s.trim());
+  for (const part of parts) {
+    // Skip rush-hour fragments
+    if (/^RH/i.test(part)) continue;
+
+    const match = part.match(
+      /^(Mon-Sat|Mon-Fri|Mon-Sun|Sat-Sun|Sun|Sat|Fri|Mon|Tue|Wed|Thu)\s+(\d{1,2}(?::\d{2})?\s*[ap]m)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*[ap]m)$/i
+    );
+    if (!match) continue;
+
+    const days = parseDayRange(match[1]);
+    if (!days.includes(day)) continue;
+
+    const startTime = parseTimeStr(match[2]);
+    if (!startTime) continue;
+
+    // Skip 24-hour wrap-around windows ("12am-12am", "12am-11:59pm") — those
+    // already cover the morning and have no overnight free gap.
+    const endTime = parseTimeStr(match[3]);
+    if (startTime.hours === 0 && startTime.minutes === 0) continue;
+    if (endTime && endTime.hours === 0 && startTime.hours === 0) continue;
+
+    const enforcementStart = new Date(chicagoTime);
+    enforcementStart.setHours(startTime.hours, startTime.minutes, 0, 0);
+    return enforcementStart;
+  }
+  return null;
 }
 
 /**
@@ -362,19 +421,43 @@ export default async function handler(
       streetCleaningReminders: 0,
       permitZoneReminders: 0,
       dotPermitReminders: 0,
+      meterMaxReminders: 0,
+      meterActiveReminders: 0,
       callAlertsSent: 0,
       errors: 0,
     };
 
-    // Get all active parked vehicles — only select needed columns
-    const { data: parkedVehicles, error } = await supabaseAdmin
-      .from('user_parked_vehicles')
-      .select('id, user_id, latitude, longitude, fcm_token, address, on_winter_ban_street, on_snow_route, street_cleaning_date, permit_zone, permit_restriction_schedule, parked_at, dot_permit_active, dot_permit_type, dot_permit_start_date, winter_ban_notified_at, snow_ban_notified_at, street_cleaning_notified_at, permit_zone_notified_at, dot_permit_notified_at')
-      .eq('is_active', true);
+    // Get all active parked vehicles — only select needed columns.
+    // Defensive: if the meter notification columns haven't been migrated yet,
+    // fall back to the old column set so the existing notifications keep firing.
+    // The new meter branches are gated on vehicle.meter_zone_active being true,
+    // so they automatically no-op when those fields aren't selected.
+    const fullSelect = 'id, user_id, latitude, longitude, fcm_token, address, on_winter_ban_street, on_snow_route, street_cleaning_date, permit_zone, permit_restriction_schedule, parked_at, dot_permit_active, dot_permit_type, dot_permit_start_date, meter_zone_active, meter_max_time_minutes, meter_schedule_text, meter_was_enforced_at_park_time, winter_ban_notified_at, snow_ban_notified_at, street_cleaning_notified_at, permit_zone_notified_at, dot_permit_notified_at, meter_max_notified_at, meter_active_notified_at';
+    const fallbackSelect = 'id, user_id, latitude, longitude, fcm_token, address, on_winter_ban_street, on_snow_route, street_cleaning_date, permit_zone, permit_restriction_schedule, parked_at, dot_permit_active, dot_permit_type, dot_permit_start_date, winter_ban_notified_at, snow_ban_notified_at, street_cleaning_notified_at, permit_zone_notified_at, dot_permit_notified_at';
 
-    if (error) {
-      console.error('Error fetching parked vehicles:', error);
-      return res.status(500).json({ error: 'Failed to fetch parked vehicles' });
+    let parkedVehicles: any[] | null = null;
+    {
+      const { data, error } = await supabaseAdmin
+        .from('user_parked_vehicles')
+        .select(fullSelect)
+        .eq('is_active', true);
+      if (error && /column .* does not exist/i.test(error.message)) {
+        console.warn('[mobile-parking-reminders] Meter columns missing — running with fallback SELECT until migration is applied');
+        const fb = await supabaseAdmin
+          .from('user_parked_vehicles')
+          .select(fallbackSelect)
+          .eq('is_active', true);
+        if (fb.error) {
+          console.error('Error fetching parked vehicles (fallback):', fb.error);
+          return res.status(500).json({ error: 'Failed to fetch parked vehicles' });
+        }
+        parkedVehicles = fb.data;
+      } else if (error) {
+        console.error('Error fetching parked vehicles:', error);
+        return res.status(500).json({ error: 'Failed to fetch parked vehicles' });
+      } else {
+        parkedVehicles = data;
+      }
     }
 
     if (!parkedVehicles || parkedVehicles.length === 0) {
@@ -430,7 +513,7 @@ export default async function handler(
     // Collect invalid FCM tokens for batch cleanup at end
     const invalidFcmTokens: string[] = [];
 
-    for (const vehicle of parkedVehicles as ParkedVehicle[]) {
+    for (const vehicle of parkedVehicles as unknown as ParkedVehicle[]) {
       try {
         const userProfile = userProfiles.get(vehicle.user_id);
 
@@ -705,6 +788,119 @@ export default async function handler(
                 .eq('id', vehicle.id);
               invalidFcmTokens.push(vehicle.fcm_token);
               console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+            }
+          }
+        }
+
+        // ——————————————————————————————————————————————
+        // METER ZONE: max-time expiring
+        // ——————————————————————————————————————————————
+        // Fire ~15 minutes before parked_at + max_time_minutes, but ONLY while
+        // the meter zone is currently enforced. We don't know how long the user
+        // actually paid for, so we use the zone's max time as a conservative
+        // upper bound. If the meter is unenforced when this would fire (e.g.
+        // user parked at 9pm Sat with 2hr max → would fire at 10:45pm, but
+        // enforcement ends at 10pm) we skip it.
+        if (
+          vehicle.meter_zone_active &&
+          vehicle.meter_max_time_minutes &&
+          vehicle.meter_max_time_minutes > 0 &&
+          vehicle.meter_was_enforced_at_park_time === true &&
+          !vehicle.meter_max_notified_at &&
+          isPushAlertEnabled(userProfile?.push_alert_preferences, 'meter_max_expiring')
+        ) {
+          const parkedAtMs = new Date(vehicle.parked_at).getTime();
+          const expiresAtMs = parkedAtMs + vehicle.meter_max_time_minutes * 60 * 1000;
+          const fireAtMs = expiresAtMs - 15 * 60 * 1000;
+          const nowMs = chicagoTime.getTime();
+          // Cron runs every 15 min, so fire if we're within ±7.5 min of fireAt
+          // and not already past expiry by more than 5 min (avoids late-fires
+          // for sessions that have been parked for hours).
+          const inWindow = nowMs >= fireAtMs && nowMs <= expiresAtMs + 5 * 60 * 1000;
+
+          // Re-check enforcement using stored schedule text
+          const stillEnforced = (() => {
+            if (!vehicle.meter_schedule_text) return true; // unknown — assume yes
+            // For simple schedules, peek at today's first window:
+            const todayStart = getMeterEnforcementStartTodayLocal(vehicle.meter_schedule_text, chicagoTime);
+            if (!todayStart) return true; // 24/7 or no parseable window — trust the snapshot
+            // We need an end time too. Quick re-parse for end:
+            const m = vehicle.meter_schedule_text.match(/(\d{1,2}(?::\d{2})?\s*[ap]m)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*[ap]m)/i);
+            if (!m) return true;
+            const endTime = parseTimeStr(m[2]);
+            if (!endTime) return true;
+            const todayEnd = new Date(chicagoTime);
+            todayEnd.setHours(endTime.hours, endTime.minutes, 0, 0);
+            return chicagoTime >= todayStart && chicagoTime < todayEnd;
+          })();
+
+          if (inWindow && stillEnforced) {
+            const result = await sendPushNotification(vehicle.fcm_token, {
+              title: 'Meter Expiring Soon',
+              body: `Your meter at ${vehicle.address} hits its ${vehicle.meter_max_time_minutes / 60}-hour max in 15 min. Move your car or risk a $50 ticket.`,
+              data: {
+                type: 'meter_max_expiring',
+                lat: vehicle.latitude?.toString(),
+                lng: vehicle.longitude?.toString(),
+              },
+            });
+            if (result.success) {
+              await supabaseAdmin.from('user_parked_vehicles')
+                .update({ meter_max_notified_at: new Date().toISOString() } as any)
+                .eq('id', vehicle.id);
+              results.meterMaxReminders++;
+              console.log(`Sent meter max-time reminder to ${vehicle.user_id}`);
+            } else if (result.invalidToken) {
+              await supabaseAdmin.from('user_parked_vehicles')
+                .update({ is_active: false })
+                .eq('id', vehicle.id);
+              invalidFcmTokens.push(vehicle.fcm_token);
+            }
+          }
+        }
+
+        // ——————————————————————————————————————————————
+        // METER ZONE: zone activates this morning
+        // ——————————————————————————————————————————————
+        // For users who parked overnight while the meter zone was unenforced
+        // (free overnight parking), notify ~30 min before today's enforcement
+        // start so they have time to move. Only one shot per session.
+        if (
+          vehicle.meter_zone_active &&
+          vehicle.meter_was_enforced_at_park_time === false &&
+          !vehicle.meter_active_notified_at &&
+          isPushAlertEnabled(userProfile?.push_alert_preferences, 'meter_zone_active')
+        ) {
+          const enforcementStart = getMeterEnforcementStartTodayLocal(vehicle.meter_schedule_text, chicagoTime);
+          if (enforcementStart) {
+            const fireAtMs = enforcementStart.getTime() - 30 * 60 * 1000;
+            const nowMs = chicagoTime.getTime();
+            // 15-min cron window — fire if within ±7.5 min of fireAt
+            if (Math.abs(nowMs - fireAtMs) <= 7.5 * 60 * 1000) {
+              const startStr = enforcementStart.toLocaleTimeString('en-US', {
+                hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago'
+              });
+              const result = await sendPushNotification(vehicle.fcm_token, {
+                title: 'Meter Zone Activates Soon',
+                body: `Meters at ${vehicle.address} start enforcing at ${startStr}. Pay the meter or move to avoid a $50 ticket.`,
+                data: {
+                  type: 'meter_zone_active',
+                  lat: vehicle.latitude?.toString(),
+                  lng: vehicle.longitude?.toString(),
+                },
+              });
+              if (result.success) {
+                await supabaseAdmin.from('user_parked_vehicles')
+                  .update({ meter_active_notified_at: new Date().toISOString() } as any)
+                  .eq('id', vehicle.id);
+                results.meterActiveReminders++;
+                console.log(`Sent meter activation reminder to ${vehicle.user_id}`);
+              } else if (result.invalidToken) {
+                await supabaseAdmin.from('user_parked_vehicles')
+                  .update({ is_active: false })
+                  .eq('id', vehicle.id);
+                invalidFcmTokens.push(vehicle.fcm_token);
+              }
             }
           }
         }

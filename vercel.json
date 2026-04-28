@@ -45,6 +45,9 @@
     "pages/api/cron/mobile-parking-reminders.ts": {
       "maxDuration": 60
     },
+    "pages/api/cron/notify-renewal-pushes.ts": {
+      "maxDuration": 60
+    },
     "pages/api/cron/autopilot-check-plates.ts": {
       "maxDuration": 300
     },
@@ -174,6 +177,10 @@
     {
       "path": "/api/cron/mobile-parking-reminders",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/notify-renewal-pushes",
+      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/cron/autopilot-check-plates",
