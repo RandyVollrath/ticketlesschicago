@@ -152,6 +152,10 @@ export interface BORDecision {
   reason: string;  // reason for change
   tot_pre_mktval: string;  // pre-appeal market value
   tot_post_mktval: string;  // post-appeal market value
+  nbhd?: string;  // assessment neighborhood — included by the open-data
+                  // BoR decisions endpoint, used downstream when
+                  // surfacing recent successful appeals on the
+                  // property-tax page.
 }
 
 // Parcel Sales from dataset wvhk-k5uv (current, updated daily)

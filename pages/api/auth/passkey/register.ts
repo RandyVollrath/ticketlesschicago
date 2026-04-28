@@ -221,11 +221,18 @@ async function handleRegistrationVerify(req: NextApiRequest, res: NextApiRespons
     // Log the structure to understand what's available
     console.log('Registration info structure:', JSON.stringify(verification.registrationInfo, null, 2))
 
-    // Check if the structure has changed in v13
-    const registrationInfo = verification.registrationInfo
-    const credentialPublicKey = registrationInfo.credentialPublicKey || registrationInfo.credential?.publicKey
-    const credentialID = registrationInfo.credentialID || registrationInfo.credential?.id
-    const counter = registrationInfo.counter || registrationInfo.credential?.counter || 0
+    // SimpleWebAuthn v13 collapsed registrationInfo.credentialPublicKey /
+    // credentialID / counter into a nested registrationInfo.credential
+    // object. We're on ^13.2.1 so the nested form is canonical; fall
+    // through to a cast for the legacy fields in case we ever downgrade.
+    const registrationInfo = verification.registrationInfo as typeof verification.registrationInfo & {
+      credentialPublicKey?: Uint8Array
+      credentialID?: string | Uint8Array
+      counter?: number
+    }
+    const credentialPublicKey = registrationInfo.credential?.publicKey || registrationInfo.credentialPublicKey
+    const credentialID = registrationInfo.credential?.id || registrationInfo.credentialID
+    const counter = registrationInfo.credential?.counter || registrationInfo.counter || 0
 
     // Additional null checks before accessing length
     if (!credentialID || !credentialPublicKey) {
