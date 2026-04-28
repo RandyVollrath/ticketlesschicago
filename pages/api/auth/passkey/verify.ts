@@ -215,7 +215,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     console.log('Using credential ID bytes (length):', credentialIDBytes.length)
 
-    // Verify the authentication response
+    // Verify the authentication response.
+    // Two SimpleWebAuthn v13 type fixes baked into this call:
+    //  - response.clientExtensionResults is required by
+    //    AuthenticationResponseJSON; default to {} if the client didn't
+    //    forward it (most browsers send the results field even when no
+    //    extensions are configured, but our wire shape doesn't require
+    //    the client to forward it).
+    //  - credential.id must be a base64url string in v13, not the
+    //    raw Uint8Array we're carrying around for the DB lookup.
+    const credentialIdBase64Url = Buffer.from(credentialIDBytes).toString('base64url')
     let verification: any
     try {
       verification = await verifyAuthenticationResponse({
@@ -223,13 +232,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id,
           rawId,
           response,
-          type: type || 'public-key'
+          type: type || 'public-key',
+          clientExtensionResults: req.body.clientExtensionResults || {},
         },
         expectedChallenge: challenge,
         expectedOrigin: origin,
         expectedRPID: rpID,
         credential: {
-          id: credentialIDBytes,
+          id: credentialIdBase64Url,
           publicKey: new Uint8Array(Buffer.from(passkeyRecord.public_key, 'base64')),
           counter: passkeyRecord.counter || 0,
           transports: undefined

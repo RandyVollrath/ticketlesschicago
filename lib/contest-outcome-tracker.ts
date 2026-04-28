@@ -208,9 +208,13 @@ export async function processOutcomeChange(
     .limit(1)
     .maybeSingle();
 
-  // Record the outcome using existing learning infrastructure
+  // Record the outcome using existing learning infrastructure.
+  // The outcome-learning module's @ts-nocheck flattens its
+  // SupabaseClient generic to a default ReturnType<typeof createClient>
+  // which doesn't accept our typed admin client; cast here so the
+  // typed-vs-untyped mismatch is contained.
   try {
-    await recordContestOutcome(supabase, {
+    await recordContestOutcome(supabase as any, {
       ticket_id: ticket.id,
       letter_id: letter?.id || null,
       user_id: ticket.user_id,
