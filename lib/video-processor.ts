@@ -83,8 +83,12 @@ export async function extractVideoMetadata(videoPath: string): Promise<VideoMeta
         const locationString = formatTags.location || formatTags.com_apple_quicktime_location || formatTags['com.apple.quicktime.location'];
 
         if (locationString) {
+          // ffprobe types tag values as `string | number`, but in practice
+          // the location tag is always a string. Coerce so .match() is
+          // safe (calling it on a number would throw at runtime).
+          const locStr = String(locationString);
           // Parse location strings like "+41.9000-087.6000/" or "GPS (41.9, -87.6)"
-          const latLonMatch = locationString.match(/([+-]?\d+\.\d+)[^\d]+([+-]?\d+\.\d+)/);
+          const latLonMatch = locStr.match(/([+-]?\d+\.\d+)[^\d]+([+-]?\d+\.\d+)/);
           if (latLonMatch) {
             hasGps = true;
             gpsLocation = {

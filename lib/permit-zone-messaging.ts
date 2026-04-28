@@ -140,13 +140,16 @@ Autopilot America Team
 };
 
 /**
- * Helper function to get the recommended message based on delivery method
+ * Helper function to get the recommended message based on delivery method.
+ * Returns the "bothOptions" template — that's the one marked RECOMMENDED
+ * in the source. Previously read .textBack / .textBackBody which don't
+ * exist on either template object, so the function returned undefined.
  */
 export function getRecommendedMessage(deliveryMethod: 'sms' | 'email'): string {
   if (deliveryMethod === 'sms') {
-    return PERMIT_ZONE_MESSAGES.sms.textBack;
+    return PERMIT_ZONE_MESSAGES.sms.bothOptions;
   }
-  return PERMIT_ZONE_MESSAGES.email.textBackBody;
+  return PERMIT_ZONE_MESSAGES.email.bothOptions;
 }
 
 /**

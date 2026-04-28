@@ -389,10 +389,15 @@ export class NotificationScheduler {
             try {
               const prefs = user.notification_preferences || {};
 
-              // Build context data for audit logging
+              // Build context data for audit logging.
+              // user_profiles has permit_zone_number, not permit_zone — the
+              // bare permit_zone column lives on parking_location_history /
+              // user_parked_vehicles. Reading user.permit_zone here was
+              // returning undefined every time, so renewal SMS/email logs
+              // had no zone field on them.
               const contextData: MessageContext = {
                 plate: user.license_plate || 'unknown',
-                zone: user.permit_zone || undefined,
+                zone: user.permit_zone_number || undefined,
                 days_until: daysUntil,
                 renewal_type: renewal.type,
                 has_contesting: false,
