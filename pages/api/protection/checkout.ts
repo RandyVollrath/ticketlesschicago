@@ -24,7 +24,7 @@ function getSiteUrl(): string {
 // Input validation schema
 const checkoutSchema = z.object({
   billingPlan: z.enum(['monthly', 'annual'], {
-    errorMap: () => ({ message: 'Billing plan must be "monthly" or "annual"' })
+    message: 'Billing plan must be "monthly" or "annual"',
   }),
   email: z.string().email('Invalid email format').max(255).transform(val => val.toLowerCase().trim()),
   phone: z.string()
@@ -113,7 +113,7 @@ export default async function handler(
     const parseResult = checkoutSchema.safeParse(req.body);
 
     if (!parseResult.success) {
-      const errors = parseResult.error.errors.map(err => ({
+      const errors = parseResult.error.issues.map(err => ({
         field: err.path.join('.'),
         message: err.message,
       }));

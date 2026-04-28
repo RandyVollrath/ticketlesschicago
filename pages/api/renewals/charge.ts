@@ -29,7 +29,7 @@ const RENEWAL_FEES = {
 const chargeRenewalSchema = z.object({
   userId: z.string().uuid('Invalid user ID format'),
   chargeType: z.enum(['city_sticker', 'license_plate', 'permit'], {
-    errorMap: () => ({ message: 'Invalid charge type' })
+    message: 'Invalid charge type',
   }),
   vehicleType: z.string().max(10).optional(),
   isVanity: z.boolean().optional(),
@@ -55,7 +55,7 @@ export default async function handler(
   // Validate request body
   const parseResult = chargeRenewalSchema.safeParse(req.body);
   if (!parseResult.success) {
-    const errors = parseResult.error.errors.map(err => ({
+    const errors = parseResult.error.issues.map(err => ({
       field: err.path.join('.'),
       message: err.message,
     }));
