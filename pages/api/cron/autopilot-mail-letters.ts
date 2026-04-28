@@ -8,6 +8,8 @@ import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS, RedLig
 import { computeEvidenceHash } from '../../../lib/red-light-evidence-report';
 import { analyzeRedLightDefense, type AnalysisInput } from '../../../lib/red-light-defense-analysis';
 import { getAdminAlertEmails } from '../../../lib/admin-alert-emails';
+import { checkEContestEligibility, submitEContest } from '../../../lib/econtest-service';
+import { buildEcontestEvidencePacket } from '../../../lib/econtest-evidence-packet';
 import * as Sentry from '@sentry/nextjs';
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 }) : null;
@@ -33,6 +35,9 @@ interface LetterToMail {
   defense_type: string | null;
   status: string;
   approved_via?: string | null;
+  econtest_status?: string | null;
+  econtest_submitted_at?: string | null;
+  econtest_confirmation_id?: string | null;
   street_view_exhibit_urls: string[] | null;
   street_view_date: string | null;
   street_view_address: string | null;
@@ -66,6 +71,15 @@ interface AIReviewResult {
   issues: string[];
   qualityScore: number;
   provider: 'anthropic' | 'gemini' | 'openai' | 'heuristic';
+}
+
+interface EcontestAttemptContext {
+  ticketNumber: string;
+  letterId: string;
+  userId: string;
+  userName: string;
+  violationType: string;
+  amount: string;
 }
 
 function isAdminApprovedLetter(letter: { status: string; approved_via?: string | null }): boolean {
@@ -118,6 +132,92 @@ async function isTestModeEnabled(): Promise<boolean> {
   if (data) return !!data.value?.enabled;
   // No DB row — fall back to env var
   return process.env.LOB_TEST_MODE === 'true';
+}
+
+async function isEcontestEnabled(): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('autopilot_admin_settings')
+    .select('value')
+    .eq('key', 'econtest_enabled')
+    .maybeSingle();
+  if (data) return !!data.value?.enabled;
+  return process.env.ENABLE_ECONTEST === 'true';
+}
+
+async function isFirstLiveEcontestAttempt(): Promise<boolean> {
+  const { count, error } = await supabaseAdmin
+    .from('ticket_audit_log')
+    .select('id', { count: 'exact', head: true })
+    .in('action', ['letter_submitted_online', 'letter_econtest_failed_fallback']);
+
+  if (error) {
+    console.error(`Failed to check prior eContest attempts: ${error.message}`);
+    return false;
+  }
+
+  return (count || 0) === 0;
+}
+
+async function sendFirstEcontestAdminAlert(params: {
+  phase: 'starting' | 'submitted' | 'fallback';
+  context: EcontestAttemptContext;
+  packetPath?: string;
+  packetPageCount?: number;
+  packetByteSize?: number;
+  foiaAttachmentCount?: number;
+  confirmationId?: string | null;
+  screenshotPath?: string | null;
+  error?: string | null;
+}): Promise<void> {
+  if (!resend) return;
+
+  const { phase, context, packetPath, packetPageCount, packetByteSize, foiaAttachmentCount, confirmationId, screenshotPath, error } = params;
+  const titles = {
+    starting: `FIRST LIVE ECONTEST ATTEMPT STARTING: ${context.ticketNumber}`,
+    submitted: `FIRST LIVE ECONTEST SUCCEEDED: ${context.ticketNumber}`,
+    fallback: `FIRST LIVE ECONTEST FELL BACK TO LOB: ${context.ticketNumber}`,
+  } as const;
+
+  const summaries = {
+    starting: 'The first live eContest attempt has started. Review this case closely.',
+    submitted: 'The first live eContest attempt submitted successfully.',
+    fallback: 'The first live eContest attempt did not complete online and is falling back to Lob.',
+  } as const;
+
+  try {
+    await resend.emails.send({
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
+      to: getAdminAlertEmails(),
+      subject: titles[phase],
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
+          <div style="background: ${phase === 'submitted' ? '#0F766E' : phase === 'fallback' ? '#B91C1C' : '#1D4ED8'}; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0;">${titles[phase]}</h2>
+          </div>
+          <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+            <p style="margin: 0 0 16px; color: #374151;">${summaries[phase]}</p>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+              <tr><td style="padding: 6px 0; color: #6b7280; width: 170px;">Ticket</td><td style="padding: 6px 0; font-weight: 600;">${context.ticketNumber}</td></tr>
+              <tr><td style="padding: 6px 0; color: #6b7280;">Violation</td><td style="padding: 6px 0;">${context.violationType} (${context.amount})</td></tr>
+              <tr><td style="padding: 6px 0; color: #6b7280;">User</td><td style="padding: 6px 0;">${context.userName}</td></tr>
+              <tr><td style="padding: 6px 0; color: #6b7280;">User ID</td><td style="padding: 6px 0; font-family: monospace;">${context.userId}</td></tr>
+              <tr><td style="padding: 6px 0; color: #6b7280;">Letter ID</td><td style="padding: 6px 0; font-family: monospace;">${context.letterId}</td></tr>
+              ${packetPath ? `<tr><td style="padding: 6px 0; color: #6b7280;">Packet Path</td><td style="padding: 6px 0; font-family: monospace;">${packetPath}</td></tr>` : ''}
+              ${packetPageCount != null ? `<tr><td style="padding: 6px 0; color: #6b7280;">Packet Pages</td><td style="padding: 6px 0;">${packetPageCount}</td></tr>` : ''}
+              ${packetByteSize != null ? `<tr><td style="padding: 6px 0; color: #6b7280;">Packet Size</td><td style="padding: 6px 0;">${packetByteSize} bytes</td></tr>` : ''}
+              ${foiaAttachmentCount != null ? `<tr><td style="padding: 6px 0; color: #6b7280;">FOIA Attachments</td><td style="padding: 6px 0;">${foiaAttachmentCount}</td></tr>` : ''}
+              ${confirmationId ? `<tr><td style="padding: 6px 0; color: #6b7280;">Confirmation</td><td style="padding: 6px 0;">${confirmationId}</td></tr>` : ''}
+              ${screenshotPath ? `<tr><td style="padding: 6px 0; color: #6b7280;">Screenshot</td><td style="padding: 6px 0; font-family: monospace;">${screenshotPath}</td></tr>` : ''}
+              ${error ? `<tr><td style="padding: 6px 0; color: #6b7280;">Error</td><td style="padding: 6px 0; color: #B91C1C;">${error}</td></tr>` : ''}
+            </table>
+            <p style="margin: 0; font-size: 12px; color: #6b7280;">Audit trail is also recorded in ticket_audit_log.</p>
+          </div>
+        </div>
+      `,
+    });
+  } catch (alertErr) {
+    console.error('Failed to send first eContest admin alert:', alertErr);
+  }
 }
 
 /**
@@ -621,7 +721,17 @@ async function mailLetter(
   evidenceImages?: string[],
   redLightEvidence?: RedLightEvidenceExhibit,
   foiaExhibits?: import('../../../lib/lob-service').FoiaExhibit[],
-): Promise<{ success: boolean; lobId?: string; expectedDelivery?: string; pdfUrl?: string; error?: string; alreadyMailed?: boolean; skipped?: boolean }> {
+): Promise<{
+  success: boolean;
+  deliveryMethod?: 'lob' | 'econtest';
+  lobId?: string;
+  expectedDelivery?: string;
+  pdfUrl?: string;
+  econtestConfirmationId?: string;
+  error?: string;
+  alreadyDispatched?: boolean;
+  skipped?: boolean;
+}> {
   console.log(`  Mailing letter ${letter.id} for ticket ${ticketNumber}...`);
 
   try {
@@ -631,7 +741,7 @@ async function mailLetter(
     // this check, we'd create a duplicate physical letter.
     const { data: existingLetter } = await supabaseAdmin
       .from('contest_letters')
-      .select('lob_letter_id')
+      .select('lob_letter_id, econtest_status, econtest_confirmation_id')
       .eq('id', letter.id)
       .maybeSingle();
 
@@ -642,7 +752,25 @@ async function mailLetter(
         .from('contest_letters')
         .update({ status: 'sent', mailed_at: new Date().toISOString() })
         .eq('id', letter.id);
-      return { success: true, lobId: existingLetter.lob_letter_id, alreadyMailed: true };
+      return { success: true, deliveryMethod: 'lob', lobId: existingLetter.lob_letter_id, alreadyDispatched: true };
+    }
+
+    if (existingLetter?.econtest_status === 'submitted') {
+      console.log(`    Already submitted online (confirmation: ${existingLetter.econtest_confirmation_id || 'unknown'}), skipping duplicate`);
+      await supabaseAdmin
+        .from('contest_letters')
+        .update({ status: 'sent', sent_at: new Date().toISOString() })
+        .eq('id', letter.id);
+      await supabaseAdmin
+        .from('detected_tickets')
+        .update({ status: 'contested_online' })
+        .eq('id', letter.ticket_id);
+      return {
+        success: true,
+        deliveryMethod: 'econtest',
+        econtestConfirmationId: existingLetter.econtest_confirmation_id || undefined,
+        alreadyDispatched: true,
+      };
     }
 
     // Atomically claim this letter for mailing without changing status.
@@ -685,6 +813,7 @@ async function mailLetter(
     // In test mode, send to user's address instead of city hall
     const testMode = await isTestModeEnabled();
     const toAddress = testMode ? fromAddress : CHICAGO_PARKING_CONTEST_ADDRESS;
+    const econtestEnabled = !testMode && await isEcontestEnabled();
 
     if (testMode) {
       console.log(`    ⚠️ TEST MODE: Sending letter to user's address instead of city hall`);
@@ -719,6 +848,231 @@ async function mailLetter(
     }
     if (redLightEvidence) {
       console.log(`    Including red-light camera sensor data exhibit (${redLightEvidence.tracePointCount} GPS points, full_stop=${redLightEvidence.fullStopDetected})`);
+    }
+
+    if (econtestEnabled) {
+      console.log(`    eContest enabled — trying online submission before Lob fallback`);
+      const defenseText = letterText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const isFirstLiveAttempt = await isFirstLiveEcontestAttempt();
+      const econtestContext: EcontestAttemptContext = {
+        ticketNumber,
+        letterId: letter.id,
+        userId: letter.user_id,
+        userName: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown',
+        violationType: (((letter as any).detected_tickets?.violation_type || 'Unknown') as string).replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+        amount: (letter as any).detected_tickets?.amount ? `$${parseFloat((letter as any).detected_tickets.amount).toFixed(2)}` : 'N/A',
+      };
+
+      try {
+        const packet = await buildEcontestEvidencePacket({
+          ticketNumber,
+          htmlContent,
+          foiaExhibits: (foiaExhibits || []).map(f => ({
+            agencyLabel: f.agencyLabel,
+            attachmentUrls: f.attachmentUrls,
+          })),
+        });
+        console.log(`    Built eContest evidence packet: ${packet.packetPath} (${packet.pageCount} page(s), ${packet.byteSize} bytes, ${packet.attachmentCount} appended FOIA attachment(s))`);
+        await supabaseAdmin
+          .from('ticket_audit_log')
+          .insert({
+            ticket_id: letter.ticket_id,
+            action: 'letter_econtest_packet_built',
+            details: {
+              evidence_packet_path: packet.packetPath,
+              page_count: packet.pageCount,
+              byte_size: packet.byteSize,
+              foia_attachment_count: packet.attachmentCount,
+              performed_by_system: 'autopilot_cron',
+            },
+            performed_by: null,
+          });
+        if (isFirstLiveAttempt) {
+          await sendFirstEcontestAdminAlert({
+            phase: 'starting',
+            context: econtestContext,
+            packetPath: packet.packetPath,
+            packetPageCount: packet.pageCount,
+            packetByteSize: packet.byteSize,
+            foiaAttachmentCount: packet.attachmentCount,
+          });
+        }
+
+        const eligibility = await checkEContestEligibility(ticketNumber);
+        if (eligibility.eligible) {
+          const econtestResult = await submitEContest({
+            ticketNumber,
+            defenseText,
+            letterId: letter.id,
+            evidenceFiles: [packet.packetPath],
+          });
+
+          if (econtestResult.success) {
+            const sentAt = new Date().toISOString();
+            await supabaseAdmin
+              .from('contest_letters')
+              .update({
+                status: 'sent',
+                sent_at: sentAt,
+                econtest_status: 'submitted',
+                econtest_submitted_at: sentAt,
+                econtest_confirmation_id: econtestResult.confirmationId || null,
+                econtest_response: {
+                  step: econtestResult.step,
+                  contestMethod: econtestResult.contestMethod,
+                  confirmationText: econtestResult.confirmationText,
+                  screenshotPath: econtestResult.screenshotPath,
+                  evidencePacketPath: packet.packetPath,
+                  evidencePacketPages: packet.pageCount,
+                  evidencePacketBytes: packet.byteSize,
+                  foiaAttachmentCount: packet.attachmentCount,
+                },
+              })
+              .eq('id', letter.id);
+
+            await supabaseAdmin
+              .from('detected_tickets')
+              .update({ status: 'contested_online' })
+              .eq('id', letter.ticket_id);
+
+            await supabaseAdmin
+              .from('ticket_audit_log')
+              .insert({
+                ticket_id: letter.ticket_id,
+                action: 'letter_submitted_online',
+                details: {
+                  confirmation_id: econtestResult.confirmationId || null,
+                  contest_method: econtestResult.contestMethod || 'Correspondence',
+                  evidence_packet_path: packet.packetPath,
+                  foia_attachment_count: packet.attachmentCount,
+                  screenshot_path: econtestResult.screenshotPath || null,
+                  performed_by_system: 'autopilot_cron',
+                },
+                performed_by: null,
+              });
+            if (isFirstLiveAttempt) {
+              await sendFirstEcontestAdminAlert({
+                phase: 'submitted',
+                context: econtestContext,
+                packetPath: packet.packetPath,
+                packetPageCount: packet.pageCount,
+                packetByteSize: packet.byteSize,
+                foiaAttachmentCount: packet.attachmentCount,
+                confirmationId: econtestResult.confirmationId || null,
+                screenshotPath: econtestResult.screenshotPath || null,
+              });
+            }
+
+            return {
+              success: true,
+              deliveryMethod: 'econtest',
+              econtestConfirmationId: econtestResult.confirmationId || undefined,
+            };
+          }
+
+          console.warn(`    eContest submit failed, falling back to Lob: ${econtestResult.error || econtestResult.step}`);
+          await supabaseAdmin
+            .from('contest_letters')
+            .update({
+              econtest_status: 'failed',
+              econtest_response: {
+                step: econtestResult.step,
+                error: econtestResult.error,
+                eligible: econtestResult.eligible,
+                contestMethod: econtestResult.contestMethod,
+                confirmationText: econtestResult.confirmationText,
+                screenshotPath: econtestResult.screenshotPath,
+                fallback: 'lob',
+                evidencePacketPath: packet.packetPath,
+                foiaAttachmentCount: packet.attachmentCount,
+              },
+            })
+            .eq('id', letter.id);
+          await supabaseAdmin
+            .from('ticket_audit_log')
+            .insert({
+              ticket_id: letter.ticket_id,
+              action: 'letter_econtest_failed_fallback',
+              details: {
+                step: econtestResult.step,
+                error: econtestResult.error || 'Unknown eContest failure',
+                evidence_packet_path: packet.packetPath,
+                screenshot_path: econtestResult.screenshotPath || null,
+                performed_by_system: 'autopilot_cron',
+              },
+              performed_by: null,
+            });
+          if (isFirstLiveAttempt) {
+            await sendFirstEcontestAdminAlert({
+              phase: 'fallback',
+              context: econtestContext,
+              packetPath: packet.packetPath,
+              packetPageCount: packet.pageCount,
+              packetByteSize: packet.byteSize,
+              foiaAttachmentCount: packet.attachmentCount,
+              screenshotPath: econtestResult.screenshotPath || null,
+              error: econtestResult.error || econtestResult.step,
+            });
+          }
+        } else {
+          console.log(`    Ticket not eligible for eContest, using Lob fallback`);
+          await supabaseAdmin
+            .from('contest_letters')
+            .update({
+              econtest_status: 'ineligible',
+              econtest_response: {
+                error: eligibility.error,
+                status: eligibility.status,
+                contestMethod: eligibility.contestMethod,
+                fallback: 'lob',
+                packetReady: true,
+                foiaAttachmentCount: packet.attachmentCount,
+              },
+            })
+            .eq('id', letter.id);
+          if (isFirstLiveAttempt) {
+            await sendFirstEcontestAdminAlert({
+              phase: 'fallback',
+              context: econtestContext,
+              packetPath: packet.packetPath,
+              packetPageCount: packet.pageCount,
+              packetByteSize: packet.byteSize,
+              foiaAttachmentCount: packet.attachmentCount,
+              error: eligibility.error || 'Ticket not eligible for eContest',
+            });
+          }
+        }
+      } catch (econtestErr: any) {
+        console.warn(`    eContest preflight failed, falling back to Lob: ${econtestErr.message}`);
+        await supabaseAdmin
+          .from('contest_letters')
+          .update({
+            econtest_status: 'failed',
+            econtest_response: {
+              error: econtestErr.message,
+              fallback: 'lob',
+            },
+          })
+          .eq('id', letter.id);
+        await supabaseAdmin
+          .from('ticket_audit_log')
+          .insert({
+            ticket_id: letter.ticket_id,
+            action: 'letter_econtest_failed_fallback',
+            details: {
+              error: econtestErr.message,
+              performed_by_system: 'autopilot_cron',
+            },
+            performed_by: null,
+          });
+        if (isFirstLiveAttempt) {
+          await sendFirstEcontestAdminAlert({
+            phase: 'fallback',
+            context: econtestContext,
+            error: econtestErr.message,
+          });
+        }
+      }
     }
 
     // Send via Lob
@@ -846,6 +1200,7 @@ async function mailLetter(
 
     return {
       success: true,
+      deliveryMethod: 'lob',
       lobId: result.id,
       expectedDelivery: result.expected_delivery_date || null,
       pdfUrl: result.url || null,
@@ -1038,6 +1393,69 @@ async function sendLetterMailedNotification(
 
   } catch (error) {
     console.error(`  ❌ Failed to send letter mailed notification to ${email}:`, error);
+  }
+}
+
+async function sendLetterSubmittedOnlineNotification(
+  userId: string,
+  ticketNumber: string,
+  confirmationId: string | null,
+): Promise<void> {
+  const { data: settings } = await supabaseAdmin
+    .from('autopilot_settings')
+    .select('email_on_letter_sent')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (settings && settings.email_on_letter_sent === false) {
+    console.log(`  User ${userId} has email_on_letter_sent disabled, skipping online-submission notification`);
+    return;
+  }
+
+  const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (!userData?.user?.email) return;
+
+  const { data: profile } = await supabaseAdmin
+    .from('user_profiles')
+    .select('first_name')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!resend) return;
+
+  const firstName = profile?.first_name || 'there';
+  const email = userData.user.email;
+
+  try {
+    await resend.emails.send({
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
+      to: [email],
+      subject: `Submitted Online - Ticket #${ticketNumber}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 24px;">Your Contest Was Submitted Online</h1>
+            <p style="margin: 8px 0 0; opacity: 0.9;">Ticket #${ticketNumber}</p>
+          </div>
+          <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+            <p style="margin: 0 0 20px; font-size: 16px; color: #374151;">Hi ${firstName},</p>
+            <p style="margin: 0 0 20px; font-size: 15px; color: #4b5563;">
+              Your written contest for ticket #${ticketNumber} was submitted through Chicago's online hearing portal instead of being mailed.
+            </p>
+            ${confirmationId ? `
+            <div style="background: #f0fdfa; border: 1px solid #99f6e4; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+              <p style="margin: 0; font-size: 14px; color: #115e59;"><strong>Confirmation:</strong> ${confirmationId}</p>
+            </div>` : ''}
+            <p style="margin: 0; font-size: 14px; color: #6b7280;">
+              We will continue checking the city portal for hearing dates, dismissals, reductions, or other outcome changes.
+            </p>
+          </div>
+        </div>
+      `,
+    });
+    console.log(`  ✅ Sent online-submission notification to ${email}`);
+  } catch (error) {
+    console.error(`  ❌ Failed to send online-submission notification to ${email}:`, error);
   }
 }
 
@@ -1260,6 +1678,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         defense_type,
         status,
         approved_via,
+        econtest_status,
+        econtest_submitted_at,
+        econtest_confirmation_id,
         updated_at,
         street_view_exhibit_urls,
         street_view_date,
@@ -2088,25 +2509,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // so the 5-business-day deadline expires before the letter is even generated.
         // The upsert in detection uses onConflict, so no duplicate risk.
 
-        if (!result.alreadyMailed) {
-          // Send email notification to user only on a real new mail event.
-          await sendLetterMailedNotification(
-            letter.user_id,
-            ticketNumber,
-            result.expectedDelivery || null,
-            result.pdfUrl || null
-          );
+        if (!result.alreadyDispatched) {
+          if (result.deliveryMethod === 'econtest') {
+            await sendLetterSubmittedOnlineNotification(
+              letter.user_id,
+              ticketNumber,
+              result.econtestConfirmationId || null,
+            );
+          } else {
+            await sendLetterMailedNotification(
+              letter.user_id,
+              ticketNumber,
+              result.expectedDelivery || null,
+              result.pdfUrl || null
+            );
+          }
         } else {
-          console.log(`    Not sending mailed notification for ${letter.id} because Lob already had the letter`);
+          console.log(`    Not sending dispatch notification for ${letter.id} because the letter had already been sent`);
         }
 
-        // Send admin notification with full letter content only for a real new mail event.
-        if (!result.alreadyMailed && process.env.RESEND_API_KEY) {
+        // Send admin notification with full letter content only for a real new dispatch event.
+        if (!result.alreadyDispatched && process.env.RESEND_API_KEY) {
           const letterText = (letter as any).letter_content || (letter as any).letter_text || 'No letter content available';
           const userName = profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown';
           const ticket = (letter as any).detected_tickets;
           const violationType = ticket?.violation_type?.replace(/_/g, ' ')?.replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Unknown';
           const amount = ticket?.amount ? `$${parseFloat(ticket.amount).toFixed(2)}` : 'N/A';
+          const submittedOnline = result.deliveryMethod === 'econtest';
 
           try {
             await fetch('https://api.resend.com/emails', {
@@ -2118,20 +2547,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               body: JSON.stringify({
                 from: 'Autopilot America <alerts@autopilotamerica.com>',
                 to: getAdminAlertEmails(),
-                subject: `Contest Letter Mailed: ${ticketNumber} — ${violationType} (${userName})`,
+                subject: submittedOnline
+                  ? `Contest Submitted Online: ${ticketNumber} — ${violationType} (${userName})`
+                  : `Contest Letter Mailed: ${ticketNumber} — ${violationType} (${userName})`,
                 html: `
                   <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
-                    <div style="background: #059669; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-                      <h2 style="margin: 0;">Contest Letter Mailed</h2>
+                    <div style="background: ${submittedOnline ? '#0F766E' : '#059669'}; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+                      <h2 style="margin: 0;">${submittedOnline ? 'Contest Submitted Online' : 'Contest Letter Mailed'}</h2>
                     </div>
                     <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: none;">
                       <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                         <tr><td style="padding: 6px 0; color: #6b7280; width: 150px;">User:</td><td style="padding: 6px 0; font-weight: 600;">${userName}</td></tr>
                         <tr><td style="padding: 6px 0; color: #6b7280;">Ticket Number:</td><td style="padding: 6px 0; font-weight: 600;">${ticketNumber}</td></tr>
                         <tr><td style="padding: 6px 0; color: #6b7280;">Violation:</td><td style="padding: 6px 0;">${violationType} (${amount})</td></tr>
-                        <tr><td style="padding: 6px 0; color: #6b7280;">Lob Letter ID:</td><td style="padding: 6px 0;">${result.lobId || 'N/A'}</td></tr>
-                        <tr><td style="padding: 6px 0; color: #6b7280;">Expected Delivery:</td><td style="padding: 6px 0;">${result.expectedDelivery || 'TBD'}</td></tr>
-                        ${result.pdfUrl ? `<tr><td style="padding: 6px 0; color: #6b7280;">PDF Preview:</td><td style="padding: 6px 0;"><a href="${result.pdfUrl}" style="color: #2563eb;">View Letter PDF</a></td></tr>` : ''}
+                        ${submittedOnline
+                          ? `<tr><td style="padding: 6px 0; color: #6b7280;">Confirmation:</td><td style="padding: 6px 0;">${result.econtestConfirmationId || 'N/A'}</td></tr>`
+                          : `<tr><td style="padding: 6px 0; color: #6b7280;">Lob Letter ID:</td><td style="padding: 6px 0;">${result.lobId || 'N/A'}</td></tr>
+                             <tr><td style="padding: 6px 0; color: #6b7280;">Expected Delivery:</td><td style="padding: 6px 0;">${result.expectedDelivery || 'TBD'}</td></tr>
+                             ${result.pdfUrl ? `<tr><td style="padding: 6px 0; color: #6b7280;">PDF Preview:</td><td style="padding: 6px 0;"><a href="${result.pdfUrl}" style="color: #2563eb;">View Letter PDF</a></td></tr>` : ''}`}
                         <tr><td style="padding: 6px 0; color: #6b7280;">Evidence Images:</td><td style="padding: 6px 0;">${evidenceImages.length > 0 ? `${evidenceImages.length} attached` : 'None'}</td></tr>
                       </table>
                       ${redLightEvidence ? `
@@ -2175,7 +2608,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                       <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 20px; border-radius: 6px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; color: #1f2937;">${letterText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
                     </div>
                     <div style="padding: 12px 24px; background: #f3f4f6; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-                      <p style="color: #6b7280; font-size: 12px; margin: 0;">This letter has been sent to the City of Chicago via Lob.com. The user has also been notified.</p>
+                      <p style="color: #6b7280; font-size: 12px; margin: 0;">${submittedOnline ? "This contest was submitted through Chicago's online portal. The user has also been notified." : 'This letter has been sent to the City of Chicago via Lob.com. The user has also been notified.'}</p>
                     </div>
                   </div>
                 `,
@@ -2186,15 +2619,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
-        if (!result.alreadyMailed) {
-          // Increment letter count only for a real new mail event.
+        if (!result.alreadyDispatched) {
+          // Increment letter count only for a real new dispatch event.
           const { exceeded, count } = await incrementLetterCount(letter.user_id);
           if (exceeded) {
             console.log(`    User has used ${count} letters (exceeded included amount)`);
             // TODO: Charge for additional letter via Stripe
           }
         } else {
-          console.log(`    Not incrementing letter count for ${letter.id} because the letter had already been mailed`);
+          console.log(`    Not incrementing letter count for ${letter.id} because the letter had already been sent`);
         }
       } else {
         errors++;

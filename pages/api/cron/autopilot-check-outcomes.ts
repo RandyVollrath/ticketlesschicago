@@ -58,11 +58,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   };
 
   try {
-    // Fetch tickets that have been mailed (contest letters sent) but no outcome yet
+    // Fetch tickets that have been mailed or contested online but have no outcome yet.
+    // Online-submitted contests use detected_tickets.status='contested_online'
+    // in scripts/econtest-submit.ts, so include that status here or those cases
+    // will never be polled for hearing/disposition changes.
     const { data: trackedTickets, error } = await supabaseAdmin
       .from('detected_tickets')
       .select('id, ticket_number, user_id, violation_type, violation_code, amount, officer_badge, location, status, plate, state, last_portal_status, last_portal_check')
-      .in('status', ['mailed', 'letter_generated', 'hearing_scheduled', 'needs_approval'])
+      .in('status', ['mailed', 'letter_generated', 'hearing_scheduled', 'needs_approval', 'contested_online'])
       .not('ticket_number', 'is', null)
       .order('created_at', { ascending: true })
       .limit(30); // Check 30 per run to stay within timeout

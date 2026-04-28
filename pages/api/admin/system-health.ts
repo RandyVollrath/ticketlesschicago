@@ -59,7 +59,7 @@ async function handlePatch(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: 'Missing key or enabled (boolean)' });
   }
 
-  const allowedKeys = ['pause_all_mail', 'pause_ticket_processing', 'lob_test_mode'];
+  const allowedKeys = ['pause_all_mail', 'pause_ticket_processing', 'lob_test_mode', 'econtest_enabled'];
   if (!allowedKeys.includes(key)) {
     return res.status(400).json({ error: `Invalid key. Allowed: ${allowedKeys.join(', ')}` });
   }
@@ -102,7 +102,7 @@ async function handleGet(_req: NextApiRequest, res: NextApiResponse) {
       supabase
         .from('autopilot_admin_settings')
         .select('key, value')
-        .in('key', ['pause_all_mail', 'pause_ticket_processing', 'lob_test_mode']),
+        .in('key', ['pause_all_mail', 'pause_ticket_processing', 'lob_test_mode', 'econtest_enabled']),
 
       // Letters needing admin review
       supabase
@@ -150,6 +150,7 @@ async function handleGet(_req: NextApiRequest, res: NextApiResponse) {
     const killSwitches: Record<string, boolean> = {
       pause_all_mail: false,
       pause_ticket_processing: false,
+      econtest_enabled: false,
     };
 
     let lobTestModeDb = false;
@@ -198,6 +199,12 @@ async function handleGet(_req: NextApiRequest, res: NextApiResponse) {
     if (killSwitches.pause_ticket_processing) {
       blockingIssues.push({ severity: 'critical', message: 'TICKET PROCESSING PAUSED — no new letters will be generated' });
     }
+    blockingIssues.push({
+      severity: killSwitches.econtest_enabled ? 'info' : 'warning',
+      message: killSwitches.econtest_enabled
+        ? 'eContest is ENABLED — eligible tickets will try online submission before Lob fallback'
+        : 'eContest is OFF — all contests use the Lob mail path',
+    });
     const pendingReviewCount = pendingReviewResult.data?.length || 0;
     if (pendingReviewCount > 0) {
       blockingIssues.push({ severity: 'warning', message: `${pendingReviewCount} letter(s) awaiting admin review`, count: pendingReviewCount });
