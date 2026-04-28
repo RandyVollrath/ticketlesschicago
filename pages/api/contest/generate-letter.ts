@@ -1966,16 +1966,32 @@ Sender Information:
 - Email: ${profile?.email || user.email}
 - Phone: ${profile?.phone || '[YOUR PHONE]'}
 
+CRITICAL CONTEST METHOD CONSTRAINT — READ FIRST:
+This is a WRITTEN MAIL-IN CONTEST. The letter is being mailed to the City of Chicago Department of Finance, P.O. Box 88292, Chicago, IL 60680-1292, where it will be reviewed by a hearing officer who issues a written determination by mail.
+
+DO NOT, under any circumstances:
+- Request an in-person hearing or "request a hearing"
+- Ask to appear, attend, or be present at a hearing
+- Mention scheduling a hearing or hearing date
+- Say "I look forward to my hearing" or anything implying a future appearance
+- Use phrases like "at the hearing", "during the hearing", "when I appear", "in court"
+
+INSTEAD, frame the letter as a written submission:
+- "I respectfully request that this citation be dismissed based on the following written submission."
+- "I respectfully request a written determination dismissing this citation."
+- The hearing officer reviews mail-in contests on the papers and issues the determination by mail — there is no appearance.
+
 Generate a professional contest letter that:
-1. Clearly states the intent to contest the ticket
+1. Clearly states the intent to contest the ticket BY MAIL
 2. References the specific violation code and ordinance
 3. ${courtData.hasData ? 'Uses arguments that have PROVEN successful in real cases (but without citing statistics)' : 'Presents the grounds for contest in a clear, factual manner'}
 4. ${courtData.hasData ? 'Subtly references similar successful cases using professional language (e.g., "Similar violations in this area have been successfully contested...")' : 'Cites relevant legal precedents or ordinance language if applicable'}
-5. Requests dismissal or reduction
+5. Requests dismissal in writing (no hearing requested)
 6. Is respectful and professional in tone
 7. Includes proper formatting for a formal letter
-8. ${courtData.hasData ? 'Writes like an experienced attorney who knows what works - confident but never citing percentages or internal data' : 'Uses standard legal contest language'}
-${courtData.hasData && courtData.similarCases.length > 0 ? '\n9. May briefly mention that "similar circumstances" or "comparable violations in this area" have led to dismissals when appropriate' : ''}
+8. Addresses the recipient as "City of Chicago, Department of Finance" (not the Department of Administrative Hearings) — mail-in contests are processed by DOF and adjudicated by hearing officers on the written record
+9. ${courtData.hasData ? 'Writes like an experienced attorney who knows what works - confident but never citing percentages or internal data' : 'Uses standard legal contest language'}
+${courtData.hasData && courtData.similarCases.length > 0 ? '\n10. May briefly mention that "similar circumstances" or "comparable violations in this area" have led to dismissals when appropriate' : ''}
 
 Use a formal letter format with proper salutation and closing.
 ${learningsText}${officerIntelText}`
@@ -2162,6 +2178,9 @@ AVAILABLE EVIDENCE SUMMARY:
 ${availableEvidenceSummary.map((e, i) => `${i + 1}. ${e}`).join('\n')}
 
 TICKET: ${contest.violation_description} (${contest.violation_code}) on ${contest.ticket_date} at ${contest.ticket_location}
+
+CRITICAL CONTEST METHOD CONSTRAINT:
+This is a WRITTEN MAIL-IN CONTEST mailed to City of Chicago Department of Finance, P.O. Box 88292, Chicago, IL 60680-1292. DO NOT request a hearing, ask to appear, mention scheduling, or use phrases like "at the hearing", "when I appear", or "I look forward to my hearing". The hearing officer reviews the written submission and issues a written determination by mail. Frame the request as "I respectfully request a written determination dismissing this citation."
 
 Generate an improved version of the letter that addresses all critical issues and incorporates all available evidence. Keep the same formal letter format.`
                   }
@@ -2441,8 +2460,8 @@ function generateFallbackLetter(contest: any, contestGrounds: string[], profile:
 
 City of Chicago Department of Finance
 Parking and Red Light Citation Assistance
-P.O. Box 88298
-Chicago, IL 60680-1298
+P.O. Box 88292
+Chicago, IL 60680-1292
 
 RE: Contest of Parking Citation #${contest.ticket_number || '[TICKET NUMBER]'}
 
