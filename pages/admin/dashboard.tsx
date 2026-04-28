@@ -745,6 +745,7 @@ function FoiaTab() {
 const KILL_SWITCH_META: Record<string, { label: string; description: string; danger: boolean }> = {
   pause_all_mail: { label: 'Pause All Mail', description: 'Stops all Lob letter sends immediately.', danger: true },
   pause_ticket_processing: { label: 'Pause Ticket Processing', description: 'Tickets accepted but no new letters generated.', danger: true },
+  econtest_enabled: { label: 'Enable eContest First', description: 'Try Chicago online contest submission before Lob mail, with automatic Lob fallback on failure.', danger: false },
 };
 
 function SystemTab({ health, onToggle, toggling }: {
@@ -831,11 +832,11 @@ function SystemTab({ health, onToggle, toggling }: {
               <div key={key} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '12px 16px', borderRadius: C.radius,
-                background: active ? C.redBg : C.surfaceActive,
-                border: `1px solid ${active ? C.redBorder : C.border}`,
+                background: active ? (meta.danger ? C.redBg : C.greenBg) : C.surfaceActive,
+                border: `1px solid ${active ? (meta.danger ? C.redBorder : C.greenBorder) : C.border}`,
               }}>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: active ? C.red : C.text }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: active ? (meta.danger ? C.red : C.green) : C.text }}>
                     {meta.label}
                   </div>
                   <div style={{ fontSize: '12px', color: C.textMuted, marginTop: '2px' }}>

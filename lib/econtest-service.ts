@@ -183,6 +183,20 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
     const evidenceText = await page.evaluate(() => document.body.innerText);
     console.log(`${logPrefix} Evidence page URL: ${evidenceUrl}`);
 
+    if (!evidenceFiles || evidenceFiles.length === 0) {
+      const screenshotPath = `/tmp/econtest-error-${ticketNumber}-${Date.now()}.png`;
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      await browser.close();
+      return {
+        success: false,
+        step: 'evidence',
+        eligible: true,
+        error: 'No evidence packet supplied for eContest submission',
+        contestMethod: contestMethod || undefined,
+        screenshotPath,
+      };
+    }
+
     // ── Step 4: Upload evidence and enter defense ──
     // Look for file upload fields
     const fileInputs = await page.evaluate(() => {
@@ -205,17 +219,55 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
     });
     console.log(`${logPrefix} Textareas found: ${JSON.stringify(textareas)}`);
 
-    // Upload evidence files if file inputs exist
-    if (fileInputs.length > 0 && evidenceFiles && evidenceFiles.length > 0) {
-      for (let i = 0; i < Math.min(fileInputs.length, evidenceFiles.length); i++) {
-        const selector = fileInputs[i].id ? `#${fileInputs[i].id}` : `input[name="${fileInputs[i].name}"]`;
-        try {
-          await page.setInputFiles(selector, evidenceFiles[i]);
-          console.log(`${logPrefix} Uploaded evidence file ${i + 1}: ${evidenceFiles[i]}`);
-        } catch (err: any) {
-          console.log(`${logPrefix} Failed to upload file ${i + 1}: ${err.message}`);
-        }
+    if (fileInputs.length === 0) {
+      const screenshotPath = `/tmp/econtest-error-${ticketNumber}-${Date.now()}.png`;
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      await browser.close();
+      return {
+        success: false,
+        step: 'evidence',
+        eligible: true,
+        error: 'No file upload field found on eContest evidence page',
+        contestMethod: contestMethod || undefined,
+        screenshotPath,
+      };
+    }
+
+    // Upload the full packet and fail closed if it cannot be attached.
+    let uploadedCount = 0;
+    for (let i = 0; i < Math.min(fileInputs.length, evidenceFiles.length); i++) {
+      const selector = fileInputs[i].id ? `#${fileInputs[i].id}` : `input[name="${fileInputs[i].name}"]`;
+      try {
+        await page.setInputFiles(selector, evidenceFiles[i]);
+        uploadedCount++;
+        console.log(`${logPrefix} Uploaded evidence file ${i + 1}: ${evidenceFiles[i]}`);
+      } catch (err: any) {
+        const screenshotPath = `/tmp/econtest-error-${ticketNumber}-${Date.now()}.png`;
+        await page.screenshot({ path: screenshotPath, fullPage: true });
+        await browser.close();
+        return {
+          success: false,
+          step: 'evidence',
+          eligible: true,
+          error: `Failed to upload evidence file ${i + 1}: ${err.message}`,
+          contestMethod: contestMethod || undefined,
+          screenshotPath,
+        };
       }
+    }
+
+    if (uploadedCount < evidenceFiles.length) {
+      const screenshotPath = `/tmp/econtest-error-${ticketNumber}-${Date.now()}.png`;
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      await browser.close();
+      return {
+        success: false,
+        step: 'evidence',
+        eligible: true,
+        error: `Evidence page only accepted ${uploadedCount} of ${evidenceFiles.length} required attachment(s)`,
+        contestMethod: contestMethod || undefined,
+        screenshotPath,
+      };
     }
 
     // Fill defense text if textarea exists
@@ -226,6 +278,8 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
       const truncatedDefense = defenseText.substring(0, maxLen);
       await page.fill(taSelector, truncatedDefense);
       console.log(`${logPrefix} Filled defense text (${truncatedDefense.length} chars)`);
+    } else {
+      console.log(`${logPrefix} No defense textarea found — relying on uploaded evidence packet`);
     }
 
     // ── Step 5: Look for submit button and submit ──
