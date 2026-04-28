@@ -62,10 +62,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Verify contest exists and belongs to user
+    // Verify contest exists and belongs to user. Add extracted_data so
+    // the merge on the update keeps prior data — previously the spread
+    // was reading undefined and silently wiping any existing
+    // extracted_data fields. (mail_service_* columns are referenced
+    // below but don't exist in the live schema — that's a separate
+    // migration drift the duplicate-payment guard depends on.)
     const { data: contest, error: contestError } = await supabaseAdmin
       .from('ticket_contests')
-      .select('id, ticket_number')
+      .select('id, ticket_number, extracted_data')
       .eq('id', contestId)
       .eq('user_id', userId)
       .maybeSingle();

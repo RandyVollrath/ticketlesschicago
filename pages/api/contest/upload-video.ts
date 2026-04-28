@@ -128,7 +128,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const description = Array.isArray(fields.description)
       ? fields.description[0]
       : fields.description;
-    const autoSlice = fields.autoSlice === 'true' || fields.autoSlice === true;
+    // formidable types fields as string[] (multiple values per key) so a
+    // direct === 'true' comparison was always false — auto-slicing was
+    // permanently off for every video upload.
+    const autoSliceRaw = Array.isArray(fields.autoSlice) ? fields.autoSlice[0] : fields.autoSlice;
+    const autoSlice = autoSliceRaw === 'true' || (autoSliceRaw as unknown) === true;
     const source = (Array.isArray(fields.source) ? fields.source[0] : fields.source) || 'upload';
 
     if (!contestId) {
@@ -164,11 +168,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Determine ticket timestamp for auto-slicing
+    // Determine ticket timestamp for auto-slicing.
+    // The select on line 141 joins user_tickets, which returns an array
+    // (many-to-one in Supabase). Previously this read .issue_date
+    // directly on the array which was always undefined; the auto-slice
+    // window therefore never had a ticket-time anchor when the user
+    // didn't pass one explicitly. Pick the first joined row.
     let finalTicketTimestamp = ticketTimestamp;
-    if (!finalTicketTimestamp && contest.user_tickets?.issue_date) {
-      // Use ticket issue date if timestamp not provided
-      finalTicketTimestamp = new Date(contest.user_tickets.issue_date).toISOString();
+    const joinedTicket = Array.isArray(contest.user_tickets)
+      ? contest.user_tickets[0]
+      : contest.user_tickets;
+    if (!finalTicketTimestamp && joinedTicket?.issue_date) {
+      finalTicketTimestamp = new Date(joinedTicket.issue_date).toISOString();
     }
 
     // Create temporary output directory

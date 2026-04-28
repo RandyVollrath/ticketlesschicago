@@ -817,9 +817,12 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         const daysRemaining = Math.max(0, 21 - Math.round(
           (Date.now() - new Date(ticket.issue_date).getTime()) / (1000 * 60 * 60 * 24)
         ));
+        // EvidenceQuestion's field is .text, not .question. The push
+        // body was emitting "undefined Reply to the email…" for every
+        // detected ticket because of the wrong property name.
         const topQuestion = guidance.questions?.[0];
         const pushBody = topQuestion
-          ? `${daysRemaining} days to contest. ${topQuestion.question} Reply to the email we sent with any evidence.`
+          ? `${daysRemaining} days to contest. ${topQuestion.text} Reply to the email we sent with any evidence.`
           : `${daysRemaining} days to contest. Check your email for evidence we need to build your case.`;
 
         await pushService.sendToUser(plate.user_id, {
