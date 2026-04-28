@@ -288,13 +288,16 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
 
       // Create tow alert in the intelligence system
       try {
-        const towAlert = await createTowAlert(supabaseAdmin, {
+        // towed_vehicles only stores tow_facility_phone + towed_to_address.
+        // tow_zone / towed_to (the impound facility name) aren't columns
+        // we capture from the portal — both reads here were always
+        // undefined, so the older code was passing undefined through
+        // anyway; dropped the dead refs.
+        const towAlert = await createTowAlert(supabaseAdmin as any, {
           user_id: user.user_id,
           alert_type: 'tow',
           plate: plate,
           state: state,
-          tow_location: tow.tow_zone || undefined,
-          impound_location: tow.towed_to || undefined,
           impound_address: tow.towed_to_address || undefined,
           impound_phone: tow.tow_facility_phone || undefined,
           tow_date: tow.tow_date,
@@ -307,7 +310,7 @@ Reply STOP to unsubscribe from Autopilot America alerts.`;
           // Mark the alert as notified if we sent notifications
           if (notificationsSent > 0) {
             await markAlertNotified(
-              supabaseAdmin,
+              supabaseAdmin as any,
               towAlert.id,
               user.notify_sms && user.phone_number ? 'sms' : 'email'
             );

@@ -364,7 +364,7 @@ async function sendProfileConfirmationSMS(
   phone: string,
   renewal: { type: string; label: string; date: Date },
   daysUntilRenewal: number,
-  profileIssues: string[],
+  profileIssues: ProfileIssues,
 ): Promise<boolean> {
   try {
     const fineMap: Record<string, string> = {
@@ -373,7 +373,21 @@ async function sendProfileConfirmationSMS(
       emissions: 'a registration block',
     };
     const fineText = fineMap[renewal.type] || 'a fine';
-    const issueSnippet = profileIssues.length > 0 ? ` We still need: ${profileIssues[0]}.` : '';
+
+    // Previously this function took `string[]` but the caller has
+    // always passed a ProfileIssues object — so profileIssues.length
+    // was undefined and profileIssues[0] was undefined, meaning the
+    // SMS never actually told the user what was missing. Flatten the
+    // structured object into a single highest-priority issue here.
+    let firstIssue: string | null = null;
+    if (profileIssues.missingDates.length > 0) {
+      firstIssue = profileIssues.missingDates[0];
+    } else if (profileIssues.missingPermitDocs) {
+      firstIssue = 'driver\'s license photo for permit renewal';
+    } else if (profileIssues.missingResidencyProof) {
+      firstIssue = 'proof of residency for permit renewal';
+    }
+    const issueSnippet = firstIssue ? ` We still need: ${firstIssue}.` : '';
     const message =
       `Autopilot America: your ${renewal.label.toLowerCase()} renews in ${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'}.${issueSnippet} ` +
       `Confirm your profile at autopilotamerica.com/settings so we can auto-renew and avoid ${fineText}. ` +
