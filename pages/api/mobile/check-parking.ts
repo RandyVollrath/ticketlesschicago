@@ -601,53 +601,6 @@ export default async function handler(
     const rawDiff = Math.abs(compassHeadingDeg - headingDeg);
     headingDisagreementDeg = Math.min(rawDiff, 360 - rawDiff);
   }
-  // Same helper as isHeadingNorthSouth (defined at the bottom of file) but
-  // inlined here so we can compute orientation before that block is reached.
-  const orient = (h: number): 'N-S' | 'E-W' => {
-    const n = ((h % 360) + 360) % 360;
-    return (n <= 45 || n >= 315 || (n >= 135 && n <= 225)) ? 'N-S' : 'E-W';
-  };
-  let effectiveHeading: number;
-  let effectiveHeadingSource: 'compass' | 'gps' | 'none';
-  const HEADING_STALE_DISAGREEMENT_DEG = 30;
-  const gpsAndCompassClassifyDifferently =
-    hasHeading && hasCompass && orient(headingDeg) !== orient(compassHeadingDeg);
-  if (
-    hasHeading && hasCompass &&
-    headingDisagreementDeg != null &&
-    headingDisagreementDeg > HEADING_STALE_DISAGREEMENT_DEG &&
-    gpsAndCompassClassifyDifferently
-  ) {
-    // Large disagreement + different orientation categories. GPS is almost
-    // certainly stale from before a turn. Prefer compass.
-    effectiveHeading = compassHeadingDeg;
-    effectiveHeadingSource = 'compass';
-    console.log(`[check-parking] GPS ${headingDeg.toFixed(0)}° (${orient(headingDeg)}) vs compass ${compassHeadingDeg.toFixed(0)}° (${orient(compassHeadingDeg)}) disagree by ${headingDisagreementDeg.toFixed(0)}° AND classify to different grid orientations. GPS heading likely stale after turn — preferring compass for street orientation.`);
-    hasHeading = false; // treat GPS heading as not present downstream
-  } else if (hasHeading) {
-    effectiveHeading = headingDeg;
-    effectiveHeadingSource = 'gps';
-    if (hasCompass && headingDisagreementDeg != null && headingDisagreementDeg > 15) {
-      console.log(`[check-parking] GPS ${headingDeg.toFixed(0)}° vs compass ${compassHeadingDeg.toFixed(0)}° disagree by ${headingDisagreementDeg.toFixed(0)}° (same grid orientation). Using GPS.`);
-    }
-  } else if (trajectoryMeanHeadingDeg != null) {
-    // Trajectory median is a car-truthful GPS heading (averaged over multiple
-    // driving fixes), so we treat it as `gps` for downstream logic — that
-    // means it's strong enough to pass the Belden walk-away protection check.
-    // Preferred over compass because compass is phone orientation, not car.
-    effectiveHeading = trajectoryMeanHeadingDeg;
-    effectiveHeadingSource = 'gps';
-    console.log(`[check-parking] No per-fix GPS heading — using trajectory median ${trajectoryMeanHeadingDeg.toFixed(1)}° from ${trajectoryMeanHeadingSampleCount} driving points (car-truthful, treated as gps source).`);
-  } else if (hasCompass) {
-    effectiveHeading = compassHeadingDeg;
-    effectiveHeadingSource = 'compass';
-    console.log(`[check-parking] No GPS heading — falling back to compass ${compassHeadingDeg.toFixed(1)}° ±${compassConfidenceDeg.toFixed(1)}° (phone orientation, weak signal)`);
-  } else {
-    effectiveHeading = NaN;
-    effectiveHeadingSource = 'none';
-  }
-  const hasEffectiveHeading = !isNaN(effectiveHeading);
-
   // Native detection metadata — passthrough from iOS BackgroundLocationModule.
   // Tells us whether GPS was captured at car-stop-time (good) or at check-time
   // after the user walked (bad), plus driving-duration and walk-away distance.
@@ -753,6 +706,53 @@ export default async function handler(
       console.log(`[check-parking] Trajectory median heading: ${trajectoryMeanHeadingDeg.toFixed(0)}° (from ${headings.length} driving points)`);
     }
   }
+
+  // Same helper as isHeadingNorthSouth (defined at the bottom of file) but
+  // inlined here so we can compute orientation before that block is reached.
+  const orient = (h: number): 'N-S' | 'E-W' => {
+    const n = ((h % 360) + 360) % 360;
+    return (n <= 45 || n >= 315 || (n >= 135 && n <= 225)) ? 'N-S' : 'E-W';
+  };
+  let effectiveHeading: number;
+  let effectiveHeadingSource: 'compass' | 'gps' | 'none';
+  const HEADING_STALE_DISAGREEMENT_DEG = 30;
+  const gpsAndCompassClassifyDifferently =
+    hasHeading && hasCompass && orient(headingDeg) !== orient(compassHeadingDeg);
+  if (
+    hasHeading && hasCompass &&
+    headingDisagreementDeg != null &&
+    headingDisagreementDeg > HEADING_STALE_DISAGREEMENT_DEG &&
+    gpsAndCompassClassifyDifferently
+  ) {
+    // Large disagreement + different orientation categories. GPS is almost
+    // certainly stale from before a turn. Prefer compass.
+    effectiveHeading = compassHeadingDeg;
+    effectiveHeadingSource = 'compass';
+    console.log(`[check-parking] GPS ${headingDeg.toFixed(0)}° (${orient(headingDeg)}) vs compass ${compassHeadingDeg.toFixed(0)}° (${orient(compassHeadingDeg)}) disagree by ${headingDisagreementDeg.toFixed(0)}° AND classify to different grid orientations. GPS heading likely stale after turn — preferring compass for street orientation.`);
+    hasHeading = false; // treat GPS heading as not present downstream
+  } else if (hasHeading) {
+    effectiveHeading = headingDeg;
+    effectiveHeadingSource = 'gps';
+    if (hasCompass && headingDisagreementDeg != null && headingDisagreementDeg > 15) {
+      console.log(`[check-parking] GPS ${headingDeg.toFixed(0)}° vs compass ${compassHeadingDeg.toFixed(0)}° disagree by ${headingDisagreementDeg.toFixed(0)}° (same grid orientation). Using GPS.`);
+    }
+  } else if (trajectoryMeanHeadingDeg != null) {
+    // Trajectory median is a car-truthful GPS heading (averaged over multiple
+    // driving fixes), so we treat it as `gps` for downstream logic — that
+    // means it's strong enough to pass the Belden walk-away protection check.
+    // Preferred over compass because compass is phone orientation, not car.
+    effectiveHeading = trajectoryMeanHeadingDeg;
+    effectiveHeadingSource = 'gps';
+    console.log(`[check-parking] No per-fix GPS heading — using trajectory median ${trajectoryMeanHeadingDeg.toFixed(1)}° from ${trajectoryMeanHeadingSampleCount} driving points (car-truthful, treated as gps source).`);
+  } else if (hasCompass) {
+    effectiveHeading = compassHeadingDeg;
+    effectiveHeadingSource = 'compass';
+    console.log(`[check-parking] No GPS heading — falling back to compass ${compassHeadingDeg.toFixed(1)}° ±${compassConfidenceDeg.toFixed(1)}° (phone orientation, weak signal)`);
+  } else {
+    effectiveHeading = NaN;
+    effectiveHeadingSource = 'none';
+  }
+  const hasEffectiveHeading = !isNaN(effectiveHeading);
 
   try {
     // Diagnostic accumulator — captures the full decision chain for accuracy tracking.
