@@ -55,12 +55,14 @@ export function getFirebaseAdmin(): admin.app.App | null {
   let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
   if (privateKey) {
-    // Decode any escaped newlines first so JSON.parse can handle multi-line PEM
-    const decoded = privateKey.replace(/\\n/g, '\n');
-    if (decoded.trimStart().startsWith('{')) {
+    if (privateKey.trimStart().startsWith('{')) {
+      // Service-account JSON. JSON.parse handles \n escape sequences inside
+      // the private_key string natively — DO NOT pre-decode \\n → \n on the
+      // raw blob first or you'll convert escape sequences into raw newlines
+      // (which are illegal inside JSON string literals → SyntaxError).
       try {
-        const parsed = JSON.parse(decoded);
-        if (parsed.private_key) privateKey = parsed.private_key;
+        const parsed = JSON.parse(privateKey);
+        if (parsed.private_key) privateKey = parsed.private_key as string;
         if (parsed.client_email && !clientEmail) clientEmail = parsed.client_email;
         if (parsed.project_id && !projectId) projectId = parsed.project_id;
       } catch (err) {
@@ -71,7 +73,8 @@ export function getFirebaseAdmin(): admin.app.App | null {
         return null;
       }
     } else {
-      privateKey = decoded;
+      // Raw PEM with possibly-escaped newlines — decode \\n to real \n.
+      privateKey = privateKey.replace(/\\n/g, '\n');
     }
   }
 
