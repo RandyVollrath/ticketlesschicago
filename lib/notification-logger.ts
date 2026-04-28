@@ -6,6 +6,7 @@
  */
 
 import { supabaseAdmin } from './supabase';
+import type { Json } from './database.types';
 
 export interface NotificationLogEntry {
   id?: string;
@@ -18,7 +19,11 @@ export interface NotificationLogEntry {
   content_preview?: string;
   status?: 'pending' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'retry_scheduled';
   external_id?: string;
-  metadata?: Record<string, unknown>;
+  // Stored in a Postgres jsonb column. Use Json so callers passing in
+  // arbitrary nested records type-check against the DB shape.
+  metadata?: Json;
+  created_at?: string;
+  last_error?: string;
 }
 
 export interface NotificationRetryEntry {
@@ -62,7 +67,6 @@ export class NotificationLogger {
       // Prefer the RPC (adds defaults + normalizes content preview length).
       // Fall back to a direct insert if the RPC isn't installed — this lets
       // the logger work even when only the table+column migration ran.
-      // @ts-expect-error - RPC function not in generated types
       const { data, error } = await supabaseAdmin.rpc('log_notification', {
         p_user_id: entry.user_id || null,
         p_email: entry.email || null,
@@ -80,7 +84,6 @@ export class NotificationLogger {
 
       if (isSchemaMissingError(error)) {
         // Try direct table insert as a fallback before giving up.
-        // @ts-expect-error - notification_logs table not in generated types
         const { data: row, error: insertErr } = await supabaseAdmin
           .from('notification_logs')
           .insert({
@@ -130,7 +133,6 @@ export class NotificationLogger {
     if (!supabaseAdmin || !loggingAvailable) return false;
 
     try {
-      // @ts-expect-error - RPC function not in generated types
       const { error: updateError } = await supabaseAdmin.rpc('update_notification_status', {
         p_id: id,
         p_status: status,
@@ -153,7 +155,6 @@ export class NotificationLogger {
         if (status === 'delivered') updatePayload.delivered_at = now;
         if (status === 'failed' || status === 'bounced') updatePayload.failed_at = now;
 
-        // @ts-expect-error - notification_logs table not in generated types
         const { error: directErr } = await supabaseAdmin
           .from('notification_logs')
           .update(updatePayload)
@@ -187,7 +188,6 @@ export class NotificationLogger {
     }
 
     try {
-      // @ts-expect-error - RPC function not in generated types
       const { data, error } = await supabaseAdmin.rpc('get_pending_retries', {
         p_limit: limit
       }) as { data: NotificationRetryEntry[] | null; error: any };
@@ -210,7 +210,6 @@ export class NotificationLogger {
   async getStatus(id: string): Promise<string | null> {
     if (!supabaseAdmin) return null;
     try {
-      // @ts-expect-error - notification_logs table not in generated types
       const { data, error } = await supabaseAdmin
         .from('notification_logs')
         .select('status')
@@ -237,7 +236,6 @@ export class NotificationLogger {
     }
 
     try {
-      // @ts-expect-error - RPC function not in generated types
       const { error } = await supabaseAdmin.rpc('increment_retry_attempt', {
         p_id: id
       }) as { error: any };
@@ -269,7 +267,6 @@ export class NotificationLogger {
     }
 
     try {
-      // @ts-expect-error - notification_logs table not in generated types
       const { data, error } = await supabaseAdmin
         .from('notification_logs')
         .select('notification_type, status')
@@ -310,7 +307,6 @@ export class NotificationLogger {
     }
 
     try {
-      // @ts-expect-error - notification_logs table not in generated types
       const { data, error } = await supabaseAdmin
         .from('notification_logs')
         .select('*')

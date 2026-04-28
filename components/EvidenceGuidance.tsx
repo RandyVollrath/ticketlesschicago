@@ -42,7 +42,11 @@ interface CourtDataResponse {
   evidenceImpact: Array<{
     type: string;
     success_rate_with: number;
-    success_rate_without: number;
+    // analyzeEvidenceImpact only computes the without-comparison for
+    // photos (where it informs a quantified "X% improvement" claim).
+    // For witnesses and documentation, only the with-rate is used, so
+    // this field is genuinely optional.
+    success_rate_without?: number;
     cases_with: number;
   }>;
   successfulGrounds: Array<{
@@ -74,9 +78,11 @@ export default function EvidenceGuidance({ violationCode, fineAmount, onEvidence
     try {
       setLoading(true);
 
-      // Get win rate statistics
-      // @ts-expect-error - win_rate_statistics view not in generated types
-      const { data: stats } = await supabase
+      // Get win rate statistics. win_rate_statistics + court_case_outcomes
+      // aren't in the public-schema generated types (they live in a
+      // legacy/internal schema we haven't typed). Cast through `any` so
+      // the typed Supabase client doesn't reject the .from(...) calls.
+      const { data: stats } = await (supabase as any)
         .from('win_rate_statistics')
         .select('*')
         .eq('stat_type', 'violation_code')
@@ -89,8 +95,7 @@ export default function EvidenceGuidance({ violationCode, fineAmount, onEvidence
       }
 
       // Get court outcomes to analyze evidence impact
-      // @ts-expect-error - court_case_outcomes view not in generated types
-      const { data: outcomes } = await supabase
+      const { data: outcomes } = await (supabase as any)
         .from('court_case_outcomes')
         .select('*')
         .eq('violation_code', violationCode)
