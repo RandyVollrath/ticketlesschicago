@@ -42,6 +42,7 @@ import Config from '../config/config';
 import NetworkStatus from '../utils/NetworkStatus';
 import { StorageKeys } from '../constants';
 import LocationDisclosureScreen, { hasAcceptedLocationDisclosure } from './LocationDisclosureScreen';
+import RenewalDatesPromptCard from '../components/RenewalDatesPromptCard';
 
 // Native module for querying BT connection state directly from foreground service
 const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
@@ -1874,6 +1875,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Post-paywall prompt for sticker renewal dates. Self-hides if dismissed,
+            unpaid, or both dates already on file. */}
+        <RenewalDatesPromptCard />
 
         {/* ──── iOS Debug Overlay ──── */}
         {Platform.OS === 'ios' && showDebug && (
