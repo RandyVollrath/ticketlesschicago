@@ -253,9 +253,15 @@ export default function SettingsPage() {
         setPlateState(profileData.license_state || 'IL');
       }
 
-      // Notification preferences
-      if (profileData.notification_preferences) {
-        const prefs = profileData.notification_preferences;
+      // Notification preferences. Column is typed Json (string|number|...) —
+      // narrow to a record before reading keys, otherwise the toggles render
+      // undefined for users who have a non-object value stored.
+      const rawPrefs = profileData.notification_preferences;
+      const prefs: Record<string, any> =
+        rawPrefs && typeof rawPrefs === 'object' && !Array.isArray(rawPrefs)
+          ? (rawPrefs as Record<string, any>)
+          : {};
+      if (rawPrefs && Object.keys(prefs).length > 0) {
         setEmailNotifications(prefs.email ?? profileData.notify_email ?? true);
         setSmsNotifications(prefs.sms ?? profileData.notify_sms ?? false);
         setStreetCleaningAlerts(prefs.street_cleaning ?? true);

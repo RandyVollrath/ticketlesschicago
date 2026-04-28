@@ -214,13 +214,21 @@ export default async function handler(
       });
     }
 
-    // Upload files to Vercel Blob
+    // Upload files to Vercel Blob.
+    // SECURITY NOTE: Vercel Blob v2 dropped 'private' access — every URL is
+    // public-by-knowledge-of-URL. Without addRandomSuffix the path is
+    // permit-docs/{userId}/id-{timestamp}-{filename} which is enumerable
+    // (userId known to attacker, timestamp ms-precision = ~13 bits, filename
+    // often "license.jpg"). addRandomSuffix: true gives ~120 bits so the URL
+    // is effectively unguessable. Followup: migrate to Supabase Storage
+    // private bucket + signed URLs (the contest-evidence pattern).
     const timestamp = Date.now();
     const idBlob = await put(
       `permit-docs/${userId}/id-${timestamp}-${idDocument.filename}`,
       idDocument.data,
       {
-        access: 'private', // SECURITY: Government IDs must be private
+        access: 'public',
+        addRandomSuffix: true,
         contentType: idDocument.contentType,
       }
     );
@@ -229,7 +237,8 @@ export default async function handler(
       `permit-docs/${userId}/residency-${timestamp}-${proofOfResidency.filename}`,
       proofOfResidency.data,
       {
-        access: 'private', // SECURITY: Residency documents must be private
+        access: 'public',
+        addRandomSuffix: true,
         contentType: proofOfResidency.contentType,
       }
     );

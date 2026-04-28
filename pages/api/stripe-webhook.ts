@@ -2220,7 +2220,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               if (userAddress) {
                 try {
                   const winterBanResult = await notifyNewUserAboutWinterBan(
-                    user.id,
+                    authData.user.id,
                     userAddress,
                     email,
                     formData.phone || null,

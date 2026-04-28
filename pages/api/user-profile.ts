@@ -4,7 +4,10 @@ import { verifyOwnership, handleAuthError } from '../../lib/auth-middleware';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
-    const { userId } = req.query;
+    // req.query values are string | string[]; normalize so we never pass an
+    // array into supabase .eq() (would silently fail to match).
+    const userIdRaw = req.query.userId;
+    const userId = Array.isArray(userIdRaw) ? userIdRaw[0] : userIdRaw;
 
     if (!userId) {
       return res.status(400).json({ error: 'User ID required' });
@@ -12,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // SECURITY: Verify user owns this profile or is admin
     try {
-      await verifyOwnership(req, userId as string);
+      await verifyOwnership(req, userId);
     } catch (error: any) {
       return handleAuthError(res, error);
     }
@@ -29,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error('Error fetching user profile:', userError);
         return res.status(404).json({ error: 'User profile not found' });
       }
-      
+
       // Get user's vehicle info as fallback
       const { data: vehicles } = await supabaseAdmin
         .from('vehicles')

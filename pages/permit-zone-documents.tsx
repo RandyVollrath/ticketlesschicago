@@ -52,9 +52,13 @@ export default function PermitZoneDocuments() {
 
       if (userProfile) {
         setUserData(userProfile);
-        if (userProfile.address) {
-          setAddress(userProfile.address);
-          checkPermitZone(userProfile.address);
+        // Saved address lives in home_address_full; the legacy `address`
+        // column was renamed during the user_profiles consolidation, so
+        // this used to silently never auto-fill.
+        const savedAddress = userProfile.home_address_full;
+        if (savedAddress) {
+          setAddress(savedAddress);
+          checkPermitZone(savedAddress);
         }
 
         // Fetch document status
