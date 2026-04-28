@@ -62,7 +62,7 @@ export default async function handler(
     if (!parseResult.success) {
       return res.status(400).json({
         error: 'Validation failed',
-        details: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+        details: parseResult.error.issues.map(e => ({ field: e.path.join('.'), message: e.message }))
       });
     }
 
@@ -123,7 +123,7 @@ export default async function handler(
     if (!parseResult.success) {
       return res.status(400).json({
         error: 'Validation failed',
-        details: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+        details: parseResult.error.issues.map(e => ({ field: e.path.join('.'), message: e.message }))
       });
     }
 
@@ -187,7 +187,7 @@ export default async function handler(
     if (!parseResult.success) {
       return res.status(400).json({
         error: 'Validation failed',
-        details: parseResult.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+        details: parseResult.error.issues.map(e => ({ field: e.path.join('.'), message: e.message }))
       });
     }
 

@@ -139,18 +139,23 @@ export const contactFormSchema = z.object({
 /**
  * Validate request body against a Zod schema
  * Returns parsed data or sends error response
+ *
+ * Zod v4 renamed ZodError.errors → ZodError.issues. The old .errors
+ * property is gone, so the previous code emitted `details: undefined`
+ * and the middleware variant crashed on `.errors.map(...)` (cannot read
+ * properties of undefined). Use .issues across the board.
  */
 export function validateBody<T extends z.ZodSchema>(
   schema: T,
   body: unknown
-): { success: true; data: z.infer<T> } | { success: false; errors: z.ZodError['errors'] } {
+): { success: true; data: z.infer<T> } | { success: false; errors: z.core.$ZodIssue[] } {
   const result = schema.safeParse(body);
 
   if (result.success) {
     return { success: true, data: result.data };
   }
 
-  return { success: false, errors: result.error.errors };
+  return { success: false, errors: result.error.issues };
 }
 
 /**
@@ -168,7 +173,7 @@ export function withValidation<T extends z.ZodSchema>(
     const result = schema.safeParse(req.body);
 
     if (!result.success) {
-      const errors = result.error.errors.map(err => ({
+      const errors = result.error.issues.map(err => ({
         field: err.path.join('.'),
         message: err.message,
       }));
@@ -191,14 +196,14 @@ export function withValidation<T extends z.ZodSchema>(
 export function validateQuery<T extends z.ZodSchema>(
   schema: T,
   query: unknown
-): { success: true; data: z.infer<T> } | { success: false; errors: z.ZodError['errors'] } {
+): { success: true; data: z.infer<T> } | { success: false; errors: z.core.$ZodIssue[] } {
   const result = schema.safeParse(query);
 
   if (result.success) {
     return { success: true, data: result.data };
   }
 
-  return { success: false, errors: result.error.errors };
+  return { success: false, errors: result.error.issues };
 }
 
 /**

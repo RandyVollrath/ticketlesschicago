@@ -45,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Validate request body
   const parseResult = remitterSignupSchema.safeParse(req.body);
   if (!parseResult.success) {
-    const errors = parseResult.error.errors.map(err => ({
+    const errors = parseResult.error.issues.map(err => ({
       field: err.path.join('.'),
       message: err.message,
     }));

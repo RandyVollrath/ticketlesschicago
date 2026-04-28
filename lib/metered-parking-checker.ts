@@ -522,14 +522,15 @@ export async function checkMeteredParking(
       );
     }
 
-    // Step 3: Query DB by street name + direction + block range
+    // Step 3: Query DB by street name + direction + block range.
+    // Note: keep .select() as a single literal string (no concat / no
+    // interpolation) so the typed Supabase client can infer the row
+    // shape — concatenation degrades the inferred Row to
+    // GenericStringError and every subsequent .spaces / .rate / etc.
+    // access becomes a TS error.
     let query = supabaseAdmin
       .from('metered_parking_locations')
-      .select(
-        'address, spaces, time_limit_hours, rate, rate_description, is_clz, ' +
-          'block_start, block_end, latitude, longitude, rate_zone, is_seasonal, ' +
-          'rush_hour_schedule, sunday_schedule, side_of_street',
-      )
+      .select('address, spaces, time_limit_hours, rate, rate_description, is_clz, block_start, block_end, latitude, longitude, rate_zone, is_seasonal, rush_hour_schedule, sunday_schedule, side_of_street')
       .eq('status', 'Active')
       .eq('street_name', parsed.name);
 

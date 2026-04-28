@@ -357,7 +357,7 @@ export default function NeighborhoodReport() {
                   <MetricCard
                     label="Violent Crimes (0.5 mi)"
                     value={report.safetyRisk.violentCrime.count}
-                    level={report.safetyRisk.violentCrime.vsCity}
+                    level={report.safetyRisk.violentCrime.comparison?.vsCity}
                     subtext={report.safetyRisk.violentCrime.types.length > 0
                       ? `Most common: ${report.safetyRisk.violentCrime.types[0]?.type}`
                       : undefined
@@ -368,7 +368,7 @@ export default function NeighborhoodReport() {
                   <MetricCard
                     label="Nuisance Crimes (0.5 mi)"
                     value={report.safetyRisk.nuisanceCrime.count}
-                    level={report.safetyRisk.nuisanceCrime.vsCity}
+                    level={report.safetyRisk.nuisanceCrime.comparison?.vsCity}
                     subtext="Narcotics, weapons, trespass"
                   />
 
@@ -376,7 +376,7 @@ export default function NeighborhoodReport() {
                   <MetricCard
                     label="Traffic Crashes (2 yrs)"
                     value={report.safetyRisk.trafficCrashes.total}
-                    level={report.safetyRisk.trafficCrashes.vsCity}
+                    level={report.safetyRisk.trafficCrashes.comparison?.vsCity}
                     subtext={`${report.safetyRisk.trafficCrashes.withInjuries} with injuries, ${report.safetyRisk.trafficCrashes.fatal} fatal`}
                   />
 

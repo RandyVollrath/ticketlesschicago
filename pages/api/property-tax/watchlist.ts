@@ -44,7 +44,7 @@ export default async function handler(
       if (!parseResult.success) {
         return res.status(400).json({
           error: 'Invalid request',
-          details: parseResult.error.errors
+          details: parseResult.error.issues
         });
       }
 

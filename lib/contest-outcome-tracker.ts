@@ -1332,7 +1332,11 @@ export async function processHistoryFoiaResponse(
   fromEmail: string,
   subject: string,
   body: string,
-  attachments: { filename: string; content_type: string }[],
+  // url is the Resend-hosted attachment URL; the body of this function
+  // forwards it into response_data so the user can re-download the FOIA
+  // PDF later. The other three FOIA-response handlers in this file
+  // already type it as optional — this one was out of sync.
+  attachments: { filename: string; content_type: string; url?: string }[],
 ): Promise<{
   action: string;
   parsedTicketCount: number;
