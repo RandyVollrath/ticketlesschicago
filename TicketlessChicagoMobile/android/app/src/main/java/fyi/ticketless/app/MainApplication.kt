@@ -17,6 +17,7 @@ class MainApplication : Application(), ReactApplication {
           // Custom native modules
           add(BluetoothMonitorPackage())
           add(CameraAlertPackage())
+          add(ActivityTransitionPackage())
         },
     )
   }

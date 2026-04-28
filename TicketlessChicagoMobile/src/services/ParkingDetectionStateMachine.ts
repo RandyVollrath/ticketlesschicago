@@ -51,6 +51,7 @@ export type DetectionEventType =
 export type DetectionSource =
   | 'bt_acl'              // Android BT Classic ACL event
   | 'bt_profile_proxy'    // Android BT profile proxy check
+  | 'activity_recognition' // Android Google Play Activity Transition (IN_VEHICLE / STILL)
   | 'periodic_check'      // 15-minute periodic fallback
   | 'user_manual'         // User triggered manually
   | 'ios_native'          // iOS CoreMotion + GPS parking detection
