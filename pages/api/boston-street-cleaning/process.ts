@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
 import { notificationService } from '../../../lib/notifications';
-import { calculateNextCleaning, BostonStreetSweepingSchedule } from '../../../lib/boston-street-sweeping';
+import { calculateNextCleaning, BostonStreetSweepingSchedule, NextCleaningEvent } from '../../../lib/boston-street-sweeping';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 interface ProcessResult {
@@ -229,7 +229,7 @@ async function processBostonStreetCleaningReminders(type: string) {
         }
 
         if (schedules.length === 0) {
-          console.log(`❌ No schedule found for user ${user.id} at ${user.home_address_full}`);
+          console.log(`❌ No schedule found for user ${user.user_id} at ${user.home_address_full}`);
           continue;
         }
 
@@ -269,7 +269,7 @@ async function processBostonStreetCleaningReminders(type: string) {
         }
 
         if (cleaningsByDate.size === 0) {
-          console.log(`User ${user.id}: No cleanings on notify days`);
+          console.log(`User ${user.user_id}: No cleanings on notify days`);
           continue;
         }
 
@@ -338,16 +338,27 @@ async function processBostonStreetCleaningReminders(type: string) {
         const message = messages.join('\n\n');
 
         if (user.notify_sms && user.phone_number) {
-          await notificationService.sendSMS(user.phone_number, message);
+          // notificationService.sendSMS takes a single SMSNotification
+          // object — the previous positional call would have hit
+          // `notification.to.message` etc. and failed at runtime.
+          await notificationService.sendSMS({
+            to: user.phone_number,
+            message,
+            userId: user.user_id,
+            category: 'street_cleaning_boston',
+          });
           console.log(`✅ Sent SMS to ${user.phone_number}`);
         }
 
         if (user.notify_email && user.email) {
-          await notificationService.sendEmail(
-            user.email,
-            'Street Cleaning Reminder - Boston',
-            message
-          );
+          await notificationService.sendEmail({
+            to: user.email,
+            subject: 'Street Cleaning Reminder - Boston',
+            text: message,
+            html: message.replace(/\n/g, '<br>'),
+            userId: user.user_id,
+            category: 'street_cleaning_boston',
+          });
           console.log(`✅ Sent email to ${user.email}`);
         }
 
@@ -355,7 +366,7 @@ async function processBostonStreetCleaningReminders(type: string) {
 
       } catch (userError) {
         failed++;
-        const errorMsg = `Failed to process user ${user.id}: ${sanitizeErrorMessage(userError)}`;
+        const errorMsg = `Failed to process user ${user.user_id}: ${sanitizeErrorMessage(userError)}`;
         errors.push(errorMsg);
         console.error(errorMsg);
       }

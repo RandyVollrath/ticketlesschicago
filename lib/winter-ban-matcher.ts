@@ -8,7 +8,8 @@
 import { supabaseAdmin } from './supabase';
 
 interface WinterBanStreet {
-  id: number;
+  // The DB column is a UUID string, not a numeric id.
+  id: string;
   street_name: string;
   from_location: string;
   to_location: string;

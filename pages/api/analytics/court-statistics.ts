@@ -216,21 +216,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
 
-    // Calculate win rates for evidence
+    // Calculate win rates for evidence. Use "0" (string) when there's
+    // no data so the field is uniformly string and parseFloat below
+    // doesn't get a string|number union it can't accept.
     const evidenceAnalysis = {
       photos: {
-        withRate: evidenceImpact.photos.with > 0 ? (evidenceImpact.photos.winWith / evidenceImpact.photos.with * 100).toFixed(2) : 0,
-        withoutRate: evidenceImpact.photos.without > 0 ? (evidenceImpact.photos.winWithout / evidenceImpact.photos.without * 100).toFixed(2) : 0,
+        withRate: evidenceImpact.photos.with > 0 ? (evidenceImpact.photos.winWith / evidenceImpact.photos.with * 100).toFixed(2) : '0',
+        withoutRate: evidenceImpact.photos.without > 0 ? (evidenceImpact.photos.winWithout / evidenceImpact.photos.without * 100).toFixed(2) : '0',
         impact: 0
       },
       witnesses: {
-        withRate: evidenceImpact.witnesses.with > 0 ? (evidenceImpact.witnesses.winWith / evidenceImpact.witnesses.with * 100).toFixed(2) : 0,
-        withoutRate: evidenceImpact.witnesses.without > 0 ? (evidenceImpact.witnesses.winWithout / evidenceImpact.witnesses.without * 100).toFixed(2) : 0,
+        withRate: evidenceImpact.witnesses.with > 0 ? (evidenceImpact.witnesses.winWith / evidenceImpact.witnesses.with * 100).toFixed(2) : '0',
+        withoutRate: evidenceImpact.witnesses.without > 0 ? (evidenceImpact.witnesses.winWithout / evidenceImpact.witnesses.without * 100).toFixed(2) : '0',
         impact: 0
       },
       documentation: {
-        withRate: evidenceImpact.documentation.with > 0 ? (evidenceImpact.documentation.winWith / evidenceImpact.documentation.with * 100).toFixed(2) : 0,
-        withoutRate: evidenceImpact.documentation.without > 0 ? (evidenceImpact.documentation.winWithout / evidenceImpact.documentation.without * 100).toFixed(2) : 0,
+        withRate: evidenceImpact.documentation.with > 0 ? (evidenceImpact.documentation.winWith / evidenceImpact.documentation.with * 100).toFixed(2) : '0',
+        withoutRate: evidenceImpact.documentation.without > 0 ? (evidenceImpact.documentation.winWithout / evidenceImpact.documentation.without * 100).toFixed(2) : '0',
         impact: 0
       }
     };
