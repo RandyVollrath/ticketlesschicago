@@ -65,6 +65,24 @@ export interface UserSummary {
   example_failures: ClassifiedRow[];
 }
 
+export interface AccuracyBucket {
+  labeled_count: number;
+  street_correct_count: number;
+  street_wrong_count: number;
+  pct_street_correct: number | null;
+}
+
+export interface TruthMetrics {
+  false_positive_feedback_count: number;
+  parking_confirmed_feedback_count: number;
+  confidence_buckets: {
+    high: AccuracyBucket;
+    low: AccuracyBucket;
+  };
+  verify_recommended_bucket: AccuracyBucket;
+  by_feedback_source: Record<string, AccuracyBucket>;
+}
+
 export interface DiagnosisReport {
   window_start: string;
   window_end: string;
@@ -75,6 +93,7 @@ export interface DiagnosisReport {
   per_user: UserSummary[];
   top_signatures: Array<{ signature: FailureSignature; count: number; userCount: number; examples: ClassifiedRow[] }>;
   prior_reports: Array<{ generated_at: string; total_checks: number; pct_no_snap: number | null; avg_raw_accuracy_m: number | null }>;
+  truth_metrics: TruthMetrics;
 }
 
 // Chicago city limits — matches the guard in pages/api/mobile/check-parking.ts.
@@ -101,12 +120,20 @@ function classify(row: any): FailureSignature {
   if (row.user_feedback_at && row.street_correct === false) return 'user_said_street_wrong';
   if (row.user_feedback_at && row.side_correct === false) return 'user_said_side_wrong';
   if (!row.snap_street_name) return 'no_snap';
-  if ((row.snap_distance_meters || 0) > 20) return 'snap_far';
+  // snap_far means the snap distance is large AND we have no independent
+  // confirmation of the street name. When Mapbox-reverse independently
+  // agrees with snap (and Nominatim too), a 25-40m snap distance just
+  // means the user parked off-grid (back lot, wide ROW) — the answer is
+  // correct, not a failure. Only flag snap_far when no cross-source
+  // confirmation exists.
+  const mb = row.native_meta?.mapbox_reverse;
+  const mapboxConfirmsSnap = mb && mb.matched && mb.agrees_with_snap === true;
+  if ((row.snap_distance_meters || 0) > 20 && !mapboxConfirmsSnap) return 'snap_far';
   if (row.nominatim_overrode) return 'nominatim_overrode';
   if (row.walkaway_guard_fired) return 'walkaway_guard_fired';
   const al = row.native_meta?.auto_label;
   if (al && al.street_matched === false) return 'autolabel_disagreed';
-  if (row.heading_source === 'stale' || row.heading_source === 'none') return 'heading_stale';
+  if (row.heading_source === 'stale') return 'heading_stale';
   if (!row.compass_heading && !row.gps_heading) return 'compass_missing';
   if ((row.raw_accuracy_meters || 0) > 30) return 'low_accuracy';
   if (row.parity_forced) return 'parity_forced';
@@ -120,6 +147,20 @@ function emptyCounts(): Record<FailureSignature, number> {
     user_said_street_wrong: 0, user_said_side_wrong: 0,
     autolabel_disagreed: 0, walkaway_guard_fired: 0, parity_forced: 0,
     healthy: 0,
+  };
+}
+
+function makeAccuracyBucket(rows: any[]): AccuracyBucket {
+  const labeled = rows.filter((r) => typeof r.street_correct === 'boolean');
+  const streetCorrect = labeled.filter((r) => r.street_correct === true).length;
+  const streetWrong = labeled.filter((r) => r.street_correct === false).length;
+  return {
+    labeled_count: labeled.length,
+    street_correct_count: streetCorrect,
+    street_wrong_count: streetWrong,
+    pct_street_correct: labeled.length
+      ? Math.round((streetCorrect / labeled.length) * 1000) / 10
+      : null,
   };
 }
 
@@ -241,6 +282,39 @@ export async function diagnose(hours: number = 24): Promise<DiagnosisReport> {
     .order('generated_at', { ascending: false })
     .limit(5);
 
+  const sourceFor = (r: any): string => {
+    const raw = r.native_meta?.feedback_source;
+    return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : 'unknown';
+  };
+  const confidenceFor = (r: any): number | null => {
+    const raw = r.native_meta?.address_confidence;
+    return typeof raw === 'number' ? raw : null;
+  };
+  const verifyRows = (rows || []).filter((r: any) => r.native_meta?.needs_verification === true);
+  const highConfidenceRows = (rows || []).filter((r: any) => {
+    const c = confidenceFor(r);
+    return typeof c === 'number' && c >= 70;
+  });
+  const lowConfidenceRows = (rows || []).filter((r: any) => {
+    const c = confidenceFor(r);
+    return typeof c === 'number' && c < 70;
+  });
+  const feedbackRowsAll = (rows || []).filter((r: any) => r.user_feedback_at != null);
+  const byFeedbackSource: Record<string, AccuracyBucket> = {};
+  for (const src of Array.from(new Set(feedbackRowsAll.map(sourceFor)))) {
+    byFeedbackSource[src] = makeAccuracyBucket(feedbackRowsAll.filter((r: any) => sourceFor(r) === src));
+  }
+  const truthMetrics: TruthMetrics = {
+    false_positive_feedback_count: (rows || []).filter((r: any) => r.user_confirmed_parking === false).length,
+    parking_confirmed_feedback_count: (rows || []).filter((r: any) => r.user_confirmed_parking === true).length,
+    confidence_buckets: {
+      high: makeAccuracyBucket(highConfidenceRows),
+      low: makeAccuracyBucket(lowConfidenceRows),
+    },
+    verify_recommended_bucket: makeAccuracyBucket(verifyRows),
+    by_feedback_source: byFeedbackSource,
+  };
+
   return {
     window_start: windowStart.toISOString(),
     window_end: windowEnd.toISOString(),
@@ -251,5 +325,6 @@ export async function diagnose(hours: number = 24): Promise<DiagnosisReport> {
     per_user: perUser.sort((a, b) => (b.total_checks - a.total_checks)),
     top_signatures: topSigs,
     prior_reports: (priorReports || []) as any,
+    truth_metrics: truthMetrics,
   };
 }
