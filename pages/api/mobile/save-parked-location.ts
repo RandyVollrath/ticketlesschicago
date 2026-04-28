@@ -9,6 +9,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { checkMeteredParking } from '../../../lib/metered-parking-checker';
 
 // Input validation schema.
 // Mobile sends `value || null` for most restriction fields when the parking
@@ -108,6 +109,25 @@ export default async function handler(
     const addressValue = input.address || `${input.latitude.toFixed(6)}, ${input.longitude.toFixed(6)}`;
     const normalizedAddress = addressValue.toLowerCase().replace(/\./g, '').trim();
 
+    // Re-run the meter zone check server-side so the cron has the snapshot it needs
+    // (max time, schedule text, was-enforced-at-park-time). Fire-and-forget tolerant
+    // of failure — meter notifications are a nice-to-have, never block the save.
+    let meterZoneActive = false;
+    let meterMaxTimeMinutes: number | null = null;
+    let meterScheduleText: string | null = null;
+    let meterWasEnforcedAtParkTime: boolean | null = null;
+    try {
+      const meter = await checkMeteredParking(input.latitude, input.longitude);
+      if (meter.inMeteredZone) {
+        meterZoneActive = true;
+        meterMaxTimeMinutes = meter.timeLimitMinutes || null;
+        meterScheduleText = meter.scheduleText || null;
+        meterWasEnforcedAtParkTime = meter.isEnforcedNow;
+      }
+    } catch (e) {
+      console.warn(`[save-parked-location] meter check failed for user ${userId}: ${sanitizeErrorMessage(e)}`);
+    }
+
     // Guardrail: ignore known red-light false-positive location when no parking restriction is present.
     if (
       normalizedAddress.includes('1019 w fullerton') &&
@@ -149,9 +169,14 @@ export default async function handler(
         dot_permit_type: input.dot_permit_type || null,
         dot_permit_start_date: input.dot_permit_start_date || null,
 
+        meter_zone_active: meterZoneActive,
+        meter_max_time_minutes: meterMaxTimeMinutes,
+        meter_schedule_text: meterScheduleText,
+        meter_was_enforced_at_park_time: meterWasEnforcedAtParkTime,
+
         is_active: true,
         parked_at: parkedAt,
-      })
+      } as any)
       .select('id')
       .single();
 

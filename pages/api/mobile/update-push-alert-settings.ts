@@ -19,6 +19,10 @@ const VALID_ALERT_TYPES = [
   'snow_route',
   'permit_zone',
   'dot_permit',
+  'meter_max_expiring',
+  'meter_zone_active',
+  'city_sticker',
+  'license_plate',
 ];
 
 export default async function handler(
