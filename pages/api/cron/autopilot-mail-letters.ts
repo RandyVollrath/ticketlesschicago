@@ -127,7 +127,7 @@ async function isTestModeEnabled(): Promise<boolean> {
  * This is the first-pass "cheap" validation (no AI call). It catches
  * obvious structural problems before the more expensive AI review runs.
  */
-function validateLetterContent(
+export function validateLetterContent(
   letterContent: string,
   ticketData: { ticket_number: string; violation_date: string; violation_type?: string; violation_description?: string; user_evidence_text?: string | null }
 ): { pass: boolean; issues: string[] } {
