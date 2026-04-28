@@ -35,10 +35,45 @@ export function getFirebaseAdmin(): admin.app.App | null {
 
   initializationAttempted = true;
 
-  // Check for required environment variables
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  // Check for required environment variables.
+  //
+  // FIREBASE_PRIVATE_KEY accepts TWO formats:
+  //   (a) Raw PEM string starting with -----BEGIN PRIVATE KEY----- (with \n
+  //       either as real newlines or escaped \\n).
+  //   (b) Full service-account JSON (starts with { ... "private_key": "..."}).
+  //       This is what `gcloud iam service-accounts keys create` outputs and
+  //       is what's currently set in production. We extract `private_key`,
+  //       and (when present) override projectId/clientEmail too — that way
+  //       a stale FIREBASE_CLIENT_EMAIL can't poison auth.
+  //
+  // Until 2026-04-27 the code treated (b) as if it were (a) — Firebase saw
+  // JSON instead of PEM and silently failed every push with
+  // "error:1E08010C:DECODER routines::unsupported", which broke ALL push
+  // notifications, not just meter ones.
+  let projectId = process.env.FIREBASE_PROJECT_ID;
+  let clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (privateKey) {
+    // Decode any escaped newlines first so JSON.parse can handle multi-line PEM
+    const decoded = privateKey.replace(/\\n/g, '\n');
+    if (decoded.trimStart().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(decoded);
+        if (parsed.private_key) privateKey = parsed.private_key;
+        if (parsed.client_email && !clientEmail) clientEmail = parsed.client_email;
+        if (parsed.project_id && !projectId) projectId = parsed.project_id;
+      } catch (err) {
+        console.error(
+          '[firebase-admin] FIREBASE_PRIVATE_KEY looks like JSON but failed to parse:',
+          (err as Error).message
+        );
+        return null;
+      }
+    } else {
+      privateKey = decoded;
+    }
+  }
 
   if (!projectId || !clientEmail || !privateKey) {
     console.warn(
@@ -57,14 +92,8 @@ export function getFirebaseAdmin(): admin.app.App | null {
       return firebaseApp;
     }
 
-    // Initialize Firebase Admin
     firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        // Handle escaped newlines in the private key
-        privateKey: privateKey.replace(/\\n/g, '\n'),
-      }),
+      credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
     });
 
     console.log('Firebase Admin SDK initialized successfully');
