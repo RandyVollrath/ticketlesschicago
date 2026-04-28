@@ -536,10 +536,6 @@ export default async function handler(
       try {
         const userProfile = userProfiles.get(vehicle.user_id);
         const freshFcmToken = await getFreshFcmToken(vehicle.user_id, vehicle.fcm_token);
-        // TEMP DEBUG: verify meter branch entry conditions
-        if (vehicle.meter_zone_active) {
-          console.log(`[debug] meter row ${vehicle.id} user=${vehicle.user_id} meter_zone_active=${vehicle.meter_zone_active} max=${vehicle.meter_max_time_minutes} was_enforced=${vehicle.meter_was_enforced_at_park_time} sched="${vehicle.meter_schedule_text}" max_notified_at=${vehicle.meter_max_notified_at} freshTokenPresent=${!!freshFcmToken} prefs=${JSON.stringify(userProfile?.push_alert_preferences)}`);
-        }
 
         // ——————————————————————————————————————————————
         // PUSH NOTIFICATIONS (unchanged timing windows)
@@ -845,7 +841,11 @@ export default async function handler(
           const parkedAtMs = new Date(vehicle.parked_at).getTime();
           const expiresAtMs = parkedAtMs + vehicle.meter_max_time_minutes * 60 * 1000;
           const fireAtMs = expiresAtMs - 30 * 60 * 1000;
-          const nowMs = chicagoTime.getTime();
+          // CRITICAL: use Date.now() (real UTC ms), not chicagoTime.getTime().
+          // getChicagoTime() returns a fake Date whose internal UTC ms are
+          // offset by ~5h (CDT) from reality — comparing it to vehicle.parked_at
+          // (real UTC) silently always evaluates inWindow=false.
+          const nowMs = Date.now();
           // Cron runs every 15 min, so fire any time between 30-min-before and
           // 5-min-after the expiry so the user has lead time to walk back to
           // the car and we still catch sessions whose cron tick lands late.
