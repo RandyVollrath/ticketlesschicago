@@ -130,6 +130,25 @@ interface ReminderUserProfile {
   call_alert_preferences: Record<string, CallAlertPref> | null;
 }
 
+/**
+ * Resolve the freshest active FCM token for a user at send time.
+ * Falls back to the token snapshot stored on the parking session.
+ */
+async function getFreshFcmToken(userId: string, staleFallback?: string | null): Promise<string | null> {
+  if (!supabaseAdmin) return staleFallback || null;
+  try {
+    const { data, error } = await supabaseAdmin.rpc('get_user_push_tokens', {
+      p_user_id: userId,
+    });
+    if (error || !data || !Array.isArray(data) || data.length === 0) {
+      return staleFallback || null;
+    }
+    return data[0]?.token || staleFallback || null;
+  } catch {
+    return staleFallback || null;
+  }
+}
+
 function isPushAlertEnabled(
   prefs: Record<string, boolean> | null | undefined,
   key: 'street_cleaning' | 'winter_ban' | 'snow_route' | 'permit_zone' | 'dot_permit' | 'meter_max_expiring' | 'meter_zone_active'
@@ -516,6 +535,11 @@ export default async function handler(
     for (const vehicle of parkedVehicles as unknown as ParkedVehicle[]) {
       try {
         const userProfile = userProfiles.get(vehicle.user_id);
+        const freshFcmToken = await getFreshFcmToken(vehicle.user_id, vehicle.fcm_token);
+        // TEMP DEBUG: verify meter branch entry conditions
+        if (vehicle.meter_zone_active) {
+          console.log(`[debug] meter row ${vehicle.id} user=${vehicle.user_id} meter_zone_active=${vehicle.meter_zone_active} max=${vehicle.meter_max_time_minutes} was_enforced=${vehicle.meter_was_enforced_at_park_time} sched="${vehicle.meter_schedule_text}" max_notified_at=${vehicle.meter_max_notified_at} freshTokenPresent=${!!freshFcmToken} prefs=${JSON.stringify(userProfile?.push_alert_preferences)}`);
+        }
 
         // ——————————————————————————————————————————————
         // PUSH NOTIFICATIONS (unchanged timing windows)
@@ -527,14 +551,14 @@ export default async function handler(
         // guarantees no concurrent fire can double-send even on a deployment
         // cutover. If push fails, rollback the flag so the next fire retries.
         const isWinterBanWindow = isWinterSeason && (chicagoHour >= 20 || chicagoHour <= 2);
-        if (isWinterBanWindow && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'winter_ban')) {
+        if (isWinterBanWindow && vehicle.on_winter_ban_street && !vehicle.winter_ban_notified_at && freshFcmToken && isPushAlertEnabled(userProfile?.push_alert_preferences, 'winter_ban')) {
           const { data: claimed } = await supabaseAdmin.from('user_parked_vehicles')
             .update({ winter_ban_notified_at: new Date().toISOString() })
             .eq('id', vehicle.id)
             .is('winter_ban_notified_at', null)
             .select('id');
           if (claimed && claimed.length > 0) {
-            const result = await sendPushNotification(vehicle.fcm_token, {
+            const result = await sendPushNotification(freshFcmToken, {
               title: 'Winter Parking Ban Reminder',
               body: `Your car at ${vehicle.address} is on a winter ban street. Move before 3am to avoid towing ($150+).`,
               data: {
@@ -554,9 +578,10 @@ export default async function handler(
               if (result.invalidToken) {
                 await supabaseAdmin.from('user_parked_vehicles')
                   .update({ is_active: false })
-                  .eq('id', vehicle.id);
-                invalidFcmTokens.push(vehicle.fcm_token);
-                console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+                  .eq('id', vehicle.id)
+                  .eq('fcm_token', freshFcmToken);
+                invalidFcmTokens.push(freshFcmToken);
+                console.log(`Deactivated invalid FCM token for vehicle ${vehicle.id}${freshFcmToken === vehicle.fcm_token ? ' and parked session' : ''}`);
               }
             }
           }
@@ -567,7 +592,7 @@ export default async function handler(
         // (which is triggered by monitor-snow.ts on weather changes). This cron catches
         // users who PARK on a snow route AFTER the snow event was already detected.
         // Also sends call alerts for snow routes.
-        if (vehicle.on_snow_route && !vehicle.snow_ban_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'snow_route')) {
+        if (vehicle.on_snow_route && !vehicle.snow_ban_notified_at && freshFcmToken && isPushAlertEnabled(userProfile?.push_alert_preferences, 'snow_route')) {
           if (activeSnowEvent) {
             // Atomic claim — see winter_ban block above for rationale.
             const { data: claimed } = await supabaseAdmin.from('user_parked_vehicles')
@@ -577,7 +602,7 @@ export default async function handler(
               .select('id');
             if (claimed && claimed.length > 0) {
               const snowAmount = activeSnowEvent.snow_amount_inches || 2;
-              const result = await sendPushNotification(vehicle.fcm_token, {
+              const result = await sendPushNotification(freshFcmToken, {
                 title: '2-Inch Snow Ban — Move Your Car!',
                 body: `${snowAmount}" of snow detected. Your car at ${vehicle.address} is on a snow route and may be towed ($150+). Move now!`,
                 data: {
@@ -596,9 +621,10 @@ export default async function handler(
                 if (result.invalidToken) {
                   await supabaseAdmin.from('user_parked_vehicles')
                     .update({ is_active: false })
-                    .eq('id', vehicle.id);
-                  invalidFcmTokens.push(vehicle.fcm_token);
-                  console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+                    .eq('id', vehicle.id)
+                    .eq('fcm_token', freshFcmToken);
+                  invalidFcmTokens.push(freshFcmToken);
+                  console.log(`Deactivated invalid FCM token for vehicle ${vehicle.id}${freshFcmToken === vehicle.fcm_token ? ' and parked session' : ''}`);
                 }
               }
             }
@@ -625,9 +651,10 @@ export default async function handler(
           chicagoHour <= 21 &&
           vehicle.street_cleaning_date === tomorrowStr &&
           !sentStreetCleaningTonight &&
+          freshFcmToken &&
           isPushAlertEnabled(userProfile?.push_alert_preferences, 'street_cleaning')
         ) {
-          const result = await sendPushNotification(vehicle.fcm_token, {
+          const result = await sendPushNotification(freshFcmToken, {
             title: 'Street Cleaning Tomorrow!',
             body: `Street cleaning scheduled tomorrow at ${vehicle.address}. Consider moving your car tonight to avoid a $60 ticket.`,
             data: {
@@ -645,9 +672,10 @@ export default async function handler(
           } else if (result.invalidToken) {
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })
-              .eq('id', vehicle.id);
-            invalidFcmTokens.push(vehicle.fcm_token);
-            console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+              .eq('id', vehicle.id)
+              .eq('fcm_token', freshFcmToken);
+            invalidFcmTokens.push(freshFcmToken);
+            console.log(`Deactivated invalid FCM token for vehicle ${vehicle.id}${freshFcmToken === vehicle.fcm_token ? ' and parked session' : ''}`);
           }
         }
 
@@ -658,9 +686,10 @@ export default async function handler(
           chicagoHour <= 8 &&
           vehicle.street_cleaning_date === today &&
           !sentStreetCleaningTonight &&
+          freshFcmToken &&
           isPushAlertEnabled(userProfile?.push_alert_preferences, 'street_cleaning')
         ) {
-          const result = await sendPushNotification(vehicle.fcm_token, {
+          const result = await sendPushNotification(freshFcmToken, {
             title: 'Street Cleaning Today - Move Now!',
             body: `Street cleaning starts at 9am at ${vehicle.address}. Move your car NOW to avoid a $60 ticket.`,
             data: {
@@ -678,9 +707,10 @@ export default async function handler(
           } else if (result.invalidToken) {
             await supabaseAdmin.from('user_parked_vehicles')
               .update({ is_active: false })
-              .eq('id', vehicle.id);
-            invalidFcmTokens.push(vehicle.fcm_token);
-            console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+              .eq('id', vehicle.id)
+              .eq('fcm_token', freshFcmToken);
+            invalidFcmTokens.push(freshFcmToken);
+            console.log(`Deactivated invalid FCM token for vehicle ${vehicle.id}${freshFcmToken === vehicle.fcm_token ? ' and parked session' : ''}`);
           }
         }
 
@@ -688,7 +718,7 @@ export default async function handler(
         // Uses the real schedule (e.g., "Mon-Fri 6pm-9:30am") instead of hardcoded 7am/8am
         // Only send once per parking session
         // Skip if user is parked in their own permit zone
-        if (vehicle.permit_zone && !vehicle.permit_zone_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'permit_zone')) {
+        if (vehicle.permit_zone && !vehicle.permit_zone_notified_at && freshFcmToken && isPushAlertEnabled(userProfile?.push_alert_preferences, 'permit_zone')) {
           const enforcement = getEnforcementStartingSoon(vehicle.permit_restriction_schedule, chicagoTime);
 
           if (enforcement) {
@@ -705,7 +735,7 @@ export default async function handler(
             }
 
             if (!isOwnZone) {
-              const result = await sendPushNotification(vehicle.fcm_token, {
+              const result = await sendPushNotification(freshFcmToken, {
                 title: 'Permit Zone Alert',
                 body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit rules may be active. Check posted signs to avoid a ticket.`,
                 data: {
@@ -723,9 +753,10 @@ export default async function handler(
               } else if (result.invalidToken) {
                 await supabaseAdmin.from('user_parked_vehicles')
                   .update({ is_active: false })
-                  .eq('id', vehicle.id);
-                invalidFcmTokens.push(vehicle.fcm_token);
-                console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+                  .eq('id', vehicle.id)
+                  .eq('fcm_token', freshFcmToken);
+                invalidFcmTokens.push(freshFcmToken);
+                console.log(`Deactivated invalid FCM token for vehicle ${vehicle.id}${freshFcmToken === vehicle.fcm_token ? ' and parked session' : ''}`);
               }
             }
           }
@@ -733,7 +764,7 @@ export default async function handler(
 
         // DOT permit reminder — night before (8-9pm) and morning of (6-8am)
         // Only send once per parking session
-        if (vehicle.dot_permit_active && !vehicle.dot_permit_notified_at && isPushAlertEnabled(userProfile?.push_alert_preferences, 'dot_permit')) {
+        if (vehicle.dot_permit_active && !vehicle.dot_permit_notified_at && freshFcmToken && isPushAlertEnabled(userProfile?.push_alert_preferences, 'dot_permit')) {
           const permitStartDate = vehicle.dot_permit_start_date;
           const permitType = vehicle.dot_permit_type || 'Street permit';
 
@@ -767,7 +798,7 @@ export default async function handler(
           }
 
           if (shouldNotify) {
-            const result = await sendPushNotification(vehicle.fcm_token, {
+            const result = await sendPushNotification(freshFcmToken, {
               title: notifTitle,
               body: notifBody,
               data: {
@@ -785,9 +816,10 @@ export default async function handler(
             } else if (result.invalidToken) {
               await supabaseAdmin.from('user_parked_vehicles')
                 .update({ is_active: false })
-                .eq('id', vehicle.id);
-              invalidFcmTokens.push(vehicle.fcm_token);
-              console.log(`Deactivated vehicle ${vehicle.id} due to invalid FCM token`);
+                .eq('id', vehicle.id)
+                .eq('fcm_token', freshFcmToken);
+              invalidFcmTokens.push(freshFcmToken);
+              console.log(`Deactivated invalid FCM token for vehicle ${vehicle.id}${freshFcmToken === vehicle.fcm_token ? ' and parked session' : ''}`);
             }
           }
         }
@@ -807,6 +839,7 @@ export default async function handler(
           vehicle.meter_max_time_minutes > 0 &&
           vehicle.meter_was_enforced_at_park_time === true &&
           !vehicle.meter_max_notified_at &&
+          freshFcmToken &&
           isPushAlertEnabled(userProfile?.push_alert_preferences, 'meter_max_expiring')
         ) {
           const parkedAtMs = new Date(vehicle.parked_at).getTime();
@@ -835,7 +868,7 @@ export default async function handler(
           })();
 
           if (inWindow && stillEnforced) {
-            const result = await sendPushNotification(vehicle.fcm_token, {
+            const result = await sendPushNotification(freshFcmToken, {
               title: 'Meter Expiring Soon',
               body: `Your meter at ${vehicle.address} hits its ${vehicle.meter_max_time_minutes / 60}-hour max in 30 min. Head back to your car or feed the meter to avoid a $50 ticket.`,
               data: {
@@ -853,8 +886,9 @@ export default async function handler(
             } else if (result.invalidToken) {
               await supabaseAdmin.from('user_parked_vehicles')
                 .update({ is_active: false })
-                .eq('id', vehicle.id);
-              invalidFcmTokens.push(vehicle.fcm_token);
+                .eq('id', vehicle.id)
+                .eq('fcm_token', freshFcmToken);
+              invalidFcmTokens.push(freshFcmToken);
             }
           }
         }
@@ -869,6 +903,7 @@ export default async function handler(
           vehicle.meter_zone_active &&
           vehicle.meter_was_enforced_at_park_time === false &&
           !vehicle.meter_active_notified_at &&
+          freshFcmToken &&
           isPushAlertEnabled(userProfile?.push_alert_preferences, 'meter_zone_active')
         ) {
           const enforcementStart = getMeterEnforcementStartTodayLocal(vehicle.meter_schedule_text, chicagoTime);
@@ -880,7 +915,7 @@ export default async function handler(
               const startStr = enforcementStart.toLocaleTimeString('en-US', {
                 hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago'
               });
-              const result = await sendPushNotification(vehicle.fcm_token, {
+              const result = await sendPushNotification(freshFcmToken, {
                 title: 'Meter Zone Activates Soon',
                 body: `Meters at ${vehicle.address} start enforcing at ${startStr}. Pay the meter or move to avoid a $50 ticket.`,
                 data: {
@@ -898,8 +933,9 @@ export default async function handler(
               } else if (result.invalidToken) {
                 await supabaseAdmin.from('user_parked_vehicles')
                   .update({ is_active: false })
-                  .eq('id', vehicle.id);
-                invalidFcmTokens.push(vehicle.fcm_token);
+                  .eq('id', vehicle.id)
+                  .eq('fcm_token', freshFcmToken);
+                invalidFcmTokens.push(freshFcmToken);
               }
             }
           }
