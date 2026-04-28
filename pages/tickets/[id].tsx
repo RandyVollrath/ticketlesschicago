@@ -142,11 +142,21 @@ export default function TicketDetailPage() {
     }
     setCurrentUserId(session.user.id);
 
+    // router.query.id is string | string[] when the route matches catch-all
+    // segments; for [id] it's always a single string at runtime, but TS
+    // can't see that. Normalize so Supabase .eq gets a real string.
+    const ticketId = Array.isArray(id) ? id[0] : id;
+    if (!ticketId) {
+      setError('Ticket not found');
+      setLoading(false);
+      return;
+    }
+
     // Load ticket
     const { data: ticketData, error: ticketError } = await supabase
       .from('detected_tickets')
       .select('*')
-      .eq('id', id)
+      .eq('id', ticketId)
       .eq('user_id', session.user.id)
       .maybeSingle();
 
@@ -156,17 +166,20 @@ export default function TicketDetailPage() {
       return;
     }
 
-    setTicket(ticketData);
+    // Two-step cast: the DB row has many more fields than the curated
+    // Ticket interface picks; the shapes don't sufficiently overlap for
+    // a direct cast in TS-strict mode.
+    setTicket(ticketData as unknown as Ticket);
 
     // Load associated letter if exists
     const { data: letterData } = await supabase
       .from('contest_letters')
       .select('*')
-      .eq('ticket_id', id)
+      .eq('ticket_id', ticketId)
       .maybeSingle();
 
     if (letterData) {
-      setLetter(letterData);
+      setLetter(letterData as Letter);
     }
 
     const { data: foiaData } = await supabase

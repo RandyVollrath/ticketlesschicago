@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          value: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Relationships: []
+      }
       affiliate_commission_tracker: {
         Row: {
           adjusted_at: string | null
@@ -53,6 +80,30 @@ export type Database = {
           referral_id?: string
           stripe_session_id?: string
           total_amount?: number
+        }
+        Relationships: []
+      }
+      app_waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          phone: string | null
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          phone?: string | null
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          phone?: string | null
+          source?: string | null
         }
         Relationships: []
       }
@@ -150,6 +201,249 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      autopilot_admin_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      autopilot_profiles: {
+        Row: {
+          created_at: string | null
+          first_name: string | null
+          full_name: string | null
+          id: string
+          last_name: string | null
+          mailing_address_line1: string | null
+          mailing_address_line2: string | null
+          mailing_city: string | null
+          mailing_state: string | null
+          mailing_zip: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          id?: string
+          last_name?: string | null
+          mailing_address_line1?: string | null
+          mailing_address_line2?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_zip?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          id?: string
+          last_name?: string | null
+          mailing_address_line1?: string | null
+          mailing_address_line2?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_zip?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      autopilot_settings: {
+        Row: {
+          allowed_ticket_types: string[]
+          auto_mail_enabled: boolean
+          created_at: string | null
+          email_on_approval_needed: boolean
+          email_on_letter_mailed: boolean
+          email_on_ticket_found: boolean
+          id: string
+          never_auto_mail_unknown: boolean
+          require_approval: boolean
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          allowed_ticket_types?: string[]
+          auto_mail_enabled?: boolean
+          created_at?: string | null
+          email_on_approval_needed?: boolean
+          email_on_letter_mailed?: boolean
+          email_on_ticket_found?: boolean
+          id?: string
+          never_auto_mail_unknown?: boolean
+          require_approval?: boolean
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          allowed_ticket_types?: string[]
+          auto_mail_enabled?: boolean
+          created_at?: string | null
+          email_on_approval_needed?: boolean
+          email_on_letter_mailed?: boolean
+          email_on_ticket_found?: boolean
+          id?: string
+          never_auto_mail_unknown?: boolean
+          require_approval?: boolean
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      autopilot_subscriptions: {
+        Row: {
+          authorization_revoked_at: string | null
+          authorized_at: string | null
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          grace_period_days: number | null
+          grace_period_ends_at: string | null
+          id: string
+          letters_included_remaining: number
+          plan: string
+          plan_code: string | null
+          price_cents: number | null
+          price_lock: boolean | null
+          price_lock_cents: number | null
+          price_lock_expires_at: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          authorization_revoked_at?: string | null
+          authorized_at?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          grace_period_days?: number | null
+          grace_period_ends_at?: string | null
+          id?: string
+          letters_included_remaining?: number
+          plan?: string
+          plan_code?: string | null
+          price_cents?: number | null
+          price_lock?: boolean | null
+          price_lock_cents?: number | null
+          price_lock_expires_at?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          authorization_revoked_at?: string | null
+          authorized_at?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          grace_period_days?: number | null
+          grace_period_ends_at?: string | null
+          id?: string
+          letters_included_remaining?: number
+          plan?: string
+          plan_code?: string | null
+          price_cents?: number | null
+          price_lock?: boolean | null
+          price_lock_cents?: number | null
+          price_lock_expires_at?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      block_enforcement_stats: {
+        Row: {
+          block_address: string
+          block_number: number
+          city_rank: number | null
+          created_at: string | null
+          dow_histogram: number[] | null
+          estimated_revenue: number
+          hourly_histogram: number[] | null
+          id: number
+          peak_hour_end: number | null
+          peak_hour_start: number | null
+          street_direction: string | null
+          street_name: string
+          top_violation_code: string | null
+          top_violation_pct: number | null
+          total_tickets: number
+          updated_at: string | null
+          violation_breakdown: Json | null
+          year_range: string | null
+        }
+        Insert: {
+          block_address: string
+          block_number: number
+          city_rank?: number | null
+          created_at?: string | null
+          dow_histogram?: number[] | null
+          estimated_revenue?: number
+          hourly_histogram?: number[] | null
+          id?: number
+          peak_hour_end?: number | null
+          peak_hour_start?: number | null
+          street_direction?: string | null
+          street_name: string
+          top_violation_code?: string | null
+          top_violation_pct?: number | null
+          total_tickets?: number
+          updated_at?: string | null
+          violation_breakdown?: Json | null
+          year_range?: string | null
+        }
+        Update: {
+          block_address?: string
+          block_number?: number
+          city_rank?: number | null
+          created_at?: string | null
+          dow_histogram?: number[] | null
+          estimated_revenue?: number
+          hourly_histogram?: number[] | null
+          id?: number
+          peak_hour_end?: number | null
+          peak_hour_start?: number | null
+          street_direction?: string | null
+          street_name?: string
+          top_violation_code?: string | null
+          top_violation_pct?: number | null
+          total_tickets?: number
+          updated_at?: string | null
+          violation_breakdown?: Json | null
+          year_range?: string | null
+        }
+        Relationships: []
       }
       boston_street_sweeping: {
         Row: {
@@ -265,6 +559,264 @@ export type Database = {
         }
         Relationships: []
       }
+      camera_locations: {
+        Row: {
+          address: string
+          approaches: string[]
+          camera_type: string
+          created_at: string | null
+          go_live_date: string | null
+          id: number
+          latitude: number
+          longitude: number
+          source_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address: string
+          approaches?: string[]
+          camera_type: string
+          created_at?: string | null
+          go_live_date?: string | null
+          id?: number
+          latitude: number
+          longitude: number
+          source_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string
+          approaches?: string[]
+          camera_type?: string
+          created_at?: string | null
+          go_live_date?: string | null
+          id?: number
+          latitude?: number
+          longitude?: number
+          source_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      camera_locations_sync: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: number
+          last_synced_at: string | null
+          red_light_camera_count: number | null
+          speed_camera_count: number | null
+          sync_status: string | null
+          total_records: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          last_synced_at?: string | null
+          red_light_camera_count?: number | null
+          speed_camera_count?: number | null
+          sync_status?: string | null
+          total_records?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          last_synced_at?: string | null
+          red_light_camera_count?: number | null
+          speed_camera_count?: number | null
+          sync_status?: string | null
+          total_records?: number | null
+        }
+        Relationships: []
+      }
+      camera_pass_history: {
+        Row: {
+          alert_speed_mph: number | null
+          alert_speed_mps: number | null
+          alerted_at: string | null
+          camera_address: string
+          camera_latitude: number
+          camera_longitude: number
+          camera_type: string
+          created_at: string
+          expected_speed_mph: number | null
+          id: string
+          passed_at: string
+          speed_delta_mph: number | null
+          user_id: string
+          user_latitude: number
+          user_longitude: number
+          user_speed_mph: number | null
+          user_speed_mps: number | null
+        }
+        Insert: {
+          alert_speed_mph?: number | null
+          alert_speed_mps?: number | null
+          alerted_at?: string | null
+          camera_address: string
+          camera_latitude: number
+          camera_longitude: number
+          camera_type: string
+          created_at?: string
+          expected_speed_mph?: number | null
+          id?: string
+          passed_at?: string
+          speed_delta_mph?: number | null
+          user_id: string
+          user_latitude: number
+          user_longitude: number
+          user_speed_mph?: number | null
+          user_speed_mps?: number | null
+        }
+        Update: {
+          alert_speed_mph?: number | null
+          alert_speed_mps?: number | null
+          alerted_at?: string | null
+          camera_address?: string
+          camera_latitude?: number
+          camera_longitude?: number
+          camera_type?: string
+          created_at?: string
+          expected_speed_mph?: number | null
+          id?: string
+          passed_at?: string
+          speed_delta_mph?: number | null
+          user_id?: string
+          user_latitude?: number
+          user_longitude?: number
+          user_speed_mph?: number | null
+          user_speed_mps?: number | null
+        }
+        Relationships: []
+      }
+      camera_violation_stats: {
+        Row: {
+          address: string | null
+          avg_daily_violations: number | null
+          camera_id: string
+          camera_type: string
+          first_violation_date: string | null
+          id: number
+          intersection: string | null
+          last_violation_date: string | null
+          latitude: number | null
+          location: unknown
+          longitude: number | null
+          total_violations: number | null
+          updated_at: string | null
+          violations_last_30_days: number | null
+          violations_last_365_days: number | null
+          violations_last_90_days: number | null
+        }
+        Insert: {
+          address?: string | null
+          avg_daily_violations?: number | null
+          camera_id: string
+          camera_type: string
+          first_violation_date?: string | null
+          id?: number
+          intersection?: string | null
+          last_violation_date?: string | null
+          latitude?: number | null
+          location?: unknown
+          longitude?: number | null
+          total_violations?: number | null
+          updated_at?: string | null
+          violations_last_30_days?: number | null
+          violations_last_365_days?: number | null
+          violations_last_90_days?: number | null
+        }
+        Update: {
+          address?: string | null
+          avg_daily_violations?: number | null
+          camera_id?: string
+          camera_type?: string
+          first_violation_date?: string | null
+          id?: number
+          intersection?: string | null
+          last_violation_date?: string | null
+          latitude?: number | null
+          location?: unknown
+          longitude?: number | null
+          total_violations?: number | null
+          updated_at?: string | null
+          violations_last_30_days?: number | null
+          violations_last_365_days?: number | null
+          violations_last_90_days?: number | null
+        }
+        Relationships: []
+      }
+      chicago_building_addresses: {
+        Row: {
+          bldg_id: string | null
+          created_at: string | null
+          full_street_name: string | null
+          house_number: number | null
+          id: number
+          point: unknown
+          pre_dir: string | null
+          street_name: string | null
+          street_type: string | null
+        }
+        Insert: {
+          bldg_id?: string | null
+          created_at?: string | null
+          full_street_name?: string | null
+          house_number?: number | null
+          id?: number
+          point?: unknown
+          pre_dir?: string | null
+          street_name?: string | null
+          street_type?: string | null
+        }
+        Update: {
+          bldg_id?: string | null
+          created_at?: string | null
+          full_street_name?: string | null
+          house_number?: number | null
+          id?: number
+          point?: unknown
+          pre_dir?: string | null
+          street_name?: string | null
+          street_type?: string | null
+        }
+        Relationships: []
+      }
+      city_sticker_receipts: {
+        Row: {
+          created_at: string
+          email_subject: string | null
+          file_name: string | null
+          forwarded_at: string
+          id: string
+          sender_email: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_subject?: string | null
+          file_name?: string | null
+          forwarded_at?: string
+          id?: string
+          sender_email: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_subject?: string | null
+          file_name?: string | null
+          forwarded_at?: string
+          id?: string
+          sender_email?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       city_sticker_reminders: {
         Row: {
           auto_renew_enabled: boolean | null
@@ -309,6 +861,383 @@ export type Database = {
           vehicle_id?: string | null
         }
         Relationships: []
+      }
+      construction_permit_cache: {
+        Row: {
+          address_key: string
+          created_at: string
+          defense_summary: string | null
+          expires_at: string
+          has_road_work_permit: boolean | null
+          has_sign_blocking_permit: boolean | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          permits: Json | null
+          searched_at: string
+          total_active_permits: number | null
+        }
+        Insert: {
+          address_key: string
+          created_at?: string
+          defense_summary?: string | null
+          expires_at?: string
+          has_road_work_permit?: boolean | null
+          has_sign_blocking_permit?: boolean | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          permits?: Json | null
+          searched_at?: string
+          total_active_permits?: number | null
+        }
+        Update: {
+          address_key?: string
+          created_at?: string
+          defense_summary?: string | null
+          expires_at?: string
+          has_road_work_permit?: boolean | null
+          has_sign_blocking_permit?: boolean | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          permits?: Json | null
+          searched_at?: string
+          total_active_permits?: number | null
+        }
+        Relationships: []
+      }
+      contest_learnings: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          learning: string
+          learning_type: string
+          sample_size: number
+          source_outcomes: string[] | null
+          violation_code: string
+          win_rate_impact: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          learning: string
+          learning_type: string
+          sample_size: number
+          source_outcomes?: string[] | null
+          violation_code: string
+          win_rate_impact?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          learning?: string
+          learning_type?: string
+          sample_size?: number
+          source_outcomes?: string[] | null
+          violation_code?: string
+          win_rate_impact?: number | null
+        }
+        Relationships: []
+      }
+      contest_letters: {
+        Row: {
+          ahms_last_checked_at: string | null
+          ahms_payload: Json | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_via: string | null
+          cdot_foia_integrated: boolean | null
+          cdot_foia_integrated_at: string | null
+          cdot_foia_notes: string | null
+          charge_amount: number | null
+          created_at: string | null
+          defense_type: string | null
+          delivered_at: string | null
+          delivery_status: string | null
+          disposition: string | null
+          disposition_date: string | null
+          disposition_reason: string | null
+          docket_captured_at: string | null
+          docket_number: string | null
+          docket_source: string | null
+          econtest_confirmation_id: string | null
+          econtest_response: Json | null
+          econtest_status: string | null
+          econtest_submitted_at: string | null
+          evidence_integrated: boolean | null
+          evidence_integrated_at: string | null
+          expected_delivery_date: string | null
+          finance_foia_integrated: boolean | null
+          finance_foia_integrated_at: string | null
+          finance_foia_notes: string | null
+          hearing_date: string | null
+          id: string
+          last_tracking_update: string | null
+          letter_content: string | null
+          letter_pdf_url: string | null
+          letter_text: string
+          lob_expected_delivery: string | null
+          lob_letter_id: string | null
+          lob_status: string | null
+          lob_tracking_id: string | null
+          mailed_at: string | null
+          needs_regeneration: boolean
+          regeneration_reason: string | null
+          returned_at: string | null
+          sent_at: string | null
+          status: string
+          street_view_address: string | null
+          street_view_date: string | null
+          street_view_exhibit_urls: Json | null
+          stripe_payment_intent_id: string | null
+          ticket_id: string
+          tracking_events: Json | null
+          tracking_number: string | null
+          updated_at: string | null
+          user_id: string
+          using_default_address: boolean | null
+          was_free_letter: boolean
+        }
+        Insert: {
+          ahms_last_checked_at?: string | null
+          ahms_payload?: Json | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_via?: string | null
+          cdot_foia_integrated?: boolean | null
+          cdot_foia_integrated_at?: string | null
+          cdot_foia_notes?: string | null
+          charge_amount?: number | null
+          created_at?: string | null
+          defense_type?: string | null
+          delivered_at?: string | null
+          delivery_status?: string | null
+          disposition?: string | null
+          disposition_date?: string | null
+          disposition_reason?: string | null
+          docket_captured_at?: string | null
+          docket_number?: string | null
+          docket_source?: string | null
+          econtest_confirmation_id?: string | null
+          econtest_response?: Json | null
+          econtest_status?: string | null
+          econtest_submitted_at?: string | null
+          evidence_integrated?: boolean | null
+          evidence_integrated_at?: string | null
+          expected_delivery_date?: string | null
+          finance_foia_integrated?: boolean | null
+          finance_foia_integrated_at?: string | null
+          finance_foia_notes?: string | null
+          hearing_date?: string | null
+          id?: string
+          last_tracking_update?: string | null
+          letter_content?: string | null
+          letter_pdf_url?: string | null
+          letter_text: string
+          lob_expected_delivery?: string | null
+          lob_letter_id?: string | null
+          lob_status?: string | null
+          lob_tracking_id?: string | null
+          mailed_at?: string | null
+          needs_regeneration?: boolean
+          regeneration_reason?: string | null
+          returned_at?: string | null
+          sent_at?: string | null
+          status?: string
+          street_view_address?: string | null
+          street_view_date?: string | null
+          street_view_exhibit_urls?: Json | null
+          stripe_payment_intent_id?: string | null
+          ticket_id: string
+          tracking_events?: Json | null
+          tracking_number?: string | null
+          updated_at?: string | null
+          user_id: string
+          using_default_address?: boolean | null
+          was_free_letter?: boolean
+        }
+        Update: {
+          ahms_last_checked_at?: string | null
+          ahms_payload?: Json | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_via?: string | null
+          cdot_foia_integrated?: boolean | null
+          cdot_foia_integrated_at?: string | null
+          cdot_foia_notes?: string | null
+          charge_amount?: number | null
+          created_at?: string | null
+          defense_type?: string | null
+          delivered_at?: string | null
+          delivery_status?: string | null
+          disposition?: string | null
+          disposition_date?: string | null
+          disposition_reason?: string | null
+          docket_captured_at?: string | null
+          docket_number?: string | null
+          docket_source?: string | null
+          econtest_confirmation_id?: string | null
+          econtest_response?: Json | null
+          econtest_status?: string | null
+          econtest_submitted_at?: string | null
+          evidence_integrated?: boolean | null
+          evidence_integrated_at?: string | null
+          expected_delivery_date?: string | null
+          finance_foia_integrated?: boolean | null
+          finance_foia_integrated_at?: string | null
+          finance_foia_notes?: string | null
+          hearing_date?: string | null
+          id?: string
+          last_tracking_update?: string | null
+          letter_content?: string | null
+          letter_pdf_url?: string | null
+          letter_text?: string
+          lob_expected_delivery?: string | null
+          lob_letter_id?: string | null
+          lob_status?: string | null
+          lob_tracking_id?: string | null
+          mailed_at?: string | null
+          needs_regeneration?: boolean
+          regeneration_reason?: string | null
+          returned_at?: string | null
+          sent_at?: string | null
+          status?: string
+          street_view_address?: string | null
+          street_view_date?: string | null
+          street_view_exhibit_urls?: Json | null
+          stripe_payment_intent_id?: string | null
+          ticket_id?: string
+          tracking_events?: Json | null
+          tracking_number?: string | null
+          updated_at?: string | null
+          user_id?: string
+          using_default_address?: boolean | null
+          was_free_letter?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_letters_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "detected_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contest_outcomes: {
+        Row: {
+          actual_outcome_matches_prediction: boolean | null
+          amount_saved: number | null
+          created_at: string | null
+          evidence_count: number | null
+          evidence_types: string[] | null
+          feature_vector: Json | null
+          final_amount: number | null
+          hearing_date: string | null
+          hearing_officer_id: string | null
+          hearing_type: string | null
+          id: string
+          letter_id: string | null
+          letter_quality_score: number | null
+          original_amount: number | null
+          outcome: string
+          outcome_date: string | null
+          predicted_win_probability: number | null
+          primary_defense: string | null
+          secondary_defenses: string[] | null
+          ticket_id: string | null
+          updated_at: string | null
+          user_feedback: string | null
+          user_id: string | null
+          user_satisfaction: number | null
+          violation_code: string | null
+          violation_type: string | null
+          ward: number | null
+          weather_defense_used: boolean | null
+        }
+        Insert: {
+          actual_outcome_matches_prediction?: boolean | null
+          amount_saved?: number | null
+          created_at?: string | null
+          evidence_count?: number | null
+          evidence_types?: string[] | null
+          feature_vector?: Json | null
+          final_amount?: number | null
+          hearing_date?: string | null
+          hearing_officer_id?: string | null
+          hearing_type?: string | null
+          id?: string
+          letter_id?: string | null
+          letter_quality_score?: number | null
+          original_amount?: number | null
+          outcome: string
+          outcome_date?: string | null
+          predicted_win_probability?: number | null
+          primary_defense?: string | null
+          secondary_defenses?: string[] | null
+          ticket_id?: string | null
+          updated_at?: string | null
+          user_feedback?: string | null
+          user_id?: string | null
+          user_satisfaction?: number | null
+          violation_code?: string | null
+          violation_type?: string | null
+          ward?: number | null
+          weather_defense_used?: boolean | null
+        }
+        Update: {
+          actual_outcome_matches_prediction?: boolean | null
+          amount_saved?: number | null
+          created_at?: string | null
+          evidence_count?: number | null
+          evidence_types?: string[] | null
+          feature_vector?: Json | null
+          final_amount?: number | null
+          hearing_date?: string | null
+          hearing_officer_id?: string | null
+          hearing_type?: string | null
+          id?: string
+          letter_id?: string | null
+          letter_quality_score?: number | null
+          original_amount?: number | null
+          outcome?: string
+          outcome_date?: string | null
+          predicted_win_probability?: number | null
+          primary_defense?: string | null
+          secondary_defenses?: string[] | null
+          ticket_id?: string | null
+          updated_at?: string | null
+          user_feedback?: string | null
+          user_id?: string | null
+          user_satisfaction?: number | null
+          violation_code?: string | null
+          violation_type?: string | null
+          ward?: number | null
+          weather_defense_used?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_outcomes_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "contest_letters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_outcomes_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "detected_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contested_tickets_foia: {
         Row: {
@@ -370,6 +1299,174 @@ export type Database = {
         }
         Relationships: []
       }
+      crimes: {
+        Row: {
+          arrest: boolean | null
+          beat: string | null
+          block: string | null
+          case_number: string | null
+          community_area: number | null
+          created_at: string | null
+          date: string | null
+          description: string | null
+          district: string | null
+          domestic: boolean | null
+          fbi_code: string | null
+          id: string
+          iucr: string | null
+          latitude: number | null
+          location: unknown
+          location_description: string | null
+          longitude: number | null
+          primary_type: string | null
+          ward: number | null
+        }
+        Insert: {
+          arrest?: boolean | null
+          beat?: string | null
+          block?: string | null
+          case_number?: string | null
+          community_area?: number | null
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          district?: string | null
+          domestic?: boolean | null
+          fbi_code?: string | null
+          id: string
+          iucr?: string | null
+          latitude?: number | null
+          location?: unknown
+          location_description?: string | null
+          longitude?: number | null
+          primary_type?: string | null
+          ward?: number | null
+        }
+        Update: {
+          arrest?: boolean | null
+          beat?: string | null
+          block?: string | null
+          case_number?: string | null
+          community_area?: number | null
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          district?: string | null
+          domestic?: boolean | null
+          fbi_code?: string | null
+          id?: string
+          iucr?: string | null
+          latitude?: number | null
+          location?: unknown
+          location_description?: string | null
+          longitude?: number | null
+          primary_type?: string | null
+          ward?: number | null
+        }
+        Relationships: []
+      }
+      curb_regulations: {
+        Row: {
+          block_address: string
+          block_number: number
+          confidence: string | null
+          created_at: string | null
+          extracted_at: string | null
+          fine_amount: number | null
+          id: number
+          image_urls: Json | null
+          is_tow_zone: boolean | null
+          latitude: number | null
+          longitude: number | null
+          raw_sign_text: string | null
+          regulation_subtype: string | null
+          regulation_type: string
+          restriction_days: string | null
+          restriction_end_time: string | null
+          restriction_schedule: string | null
+          restriction_season: string | null
+          restriction_start_time: string | null
+          scan_source: string | null
+          side_of_street: string | null
+          sign_count: number | null
+          source: string
+          street_direction: string | null
+          street_name: string
+          street_number: number
+          street_type: string | null
+          street_view_url: string | null
+          updated_at: string | null
+          verified_at: string | null
+          violation_code: string | null
+        }
+        Insert: {
+          block_address: string
+          block_number: number
+          confidence?: string | null
+          created_at?: string | null
+          extracted_at?: string | null
+          fine_amount?: number | null
+          id?: number
+          image_urls?: Json | null
+          is_tow_zone?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          raw_sign_text?: string | null
+          regulation_subtype?: string | null
+          regulation_type: string
+          restriction_days?: string | null
+          restriction_end_time?: string | null
+          restriction_schedule?: string | null
+          restriction_season?: string | null
+          restriction_start_time?: string | null
+          scan_source?: string | null
+          side_of_street?: string | null
+          sign_count?: number | null
+          source?: string
+          street_direction?: string | null
+          street_name: string
+          street_number: number
+          street_type?: string | null
+          street_view_url?: string | null
+          updated_at?: string | null
+          verified_at?: string | null
+          violation_code?: string | null
+        }
+        Update: {
+          block_address?: string
+          block_number?: number
+          confidence?: string | null
+          created_at?: string | null
+          extracted_at?: string | null
+          fine_amount?: number | null
+          id?: number
+          image_urls?: Json | null
+          is_tow_zone?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          raw_sign_text?: string | null
+          regulation_subtype?: string | null
+          regulation_type?: string
+          restriction_days?: string | null
+          restriction_end_time?: string | null
+          restriction_schedule?: string | null
+          restriction_season?: string | null
+          restriction_start_time?: string | null
+          scan_source?: string | null
+          side_of_street?: string | null
+          sign_count?: number | null
+          source?: string
+          street_direction?: string | null
+          street_name?: string
+          street_number?: number
+          street_type?: string | null
+          street_view_url?: string | null
+          updated_at?: string | null
+          verified_at?: string | null
+          violation_code?: string | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           created_at: string | null
@@ -397,6 +1494,284 @@ export type Database = {
           referral_code?: string | null
           referred_by_code?: string | null
           stripe_customer_id?: string | null
+        }
+        Relationships: []
+      }
+      detected_tickets: {
+        Row: {
+          amount: number | null
+          auto_send_deadline: string | null
+          created_at: string | null
+          evidence_deadline: string | null
+          evidence_on_time: boolean | null
+          evidence_received_at: string | null
+          evidence_requested_at: string | null
+          found_at: string | null
+          guarantee_covered: boolean | null
+          hearing_end_date: string | null
+          hearing_start_date: string | null
+          id: string
+          is_test: boolean | null
+          issue_datetime: string | null
+          last_chance_sent_at: string | null
+          last_portal_check: string | null
+          last_portal_status: string | null
+          last_reminder_sent_at: string | null
+          location: string | null
+          officer_badge: string | null
+          parkchicago_amount_paid: number | null
+          parkchicago_end_time: string | null
+          parkchicago_start_time: string | null
+          parkchicago_transaction_id: string | null
+          parkchicago_zone: string | null
+          photo_url: string | null
+          plate: string
+          plate_id: string
+          plate_stolen: boolean | null
+          plate_stolen_incident_date: string | null
+          plate_stolen_report_agency: string | null
+          plate_stolen_report_date: string | null
+          plate_stolen_report_number: string | null
+          portal_payable: boolean | null
+          portal_receivable_description: string | null
+          portal_receivable_id: string | null
+          portal_receivable_type: string | null
+          registered_owner_address: string | null
+          registered_owner_name: string | null
+          reminder_count: number | null
+          skip_reason: string | null
+          sms_last_chance_sent_at: string | null
+          sms_reminder_sent_at: string | null
+          source: string | null
+          source_url: string | null
+          state: string
+          status: string
+          sweeper_verification: Json | null
+          ticket_number: string | null
+          ticket_plate: string | null
+          ticket_state: string | null
+          updated_at: string | null
+          user_evidence: string | null
+          user_evidence_uploaded_at: string | null
+          user_id: string
+          vehicle_mismatch_details: Json | null
+          vehicle_mismatch_detected: boolean | null
+          violation_class: string | null
+          violation_code: string | null
+          violation_date: string | null
+          violation_description: string | null
+          violation_type: Database["public"]["Enums"]["violation_type"]
+          violation_type_raw: string | null
+        }
+        Insert: {
+          amount?: number | null
+          auto_send_deadline?: string | null
+          created_at?: string | null
+          evidence_deadline?: string | null
+          evidence_on_time?: boolean | null
+          evidence_received_at?: string | null
+          evidence_requested_at?: string | null
+          found_at?: string | null
+          guarantee_covered?: boolean | null
+          hearing_end_date?: string | null
+          hearing_start_date?: string | null
+          id?: string
+          is_test?: boolean | null
+          issue_datetime?: string | null
+          last_chance_sent_at?: string | null
+          last_portal_check?: string | null
+          last_portal_status?: string | null
+          last_reminder_sent_at?: string | null
+          location?: string | null
+          officer_badge?: string | null
+          parkchicago_amount_paid?: number | null
+          parkchicago_end_time?: string | null
+          parkchicago_start_time?: string | null
+          parkchicago_transaction_id?: string | null
+          parkchicago_zone?: string | null
+          photo_url?: string | null
+          plate: string
+          plate_id: string
+          plate_stolen?: boolean | null
+          plate_stolen_incident_date?: string | null
+          plate_stolen_report_agency?: string | null
+          plate_stolen_report_date?: string | null
+          plate_stolen_report_number?: string | null
+          portal_payable?: boolean | null
+          portal_receivable_description?: string | null
+          portal_receivable_id?: string | null
+          portal_receivable_type?: string | null
+          registered_owner_address?: string | null
+          registered_owner_name?: string | null
+          reminder_count?: number | null
+          skip_reason?: string | null
+          sms_last_chance_sent_at?: string | null
+          sms_reminder_sent_at?: string | null
+          source?: string | null
+          source_url?: string | null
+          state?: string
+          status?: string
+          sweeper_verification?: Json | null
+          ticket_number?: string | null
+          ticket_plate?: string | null
+          ticket_state?: string | null
+          updated_at?: string | null
+          user_evidence?: string | null
+          user_evidence_uploaded_at?: string | null
+          user_id: string
+          vehicle_mismatch_details?: Json | null
+          vehicle_mismatch_detected?: boolean | null
+          violation_class?: string | null
+          violation_code?: string | null
+          violation_date?: string | null
+          violation_description?: string | null
+          violation_type: Database["public"]["Enums"]["violation_type"]
+          violation_type_raw?: string | null
+        }
+        Update: {
+          amount?: number | null
+          auto_send_deadline?: string | null
+          created_at?: string | null
+          evidence_deadline?: string | null
+          evidence_on_time?: boolean | null
+          evidence_received_at?: string | null
+          evidence_requested_at?: string | null
+          found_at?: string | null
+          guarantee_covered?: boolean | null
+          hearing_end_date?: string | null
+          hearing_start_date?: string | null
+          id?: string
+          is_test?: boolean | null
+          issue_datetime?: string | null
+          last_chance_sent_at?: string | null
+          last_portal_check?: string | null
+          last_portal_status?: string | null
+          last_reminder_sent_at?: string | null
+          location?: string | null
+          officer_badge?: string | null
+          parkchicago_amount_paid?: number | null
+          parkchicago_end_time?: string | null
+          parkchicago_start_time?: string | null
+          parkchicago_transaction_id?: string | null
+          parkchicago_zone?: string | null
+          photo_url?: string | null
+          plate?: string
+          plate_id?: string
+          plate_stolen?: boolean | null
+          plate_stolen_incident_date?: string | null
+          plate_stolen_report_agency?: string | null
+          plate_stolen_report_date?: string | null
+          plate_stolen_report_number?: string | null
+          portal_payable?: boolean | null
+          portal_receivable_description?: string | null
+          portal_receivable_id?: string | null
+          portal_receivable_type?: string | null
+          registered_owner_address?: string | null
+          registered_owner_name?: string | null
+          reminder_count?: number | null
+          skip_reason?: string | null
+          sms_last_chance_sent_at?: string | null
+          sms_reminder_sent_at?: string | null
+          source?: string | null
+          source_url?: string | null
+          state?: string
+          status?: string
+          sweeper_verification?: Json | null
+          ticket_number?: string | null
+          ticket_plate?: string | null
+          ticket_state?: string | null
+          updated_at?: string | null
+          user_evidence?: string | null
+          user_evidence_uploaded_at?: string | null
+          user_id?: string
+          vehicle_mismatch_details?: Json | null
+          vehicle_mismatch_detected?: boolean | null
+          violation_class?: string | null
+          violation_code?: string | null
+          violation_date?: string | null
+          violation_description?: string | null
+          violation_type?: Database["public"]["Enums"]["violation_type"]
+          violation_type_raw?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "detected_tickets_plate_id_fkey"
+            columns: ["plate_id"]
+            isOneToOne: false
+            referencedRelation: "monitored_plates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dot_permits: {
+        Row: {
+          application_name: string | null
+          application_number: string
+          application_status: string | null
+          comments: string | null
+          direction: string | null
+          end_date: string
+          id: number
+          latitude: number | null
+          location: unknown
+          longitude: number | null
+          parking_meter_bagging: boolean | null
+          start_date: string
+          street_closure: string | null
+          street_name: string | null
+          street_number_from: number | null
+          street_number_to: number | null
+          suffix: string | null
+          synced_at: string | null
+          ward: string | null
+          work_description: string | null
+          work_type: string | null
+        }
+        Insert: {
+          application_name?: string | null
+          application_number: string
+          application_status?: string | null
+          comments?: string | null
+          direction?: string | null
+          end_date: string
+          id?: never
+          latitude?: number | null
+          location?: unknown
+          longitude?: number | null
+          parking_meter_bagging?: boolean | null
+          start_date: string
+          street_closure?: string | null
+          street_name?: string | null
+          street_number_from?: number | null
+          street_number_to?: number | null
+          suffix?: string | null
+          synced_at?: string | null
+          ward?: string | null
+          work_description?: string | null
+          work_type?: string | null
+        }
+        Update: {
+          application_name?: string | null
+          application_number?: string
+          application_status?: string | null
+          comments?: string | null
+          direction?: string | null
+          end_date?: string
+          id?: never
+          latitude?: number | null
+          location?: unknown
+          longitude?: number | null
+          parking_meter_bagging?: boolean | null
+          start_date?: string
+          street_closure?: string | null
+          street_name?: string | null
+          street_number_from?: number | null
+          street_number_to?: number | null
+          suffix?: string | null
+          synced_at?: string | null
+          ward?: string | null
+          work_description?: string | null
+          work_type?: string | null
         }
         Relationships: []
       }
@@ -650,6 +2025,863 @@ export type Database = {
         }
         Relationships: []
       }
+      enforcement_block_profiles: {
+        Row: {
+          block_address: string
+          city_rank: number | null
+          dow_histogram: Json | null
+          hourly_histogram: Json | null
+          mean_hour: number | null
+          median_hour: number | null
+          p20_hour: number | null
+          p80_hour: number | null
+          stddev_hour: number | null
+          top_violation: string | null
+          top_violation_count: number | null
+          total_tickets: number
+        }
+        Insert: {
+          block_address: string
+          city_rank?: number | null
+          dow_histogram?: Json | null
+          hourly_histogram?: Json | null
+          mean_hour?: number | null
+          median_hour?: number | null
+          p20_hour?: number | null
+          p80_hour?: number | null
+          stddev_hour?: number | null
+          top_violation?: string | null
+          top_violation_count?: number | null
+          total_tickets: number
+        }
+        Update: {
+          block_address?: string
+          city_rank?: number | null
+          dow_histogram?: Json | null
+          hourly_histogram?: Json | null
+          mean_hour?: number | null
+          median_hour?: number | null
+          p20_hour?: number | null
+          p80_hour?: number | null
+          stddev_hour?: number | null
+          top_violation?: string | null
+          top_violation_count?: number | null
+          total_tickets?: number
+        }
+        Relationships: []
+      }
+      evidence_311_cache: {
+        Row: {
+          construction_count: number | null
+          created_at: string
+          defense_relevant_requests: Json | null
+          defense_summary: string | null
+          has_defense_evidence: boolean | null
+          id: string
+          infrastructure_count: number | null
+          latitude: number
+          longitude: number
+          search_radius_feet: number
+          searched_at: string
+          signage_count: number | null
+          ticket_id: string
+          total_requests: number
+        }
+        Insert: {
+          construction_count?: number | null
+          created_at?: string
+          defense_relevant_requests?: Json | null
+          defense_summary?: string | null
+          has_defense_evidence?: boolean | null
+          id?: string
+          infrastructure_count?: number | null
+          latitude: number
+          longitude: number
+          search_radius_feet?: number
+          searched_at?: string
+          signage_count?: number | null
+          ticket_id: string
+          total_requests?: number
+        }
+        Update: {
+          construction_count?: number | null
+          created_at?: string
+          defense_relevant_requests?: Json | null
+          defense_summary?: string | null
+          has_defense_evidence?: boolean | null
+          id?: string
+          infrastructure_count?: number | null
+          latitude?: number
+          longitude?: number
+          search_radius_feet?: number
+          searched_at?: string
+          signage_count?: number | null
+          ticket_id?: string
+          total_requests?: number
+        }
+        Relationships: []
+      }
+      evidence_analysis: {
+        Row: {
+          analysis_summary: string | null
+          analyzed_at: string | null
+          confirmation_number: string | null
+          created_at: string | null
+          effective_date: string | null
+          evidence_category: string | null
+          evidence_type: string
+          extracted_data: Json | null
+          extracted_text: string | null
+          file_name: string | null
+          file_url: string | null
+          id: string
+          payment_amount: number | null
+          payment_app: string | null
+          payment_time: string | null
+          payment_zone: string | null
+          quality_score: number | null
+          relevance_score: number | null
+          renewal_date: string | null
+          renewal_type: string | null
+          session_end: string | null
+          session_start: string | null
+          sign_condition: string | null
+          sign_obstruction: string | null
+          sign_readable: boolean | null
+          ticket_id: string | null
+          user_id: string | null
+          validates_defense: boolean | null
+          validation_notes: string | null
+        }
+        Insert: {
+          analysis_summary?: string | null
+          analyzed_at?: string | null
+          confirmation_number?: string | null
+          created_at?: string | null
+          effective_date?: string | null
+          evidence_category?: string | null
+          evidence_type: string
+          extracted_data?: Json | null
+          extracted_text?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          payment_amount?: number | null
+          payment_app?: string | null
+          payment_time?: string | null
+          payment_zone?: string | null
+          quality_score?: number | null
+          relevance_score?: number | null
+          renewal_date?: string | null
+          renewal_type?: string | null
+          session_end?: string | null
+          session_start?: string | null
+          sign_condition?: string | null
+          sign_obstruction?: string | null
+          sign_readable?: boolean | null
+          ticket_id?: string | null
+          user_id?: string | null
+          validates_defense?: boolean | null
+          validation_notes?: string | null
+        }
+        Update: {
+          analysis_summary?: string | null
+          analyzed_at?: string | null
+          confirmation_number?: string | null
+          created_at?: string | null
+          effective_date?: string | null
+          evidence_category?: string | null
+          evidence_type?: string
+          extracted_data?: Json | null
+          extracted_text?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          payment_amount?: number | null
+          payment_app?: string | null
+          payment_time?: string | null
+          payment_zone?: string | null
+          quality_score?: number | null
+          relevance_score?: number | null
+          renewal_date?: string | null
+          renewal_type?: string | null
+          session_end?: string | null
+          session_start?: string | null
+          sign_condition?: string | null
+          sign_obstruction?: string | null
+          sign_readable?: boolean | null
+          ticket_id?: string | null
+          user_id?: string | null
+          validates_defense?: boolean | null
+          validation_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_analysis_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "detected_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      foia_block_hourly: {
+        Row: {
+          block_id: string
+          day_of_week: number
+          hour: number
+          ticket_count: number
+          violation_category: string
+        }
+        Insert: {
+          block_id: string
+          day_of_week: number
+          hour: number
+          ticket_count?: number
+          violation_category: string
+        }
+        Update: {
+          block_id?: string
+          day_of_week?: number
+          hour?: number
+          ticket_count?: number
+          violation_category?: string
+        }
+        Relationships: []
+      }
+      foia_block_monthly: {
+        Row: {
+          block_id: string
+          month: number
+          ticket_count: number
+          violation_category: string
+        }
+        Insert: {
+          block_id: string
+          month: number
+          ticket_count?: number
+          violation_category: string
+        }
+        Update: {
+          block_id?: string
+          month?: number
+          ticket_count?: number
+          violation_category?: string
+        }
+        Relationships: []
+      }
+      foia_block_stats: {
+        Row: {
+          block_id: string
+          dismissed_count: number
+          fines_base: number
+          fines_late: number
+          paid_count: number
+          ticket_count: number
+          violation_category: string
+          year: number
+        }
+        Insert: {
+          block_id: string
+          dismissed_count?: number
+          fines_base?: number
+          fines_late?: number
+          paid_count?: number
+          ticket_count?: number
+          violation_category: string
+          year: number
+        }
+        Update: {
+          block_id?: string
+          dismissed_count?: number
+          fines_base?: number
+          fines_late?: number
+          paid_count?: number
+          ticket_count?: number
+          violation_category?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      foia_history_requests: {
+        Row: {
+          ai_parse_model: string | null
+          ai_parse_raw: string | null
+          ai_parsed_at: string | null
+          consent_electronic_process: boolean | null
+          consent_given: boolean
+          consent_given_at: string | null
+          consent_ip: string | null
+          created_at: string
+          email: string
+          foia_email_id: string | null
+          foia_sent_at: string | null
+          id: string
+          license_plate: string
+          license_state: string
+          name: string
+          notes: string | null
+          parsed_tickets: Json | null
+          reference_id: string | null
+          resend_message_id: string | null
+          response_data: Json | null
+          response_received_at: string | null
+          signature_agreed_text: string | null
+          signature_name: string | null
+          signature_user_agent: string | null
+          source: string
+          status: string
+          ticket_count: number | null
+          total_fines: number | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          ai_parse_model?: string | null
+          ai_parse_raw?: string | null
+          ai_parsed_at?: string | null
+          consent_electronic_process?: boolean | null
+          consent_given?: boolean
+          consent_given_at?: string | null
+          consent_ip?: string | null
+          created_at?: string
+          email: string
+          foia_email_id?: string | null
+          foia_sent_at?: string | null
+          id?: string
+          license_plate: string
+          license_state?: string
+          name: string
+          notes?: string | null
+          parsed_tickets?: Json | null
+          reference_id?: string | null
+          resend_message_id?: string | null
+          response_data?: Json | null
+          response_received_at?: string | null
+          signature_agreed_text?: string | null
+          signature_name?: string | null
+          signature_user_agent?: string | null
+          source?: string
+          status?: string
+          ticket_count?: number | null
+          total_fines?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          ai_parse_model?: string | null
+          ai_parse_raw?: string | null
+          ai_parsed_at?: string | null
+          consent_electronic_process?: boolean | null
+          consent_given?: boolean
+          consent_given_at?: string | null
+          consent_ip?: string | null
+          created_at?: string
+          email?: string
+          foia_email_id?: string | null
+          foia_sent_at?: string | null
+          id?: string
+          license_plate?: string
+          license_state?: string
+          name?: string
+          notes?: string | null
+          parsed_tickets?: Json | null
+          reference_id?: string | null
+          resend_message_id?: string | null
+          response_data?: Json | null
+          response_received_at?: string | null
+          signature_agreed_text?: string | null
+          signature_name?: string | null
+          signature_user_agent?: string | null
+          source?: string
+          status?: string
+          ticket_count?: number | null
+          total_fines?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      foia_unmatched_responses: {
+        Row: {
+          attachment_count: number | null
+          attachment_metadata: Json | null
+          body_preview: string | null
+          created_at: string
+          email_headers: Json | null
+          extracted_plate: string | null
+          extracted_reference_id: string | null
+          extracted_ticket_number: string | null
+          from_email: string
+          full_body: string | null
+          id: string
+          match_attempts: Json | null
+          matched_foia_request_id: string | null
+          matched_history_request_id: string | null
+          notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          subject: string | null
+          to_email: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachment_count?: number | null
+          attachment_metadata?: Json | null
+          body_preview?: string | null
+          created_at?: string
+          email_headers?: Json | null
+          extracted_plate?: string | null
+          extracted_reference_id?: string | null
+          extracted_ticket_number?: string | null
+          from_email: string
+          full_body?: string | null
+          id?: string
+          match_attempts?: Json | null
+          matched_foia_request_id?: string | null
+          matched_history_request_id?: string | null
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject?: string | null
+          to_email?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachment_count?: number | null
+          attachment_metadata?: Json | null
+          body_preview?: string | null
+          created_at?: string
+          email_headers?: Json | null
+          extracted_plate?: string | null
+          extracted_reference_id?: string | null
+          extracted_ticket_number?: string | null
+          from_email?: string
+          full_body?: string | null
+          id?: string
+          match_attempts?: Json | null
+          matched_foia_request_id?: string | null
+          matched_history_request_id?: string | null
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject?: string | null
+          to_email?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      foia_zip_stats: {
+        Row: {
+          dismissed_count: number
+          fines_base: number
+          paid_count: number
+          ticket_count: number
+          violation_category: string
+          year: number
+          zip_code: string
+        }
+        Insert: {
+          dismissed_count?: number
+          fines_base?: number
+          paid_count?: number
+          ticket_count?: number
+          violation_category: string
+          year: number
+          zip_code: string
+        }
+        Update: {
+          dismissed_count?: number
+          fines_base?: number
+          paid_count?: number
+          ticket_count?: number
+          violation_category?: string
+          year?: number
+          zip_code?: string
+        }
+        Relationships: []
+      }
+      funnel_leads: {
+        Row: {
+          allowed_ticket_types: Json | null
+          billing_plan: string | null
+          city_sticker_expiry: string | null
+          consent_checked: boolean | null
+          converted_at: string | null
+          converted_user_id: string | null
+          created_at: string
+          email: string | null
+          email_on_approval_needed: boolean | null
+          email_on_letter_mailed: boolean | null
+          email_on_ticket_found: boolean | null
+          first_name: string | null
+          home_address_full: string | null
+          id: string
+          last_name: string | null
+          last_step_reached: string | null
+          license_plate: string | null
+          license_state: string | null
+          mailing_address: string | null
+          mailing_city: string | null
+          mailing_state: string | null
+          mailing_zip: string | null
+          phone_number: string | null
+          plate_expiry: string | null
+          referrer: string | null
+          session_id: string
+          updated_at: string
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          vehicle_color: string | null
+          vehicle_make: string | null
+          vehicle_model: string | null
+          vehicle_year: string | null
+        }
+        Insert: {
+          allowed_ticket_types?: Json | null
+          billing_plan?: string | null
+          city_sticker_expiry?: string | null
+          consent_checked?: boolean | null
+          converted_at?: string | null
+          converted_user_id?: string | null
+          created_at?: string
+          email?: string | null
+          email_on_approval_needed?: boolean | null
+          email_on_letter_mailed?: boolean | null
+          email_on_ticket_found?: boolean | null
+          first_name?: string | null
+          home_address_full?: string | null
+          id?: string
+          last_name?: string | null
+          last_step_reached?: string | null
+          license_plate?: string | null
+          license_state?: string | null
+          mailing_address?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_zip?: string | null
+          phone_number?: string | null
+          plate_expiry?: string | null
+          referrer?: string | null
+          session_id: string
+          updated_at?: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          vehicle_color?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: string | null
+        }
+        Update: {
+          allowed_ticket_types?: Json | null
+          billing_plan?: string | null
+          city_sticker_expiry?: string | null
+          consent_checked?: boolean | null
+          converted_at?: string | null
+          converted_user_id?: string | null
+          created_at?: string
+          email?: string | null
+          email_on_approval_needed?: boolean | null
+          email_on_letter_mailed?: boolean | null
+          email_on_ticket_found?: boolean | null
+          first_name?: string | null
+          home_address_full?: string | null
+          id?: string
+          last_name?: string | null
+          last_step_reached?: string | null
+          license_plate?: string | null
+          license_state?: string | null
+          mailing_address?: string | null
+          mailing_city?: string | null
+          mailing_state?: string | null
+          mailing_zip?: string | null
+          phone_number?: string | null
+          plate_expiry?: string | null
+          referrer?: string | null
+          session_id?: string
+          updated_at?: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          vehicle_color?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: string | null
+        }
+        Relationships: []
+      }
+      gps_block_corrections: {
+        Row: {
+          block_centroid_lat: number | null
+          block_centroid_lng: number | null
+          block_number: number
+          east_count: number | null
+          id: number
+          last_updated: string | null
+          north_count: number | null
+          offset_lat: number | null
+          offset_lng: number | null
+          sample_count: number | null
+          south_count: number | null
+          street_direction: string
+          street_name: string
+          west_count: number | null
+        }
+        Insert: {
+          block_centroid_lat?: number | null
+          block_centroid_lng?: number | null
+          block_number: number
+          east_count?: number | null
+          id?: number
+          last_updated?: string | null
+          north_count?: number | null
+          offset_lat?: number | null
+          offset_lng?: number | null
+          sample_count?: number | null
+          south_count?: number | null
+          street_direction: string
+          street_name: string
+          west_count?: number | null
+        }
+        Update: {
+          block_centroid_lat?: number | null
+          block_centroid_lng?: number | null
+          block_number?: number
+          east_count?: number | null
+          id?: number
+          last_updated?: string | null
+          north_count?: number | null
+          offset_lat?: number | null
+          offset_lng?: number | null
+          sample_count?: number | null
+          south_count?: number | null
+          street_direction?: string
+          street_name?: string
+          west_count?: number | null
+        }
+        Relationships: []
+      }
+      guarantee_claims: {
+        Row: {
+          account_email: string | null
+          account_phone: string | null
+          created_at: string
+          deny_reason: string | null
+          docs_provided_on_time: boolean
+          had_eligible_ticket_contested: boolean
+          id: string
+          membership_remained_active: boolean
+          notes: string | null
+          refund_amount_cents: number | null
+          refund_issued_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          stripe_refund_id: string | null
+          submitted_at: string
+          ticket_ids: string | null
+          tickets_after_membership_start: boolean
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          account_email?: string | null
+          account_phone?: string | null
+          created_at?: string
+          deny_reason?: string | null
+          docs_provided_on_time?: boolean
+          had_eligible_ticket_contested?: boolean
+          id?: string
+          membership_remained_active?: boolean
+          notes?: string | null
+          refund_amount_cents?: number | null
+          refund_issued_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          submitted_at?: string
+          ticket_ids?: string | null
+          tickets_after_membership_start?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          account_email?: string | null
+          account_phone?: string | null
+          created_at?: string
+          deny_reason?: string | null
+          docs_provided_on_time?: boolean
+          had_eligible_ticket_contested?: boolean
+          id?: string
+          membership_remained_active?: boolean
+          notes?: string | null
+          refund_amount_cents?: number | null
+          refund_issued_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          submitted_at?: string
+          ticket_ids?: string | null
+          tickets_after_membership_start?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      hearing_officer_patterns: {
+        Row: {
+          avg_hearing_duration_minutes: number | null
+          created_at: string | null
+          defense_acceptance: Json | null
+          evidence_preferences: Json | null
+          id: string
+          last_updated: string | null
+          officer_id: string
+          officer_name: string | null
+          overall_dismissal_rate: number | null
+          pattern_notes: string[] | null
+          prefers_detailed_evidence: boolean | null
+          strictness_score: number | null
+          tends_toward: string | null
+          total_cases: number | null
+          total_dismissals: number | null
+          total_upheld: number | null
+          violation_patterns: Json | null
+        }
+        Insert: {
+          avg_hearing_duration_minutes?: number | null
+          created_at?: string | null
+          defense_acceptance?: Json | null
+          evidence_preferences?: Json | null
+          id?: string
+          last_updated?: string | null
+          officer_id: string
+          officer_name?: string | null
+          overall_dismissal_rate?: number | null
+          pattern_notes?: string[] | null
+          prefers_detailed_evidence?: boolean | null
+          strictness_score?: number | null
+          tends_toward?: string | null
+          total_cases?: number | null
+          total_dismissals?: number | null
+          total_upheld?: number | null
+          violation_patterns?: Json | null
+        }
+        Update: {
+          avg_hearing_duration_minutes?: number | null
+          created_at?: string | null
+          defense_acceptance?: Json | null
+          evidence_preferences?: Json | null
+          id?: string
+          last_updated?: string | null
+          officer_id?: string
+          officer_name?: string | null
+          overall_dismissal_rate?: number | null
+          pattern_notes?: string[] | null
+          prefers_detailed_evidence?: boolean | null
+          strictness_score?: number | null
+          tends_toward?: string | null
+          total_cases?: number | null
+          total_dismissals?: number | null
+          total_upheld?: number | null
+          violation_patterns?: Json | null
+        }
+        Relationships: []
+      }
+      iap_transactions: {
+        Row: {
+          amount_cents: number
+          apple_fee_cents: number
+          created_at: string | null
+          environment: string
+          id: string
+          net_cents: number
+          product_id: string
+          receipt_data: string | null
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          apple_fee_cents: number
+          created_at?: string | null
+          environment?: string
+          id?: string
+          net_cents: number
+          product_id: string
+          receipt_data?: string | null
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          apple_fee_cents?: number
+          created_at?: string | null
+          environment?: string
+          id?: string
+          net_cents?: number
+          product_id?: string
+          receipt_data?: string | null
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      incoming_emails: {
+        Row: {
+          body_html: string | null
+          body_text: string | null
+          contains_info: boolean | null
+          contains_yes: boolean | null
+          created_at: string | null
+          from_email: string
+          id: string
+          matched_user_email: string | null
+          notification_sent: boolean | null
+          processed: boolean | null
+          subject: string | null
+          user_id: string | null
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string | null
+          contains_info?: boolean | null
+          contains_yes?: boolean | null
+          created_at?: string | null
+          from_email: string
+          id?: string
+          matched_user_email?: string | null
+          notification_sent?: boolean | null
+          processed?: boolean | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string | null
+          contains_info?: boolean | null
+          contains_yes?: boolean | null
+          created_at?: string | null
+          from_email?: string
+          id?: string
+          matched_user_email?: string | null
+          notification_sent?: boolean | null
+          processed?: boolean | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       incoming_sms: {
         Row: {
           clicksend_data: Json | null
@@ -689,6 +2921,69 @@ export type Database = {
           processed?: boolean | null
           updated_at?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      industrial_parking_zones: {
+        Row: {
+          address_range_high: number | null
+          address_range_low: number | null
+          created_at: string | null
+          cross_street_high: string | null
+          cross_street_low: string | null
+          id: number
+          notes: string | null
+          restriction_days: string | null
+          restriction_hours: string | null
+          source_ordinance: string | null
+          source_type: string | null
+          status: string | null
+          street_direction: string | null
+          street_name: string
+          street_type: string | null
+          updated_at: string | null
+          ward: number | null
+          zone: string
+        }
+        Insert: {
+          address_range_high?: number | null
+          address_range_low?: number | null
+          created_at?: string | null
+          cross_street_high?: string | null
+          cross_street_low?: string | null
+          id?: number
+          notes?: string | null
+          restriction_days?: string | null
+          restriction_hours?: string | null
+          source_ordinance?: string | null
+          source_type?: string | null
+          status?: string | null
+          street_direction?: string | null
+          street_name: string
+          street_type?: string | null
+          updated_at?: string | null
+          ward?: number | null
+          zone: string
+        }
+        Update: {
+          address_range_high?: number | null
+          address_range_low?: number | null
+          created_at?: string | null
+          cross_street_high?: string | null
+          cross_street_low?: string | null
+          id?: number
+          notes?: string | null
+          restriction_days?: string | null
+          restriction_hours?: string | null
+          source_ordinance?: string | null
+          source_type?: string | null
+          status?: string | null
+          street_direction?: string | null
+          street_name?: string
+          street_type?: string | null
+          updated_at?: string | null
+          ward?: number | null
+          zone?: string
         }
         Relationships: []
       }
@@ -918,6 +3213,246 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_stats: {
+        Row: {
+          category: string
+          created_at: string | null
+          current_win_rate: number | null
+          id: string
+          last_30_days_cases: number | null
+          last_30_days_win_rate: number | null
+          last_updated: string | null
+          losses: number | null
+          previous_win_rate: number | null
+          subcategory: string
+          total_cases: number | null
+          win_rate_trend: string | null
+          wins: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          current_win_rate?: number | null
+          id: string
+          last_30_days_cases?: number | null
+          last_30_days_win_rate?: number | null
+          last_updated?: string | null
+          losses?: number | null
+          previous_win_rate?: number | null
+          subcategory: string
+          total_cases?: number | null
+          win_rate_trend?: string | null
+          wins?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          current_win_rate?: number | null
+          id?: string
+          last_30_days_cases?: number | null
+          last_30_days_win_rate?: number | null
+          last_updated?: string | null
+          losses?: number | null
+          previous_win_rate?: number | null
+          subcategory?: string
+          total_cases?: number | null
+          win_rate_trend?: string | null
+          wins?: number | null
+        }
+        Relationships: []
+      }
+      letter_generations: {
+        Row: {
+          amount_paid: number | null
+          created_at: string | null
+          generation_month: string | null
+          id: string
+          ip_address: string | null
+          is_free_monthly: boolean | null
+          payment_intent_id: string | null
+          ticket_number: string | null
+          user_id: string | null
+          violation_code: string
+        }
+        Insert: {
+          amount_paid?: number | null
+          created_at?: string | null
+          generation_month?: string | null
+          id?: string
+          ip_address?: string | null
+          is_free_monthly?: boolean | null
+          payment_intent_id?: string | null
+          ticket_number?: string | null
+          user_id?: string | null
+          violation_code: string
+        }
+        Update: {
+          amount_paid?: number | null
+          created_at?: string | null
+          generation_month?: string | null
+          id?: string
+          ip_address?: string | null
+          is_free_monthly?: boolean | null
+          payment_intent_id?: string | null
+          ticket_number?: string | null
+          user_id?: string | null
+          violation_code?: string
+        }
+        Relationships: []
+      }
+      letter_quality_scores: {
+        Row: {
+          argument_strength: number | null
+          completeness: number | null
+          confidence_level: number | null
+          created_at: string | null
+          evidence_quality: number | null
+          id: string
+          improvement_suggestions: Json | null
+          legal_accuracy: number | null
+          letter_id: string | null
+          overall_score: number | null
+          percentile_rank: number | null
+          personalization: number | null
+          predicted_win_probability: number | null
+          score_breakdown: Json | null
+          scored_at: string | null
+          ticket_id: string | null
+        }
+        Insert: {
+          argument_strength?: number | null
+          completeness?: number | null
+          confidence_level?: number | null
+          created_at?: string | null
+          evidence_quality?: number | null
+          id?: string
+          improvement_suggestions?: Json | null
+          legal_accuracy?: number | null
+          letter_id?: string | null
+          overall_score?: number | null
+          percentile_rank?: number | null
+          personalization?: number | null
+          predicted_win_probability?: number | null
+          score_breakdown?: Json | null
+          scored_at?: string | null
+          ticket_id?: string | null
+        }
+        Update: {
+          argument_strength?: number | null
+          completeness?: number | null
+          confidence_level?: number | null
+          created_at?: string | null
+          evidence_quality?: number | null
+          id?: string
+          improvement_suggestions?: Json | null
+          legal_accuracy?: number | null
+          letter_id?: string | null
+          overall_score?: number | null
+          percentile_rank?: number | null
+          personalization?: number | null
+          predicted_win_probability?: number | null
+          score_breakdown?: Json | null
+          scored_at?: string | null
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "letter_quality_scores_letter_id_fkey"
+            columns: ["letter_id"]
+            isOneToOne: false
+            referencedRelation: "contest_letters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "letter_quality_scores_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "detected_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      liquor_licenses: {
+        Row: {
+          account_number: string | null
+          address: string | null
+          business_activity: string | null
+          city: string | null
+          community_area: number | null
+          community_area_name: string | null
+          created_at: string | null
+          doing_business_as: string | null
+          id: string
+          latitude: number | null
+          legal_name: string | null
+          license_code: string | null
+          license_description: string | null
+          license_id: string | null
+          license_status: string | null
+          license_term_expiration: string | null
+          license_term_start: string | null
+          location: unknown
+          longitude: number | null
+          neighborhood: string | null
+          police_district: string | null
+          state: string | null
+          ward: number | null
+          zip_code: string | null
+        }
+        Insert: {
+          account_number?: string | null
+          address?: string | null
+          business_activity?: string | null
+          city?: string | null
+          community_area?: number | null
+          community_area_name?: string | null
+          created_at?: string | null
+          doing_business_as?: string | null
+          id: string
+          latitude?: number | null
+          legal_name?: string | null
+          license_code?: string | null
+          license_description?: string | null
+          license_id?: string | null
+          license_status?: string | null
+          license_term_expiration?: string | null
+          license_term_start?: string | null
+          location?: unknown
+          longitude?: number | null
+          neighborhood?: string | null
+          police_district?: string | null
+          state?: string | null
+          ward?: number | null
+          zip_code?: string | null
+        }
+        Update: {
+          account_number?: string | null
+          address?: string | null
+          business_activity?: string | null
+          city?: string | null
+          community_area?: number | null
+          community_area_name?: string | null
+          created_at?: string | null
+          doing_business_as?: string | null
+          id?: string
+          latitude?: number | null
+          legal_name?: string | null
+          license_code?: string | null
+          license_description?: string | null
+          license_id?: string | null
+          license_status?: string | null
+          license_term_expiration?: string | null
+          license_term_start?: string | null
+          location?: unknown
+          longitude?: number | null
+          neighborhood?: string | null
+          police_district?: string | null
+          state?: string | null
+          ward?: number | null
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
       message_audit_log: {
         Row: {
           context_data: Json
@@ -1017,6 +3552,177 @@ export type Database = {
           },
         ]
       }
+      metered_parking_locations: {
+        Row: {
+          address: string
+          address_num: number | null
+          block_end: number | null
+          block_start: number | null
+          created_at: string | null
+          direction: string | null
+          foia_updated_at: string | null
+          foia_verified: boolean | null
+          id: number
+          is_clz: boolean | null
+          is_lot: boolean | null
+          is_seasonal: boolean | null
+          latitude: number
+          longitude: number
+          meter_id: number | null
+          meter_type: string | null
+          pay_box_address: number | null
+          rate: number | null
+          rate_description: string | null
+          rate_package_id: number | null
+          rate_zone: number | null
+          rush_hour_schedule: string | null
+          side_of_street: string | null
+          source_updated_at: string | null
+          spaces: number | null
+          status: string | null
+          street_name: string | null
+          street_suffix: string | null
+          sunday_schedule: string | null
+          time_limit_hours: number | null
+        }
+        Insert: {
+          address: string
+          address_num?: number | null
+          block_end?: number | null
+          block_start?: number | null
+          created_at?: string | null
+          direction?: string | null
+          foia_updated_at?: string | null
+          foia_verified?: boolean | null
+          id?: never
+          is_clz?: boolean | null
+          is_lot?: boolean | null
+          is_seasonal?: boolean | null
+          latitude: number
+          longitude: number
+          meter_id?: number | null
+          meter_type?: string | null
+          pay_box_address?: number | null
+          rate?: number | null
+          rate_description?: string | null
+          rate_package_id?: number | null
+          rate_zone?: number | null
+          rush_hour_schedule?: string | null
+          side_of_street?: string | null
+          source_updated_at?: string | null
+          spaces?: number | null
+          status?: string | null
+          street_name?: string | null
+          street_suffix?: string | null
+          sunday_schedule?: string | null
+          time_limit_hours?: number | null
+        }
+        Update: {
+          address?: string
+          address_num?: number | null
+          block_end?: number | null
+          block_start?: number | null
+          created_at?: string | null
+          direction?: string | null
+          foia_updated_at?: string | null
+          foia_verified?: boolean | null
+          id?: never
+          is_clz?: boolean | null
+          is_lot?: boolean | null
+          is_seasonal?: boolean | null
+          latitude?: number
+          longitude?: number
+          meter_id?: number | null
+          meter_type?: string | null
+          pay_box_address?: number | null
+          rate?: number | null
+          rate_description?: string | null
+          rate_package_id?: number | null
+          rate_zone?: number | null
+          rush_hour_schedule?: string | null
+          side_of_street?: string | null
+          source_updated_at?: string | null
+          spaces?: number | null
+          status?: string | null
+          street_name?: string | null
+          street_suffix?: string | null
+          sunday_schedule?: string | null
+          time_limit_hours?: number | null
+        }
+        Relationships: []
+      }
+      metered_parking_sync: {
+        Row: {
+          active_count: number | null
+          id: number
+          notes: string | null
+          source: string
+          synced_at: string | null
+          total_imported: number | null
+          total_spaces: number | null
+        }
+        Insert: {
+          active_count?: number | null
+          id?: never
+          notes?: string | null
+          source: string
+          synced_at?: string | null
+          total_imported?: number | null
+          total_spaces?: number | null
+        }
+        Update: {
+          active_count?: number | null
+          id?: never
+          notes?: string | null
+          source?: string
+          synced_at?: string | null
+          total_imported?: number | null
+          total_spaces?: number | null
+        }
+        Relationships: []
+      }
+      monitored_plates: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_leased_or_company: boolean
+          last_checked_at: string | null
+          plate: string
+          state: string
+          status: string
+          updated_at: string | null
+          user_id: string
+          worker_claimed_at: string | null
+          worker_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_leased_or_company?: boolean
+          last_checked_at?: string | null
+          plate: string
+          state?: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+          worker_claimed_at?: string | null
+          worker_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_leased_or_company?: boolean
+          last_checked_at?: string | null
+          plate?: string
+          state?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          worker_claimed_at?: string | null
+          worker_id?: string | null
+        }
+        Relationships: []
+      }
       notification_log: {
         Row: {
           channel: string
@@ -1046,6 +3752,75 @@ export type Database = {
           metadata?: Json | null
           notification_type?: string
           sent_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      notification_logs: {
+        Row: {
+          attempt_count: number | null
+          category: string
+          content_preview: string | null
+          created_at: string | null
+          delivered_at: string | null
+          email: string | null
+          external_id: string | null
+          failed_at: string | null
+          id: string
+          last_error: string | null
+          max_attempts: number | null
+          metadata: Json | null
+          next_retry_at: string | null
+          notification_type: string
+          phone: string | null
+          sent_at: string | null
+          status: string
+          subject: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempt_count?: number | null
+          category: string
+          content_preview?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          email?: string | null
+          external_id?: string | null
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number | null
+          metadata?: Json | null
+          next_retry_at?: string | null
+          notification_type: string
+          phone?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempt_count?: number | null
+          category?: string
+          content_preview?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          email?: string | null
+          external_id?: string | null
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number | null
+          metadata?: Json | null
+          next_retry_at?: string | null
+          notification_type?: string
+          phone?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -1106,6 +3881,270 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      parking_call_alerts: {
+        Row: {
+          address: string | null
+          alert_type: string
+          called_at: string
+          error: string | null
+          id: number
+          message: string
+          parking_session_id: string | null
+          phone_number: string
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          alert_type: string
+          called_at?: string
+          error?: string | null
+          id?: never
+          message: string
+          parking_session_id?: string | null
+          phone_number: string
+          success?: boolean
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          alert_type?: string
+          called_at?: string
+          error?: string | null
+          id?: never
+          message?: string
+          parking_session_id?: string | null
+          phone_number?: string
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      parking_diagnostics: {
+        Row: {
+          compass_confidence: number | null
+          compass_heading: number | null
+          created_at: string
+          effective_heading: number | null
+          forced_parity: string | null
+          gps_heading: number | null
+          gps_source: string | null
+          heading_confirmed_snap: boolean | null
+          heading_orientation: string | null
+          heading_source: string | null
+          id: number
+          location_error_meters: number | null
+          metered_block: boolean | null
+          meters_on_opposite_side: number | null
+          meters_on_user_side: number | null
+          native_meta: Json | null
+          near_intersection: boolean | null
+          nominatim_agreed: boolean | null
+          nominatim_orientation: string | null
+          nominatim_overrode: boolean | null
+          nominatim_street: string | null
+          parity_forced: boolean | null
+          raw_accuracy_meters: number | null
+          raw_lat: number
+          raw_lng: number
+          resolved_address: string | null
+          resolved_house_number: number | null
+          resolved_side: string | null
+          resolved_street_direction: string | null
+          resolved_street_name: string | null
+          side_correct: boolean | null
+          side_source: string | null
+          snap_bearing: number | null
+          snap_candidates_count: number | null
+          snap_distance_meters: number | null
+          snap_source: string | null
+          snap_street_name: string | null
+          snapped_lat: number | null
+          snapped_lng: number | null
+          street_correct: boolean | null
+          user_confirmed_block: boolean | null
+          user_confirmed_parking: boolean | null
+          user_feedback_at: string | null
+          user_id: string | null
+          user_reported_side: string | null
+          walkaway_details: string | null
+          walkaway_guard_fired: boolean | null
+        }
+        Insert: {
+          compass_confidence?: number | null
+          compass_heading?: number | null
+          created_at?: string
+          effective_heading?: number | null
+          forced_parity?: string | null
+          gps_heading?: number | null
+          gps_source?: string | null
+          heading_confirmed_snap?: boolean | null
+          heading_orientation?: string | null
+          heading_source?: string | null
+          id?: number
+          location_error_meters?: number | null
+          metered_block?: boolean | null
+          meters_on_opposite_side?: number | null
+          meters_on_user_side?: number | null
+          native_meta?: Json | null
+          near_intersection?: boolean | null
+          nominatim_agreed?: boolean | null
+          nominatim_orientation?: string | null
+          nominatim_overrode?: boolean | null
+          nominatim_street?: string | null
+          parity_forced?: boolean | null
+          raw_accuracy_meters?: number | null
+          raw_lat: number
+          raw_lng: number
+          resolved_address?: string | null
+          resolved_house_number?: number | null
+          resolved_side?: string | null
+          resolved_street_direction?: string | null
+          resolved_street_name?: string | null
+          side_correct?: boolean | null
+          side_source?: string | null
+          snap_bearing?: number | null
+          snap_candidates_count?: number | null
+          snap_distance_meters?: number | null
+          snap_source?: string | null
+          snap_street_name?: string | null
+          snapped_lat?: number | null
+          snapped_lng?: number | null
+          street_correct?: boolean | null
+          user_confirmed_block?: boolean | null
+          user_confirmed_parking?: boolean | null
+          user_feedback_at?: string | null
+          user_id?: string | null
+          user_reported_side?: string | null
+          walkaway_details?: string | null
+          walkaway_guard_fired?: boolean | null
+        }
+        Update: {
+          compass_confidence?: number | null
+          compass_heading?: number | null
+          created_at?: string
+          effective_heading?: number | null
+          forced_parity?: string | null
+          gps_heading?: number | null
+          gps_source?: string | null
+          heading_confirmed_snap?: boolean | null
+          heading_orientation?: string | null
+          heading_source?: string | null
+          id?: number
+          location_error_meters?: number | null
+          metered_block?: boolean | null
+          meters_on_opposite_side?: number | null
+          meters_on_user_side?: number | null
+          native_meta?: Json | null
+          near_intersection?: boolean | null
+          nominatim_agreed?: boolean | null
+          nominatim_orientation?: string | null
+          nominatim_overrode?: boolean | null
+          nominatim_street?: string | null
+          parity_forced?: boolean | null
+          raw_accuracy_meters?: number | null
+          raw_lat?: number
+          raw_lng?: number
+          resolved_address?: string | null
+          resolved_house_number?: number | null
+          resolved_side?: string | null
+          resolved_street_direction?: string | null
+          resolved_street_name?: string | null
+          side_correct?: boolean | null
+          side_source?: string | null
+          snap_bearing?: number | null
+          snap_candidates_count?: number | null
+          snap_distance_meters?: number | null
+          snap_source?: string | null
+          snap_street_name?: string | null
+          snapped_lat?: number | null
+          snapped_lng?: number | null
+          street_correct?: boolean | null
+          user_confirmed_block?: boolean | null
+          user_confirmed_parking?: boolean | null
+          user_feedback_at?: string | null
+          user_id?: string | null
+          user_reported_side?: string | null
+          walkaway_details?: string | null
+          walkaway_guard_fired?: boolean | null
+        }
+        Relationships: []
+      }
+      parking_location_history: {
+        Row: {
+          address: string | null
+          cleared_at: string | null
+          created_at: string | null
+          departure_accuracy_meters: number | null
+          departure_confirmed_at: string | null
+          departure_distance_meters: number | null
+          departure_latitude: number | null
+          departure_longitude: number | null
+          id: string
+          latitude: number
+          longitude: number
+          on_snow_route: boolean | null
+          on_winter_ban_street: boolean | null
+          parked_at: string
+          permit_restriction_schedule: string | null
+          permit_zone: string | null
+          snow_route_name: string | null
+          street_cleaning_date: string | null
+          street_cleaning_section: string | null
+          street_cleaning_ward: string | null
+          user_id: string
+          winter_ban_street_name: string | null
+        }
+        Insert: {
+          address?: string | null
+          cleared_at?: string | null
+          created_at?: string | null
+          departure_accuracy_meters?: number | null
+          departure_confirmed_at?: string | null
+          departure_distance_meters?: number | null
+          departure_latitude?: number | null
+          departure_longitude?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          on_snow_route?: boolean | null
+          on_winter_ban_street?: boolean | null
+          parked_at?: string
+          permit_restriction_schedule?: string | null
+          permit_zone?: string | null
+          snow_route_name?: string | null
+          street_cleaning_date?: string | null
+          street_cleaning_section?: string | null
+          street_cleaning_ward?: string | null
+          user_id: string
+          winter_ban_street_name?: string | null
+        }
+        Update: {
+          address?: string | null
+          cleared_at?: string | null
+          created_at?: string | null
+          departure_accuracy_meters?: number | null
+          departure_confirmed_at?: string | null
+          departure_distance_meters?: number | null
+          departure_latitude?: number | null
+          departure_longitude?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          on_snow_route?: boolean | null
+          on_winter_ban_street?: boolean | null
+          parked_at?: string
+          permit_restriction_schedule?: string | null
+          permit_zone?: string | null
+          snow_route_name?: string | null
+          street_cleaning_date?: string | null
+          street_cleaning_section?: string | null
+          street_cleaning_ward?: string | null
+          user_id?: string
+          winter_ban_street_name?: string | null
+        }
+        Relationships: []
       }
       parking_permit_zones: {
         Row: {
@@ -1185,6 +4224,99 @@ export type Database = {
           last_synced_at?: string
           sync_status?: string
           total_records?: number
+        }
+        Relationships: []
+      }
+      parking_quality_reports: {
+        Row: {
+          auto_checks: number
+          autolabel_mismatch_count: number
+          avg_raw_accuracy_m: number | null
+          coord_like_address_count: number
+          generated_at: string | null
+          id: string
+          manual_checks: number
+          pct_accuracy_over_30m: number | null
+          pct_accuracy_under_10m: number | null
+          pct_heading_confirmed: number | null
+          pct_no_snap: number | null
+          pct_nominatim_overrode: number | null
+          pct_parity_forced: number | null
+          pct_snap_over_20m: number | null
+          pct_street_correct_when_confirmed: number | null
+          pct_walkaway_guard_fired: number | null
+          prev_window_total: number | null
+          raw_metrics: Json | null
+          side_correct_count: number
+          side_wrong_count: number
+          stale_parks_no_departure_count: number
+          street_correct_count: number
+          street_wrong_count: number
+          total_checks: number
+          trend_notes: Json | null
+          user_feedback_count: number
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          auto_checks?: number
+          autolabel_mismatch_count?: number
+          avg_raw_accuracy_m?: number | null
+          coord_like_address_count?: number
+          generated_at?: string | null
+          id?: string
+          manual_checks?: number
+          pct_accuracy_over_30m?: number | null
+          pct_accuracy_under_10m?: number | null
+          pct_heading_confirmed?: number | null
+          pct_no_snap?: number | null
+          pct_nominatim_overrode?: number | null
+          pct_parity_forced?: number | null
+          pct_snap_over_20m?: number | null
+          pct_street_correct_when_confirmed?: number | null
+          pct_walkaway_guard_fired?: number | null
+          prev_window_total?: number | null
+          raw_metrics?: Json | null
+          side_correct_count?: number
+          side_wrong_count?: number
+          stale_parks_no_departure_count?: number
+          street_correct_count?: number
+          street_wrong_count?: number
+          total_checks?: number
+          trend_notes?: Json | null
+          user_feedback_count?: number
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          auto_checks?: number
+          autolabel_mismatch_count?: number
+          avg_raw_accuracy_m?: number | null
+          coord_like_address_count?: number
+          generated_at?: string | null
+          id?: string
+          manual_checks?: number
+          pct_accuracy_over_30m?: number | null
+          pct_accuracy_under_10m?: number | null
+          pct_heading_confirmed?: number | null
+          pct_no_snap?: number | null
+          pct_nominatim_overrode?: number | null
+          pct_parity_forced?: number | null
+          pct_snap_over_20m?: number | null
+          pct_street_correct_when_confirmed?: number | null
+          pct_walkaway_guard_fired?: number | null
+          prev_window_total?: number | null
+          raw_metrics?: Json | null
+          side_correct_count?: number
+          side_wrong_count?: number
+          stale_parks_no_departure_count?: number
+          street_correct_count?: number
+          street_wrong_count?: number
+          total_checks?: number
+          trend_notes?: Json | null
+          user_feedback_count?: number
+          window_end?: string
+          window_start?: string
         }
         Relationships: []
       }
@@ -1298,6 +4430,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_checkouts: {
+        Row: {
+          checkout_data: Json
+          completed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+        }
+        Insert: {
+          checkout_data: Json
+          completed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+        }
+        Update: {
+          checkout_data?: Json
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       pending_signups: {
         Row: {
           address: string | null
@@ -1349,6 +4508,72 @@ export type Database = {
           token?: string | null
           vin?: string | null
           zip?: string | null
+        }
+        Relationships: []
+      }
+      permit_zone_block_overrides: {
+        Row: {
+          block_number: number
+          confidence: string
+          created_at: string | null
+          id: number
+          notes: string | null
+          photo_url: string | null
+          raw_sign_text: string | null
+          reported_by: string | null
+          restriction_days: string | null
+          restriction_hours: string | null
+          restriction_schedule: string
+          source: string
+          street_direction: string | null
+          street_name: string
+          street_type: string | null
+          updated_at: string | null
+          verified_at: string | null
+          zone: string
+          zone_type: string
+        }
+        Insert: {
+          block_number: number
+          confidence?: string
+          created_at?: string | null
+          id?: number
+          notes?: string | null
+          photo_url?: string | null
+          raw_sign_text?: string | null
+          reported_by?: string | null
+          restriction_days?: string | null
+          restriction_hours?: string | null
+          restriction_schedule: string
+          source?: string
+          street_direction?: string | null
+          street_name: string
+          street_type?: string | null
+          updated_at?: string | null
+          verified_at?: string | null
+          zone: string
+          zone_type?: string
+        }
+        Update: {
+          block_number?: number
+          confidence?: string
+          created_at?: string | null
+          id?: number
+          notes?: string | null
+          photo_url?: string | null
+          raw_sign_text?: string | null
+          reported_by?: string | null
+          restriction_days?: string | null
+          restriction_hours?: string | null
+          restriction_schedule?: string
+          source?: string
+          street_direction?: string | null
+          street_name?: string
+          street_type?: string | null
+          updated_at?: string | null
+          verified_at?: string | null
+          zone?: string
+          zone_type?: string
         }
         Relationships: []
       }
@@ -1417,6 +4642,1308 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      permit_zone_geocache: {
+        Row: {
+          created_at: string | null
+          geocoded_address: string | null
+          id: number
+          latitude: number
+          longitude: number
+          permit_zone_id: number
+        }
+        Insert: {
+          created_at?: string | null
+          geocoded_address?: string | null
+          id?: number
+          latitude: number
+          longitude: number
+          permit_zone_id: number
+        }
+        Update: {
+          created_at?: string | null
+          geocoded_address?: string | null
+          id?: number
+          latitude?: number
+          longitude?: number
+          permit_zone_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permit_zone_geocache_permit_zone_id_fkey"
+            columns: ["permit_zone_id"]
+            isOneToOne: true
+            referencedRelation: "parking_permit_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permit_zone_geometries: {
+        Row: {
+          address_range_high: number
+          address_range_low: number
+          created_at: string | null
+          geometry: Json
+          id: number
+          odd_even: string | null
+          osm_way_id: number | null
+          properties: Json | null
+          source: string | null
+          street_direction: string
+          street_name: string
+          street_type: string | null
+          zone: number
+        }
+        Insert: {
+          address_range_high: number
+          address_range_low: number
+          created_at?: string | null
+          geometry: Json
+          id?: number
+          odd_even?: string | null
+          osm_way_id?: number | null
+          properties?: Json | null
+          source?: string | null
+          street_direction: string
+          street_name: string
+          street_type?: string | null
+          zone: number
+        }
+        Update: {
+          address_range_high?: number
+          address_range_low?: number
+          created_at?: string | null
+          geometry?: Json
+          id?: number
+          odd_even?: string | null
+          osm_way_id?: number | null
+          properties?: Json | null
+          source?: string | null
+          street_direction?: string
+          street_name?: string
+          street_type?: string | null
+          zone?: number
+        }
+        Relationships: []
+      }
+      permit_zone_hours: {
+        Row: {
+          confidence: string | null
+          created_at: string | null
+          id: number
+          notes: string | null
+          reported_address: string | null
+          reported_by: string | null
+          restriction_days: string
+          restriction_hours: string
+          restriction_schedule: string
+          source: string
+          updated_at: string | null
+          zone: string
+          zone_type: string
+        }
+        Insert: {
+          confidence?: string | null
+          created_at?: string | null
+          id?: number
+          notes?: string | null
+          reported_address?: string | null
+          reported_by?: string | null
+          restriction_days?: string
+          restriction_hours: string
+          restriction_schedule: string
+          source?: string
+          updated_at?: string | null
+          zone: string
+          zone_type?: string
+        }
+        Update: {
+          confidence?: string | null
+          created_at?: string | null
+          id?: number
+          notes?: string | null
+          reported_address?: string | null
+          reported_by?: string | null
+          restriction_days?: string
+          restriction_hours?: string
+          restriction_schedule?: string
+          source?: string
+          updated_at?: string | null
+          zone?: string
+          zone_type?: string
+        }
+        Relationships: []
+      }
+      permit_zone_user_reports: {
+        Row: {
+          address: string | null
+          admin_notes: string | null
+          ai_extracted_schedule: string | null
+          block_number: number | null
+          created_at: string | null
+          current_schedule: string | null
+          exif_latitude: number | null
+          exif_longitude: number | null
+          gps_distance_meters: number | null
+          id: number
+          latitude: number | null
+          longitude: number | null
+          photo_url: string | null
+          processed_at: string | null
+          raw_sign_text: string | null
+          reported_schedule: string | null
+          status: string
+          street_direction: string | null
+          street_name: string | null
+          street_type: string | null
+          user_id: string | null
+          verification_notes: string | null
+          zone: string
+          zone_type: string
+        }
+        Insert: {
+          address?: string | null
+          admin_notes?: string | null
+          ai_extracted_schedule?: string | null
+          block_number?: number | null
+          created_at?: string | null
+          current_schedule?: string | null
+          exif_latitude?: number | null
+          exif_longitude?: number | null
+          gps_distance_meters?: number | null
+          id?: number
+          latitude?: number | null
+          longitude?: number | null
+          photo_url?: string | null
+          processed_at?: string | null
+          raw_sign_text?: string | null
+          reported_schedule?: string | null
+          status?: string
+          street_direction?: string | null
+          street_name?: string | null
+          street_type?: string | null
+          user_id?: string | null
+          verification_notes?: string | null
+          zone: string
+          zone_type?: string
+        }
+        Update: {
+          address?: string | null
+          admin_notes?: string | null
+          ai_extracted_schedule?: string | null
+          block_number?: number | null
+          created_at?: string | null
+          current_schedule?: string | null
+          exif_latitude?: number | null
+          exif_longitude?: number | null
+          gps_distance_meters?: number | null
+          id?: number
+          latitude?: number | null
+          longitude?: number | null
+          photo_url?: string | null
+          processed_at?: string | null
+          raw_sign_text?: string | null
+          reported_schedule?: string | null
+          status?: string
+          street_direction?: string | null
+          street_name?: string | null
+          street_type?: string | null
+          user_id?: string | null
+          verification_notes?: string | null
+          zone?: string
+          zone_type?: string
+        }
+        Relationships: []
+      }
+      plate_export_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          csv_url: string | null
+          email_sent_to_va: boolean
+          error_message: string | null
+          exported_plates: Json | null
+          id: string
+          plate_count: number
+          status: string
+          va_email: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          csv_url?: string | null
+          email_sent_to_va?: boolean
+          error_message?: string | null
+          exported_plates?: Json | null
+          id?: string
+          plate_count?: number
+          status?: string
+          va_email?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          csv_url?: string | null
+          email_sent_to_va?: boolean
+          error_message?: string | null
+          exported_plates?: Json | null
+          id?: string
+          plate_count?: number
+          status?: string
+          va_email?: string | null
+        }
+        Relationships: []
+      }
+      platform_metrics: {
+        Row: {
+          active_users: number | null
+          average_savings_per_win: number | null
+          avg_days_to_outcome: number | null
+          avg_evidence_per_contest: number | null
+          contests_lost: number | null
+          contests_pending: number | null
+          contests_won: number | null
+          created_at: string | null
+          evidence_submitted: number | null
+          id: string
+          letters_delivered: number | null
+          letters_generated: number | null
+          letters_mailed: number | null
+          metric_date: string
+          new_users: number | null
+          tickets_per_user: number | null
+          total_contests_filed: number | null
+          total_fines_contested: number | null
+          total_savings: number | null
+          win_rates_by_defense: Json | null
+          win_rates_by_violation: Json | null
+          win_rates_by_ward: Json | null
+        }
+        Insert: {
+          active_users?: number | null
+          average_savings_per_win?: number | null
+          avg_days_to_outcome?: number | null
+          avg_evidence_per_contest?: number | null
+          contests_lost?: number | null
+          contests_pending?: number | null
+          contests_won?: number | null
+          created_at?: string | null
+          evidence_submitted?: number | null
+          id?: string
+          letters_delivered?: number | null
+          letters_generated?: number | null
+          letters_mailed?: number | null
+          metric_date: string
+          new_users?: number | null
+          tickets_per_user?: number | null
+          total_contests_filed?: number | null
+          total_fines_contested?: number | null
+          total_savings?: number | null
+          win_rates_by_defense?: Json | null
+          win_rates_by_violation?: Json | null
+          win_rates_by_ward?: Json | null
+        }
+        Update: {
+          active_users?: number | null
+          average_savings_per_win?: number | null
+          avg_days_to_outcome?: number | null
+          avg_evidence_per_contest?: number | null
+          contests_lost?: number | null
+          contests_pending?: number | null
+          contests_won?: number | null
+          created_at?: string | null
+          evidence_submitted?: number | null
+          id?: string
+          letters_delivered?: number | null
+          letters_generated?: number | null
+          letters_mailed?: number | null
+          metric_date?: string
+          new_users?: number | null
+          tickets_per_user?: number | null
+          total_contests_filed?: number | null
+          total_fines_contested?: number | null
+          total_savings?: number | null
+          win_rates_by_defense?: Json | null
+          win_rates_by_violation?: Json | null
+          win_rates_by_ward?: Json | null
+        }
+        Relationships: []
+      }
+      portal_check_results: {
+        Row: {
+          checked_at: string
+          created_at: string
+          current_amount_due: number | null
+          hearing_disposition: string | null
+          id: string
+          issue_date: string | null
+          original_amount: number | null
+          plate: string | null
+          raw_response: Json | null
+          state: string | null
+          ticket_number: string
+          ticket_queue: string | null
+          violation_code: string | null
+          violation_description: string | null
+        }
+        Insert: {
+          checked_at?: string
+          created_at?: string
+          current_amount_due?: number | null
+          hearing_disposition?: string | null
+          id?: string
+          issue_date?: string | null
+          original_amount?: number | null
+          plate?: string | null
+          raw_response?: Json | null
+          state?: string | null
+          ticket_number: string
+          ticket_queue?: string | null
+          violation_code?: string | null
+          violation_description?: string | null
+        }
+        Update: {
+          checked_at?: string
+          created_at?: string
+          current_amount_due?: number | null
+          hearing_disposition?: string | null
+          id?: string
+          issue_date?: string | null
+          original_amount?: number | null
+          plate?: string | null
+          raw_response?: Json | null
+          state?: string | null
+          ticket_number?: string
+          ticket_queue?: string | null
+          violation_code?: string | null
+          violation_description?: string | null
+        }
+        Relationships: []
+      }
+      property_tax_analysis_cache: {
+        Row: {
+          analysis_data: Json
+          cached_at: string
+          created_at: string
+          opportunity_score: number | null
+          pin: string
+          township: string | null
+        }
+        Insert: {
+          analysis_data: Json
+          cached_at?: string
+          created_at?: string
+          opportunity_score?: number | null
+          pin: string
+          township?: string | null
+        }
+        Update: {
+          analysis_data?: Json
+          cached_at?: string
+          created_at?: string
+          opportunity_score?: number | null
+          pin?: string
+          township?: string | null
+        }
+        Relationships: []
+      }
+      property_tax_appeal_cases: {
+        Row: {
+          actual_savings: number | null
+          address: string | null
+          analysis_snapshot: Json | null
+          assessed_value_final: number | null
+          assessed_value_original: number | null
+          assessed_value_target: number | null
+          comparable_quality_score: number | null
+          created_at: string | null
+          decided_at: string | null
+          estimated_savings: number | null
+          filing_deadline: string | null
+          id: string
+          mv_case_strength: string | null
+          notes: string | null
+          outcome: string | null
+          overall_confidence: number | null
+          pdf_generated_at: string | null
+          pdf_url: string | null
+          pin: string
+          pin_formatted: string | null
+          primary_case: string | null
+          property_class: string | null
+          reduction_amount: number | null
+          reduction_percent: number | null
+          status: string | null
+          strategy: string | null
+          submitted_at: string | null
+          tax_year: number
+          township: string | null
+          uni_case_strength: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          actual_savings?: number | null
+          address?: string | null
+          analysis_snapshot?: Json | null
+          assessed_value_final?: number | null
+          assessed_value_original?: number | null
+          assessed_value_target?: number | null
+          comparable_quality_score?: number | null
+          created_at?: string | null
+          decided_at?: string | null
+          estimated_savings?: number | null
+          filing_deadline?: string | null
+          id?: string
+          mv_case_strength?: string | null
+          notes?: string | null
+          outcome?: string | null
+          overall_confidence?: number | null
+          pdf_generated_at?: string | null
+          pdf_url?: string | null
+          pin: string
+          pin_formatted?: string | null
+          primary_case?: string | null
+          property_class?: string | null
+          reduction_amount?: number | null
+          reduction_percent?: number | null
+          status?: string | null
+          strategy?: string | null
+          submitted_at?: string | null
+          tax_year: number
+          township?: string | null
+          uni_case_strength?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          actual_savings?: number | null
+          address?: string | null
+          analysis_snapshot?: Json | null
+          assessed_value_final?: number | null
+          assessed_value_original?: number | null
+          assessed_value_target?: number | null
+          comparable_quality_score?: number | null
+          created_at?: string | null
+          decided_at?: string | null
+          estimated_savings?: number | null
+          filing_deadline?: string | null
+          id?: string
+          mv_case_strength?: string | null
+          notes?: string | null
+          outcome?: string | null
+          overall_confidence?: number | null
+          pdf_generated_at?: string | null
+          pdf_url?: string | null
+          pin?: string
+          pin_formatted?: string | null
+          primary_case?: string | null
+          property_class?: string | null
+          reduction_amount?: number | null
+          reduction_percent?: number | null
+          status?: string | null
+          strategy?: string | null
+          submitted_at?: string | null
+          tax_year?: number
+          township?: string | null
+          uni_case_strength?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      property_tax_appeals: {
+        Row: {
+          actual_tax_savings: number | null
+          address: string | null
+          admin_notes: string | null
+          appeal_grounds: string[] | null
+          appeal_grounds_description: string | null
+          appeal_letter: string | null
+          appeal_letter_generated_at: string | null
+          appeal_letter_html: string | null
+          appeal_pdf_generated_at: string | null
+          appeal_pdf_url: string | null
+          appeal_strategy: string | null
+          assessment_year: number
+          bor_confirmation_number: string | null
+          bor_decided_at: string | null
+          bor_decision: string | null
+          bor_filed_at: string | null
+          bor_hearing_date: string | null
+          bor_new_assessed_value: number | null
+          ccao_confirmation_number: string | null
+          ccao_decided_at: string | null
+          ccao_decision: string | null
+          ccao_filed_at: string | null
+          ccao_new_assessed_value: number | null
+          comparable_quality_score: number | null
+          created_at: string | null
+          current_assessed_value: number | null
+          current_market_value: number | null
+          estimated_tax_savings: number | null
+          expected_delivery_date: string | null
+          filed_at: string | null
+          filing_method: string | null
+          final_assessed_value: number | null
+          final_reduction_amount: number | null
+          final_reduction_pct: number | null
+          id: string
+          letter_generated_at: string | null
+          lob_letter_id: string | null
+          mailed_at: string | null
+          mailing_method: string | null
+          mv_case_strength: string | null
+          opportunity_analysis: Json | null
+          opportunity_score: number | null
+          paid_at: string | null
+          pin: string
+          pricing_model: string | null
+          primary_case: string | null
+          property_id: string | null
+          proposed_assessed_value: number | null
+          proposed_market_value: number | null
+          ptab_confirmation_number: string | null
+          ptab_decided_at: string | null
+          ptab_decision: string | null
+          ptab_filed_at: string | null
+          ptab_new_assessed_value: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          risk_flags: string[] | null
+          stage: string | null
+          status: string | null
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          submitted_at: string | null
+          success_fee_amount: number | null
+          success_fee_checkout_session_id: string | null
+          success_fee_due: number | null
+          success_fee_paid: boolean | null
+          success_fee_paid_at: string | null
+          success_fee_payment_intent_id: string | null
+          success_fee_rate: number | null
+          success_fee_stripe_payment_intent_id: string | null
+          township: string | null
+          uni_case_strength: string | null
+          updated_at: string | null
+          user_id: string | null
+          v2_analysis: Json | null
+        }
+        Insert: {
+          actual_tax_savings?: number | null
+          address?: string | null
+          admin_notes?: string | null
+          appeal_grounds?: string[] | null
+          appeal_grounds_description?: string | null
+          appeal_letter?: string | null
+          appeal_letter_generated_at?: string | null
+          appeal_letter_html?: string | null
+          appeal_pdf_generated_at?: string | null
+          appeal_pdf_url?: string | null
+          appeal_strategy?: string | null
+          assessment_year: number
+          bor_confirmation_number?: string | null
+          bor_decided_at?: string | null
+          bor_decision?: string | null
+          bor_filed_at?: string | null
+          bor_hearing_date?: string | null
+          bor_new_assessed_value?: number | null
+          ccao_confirmation_number?: string | null
+          ccao_decided_at?: string | null
+          ccao_decision?: string | null
+          ccao_filed_at?: string | null
+          ccao_new_assessed_value?: number | null
+          comparable_quality_score?: number | null
+          created_at?: string | null
+          current_assessed_value?: number | null
+          current_market_value?: number | null
+          estimated_tax_savings?: number | null
+          expected_delivery_date?: string | null
+          filed_at?: string | null
+          filing_method?: string | null
+          final_assessed_value?: number | null
+          final_reduction_amount?: number | null
+          final_reduction_pct?: number | null
+          id?: string
+          letter_generated_at?: string | null
+          lob_letter_id?: string | null
+          mailed_at?: string | null
+          mailing_method?: string | null
+          mv_case_strength?: string | null
+          opportunity_analysis?: Json | null
+          opportunity_score?: number | null
+          paid_at?: string | null
+          pin: string
+          pricing_model?: string | null
+          primary_case?: string | null
+          property_id?: string | null
+          proposed_assessed_value?: number | null
+          proposed_market_value?: number | null
+          ptab_confirmation_number?: string | null
+          ptab_decided_at?: string | null
+          ptab_decision?: string | null
+          ptab_filed_at?: string | null
+          ptab_new_assessed_value?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_flags?: string[] | null
+          stage?: string | null
+          status?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          submitted_at?: string | null
+          success_fee_amount?: number | null
+          success_fee_checkout_session_id?: string | null
+          success_fee_due?: number | null
+          success_fee_paid?: boolean | null
+          success_fee_paid_at?: string | null
+          success_fee_payment_intent_id?: string | null
+          success_fee_rate?: number | null
+          success_fee_stripe_payment_intent_id?: string | null
+          township?: string | null
+          uni_case_strength?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          v2_analysis?: Json | null
+        }
+        Update: {
+          actual_tax_savings?: number | null
+          address?: string | null
+          admin_notes?: string | null
+          appeal_grounds?: string[] | null
+          appeal_grounds_description?: string | null
+          appeal_letter?: string | null
+          appeal_letter_generated_at?: string | null
+          appeal_letter_html?: string | null
+          appeal_pdf_generated_at?: string | null
+          appeal_pdf_url?: string | null
+          appeal_strategy?: string | null
+          assessment_year?: number
+          bor_confirmation_number?: string | null
+          bor_decided_at?: string | null
+          bor_decision?: string | null
+          bor_filed_at?: string | null
+          bor_hearing_date?: string | null
+          bor_new_assessed_value?: number | null
+          ccao_confirmation_number?: string | null
+          ccao_decided_at?: string | null
+          ccao_decision?: string | null
+          ccao_filed_at?: string | null
+          ccao_new_assessed_value?: number | null
+          comparable_quality_score?: number | null
+          created_at?: string | null
+          current_assessed_value?: number | null
+          current_market_value?: number | null
+          estimated_tax_savings?: number | null
+          expected_delivery_date?: string | null
+          filed_at?: string | null
+          filing_method?: string | null
+          final_assessed_value?: number | null
+          final_reduction_amount?: number | null
+          final_reduction_pct?: number | null
+          id?: string
+          letter_generated_at?: string | null
+          lob_letter_id?: string | null
+          mailed_at?: string | null
+          mailing_method?: string | null
+          mv_case_strength?: string | null
+          opportunity_analysis?: Json | null
+          opportunity_score?: number | null
+          paid_at?: string | null
+          pin?: string
+          pricing_model?: string | null
+          primary_case?: string | null
+          property_id?: string | null
+          proposed_assessed_value?: number | null
+          proposed_market_value?: number | null
+          ptab_confirmation_number?: string | null
+          ptab_decided_at?: string | null
+          ptab_decision?: string | null
+          ptab_filed_at?: string | null
+          ptab_new_assessed_value?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_flags?: string[] | null
+          stage?: string | null
+          status?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          submitted_at?: string | null
+          success_fee_amount?: number | null
+          success_fee_checkout_session_id?: string | null
+          success_fee_due?: number | null
+          success_fee_paid?: boolean | null
+          success_fee_paid_at?: string | null
+          success_fee_payment_intent_id?: string | null
+          success_fee_rate?: number | null
+          success_fee_stripe_payment_intent_id?: string | null
+          township?: string | null
+          uni_case_strength?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          v2_analysis?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_tax_appeals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "property_tax_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_tax_assessment_history: {
+        Row: {
+          appeal_result: string | null
+          bor_certified_value: number | null
+          ccao_certified_value: number | null
+          ccao_mailed_value: number | null
+          created_at: string | null
+          id: string
+          pin: string
+          post_appeal_value: number | null
+          pre_appeal_value: number | null
+          tax_amount: number | null
+          tax_rate: number | null
+          was_appealed: boolean | null
+          year: number
+        }
+        Insert: {
+          appeal_result?: string | null
+          bor_certified_value?: number | null
+          ccao_certified_value?: number | null
+          ccao_mailed_value?: number | null
+          created_at?: string | null
+          id?: string
+          pin: string
+          post_appeal_value?: number | null
+          pre_appeal_value?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          was_appealed?: boolean | null
+          year: number
+        }
+        Update: {
+          appeal_result?: string | null
+          bor_certified_value?: number | null
+          ccao_certified_value?: number | null
+          ccao_mailed_value?: number | null
+          created_at?: string | null
+          id?: string
+          pin?: string
+          post_appeal_value?: number | null
+          pre_appeal_value?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          was_appealed?: boolean | null
+          year?: number
+        }
+        Relationships: []
+      }
+      property_tax_comparables: {
+        Row: {
+          adjusted_value: number | null
+          age_difference_years: number | null
+          appeal_id: string | null
+          comp_address: string | null
+          comp_assessed_value: number | null
+          comp_bathrooms: number | null
+          comp_bedrooms: number | null
+          comp_lot_size: number | null
+          comp_market_value: number | null
+          comp_pin: string
+          comp_sale_date: string | null
+          comp_sale_price: number | null
+          comp_square_footage: number | null
+          comp_year_built: number | null
+          created_at: string | null
+          distance_miles: number | null
+          id: string
+          is_primary: boolean | null
+          quality_score: number | null
+          same_class: boolean | null
+          same_neighborhood: boolean | null
+          selected_by: string | null
+          sqft_difference_pct: number | null
+          value_per_sqft: number | null
+          why_included: string[] | null
+        }
+        Insert: {
+          adjusted_value?: number | null
+          age_difference_years?: number | null
+          appeal_id?: string | null
+          comp_address?: string | null
+          comp_assessed_value?: number | null
+          comp_bathrooms?: number | null
+          comp_bedrooms?: number | null
+          comp_lot_size?: number | null
+          comp_market_value?: number | null
+          comp_pin: string
+          comp_sale_date?: string | null
+          comp_sale_price?: number | null
+          comp_square_footage?: number | null
+          comp_year_built?: number | null
+          created_at?: string | null
+          distance_miles?: number | null
+          id?: string
+          is_primary?: boolean | null
+          quality_score?: number | null
+          same_class?: boolean | null
+          same_neighborhood?: boolean | null
+          selected_by?: string | null
+          sqft_difference_pct?: number | null
+          value_per_sqft?: number | null
+          why_included?: string[] | null
+        }
+        Update: {
+          adjusted_value?: number | null
+          age_difference_years?: number | null
+          appeal_id?: string | null
+          comp_address?: string | null
+          comp_assessed_value?: number | null
+          comp_bathrooms?: number | null
+          comp_bedrooms?: number | null
+          comp_lot_size?: number | null
+          comp_market_value?: number | null
+          comp_pin?: string
+          comp_sale_date?: string | null
+          comp_sale_price?: number | null
+          comp_square_footage?: number | null
+          comp_year_built?: number | null
+          created_at?: string | null
+          distance_miles?: number | null
+          id?: string
+          is_primary?: boolean | null
+          quality_score?: number | null
+          same_class?: boolean | null
+          same_neighborhood?: boolean | null
+          selected_by?: string | null
+          sqft_difference_pct?: number | null
+          value_per_sqft?: number | null
+          why_included?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_tax_comparables_appeal_id_fkey"
+            columns: ["appeal_id"]
+            isOneToOne: false
+            referencedRelation: "property_tax_appeals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_tax_deadlines: {
+        Row: {
+          bor_close_date: string | null
+          bor_open_date: string | null
+          bor_prefiling_start: string | null
+          ccao_close_date: string | null
+          ccao_open_date: string | null
+          created_at: string | null
+          id: string
+          last_verified_at: string | null
+          source_url: string | null
+          township: string
+          township_code: string | null
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          bor_close_date?: string | null
+          bor_open_date?: string | null
+          bor_prefiling_start?: string | null
+          ccao_close_date?: string | null
+          ccao_open_date?: string | null
+          created_at?: string | null
+          id?: string
+          last_verified_at?: string | null
+          source_url?: string | null
+          township: string
+          township_code?: string | null
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          bor_close_date?: string | null
+          bor_open_date?: string | null
+          bor_prefiling_start?: string | null
+          ccao_close_date?: string | null
+          ccao_open_date?: string | null
+          created_at?: string | null
+          id?: string
+          last_verified_at?: string | null
+          source_url?: string | null
+          township?: string
+          township_code?: string | null
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
+      property_tax_documents: {
+        Row: {
+          appeal_id: string | null
+          created_at: string | null
+          document_type: string
+          document_url: string
+          extracted_data: Json | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          user_id: string | null
+          verified: boolean | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          appeal_id?: string | null
+          created_at?: string | null
+          document_type: string
+          document_url: string
+          extracted_data?: Json | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          user_id?: string | null
+          verified?: boolean | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          appeal_id?: string | null
+          created_at?: string | null
+          document_type?: string
+          document_url?: string
+          extracted_data?: Json | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          user_id?: string | null
+          verified?: boolean | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_tax_documents_appeal_id_fkey"
+            columns: ["appeal_id"]
+            isOneToOne: false
+            referencedRelation: "property_tax_appeals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_tax_properties: {
+        Row: {
+          address: string | null
+          assessment_year: number | null
+          basement_type: string | null
+          bathrooms: number | null
+          bedrooms: number | null
+          city: string | null
+          created_at: string | null
+          current_assessed_value: number | null
+          current_market_value: number | null
+          current_tax_amount: number | null
+          data_source: string | null
+          exterior_construction: string | null
+          garage_type: string | null
+          has_prior_appeals: boolean | null
+          id: string
+          last_appeal_reduction_pct: number | null
+          last_appeal_result: string | null
+          last_appeal_year: number | null
+          last_synced_at: string | null
+          lot_size: number | null
+          pin: string
+          pin_formatted: string | null
+          prior_assessed_value: number | null
+          prior_market_value: number | null
+          prior_tax_amount: number | null
+          property_class: string | null
+          property_class_description: string | null
+          square_footage: number | null
+          stories: number | null
+          tax_year: number | null
+          township: string | null
+          township_code: string | null
+          updated_at: string | null
+          year_built: number | null
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          assessment_year?: number | null
+          basement_type?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
+          created_at?: string | null
+          current_assessed_value?: number | null
+          current_market_value?: number | null
+          current_tax_amount?: number | null
+          data_source?: string | null
+          exterior_construction?: string | null
+          garage_type?: string | null
+          has_prior_appeals?: boolean | null
+          id?: string
+          last_appeal_reduction_pct?: number | null
+          last_appeal_result?: string | null
+          last_appeal_year?: number | null
+          last_synced_at?: string | null
+          lot_size?: number | null
+          pin: string
+          pin_formatted?: string | null
+          prior_assessed_value?: number | null
+          prior_market_value?: number | null
+          prior_tax_amount?: number | null
+          property_class?: string | null
+          property_class_description?: string | null
+          square_footage?: number | null
+          stories?: number | null
+          tax_year?: number | null
+          township?: string | null
+          township_code?: string | null
+          updated_at?: string | null
+          year_built?: number | null
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          assessment_year?: number | null
+          basement_type?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          city?: string | null
+          created_at?: string | null
+          current_assessed_value?: number | null
+          current_market_value?: number | null
+          current_tax_amount?: number | null
+          data_source?: string | null
+          exterior_construction?: string | null
+          garage_type?: string | null
+          has_prior_appeals?: boolean | null
+          id?: string
+          last_appeal_reduction_pct?: number | null
+          last_appeal_result?: string | null
+          last_appeal_year?: number | null
+          last_synced_at?: string | null
+          lot_size?: number | null
+          pin?: string
+          pin_formatted?: string | null
+          prior_assessed_value?: number | null
+          prior_market_value?: number | null
+          prior_tax_amount?: number | null
+          property_class?: string | null
+          property_class_description?: string | null
+          square_footage?: number | null
+          stories?: number | null
+          tax_year?: number | null
+          township?: string | null
+          township_code?: string | null
+          updated_at?: string | null
+          year_built?: number | null
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
+      property_tax_referral_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          qualifying_appeal_id: string | null
+          reward_amount_cents: number | null
+          reward_type: string | null
+          total_conversions: number | null
+          total_earnings_cents: number | null
+          total_referrals: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          qualifying_appeal_id?: string | null
+          reward_amount_cents?: number | null
+          reward_type?: string | null
+          total_conversions?: number | null
+          total_earnings_cents?: number | null
+          total_referrals?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          qualifying_appeal_id?: string | null
+          reward_amount_cents?: number | null
+          reward_type?: string | null
+          total_conversions?: number | null
+          total_earnings_cents?: number | null
+          total_referrals?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_tax_referral_codes_qualifying_appeal_id_fkey"
+            columns: ["qualifying_appeal_id"]
+            isOneToOne: false
+            referencedRelation: "property_tax_appeals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_tax_referral_earnings: {
+        Row: {
+          amount_cents: number
+          created_at: string | null
+          description: string | null
+          id: string
+          referral_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          referral_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          referral_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_tax_referral_earnings_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "property_tax_referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_tax_referrals: {
+        Row: {
+          appeal_id: string | null
+          converted_at: string | null
+          created_at: string | null
+          id: string
+          paid_out_at: string | null
+          referral_code_id: string
+          referred_email: string | null
+          referred_user_id: string | null
+          reward_amount_cents: number | null
+          status: string | null
+        }
+        Insert: {
+          appeal_id?: string | null
+          converted_at?: string | null
+          created_at?: string | null
+          id?: string
+          paid_out_at?: string | null
+          referral_code_id: string
+          referred_email?: string | null
+          referred_user_id?: string | null
+          reward_amount_cents?: number | null
+          status?: string | null
+        }
+        Update: {
+          appeal_id?: string | null
+          converted_at?: string | null
+          created_at?: string | null
+          id?: string
+          paid_out_at?: string | null
+          referral_code_id?: string
+          referred_email?: string | null
+          referred_user_id?: string | null
+          reward_amount_cents?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_tax_referrals_appeal_id_fkey"
+            columns: ["appeal_id"]
+            isOneToOne: false
+            referencedRelation: "property_tax_appeals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_tax_referrals_referral_code_id_fkey"
+            columns: ["referral_code_id"]
+            isOneToOne: false
+            referencedRelation: "property_tax_referral_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_tax_watchlist: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          current_score: number | null
+          email: string
+          id: string
+          last_notified_at: string | null
+          notify_before_deadline: boolean | null
+          notify_on_score_change: boolean | null
+          pin: string
+          reason: string | null
+          township: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          current_score?: number | null
+          email: string
+          id?: string
+          last_notified_at?: string | null
+          notify_before_deadline?: boolean | null
+          notify_on_score_change?: boolean | null
+          pin: string
+          reason?: string | null
+          township?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          current_score?: number | null
+          email?: string
+          id?: string
+          last_notified_at?: string | null
+          notify_before_deadline?: boolean | null
+          notify_on_score_change?: boolean | null
+          pin?: string
+          reason?: string | null
+          township?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       protection_interest_survey: {
         Row: {
@@ -1550,6 +6077,90 @@ export type Database = {
         }
         Relationships: []
       }
+      red_light_receipts: {
+        Row: {
+          accelerometer_trace: Json | null
+          approach_speed_mph: number | null
+          camera_address: string
+          camera_latitude: number
+          camera_longitude: number
+          created_at: string
+          device_timestamp: string
+          estimated_speed_accuracy_mph: number | null
+          evidence_hash: string | null
+          evidence_hash_algorithm: string | null
+          evidence_hashed_at: string | null
+          expected_yellow_duration_sec: number | null
+          full_stop_detected: boolean
+          full_stop_duration_sec: number | null
+          heading: number | null
+          horizontal_accuracy_meters: number | null
+          id: string
+          intersection_id: string
+          min_speed_mph: number | null
+          peak_deceleration_g: number | null
+          posted_speed_limit_mph: number | null
+          server_received_at: string
+          speed_delta_mph: number | null
+          trace: Json
+          user_id: string
+        }
+        Insert: {
+          accelerometer_trace?: Json | null
+          approach_speed_mph?: number | null
+          camera_address: string
+          camera_latitude: number
+          camera_longitude: number
+          created_at?: string
+          device_timestamp: string
+          estimated_speed_accuracy_mph?: number | null
+          evidence_hash?: string | null
+          evidence_hash_algorithm?: string | null
+          evidence_hashed_at?: string | null
+          expected_yellow_duration_sec?: number | null
+          full_stop_detected?: boolean
+          full_stop_duration_sec?: number | null
+          heading?: number | null
+          horizontal_accuracy_meters?: number | null
+          id?: string
+          intersection_id: string
+          min_speed_mph?: number | null
+          peak_deceleration_g?: number | null
+          posted_speed_limit_mph?: number | null
+          server_received_at?: string
+          speed_delta_mph?: number | null
+          trace: Json
+          user_id: string
+        }
+        Update: {
+          accelerometer_trace?: Json | null
+          approach_speed_mph?: number | null
+          camera_address?: string
+          camera_latitude?: number
+          camera_longitude?: number
+          created_at?: string
+          device_timestamp?: string
+          estimated_speed_accuracy_mph?: number | null
+          evidence_hash?: string | null
+          evidence_hash_algorithm?: string | null
+          evidence_hashed_at?: string | null
+          expected_yellow_duration_sec?: number | null
+          full_stop_detected?: boolean
+          full_stop_duration_sec?: number | null
+          heading?: number | null
+          horizontal_accuracy_meters?: number | null
+          id?: string
+          intersection_id?: string
+          min_speed_mph?: number | null
+          peak_deceleration_g?: number | null
+          posted_speed_limit_mph?: number | null
+          server_received_at?: string
+          speed_delta_mph?: number | null
+          trace?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       referral_credits: {
         Row: {
           amount: number
@@ -1593,6 +6204,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      registration_evidence_receipts: {
+        Row: {
+          created_at: string
+          email_html: string | null
+          email_subject: string | null
+          email_text: string | null
+          file_name: string | null
+          forwarded_at: string
+          id: string
+          parsed_amount_cents: number | null
+          parsed_expiration_date: string | null
+          parsed_order_id: string | null
+          parsed_purchase_date: string | null
+          screenshot_path: string | null
+          sender_email: string
+          source_type: string
+          sticker_duration_months: number | null
+          storage_bucket: string | null
+          storage_path: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_html?: string | null
+          email_subject?: string | null
+          email_text?: string | null
+          file_name?: string | null
+          forwarded_at?: string
+          id?: string
+          parsed_amount_cents?: number | null
+          parsed_expiration_date?: string | null
+          parsed_order_id?: string | null
+          parsed_purchase_date?: string | null
+          screenshot_path?: string | null
+          sender_email: string
+          source_type: string
+          sticker_duration_months?: number | null
+          storage_bucket?: string | null
+          storage_path?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_html?: string | null
+          email_subject?: string | null
+          email_text?: string | null
+          file_name?: string | null
+          forwarded_at?: string
+          id?: string
+          parsed_amount_cents?: number | null
+          parsed_expiration_date?: string | null
+          parsed_order_id?: string | null
+          parsed_purchase_date?: string | null
+          screenshot_path?: string | null
+          sender_email?: string
+          source_type?: string
+          sticker_duration_months?: number | null
+          storage_bucket?: string | null
+          storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       registration_state_history: {
         Row: {
@@ -1762,6 +6436,57 @@ export type Database = {
           ticket_type?: string
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      relocated_vehicles: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: number
+          make: string | null
+          notified_users: string[] | null
+          plate: string
+          relocated_date: string
+          relocated_from_address: string | null
+          relocated_from_latitude: number | null
+          relocated_from_longitude: number | null
+          relocated_reason: string | null
+          relocated_to_address: string | null
+          service_request_number: string | null
+          state: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: number
+          make?: string | null
+          notified_users?: string[] | null
+          plate: string
+          relocated_date: string
+          relocated_from_address?: string | null
+          relocated_from_latitude?: number | null
+          relocated_from_longitude?: number | null
+          relocated_reason?: string | null
+          relocated_to_address?: string | null
+          service_request_number?: string | null
+          state?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: number
+          make?: string | null
+          notified_users?: string[] | null
+          plate?: string
+          relocated_date?: string
+          relocated_from_address?: string | null
+          relocated_from_latitude?: number | null
+          relocated_from_longitude?: number | null
+          relocated_reason?: string | null
+          relocated_to_address?: string | null
+          service_request_number?: string | null
+          state?: string | null
         }
         Relationships: []
       }
@@ -2042,9 +6767,14 @@ export type Database = {
           needs_manual_followup: boolean | null
           notifications_sent: Json | null
           order_number: string
+          original_partner_id: string | null
+          original_partner_name: string | null
           paid_at: string | null
           partner_id: string
           payment_status: string | null
+          payment_transfer_confirmed_at: string | null
+          payment_transfer_requested_at: string | null
+          payment_transfer_status: string | null
           permit_fee: number | null
           permit_requested: boolean | null
           pickup_location: string | null
@@ -2074,6 +6804,7 @@ export type Database = {
           submitted_at: string | null
           total_amount: number
           tracking_number: string | null
+          transferred_at: string | null
           updated_at: string | null
           vin: string | null
           ward: number | null
@@ -2101,9 +6832,14 @@ export type Database = {
           needs_manual_followup?: boolean | null
           notifications_sent?: Json | null
           order_number: string
+          original_partner_id?: string | null
+          original_partner_name?: string | null
           paid_at?: string | null
           partner_id: string
           payment_status?: string | null
+          payment_transfer_confirmed_at?: string | null
+          payment_transfer_requested_at?: string | null
+          payment_transfer_status?: string | null
           permit_fee?: number | null
           permit_requested?: boolean | null
           pickup_location?: string | null
@@ -2133,6 +6869,7 @@ export type Database = {
           submitted_at?: string | null
           total_amount: number
           tracking_number?: string | null
+          transferred_at?: string | null
           updated_at?: string | null
           vin?: string | null
           ward?: number | null
@@ -2160,9 +6897,14 @@ export type Database = {
           needs_manual_followup?: boolean | null
           notifications_sent?: Json | null
           order_number?: string
+          original_partner_id?: string | null
+          original_partner_name?: string | null
           paid_at?: string | null
           partner_id?: string
           payment_status?: string | null
+          payment_transfer_confirmed_at?: string | null
+          payment_transfer_requested_at?: string | null
+          payment_transfer_status?: string | null
           permit_fee?: number | null
           permit_requested?: boolean | null
           pickup_location?: string | null
@@ -2192,6 +6934,7 @@ export type Database = {
           submitted_at?: string | null
           total_amount?: number
           tracking_number?: string | null
+          transferred_at?: string | null
           updated_at?: string | null
           vin?: string | null
           ward?: number | null
@@ -2277,6 +7020,7 @@ export type Database = {
           ein: string | null
           email: string
           id: string
+          is_default: boolean | null
           license_number: string | null
           name: string
           notification_email: string | null
@@ -2307,6 +7051,7 @@ export type Database = {
           ein?: string | null
           email: string
           id?: string
+          is_default?: boolean | null
           license_number?: string | null
           name: string
           notification_email?: string | null
@@ -2337,6 +7082,7 @@ export type Database = {
           ein?: string | null
           email?: string
           id?: string
+          is_default?: boolean | null
           license_number?: string | null
           name?: string
           notification_email?: string | null
@@ -2394,6 +7140,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      saved_parking_locations: {
+        Row: {
+          address: string | null
+          color: string | null
+          created_at: string | null
+          has_restrictions: boolean | null
+          icon: string | null
+          id: string
+          last_parked_at: string | null
+          last_restriction_check: string | null
+          latitude: number
+          longitude: number
+          nickname: string
+          notify_on_arrival: boolean | null
+          restriction_summary: string | null
+          times_parked: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          color?: string | null
+          created_at?: string | null
+          has_restrictions?: boolean | null
+          icon?: string | null
+          id?: string
+          last_parked_at?: string | null
+          last_restriction_check?: string | null
+          latitude: number
+          longitude: number
+          nickname: string
+          notify_on_arrival?: boolean | null
+          restriction_summary?: string | null
+          times_parked?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          color?: string | null
+          created_at?: string | null
+          has_restrictions?: boolean | null
+          icon?: string | null
+          id?: string
+          last_parked_at?: string | null
+          last_restriction_check?: string | null
+          latitude?: number
+          longitude?: number
+          nickname?: string
+          notify_on_arrival?: boolean | null
+          restriction_summary?: string | null
+          times_parked?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       sd_street_sweeping: {
         Row: {
@@ -2461,6 +7264,48 @@ export type Database = {
           xstrt1?: string | null
           xstrt2?: string | null
           zip?: string | null
+        }
+        Relationships: []
+      }
+      service_request_stats: {
+        Row: {
+          avg_days_to_close: number | null
+          community_area: number | null
+          id: number
+          pct_closed: number | null
+          requests_last_30_days: number | null
+          requests_last_365_days: number | null
+          requests_last_90_days: number | null
+          sr_type: string | null
+          total_requests: number | null
+          updated_at: string | null
+          ward: number | null
+        }
+        Insert: {
+          avg_days_to_close?: number | null
+          community_area?: number | null
+          id?: number
+          pct_closed?: number | null
+          requests_last_30_days?: number | null
+          requests_last_365_days?: number | null
+          requests_last_90_days?: number | null
+          sr_type?: string | null
+          total_requests?: number | null
+          updated_at?: string | null
+          ward?: number | null
+        }
+        Update: {
+          avg_days_to_close?: number | null
+          community_area?: number | null
+          id?: number
+          pct_closed?: number | null
+          requests_last_30_days?: number | null
+          requests_last_365_days?: number | null
+          requests_last_90_days?: number | null
+          sr_type?: string | null
+          total_requests?: number | null
+          updated_at?: string | null
+          ward?: number | null
         }
         Relationships: []
       }
@@ -2651,6 +7496,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      signage_reports: {
+        Row: {
+          address: string | null
+          condition: string | null
+          contest_win_rate: number | null
+          created_at: string | null
+          id: string
+          last_verified: string | null
+          latitude: number
+          longitude: number
+          obstruction_type: string | null
+          photo_urls: string[] | null
+          reported_by: string | null
+          restriction_hours: string | null
+          sign_text: string | null
+          sign_type: string
+          street_view_date: string | null
+          street_view_url: string | null
+          updated_at: string | null
+          used_in_contests: number | null
+          verified: boolean | null
+          verified_at: string | null
+          verified_by: string | null
+          ward: number | null
+        }
+        Insert: {
+          address?: string | null
+          condition?: string | null
+          contest_win_rate?: number | null
+          created_at?: string | null
+          id?: string
+          last_verified?: string | null
+          latitude: number
+          longitude: number
+          obstruction_type?: string | null
+          photo_urls?: string[] | null
+          reported_by?: string | null
+          restriction_hours?: string | null
+          sign_text?: string | null
+          sign_type: string
+          street_view_date?: string | null
+          street_view_url?: string | null
+          updated_at?: string | null
+          used_in_contests?: number | null
+          verified?: boolean | null
+          verified_at?: string | null
+          verified_by?: string | null
+          ward?: number | null
+        }
+        Update: {
+          address?: string | null
+          condition?: string | null
+          contest_win_rate?: number | null
+          created_at?: string | null
+          id?: string
+          last_verified?: string | null
+          latitude?: number
+          longitude?: number
+          obstruction_type?: string | null
+          photo_urls?: string[] | null
+          reported_by?: string | null
+          restriction_hours?: string | null
+          sign_text?: string | null
+          sign_type?: string
+          street_view_date?: string | null
+          street_view_url?: string | null
+          updated_at?: string | null
+          used_in_contests?: number | null
+          verified?: boolean | null
+          verified_at?: string | null
+          verified_by?: string | null
+          ward?: number | null
+        }
+        Relationships: []
       }
       signup_tokens: {
         Row: {
@@ -2984,7 +7904,148 @@ export type Database = {
         }
         Relationships: []
       }
+      street_centerlines: {
+        Row: {
+          class: string | null
+          created_at: string | null
+          geom: unknown
+          id: number
+          l_from_addr: number | null
+          l_parity: string | null
+          l_to_addr: number | null
+          oneway_dir: string | null
+          pre_dir: string | null
+          r_from_addr: number | null
+          r_parity: string | null
+          r_to_addr: number | null
+          source: string
+          street_base_name: string | null
+          street_name: string
+          street_type: string | null
+        }
+        Insert: {
+          class?: string | null
+          created_at?: string | null
+          geom?: unknown
+          id?: number
+          l_from_addr?: number | null
+          l_parity?: string | null
+          l_to_addr?: number | null
+          oneway_dir?: string | null
+          pre_dir?: string | null
+          r_from_addr?: number | null
+          r_parity?: string | null
+          r_to_addr?: number | null
+          source?: string
+          street_base_name?: string | null
+          street_name: string
+          street_type?: string | null
+        }
+        Update: {
+          class?: string | null
+          created_at?: string | null
+          geom?: unknown
+          id?: number
+          l_from_addr?: number | null
+          l_parity?: string | null
+          l_to_addr?: number | null
+          oneway_dir?: string | null
+          pre_dir?: string | null
+          r_from_addr?: number | null
+          r_parity?: string | null
+          r_to_addr?: number | null
+          source?: string
+          street_base_name?: string | null
+          street_name?: string
+          street_type?: string | null
+        }
+        Relationships: []
+      }
       street_cleaning_schedule: {
+        Row: {
+          cleaning_date: string | null
+          east_block: string | null
+          east_block_number: string | null
+          east_direction: string | null
+          east_street: string | null
+          geom: unknown
+          geom_simplified: unknown
+          id: string
+          north_block: string | null
+          north_block_number: string | null
+          north_direction: string | null
+          north_street: string | null
+          section: string | null
+          side: string | null
+          south_block: string | null
+          south_block_number: string | null
+          south_direction: string | null
+          south_street: string | null
+          street_name: string | null
+          ward: string | null
+          ward_section: string | null
+          west_block: string | null
+          west_block_number: string | null
+          west_direction: string | null
+          west_street: string | null
+        }
+        Insert: {
+          cleaning_date?: string | null
+          east_block?: string | null
+          east_block_number?: string | null
+          east_direction?: string | null
+          east_street?: string | null
+          geom?: unknown
+          geom_simplified?: unknown
+          id?: string
+          north_block?: string | null
+          north_block_number?: string | null
+          north_direction?: string | null
+          north_street?: string | null
+          section?: string | null
+          side?: string | null
+          south_block?: string | null
+          south_block_number?: string | null
+          south_direction?: string | null
+          south_street?: string | null
+          street_name?: string | null
+          ward?: string | null
+          ward_section?: string | null
+          west_block?: string | null
+          west_block_number?: string | null
+          west_direction?: string | null
+          west_street?: string | null
+        }
+        Update: {
+          cleaning_date?: string | null
+          east_block?: string | null
+          east_block_number?: string | null
+          east_direction?: string | null
+          east_street?: string | null
+          geom?: unknown
+          geom_simplified?: unknown
+          id?: string
+          north_block?: string | null
+          north_block_number?: string | null
+          north_direction?: string | null
+          north_street?: string | null
+          section?: string | null
+          side?: string | null
+          south_block?: string | null
+          south_block_number?: string | null
+          south_direction?: string | null
+          south_street?: string | null
+          street_name?: string | null
+          ward?: string | null
+          ward_section?: string | null
+          west_block?: string | null
+          west_block_number?: string | null
+          west_direction?: string | null
+          west_street?: string | null
+        }
+        Relationships: []
+      }
+      street_cleaning_schedule_2025: {
         Row: {
           cleaning_date: string | null
           created_at: string | null
@@ -3071,22 +8132,174 @@ export type Database = {
         }
         Relationships: []
       }
+      street_geocache: {
+        Row: {
+          axis: string
+          created_at: string | null
+          geocoded_address: string | null
+          id: number
+          ref_addr_num: number
+          ref_lat: number
+          ref_lng: number
+          street_direction: string
+          street_name: string
+          street_type: string | null
+        }
+        Insert: {
+          axis: string
+          created_at?: string | null
+          geocoded_address?: string | null
+          id?: number
+          ref_addr_num: number
+          ref_lat: number
+          ref_lng: number
+          street_direction: string
+          street_name: string
+          street_type?: string | null
+        }
+        Update: {
+          axis?: string
+          created_at?: string | null
+          geocoded_address?: string | null
+          id?: number
+          ref_addr_num?: number
+          ref_lat?: number
+          ref_lng?: number
+          street_direction?: string
+          street_name?: string
+          street_type?: string | null
+        }
+        Relationships: []
+      }
+      street_view_cache: {
+        Row: {
+          address_key: string
+          analyses: Json | null
+          analysis_summary: string | null
+          created_at: string
+          defense_findings: Json | null
+          exhibit_urls: Json | null
+          expires_at: string | null
+          fetched_at: string
+          has_imagery: boolean
+          has_signage_issue: boolean | null
+          id: string
+          image_date: string | null
+          image_urls: Json | null
+          latitude: number | null
+          longitude: number | null
+          original_address: string
+          panorama_id: string | null
+        }
+        Insert: {
+          address_key: string
+          analyses?: Json | null
+          analysis_summary?: string | null
+          created_at?: string
+          defense_findings?: Json | null
+          exhibit_urls?: Json | null
+          expires_at?: string | null
+          fetched_at?: string
+          has_imagery?: boolean
+          has_signage_issue?: boolean | null
+          id?: string
+          image_date?: string | null
+          image_urls?: Json | null
+          latitude?: number | null
+          longitude?: number | null
+          original_address: string
+          panorama_id?: string | null
+        }
+        Update: {
+          address_key?: string
+          analyses?: Json | null
+          analysis_summary?: string | null
+          created_at?: string
+          defense_findings?: Json | null
+          exhibit_urls?: Json | null
+          expires_at?: string | null
+          fetched_at?: string
+          has_imagery?: boolean
+          has_signage_issue?: boolean | null
+          id?: string
+          image_date?: string | null
+          image_urls?: Json | null
+          latitude?: number | null
+          longitude?: number | null
+          original_address?: string
+          panorama_id?: string | null
+        }
+        Relationships: []
+      }
+      ticket_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          performed_by: string | null
+          ticket_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          performed_by?: string | null
+          ticket_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          performed_by?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_audit_log_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "detected_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_contests: {
         Row: {
+          actual_outcome: string | null
           admin_notes: string | null
+          argument_used: string | null
           attorney_requested: boolean | null
           contest_grounds: string[] | null
           contest_letter: string | null
           created_at: string | null
+          estimated_win_rate: number | null
           evidence_checklist: Json | null
           evidence_completeness: Json | null
+          evidence_gaps: Json | null
           evidence_photos: Json | null
           evidence_quality_score: number | null
+          evidence_sources: string[] | null
           extracted_data: Json | null
           filing_method: string | null
+          fine_amount_final: number | null
+          hearing_date: string | null
+          hearing_notes: string | null
           id: string
+          kit_metadata: Json | null
+          kit_used: string | null
+          letter_audit: Json | null
+          letter_quality_score: number | null
           license_plate: string | null
+          location_evidence_strength: number | null
+          location_evidence_used: boolean | null
+          outcome_reported_at: string | null
           status: string | null
+          street_view_address: string | null
+          street_view_date: string | null
+          street_view_exhibit_urls: Json | null
           submitted_at: string | null
           supporting_documents: Json | null
           ticket_amount: number | null
@@ -3095,26 +8308,47 @@ export type Database = {
           ticket_number: string | null
           ticket_photo_url: string
           updated_at: string | null
+          user_feedback: string | null
           user_id: string
+          user_rating: number | null
           violation_code: string | null
           violation_description: string | null
+          weather_defense_used: boolean | null
           witness_statements: string | null
         }
         Insert: {
+          actual_outcome?: string | null
           admin_notes?: string | null
+          argument_used?: string | null
           attorney_requested?: boolean | null
           contest_grounds?: string[] | null
           contest_letter?: string | null
           created_at?: string | null
+          estimated_win_rate?: number | null
           evidence_checklist?: Json | null
           evidence_completeness?: Json | null
+          evidence_gaps?: Json | null
           evidence_photos?: Json | null
           evidence_quality_score?: number | null
+          evidence_sources?: string[] | null
           extracted_data?: Json | null
           filing_method?: string | null
+          fine_amount_final?: number | null
+          hearing_date?: string | null
+          hearing_notes?: string | null
           id?: string
+          kit_metadata?: Json | null
+          kit_used?: string | null
+          letter_audit?: Json | null
+          letter_quality_score?: number | null
           license_plate?: string | null
+          location_evidence_strength?: number | null
+          location_evidence_used?: boolean | null
+          outcome_reported_at?: string | null
           status?: string | null
+          street_view_address?: string | null
+          street_view_date?: string | null
+          street_view_exhibit_urls?: Json | null
           submitted_at?: string | null
           supporting_documents?: Json | null
           ticket_amount?: number | null
@@ -3123,26 +8357,47 @@ export type Database = {
           ticket_number?: string | null
           ticket_photo_url: string
           updated_at?: string | null
+          user_feedback?: string | null
           user_id: string
+          user_rating?: number | null
           violation_code?: string | null
           violation_description?: string | null
+          weather_defense_used?: boolean | null
           witness_statements?: string | null
         }
         Update: {
+          actual_outcome?: string | null
           admin_notes?: string | null
+          argument_used?: string | null
           attorney_requested?: boolean | null
           contest_grounds?: string[] | null
           contest_letter?: string | null
           created_at?: string | null
+          estimated_win_rate?: number | null
           evidence_checklist?: Json | null
           evidence_completeness?: Json | null
+          evidence_gaps?: Json | null
           evidence_photos?: Json | null
           evidence_quality_score?: number | null
+          evidence_sources?: string[] | null
           extracted_data?: Json | null
           filing_method?: string | null
+          fine_amount_final?: number | null
+          hearing_date?: string | null
+          hearing_notes?: string | null
           id?: string
+          kit_metadata?: Json | null
+          kit_used?: string | null
+          letter_audit?: Json | null
+          letter_quality_score?: number | null
           license_plate?: string | null
+          location_evidence_strength?: number | null
+          location_evidence_used?: boolean | null
+          outcome_reported_at?: string | null
           status?: string | null
+          street_view_address?: string | null
+          street_view_date?: string | null
+          street_view_exhibit_urls?: Json | null
           submitted_at?: string | null
           supporting_documents?: Json | null
           ticket_amount?: number | null
@@ -3151,12 +8406,299 @@ export type Database = {
           ticket_number?: string | null
           ticket_photo_url?: string
           updated_at?: string | null
+          user_feedback?: string | null
           user_id?: string
+          user_rating?: number | null
           violation_code?: string | null
           violation_description?: string | null
+          weather_defense_used?: boolean | null
           witness_statements?: string | null
         }
         Relationships: []
+      }
+      ticket_evidence: {
+        Row: {
+          attachments: Json | null
+          created_at: string | null
+          evidence_summary: string | null
+          evidence_text: string | null
+          id: string
+          incoming_email_id: string | null
+          processed: boolean | null
+          source: string
+          ticket_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          created_at?: string | null
+          evidence_summary?: string | null
+          evidence_text?: string | null
+          id?: string
+          incoming_email_id?: string | null
+          processed?: boolean | null
+          source: string
+          ticket_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          created_at?: string | null
+          evidence_summary?: string | null
+          evidence_text?: string | null
+          id?: string
+          incoming_email_id?: string | null
+          processed?: boolean | null
+          source?: string
+          ticket_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_evidence_incoming_email_id_fkey"
+            columns: ["incoming_email_id"]
+            isOneToOne: false
+            referencedRelation: "incoming_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_evidence_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "detected_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_foia_requests: {
+        Row: {
+          contest_letter_id: string | null
+          created_at: string
+          fulfilled_at: string | null
+          id: string
+          notes: string | null
+          reference_id: string | null
+          request_payload: Json | null
+          request_type: string
+          requested_at: string
+          resend_message_id: string | null
+          response_payload: Json | null
+          sent_at: string | null
+          source: string
+          status: string
+          ticket_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contest_letter_id?: string | null
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          notes?: string | null
+          reference_id?: string | null
+          request_payload?: Json | null
+          request_type?: string
+          requested_at?: string
+          resend_message_id?: string | null
+          response_payload?: Json | null
+          sent_at?: string | null
+          source?: string
+          status?: string
+          ticket_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contest_letter_id?: string | null
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          notes?: string | null
+          reference_id?: string | null
+          request_payload?: Json | null
+          request_type?: string
+          requested_at?: string
+          resend_message_id?: string | null
+          response_payload?: Json | null
+          sent_at?: string | null
+          source?: string
+          status?: string
+          ticket_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_foia_requests_contest_letter_id_fkey"
+            columns: ["contest_letter_id"]
+            isOneToOne: false
+            referencedRelation: "contest_letters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_foia_requests_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "detected_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_location_patterns: {
+        Row: {
+          address: string
+          created_at: string
+          defense_recommendation: string | null
+          dismissal_rate: number | null
+          id: string
+          is_hotspot: boolean | null
+          last_updated: string
+          normalized_address: string
+          officers: string[] | null
+          ticket_count: number
+          total_amount: number | null
+          unique_users: number
+          violation_types: string[] | null
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          defense_recommendation?: string | null
+          dismissal_rate?: number | null
+          id?: string
+          is_hotspot?: boolean | null
+          last_updated?: string
+          normalized_address: string
+          officers?: string[] | null
+          ticket_count?: number
+          total_amount?: number | null
+          unique_users?: number
+          violation_types?: string[] | null
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          defense_recommendation?: string | null
+          dismissal_rate?: number | null
+          id?: string
+          is_hotspot?: boolean | null
+          last_updated?: string
+          normalized_address?: string
+          officers?: string[] | null
+          ticket_count?: number
+          total_amount?: number | null
+          unique_users?: number
+          violation_types?: string[] | null
+        }
+        Relationships: []
+      }
+      tow_boot_alerts: {
+        Row: {
+          alert_type: string
+          amount_paid: number | null
+          amount_waived: number | null
+          boot_fee: number | null
+          contesting_tow: boolean | null
+          created_at: string | null
+          daily_storage_fee: number | null
+          discovered_at: string | null
+          id: string
+          impound_address: string | null
+          impound_location: string | null
+          impound_phone: string | null
+          notification_method: string | null
+          notified_at: string | null
+          plate: string
+          related_ticket_ids: string[] | null
+          resolved_at: string | null
+          state: string | null
+          status: string | null
+          total_fees: number | null
+          total_ticket_amount: number | null
+          tow_contest_filed_at: string | null
+          tow_contest_outcome: string | null
+          tow_date: string | null
+          tow_fee: number | null
+          tow_location: string | null
+          updated_at: string | null
+          user_id: string | null
+          user_notified: boolean | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          amount_paid?: number | null
+          amount_waived?: number | null
+          boot_fee?: number | null
+          contesting_tow?: boolean | null
+          created_at?: string | null
+          daily_storage_fee?: number | null
+          discovered_at?: string | null
+          id?: string
+          impound_address?: string | null
+          impound_location?: string | null
+          impound_phone?: string | null
+          notification_method?: string | null
+          notified_at?: string | null
+          plate: string
+          related_ticket_ids?: string[] | null
+          resolved_at?: string | null
+          state?: string | null
+          status?: string | null
+          total_fees?: number | null
+          total_ticket_amount?: number | null
+          tow_contest_filed_at?: string | null
+          tow_contest_outcome?: string | null
+          tow_date?: string | null
+          tow_fee?: number | null
+          tow_location?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          user_notified?: boolean | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          amount_paid?: number | null
+          amount_waived?: number | null
+          boot_fee?: number | null
+          contesting_tow?: boolean | null
+          created_at?: string | null
+          daily_storage_fee?: number | null
+          discovered_at?: string | null
+          id?: string
+          impound_address?: string | null
+          impound_location?: string | null
+          impound_phone?: string | null
+          notification_method?: string | null
+          notified_at?: string | null
+          plate?: string
+          related_ticket_ids?: string[] | null
+          resolved_at?: string | null
+          state?: string | null
+          status?: string | null
+          total_fees?: number | null
+          total_ticket_amount?: number | null
+          tow_contest_filed_at?: string | null
+          tow_contest_outcome?: string | null
+          tow_date?: string | null
+          tow_fee?: number | null
+          tow_location?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          user_notified?: boolean | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tow_boot_alerts_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       towed_vehicles: {
         Row: {
@@ -3200,6 +8742,90 @@ export type Database = {
           tow_date?: string
           tow_facility_phone?: string | null
           towed_to_address?: string | null
+        }
+        Relationships: []
+      }
+      traffic_crashes: {
+        Row: {
+          beat: string | null
+          crash_date: string | null
+          crash_type: string | null
+          created_at: string | null
+          damage: string | null
+          first_crash_type: string | null
+          hit_and_run: boolean | null
+          id: string
+          injuries_fatal: number | null
+          injuries_incapacitating: number | null
+          injuries_total: number | null
+          latitude: number | null
+          lighting_condition: string | null
+          location: unknown
+          longitude: number | null
+          posted_speed_limit: number | null
+          primary_cause: string | null
+          roadway_surface_cond: string | null
+          secondary_cause: string | null
+          street_direction: string | null
+          street_name: string | null
+          street_no: string | null
+          traffic_control_device: string | null
+          trafficway_type: string | null
+          weather_condition: string | null
+        }
+        Insert: {
+          beat?: string | null
+          crash_date?: string | null
+          crash_type?: string | null
+          created_at?: string | null
+          damage?: string | null
+          first_crash_type?: string | null
+          hit_and_run?: boolean | null
+          id: string
+          injuries_fatal?: number | null
+          injuries_incapacitating?: number | null
+          injuries_total?: number | null
+          latitude?: number | null
+          lighting_condition?: string | null
+          location?: unknown
+          longitude?: number | null
+          posted_speed_limit?: number | null
+          primary_cause?: string | null
+          roadway_surface_cond?: string | null
+          secondary_cause?: string | null
+          street_direction?: string | null
+          street_name?: string | null
+          street_no?: string | null
+          traffic_control_device?: string | null
+          trafficway_type?: string | null
+          weather_condition?: string | null
+        }
+        Update: {
+          beat?: string | null
+          crash_date?: string | null
+          crash_type?: string | null
+          created_at?: string | null
+          damage?: string | null
+          first_crash_type?: string | null
+          hit_and_run?: boolean | null
+          id?: string
+          injuries_fatal?: number | null
+          injuries_incapacitating?: number | null
+          injuries_total?: number | null
+          latitude?: number | null
+          lighting_condition?: string | null
+          location?: unknown
+          longitude?: number | null
+          posted_speed_limit?: number | null
+          primary_cause?: string | null
+          roadway_surface_cond?: string | null
+          secondary_cause?: string | null
+          street_direction?: string | null
+          street_name?: string | null
+          street_no?: string | null
+          traffic_control_device?: string | null
+          trafficway_type?: string | null
+          weather_condition?: string | null
         }
         Relationships: []
       }
@@ -3259,6 +8885,48 @@ export type Database = {
           },
         ]
       }
+      user_compliance_docs: {
+        Row: {
+          classification_reason: string | null
+          confidence: string | null
+          created_at: string
+          doc_type: string
+          filename: string | null
+          id: string
+          metadata: Json | null
+          received_at: string
+          source_email: string | null
+          source_subject: string | null
+          user_id: string
+        }
+        Insert: {
+          classification_reason?: string | null
+          confidence?: string | null
+          created_at?: string
+          doc_type: string
+          filename?: string | null
+          id?: string
+          metadata?: Json | null
+          received_at?: string
+          source_email?: string | null
+          source_subject?: string | null
+          user_id: string
+        }
+        Update: {
+          classification_reason?: string | null
+          confidence?: string | null
+          created_at?: string
+          doc_type?: string
+          filename?: string | null
+          id?: string
+          metadata?: Json | null
+          received_at?: string
+          source_email?: string | null
+          source_subject?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_consents: {
         Row: {
           consent_granted: boolean
@@ -3309,6 +8977,63 @@ export type Database = {
           },
         ]
       }
+      user_contest_metrics: {
+        Row: {
+          badges: Json | null
+          created_at: string | null
+          current_win_streak: number | null
+          last_contest_date: string | null
+          last_win_date: string | null
+          longest_win_streak: number | null
+          stats_by_violation: Json | null
+          total_contests: number | null
+          total_fines_faced: number | null
+          total_losses: number | null
+          total_paid: number | null
+          total_savings: number | null
+          total_wins: number | null
+          updated_at: string | null
+          user_id: string
+          win_rate: number | null
+        }
+        Insert: {
+          badges?: Json | null
+          created_at?: string | null
+          current_win_streak?: number | null
+          last_contest_date?: string | null
+          last_win_date?: string | null
+          longest_win_streak?: number | null
+          stats_by_violation?: Json | null
+          total_contests?: number | null
+          total_fines_faced?: number | null
+          total_losses?: number | null
+          total_paid?: number | null
+          total_savings?: number | null
+          total_wins?: number | null
+          updated_at?: string | null
+          user_id: string
+          win_rate?: number | null
+        }
+        Update: {
+          badges?: Json | null
+          created_at?: string | null
+          current_win_streak?: number | null
+          last_contest_date?: string | null
+          last_win_date?: string | null
+          longest_win_streak?: number | null
+          stats_by_violation?: Json | null
+          total_contests?: number | null
+          total_fines_faced?: number | null
+          total_losses?: number | null
+          total_paid?: number | null
+          total_savings?: number | null
+          total_wins?: number | null
+          updated_at?: string | null
+          user_id?: string
+          win_rate?: number | null
+        }
+        Relationships: []
+      }
       user_notifications: {
         Row: {
           channels: string[] | null
@@ -3355,15 +9080,97 @@ export type Database = {
           user_id?: string | null
           ward?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      user_parked_vehicles: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          dot_permit_active: boolean | null
+          dot_permit_notified_at: string | null
+          dot_permit_start_date: string | null
+          dot_permit_type: string | null
+          fcm_token: string | null
+          id: string
+          is_active: boolean | null
+          latitude: number | null
+          longitude: number | null
+          on_snow_route: boolean | null
+          on_winter_ban_street: boolean | null
+          parked_at: string | null
+          permit_restriction_schedule: string | null
+          permit_zone: string | null
+          permit_zone_notified_at: string | null
+          snow_ban_notified_at: string | null
+          snow_route_name: string | null
+          street_cleaning_date: string | null
+          street_cleaning_notified_at: string | null
+          street_cleaning_section: string | null
+          street_cleaning_ward: string | null
+          sweeper_passed_notified_at: string | null
+          user_id: string | null
+          winter_ban_notified_at: string | null
+          winter_ban_street_name: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          dot_permit_active?: boolean | null
+          dot_permit_notified_at?: string | null
+          dot_permit_start_date?: string | null
+          dot_permit_type?: string | null
+          fcm_token?: string | null
+          id?: string
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          on_snow_route?: boolean | null
+          on_winter_ban_street?: boolean | null
+          parked_at?: string | null
+          permit_restriction_schedule?: string | null
+          permit_zone?: string | null
+          permit_zone_notified_at?: string | null
+          snow_ban_notified_at?: string | null
+          snow_route_name?: string | null
+          street_cleaning_date?: string | null
+          street_cleaning_notified_at?: string | null
+          street_cleaning_section?: string | null
+          street_cleaning_ward?: string | null
+          sweeper_passed_notified_at?: string | null
+          user_id?: string | null
+          winter_ban_notified_at?: string | null
+          winter_ban_street_name?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          dot_permit_active?: boolean | null
+          dot_permit_notified_at?: string | null
+          dot_permit_start_date?: string | null
+          dot_permit_type?: string | null
+          fcm_token?: string | null
+          id?: string
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          on_snow_route?: boolean | null
+          on_winter_ban_street?: boolean | null
+          parked_at?: string | null
+          permit_restriction_schedule?: string | null
+          permit_zone?: string | null
+          permit_zone_notified_at?: string | null
+          snow_ban_notified_at?: string | null
+          snow_route_name?: string | null
+          street_cleaning_date?: string | null
+          street_cleaning_notified_at?: string | null
+          street_cleaning_section?: string | null
+          street_cleaning_ward?: string | null
+          sweeper_passed_notified_at?: string | null
+          user_id?: string | null
+          winter_ban_notified_at?: string | null
+          winter_ban_street_name?: string | null
+        }
+        Relationships: []
       }
       user_passkeys: {
         Row: {
@@ -3402,6 +9209,7 @@ export type Database = {
         Row: {
           affiliate_id: string | null
           affiliate_signup_date: string | null
+          call_alert_preferences: Json | null
           city: string | null
           city_sticker_expiry: string | null
           city_sticker_purchase_confirmed_at: string | null
@@ -3409,6 +9217,11 @@ export type Database = {
           concierge_service: boolean | null
           consent_ip_address: string | null
           consent_protection_purchase: string | null
+          consent_reminder_sent_at: string | null
+          contest_consent: boolean | null
+          contest_consent_at: string | null
+          contest_consent_ip: string | null
+          contest_consent_signature: string | null
           created_at: string | null
           drivers_license_url: string | null
           email: string | null
@@ -3422,13 +9235,21 @@ export type Database = {
           foia_data_emails: Json | null
           foia_emails_added_at: string | null
           foia_emails_updated_at: string | null
+          foia_evidence_consent: boolean | null
+          foia_evidence_consent_at: string | null
+          foia_evidence_consent_signature: string | null
+          foia_history_consent: boolean | null
+          foia_history_consent_at: string | null
+          foia_wait_preference: string | null
           follow_up_sms: boolean | null
           guarantee_opt_in_year: number | null
+          has_contesting: boolean
           has_permit_zone: boolean | null
           has_protection: boolean
-          has_contesting: boolean
           has_vanity_plate: boolean | null
           home_address_full: string | null
+          home_address_lat: number | null
+          home_address_lng: number | null
           home_address_section: string | null
           home_address_ward: string | null
           is_canary: boolean | null
@@ -3458,6 +9279,7 @@ export type Database = {
           license_state: string | null
           license_valid_until: string | null
           mailing_address: string | null
+          mailing_address_2: string | null
           mailing_city: string | null
           mailing_state: string | null
           mailing_zip: string | null
@@ -3465,6 +9287,7 @@ export type Database = {
           notification_preferences: Json | null
           notify_days_array: number[] | null
           notify_days_before: number | null
+          notify_dot_permits: boolean | null
           notify_email: boolean | null
           notify_evening_before: boolean | null
           notify_sms: boolean | null
@@ -3476,10 +9299,12 @@ export type Database = {
           notify_snow_forecast: boolean | null
           notify_snow_forecast_email: boolean | null
           notify_snow_forecast_sms: boolean | null
+          notify_tow: boolean | null
           notify_winter_ban: boolean | null
           notify_winter_parking: boolean | null
           on_snow_route: boolean | null
           payment_authorized_at: string | null
+          payment_source: string | null
           permit_application_status: string | null
           permit_expiry_date: string | null
           permit_requested: boolean | null
@@ -3497,6 +9322,7 @@ export type Database = {
           property_tax_fetch_notes: string | null
           property_tax_last_fetched_at: string | null
           property_tax_needs_refresh: boolean | null
+          push_alert_preferences: Json | null
           push_subscription: Json | null
           referral_pro_earned: boolean | null
           reminder_days: number[] | null
@@ -3506,6 +9332,7 @@ export type Database = {
           residency_forwarding_consent_given_at: string | null
           residency_forwarding_enabled: boolean | null
           residency_proof_path: string | null
+          residency_proof_rejection_reason: string | null
           residency_proof_type: string | null
           residency_proof_uploaded_at: string | null
           residency_proof_verified: boolean | null
@@ -3550,6 +9377,9 @@ export type Database = {
           utilityapi_latest_bill_pdf_url: string | null
           utilityapi_latest_bill_uid: string | null
           utilityapi_utility: string | null
+          vehicle_color: string | null
+          vehicle_make: string | null
+          vehicle_model: string | null
           vehicle_type: string | null
           vehicle_year: number | null
           vehicle_zone: string | null
@@ -3558,11 +9388,13 @@ export type Database = {
           voice_call_time: string | null
           voice_calls_enabled: boolean | null
           voice_preference: string | null
+          welcome_email_sent_at: string | null
           zip_code: string | null
         }
         Insert: {
           affiliate_id?: string | null
           affiliate_signup_date?: string | null
+          call_alert_preferences?: Json | null
           city?: string | null
           city_sticker_expiry?: string | null
           city_sticker_purchase_confirmed_at?: string | null
@@ -3570,6 +9402,11 @@ export type Database = {
           concierge_service?: boolean | null
           consent_ip_address?: string | null
           consent_protection_purchase?: string | null
+          consent_reminder_sent_at?: string | null
+          contest_consent?: boolean | null
+          contest_consent_at?: string | null
+          contest_consent_ip?: string | null
+          contest_consent_signature?: string | null
           created_at?: string | null
           drivers_license_url?: string | null
           email?: string | null
@@ -3583,13 +9420,21 @@ export type Database = {
           foia_data_emails?: Json | null
           foia_emails_added_at?: string | null
           foia_emails_updated_at?: string | null
+          foia_evidence_consent?: boolean | null
+          foia_evidence_consent_at?: string | null
+          foia_evidence_consent_signature?: string | null
+          foia_history_consent?: boolean | null
+          foia_history_consent_at?: string | null
+          foia_wait_preference?: string | null
           follow_up_sms?: boolean | null
           guarantee_opt_in_year?: number | null
+          has_contesting?: boolean
           has_permit_zone?: boolean | null
           has_protection?: boolean
-          has_contesting?: boolean
           has_vanity_plate?: boolean | null
           home_address_full?: string | null
+          home_address_lat?: number | null
+          home_address_lng?: number | null
           home_address_section?: string | null
           home_address_ward?: string | null
           is_canary?: boolean | null
@@ -3619,6 +9464,7 @@ export type Database = {
           license_state?: string | null
           license_valid_until?: string | null
           mailing_address?: string | null
+          mailing_address_2?: string | null
           mailing_city?: string | null
           mailing_state?: string | null
           mailing_zip?: string | null
@@ -3626,6 +9472,7 @@ export type Database = {
           notification_preferences?: Json | null
           notify_days_array?: number[] | null
           notify_days_before?: number | null
+          notify_dot_permits?: boolean | null
           notify_email?: boolean | null
           notify_evening_before?: boolean | null
           notify_sms?: boolean | null
@@ -3637,10 +9484,12 @@ export type Database = {
           notify_snow_forecast?: boolean | null
           notify_snow_forecast_email?: boolean | null
           notify_snow_forecast_sms?: boolean | null
+          notify_tow?: boolean | null
           notify_winter_ban?: boolean | null
           notify_winter_parking?: boolean | null
           on_snow_route?: boolean | null
           payment_authorized_at?: string | null
+          payment_source?: string | null
           permit_application_status?: string | null
           permit_expiry_date?: string | null
           permit_requested?: boolean | null
@@ -3658,6 +9507,7 @@ export type Database = {
           property_tax_fetch_notes?: string | null
           property_tax_last_fetched_at?: string | null
           property_tax_needs_refresh?: boolean | null
+          push_alert_preferences?: Json | null
           push_subscription?: Json | null
           referral_pro_earned?: boolean | null
           reminder_days?: number[] | null
@@ -3667,6 +9517,7 @@ export type Database = {
           residency_forwarding_consent_given_at?: string | null
           residency_forwarding_enabled?: boolean | null
           residency_proof_path?: string | null
+          residency_proof_rejection_reason?: string | null
           residency_proof_type?: string | null
           residency_proof_uploaded_at?: string | null
           residency_proof_verified?: boolean | null
@@ -3711,6 +9562,9 @@ export type Database = {
           utilityapi_latest_bill_pdf_url?: string | null
           utilityapi_latest_bill_uid?: string | null
           utilityapi_utility?: string | null
+          vehicle_color?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
           vehicle_type?: string | null
           vehicle_year?: number | null
           vehicle_zone?: string | null
@@ -3719,11 +9573,13 @@ export type Database = {
           voice_call_time?: string | null
           voice_calls_enabled?: boolean | null
           voice_preference?: string | null
+          welcome_email_sent_at?: string | null
           zip_code?: string | null
         }
         Update: {
           affiliate_id?: string | null
           affiliate_signup_date?: string | null
+          call_alert_preferences?: Json | null
           city?: string | null
           city_sticker_expiry?: string | null
           city_sticker_purchase_confirmed_at?: string | null
@@ -3731,6 +9587,11 @@ export type Database = {
           concierge_service?: boolean | null
           consent_ip_address?: string | null
           consent_protection_purchase?: string | null
+          consent_reminder_sent_at?: string | null
+          contest_consent?: boolean | null
+          contest_consent_at?: string | null
+          contest_consent_ip?: string | null
+          contest_consent_signature?: string | null
           created_at?: string | null
           drivers_license_url?: string | null
           email?: string | null
@@ -3744,13 +9605,21 @@ export type Database = {
           foia_data_emails?: Json | null
           foia_emails_added_at?: string | null
           foia_emails_updated_at?: string | null
+          foia_evidence_consent?: boolean | null
+          foia_evidence_consent_at?: string | null
+          foia_evidence_consent_signature?: string | null
+          foia_history_consent?: boolean | null
+          foia_history_consent_at?: string | null
+          foia_wait_preference?: string | null
           follow_up_sms?: boolean | null
           guarantee_opt_in_year?: number | null
+          has_contesting?: boolean
           has_permit_zone?: boolean | null
           has_protection?: boolean
-          has_contesting?: boolean
           has_vanity_plate?: boolean | null
           home_address_full?: string | null
+          home_address_lat?: number | null
+          home_address_lng?: number | null
           home_address_section?: string | null
           home_address_ward?: string | null
           is_canary?: boolean | null
@@ -3780,6 +9649,7 @@ export type Database = {
           license_state?: string | null
           license_valid_until?: string | null
           mailing_address?: string | null
+          mailing_address_2?: string | null
           mailing_city?: string | null
           mailing_state?: string | null
           mailing_zip?: string | null
@@ -3787,6 +9657,7 @@ export type Database = {
           notification_preferences?: Json | null
           notify_days_array?: number[] | null
           notify_days_before?: number | null
+          notify_dot_permits?: boolean | null
           notify_email?: boolean | null
           notify_evening_before?: boolean | null
           notify_sms?: boolean | null
@@ -3798,10 +9669,12 @@ export type Database = {
           notify_snow_forecast?: boolean | null
           notify_snow_forecast_email?: boolean | null
           notify_snow_forecast_sms?: boolean | null
+          notify_tow?: boolean | null
           notify_winter_ban?: boolean | null
           notify_winter_parking?: boolean | null
           on_snow_route?: boolean | null
           payment_authorized_at?: string | null
+          payment_source?: string | null
           permit_application_status?: string | null
           permit_expiry_date?: string | null
           permit_requested?: boolean | null
@@ -3819,6 +9692,7 @@ export type Database = {
           property_tax_fetch_notes?: string | null
           property_tax_last_fetched_at?: string | null
           property_tax_needs_refresh?: boolean | null
+          push_alert_preferences?: Json | null
           push_subscription?: Json | null
           referral_pro_earned?: boolean | null
           reminder_days?: number[] | null
@@ -3828,6 +9702,7 @@ export type Database = {
           residency_forwarding_consent_given_at?: string | null
           residency_forwarding_enabled?: boolean | null
           residency_proof_path?: string | null
+          residency_proof_rejection_reason?: string | null
           residency_proof_type?: string | null
           residency_proof_uploaded_at?: string | null
           residency_proof_verified?: boolean | null
@@ -3872,6 +9747,9 @@ export type Database = {
           utilityapi_latest_bill_pdf_url?: string | null
           utilityapi_latest_bill_uid?: string | null
           utilityapi_utility?: string | null
+          vehicle_color?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
           vehicle_type?: string | null
           vehicle_year?: number | null
           vehicle_zone?: string | null
@@ -3880,6 +9758,7 @@ export type Database = {
           voice_call_time?: string | null
           voice_calls_enabled?: boolean | null
           voice_preference?: string | null
+          welcome_email_sent_at?: string | null
           zip_code?: string | null
         }
         Relationships: []
@@ -4013,6 +9892,7 @@ export type Database = {
           spending_limit: number | null
           street_address: string | null
           street_side: string | null
+          stripe_customer_id: string | null
           subscription_status: string | null
           updated_at: string | null
           vehicle_type: string | null
@@ -4057,6 +9937,7 @@ export type Database = {
           spending_limit?: number | null
           street_address?: string | null
           street_side?: string | null
+          stripe_customer_id?: string | null
           subscription_status?: string | null
           updated_at?: string | null
           vehicle_type?: string | null
@@ -4101,6 +9982,7 @@ export type Database = {
           spending_limit?: number | null
           street_address?: string | null
           street_side?: string | null
+          stripe_customer_id?: string | null
           subscription_status?: string | null
           updated_at?: string | null
           vehicle_type?: string | null
@@ -4115,6 +9997,360 @@ export type Database = {
             columns: ["current_permit_document_id"]
             isOneToOne: false
             referencedRelation: "permit_zone_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      va_found_tickets: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          due_date: string | null
+          found_at: string | null
+          found_by: string | null
+          id: string
+          issue_date: string | null
+          location: string | null
+          notification_method: string | null
+          queue_id: string | null
+          screenshot_url: string | null
+          status: string | null
+          ticket_number: string
+          user_id: string | null
+          user_notified: boolean | null
+          user_notified_at: string | null
+          violation_code: string | null
+          violation_description: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          due_date?: string | null
+          found_at?: string | null
+          found_by?: string | null
+          id?: string
+          issue_date?: string | null
+          location?: string | null
+          notification_method?: string | null
+          queue_id?: string | null
+          screenshot_url?: string | null
+          status?: string | null
+          ticket_number: string
+          user_id?: string | null
+          user_notified?: boolean | null
+          user_notified_at?: string | null
+          violation_code?: string | null
+          violation_description?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          due_date?: string | null
+          found_at?: string | null
+          found_by?: string | null
+          id?: string
+          issue_date?: string | null
+          location?: string | null
+          notification_method?: string | null
+          queue_id?: string | null
+          screenshot_url?: string | null
+          status?: string | null
+          ticket_number?: string
+          user_id?: string | null
+          user_notified?: boolean | null
+          user_notified_at?: string | null
+          violation_code?: string | null
+          violation_description?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "va_found_tickets_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "va_ticket_check_queue"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      va_ticket_check_queue: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          check_frequency_hours: number | null
+          created_at: string | null
+          id: string
+          last_checked_at: string | null
+          last_name: string | null
+          last_result_summary: string | null
+          license_plate: string
+          license_state: string | null
+          next_check_at: string | null
+          priority: number | null
+          status: string | null
+          tickets_found: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          check_frequency_hours?: number | null
+          created_at?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_name?: string | null
+          last_result_summary?: string | null
+          license_plate: string
+          license_state?: string | null
+          next_check_at?: string | null
+          priority?: number | null
+          status?: string | null
+          tickets_found?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          check_frequency_hours?: number | null
+          created_at?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_name?: string | null
+          last_result_summary?: string | null
+          license_plate?: string
+          license_state?: string | null
+          next_check_at?: string | null
+          priority?: number | null
+          status?: string | null
+          tickets_found?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      va_ticket_findings: {
+        Row: {
+          admin_notes: string | null
+          amount: number | null
+          contested_at: string | null
+          created_at: string | null
+          due_date: string | null
+          fine_amount: number | null
+          hearing_date: string | null
+          hearing_location: string | null
+          id: string
+          issue_date: string | null
+          late_fees: number | null
+          license_plate: string
+          license_state: string
+          notified_at: string | null
+          officer_badge: string | null
+          processing_status: string | null
+          raw_data: Json | null
+          resolved_at: string | null
+          ticket_number: string | null
+          ticket_status: string | null
+          updated_at: string | null
+          upload_batch_id: string | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+          user_id: string | null
+          va_notes: string | null
+          violation_code: string | null
+          violation_description: string | null
+          violation_location: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount?: number | null
+          contested_at?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          fine_amount?: number | null
+          hearing_date?: string | null
+          hearing_location?: string | null
+          id?: string
+          issue_date?: string | null
+          late_fees?: number | null
+          license_plate: string
+          license_state?: string
+          notified_at?: string | null
+          officer_badge?: string | null
+          processing_status?: string | null
+          raw_data?: Json | null
+          resolved_at?: string | null
+          ticket_number?: string | null
+          ticket_status?: string | null
+          updated_at?: string | null
+          upload_batch_id?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          user_id?: string | null
+          va_notes?: string | null
+          violation_code?: string | null
+          violation_description?: string | null
+          violation_location?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number | null
+          contested_at?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          fine_amount?: number | null
+          hearing_date?: string | null
+          hearing_location?: string | null
+          id?: string
+          issue_date?: string | null
+          late_fees?: number | null
+          license_plate?: string
+          license_state?: string
+          notified_at?: string | null
+          officer_badge?: string | null
+          processing_status?: string | null
+          raw_data?: Json | null
+          resolved_at?: string | null
+          ticket_number?: string | null
+          ticket_status?: string | null
+          updated_at?: string | null
+          upload_batch_id?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          user_id?: string | null
+          va_notes?: string | null
+          violation_code?: string | null
+          violation_description?: string | null
+          violation_location?: string | null
+        }
+        Relationships: []
+      }
+      va_upload_batches: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          file_path: string | null
+          filename: string | null
+          id: string
+          matched_users: number | null
+          new_tickets: number | null
+          processing_status: string | null
+          total_records: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_path?: string | null
+          filename?: string | null
+          id?: string
+          matched_users?: number | null
+          new_tickets?: number | null
+          processing_status?: string | null
+          total_records?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_path?: string | null
+          filename?: string | null
+          id?: string
+          matched_users?: number | null
+          new_tickets?: number | null
+          processing_status?: string | null
+          total_records?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      va_uploads: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          errors: Json | null
+          export_job_id: string | null
+          id: string
+          letters_generated: number
+          letters_sent: number
+          original_filename: string | null
+          row_count: number
+          status: string
+          tickets_created: number
+          uploaded_by: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          errors?: Json | null
+          export_job_id?: string | null
+          id?: string
+          letters_generated?: number
+          letters_sent?: number
+          original_filename?: string | null
+          row_count?: number
+          status?: string
+          tickets_created?: number
+          uploaded_by: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          errors?: Json | null
+          export_job_id?: string | null
+          id?: string
+          letters_generated?: number
+          letters_sent?: number
+          original_filename?: string | null
+          row_count?: number
+          status?: string
+          tickets_created?: number
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "va_uploads_export_job_id_fkey"
+            columns: ["export_job_id"]
+            isOneToOne: false
+            referencedRelation: "plate_export_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      va_work_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          queue_id: string | null
+          va_identifier: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          queue_id?: string | null
+          va_identifier: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          queue_id?: string | null
+          va_identifier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "va_work_log_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "va_ticket_check_queue"
             referencedColumns: ["id"]
           },
         ]
@@ -4317,6 +10553,78 @@ export type Database = {
           },
         ]
       }
+      ward_boundaries: {
+        Row: {
+          geom: unknown
+          ward: string
+        }
+        Insert: {
+          geom?: unknown
+          ward: string
+        }
+        Update: {
+          geom?: unknown
+          ward?: string
+        }
+        Relationships: []
+      }
+      ward_contest_intelligence: {
+        Row: {
+          alderman_name: string | null
+          avg_days_to_decision: number | null
+          avg_fine_amount: number | null
+          created_at: string | null
+          defense_stats: Json | null
+          enforcement_score: number | null
+          last_updated: string | null
+          overall_win_rate: number | null
+          seasonal_patterns: Json | null
+          top_arguments: Json | null
+          total_contests: number | null
+          total_losses: number | null
+          total_wins: number | null
+          violation_stats: Json | null
+          ward: number
+          ward_name: string | null
+        }
+        Insert: {
+          alderman_name?: string | null
+          avg_days_to_decision?: number | null
+          avg_fine_amount?: number | null
+          created_at?: string | null
+          defense_stats?: Json | null
+          enforcement_score?: number | null
+          last_updated?: string | null
+          overall_win_rate?: number | null
+          seasonal_patterns?: Json | null
+          top_arguments?: Json | null
+          total_contests?: number | null
+          total_losses?: number | null
+          total_wins?: number | null
+          violation_stats?: Json | null
+          ward: number
+          ward_name?: string | null
+        }
+        Update: {
+          alderman_name?: string | null
+          avg_days_to_decision?: number | null
+          avg_fine_amount?: number | null
+          created_at?: string | null
+          defense_stats?: Json | null
+          enforcement_score?: number | null
+          last_updated?: string | null
+          overall_win_rate?: number | null
+          seasonal_patterns?: Json | null
+          top_arguments?: Json | null
+          total_contests?: number | null
+          total_losses?: number | null
+          total_wins?: number | null
+          violation_stats?: Json | null
+          ward?: number
+          ward_name?: string | null
+        }
+        Relationships: []
+      }
       webhook_health_checks: {
         Row: {
           alert_sent: boolean | null
@@ -4351,6 +10659,7 @@ export type Database = {
         Row: {
           created_at: string | null
           from_location: string
+          geom: unknown
           id: string
           street_name: string
           to_location: string
@@ -4359,6 +10668,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           from_location: string
+          geom?: unknown
           id?: string
           street_name: string
           to_location: string
@@ -4367,6 +10677,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           from_location?: string
+          geom?: unknown
           id?: string
           street_name?: string
           to_location?: string
@@ -4374,153 +10685,35 @@ export type Database = {
         }
         Relationships: []
       }
-      parking_location_history: {
+      zone_geometry_edits: {
         Row: {
-          id: string
-          user_id: string
-          latitude: number
-          longitude: number
-          address: string | null
-          on_winter_ban_street: boolean | null
-          winter_ban_street_name: string | null
-          on_snow_route: boolean | null
-          snow_route_name: string | null
-          street_cleaning_date: string | null
-          street_cleaning_ward: string | null
-          street_cleaning_section: string | null
-          permit_zone: string | null
-          permit_restriction_schedule: string | null
-          parked_at: string
-          cleared_at: string | null
-          departure_latitude: number | null
-          departure_longitude: number | null
-          departure_confirmed_at: string | null
-          departure_accuracy_meters: number | null
-          departure_distance_meters: number | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          latitude: number
-          longitude: number
-          address?: string | null
-          on_winter_ban_street?: boolean | null
-          winter_ban_street_name?: string | null
-          on_snow_route?: boolean | null
-          snow_route_name?: string | null
-          street_cleaning_date?: string | null
-          street_cleaning_ward?: string | null
-          street_cleaning_section?: string | null
-          permit_zone?: string | null
-          permit_restriction_schedule?: string | null
-          parked_at?: string
-          cleared_at?: string | null
-          departure_latitude?: number | null
-          departure_longitude?: number | null
-          departure_confirmed_at?: string | null
-          departure_accuracy_meters?: number | null
-          departure_distance_meters?: number | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          latitude?: number
-          longitude?: number
-          address?: string | null
-          on_winter_ban_street?: boolean | null
-          winter_ban_street_name?: string | null
-          on_snow_route?: boolean | null
-          snow_route_name?: string | null
-          street_cleaning_date?: string | null
-          street_cleaning_ward?: string | null
-          street_cleaning_section?: string | null
-          permit_zone?: string | null
-          permit_restriction_schedule?: string | null
-          parked_at?: string
-          cleared_at?: string | null
-          departure_latitude?: number | null
-          departure_longitude?: number | null
-          departure_confirmed_at?: string | null
-          departure_accuracy_meters?: number | null
-          departure_distance_meters?: number | null
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "parking_location_history_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      saved_parking_locations: {
-        Row: {
-          id: string
-          user_id: string
-          latitude: number
-          longitude: number
-          address: string | null
-          nickname: string
-          icon: string | null
-          color: string | null
-          notify_on_arrival: boolean | null
-          has_restrictions: boolean | null
-          restriction_summary: string | null
-          last_restriction_check: string | null
-          times_parked: number | null
-          last_parked_at: string | null
-          created_at: string | null
+          confirmed: boolean | null
+          geometry: Json | null
+          id: number
+          section: string | null
           updated_at: string | null
+          ward: string | null
+          ward_section: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          latitude: number
-          longitude: number
-          address?: string | null
-          nickname: string
-          icon?: string | null
-          color?: string | null
-          notify_on_arrival?: boolean | null
-          has_restrictions?: boolean | null
-          restriction_summary?: string | null
-          last_restriction_check?: string | null
-          times_parked?: number | null
-          last_parked_at?: string | null
-          created_at?: string | null
+          confirmed?: boolean | null
+          geometry?: Json | null
+          id?: number
+          section?: string | null
           updated_at?: string | null
+          ward?: string | null
+          ward_section: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          latitude?: number
-          longitude?: number
-          address?: string | null
-          nickname?: string
-          icon?: string | null
-          color?: string | null
-          notify_on_arrival?: boolean | null
-          has_restrictions?: boolean | null
-          restriction_summary?: string | null
-          last_restriction_check?: string | null
-          times_parked?: number | null
-          last_parked_at?: string | null
-          created_at?: string | null
+          confirmed?: boolean | null
+          geometry?: Json | null
+          id?: number
+          section?: string | null
           updated_at?: string | null
+          ward?: string | null
+          ward_section?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "saved_parking_locations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
     }
     Views: {
@@ -4538,6 +10731,45 @@ export type Database = {
           count: number | null
           percentage: number | null
           reason: string | null
+        }
+        Relationships: []
+      }
+      enforcement_dow_baseline: {
+        Row: {
+          day_name: string | null
+          dow: number | null
+          probability: number | null
+          ticket_count: number | null
+        }
+        Relationships: []
+      }
+      enforcement_hour_dow_baseline: {
+        Row: {
+          dow: number | null
+          hour: number | null
+          probability: number | null
+          ticket_count: number | null
+        }
+        Relationships: []
+      }
+      enforcement_hourly_baseline: {
+        Row: {
+          hour: number | null
+          probability: number | null
+          ticket_count: number | null
+        }
+        Relationships: []
+      }
+      enforcement_violation_weights: {
+        Row: {
+          avg_hour: number | null
+          median_hour: number | null
+          p80_hour: number | null
+          share: number | null
+          stddev_hour: number | null
+          total_tickets: number | null
+          violation_code: string | null
+          violation_description: string | null
         }
         Relationships: []
       }
@@ -4583,6 +10815,21 @@ export type Database = {
         }
         Relationships: []
       }
+      kit_performance_stats: {
+        Row: {
+          argument_used: string | null
+          avg_estimated_win_rate: number | null
+          avg_user_rating: number | null
+          kit_used: string | null
+          losses: number | null
+          pending: number | null
+          total_cases: number | null
+          weather_defense_used: boolean | null
+          win_rate_percent: number | null
+          wins: number | null
+        }
+        Relationships: []
+      }
       leaderboard_current_storm: {
         Row: {
           avg_rating: number | null
@@ -4590,6 +10837,18 @@ export type Database = {
           jobs_completed: number | null
           phone: string | null
           storm_earnings: number | null
+        }
+        Relationships: []
+      }
+      notification_stats: {
+        Row: {
+          category: string | null
+          date: string | null
+          failed: number | null
+          notification_type: string | null
+          pending_retry: number | null
+          successful: number | null
+          total: number | null
         }
         Relationships: []
       }
@@ -4637,6 +10896,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      property_tax_win_rates: {
+        Row: {
+          avg_quality_denied: number | null
+          avg_quality_successful: number | null
+          avg_reduction_percent: number | null
+          primary_case: string | null
+          strategy: string | null
+          success_rate: number | null
+          successful_cases: number | null
+          tax_year: number | null
+          total_cases: number | null
+          township: string | null
+        }
+        Relationships: []
       }
       report_follow_up: {
         Row: {
@@ -5083,6 +11357,16 @@ export type Database = {
         Returns: Json
       }
       cleanup_expired_signup_tokens: { Args: never; Returns: number }
+      compute_parking_risk: {
+        Args: {
+          p_current_dow?: number
+          p_current_hour?: number
+          p_street_direction: string
+          p_street_name: string
+          p_street_number: string
+        }
+        Returns: Json
+      }
       deactivate_push_token: { Args: { p_token: string }; Returns: undefined }
       deactivate_snow_ban: { Args: { p_notes?: string }; Returns: undefined }
       disablelongtransactions: { Args: never; Returns: string }
@@ -5118,6 +11402,23 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      find_gps_correction: {
+        Args: {
+          p_lat: number
+          p_lng: number
+          p_max_meters?: number
+          p_min_samples?: number
+        }
+        Returns: {
+          block_number: number
+          distance_m: number
+          offset_lat: number
+          offset_lng: number
+          sample_count: number
+          street_direction: string
+          street_name: string
+        }[]
+      }
       find_nearest_sf_street: {
         Args: { lat: number; lng: number; max_distance_meters?: number }
         Returns: {
@@ -5137,6 +11438,13 @@ export type Database = {
           week3: number
           week4: number
           week5: number
+        }[]
+      }
+      find_section_for_point: {
+        Args: { lat: number; lon: number }
+        Returns: {
+          section: string
+          ward: string
         }[]
       }
       geometry: { Args: { "": string }; Returns: unknown }
@@ -5246,6 +11554,68 @@ export type Database = {
           two_inch_ban_triggered: boolean
         }[]
       }
+      get_block_enforcement_stats: {
+        Args: {
+          p_street_direction: string
+          p_street_name: string
+          p_street_number: string
+        }
+        Returns: {
+          block_address: string
+          city_rank: number
+          dow_histogram: number[]
+          estimated_revenue: number
+          hourly_histogram: number[]
+          peak_hour_end: number
+          peak_hour_start: number
+          top_violation_code: string
+          top_violation_pct: number
+          total_tickets: number
+          violation_breakdown: Json
+          year_range: string
+        }[]
+      }
+      get_block_ticket_summary: {
+        Args: {
+          p_street_direction: string
+          p_street_name: string
+          p_street_number: string
+        }
+        Returns: Json
+      }
+      get_curb_regulations: {
+        Args: {
+          p_street_direction: string
+          p_street_name: string
+          p_street_number: string
+        }
+        Returns: Json
+      }
+      get_dot_permits_at_location: {
+        Args: {
+          check_date?: string
+          distance_meters?: number
+          user_lat: number
+          user_lng: number
+        }
+        Returns: {
+          application_name: string
+          application_number: string
+          comments: string
+          direction: string
+          distance_m: number
+          end_date: string
+          parking_meter_bagging: boolean
+          start_date: string
+          street_closure: string
+          street_name: string
+          street_number_from: number
+          street_number_to: number
+          suffix: string
+          work_description: string
+          work_type: string
+        }[]
+      }
       get_nearby_shovelers: {
         Args: {
           job_lat: number
@@ -5260,6 +11630,18 @@ export type Database = {
           phone: string
           rate: number
           skills: string[]
+        }[]
+      }
+      get_nearest_street_cleaning_zone: {
+        Args: {
+          max_distance_meters?: number
+          user_lat: number
+          user_lng: number
+        }
+        Returns: {
+          distance_meters: number
+          section: string
+          ward: string
         }[]
       }
       get_next_cleaning_date: {
@@ -5278,6 +11660,21 @@ export type Database = {
           type: string
           user_id: string
           vehicle_id: string
+        }[]
+      }
+      get_pending_retries: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempt_count: number
+          category: string
+          content_preview: string
+          email: string
+          id: string
+          metadata: Json
+          notification_type: string
+          phone: string
+          subject: string
+          user_id: string
         }[]
       }
       get_permit_zone_at_location: {
@@ -5368,6 +11765,13 @@ export type Database = {
           ward: string
         }[]
       }
+      get_user_by_email: {
+        Args: { user_email: string }
+        Returns: {
+          email: string
+          id: string
+        }[]
+      }
       get_user_push_tokens: {
         Args: { p_user_id: string }
         Returns: {
@@ -5377,16 +11781,57 @@ export type Database = {
           token: string
         }[]
       }
+      get_winter_ban_at_location: {
+        Args: { distance_meters?: number; user_lat: number; user_lng: number }
+        Returns: {
+          distance: number
+          from_location: string
+          is_winter_ban_hours: boolean
+          is_winter_season: boolean
+          street_name: string
+          to_location: string
+        }[]
+      }
+      get_zip_ticket_summary: { Args: { p_zip_code: string }; Returns: Json }
       gettransactionid: { Args: never; Returns: unknown }
       haversine_distance: {
         Args: { lat1: number; lat2: number; long1: number; long2: number }
         Returns: number
+      }
+      increment_letter_count: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      increment_retry_attempt: { Args: { p_id: string }; Returns: undefined }
+      insert_winter_ban_with_geom: {
+        Args: {
+          p_from_location: string
+          p_geojson: string
+          p_street_name: string
+          p_to_location: string
+        }
+        Returns: undefined
       }
       is_address_on_winter_ban_street: {
         Args: { p_full_address: string }
         Returns: boolean
       }
       is_winter_ban_hours: { Args: never; Returns: boolean }
+      log_notification: {
+        Args: {
+          p_category: string
+          p_content_preview: string
+          p_email: string
+          p_external_id?: string
+          p_metadata?: Json
+          p_notification_type: string
+          p_phone: string
+          p_status?: string
+          p_subject: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       log_reminder: {
         Args: {
           p_days_until_due: number
@@ -5403,6 +11848,24 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: undefined
       }
+      nearest_address_point: {
+        Args: {
+          expected_parity?: string
+          expected_street?: string
+          search_radius_meters?: number
+          user_lat: number
+          user_lng: number
+        }
+        Returns: {
+          distance_meters: number
+          full_street_name: string
+          house_number: number
+          pre_dir: string
+          street_name: string
+          street_type: string
+        }[]
+      }
+      normalize_chicago_street: { Args: { s: string }; Returns: string }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }
@@ -5443,6 +11906,11 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      refresh_block_centroids_from_meters: { Args: never; Returns: number }
+      refresh_block_offsets_from_diagnostics: {
+        Args: { p_max_snap_distance_m?: number; p_min_events?: number }
+        Returns: number
+      }
       refresh_foia_statistics: { Args: never; Returns: undefined }
       register_push_token: {
         Args: {
@@ -5456,6 +11924,56 @@ export type Database = {
         Returns: string
       }
       should_trigger_two_inch_ban: { Args: never; Returns: boolean }
+      snap_to_nearest_street: {
+        Args: {
+          search_radius_meters?: number
+          user_lat: number
+          user_lng: number
+        }
+        Returns: {
+          l_from_addr: number
+          l_parity: string
+          l_to_addr: number
+          oneway_dir: string
+          r_from_addr: number
+          r_parity: string
+          r_to_addr: number
+          segment_fraction: number
+          snap_distance_meters: number
+          snap_source: string
+          snapped_lat: number
+          snapped_lng: number
+          street_bearing: number
+          street_name: string
+          was_snapped: boolean
+        }[]
+      }
+      snap_to_nearest_street_with_blocks: {
+        Args: {
+          max_per_street?: number
+          max_total?: number
+          search_radius_meters?: number
+          user_lat: number
+          user_lng: number
+        }
+        Returns: {
+          l_from_addr: number
+          l_parity: string
+          l_to_addr: number
+          oneway_dir: string
+          r_from_addr: number
+          r_parity: string
+          r_to_addr: number
+          segment_fraction: number
+          snap_distance_meters: number
+          snap_source: string
+          snapped_lat: number
+          snapped_lng: number
+          street_bearing: number
+          street_name: string
+          was_snapped: boolean
+        }[]
+      }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -6038,6 +12556,15 @@ export type Database = {
         Returns: unknown
       }
       unlockrows: { Args: { "": string }; Returns: number }
+      update_notification_status: {
+        Args: {
+          p_error?: string
+          p_external_id?: string
+          p_id: string
+          p_status: string
+        }
+        Returns: undefined
+      }
       updategeometrysrid: {
         Args: {
           catalogn_name: string
@@ -6062,6 +12589,28 @@ export type Database = {
         | "completed"
         | "failed"
         | "cancelled"
+      violation_type:
+        | "expired_plates"
+        | "no_city_sticker"
+        | "expired_meter"
+        | "disabled_zone"
+        | "street_cleaning"
+        | "rush_hour"
+        | "fire_hydrant"
+        | "red_light"
+        | "speed_camera"
+        | "other_unknown"
+        | "missing_plate"
+        | "bus_lane"
+        | "residential_permit"
+        | "snow_route"
+        | "double_parking"
+        | "commercial_loading"
+        | "bike_lane"
+        | "bus_stop"
+        | "no_standing_time_restricted"
+        | "parking_prohibited"
+        | "parking_alley"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -6209,6 +12758,29 @@ export const Constants = {
         "completed",
         "failed",
         "cancelled",
+      ],
+      violation_type: [
+        "expired_plates",
+        "no_city_sticker",
+        "expired_meter",
+        "disabled_zone",
+        "street_cleaning",
+        "rush_hour",
+        "fire_hydrant",
+        "red_light",
+        "speed_camera",
+        "other_unknown",
+        "missing_plate",
+        "bus_lane",
+        "residential_permit",
+        "snow_route",
+        "double_parking",
+        "commercial_loading",
+        "bike_lane",
+        "bus_stop",
+        "no_standing_time_restricted",
+        "parking_prohibited",
+        "parking_alley",
       ],
     },
   },

@@ -2072,8 +2072,8 @@ ${learningsText}${officerIntelText}`
         if (registrationReceipt) {
           availableEvidenceSummary.push(`Registration Receipt: ${registrationReceipt.source_type}, purchased ${registrationReceipt.parsed_purchase_date}`);
         }
-        if (courtData.hasData) {
-          availableEvidenceSummary.push(`FOIA Court Data: ${courtData.totalDismissed}/${courtData.totalContested} dismissed (${Math.round(courtData.winRate)}% win rate)`);
+        if (foiaData.hasData) {
+          availableEvidenceSummary.push(`FOIA Court Data: ${foiaData.totalDismissed}/${foiaData.totalContested} dismissed (${foiaData.winRate}% win rate)`);
         }
         if (kitEvaluation) {
           availableEvidenceSummary.push(`Contest Kit: recommended "${kitEvaluation.selectedArgument.name}" (${Math.round(kitEvaluation.selectedArgument.winRate * 100)}% win rate)`);

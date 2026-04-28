@@ -78,10 +78,13 @@ export function getChicagoDayOfWeek(): number {
 }
 
 /**
- * Get Chicago date string in ISO format (YYYY-MM-DD)
+ * Get Chicago date string in ISO format (YYYY-MM-DD).
+ * Defaults to "today in Chicago." Pass a Date to format that instant in
+ * Chicago time (useful for "what's the YYYY-MM-DD of three-days-from-now
+ * in Chicago?").
  */
-export function getChicagoDateISO(): string {
-  const chicagoTime = getChicagoTime();
+export function getChicagoDateISO(date?: Date): string {
+  const chicagoTime = date ? toChicagoTime(date) : getChicagoTime();
   const year = chicagoTime.getFullYear();
   const month = String(chicagoTime.getMonth() + 1).padStart(2, '0');
   const day = String(chicagoTime.getDate()).padStart(2, '0');
