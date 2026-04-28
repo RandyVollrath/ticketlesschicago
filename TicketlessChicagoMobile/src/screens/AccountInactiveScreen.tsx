@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   Platform,
   Linking,
@@ -62,6 +63,8 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
   const [monthlyAvailable, setMonthlyAvailable] = useState(false);
   const [annualPrice, setAnnualPrice] = useState<string | null>(null);
   const [monthlyPrice, setMonthlyPrice] = useState<string | null>(null);
+  const [referralOpen, setReferralOpen] = useState(false);
+  const [referralCode, setReferralCodeState] = useState('');
   const user = AuthService.getUser();
 
   useEffect(() => {
@@ -82,6 +85,18 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
     setMonthlyAvailable(IAPService.isMonthlyAvailable());
     setAnnualPrice(IAPService.getPrice('annual'));
     setMonthlyPrice(IAPService.getPrice('monthly'));
+    // Restore any previously-entered referral code so the user sees it persisted.
+    const saved = await IAPService.getReferralCode();
+    if (saved) {
+      setReferralCodeState(saved);
+      setReferralOpen(true);
+    }
+  };
+
+  const handleReferralChange = (next: string) => {
+    setReferralCodeState(next);
+    // Persist on each keystroke; backend re-validates at purchase time.
+    IAPService.setReferralCode(next).catch((e) => log.warn('Failed to persist referral code', e));
   };
 
   const handleSignOut = async () => {
@@ -237,6 +252,36 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
                   </>
                 )}
               </TouchableOpacity>
+
+              {/* Optional Rewardful referral code. Apple/Google IAPs bypass Stripe,
+                  so this text input is the only attribution path for affiliates
+                  whose referrals install via App Store. */}
+              {!referralOpen ? (
+                <TouchableOpacity
+                  style={styles.referralToggle}
+                  onPress={() => setReferralOpen(true)}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.referralToggleText}>Have a referral code?</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.referralRow}>
+                  <TextInput
+                    value={referralCode}
+                    onChangeText={handleReferralChange}
+                    placeholder="Referral code (optional)"
+                    placeholderTextColor={colors.textTertiary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    maxLength={64}
+                    style={styles.referralInput}
+                  />
+                  {referralCode.length > 0 && (
+                    <Text style={styles.referralAppliedHint}>Applied at checkout</Text>
+                  )}
+                </View>
+              )}
 
               {/* Subscription details required by App Store Guideline 3.1.2(c) */}
               <Text style={styles.subscriptionDisclosure}>
@@ -495,6 +540,37 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.sm,
+  },
+  referralToggle: {
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xs,
+    alignItems: 'center',
+  },
+  referralToggleText: {
+    fontSize: 12,
+    color: colors.primary,
+    textDecorationLine: 'underline',
+  },
+  referralRow: {
+    width: '100%',
+    marginBottom: spacing.sm,
+  },
+  referralInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: spacing.base,
+    paddingVertical: 10,
+    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    backgroundColor: '#fff',
+  },
+  referralAppliedHint: {
+    fontSize: 11,
+    color: '#10B981',
+    marginTop: 4,
+    marginLeft: 4,
   },
   legalLinks: {
     flexDirection: 'row',
