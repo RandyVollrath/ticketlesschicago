@@ -1216,12 +1216,26 @@ export default async function handler(
             // was abandoned for Wolcott at 46.7m because heading 217° was
             // stale from before the final turn).
             //
-            // Two-of-two beats heading every time. Result is cached for the
-            // downstream Nominatim cross-reference block (built-in 1h TTL).
+            // Two-of-two beats heading every time in ordinary cases. But at
+            // the mouth of an intersection, the parked point can land right
+            // on the cross street's centerline even when the CAR approached
+            // and parked on the perpendicular street. In that specific case,
+            // the in-vehicle trajectory is a stronger signal than the stop
+            // point alone, so we defer the fast lock and let trajectory vote
+            // first.
             let lockedByCloseSnap = false;
             const CLOSE_LOCK_THRESHOLD_M = 15;
+            const shouldDeferCloseSnapLockToTrajectory =
+              diag.near_intersection === true &&
+              driveTrajectory.length >= 2 &&
+              allCandidates.length > 1;
             // Skip the close-snap lock if user anchor already locked the answer.
-            if (!lockedByUserAnchor && !lockedByVehicleKnownSpot && candidates[0].snap_distance_meters <= CLOSE_LOCK_THRESHOLD_M) {
+            if (
+              !lockedByUserAnchor &&
+              !lockedByVehicleKnownSpot &&
+              candidates[0].snap_distance_meters <= CLOSE_LOCK_THRESHOLD_M &&
+              !shouldDeferCloseSnapLockToTrajectory
+            ) {
               try {
                 const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
                 const earlyNom = await reverseGeocode(latitude, longitude);
@@ -1236,6 +1250,19 @@ export default async function handler(
               } catch (e) {
                 console.warn('[check-parking] Early close-snap lock check failed (non-fatal):', e);
               }
+            } else if (
+              !lockedByUserAnchor &&
+              !lockedByVehicleKnownSpot &&
+              candidates[0].snap_distance_meters <= CLOSE_LOCK_THRESHOLD_M &&
+              shouldDeferCloseSnapLockToTrajectory
+            ) {
+              diag.deferred_close_snap_lock = true;
+              console.log(
+                `[check-parking] Deferring close-snap lock at intersection: ` +
+                `${candidates[0].street_name} ${candidates[0].snap_distance_meters.toFixed(1)}m, ` +
+                `${allCandidates.length} candidates, ${driveTrajectory.length} trajectory fixes. ` +
+                `Letting trajectory/heading disambiguation run before locking.`
+              );
             }
 
             // ── TRAJECTORY-BASED DISAMBIGUATION (turn-aware) ──
@@ -2355,6 +2382,7 @@ export default async function handler(
     nm.snap_oneway_dir = snapResult?.onewayDir || null;
     nm.snap_l_parity = snapResult?.lParity || null;
     nm.snap_r_parity = snapResult?.rParity || null;
+    if (diag.deferred_close_snap_lock === true) nm.deferred_close_snap_lock = true;
     nm.building_constrained_match = buildingFootprintResult ? (expectedParity ? 'parity_constrained' : 'no_parity_constraint') : 'no_building_in_range';
     nm.display_and_rule_match_numbers_differ = (displayNumber != null && ruleMatchNumber != null && displayNumber !== ruleMatchNumber);
     if (typeof diag.vehicle_known_spot_street === 'string') nm.vehicle_known_spot_street = diag.vehicle_known_spot_street;
