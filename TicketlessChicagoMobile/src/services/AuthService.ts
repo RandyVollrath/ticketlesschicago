@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { Platform, NativeModules, Linking } from 'react-native';
+import { Platform, NativeModules, Linking, AppState, AppStateStatus } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 // Custom native module for Apple Sign In
 const AppleSignInModule = Platform.OS === 'ios' ? NativeModules.AppleSignInModule : null;
@@ -49,6 +50,15 @@ class AuthServiceClass {
   private listeners: ((state: AuthState) => void)[] = [];
   private googleSignInConfigured = false;
 
+  // Set on AppState=active, cleared on AppState=background. Used by the
+  // resilience hooks to skip work the OS will throttle anyway.
+  private isAppForegrounded: boolean = true;
+  // NetInfo unsubscribe so we can clean up if needed (currently lives for
+  // the app's lifetime).
+  private netInfoUnsubscribe: (() => void) | null = null;
+  private wasOffline: boolean = false;
+  private foregroundSubscription: { remove: () => void } | null = null;
+
   constructor() {
     this.supabase = createClient(Config.SUPABASE_URL, Config.SUPABASE_ANON_KEY, {
       auth: {
@@ -63,6 +73,70 @@ class AuthServiceClass {
     this.supabase.auth.onAuthStateChange((event, session) => {
       log.debug('Auth state changed', event);
       this.updateAuthState(session);
+    });
+
+    // BULLETPROOF REFRESH (2026-04-29):
+    //
+    // Without these listeners, the only way the access token gets refreshed
+    // is the supabase-js internal timer — which in React Native pauses while
+    // JS is suspended (iOS background). After hours offline, the token is
+    // stale, parking checks 401, and the user has no way to recover without
+    // signing out manually. Real example: a user spent ~43 hours with 8
+    // consecutive auth-expired parking failures because the JS auto-refresh
+    // never woke up properly when the app came back.
+    //
+    // We add three independent recovery hooks so a dead token can come back
+    // through ANY of them:
+    //   1. App foreground → start Supabase's auto-refresh + immediately try
+    //      a refreshSession (covers the "iOS background suspended JS" case)
+    //   2. Network came back online → refreshSession (covers the "user was
+    //      on bad cellular" case — exactly today's T-Mobile-glitch story)
+    //   3. App background → stop the auto-refresh timer so we don't churn
+    //      while suspended (Supabase's own RN guidance)
+    this.startAppStateRefreshLoop();
+    this.startNetworkRecoveryRefresh();
+  }
+
+  private startAppStateRefreshLoop(): void {
+    this.foregroundSubscription = AppState.addEventListener('change', (state: AppStateStatus) => {
+      if (state === 'active') {
+        this.isAppForegrounded = true;
+        try {
+          this.supabase.auth.startAutoRefresh();
+        } catch (e) {
+          log.warn('startAutoRefresh threw', e);
+        }
+        // Don't await — we want non-blocking. Log result.
+        void this._doRefreshToken().then((ok) => {
+          if (ok) log.info('Foreground refresh succeeded');
+          else log.warn('Foreground refresh did NOT succeed (transient or terminal)');
+        });
+      } else if (state === 'background' || state === 'inactive') {
+        this.isAppForegrounded = false;
+        try {
+          this.supabase.auth.stopAutoRefresh();
+        } catch (e) {
+          log.warn('stopAutoRefresh threw', e);
+        }
+      }
+    });
+  }
+
+  private startNetworkRecoveryRefresh(): void {
+    this.netInfoUnsubscribe = NetInfo.addEventListener((state) => {
+      const isOnline = state.isConnected === true && state.isInternetReachable !== false;
+      if (!isOnline) {
+        this.wasOffline = true;
+        return;
+      }
+      // Just came back online — refresh proactively. This is the path that
+      // covers the "T-Mobile / iOS-background-network-throttle" failure
+      // mode where every request hangs and the token quietly expires.
+      if (this.wasOffline && this.isAppForegrounded) {
+        log.info('Network recovered — proactively refreshing session');
+        void this._doRefreshToken();
+      }
+      this.wasOffline = false;
     });
   }
 
@@ -115,6 +189,20 @@ class AuthServiceClass {
       const { data: { session } } = await this.supabase.auth.getSession();
       log.info(`Auth initialize: session=${!!session}, user=${session?.user?.email || 'none'}`);
       this.updateAuthState(session);
+      // Kick the auto-refresh loop on initial launch — the AppState listener
+      // only fires on transitions, so the first foreground session needs an
+      // explicit start. Safe to call even if startAppStateRefreshLoop has
+      // already started it.
+      try {
+        this.supabase.auth.startAutoRefresh();
+      } catch (e) {
+        log.warn('initial startAutoRefresh threw', e);
+      }
+      // If we have a session, refresh now so any token that aged while the
+      // app was killed gets renewed before the first parking check fires.
+      if (session) {
+        void this._doRefreshToken();
+      }
     } catch (error) {
       log.error('Error initializing auth', error);
       this.authState.isLoading = false;
