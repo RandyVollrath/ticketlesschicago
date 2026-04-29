@@ -190,6 +190,13 @@ class BackgroundTaskServiceClass {
   private readonly iosCallbackStaleThresholdSec: number = 120;
   private lastIosDrivingStartedAt: number = 0;
   private lastAcceptedParkingEventAt: number = 0;
+  // Coordinates of the most recently ACCEPTED parking event. Used by the
+  // stop-and-go cooldown to measure distance from the last real park even
+  // after markCarReconnected clears LAST_PARKED_COORDS (which it does as
+  // soon as we detect departure, well before traffic-induced false stops
+  // would fire). Survives departure so the cooldown can still see "you
+  // just parked 3 minutes ago, 200m away".
+  private lastAcceptedParkingCoords: { lat: number; lng: number } | null = null;
   private lastParkingNotificationAt: number = 0;
   private lastParkingNotificationAddress: string = '';
   private readonly PARKING_NOTIFICATION_DEDUP_MS = 3 * 60 * 1000; // 3 minutes between duplicate notifications
@@ -678,6 +685,59 @@ class BackgroundTaskServiceClass {
                 log.warn(`Low-confidence parking event: locationSource=current_fallback (accuracy=${event.accuracy?.toFixed(0) ?? '?'}m). GPS wasn't captured at car-stop time — address may be off. Proceeding.`);
               }
 
+              // GUARD: Stop-and-go traffic cooldown.
+              //
+              // Real example 2026-04-29: user parked at Mariano's at 12:36
+              // (2124 N Ashland), pulled out at 13:42, hit slow traffic, and
+              // got THREE parking events fire in the next 4 minutes (13:48 on
+              // N Southport ~600m north, 13:50 at 2092 N Ashland, 13:51 at
+              // 2160 N Ashland). The existing nearby-duplicate guard below
+              // skipped these because lastIosDrivingStartedAt updated at 13:42
+              // putting us inside RECENT_DRIVING_WINDOW_MS (20 min) — so any
+              // subsequent stop within 500m looked like a "real" re-park.
+              //
+              // 20 minutes is too generous: in stop-and-go traffic the user
+              // is *always* "recently driving," and CoreMotion's automotive→
+              // stationary transition can fire on any 90s+ stop (red light,
+              // left-turn queue, snowplow). A hard time-floor between accepted
+              // parking events stops this at the source — no notification
+              // spam, no API churn, no false history rows.
+              //
+              // 4 minutes covers the worst Chicago single-light cycle (Ashland
+              // at Webster can be 3 min during peak) without rejecting honest
+              // quick re-parks (drop someone off + drive 5 min + park is fine).
+              // Distance check stays separate: a re-park >500m away is always
+              // allowed regardless of timing.
+              const COOLDOWN_NEARBY_MS = 4 * 60 * 1000;
+              const COOLDOWN_NEARBY_RADIUS_M = 500;
+              if (
+                this.lastAcceptedParkingEventAt > 0 &&
+                this.lastAcceptedParkingCoords &&
+                event.latitude &&
+                event.longitude
+              ) {
+                const sinceLast = Date.now() - this.lastAcceptedParkingEventAt;
+                if (sinceLast < COOLDOWN_NEARBY_MS) {
+                  const dist = haversineDistance(
+                    event.latitude, event.longitude,
+                    this.lastAcceptedParkingCoords.lat, this.lastAcceptedParkingCoords.lng
+                  );
+                  if (dist < COOLDOWN_NEARBY_RADIUS_M) {
+                    log.warn(
+                      `Rejecting parking event (cooldown): ${Math.round(sinceLast / 1000)}s since last accepted park, ` +
+                      `${dist.toFixed(0)}m away — likely stop-and-go traffic, not a real re-park.`
+                    );
+                    await this.persistParkingRejection('stop_and_go_cooldown', event, {
+                      secondsSinceLastAccepted: Math.round(sinceLast / 1000),
+                      distanceMeters: Math.round(dist),
+                      cooldownMs: COOLDOWN_NEARBY_MS,
+                      cooldownRadiusM: COOLDOWN_NEARBY_RADIUS_M,
+                    });
+                    return;
+                  }
+                }
+              }
+
               // GUARD: If state machine is already PARKED and new location is near
               // existing parking, this is a duplicate event (e.g. recovery path
               // re-detecting the same drive from CoreMotion history).
@@ -828,6 +888,9 @@ class BackgroundTaskServiceClass {
               }
 
               this.lastAcceptedParkingEventAt = Date.now();
+              if (event.latitude && event.longitude) {
+                this.lastAcceptedParkingCoords = { lat: event.latitude, lng: event.longitude };
+              }
               // Pass the native event timestamp so parking history records
               // when the car ACTUALLY stopped, not when the check completes.
               await this.handleCarDisconnection(parkingCoords, event.timestamp);
