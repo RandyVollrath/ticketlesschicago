@@ -935,12 +935,25 @@ class LocationServiceClass {
     const endpoint = `/api/mobile/check-parking?lat=${coords.latitude}&lng=${coords.longitude}${accuracyParam}${confidenceParam}${headingParam}${compassParam}${locationSourceParam}${detectionSourceParam}${drivingDurationParam}${driftParam}${nativeTimestampParam}${trajectoryParam}${appleGeocodeParam}${carPlayParam}${vehicleParam}`;
 
     // Use rate-limited request with caching
+    //
+    // 3 retries × 20s timeout = up to 80s of waiting on flaky networks before
+    // the user sees "Server request timed out" — a terrible UX even though
+    // the server itself is fast (~7s typical, sub-1s when auth fails fast).
+    // Real example 2026-04-29: user reported repeated timeouts while server
+    // logs showed 200 responses in 7s; the wait came from mobile-side
+    // retries, not server slowness.
+    //
+    // Parking checks are best-effort — the BackgroundTask cycle re-fires
+    // within a minute, and the LocationService 30s cache absorbs short-term
+    // duplicates. So we want fast failure: 1 retry covers transient network
+    // drops, and a 12s per-attempt timeout (still > server's ~7s p95) keeps
+    // total worst-case wait around 24s instead of 80s.
     const response = await RateLimiter.rateLimitedRequest(
       endpoint,
       async () => {
         return ApiClient.authGet<any>(endpoint, {
-          retries: 3,
-          timeout: 20000, // 20 second timeout for location checks
+          retries: 1,
+          timeout: 12000,
           showErrorAlert: false, // Handle errors ourselves
         });
       },
@@ -967,7 +980,11 @@ class LocationServiceClass {
       } else if (response.error?.type === ApiErrorType.NETWORK_ERROR) {
         errorMessage = 'No internet connection. Please check your network and try again.';
       } else if (response.error?.type === ApiErrorType.TIMEOUT_ERROR) {
-        errorMessage = 'Request timed out. The server may be busy. Please try again.';
+        // Most timeouts on this endpoint trace back to weak cellular signal
+        // rather than server slowness — the server's p95 is well under our
+        // per-attempt timeout. Word the message accordingly so users check
+        // their connection first.
+        errorMessage = 'Parking check timed out. Connection may be weak — we\'ll try again on the next stop.';
       } else {
         log.error('Parking check failed with unexpected error', {
           errorType: response.error?.type,
