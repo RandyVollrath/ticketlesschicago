@@ -189,6 +189,7 @@ export default async function handler(
       // Use validated Rewardful referral ID as client_reference_id for tracking conversions
       client_reference_id: validatedReferralId || userId || undefined,
       mode: 'subscription',
+      allow_promotion_codes: true,
       line_items: lineItems,
       // IMPORTANT: Save payment method for future renewal charges
       // With 'always', Stripe automatically saves the payment method to the subscription
