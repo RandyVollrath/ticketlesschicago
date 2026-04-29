@@ -240,7 +240,11 @@ export default function StartFunnel() {
     // Clear flag immediately so a refresh doesn't re-trigger.
     localStorage.removeItem(PENDING_CHECKOUT_KEY);
 
-    runApplyAndCheckout();
+    // We already gated on consent before kicking off OAuth (handleCheckout),
+    // so reflect that in UI state and pass it explicitly to bypass the
+    // remount-reset race.
+    setConsentChecked(true);
+    runApplyAndCheckout(true);
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stripe success redirect
@@ -434,7 +438,10 @@ export default function StartFunnel() {
   };
 
   // ── The big one: Sign-in (if needed) → apply funnel → Stripe ──
-  const runApplyAndCheckout = async () => {
+  // `consentOverride` is for the post-OAuth resume path: the redirect remounts
+  // the component and resets consentChecked to false, but we know the user
+  // already consented (handleCheckout gates on it before kicking off OAuth).
+  const runApplyAndCheckout = async (consentOverride?: boolean) => {
     setError('');
     setLoading(true);
     try {
@@ -470,7 +477,7 @@ export default function StartFunnel() {
           licensePlate: cleanPlate,
           plateState,
           billingPlan,
-          contestConsent: consentChecked,
+          contestConsent: consentOverride ?? consentChecked,
           consentSignature: signatureName,
         }),
       });
