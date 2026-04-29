@@ -154,6 +154,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
+      allow_promotion_codes: true,
       line_items: [
         {
           price: priceId,
