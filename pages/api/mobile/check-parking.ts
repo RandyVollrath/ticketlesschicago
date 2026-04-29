@@ -253,15 +253,22 @@ function haversineMeters(
  * the given coordinates. Returns the bare street name (e.g. "fremont") that
  * the snap pipeline can preferentially match against.
  *
- * Why: most parking is repeat parking — home, work, friend's house. Once the
- * user has tapped "I parked here" or used "Wrong street?" at a spot, future
- * detections within 50m of that exact lat/lng should trust the previously-
- * confirmed answer over whatever the snap cascade comes up with this time.
+ * SCOPE — read this before widening the radius.
+ * People do NOT park in the same exact spot every time. They park on different
+ * blocks of the same neighborhood depending on whether a spot is open. A 50m
+ * radius covers an entire short Chicago block face plus parts of the
+ * perpendicular cross streets — so a single past correction at one spot would
+ * steamroll today's detection on a totally different block. That is the wrong
+ * behavior.
  *
- * The 50m window keeps it tight (a single Chicago block face) so an anchor
- * for one spot doesn't bleed into the next block over. We pull recent
- * candidates in a bbox first (uses existing user_id index) then filter by
- * Haversine for true 50m radius.
+ * The radius here is intentionally tight (15m ≈ 2-3 car lengths) so the anchor
+ * only fires when the user is back on truly the same parking spot — typically
+ * a daily commute / driveway / repeated specific stall. If they're "in the
+ * area" but on a different block, the anchor must NOT apply and the cascade
+ * should run normally.
+ *
+ * Even when the anchor matches, callers should treat it as a tie-breaker, not
+ * a hard override. See the gating where this is used.
  */
 async function lookupUserParkingAnchor(
   supabase: NonNullable<typeof supabaseAdmin>,
@@ -269,11 +276,12 @@ async function lookupUserParkingAnchor(
   lat: number,
   lng: number,
 ): Promise<{ street: string; address: string; eventType: string; ageMs: number } | null> {
-  const ANCHOR_RADIUS_M = 50;
+  // 15m ≈ 2-3 car lengths — truly the same parking spot, not "same block".
+  const ANCHOR_RADIUS_M = 15;
   const ANCHOR_HORIZON_DAYS = 180;
   // Bbox slightly wider than the radius so we don't miss boundary cases.
-  const latRange = 0.0006;   // ~67m
-  const lngRange = 0.0008;   // ~67m at Chicago latitude
+  const latRange = 0.0002;   // ~22m
+  const lngRange = 0.0003;   // ~25m at Chicago latitude
   const since = new Date(Date.now() - ANCHOR_HORIZON_DAYS * 86400 * 1000).toISOString();
 
   try {
@@ -1122,19 +1130,25 @@ export default async function handler(
           if (candidates.length > 0) {
             let bestCandidate = candidates[0]; // Default: closest
 
-            // ── HIGHEST PRECEDENCE: user anchor from prior corrections ──
-            // Most parking is repeat parking (home, work, friend's). Once
-            // the user has explicitly tapped "Wrong street?" or "I parked
-            // here" at a spot, the address they confirmed is ground truth
-            // for any future detection within 50m. The cascade can be
-            // wrong; the user is not wrong about where they parked.
+            // ── TIE-BREAKER: user anchor from prior corrections ──
+            // Most parking is NOT repeat parking. People park on different
+            // blocks of the same area depending on what's open. So a past
+            // correction at one spot must NOT auto-apply to a future park
+            // unless the user is back on truly the same parking spot
+            // (15m radius — see lookupUserParkingAnchor).
             //
-            // We try the anchor street against three pools, widest first:
-            //   1. allCandidates (≤80m PostGIS snap pool)
-            //   2. extended findCenterlineSegmentByName (≤200m, then 150m
-            //      sanity-distance cap)
-            // If found, adopt the matching segment so block-aware
-            // interpolation still produces a real house number.
+            // Even within 15m, we only use the anchor when the cascade is
+            // ambiguous (near-intersection, or the anchor street is
+            // geometrically competitive with the cascade winner). If the
+            // closest snap is clearly on a different street, that geometry
+            // wins — anchor never steamrolls a confident close snap.
+            //
+            // History: was a hard override at 50m. That radius spans a full
+            // short Chicago block face plus parts of perpendicular cross
+            // streets, so a single Belden correction could lock today's
+            // park on Webster (one block over) to "Belden". Reverted to a
+            // tight tie-breaker after user feedback that "people park
+            // differently all the time."
             let lockedByUserAnchor = false;
             try {
               const anchor = await lookupUserParkingAnchor(supabaseAdmin!, user.id, latitude, longitude);
@@ -1148,12 +1162,38 @@ export default async function handler(
                   if (ext) anchorCandidate = ext;
                 }
                 if (anchorCandidate) {
-                  bestCandidate = anchorCandidate;
-                  lockedByUserAnchor = true;
-                  diag.locked_by_user_anchor = true;
                   diag.user_anchor_street = anchor.street;
                   diag.user_anchor_age_days = Math.round(anchor.ageMs / 86400000);
-                  console.log(`[check-parking] ANCHOR LOCK: user previously confirmed "${anchor.address}" within 50m (${anchor.eventType}, ${diag.user_anchor_age_days}d ago) → snap to ${anchorCandidate.street_name} at ${anchorCandidate.snap_distance_meters.toFixed(1)}m. Skipping cascade.`);
+
+                  const defaultDist = Number(candidates[0]?.snap_distance_meters ?? Number.POSITIVE_INFINITY);
+                  const anchorDist = Number(anchorCandidate.snap_distance_meters ?? Number.POSITIVE_INFINITY);
+                  // Same gate as vehicle-known-spot: only use anchor when
+                  // the cascade is ambiguous, OR when the anchor's snap
+                  // distance is competitive with the closest candidate.
+                  // Floor + ratio prevents flipping a clean 8m winner to a
+                  // 25m anchor street.
+                  const COMPETITIVE_RATIO = 1.5;
+                  const COMPETITIVE_FLOOR_M = 5;
+                  const ambiguityAllowsAnchor =
+                    diag.near_intersection === true ||
+                    anchorDist <= defaultDist * COMPETITIVE_RATIO + COMPETITIVE_FLOOR_M;
+
+                  if (ambiguityAllowsAnchor) {
+                    bestCandidate = anchorCandidate;
+                    lockedByUserAnchor = true;
+                    diag.locked_by_user_anchor = true;
+                    console.log(
+                      `[check-parking] ANCHOR TIE-BREAK: user previously confirmed "${anchor.address}" within 15m` +
+                      ` (${anchor.eventType}, ${diag.user_anchor_age_days}d ago) and cascade is ambiguous` +
+                      ` → prefer ${anchorCandidate.street_name} at ${anchorDist.toFixed(1)}m over ${candidates[0]?.street_name} at ${defaultDist.toFixed(1)}m.`
+                    );
+                  } else {
+                    console.log(
+                      `[check-parking] Anchor "${anchor.address}" found but cascade has clear winner` +
+                      ` (${candidates[0]?.street_name} at ${defaultDist.toFixed(1)}m vs anchor ${anchorCandidate.street_name} at ${anchorDist.toFixed(1)}m).` +
+                      ` Keeping cascade — past correction must not steamroll today's geometry.`
+                    );
+                  }
                 } else {
                   console.log(`[check-parking] User anchor "${anchor.address}" found but no matching centerline within 200m — falling through to normal pipeline.`);
                 }
