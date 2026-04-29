@@ -423,26 +423,83 @@ class AuthServiceClass {
     }
   }
 
+  // When refreshSession() fails repeatedly with a terminal error (refresh
+  // token expired or invalidated), no future automatic recovery is possible
+  // and the user has to sign in again. The previous code returned false on
+  // every failure and refused to sign out, which left users in a broken
+  // state where every parking check returned 401 forever. Real example:
+  // randyvollrath@gmail.com 2026-04-29 — last parking success 2026-04-28
+  // 01:05 UTC, then 8 consecutive auth-expired failures over ~43 hours
+  // because the refresh token was dead but the app kept its session.
+  private consecutiveRefreshFailures: number = 0;
+  private static readonly TERMINAL_REFRESH_FAILURE_THRESHOLD = 3;
+
   private async _doRefreshToken(): Promise<boolean> {
     try {
       const { data, error } = await this.supabase.auth.refreshSession();
 
       if (error) {
         log.error('Token refresh failed', error);
+        this.consecutiveRefreshFailures++;
+        await this.maybeForceSignOutOnTerminalFailure(error);
         return false;
       }
 
       if (data.session) {
         this.updateAuthState(data.session);
+        this.consecutiveRefreshFailures = 0;
         log.info('Token refreshed successfully');
         return true;
       }
 
+      this.consecutiveRefreshFailures++;
       return false;
     } catch (error) {
       log.error('Token refresh error', error);
+      this.consecutiveRefreshFailures++;
       return false;
     }
+  }
+
+  /**
+   * Decide whether the refresh failure is terminal (refresh token dead) and
+   * if so, sign out so the user is forced into the login flow on next app
+   * use. Three signals make a failure "terminal":
+   *   1. Supabase returned a known invalid-grant error code/message
+   *   2. We've now hit TERMINAL_REFRESH_FAILURE_THRESHOLD consecutive failures
+   *      (transient causes like iOS-background JS suspension don't repeat
+   *       reliably — sustained failure means the token is gone)
+   *   3. We have no session at all anymore (already broken)
+   * Network-only failures (no internet) are NOT terminal — those return
+   * before we reach Supabase and don't increment our counter via the
+   * `error.message` path.
+   */
+  private async maybeForceSignOutOnTerminalFailure(error: any): Promise<void> {
+    const msg = String(error?.message || '').toLowerCase();
+    const code = String(error?.code || error?.name || '').toLowerCase();
+    const knownTerminal =
+      code.includes('refresh_token_not_found') ||
+      code.includes('refresh_token_already_used') ||
+      code.includes('invalid_grant') ||
+      msg.includes('refresh token') ||
+      msg.includes('invalid grant') ||
+      msg.includes('not authenticated');
+    const repeatedTerminal =
+      this.consecutiveRefreshFailures >= AuthServiceClass.TERMINAL_REFRESH_FAILURE_THRESHOLD;
+    if (!knownTerminal && !repeatedTerminal) return;
+    log.warn(
+      `Terminal refresh failure detected (knownTerminal=${knownTerminal}, ` +
+      `consecutiveFailures=${this.consecutiveRefreshFailures}). Signing out so user can re-auth.`,
+    );
+    try {
+      await this.supabase.auth.signOut();
+    } catch (signOutErr) {
+      log.error('signOut after terminal refresh failure threw', signOutErr);
+      // Force-clear local state even if signOut threw — the auth listener
+      // may not fire, but we don't want to leave the user stuck.
+      this.updateAuthState(null);
+    }
+    this.consecutiveRefreshFailures = 0;
   }
 
   /**
@@ -455,10 +512,11 @@ class AuthServiceClass {
     const refreshed = await this.refreshToken();
 
     if (!refreshed) {
-      // Do NOT sign out here — a transient refresh failure (e.g. iOS background
-      // with suspended JS) shouldn't destroy the user's session. The refresh
-      // token in AsyncStorage may still be valid on the next attempt.
-      log.warn('Token refresh failed, NOT signing out (refresh token may still be valid)');
+      // We do NOT sign out on every transient refresh failure (network blip,
+      // iOS-background JS suspension). _doRefreshToken handles terminal
+      // failures (specific error codes or sustained consecutive failures)
+      // by signing out so the user gets routed back to the login flow.
+      log.warn('Token refresh failed (transient — keeping session for next attempt)');
       return false;
     }
 
