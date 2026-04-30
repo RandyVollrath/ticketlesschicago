@@ -1,0 +1,66 @@
+name: QA — Contest pipeline + portal canary
+
+# Two reliability nets from QA_REPORT.md:
+#
+#   #3 Synthetic end-to-end monitor: scripts/smoke-test-contest-pipeline.ts
+#      Inserts a synthetic ticket for the QA bot, simulates a "Not Liable"
+#      portal result, runs the actual outcome-detection logic, and asserts
+#      the customer-visible side effects (status flip, contest_outcomes row,
+#      audit log row, notification log row). Cleans up after itself.
+#
+#   #7 Portal-scraper canary: scripts/smoke-test-portal-canary.ts
+#      Pure-fixture test of the disposition parser. Asserts every wording
+#      we have ever seen the city use ("Not Liable", "Dismissed", "Liable",
+#      etc.) still maps to the right outcome. If the city ever changes
+#      vocabulary, one fixture goes red within a day instead of us silently
+#      missing every win.
+#
+# Both run daily, and on push to main when contest-tracker code changes.
+
+on:
+  schedule:
+    # 12:00 UTC daily = 06:00/07:00 Chicago. Runs after the nightly types
+    # regen so any schema drift PR has a chance to land first.
+    - cron: '0 12 * * *'
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'lib/contest-outcome-tracker.ts'
+      - 'pages/api/cron/autopilot-check-outcomes.ts'
+      - 'scripts/smoke-test-contest-pipeline.ts'
+      - 'scripts/smoke-test-portal-canary.ts'
+      - '.github/workflows/qa-pipeline.yml'
+
+concurrency:
+  group: qa-pipeline
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    name: Contest pipeline + portal canary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci --ignore-scripts
+
+      - name: Portal disposition canary (no DB)
+        run: npm run qa:portal-canary
+
+      - name: Notification body guard
+        run: npm run qa:body-guard
+
+      - name: Synthetic contest pipeline (live DB, QA bot user)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          QA_BOT_EMAIL: ${{ secrets.QA_BOT_EMAIL }}
+        run: npm run qa:contest-pipeline:ci

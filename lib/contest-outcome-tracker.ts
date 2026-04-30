@@ -261,15 +261,18 @@ export async function processOutcomeChange(
     : outcome === 'reduced' ? 'reduced'
     : 'lost';
 
+  // Only write columns that actually exist on detected_tickets. The fields
+  // contest_outcome / contest_outcome_at / final_amount live on
+  // contest_letters (updated separately via updateContestLifecycle below).
+  // Including them here used to fail the entire update — meaning the ticket
+  // status never flipped to 'won' even on a real dismissal. Caught by
+  // scripts/smoke-test-contest-pipeline.ts, fixed 2026-04-29.
   const { error: ticketUpdateErr } = await supabase
     .from('detected_tickets')
     .update({
       status: ticketStatus,
       last_portal_status: outcomeType,
       last_portal_check: now,
-      contest_outcome: outcomeType,
-      contest_outcome_at: now,
-      final_amount: finalAmount,
     })
     .eq('id', ticket.id);
 
@@ -283,9 +286,6 @@ export async function processOutcomeChange(
         status: ticketStatus,
         last_portal_status: outcomeType,
         last_portal_check: now,
-        contest_outcome: outcomeType,
-        contest_outcome_at: now,
-        final_amount: finalAmount,
       })
       .eq('id', ticket.id);
     if (retryErr) {
@@ -472,20 +472,21 @@ async function notifyUserOfOutcome(
     }
   }
 
-  // Also log to notification_logs for tracking
+  // Also log to notification_logs for tracking. Use content_preview, not
+  // body, and last_error (table column) instead of error_message.
   try {
     await supabase.from('notification_logs').insert({
       user_id: userId,
       notification_type: 'push',
       category: 'contest_outcome',
       subject: title,
-      body,
+      content_preview: body.slice(0, 500),
       status: result.success ? 'sent' : 'failed',
-      error_message: result.error || null,
+      last_error: result.error || null,
       sent_at: new Date().toISOString(),
-    });
+    } as any);
   } catch {
-    // notification_logs table may not exist — non-critical
+    // notification_logs schema mismatch — non-critical
   }
 }
 
@@ -595,19 +596,21 @@ async function emailUserOfWin(
   });
   console.log(`    🎉 Win email sent to ${email} for ticket ${ticket.ticket_number} (${outcome}, saved $${saved.toFixed(0)})`);
 
-  // Log to notification_logs for tracking
+  // Log to notification_logs for tracking. Schema has 'content_preview',
+  // not 'body' — earlier draft silently failed.
   try {
     await supabase.from('notification_logs').insert({
       user_id: ticket.user_id,
       notification_type: 'email',
       category: 'contest_outcome',
+      email,
       subject,
-      body: text,
+      content_preview: text.slice(0, 500),
       status: 'sent',
       sent_at: new Date().toISOString(),
-    });
+    } as any);
   } catch {
-    // notification_logs table may not exist — non-critical
+    // notification_logs schema mismatch — non-critical
   }
 }
 

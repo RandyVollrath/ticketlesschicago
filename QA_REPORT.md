@@ -45,16 +45,11 @@ These are listed in priority order — top is highest leverage.
 **Behavior:** in dev/test throws (loud); in prod logs at error level and returns `{success: false}` from the sender — we skip sending rather than send garbage.
 **Smoke:** `npm run qa:body-guard` — 15 assertions covering every real shipped pattern (`undefined Reply to email`, `NaN%`, trailing `null`, empty subject, etc.).
 
-### 3. Synthetic end-to-end monitor (HIGH leverage, MEDIUM effort)
-**Catches:** anything that breaks for a real user, including the bugs the type checker can't see.
-**How:** scheduled cron (Vercel cron or systemd timer) once a day runs a script that pretends to be a real user end-to-end:
-  - Sign up a test account → checkout → user_profile created
-  - Upload a fake ticket (or insert into `detected_tickets`)
-  - Trigger contest letter generation
-  - Simulate a portal "dismissed" outcome
-  - Confirm win-notification fires and the user record updates
-**Why this works:** today we have one smoke test (places-geocoder, 22 assertions). Most user paths have zero. A synthetic run catches whole-flow breakage that no per-file test covers.
-**Effort:** ~half a day for the first one, ~1 hour each for additional flows.
+### 3. Synthetic end-to-end monitor ✅ SHIPPED 2026-04-29
+**Catches:** anything that breaks for a real user that no per-file test covers. Already paid for itself: caught two production bugs on the first run (see "Bugs caught by nets" below).
+**How:** `scripts/smoke-test-contest-pipeline.ts` runs as the QA bot. Inserts a synthetic `monitored_plates` + `detected_tickets` + `portal_check_results` row, calls `detectOutcomeChange` and `processOutcomeChange` with a "Not Liable" disposition, asserts every customer-visible side effect (status → `won`, last_portal_status → dismissed, audit log, contest_outcomes row, notification_logs email row), then cleans up.
+**Schedule:** `.github/workflows/qa-pipeline.yml` — daily at 12:00 UTC, plus on every push that touches contest-tracker code. Required secrets: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `QA_BOT_EMAIL`.
+**Local:** `npm run qa:contest-pipeline`.
 
 ### 4. Clear the 587 → 0 TypeScript errors and gate deploys (HIGH leverage, MEDIUM-HIGH effort)
 **Catches:** the always-false / always-null / wrong-shape family of bugs.
@@ -63,11 +58,9 @@ These are listed in priority order — top is highest leverage.
 **Why this works:** the `autoSlice` array bug, the `userId` array bug, the Json-narrowing bugs were all already showing up as TS errors — we just couldn't see them because of the noise.
 **Effort:** multi-day, but pays for itself quickly. Can be done incrementally per-file.
 
-### 5. Lock SDK versions + Renovate (MEDIUM leverage, LOW effort)
+### 5. Lock SDK versions + Renovate ✅ SHIPPED 2026-04-29
 **Catches:** SDK version drift before it goes live.
-**How:** drop `^` and `~` prefixes in `package.json` so `npm install` doesn't bump anything. Add Renovate (or Dependabot) to open one PR per upgrade with the diff visible. Each upgrade gets read and tested instead of silently merging.
-**Why this works:** Vercel Blob v2 dropping `'private'`, SimpleWebAuthn v13's nested credential, and Resend's `replyTo` rename would all have been a single visible PR each, caught at review time instead of in production.
-**Effort:** 1 hour to lock versions + add Renovate config.
+**How:** the eight historically-fragile SDKs are pinned exact (no `^`) in `package.json`: stripe, @stripe/react-stripe-js, @stripe/stripe-js, @vercel/blob, @simplewebauthn/{browser,server}, @supabase/{supabase-js,ssr,auth-helpers-nextjs}, firebase-admin, resend, @anthropic-ai/sdk. `renovate.json` opens one PR per upgrade for these, never auto-merged, with a warning note in the body. Patch/minor dev dependencies auto-merge. Pre-req: install Renovate from https://github.com/marketplace/renovate.
 
 ### 6. Smoke tests for the remaining critical user paths (MEDIUM leverage, MEDIUM effort)
 **Catches:** breakage on flows we don't currently exercise after each deploy.
@@ -81,10 +74,15 @@ These are listed in priority order — top is highest leverage.
   - Portal scraper output → outcome detection (regression test for "Not Liable" / "Liable" text matching)
 **Effort:** ~1 hour per smoke test.
 
-### 7. Portal-scraper canary (MEDIUM leverage, LOW effort)
-**Catches:** the day the city changes their portal HTML or disposition wording — without it, we'd silently miss every win.
-**How:** maintain a small list of known-historical tickets with known dispositions. Once a week the scraper re-runs against them and asserts the parser still recognizes "Not Liable" → dismissed, "Liable" → upheld, etc. If the city ever changes wording we know within a week instead of "we never knew we were missing wins."
-**Effort:** 1 hour.
+### 7. Portal-scraper canary ✅ SHIPPED 2026-04-29
+**Catches:** the day the city changes their portal HTML or disposition wording — without it we'd silently miss every win.
+**How:** `scripts/smoke-test-portal-canary.ts` is a pure-fixture test of `detectOutcomeChange`. 10 fixtures cover every wording we have ever seen the city use for "dismissed" / "upheld" / "reduced" / "hearing scheduled" / no-change. Runs daily inside the same `qa-pipeline.yml` workflow. No DB or env vars required.
+**Local:** `npm run qa:portal-canary`.
+
+### Bugs caught by nets (real shipped runtime bugs)
+The synthetic monitor (#3) caught two production bugs on its first run on 2026-04-29:
+1. **`processOutcomeChange` was writing `contest_outcome`/`contest_outcome_at`/`final_amount` to `detected_tickets`** but those columns live on `contest_letters`. The mismatch failed the entire UPDATE — meaning `status: 'won'` never persisted either. Every dismissal in production was leaving the ticket stuck in `mailed`. Fix: removed the wrong-table fields from the update; only write `status` / `last_portal_status` / `last_portal_check` to `detected_tickets`.
+2. **`detected_tickets.status` CHECK constraint rejected the values the code wrote** (`won`, `lost`, `reduced`, `hearing_scheduled`, `contested_online`). Same failure: status never flipped. Fix: migration `20260429_expand_detected_tickets_status_check.sql` expands the allowed set. **Pending: apply this migration on prod via Supabase SQL editor.**
 
 ## Bug taxonomy (last 30 days)
 
