@@ -1808,21 +1808,77 @@ export default async function handler(
                   }
                 } else if (headingConfirmedSnap && !snapWasExtended) {
                   // Close snap + heading agree, Nominatim disagrees.
-                  // This is likely walk-away drift: the raw GPS point has moved toward
-                  // a cross street, making Nominatim identify the wrong road.
-                  // Trust close snap + heading over Nominatim.
-                  console.log(
-                    `[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), ` +
-                    `Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). ` +
-                    `BUT heading ${effectiveHeading.toFixed(0)}° confirms close snap (${snapResult.snapDistanceMeters?.toFixed(1)}m) — ` +
-                    `keeping snap (likely walk-away drift on raw GPS).`
-                  );
-                  diag.nominatim_street = nominatimResult.street_name;
-                  diag.nominatim_orientation = nominatimOrientation;
-                  diag.nominatim_agreed = false;
-                  diag.nominatim_overrode = false;
-                  diag.heading_confirmed_snap = true;
-                  // Keep snapResult as-is — don't override
+                  // This is normally walk-away drift on the raw GPS point.
+                  //
+                  // EXCEPT at intersections, where GPS heading is documented to
+                  // be unreliable — see docs/PARKING_LOCATION_ACCURACY.md:29
+                  // (2026-04-11 incident: heading from prior street disambiguated
+                  // a corner park to the wrong cross street). At an intersection,
+                  // a fresh independent geocoder (Apple Maps) agreeing with
+                  // Nominatim is stronger evidence than a possibly-stale GPS
+                  // heading + closest-snap-distance.
+                  const appleThoroughfare = (appleGeocode?.thoroughfare || '').trim();
+                  const appleAgreesWithNominatim = !!appleThoroughfare &&
+                    normChicagoStreet(appleThoroughfare) === normChicagoStreet(nominatimResult.street_name);
+                  const appleDisagreesWithSnap = !!appleThoroughfare &&
+                    normChicagoStreet(appleThoroughfare) !== normChicagoStreet(snapResult.streetName || '');
+                  const twoSourceOverride =
+                    diag.near_intersection === true &&
+                    appleAgreesWithNominatim &&
+                    appleDisagreesWithSnap;
+
+                  if (twoSourceOverride) {
+                    // Two independent geocoders (Nominatim + Apple) agree on a
+                    // street the snap rejected. We're at an intersection so
+                    // GPS heading is suspect. Override.
+                    const wideCandidate = nominatimCandidate ?? await findCenterlineSegmentByName(nominatimResult.street_name);
+                    const adopted = wideCandidate ? await adoptCandidateAsSnap(wideCandidate, 'two_source_intersection_override') : null;
+                    console.log(
+                      `[check-parking] INTERSECTION two-source override: snap says ${snapResult.streetName} ` +
+                      `(${snapOrientation}, ${snapResult.snapDistanceMeters?.toFixed(1)}m, heading ${effectiveHeading.toFixed(0)}° confirms), ` +
+                      `but Nominatim AND Apple both say ${nominatimResult.street_name} (Apple: "${appleThoroughfare}"). ` +
+                      `At intersections GPS heading is unreliable (stale-from-prior-street). ` +
+                      `Two-geocoder agreement wins.${adopted ? ` Adopted geometry → interpolated ${adopted.snapResult.interpolatedNumber ?? 'n/a'}.` : ' No matching centerline segment within 150m.'}`
+                    );
+                    diag.nominatim_street = nominatimResult.street_name;
+                    diag.nominatim_orientation = nominatimOrientation;
+                    diag.nominatim_agreed = false;
+                    diag.nominatim_overrode = true;
+                    diag.heading_confirmed_snap = false;
+                    if (adopted) {
+                      checkLat = adopted.snappedLat;
+                      checkLng = adopted.snappedLng;
+                      snapResult = adopted.snapResult;
+                      if (adopted.userSide) userSideFromGps = adopted.userSide;
+                    } else {
+                      checkLat = latitude;
+                      checkLng = longitude;
+                      snapResult = {
+                        wasSnapped: false,
+                        snapDistanceMeters: 0,
+                        streetName: nominatimResult.street_name,
+                        snapSource: 'two_source_intersection_override',
+                      };
+                    }
+                    if (hasHeading && !hasCompass) {
+                      console.log(`[check-parking] Discarding GPS heading ${headingDeg.toFixed(0)}° — likely stale (intersection two-source override)`);
+                      hasHeading = false;
+                    }
+                  } else {
+                    // Standard close-snap-walk-away-drift case: trust the snap.
+                    console.log(
+                      `[check-parking] Nominatim cross-reference: snap says ${snapResult.streetName} (${snapOrientation}), ` +
+                      `Nominatim says ${nominatimResult.street_name} (${nominatimOrientation}). ` +
+                      `BUT heading ${effectiveHeading.toFixed(0)}° confirms close snap (${snapResult.snapDistanceMeters?.toFixed(1)}m) — ` +
+                      `keeping snap (likely walk-away drift on raw GPS).`
+                    );
+                    diag.nominatim_street = nominatimResult.street_name;
+                    diag.nominatim_orientation = nominatimOrientation;
+                    diag.nominatim_agreed = false;
+                    diag.nominatim_overrode = false;
+                    diag.heading_confirmed_snap = true;
+                    // Keep snapResult as-is — don't override
+                  }
                 } else if (headingConfirmedSnap && snapWasExtended) {
                   // Extended/far snap + heading agree, but Nominatim disagrees.
                   // The heading likely drove the extended search to the WRONG street
