@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy": "npm run gate:reliability && npm run qa:csp && npx vercel --prod --yes && npm run qa:post-deploy",
+    "deploy": "npm run gate:reliability && npm run gate:ts-baseline && npm run qa:csp && npx vercel --prod --yes && npm run qa:post-deploy",
     "deploy:fast": "npx vercel --prod --yes",
     "deploy:safe": "npm run gate:reliability && npm run qa:csp && npx vercel --prod --yes && npm run qa:post-deploy",
     "qa:post-deploy": "echo '→ Waiting 15s for CDN propagation, then running auth smoke...' && sleep 15 && npm run qa:auth",
@@ -19,6 +19,8 @@
     "report:parking-camera": "node scripts/daily-parking-camera-report.js",
     "tune:reliability": "node scripts/auto-tune-reliability.js",
     "gate:reliability": "node scripts/reliability-release-gate.js",
+    "gate:ts-baseline": "npx tsx scripts/qa-ts-baseline-gate.ts",
+    "gate:ts-baseline:update": "npx tsx scripts/qa-ts-baseline-gate.ts --update",
     "qa:csp": "npx tsx scripts/qa-csp-static.ts",
     "qa:auth": "node -r dotenv/config node_modules/.bin/tsx scripts/qa-auth-smoke.ts dotenv_config_path=.env.local",
     "qa:auth:ci": "npx tsx scripts/qa-auth-smoke.ts",
@@ -27,7 +29,9 @@
     "qa:body-guard": "npx tsx scripts/smoke-test-notification-body-guard.ts",
     "qa:portal-canary": "npx tsx scripts/smoke-test-portal-canary.ts",
     "qa:contest-pipeline": "node -r dotenv/config node_modules/.bin/tsx scripts/smoke-test-contest-pipeline.ts dotenv_config_path=.env.local",
-    "qa:contest-pipeline:ci": "npx tsx scripts/smoke-test-contest-pipeline.ts"
+    "qa:contest-pipeline:ci": "npx tsx scripts/smoke-test-contest-pipeline.ts",
+    "qa:mail-payment": "node -r dotenv/config node_modules/.bin/tsx scripts/smoke-test-mail-payment-merge.ts dotenv_config_path=.env.local",
+    "qa:mail-payment:ci": "npx tsx scripts/smoke-test-mail-payment-merge.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.65.0",
