@@ -38,21 +38,24 @@ import { filterDotPermits, FilteredPermit, DotPermit, describePermit } from '../
 
 const log = Logger.createLogger('CheckDestination');
 
-// Session-level cache for the citywide CDOT permits payload (~14k rows,
-// ~5MB JSON). Refetched at most once every 30 minutes per app launch so
-// repeated searches in date-range mode don't hit the network repeatedly.
-let _dotPermitsCache: { fetchedAt: number; permits: DotPermit[] } | null = null;
-async function fetchDotPermits(): Promise<DotPermit[]> {
-  const now = Date.now();
-  if (_dotPermitsCache && (now - _dotPermitsCache.fetchedAt) < 30 * 60 * 1000) {
-    return _dotPermitsCache.permits;
+// Fetch CDOT temp-no-parking permits within `radiusM` of (lat,lng). The
+// API does the bounding-box filter server-side so the response is ~10KB
+// instead of ~5MB citywide. We use a small in-memory cache keyed by
+// rounded coordinates to dedupe back-to-back searches on the same block.
+const _dotCache = new Map<string, { fetchedAt: number; permits: DotPermit[] }>();
+async function fetchDotPermitsNear(lat: number, lng: number, radiusM = 200): Promise<DotPermit[]> {
+  // Round to 4 decimals (~11m) so two clicks on the same address hit cache.
+  const key = `${lat.toFixed(4)},${lng.toFixed(4)},${radiusM}`;
+  const cached = _dotCache.get(key);
+  if (cached && (Date.now() - cached.fetchedAt) < 5 * 60 * 1000) {
+    return cached.permits;
   }
-  const r = await ApiClient.get<any>('/api/dot-permits/all?days=60', {
-    timeout: 15000,
-    showErrorAlert: false,
-  });
+  const r = await ApiClient.get<any>(
+    `/api/dot-permits/all?days=60&lat=${lat}&lng=${lng}&radius=${radiusM}`,
+    { timeout: 10000, showErrorAlert: false },
+  );
   if (r.success && Array.isArray(r.data?.permits)) {
-    _dotPermitsCache = { fetchedAt: now, permits: r.data.permits };
+    _dotCache.set(key, { fetchedAt: Date.now(), permits: r.data.permits });
     return r.data.permits;
   }
   return [];
@@ -111,6 +114,12 @@ interface WhenQuery {
   banner: string | null;
 }
 
+function formatHourLabel(h: number): string {
+  if (h === 0) return '12 AM';
+  if (h === 12) return '12 PM';
+  return h < 12 ? `${h} AM` : `${h - 12} PM`;
+}
+
 function buildWhenQuery(sel: WhenSelection): WhenQuery {
   const today = chicagoDateISO();
   if (sel.mode === 'now') {
@@ -133,18 +142,24 @@ function buildWhenQuery(sel: WhenSelection): WhenQuery {
     };
   }
   if (sel.mode === 'range' && sel.startDate && sel.endDate) {
-    // Use noon of the start date as the representative instant. We can
-    // do better by checking each day, but for permit-zone / winter-ban
-    // "is it ever active during your visit?" the noon-of-start heuristic
-    // is good enough for v1.
-    const instant = chicagoDateTimeToInstant(sel.startDate, 12);
+    // If the user set a time-of-day, evaluate against the start of their
+    // visit (their actual arrival hour). Otherwise use noon as a neutral
+    // representative — the schedule evaluator only sees one instant, so
+    // noon avoids accidentally hitting overnight rules from end-of-day.
+    const evalHour = sel.rangeStartHour !== undefined ? sel.rangeStartHour : 12;
+    const instant = chicagoDateTimeToInstant(sel.startDate, evalHour);
+    const timePart = (sel.rangeStartHour !== undefined && sel.rangeEndHour !== undefined)
+      ? `, ${formatHourLabel(sel.rangeStartHour)}–${formatHourLabel(sel.rangeEndHour)}`
+      : (sel.rangeStartHour !== undefined ? `, from ${formatHourLabel(sel.rangeStartHour)}`
+      : (sel.rangeEndHour !== undefined ? `, until ${formatHourLabel(sel.rangeEndHour)}`
+      : ''));
     return {
       startDateParam: sel.startDate,
       endDateParam: sel.endDate,
       evalInstant: instant,
       rangeStartISO: sel.startDate,
       rangeEndISO: sel.endDate,
-      banner: `${formatChicagoDate(sel.startDate)} → ${formatChicagoDate(sel.endDate)}`,
+      banner: `${formatChicagoDate(sel.startDate)} → ${formatChicagoDate(sel.endDate)}${timePart}`,
     };
   }
   // Fallback when 'specific'/'range' selected but missing fields
@@ -199,6 +214,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [whenSelection, setWhenSelection] = useState<WhenSelection>({ mode: 'now' });
   const [whenBanner, setWhenBanner] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -223,7 +239,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
     if (!geocoded) return;
     if (isChecking || isGettingLocation) return;
     if (!address.trim()) return;
-    handleCheck(address);
+    handleCheck(address, true); // silent — keep previous results visible
     // handleCheck is intentionally omitted from deps — it captures
     // whenSelection itself, and including it would cause a refetch on
     // every render (handleCheck is a new function each time the deps
@@ -415,17 +431,22 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
     return { result, geo };
   }, [address, whenSelection]);
 
-  const handleCheck = useCallback(async (addressOverride?: string) => {
+  const handleCheck = useCallback(async (addressOverride?: string, silent: boolean = false) => {
     const trimmed = (addressOverride ?? address).trim();
     if (!trimmed) return;
 
     Keyboard.dismiss();
-    setIsChecking(true);
-    setErrorMsg(null);
-    setRestrictions(null);
-    setGeocoded(null);
-    setShowMap(false);
-    setSnowForecast(null);
+    if (silent) {
+      // Auto-refresh path — keep previous results visible while we refetch.
+      setIsRefreshing(true);
+    } else {
+      setIsChecking(true);
+      setErrorMsg(null);
+      setRestrictions(null);
+      setGeocoded(null);
+      setShowMap(false);
+      setSnowForecast(null);
+    }
 
     const whenQuery = buildWhenQuery(whenSelection);
     setWhenBanner(whenQuery.banner);
@@ -437,12 +458,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         findUrl += `&startDate=${whenQuery.startDateParam}&endDate=${whenQuery.endDateParam}`;
       }
 
-      // Always fetch DOT permits — a permit active right now (Now mode) is
-      // the most critical signal we can show. The 30-min session cache
-      // amortizes the ~5MB payload across all searches.
-      const dotPromise = fetchDotPermits().catch(() => [] as DotPermit[]);
-
-      const [geoRes, permitRes, snowRes, dotPermits] = await Promise.all([
+      const [geoRes, permitRes, snowRes] = await Promise.all([
         ApiClient.get<any>(findUrl, { timeout: 12000, showErrorAlert: false }),
         ApiClient.get<any>(
           `/api/check-permit-zone?address=${encodeURIComponent(trimmed)}`,
@@ -452,7 +468,6 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           `/api/snow-forecast?lat=41.8781&lng=-87.6298`,
           { timeout: 10000, showErrorAlert: false },
         ).catch(() => null),
-        dotPromise,
       ]);
 
       const geocodingSucceeded = geoRes.data?.geocoding_successful && geoRes.data?.coordinates;
@@ -464,6 +479,10 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
 
       const d = geoRes.data;
       const { result, geo } = computeRestrictions(d, permitRes, whenQuery);
+
+      // Now that we have coordinates, fetch the proximity-filtered CDOT
+      // permits. ~10KB payload instead of ~5MB citywide.
+      const dotPermits = await fetchDotPermitsNear(geo.lat, geo.lng, 200).catch(() => [] as DotPermit[]);
 
       // Temp no parking — relevant in every mode. A permit active right
       // now is just as important as one during a future visit.
@@ -494,10 +513,11 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
       void AnalyticsService.logAddressCheck(trimmed, result !== null);
     } catch (err: any) {
       log.error('Check destination error', err);
-      setErrorMsg('Something went wrong. Please check your connection and try again.');
+      if (!silent) setErrorMsg('Something went wrong. Please check your connection and try again.');
       void AnalyticsService.logEvent('address_check_error');
     } finally {
       setIsChecking(false);
+      setIsRefreshing(false);
     }
   }, [address, whenSelection, computeRestrictions]);
 
@@ -529,15 +549,12 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         findUrl += `&startDate=${whenQuery.startDateParam}&endDate=${whenQuery.endDateParam}`;
       }
 
-      const dotPromise = fetchDotPermits().catch(() => [] as DotPermit[]);
-
-      const [geoRes, snowRes, dotPermits] = await Promise.all([
+      const [geoRes, snowRes] = await Promise.all([
         ApiClient.get<any>(findUrl, { timeout: 12000, showErrorAlert: false }),
         ApiClient.get<any>(
           `/api/snow-forecast?lat=41.8781&lng=-87.6298`,
           { timeout: 10000, showErrorAlert: false },
         ).catch(() => null),
-        dotPromise,
       ]);
 
       if (!geoRes.success || !geoRes.data?.coordinates) {
@@ -555,6 +572,8 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
       ).catch(() => ({ success: false }));
 
       const { result, geo } = computeRestrictions({ ...d, address: resolvedAddress }, permitRes, whenQuery);
+
+      const dotPermits = await fetchDotPermitsNear(geo.lat, geo.lng, 200).catch(() => [] as DotPermit[]);
 
       if (dotPermits.length > 0) {
         const filtered = filterDotPermits(dotPermits, {
@@ -824,21 +843,30 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         {/* Results */}
         {restrictions && geocoded && (
           <>
-            {/* "Showing for: …" banner — only when not 'now' */}
+            {/* "Showing for: …" banner — only when not 'now'. Doubles as
+                an "Updating…" indicator during silent auto-refresh. */}
             {whenBanner && (
               <View style={styles.whenBanner}>
-                <Icon name="calendar-clock" size={14} color={colors.primary} />
-                <Text style={styles.whenBannerText}>Showing for: {whenBanner}</Text>
+                {isRefreshing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Icon name="calendar-clock" size={14} color={colors.primary} />
+                )}
+                <Text style={styles.whenBannerText}>
+                  {isRefreshing ? `Updating for ${whenBanner}…` : `Showing for: ${whenBanner}`}
+                </Text>
                 <TouchableOpacity
-                  onPress={() => {
-                    // Just flip the selection — the auto-refresh effect
-                    // refetches whenever whenSelection changes.
-                    setWhenSelection({ mode: 'now' });
-                  }}
+                  onPress={() => setWhenSelection({ mode: 'now' })}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 >
                   <Text style={styles.whenBannerReset}>Reset to now</Text>
                 </TouchableOpacity>
+              </View>
+            )}
+            {!whenBanner && isRefreshing && (
+              <View style={styles.whenBanner}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.whenBannerText}>Updating…</Text>
               </View>
             )}
 
@@ -855,9 +883,16 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.summaryTitle}>
                   {activeCount === 0
-                    ? 'All Clear'
+                    ? (whenSelection.mode === 'now' ? 'All Clear' : 'Looks Safe')
                     : `${activeCount} Restriction${activeCount > 1 ? 's' : ''} Found`}
                 </Text>
+                {activeCount === 0 && whenSelection.mode !== 'now' && (
+                  <Text style={styles.summaryDetail}>
+                    {whenSelection.mode === 'range'
+                      ? 'No street cleaning, permits, or temp signs during your visit'
+                      : 'No restrictions active at your selected time'}
+                  </Text>
+                )}
                 {activeCount > 0 && (
                   <Text style={styles.summaryDetail}>
                     {activeRestrictions.join(', ')}

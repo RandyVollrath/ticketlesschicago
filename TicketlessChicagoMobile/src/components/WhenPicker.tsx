@@ -12,6 +12,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import {
   chicagoDateISO,
+  chicagoDateTimeToInstant,
   formatChicagoDate,
   getChicagoNow,
 } from '../utils/chicagoTime';
@@ -26,6 +27,11 @@ export interface WhenSelection {
   // For 'range':
   startDate?: string;
   endDate?: string;
+  // Optional time-of-day window for 'range'. When unset, the range
+  // covers the full day. Useful for "I'll be parked 7 PM Mon to 6 AM
+  // Thu" style trips where overnight permit-zone rules matter.
+  rangeStartHour?: number; // 0-23, optional
+  rangeEndHour?: number;   // 0-23, optional
 }
 
 interface Props {
@@ -74,7 +80,7 @@ const MODE_OPTIONS: Array<{ key: WhenMode; label: string; icon: string }> = [
 ];
 
 export function WhenPicker({ value, onChange, horizonDays = 30 }: Props) {
-  const [pickerOpen, setPickerOpen] = useState<null | 'specific-date' | 'specific-hour' | 'range-start' | 'range-end'>(null);
+  const [pickerOpen, setPickerOpen] = useState<null | 'specific-date' | 'specific-hour' | 'range-start' | 'range-end' | 'range-start-hour' | 'range-end-hour'>(null);
 
   const todayISO = useMemo(() => chicagoDateISO(), []);
   const tomorrowISO = useMemo(() => {
@@ -145,51 +151,101 @@ export function WhenPicker({ value, onChange, horizonDays = 30 }: Props) {
       </View>
 
       {/* Pills under the segmented control */}
-      {value.mode === 'specific' && (
-        <View style={styles.pillRow}>
-          <TouchableOpacity
-            style={styles.pill}
-            onPress={() => setPickerOpen('specific-date')}
-            accessibilityLabel="Choose date"
-          >
-            <Icon name="calendar" size={14} color={colors.primary} />
-            <Text style={styles.pillText}>{pillLabel(value.date)}</Text>
-            <Icon name="chevron-down" size={14} color={colors.textTertiary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.pill}
-            onPress={() => setPickerOpen('specific-hour')}
-            accessibilityLabel="Choose hour"
-          >
-            <Icon name="clock-outline" size={14} color={colors.primary} />
-            <Text style={styles.pillText}>{value.hour !== undefined ? formatHour(value.hour) : 'Pick time'}</Text>
-            <Icon name="chevron-down" size={14} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
-      )}
+      {value.mode === 'specific' && (() => {
+        // Detect "chosen time is in the past" so we can show a small hint.
+        // Useful when a user wants a historical lookup ("was it OK to park
+        // there yesterday at 7 PM?") — confirms it's intentional, not a bug.
+        let isPast = false;
+        if (value.date && value.hour !== undefined) {
+          const chosen = chicagoDateTimeToInstant(value.date, value.hour);
+          isPast = chosen.getTime() < Date.now();
+        }
+        return (
+          <>
+            <View style={styles.pillRow}>
+              <TouchableOpacity
+                style={styles.pill}
+                onPress={() => setPickerOpen('specific-date')}
+                accessibilityLabel="Choose date"
+              >
+                <Icon name="calendar" size={14} color={colors.primary} />
+                <Text style={styles.pillText}>{pillLabel(value.date)}</Text>
+                <Icon name="chevron-down" size={14} color={colors.textTertiary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pill}
+                onPress={() => setPickerOpen('specific-hour')}
+                accessibilityLabel="Choose hour"
+              >
+                <Icon name="clock-outline" size={14} color={colors.primary} />
+                <Text style={styles.pillText}>{value.hour !== undefined ? formatHour(value.hour) : 'Pick time'}</Text>
+                <Icon name="chevron-down" size={14} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+            {isPast && (
+              <View style={styles.pastHint}>
+                <Icon name="history" size={12} color={colors.textTertiary} />
+                <Text style={styles.pastHintText}>Past time — historical lookup</Text>
+              </View>
+            )}
+          </>
+        );
+      })()}
 
       {value.mode === 'range' && (
-        <View style={styles.pillRow}>
-          <TouchableOpacity
-            style={styles.pill}
-            onPress={() => setPickerOpen('range-start')}
-            accessibilityLabel="Choose start date"
-          >
-            <Icon name="ray-start" size={14} color={colors.primary} />
-            <Text style={styles.pillText}>{pillLabel(value.startDate)}</Text>
-            <Icon name="chevron-down" size={14} color={colors.textTertiary} />
-          </TouchableOpacity>
-          <Text style={styles.rangeArrow}>→</Text>
-          <TouchableOpacity
-            style={styles.pill}
-            onPress={() => setPickerOpen('range-end')}
-            accessibilityLabel="Choose end date"
-          >
-            <Icon name="ray-end" size={14} color={colors.primary} />
-            <Text style={styles.pillText}>{pillLabel(value.endDate)}</Text>
-            <Icon name="chevron-down" size={14} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
+        <>
+          <View style={styles.pillRow}>
+            <TouchableOpacity
+              style={styles.pill}
+              onPress={() => setPickerOpen('range-start')}
+              accessibilityLabel="Choose start date"
+            >
+              <Icon name="ray-start" size={14} color={colors.primary} />
+              <Text style={styles.pillText}>{pillLabel(value.startDate)}</Text>
+              <Icon name="chevron-down" size={14} color={colors.textTertiary} />
+            </TouchableOpacity>
+            <Text style={styles.rangeArrow}>→</Text>
+            <TouchableOpacity
+              style={styles.pill}
+              onPress={() => setPickerOpen('range-end')}
+              accessibilityLabel="Choose end date"
+            >
+              <Icon name="ray-end" size={14} color={colors.primary} />
+              <Text style={styles.pillText}>{pillLabel(value.endDate)}</Text>
+              <Icon name="chevron-down" size={14} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+          {/* Optional time-of-day. When both unset → "Any time". Useful
+              for overnight stays where 6pm-6am permit zones matter. */}
+          <View style={styles.timeRow}>
+            <Text style={styles.timeRowLabel}>Time of day:</Text>
+            <TouchableOpacity
+              style={styles.timePill}
+              onPress={() => setPickerOpen('range-start-hour')}
+            >
+              <Text style={styles.timePillText}>
+                {value.rangeStartHour !== undefined ? formatHour(value.rangeStartHour) : 'Any'}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.timeRowDash}>–</Text>
+            <TouchableOpacity
+              style={styles.timePill}
+              onPress={() => setPickerOpen('range-end-hour')}
+            >
+              <Text style={styles.timePillText}>
+                {value.rangeEndHour !== undefined ? formatHour(value.rangeEndHour) : 'Any'}
+              </Text>
+            </TouchableOpacity>
+            {(value.rangeStartHour !== undefined || value.rangeEndHour !== undefined) && (
+              <TouchableOpacity
+                onPress={() => onChange({ ...value, rangeStartHour: undefined, rangeEndHour: undefined })}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icon name="close-circle" size={16} color={colors.textTertiary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </>
       )}
 
       {/* Modal: date strip */}
@@ -265,9 +321,9 @@ export function WhenPicker({ value, onChange, horizonDays = 30 }: Props) {
         </View>
       </Modal>
 
-      {/* Modal: hour grid */}
+      {/* Modal: hour grid (specific mode + range start/end hours) */}
       <Modal
-        visible={pickerOpen === 'specific-hour'}
+        visible={pickerOpen === 'specific-hour' || pickerOpen === 'range-start-hour' || pickerOpen === 'range-end-hour'}
         animationType="slide"
         transparent
         onRequestClose={() => setPickerOpen(null)}
@@ -276,17 +332,26 @@ export function WhenPicker({ value, onChange, horizonDays = 30 }: Props) {
           <TouchableOpacity style={styles.sheetDismissArea} activeOpacity={1} onPress={() => setPickerOpen(null)} />
           <View style={styles.sheet}>
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Pick a time</Text>
+            <Text style={styles.sheetTitle}>
+              {pickerOpen === 'specific-hour' ? 'Pick a time'
+                : pickerOpen === 'range-start-hour' ? 'Visit starts at'
+                : 'Visit ends at'}
+            </Text>
             <Text style={styles.sheetSubtitle}>Chicago time</Text>
             <View style={styles.hourGrid}>
               {Array.from({ length: 24 }, (_, h) => {
-                const selected = value.hour === h;
+                const currentVal = pickerOpen === 'specific-hour' ? value.hour
+                  : pickerOpen === 'range-start-hour' ? value.rangeStartHour
+                  : value.rangeEndHour;
+                const selected = currentVal === h;
                 return (
                   <TouchableOpacity
                     key={h}
                     style={[styles.hourChip, selected && styles.hourChipSelected]}
                     onPress={() => {
-                      onChange({ ...value, hour: h });
+                      if (pickerOpen === 'specific-hour') onChange({ ...value, hour: h });
+                      else if (pickerOpen === 'range-start-hour') onChange({ ...value, rangeStartHour: h });
+                      else onChange({ ...value, rangeEndHour: h });
                       setPickerOpen(null);
                     }}
                   >
@@ -380,6 +445,47 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     color: colors.textTertiary,
     fontWeight: typography.weights.bold,
+  },
+  pastHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    paddingLeft: 4,
+  },
+  pastHintText: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    fontStyle: 'italic',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: spacing.sm,
+    paddingLeft: 4,
+  },
+  timeRowLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
+  },
+  timePill: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  timePillText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  timeRowDash: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
   },
 
   // Sheet (modal) — bottom-anchored card
