@@ -687,54 +687,55 @@ class BackgroundTaskServiceClass {
 
               // GUARD: Stop-and-go traffic cooldown.
               //
-              // Real example 2026-04-29: user parked at Mariano's at 12:36
-              // (2124 N Ashland), pulled out at 13:42, hit slow traffic, and
-              // got THREE parking events fire in the next 4 minutes (13:48 on
-              // N Southport ~600m north, 13:50 at 2092 N Ashland, 13:51 at
-              // 2160 N Ashland). The existing nearby-duplicate guard below
-              // skipped these because lastIosDrivingStartedAt updated at 13:42
-              // putting us inside RECENT_DRIVING_WINDOW_MS (20 min) — so any
-              // subsequent stop within 500m looked like a "real" re-park.
+              // Real example 2026-04-29: user parked at Mariano's 12:36
+              // (2124 N Ashland), sat in the lot until 13:42, pulled out and
+              // hit slow Ashland traffic. As they crawled out of the lot,
+              // CoreMotion fired TWO false "parking events" within ~150m of
+              // Mariano's (50m S at 13:50, 120m N at 13:51 — both in the
+              // first ~9 minutes after departure). The third row at Southport
+              // (~13:48 detection, 600m+ away) was actually them arriving
+              // home, which is fine and should not be rejected.
               //
-              // 20 minutes is too generous: in stop-and-go traffic the user
-              // is *always* "recently driving," and CoreMotion's automotive→
-              // stationary transition can fire on any 90s+ stop (red light,
-              // left-turn queue, snowplow). A hard time-floor between accepted
-              // parking events stops this at the source — no notification
-              // spam, no API churn, no false history rows.
+              // Right signal: "time since DEPARTURE" (lastIosDrivingStartedAt),
+              // not "time since last accepted park" — the user can sit at a
+              // legitimate parking spot for hours, so time-since-park is
+              // useless for detecting a stop-and-go right after pulling out.
               //
-              // 4 minutes covers the worst Chicago single-light cycle (Ashland
-              // at Webster can be 3 min during peak) without rejecting honest
-              // quick re-parks (drop someone off + drive 5 min + park is fine).
-              // Distance check stays separate: a re-park >500m away is always
-              // allowed regardless of timing.
-              const COOLDOWN_NEARBY_MS = 4 * 60 * 1000;
-              const COOLDOWN_NEARBY_RADIUS_M = 500;
+              // Two tiers:
+              //   - 500m + just departed (<5 min) → very likely stop-and-go
+              //   - 200m + moderately recent (<15 min) → still in/near the
+              //     lot, also reject (covers the Mariano's case where the
+              //     user was 8-9 min into a slow traffic crawl but had only
+              //     moved 50-120m from the parking spot)
+              //
+              // Real re-parks at a different location (drop-off + drive
+              // somewhere else) clear both gates because they're either
+              // farther (>500m) or have been driving longer (>15 min total).
               if (
-                this.lastAcceptedParkingEventAt > 0 &&
                 this.lastAcceptedParkingCoords &&
+                this.lastIosDrivingStartedAt > this.lastAcceptedParkingEventAt &&
                 event.latitude &&
                 event.longitude
               ) {
-                const sinceLast = Date.now() - this.lastAcceptedParkingEventAt;
-                if (sinceLast < COOLDOWN_NEARBY_MS) {
-                  const dist = haversineDistance(
-                    event.latitude, event.longitude,
-                    this.lastAcceptedParkingCoords.lat, this.lastAcceptedParkingCoords.lng
+                const sinceDeparture = Date.now() - this.lastIosDrivingStartedAt;
+                const dist = haversineDistance(
+                  event.latitude, event.longitude,
+                  this.lastAcceptedParkingCoords.lat, this.lastAcceptedParkingCoords.lng
+                );
+                const justPulledOutNearby = dist < 500 && sinceDeparture < 5 * 60 * 1000;
+                const stillStuckInLot = dist < 200 && sinceDeparture < 15 * 60 * 1000;
+                if (justPulledOutNearby || stillStuckInLot) {
+                  const tier = justPulledOutNearby ? 'just_pulled_out_nearby' : 'still_stuck_in_lot';
+                  log.warn(
+                    `Rejecting parking event (stop-and-go ${tier}): ` +
+                    `${Math.round(sinceDeparture / 1000)}s since departure, ` +
+                    `${dist.toFixed(0)}m from last accepted park — likely traffic, not a real re-park.`
                   );
-                  if (dist < COOLDOWN_NEARBY_RADIUS_M) {
-                    log.warn(
-                      `Rejecting parking event (cooldown): ${Math.round(sinceLast / 1000)}s since last accepted park, ` +
-                      `${dist.toFixed(0)}m away — likely stop-and-go traffic, not a real re-park.`
-                    );
-                    await this.persistParkingRejection('stop_and_go_cooldown', event, {
-                      secondsSinceLastAccepted: Math.round(sinceLast / 1000),
-                      distanceMeters: Math.round(dist),
-                      cooldownMs: COOLDOWN_NEARBY_MS,
-                      cooldownRadiusM: COOLDOWN_NEARBY_RADIUS_M,
-                    });
-                    return;
-                  }
+                  await this.persistParkingRejection(`stop_and_go_${tier}`, event, {
+                    secondsSinceDeparture: Math.round(sinceDeparture / 1000),
+                    distanceMeters: Math.round(dist),
+                  });
+                  return;
                 }
               }
 
