@@ -32,6 +32,7 @@ ALTER TABLE detected_tickets
       'approved',
       'mailed',
       'evidence_received',
+      'skipped',
       -- In-flight outcome states
       'hearing_scheduled',
       'contested_online',

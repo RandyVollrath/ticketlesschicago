@@ -106,7 +106,7 @@ The most reliable parking location is the inverse-variance weighted average of G
 See `/home/randy-vollrath/.claude/plans/magical-hugging-quail.md` for the full phased plan:
 - Phase 1: Inverse-variance GPS averaging, burst window increase (DONE)
 - Phase 2: Compass heading at park time (DONE - iOS, pending Android)
-- Phase 3: Meter proximity cross-check, intersection detection (TODO)
+- Phase 3: Meter proximity cross-check, intersection detection (PARTIAL — two-source-geocoder override at intersections shipped 2026-04-30 in `pages/api/mobile/check-parking.ts`. When `near_intersection: true` AND Apple Maps' thoroughfare matches Nominatim's street (both disagreeing with the snap), the snap is overridden — defeats the stale-GPS-heading-at-corner failure mode from 2026-04-11.)
 - Phase 4: Per-block GPS correction model (TODO)
 - Phase 5: Smart side-of-street confirmation prompt (TODO)
 
