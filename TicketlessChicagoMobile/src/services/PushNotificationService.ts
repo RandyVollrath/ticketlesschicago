@@ -83,6 +83,40 @@ class PushNotificationServiceClass {
         this.handleNotificationPress(initialNotification);
       }
 
+      // Re-fetch the FCM token on every launch and re-attach the refresh listener.
+      // Apple/FCM can rotate a token while the app is closed (iOS upgrade,
+      // settings toggle, long inactivity, random invalidation). Without this,
+      // we'd keep re-POSTing the stale AsyncStorage value forever and the user
+      // would silently stop receiving pushes until they signed out and back in.
+      try {
+        const cached = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+        const fresh = await messaging().getToken();
+        if (fresh) {
+          this.token = fresh;
+          if (fresh !== cached) {
+            log.info('FCM token changed since last launch — registering fresh token');
+            await AsyncStorage.setItem(PUSH_TOKEN_KEY, fresh);
+            if (AuthService.isAuthenticated()) {
+              await this.registerTokenWithBackend(fresh);
+            }
+          }
+        }
+        messaging().onTokenRefresh(async (newToken: string) => {
+          try {
+            log.debug('FCM token refreshed (init listener)');
+            this.token = newToken;
+            await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
+            if (AuthService.isAuthenticated()) {
+              await this.registerTokenWithBackend(newToken);
+            }
+          } catch (refreshError) {
+            log.error('Error handling FCM token refresh', refreshError);
+          }
+        });
+      } catch (refreshErr) {
+        log.warn('Token refresh on init failed (non-fatal)', refreshErr);
+      }
+
       this.isInitialized = true;
       log.info('Push notification service initialized');
     } catch (error) {
