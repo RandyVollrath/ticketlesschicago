@@ -53,13 +53,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .toISOString()
       .split('T')[0];
 
-    const whereClause = [
+    // Optional proximity filter — when the caller passes lat/lng/radius
+    // we narrow the SODA query with a bounding box so we don't fetch the
+    // ~14k citywide rows just to throw most of them away client-side.
+    // The CDOT dataset stores latitude and longitude as separate numeric
+    // columns (no point/location field), so within_circle() isn't usable
+    // — bounding box is fine since the client re-filters with haversine.
+    const latParam = parseFloat(req.query.lat as string);
+    const lngParam = parseFloat(req.query.lng as string);
+    const radiusParam = parseFloat(req.query.radius as string);
+    const hasProximity = isFinite(latParam) && isFinite(lngParam) && isFinite(radiusParam) && radiusParam > 0;
+
+    const whereParts = [
       `applicationstatus='Open'`,
       `applicationenddate>='${startOfToday}'`,
       `applicationstartdate<='${horizon}'`,
       `latitude IS NOT NULL`,
       `(parkingmeterpostingorbagging='Y' OR streetclosure IS NOT NULL)`,
-    ].join(' AND ');
+    ];
+
+    if (hasProximity) {
+      // Cap radius at 5 km (5000m) to prevent abuse — well above any
+      // reasonable "near my parking" use case.
+      const radiusM = Math.min(radiusParam, 5000);
+      // Approximate degree → meter conversion. 1° lat ≈ 111,000 m.
+      // 1° lng varies by latitude: 111,000 * cos(lat).
+      const latDelta = radiusM / 111000;
+      const lngDelta = radiusM / (111000 * Math.cos((latParam * Math.PI) / 180));
+      whereParts.push(`latitude > ${latParam - latDelta}`);
+      whereParts.push(`latitude < ${latParam + latDelta}`);
+      whereParts.push(`longitude > ${lngParam - lngDelta}`);
+      whereParts.push(`longitude < ${lngParam + lngDelta}`);
+    }
+
+    const whereClause = whereParts.join(' AND ');
 
     const token = process.env.CHICAGO_DATA_PORTAL_TOKEN;
 
@@ -108,10 +135,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=3600');
+    // Proximity-filtered responses are user-specific and small — cache
+    // briefly and let the CDN dedupe identical requests. The unfiltered
+    // citywide response stays on the longer SWR window.
+    if (hasProximity) {
+      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
+    } else {
+      res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=3600');
+    }
     return res.status(200).json({
       generatedAt: new Date().toISOString(),
       lookaheadDays,
+      proximity: hasProximity ? { lat: latParam, lng: lngParam, radiusMeters: radiusParam } : null,
       count: permits.length,
       permits,
     });
