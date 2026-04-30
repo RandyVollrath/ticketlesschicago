@@ -209,49 +209,57 @@ export function WhenPicker({ value, onChange, horizonDays = 30 }: Props) {
                 : 'Trip ends'}
             </Text>
             <Text style={styles.sheetSubtitle}>Chicago time</Text>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
-              <View style={styles.dateGrid}>
-                {dateStrip.map(iso => {
-                  const selected = pickerOpen === 'specific-date' ? value.date === iso
-                    : pickerOpen === 'range-start' ? value.startDate === iso
-                    : value.endDate === iso;
-                  // Disable end-dates before start-date in range mode
-                  const disabled = pickerOpen === 'range-end' && value.startDate ? iso < value.startDate : false;
-                  return (
-                    <TouchableOpacity
-                      key={iso}
-                      style={[styles.dateChip, selected && styles.dateChipSelected, disabled && styles.dateChipDisabled]}
-                      disabled={disabled}
-                      onPress={() => {
-                        if (pickerOpen === 'specific-date') onChange({ ...value, date: iso });
-                        else if (pickerOpen === 'range-start') {
-                          // Snap end forward if it's now before start
-                          const newEnd = value.endDate && value.endDate < iso ? iso : value.endDate;
-                          onChange({ ...value, startDate: iso, endDate: newEnd });
-                        } else {
-                          onChange({ ...value, endDate: iso });
-                        }
-                        setPickerOpen(null);
-                      }}
-                    >
-                      {iso === todayISO ? (
-                        <Text style={[styles.dateChipBig, selected && styles.dateChipTextSelected, disabled && styles.dateChipTextDisabled]}>Today</Text>
-                      ) : iso === tomorrowISO ? (
-                        <Text style={[styles.dateChipBig, selected && styles.dateChipTextSelected, disabled && styles.dateChipTextDisabled]}>Tom.</Text>
-                      ) : (
-                        <>
-                          <Text style={[styles.dateChipDow, selected && styles.dateChipTextSelected, disabled && styles.dateChipTextDisabled]}>
-                            {shortDateLabel(iso, todayISO, tomorrowISO).split(' ')[0]}
-                          </Text>
-                          <Text style={[styles.dateChipDay, selected && styles.dateChipTextSelected, disabled && styles.dateChipTextDisabled]}>
-                            {shortDateLabel(iso, todayISO, tomorrowISO).split(' ')[1]}
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.dateStrip}
+            >
+              {dateStrip.map(iso => {
+                const selected = pickerOpen === 'specific-date' ? value.date === iso
+                  : pickerOpen === 'range-start' ? value.startDate === iso
+                  : value.endDate === iso;
+                const disabled = pickerOpen === 'range-end' && value.startDate ? iso < value.startDate : false;
+                const monthDay = new Date(iso + 'T12:00:00').toLocaleDateString('en-US', {
+                  month: 'short',
+                  timeZone: 'America/Chicago',
+                });
+                const dayNum = new Date(iso + 'T12:00:00').toLocaleDateString('en-US', {
+                  day: 'numeric',
+                  timeZone: 'America/Chicago',
+                });
+                const dow = new Date(iso + 'T12:00:00').toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  timeZone: 'America/Chicago',
+                });
+                return (
+                  <TouchableOpacity
+                    key={iso}
+                    style={[styles.dateChip, selected && styles.dateChipSelected, disabled && styles.dateChipDisabled]}
+                    disabled={disabled}
+                    onPress={() => {
+                      if (pickerOpen === 'specific-date') onChange({ ...value, date: iso });
+                      else if (pickerOpen === 'range-start') {
+                        const newEnd = value.endDate && value.endDate < iso ? iso : value.endDate;
+                        onChange({ ...value, startDate: iso, endDate: newEnd });
+                      } else {
+                        onChange({ ...value, endDate: iso });
+                      }
+                      setPickerOpen(null);
+                    }}
+                    accessibilityLabel={`${dow} ${monthDay} ${dayNum}`}
+                  >
+                    <Text style={[styles.dateChipDow, selected && styles.dateChipTextSelected, disabled && styles.dateChipTextDisabled]}>
+                      {iso === todayISO ? 'TODAY' : iso === tomorrowISO ? 'TOM' : dow.toUpperCase()}
+                    </Text>
+                    <Text style={[styles.dateChipDay, selected && styles.dateChipTextSelected, disabled && styles.dateChipTextDisabled]}>
+                      {dayNum}
+                    </Text>
+                    <Text style={[styles.dateChipMonth, selected && styles.dateChipTextSelected, disabled && styles.dateChipTextDisabled]}>
+                      {monthDay}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         </View>
@@ -412,17 +420,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
 
-  // Date grid (rendered as flex-wrap pills, 7 wide for "weeks")
-  dateGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingBottom: spacing.md,
+  // Horizontal date strip — pills of fixed width, scrollable.
+  dateStrip: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: 2,
+    gap: spacing.sm,
   },
   dateChip: {
-    width: '13.5%',
-    minWidth: 44,
-    aspectRatio: 1,
+    width: 64,
+    height: 84,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.background,
@@ -439,25 +445,29 @@ const styles = StyleSheet.create({
   },
   dateChipDow: {
     fontSize: 10,
-    fontWeight: typography.weights.semibold,
+    fontWeight: typography.weights.bold,
     color: colors.textSecondary,
-    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   dateChipDay: {
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
+    marginTop: 2,
+  },
+  dateChipMonth: {
+    fontSize: 10,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   dateChipTextSelected: {
     color: colors.white,
   },
   dateChipTextDisabled: {
     color: colors.textTertiary,
-  },
-  dateChipBig: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
   },
 
   // Hour grid (4 cols x 6 rows)
