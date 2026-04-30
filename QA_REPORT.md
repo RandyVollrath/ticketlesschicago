@@ -51,28 +51,32 @@ These are listed in priority order — top is highest leverage.
 **Schedule:** `.github/workflows/qa-pipeline.yml` — daily at 12:00 UTC, plus on every push that touches contest-tracker code. Required secrets: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `QA_BOT_EMAIL`.
 **Local:** `npm run qa:contest-pipeline`.
 
-### 4. Clear the 587 → 0 TypeScript errors and gate deploys (HIGH leverage, MEDIUM-HIGH effort)
-**Catches:** the always-false / always-null / wrong-shape family of bugs.
-**Current:** ~530 errors in the repo, growing. Most are real (schema drift, structural drift), but the noise floor lets new errors sneak in unnoticed.
-**How:** triage in batches; either fix the bug or `@ts-expect-error` with a comment explaining why; once at zero, add `npx tsc --noEmit` as a hard gate inside `npm run deploy`.
-**Why this works:** the `autoSlice` array bug, the `userId` array bug, the Json-narrowing bugs were all already showing up as TS errors — we just couldn't see them because of the noise.
-**Effort:** multi-day, but pays for itself quickly. Can be done incrementally per-file.
+### 4. TypeScript error baseline gate ✅ SHIPPED 2026-04-30
+**Catches:** new always-false / always-null / wrong-shape errors before they ship — without requiring the multi-day cleanup of the 532 existing errors first.
+**How:** `scripts/qa-ts-baseline-gate.ts` reads the locked-in baseline from `scripts/ts-baseline.json` (currently 532), runs `npx tsc --noEmit`, and fails if the count goes UP. Wired into `npm run deploy` between `gate:reliability` and `qa:csp`. To ratchet the baseline DOWN after fixing errors: `npm run gate:ts-baseline:update`.
+**Why ratchet:** clearing 532 errors is multi-day. Refusing to ship while a single one exists would block legitimate fixes; refusing to ship if the count *grows* is the same protection without the blocker. Plan: every PR that touches an error-prone file should leave the baseline at-or-below where it started; we'll watch the number drift toward zero over weeks.
 
 ### 5. Lock SDK versions + Renovate ✅ SHIPPED 2026-04-29
 **Catches:** SDK version drift before it goes live.
 **How:** the eight historically-fragile SDKs are pinned exact (no `^`) in `package.json`: stripe, @stripe/react-stripe-js, @stripe/stripe-js, @vercel/blob, @simplewebauthn/{browser,server}, @supabase/{supabase-js,ssr,auth-helpers-nextjs}, firebase-admin, resend, @anthropic-ai/sdk. `renovate.json` opens one PR per upgrade for these, never auto-merged, with a warning note in the body. Patch/minor dev dependencies auto-merge. Pre-req: install Renovate from https://github.com/marketplace/renovate.
 
-### 6. Smoke tests for the remaining critical user paths (MEDIUM leverage, MEDIUM effort)
+### 6. Smoke tests for the remaining critical user paths 🚧 IN PROGRESS
 **Catches:** breakage on flows we don't currently exercise after each deploy.
-**Current:** we have the places-geocoder smoke (22 assertions) and an auth smoke. We need:
-  - Checkout flow (Stripe → user_profile + autopilot_subscriptions + monitored_plates + welcome email)
-  - Contest-letter generation (has the foiaData/courtData rename bug been caught? does it still produce a valid letter?)
-  - Video upload + auto-slice (regression test for the `autoSlice` fix)
-  - Mail-letter payment (regression test for the `extracted_data` wipe fix)
+**Shipped:**
+  - ✅ Places geocoder (`scripts/smoke-test-places-geocoder.ts`, 22 assertions) — Sheffield/Lakewood/Fullerton/Evanston
+  - ✅ Auth round-trip (`scripts/qa-auth-smoke.ts`) — Magic-link sign-in via headless Chromium
+  - ✅ Notification body guard (`scripts/smoke-test-notification-body-guard.ts`, 15 assertions)
+  - ✅ Contest pipeline end-to-end (`scripts/smoke-test-contest-pipeline.ts`) — synthetic ticket → "Not Liable" → assert status flip + audit + email log
+  - ✅ Portal disposition canary (`scripts/smoke-test-portal-canary.ts`, 10 fixtures)
+  - ✅ Mail-letter payment extracted_data merge (`scripts/smoke-test-mail-payment-merge.ts`, 11 assertions)
+
+**Still missing:**
+  - Checkout flow (Stripe → user_profile + autopilot_subscriptions + monitored_plates + welcome email + admin notification)
+  - Contest-letter generation (foiaData/courtData rename family — needs Anthropic credit budget)
+  - Video upload + auto-slice (regression test for the `autoSlice` array-vs-string fix)
   - FOIA email parsing (incoming Resend webhook → FOIA history match)
-  - Push notification body (regression test for `topQuestion.question` and similar)
-  - Portal scraper output → outcome detection (regression test for "Not Liable" / "Liable" text matching)
-**Effort:** ~1 hour per smoke test.
+
+**Effort:** ~1 hour each. Add as needed when a flow becomes high-stakes or starts producing bugs.
 
 ### 7. Portal-scraper canary ✅ SHIPPED 2026-04-29
 **Catches:** the day the city changes their portal HTML or disposition wording — without it we'd silently miss every win.
@@ -83,6 +87,9 @@ These are listed in priority order — top is highest leverage.
 The synthetic monitor (#3) caught two production bugs on its first run on 2026-04-29:
 1. **`processOutcomeChange` was writing `contest_outcome`/`contest_outcome_at`/`final_amount` to `detected_tickets`** but those columns live on `contest_letters`. The mismatch failed the entire UPDATE — meaning `status: 'won'` never persisted either. Every dismissal in production was leaving the ticket stuck in `mailed`. Fix: removed the wrong-table fields from the update; only write `status` / `last_portal_status` / `last_portal_check` to `detected_tickets`.
 2. **`detected_tickets.status` CHECK constraint rejected the values the code wrote** (`won`, `lost`, `reduced`, `hearing_scheduled`, `contested_online`). Same failure: status never flipped. Fix: migration `20260429_expand_detected_tickets_status_check.sql` expands the allowed set. **Pending: apply this migration on prod via Supabase SQL editor.**
+
+The mail-letter payment smoke (#6) caught one production bug on its first run on 2026-04-30:
+3. **`pages/api/contest/create-mail-payment.ts` UPDATE references columns that don't exist on `ticket_contests`** — `mail_service_payment_intent`, `mail_service_payment_status`, `mail_service_amount`, `mailing_address`, `mail_status`, plus the duplicate-payment guard `if (contest.mail_service_payment_intent)` reads a column that's never selected. Customer impact: **every $5 mail-service payment silently drops the signature, mailing address, and payment-intent reference, AND a customer can be charged multiple times for the same letter** because the duplicate guard always evaluates to false. Fix: migration `20260430_add_mail_service_columns_to_ticket_contests.sql` adds the missing columns. **Pending: apply this migration on prod via Supabase SQL editor.**
 
 ## Bug taxonomy (last 30 days)
 

@@ -64,3 +64,10 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           QA_BOT_EMAIL: ${{ secrets.QA_BOT_EMAIL }}
         run: npm run qa:contest-pipeline:ci
+
+      - name: Mail-letter payment merge smoke (live DB, QA bot user)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          QA_BOT_EMAIL: ${{ secrets.QA_BOT_EMAIL }}
+        run: npm run qa:mail-payment:ci
