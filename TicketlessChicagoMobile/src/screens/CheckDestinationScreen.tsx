@@ -88,6 +88,7 @@ interface RestrictionResult {
   };
   tempNoParking?: {
     permits: FilteredPermit[];
+    totalCount: number; // before slice — for "+N more"
     severity: string;
   };
 }
@@ -209,6 +210,26 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
     };
     loadSaved();
   }, []);
+
+  // Auto-refresh results when the user changes the When picker AFTER having
+  // already seen a result. Without this, changing the picker silently
+  // invalidates the visible results and you have to remember to tap Check
+  // again — confusing. Only re-runs if a geocoded result is on screen and
+  // we have an address; the first search still requires a tap.
+  // Skip the very first effect run (initial mount sets whenSelection too).
+  const firstRunRef = useRef(true);
+  useEffect(() => {
+    if (firstRunRef.current) { firstRunRef.current = false; return; }
+    if (!geocoded) return;
+    if (isChecking || isGettingLocation) return;
+    if (!address.trim()) return;
+    handleCheck(address);
+    // handleCheck is intentionally omitted from deps — it captures
+    // whenSelection itself, and including it would cause a refetch on
+    // every render (handleCheck is a new function each time the deps
+    // change). The whenSelection dep is what we actually want to react to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whenSelection]);
 
   const persistSavedDestinations = async (next: SavedDestination[]) => {
     setSavedDestinations(next);
@@ -416,11 +437,10 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         findUrl += `&startDate=${whenQuery.startDateParam}&endDate=${whenQuery.endDateParam}`;
       }
 
-      // Fetch DOT permits only when the user picked a non-now mode — saves
-      // the ~5MB payload on the common path.
-      const dotPromise = whenSelection.mode !== 'now'
-        ? fetchDotPermits().catch(() => [] as DotPermit[])
-        : Promise.resolve([] as DotPermit[]);
+      // Always fetch DOT permits — a permit active right now (Now mode) is
+      // the most critical signal we can show. The 30-min session cache
+      // amortizes the ~5MB payload across all searches.
+      const dotPromise = fetchDotPermits().catch(() => [] as DotPermit[]);
 
       const [geoRes, permitRes, snowRes, dotPermits] = await Promise.all([
         ApiClient.get<any>(findUrl, { timeout: 12000, showErrorAlert: false }),
@@ -445,8 +465,9 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
       const d = geoRes.data;
       const { result, geo } = computeRestrictions(d, permitRes, whenQuery);
 
-      // Temp no parking — only relevant for non-now modes.
-      if (whenSelection.mode !== 'now' && dotPermits.length > 0) {
+      // Temp no parking — relevant in every mode. A permit active right
+      // now is just as important as one during a future visit.
+      if (dotPermits.length > 0) {
         const filtered = filterDotPermits(dotPermits, {
           centerLat: geo.lat,
           centerLng: geo.lng,
@@ -455,7 +476,13 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           endISO: whenQuery.rangeEndISO,
         });
         if (filtered.length > 0) {
-          result.tempNoParking = { permits: filtered.slice(0, 5), severity: 'warning' };
+          // Closer = more severe. A permit < 75m gets critical color.
+          const sev = filtered[0].distanceMeters < 75 ? 'critical' : 'warning';
+          result.tempNoParking = {
+            permits: filtered.slice(0, 5),
+            totalCount: filtered.length,
+            severity: sev,
+          };
         }
       }
 
@@ -502,9 +529,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
         findUrl += `&startDate=${whenQuery.startDateParam}&endDate=${whenQuery.endDateParam}`;
       }
 
-      const dotPromise = whenSelection.mode !== 'now'
-        ? fetchDotPermits().catch(() => [] as DotPermit[])
-        : Promise.resolve([] as DotPermit[]);
+      const dotPromise = fetchDotPermits().catch(() => [] as DotPermit[]);
 
       const [geoRes, snowRes, dotPermits] = await Promise.all([
         ApiClient.get<any>(findUrl, { timeout: 12000, showErrorAlert: false }),
@@ -531,7 +556,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
 
       const { result, geo } = computeRestrictions({ ...d, address: resolvedAddress }, permitRes, whenQuery);
 
-      if (whenSelection.mode !== 'now' && dotPermits.length > 0) {
+      if (dotPermits.length > 0) {
         const filtered = filterDotPermits(dotPermits, {
           centerLat: geo.lat,
           centerLng: geo.lng,
@@ -540,7 +565,12 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
           endISO: whenQuery.rangeEndISO,
         });
         if (filtered.length > 0) {
-          result.tempNoParking = { permits: filtered.slice(0, 5), severity: 'warning' };
+          const sev = filtered[0].distanceMeters < 75 ? 'critical' : 'warning';
+          result.tempNoParking = {
+            permits: filtered.slice(0, 5),
+            totalCount: filtered.length,
+            severity: sev,
+          };
         }
       }
 
@@ -801,9 +831,9 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                 <Text style={styles.whenBannerText}>Showing for: {whenBanner}</Text>
                 <TouchableOpacity
                   onPress={() => {
+                    // Just flip the selection — the auto-refresh effect
+                    // refetches whenever whenSelection changes.
                     setWhenSelection({ mode: 'now' });
-                    setWhenBanner(null);
-                    if (address.trim()) handleCheck();
                   }}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 >
@@ -895,7 +925,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                     <Icon name={config.icon} size={16} color={config.iconColor} style={{ marginLeft: 'auto' }} />
                   </View>
                   <Text style={styles.restrictionMessage}>
-                    {tnp.permits.length} CDOT permit{tnp.permits.length === 1 ? '' : 's'} overlap your visit within 200m
+                    {tnp.totalCount} CDOT permit{tnp.totalCount === 1 ? '' : 's'} {whenSelection.mode === 'now' ? 'active near you' : 'overlap your visit'} within 200m
                   </Text>
                   <View style={styles.tnpList}>
                     {tnp.permits.map((p, idx) => (
@@ -909,6 +939,11 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                         ) : null}
                       </View>
                     ))}
+                    {tnp.totalCount > tnp.permits.length && (
+                      <Text style={styles.tnpMoreHint}>
+                        +{tnp.totalCount - tnp.permits.length} more not shown
+                      </Text>
+                    )}
                   </View>
                 </View>
               );
@@ -1453,6 +1488,13 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  tnpMoreHint: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingTop: 4,
   },
 
   // Snow Forecast
