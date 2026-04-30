@@ -4103,14 +4103,14 @@ class BackgroundTaskServiceClass {
    * for hours, so time-since-park is useless for detecting a stop-and-go right
    * after pulling out.
    *
-   * Two tiers (both 5 min — user request 2026-04-29 to tighten tier 2 from 15→5
-   * because their typical drive home is only 5–6 min and a 15-min tier 2 was
-   * rejecting legit re-parks within 200m):
-   *   - 500m + just departed (<5 min) → very likely stop-and-go
-   *   - 200m + just departed (<5 min) → still in/near the lot
+   * Two tiers (both 90s — user request 2026-04-30 to tighten from 5min→90s
+   * because a CVS→home re-park a few blocks away in <5 min was being rejected;
+   * a real stop-and-go at the same lot resolves in well under 90s):
+   *   - 500m + just departed (<90s) → very likely stop-and-go
+   *   - 200m + just departed (<90s) → still in/near the lot
    *
    * Real re-parks at a different location clear both gates because they're
-   * either farther (>500m) or have been driving longer (>5 min).
+   * either farther (>500m) or have been driving longer (>90s).
    *
    * Called from BOTH onParkingDetected (iOS native auto-detect) AND
    * triggerParkingCheck (periodic/recovery/manual paths) — the Mariano's
@@ -4131,8 +4131,8 @@ class BackgroundTaskServiceClass {
       lat, lng,
       this.lastAcceptedParkingCoords.lat, this.lastAcceptedParkingCoords.lng,
     );
-    const justPulledOutNearby = dist < 500 && sinceDeparture < 5 * 60 * 1000;
-    const stillStuckInLot = dist < 200 && sinceDeparture < 5 * 60 * 1000;
+    const justPulledOutNearby = dist < 500 && sinceDeparture < 90 * 1000;
+    const stillStuckInLot = dist < 200 && sinceDeparture < 90 * 1000;
     if (justPulledOutNearby || stillStuckInLot) {
       const tier = justPulledOutNearby ? 'just_pulled_out_nearby' : 'still_stuck_in_lot';
       return { rejected: true, reason: `stop_and_go_${tier}`, tier, sinceDeparture, dist };
