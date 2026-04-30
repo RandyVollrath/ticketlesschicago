@@ -953,10 +953,22 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           approved_via: string | null
+          autopay_attempted_at: string | null
+          autopay_authorized_at: string | null
+          autopay_cap_amount: number | null
+          autopay_mode: string | null
+          autopay_opt_in: boolean | null
+          autopay_payment_method_id: string | null
+          autopay_result_payload: Json | null
+          autopay_status: string | null
           cdot_foia_integrated: boolean | null
           cdot_foia_integrated_at: string | null
           cdot_foia_notes: string | null
           charge_amount: number | null
+          city_case_payload: Json | null
+          city_case_status_raw: string | null
+          contest_outcome: string | null
+          contest_outcome_at: string | null
           created_at: string | null
           defense_type: string | null
           delivered_at: string | null
@@ -974,21 +986,30 @@ export type Database = {
           evidence_integrated: boolean | null
           evidence_integrated_at: string | null
           expected_delivery_date: string | null
+          final_amount: number | null
           finance_foia_integrated: boolean | null
           finance_foia_integrated_at: string | null
           finance_foia_notes: string | null
           hearing_date: string | null
           id: string
+          last_status_check_at: string | null
+          last_status_source: string | null
           last_tracking_update: string | null
           letter_content: string | null
           letter_pdf_url: string | null
           letter_text: string
+          lifecycle_status: string | null
+          lifecycle_status_changed_at: string | null
           lob_expected_delivery: string | null
           lob_letter_id: string | null
           lob_status: string | null
           lob_tracking_id: string | null
           mailed_at: string | null
           needs_regeneration: boolean
+          paid_at: string | null
+          payment_amount: number | null
+          payment_reference: string | null
+          payment_source: string | null
           regeneration_reason: string | null
           returned_at: string | null
           sent_at: string | null
@@ -997,6 +1018,12 @@ export type Database = {
           street_view_date: string | null
           street_view_exhibit_urls: Json | null
           stripe_payment_intent_id: string | null
+          submission_channel: string | null
+          submission_confirmation_id: string | null
+          submission_confirmed_at: string | null
+          submission_receipt_payload: Json | null
+          submission_receipt_source: string | null
+          submission_state: string | null
           ticket_id: string
           tracking_events: Json | null
           tracking_number: string | null
@@ -1011,10 +1038,22 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           approved_via?: string | null
+          autopay_attempted_at?: string | null
+          autopay_authorized_at?: string | null
+          autopay_cap_amount?: number | null
+          autopay_mode?: string | null
+          autopay_opt_in?: boolean | null
+          autopay_payment_method_id?: string | null
+          autopay_result_payload?: Json | null
+          autopay_status?: string | null
           cdot_foia_integrated?: boolean | null
           cdot_foia_integrated_at?: string | null
           cdot_foia_notes?: string | null
           charge_amount?: number | null
+          city_case_payload?: Json | null
+          city_case_status_raw?: string | null
+          contest_outcome?: string | null
+          contest_outcome_at?: string | null
           created_at?: string | null
           defense_type?: string | null
           delivered_at?: string | null
@@ -1032,21 +1071,30 @@ export type Database = {
           evidence_integrated?: boolean | null
           evidence_integrated_at?: string | null
           expected_delivery_date?: string | null
+          final_amount?: number | null
           finance_foia_integrated?: boolean | null
           finance_foia_integrated_at?: string | null
           finance_foia_notes?: string | null
           hearing_date?: string | null
           id?: string
+          last_status_check_at?: string | null
+          last_status_source?: string | null
           last_tracking_update?: string | null
           letter_content?: string | null
           letter_pdf_url?: string | null
           letter_text: string
+          lifecycle_status?: string | null
+          lifecycle_status_changed_at?: string | null
           lob_expected_delivery?: string | null
           lob_letter_id?: string | null
           lob_status?: string | null
           lob_tracking_id?: string | null
           mailed_at?: string | null
           needs_regeneration?: boolean
+          paid_at?: string | null
+          payment_amount?: number | null
+          payment_reference?: string | null
+          payment_source?: string | null
           regeneration_reason?: string | null
           returned_at?: string | null
           sent_at?: string | null
@@ -1055,6 +1103,12 @@ export type Database = {
           street_view_date?: string | null
           street_view_exhibit_urls?: Json | null
           stripe_payment_intent_id?: string | null
+          submission_channel?: string | null
+          submission_confirmation_id?: string | null
+          submission_confirmed_at?: string | null
+          submission_receipt_payload?: Json | null
+          submission_receipt_source?: string | null
+          submission_state?: string | null
           ticket_id: string
           tracking_events?: Json | null
           tracking_number?: string | null
@@ -1069,10 +1123,22 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           approved_via?: string | null
+          autopay_attempted_at?: string | null
+          autopay_authorized_at?: string | null
+          autopay_cap_amount?: number | null
+          autopay_mode?: string | null
+          autopay_opt_in?: boolean | null
+          autopay_payment_method_id?: string | null
+          autopay_result_payload?: Json | null
+          autopay_status?: string | null
           cdot_foia_integrated?: boolean | null
           cdot_foia_integrated_at?: string | null
           cdot_foia_notes?: string | null
           charge_amount?: number | null
+          city_case_payload?: Json | null
+          city_case_status_raw?: string | null
+          contest_outcome?: string | null
+          contest_outcome_at?: string | null
           created_at?: string | null
           defense_type?: string | null
           delivered_at?: string | null
@@ -1090,21 +1156,30 @@ export type Database = {
           evidence_integrated?: boolean | null
           evidence_integrated_at?: string | null
           expected_delivery_date?: string | null
+          final_amount?: number | null
           finance_foia_integrated?: boolean | null
           finance_foia_integrated_at?: string | null
           finance_foia_notes?: string | null
           hearing_date?: string | null
           id?: string
+          last_status_check_at?: string | null
+          last_status_source?: string | null
           last_tracking_update?: string | null
           letter_content?: string | null
           letter_pdf_url?: string | null
           letter_text?: string
+          lifecycle_status?: string | null
+          lifecycle_status_changed_at?: string | null
           lob_expected_delivery?: string | null
           lob_letter_id?: string | null
           lob_status?: string | null
           lob_tracking_id?: string | null
           mailed_at?: string | null
           needs_regeneration?: boolean
+          paid_at?: string | null
+          payment_amount?: number | null
+          payment_reference?: string | null
+          payment_source?: string | null
           regeneration_reason?: string | null
           returned_at?: string | null
           sent_at?: string | null
@@ -1113,6 +1188,12 @@ export type Database = {
           street_view_date?: string | null
           street_view_exhibit_urls?: Json | null
           stripe_payment_intent_id?: string | null
+          submission_channel?: string | null
+          submission_confirmation_id?: string | null
+          submission_confirmed_at?: string | null
+          submission_receipt_payload?: Json | null
+          submission_receipt_source?: string | null
+          submission_state?: string | null
           ticket_id?: string
           tracking_events?: Json | null
           tracking_number?: string | null
@@ -1232,6 +1313,60 @@ export type Database = {
           },
           {
             foreignKeyName: "contest_outcomes_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "detected_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contest_status_events: {
+        Row: {
+          contest_letter_id: string
+          details: Json | null
+          event_type: string
+          id: string
+          normalized_status: string | null
+          observed_at: string
+          raw_status: string | null
+          source: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          contest_letter_id: string
+          details?: Json | null
+          event_type: string
+          id?: string
+          normalized_status?: string | null
+          observed_at?: string
+          raw_status?: string | null
+          source: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          contest_letter_id?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+          normalized_status?: string | null
+          observed_at?: string
+          raw_status?: string | null
+          source?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_status_events_contest_letter_id_fkey"
+            columns: ["contest_letter_id"]
+            isOneToOne: false
+            referencedRelation: "contest_letters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_status_events_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "detected_tickets"
@@ -2808,6 +2943,7 @@ export type Database = {
           net_cents: number
           product_id: string
           receipt_data: string | null
+          referral_code: string | null
           transaction_id: string
           user_id: string
         }
@@ -2820,6 +2956,7 @@ export type Database = {
           net_cents: number
           product_id: string
           receipt_data?: string | null
+          referral_code?: string | null
           transaction_id: string
           user_id: string
         }
@@ -2832,6 +2969,7 @@ export type Database = {
           net_cents?: number
           product_id?: string
           receipt_data?: string | null
+          referral_code?: string | null
           transaction_id?: string
           user_id?: string
         }
@@ -8293,8 +8431,18 @@ export type Database = {
           letter_audit: Json | null
           letter_quality_score: number | null
           license_plate: string | null
+          lob_mail_id: string | null
           location_evidence_strength: number | null
           location_evidence_used: boolean | null
+          mail_service_amount: number | null
+          mail_service_paid_at: string | null
+          mail_service_payment_intent: string | null
+          mail_service_payment_status: string | null
+          mail_service_requested: boolean | null
+          mail_status: string | null
+          mail_tracking_number: string | null
+          mailed_at: string | null
+          mailing_address: Json | null
           outcome_reported_at: string | null
           status: string | null
           street_view_address: string | null
@@ -8342,8 +8490,18 @@ export type Database = {
           letter_audit?: Json | null
           letter_quality_score?: number | null
           license_plate?: string | null
+          lob_mail_id?: string | null
           location_evidence_strength?: number | null
           location_evidence_used?: boolean | null
+          mail_service_amount?: number | null
+          mail_service_paid_at?: string | null
+          mail_service_payment_intent?: string | null
+          mail_service_payment_status?: string | null
+          mail_service_requested?: boolean | null
+          mail_status?: string | null
+          mail_tracking_number?: string | null
+          mailed_at?: string | null
+          mailing_address?: Json | null
           outcome_reported_at?: string | null
           status?: string | null
           street_view_address?: string | null
@@ -8391,8 +8549,18 @@ export type Database = {
           letter_audit?: Json | null
           letter_quality_score?: number | null
           license_plate?: string | null
+          lob_mail_id?: string | null
           location_evidence_strength?: number | null
           location_evidence_used?: boolean | null
+          mail_service_amount?: number | null
+          mail_service_paid_at?: string | null
+          mail_service_payment_intent?: string | null
+          mail_service_payment_status?: string | null
+          mail_service_requested?: boolean | null
+          mail_status?: string | null
+          mail_tracking_number?: string | null
+          mailed_at?: string | null
+          mailing_address?: Json | null
           outcome_reported_at?: string | null
           status?: string | null
           street_view_address?: string | null
@@ -9095,6 +9263,12 @@ export type Database = {
           is_active: boolean | null
           latitude: number | null
           longitude: number | null
+          meter_active_notified_at: string | null
+          meter_max_notified_at: string | null
+          meter_max_time_minutes: number | null
+          meter_schedule_text: string | null
+          meter_was_enforced_at_park_time: boolean | null
+          meter_zone_active: boolean
           on_snow_route: boolean | null
           on_winter_ban_street: boolean | null
           parked_at: string | null
@@ -9124,6 +9298,12 @@ export type Database = {
           is_active?: boolean | null
           latitude?: number | null
           longitude?: number | null
+          meter_active_notified_at?: string | null
+          meter_max_notified_at?: string | null
+          meter_max_time_minutes?: number | null
+          meter_schedule_text?: string | null
+          meter_was_enforced_at_park_time?: boolean | null
+          meter_zone_active?: boolean
           on_snow_route?: boolean | null
           on_winter_ban_street?: boolean | null
           parked_at?: string | null
@@ -9153,6 +9333,12 @@ export type Database = {
           is_active?: boolean | null
           latitude?: number | null
           longitude?: number | null
+          meter_active_notified_at?: string | null
+          meter_max_notified_at?: string | null
+          meter_max_time_minutes?: number | null
+          meter_schedule_text?: string | null
+          meter_was_enforced_at_park_time?: boolean | null
+          meter_zone_active?: boolean
           on_snow_route?: boolean | null
           on_winter_ban_street?: boolean | null
           parked_at?: string | null
