@@ -22,7 +22,8 @@
     "qa:csp": "npx tsx scripts/qa-csp-static.ts",
     "qa:auth": "node -r dotenv/config node_modules/.bin/tsx scripts/qa-auth-smoke.ts dotenv_config_path=.env.local",
     "qa:auth:ci": "npx tsx scripts/qa-auth-smoke.ts",
-    "qa:setup-bot": "node -r dotenv/config node_modules/.bin/tsx scripts/setup-qa-bot-user.ts dotenv_config_path=.env.local"
+    "qa:setup-bot": "node -r dotenv/config node_modules/.bin/tsx scripts/setup-qa-bot-user.ts dotenv_config_path=.env.local",
+    "types:regen": "supabase gen types typescript --project-id dzhqolbhuqdcpngdayuq --schema public > lib/database.types.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
