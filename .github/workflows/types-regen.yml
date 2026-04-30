@@ -1,0 +1,95 @@
+name: Schema — Nightly types regen
+
+# Catches schema drift before it ships.
+#
+# Every night, regenerate lib/database.types.ts from the live Supabase
+# schema. If the file changed, open (or update) a PR. Once merged, every
+# code path that references a renamed/dropped column turns into a TypeScript
+# error in `npx tsc --noEmit` instead of a silent runtime bug at customer
+# request time.
+#
+# This is reliability net #1 from QA_REPORT.md — the single highest-leverage
+# defense against the bug bucket that has produced the most customer-facing
+# breakage in this codebase.
+
+on:
+  schedule:
+    # 09:00 UTC every day = 03:00/04:00 Chicago, before the team is online.
+    - cron: '0 9 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: types-regen
+  cancel-in-progress: false
+
+jobs:
+  regen:
+    name: Regenerate database.types.ts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Regenerate types from live schema
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The CLI writes a Database type definition reflecting the *current*
+          # Supabase schema. If a column was renamed/dropped, the new file
+          # will lack it; the typed client immediately surfaces that as a
+          # TS error in callers.
+          supabase gen types typescript \
+            --project-id dzhqolbhuqdcpngdayuq \
+            --schema public \
+            > lib/database.types.ts
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if git diff --quiet lib/database.types.ts; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No schema drift detected."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Schema drift detected — types updated:"
+            git diff --stat lib/database.types.ts
+          fi
+
+      - name: Open / update PR
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/nightly-types-regen
+          base: main
+          title: 'chore: nightly Supabase types regen'
+          commit-message: 'chore: regenerate database.types.ts from live schema'
+          body: |
+            Automated nightly schema regeneration from Supabase.
+
+            **What this means:** the live Supabase schema differs from
+            what `lib/database.types.ts` had. Most likely a column was
+            renamed, added, or dropped.
+
+            **What to check before merging:**
+            1. Run `npx tsc --noEmit` locally — does it surface NEW errors?
+               If so, those are real spots in the codebase still referencing
+               the old column. Fix them in this PR or a follow-up.
+            2. If the change is purely additive (new columns, no renames),
+               this is safe to merge as-is.
+
+            Reliability net #1 from [QA_REPORT.md](../blob/main/QA_REPORT.md).
+          labels: |
+            schema
+            chore
+            automated
+          delete-branch: true

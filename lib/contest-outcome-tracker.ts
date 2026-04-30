@@ -375,6 +375,17 @@ export async function processOutcomeChange(
     console.warn(`    Failed to notify user ${ticket.user_id}: ${notifyErr.message}`);
   }
 
+  // ── Email the user when they win (dismissed or reduced). Push alone isn't
+  //    enough — many users have notifications off or no app installed. A win
+  //    is a moment to celebrate and a chance to show the value we delivered.
+  if (outcome === 'dismissed' || outcome === 'reduced') {
+    try {
+      await emailUserOfWin(supabase, ticket, outcome, finalAmount);
+    } catch (emailErr: any) {
+      console.warn(`    Failed to email user about win: ${emailErr.message}`);
+    }
+  }
+
   // ── Notify admin of every contest outcome ──
   try {
     await notifyAdminOfOutcome(supabase, ticket, outcome, finalAmount, details);
@@ -471,6 +482,128 @@ async function notifyUserOfOutcome(
       body,
       status: result.success ? 'sent' : 'failed',
       error_message: result.error || null,
+      sent_at: new Date().toISOString(),
+    });
+  } catch {
+    // notification_logs table may not exist — non-critical
+  }
+}
+
+/**
+ * Celebrate with the user when their contest wins. Sent for dismissed and
+ * reduced outcomes only — upheld and hearing_scheduled are push-only so we
+ * don't pile bad news into someone's inbox.
+ */
+async function emailUserOfWin(
+  supabase: SupabaseClient,
+  ticket: TrackedTicket,
+  outcome: 'dismissed' | 'reduced',
+  finalAmount: number,
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('email, first_name, notify_email')
+    .eq('user_id', ticket.user_id)
+    .maybeSingle();
+
+  const email = (profile as any)?.email;
+  if (!email) {
+    console.log(`    No email on file for user ${ticket.user_id} — skipping win email`);
+    return;
+  }
+  // Respect the user's email opt-out toggle. Default true if unset.
+  if ((profile as any)?.notify_email === false) {
+    console.log(`    User ${ticket.user_id} opted out of email — skipping win email`);
+    return;
+  }
+
+  const firstName = ((profile as any)?.first_name || '').trim();
+  const greeting = firstName ? `${firstName}, ` : '';
+  const original = ticket.amount || 0;
+  const saved = outcome === 'dismissed' ? original : Math.max(0, original - finalAmount);
+
+  let subject: string;
+  let headline: string;
+  let intro: string;
+  let amountBlock: string;
+
+  if (outcome === 'dismissed') {
+    subject = `🎉 ${greeting}your ticket was dismissed — you saved $${saved.toFixed(0)}`;
+    headline = 'Your ticket was dismissed';
+    intro = `${greeting}we just heard back from the City of Chicago — ticket <strong>${ticket.ticket_number}</strong> has been dismissed. You don't owe anything.`;
+    amountBlock = `
+      <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+        <div style="color: #065F46; font-size: 14px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;">You saved</div>
+        <div style="color: #0F766E; font-size: 48px; font-weight: 800; line-height: 1.1; margin-top: 8px;">$${saved.toFixed(0)}</div>
+        <div style="color: #065F46; font-size: 14px; margin-top: 8px;">Original fine: $${original.toFixed(0)}</div>
+      </div>`;
+  } else {
+    subject = `💰 ${greeting}your ticket was reduced — you saved $${saved.toFixed(0)}`;
+    headline = 'Your ticket was reduced';
+    intro = `${greeting}we heard back from the City of Chicago — ticket <strong>${ticket.ticket_number}</strong> was upheld but the fine was reduced. You owe less than you would have.`;
+    amountBlock = `
+      <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+        <div style="color: #1E40AF; font-size: 14px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;">You saved</div>
+        <div style="color: #1D4ED8; font-size: 48px; font-weight: 800; line-height: 1.1; margin-top: 8px;">$${saved.toFixed(0)}</div>
+        <div style="color: #1E40AF; font-size: 14px; margin-top: 8px;">Original $${original.toFixed(0)} → now $${finalAmount.toFixed(0)}</div>
+      </div>`;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>${headline}</title></head>
+<body style="margin: 0; padding: 0; background: #F9FAFB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #111827;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 32px 16px;">
+    <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+      <h1 style="margin: 0 0 16px; font-size: 28px; font-weight: 800; color: #111827;">${headline}</h1>
+      <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #374151;">${intro}</p>
+      ${amountBlock}
+      <p style="margin: 24px 0 16px; font-size: 16px; line-height: 1.6; color: #374151;">
+        This is exactly why Autopilot America exists — every ticket gets contested, automatically, and the wins are real money back in your pocket.
+      </p>
+      <div style="text-align: center; margin: 32px 0 8px;">
+        <a href="https://www.autopilotamerica.com/dashboard"
+           style="display: inline-block; background: #0F766E; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px;">
+          See your full ticket history
+        </a>
+      </div>
+      <p style="margin: 32px 0 0; font-size: 14px; color: #6B7280; line-height: 1.6;">
+        Disposition reported by the City of Chicago payment portal. We pull this directly from the city — it's official.
+      </p>
+    </div>
+    <p style="margin: 24px 0 0; font-size: 12px; color: #9CA3AF; text-align: center;">
+      Autopilot America · <a href="https://www.autopilotamerica.com" style="color: #6B7280;">autopilotamerica.com</a>
+    </p>
+  </div>
+</body>
+</html>`;
+
+  const text = outcome === 'dismissed'
+    ? `${greeting}your ticket was dismissed.\n\nTicket ${ticket.ticket_number} — original fine $${original.toFixed(0)} — DISMISSED.\nYou saved $${saved.toFixed(0)}.\n\nSee your full history: https://www.autopilotamerica.com/dashboard`
+    : `${greeting}your ticket was reduced.\n\nTicket ${ticket.ticket_number} — original fine $${original.toFixed(0)} → now $${finalAmount.toFixed(0)}.\nYou saved $${saved.toFixed(0)}.\n\nSee your full history: https://www.autopilotamerica.com/dashboard`;
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  await resend.emails.send({
+    from: 'Autopilot America <hello@autopilotamerica.com>',
+    to: email,
+    subject,
+    html,
+    text,
+  });
+  console.log(`    🎉 Win email sent to ${email} for ticket ${ticket.ticket_number} (${outcome}, saved $${saved.toFixed(0)})`);
+
+  // Log to notification_logs for tracking
+  try {
+    await supabase.from('notification_logs').insert({
+      user_id: ticket.user_id,
+      notification_type: 'email',
+      category: 'contest_outcome',
+      subject,
+      body: text,
+      status: 'sent',
       sent_at: new Date().toISOString(),
     });
   } catch {
