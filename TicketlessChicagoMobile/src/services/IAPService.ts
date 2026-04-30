@@ -23,6 +23,7 @@ import {
   finishTransaction,
   purchaseUpdatedListener,
   purchaseErrorListener,
+  presentCodeRedemptionSheetIOS,
 } from 'react-native-iap';
 import ApiClient from '../utils/ApiClient';
 import AuthService from './AuthService';
@@ -76,6 +77,24 @@ class IAPService {
       return await AsyncStorage.getItem(REFERRAL_CODE_STORAGE_KEY);
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Open Apple's native offer-code redemption sheet. Used for the unified
+   * "JESSICA42 = $20 off" affiliate flow on iOS — Apple charges the discount
+   * and the redeemed code comes back as offerIdentifier in the JWS receipt,
+   * which our backend uses to credit the affiliate via Rewardful.
+   *
+   * No-op on Android. Throws on unexpected failures.
+   */
+  async redeemOfferCode(): Promise<void> {
+    if (Platform.OS !== 'ios') return;
+    try {
+      await presentCodeRedemptionSheetIOS();
+    } catch (e: any) {
+      log.error('presentCodeRedemptionSheetIOS failed', e);
+      throw e;
     }
   }
 
