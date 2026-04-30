@@ -23,7 +23,9 @@ export type AuditEntityType =
   | 'user_profile'
   | 'reimbursement'
   | 'subscription'
-  | 'user';
+  | 'user'
+  | 'property_tax_appeal'
+  | 'property_tax_success_fee';
 
 export interface AuditLogEntry {
   userId?: string;
