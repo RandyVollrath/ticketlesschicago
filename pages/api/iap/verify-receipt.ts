@@ -30,6 +30,12 @@ function decodeJWSPayload(jws: string): Record<string, any> | null {
 /**
  * Validate a StoreKit 2 JWS signed transaction.
  * Decodes the JWS payload and verifies the claims match our app.
+ *
+ * Also extracts Apple Offer Code metadata when present:
+ *   - offerType=3 means the buyer redeemed an App Store Connect offer code
+ *     (the unified-affiliate-code path: Apple charges the discount, our backend
+ *     reads the code identifier off the receipt and credits the affiliate).
+ *   - offerIdentifier is the human-readable code (e.g. "JESSICA42").
  */
 function validateJWSTransaction(jws: string): {
   valid: boolean;
@@ -37,6 +43,8 @@ function validateJWSTransaction(jws: string): {
   transactionId?: string;
   environment?: string;
   bundleId?: string;
+  offerType?: number;
+  offerIdentifier?: string;
   error?: string;
 } {
   const payload = decodeJWSPayload(jws);
@@ -60,6 +68,8 @@ function validateJWSTransaction(jws: string): {
     transactionId: payload.transactionId || payload.originalTransactionId,
     environment: payload.environment,
     bundleId: payload.bundleId,
+    offerType: typeof payload.offerType === 'number' ? payload.offerType : undefined,
+    offerIdentifier: typeof payload.offerIdentifier === 'string' ? payload.offerIdentifier : undefined,
   };
 }
 
@@ -165,6 +175,8 @@ export default async function handler(
       productId?: string;
       transactionId?: string;
       environment?: string;
+      offerType?: number;
+      offerIdentifier?: string;
       error?: string;
     };
 
@@ -188,6 +200,19 @@ export default async function handler(
 
     const finalTransactionId = validation.transactionId || transactionId;
     console.log(`[IAP] Valid — product: ${validation.productId}, env: ${validation.environment}, txn: ${finalTransactionId}`);
+
+    // Apple Offer Code attribution: when offerType=3 the buyer redeemed an
+    // App Store Connect offer code (the unified "JESSICA42 = $20 off" path).
+    // Apple's signed identifier is the source of truth — prefer it over any
+    // manual referralCode the user typed into our paywall fallback.
+    const appleOfferCode =
+      validation.offerType === 3 && validation.offerIdentifier
+        ? validation.offerIdentifier.trim().slice(0, 64)
+        : null;
+    const effectiveReferralCode = appleOfferCode || cleanReferralCode;
+    if (appleOfferCode) {
+      console.log(`[IAP] Apple offer code redeemed: ${appleOfferCode}`);
+    }
 
     // Idempotency: check for duplicate transaction
     if (finalTransactionId) {
@@ -241,11 +266,11 @@ export default async function handler(
     // been added yet (migration: supabase/migrations/20260428_iap_referral_code.sql).
     // If the column is missing, this silently no-ops and we still credit the
     // affiliate via affiliate_commission_tracker + email below.
-    if (cleanReferralCode) {
+    if (effectiveReferralCode) {
       try {
         const { error: updErr } = await supabaseAdmin
           .from('iap_transactions')
-          .update({ referral_code: cleanReferralCode } as any)
+          .update({ referral_code: effectiveReferralCode } as any)
           .eq('transaction_id', insertedTxnId);
         if (updErr) {
           console.warn('[IAP] Could not store referral_code on iap_transactions (column may be missing):', updErr.message);
@@ -314,17 +339,18 @@ export default async function handler(
     // affiliate token in the iOS paywall, validate it here, and log it to the
     // same affiliate_commission_tracker table the Stripe webhook uses, then
     // email Randy with the manual-commission-adjustment ping. Non-blocking.
-    if (cleanReferralCode) {
+    if (effectiveReferralCode) {
+      const codeSource = appleOfferCode ? 'Apple Offer Code (auto)' : 'manual paywall entry';
       try {
-        const affiliate = await findAffiliateByToken(cleanReferralCode);
+        const affiliate = await findAffiliateByToken(effectiveReferralCode);
 
         if (!affiliate) {
-          console.warn(`[IAP] Referral code "${cleanReferralCode}" did not match any Rewardful affiliate — logged but not credited`);
+          console.warn(`[IAP] Referral code "${effectiveReferralCode}" (${codeSource}) did not match any Rewardful affiliate — logged but not credited`);
           await resend.emails.send({
             from: 'Alerts <alerts@autopilotamerica.com>',
             to: 'randyvollrath@gmail.com',
-            subject: `[IAP] Unmatched referral code on iOS sale: ${cleanReferralCode}`,
-            text: `iOS IAP customer entered referral code "${cleanReferralCode}" but no Rewardful affiliate has a link with that token.\n\nCustomer: ${user.email}\nUser ID: ${user.id}\nTransaction: ${finalTransactionId}\nGross: $${grossDollars}\n\nIf this should be credited, look up the intended affiliate manually in the Rewardful dashboard.`,
+            subject: `[IAP] Unmatched referral code on iOS sale: ${effectiveReferralCode}`,
+            text: `iOS IAP customer arrived with referral code "${effectiveReferralCode}" (source: ${codeSource}) but no Rewardful affiliate has a link with that token.\n\nCustomer: ${user.email}\nUser ID: ${user.id}\nTransaction: ${finalTransactionId}\nGross: $${grossDollars}\n\nIf this should be credited, create the affiliate in Rewardful with token "${effectiveReferralCode}" or look up the intended affiliate manually.`,
           });
         } else {
           // Mirror what the Stripe path does: 20% on the subscription portion.
@@ -372,7 +398,8 @@ export default async function handler(
               <ul>
                 <li><strong>Affiliate Email:</strong> ${affiliate.email}</li>
                 <li><strong>Affiliate ID:</strong> ${affiliate.id}</li>
-                <li><strong>Referral Token Used:</strong> ${cleanReferralCode}</li>
+                <li><strong>Referral Token Used:</strong> ${effectiveReferralCode}</li>
+                <li><strong>Source:</strong> ${codeSource}</li>
                 <li><strong>Expected Commission (20%):</strong> $${expectedCommission.toFixed(2)}</li>
               </ul>
 

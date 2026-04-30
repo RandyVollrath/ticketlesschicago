@@ -99,6 +99,22 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
     IAPService.setReferralCode(next).catch((e) => log.warn('Failed to persist referral code', e));
   };
 
+  const handleRedeemOfferCode = async () => {
+    try {
+      await IAPService.redeemOfferCode();
+      // Apple presents its own sheet + handles the purchase. The standard
+      // purchaseUpdatedListener (already wired in IAPService.initialize) will
+      // fire when the user completes redemption, which calls the existing
+      // verify-receipt path with the offerIdentifier in the JWS.
+    } catch (e: any) {
+      log.error('Offer code redemption failed', e);
+      Alert.alert(
+        'Could Not Open Code Redemption',
+        e?.message || 'Try again, or use the referral code field below.',
+      );
+    }
+  };
+
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
@@ -253,9 +269,23 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
                 )}
               </TouchableOpacity>
 
-              {/* Optional Rewardful referral code. Apple/Google IAPs bypass Stripe,
-                  so this text input is the only attribution path for affiliates
-                  whose referrals install via App Store. */}
+              {/* Apple Offer Code redemption — primary unified-code path on iOS.
+                  Opens Apple's native sheet so the buyer gets the discount AND
+                  the affiliate gets credit (offerIdentifier comes back in the
+                  receipt and our backend matches it to the Rewardful affiliate). */}
+              <TouchableOpacity
+                style={styles.redeemButton}
+                onPress={handleRedeemOfferCode}
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons name="ticket-percent-outline" size={18} color={colors.primary} />
+                <Text style={styles.redeemButtonText}>Have a discount code? Redeem in App Store</Text>
+              </TouchableOpacity>
+
+              {/* Manual entry fallback — for affiliates without an App Store
+                  Connect offer code, or for users who prefer typing the code on
+                  our paywall instead of going through Apple's redemption sheet.
+                  No discount on this path; affiliate still gets credited. */}
               {!referralOpen ? (
                 <TouchableOpacity
                   style={styles.referralToggle}
@@ -540,6 +570,26 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.sm,
+  },
+  redeemButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.base,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryTint,
+    width: '100%',
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  redeemButtonText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
   },
   referralToggle: {
     paddingVertical: spacing.xs,
