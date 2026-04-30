@@ -17,7 +17,10 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { recordContestOutcome } from './contest-intelligence/outcome-learning';
 import { getChicagoDateISO } from './chicago-timezone-utils';
+import { evaluateAutopayEligibility, updateContestLifecycle } from './contest-lifecycle';
 import { sendPushNotification } from './firebase-admin';
+import { Resend } from 'resend';
+import { getAdminAlertEmails } from './admin-alert-emails';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -169,10 +172,26 @@ export async function processOutcomeChange(
       .maybeSingle();
 
     if (hearingLetter?.id) {
-      await supabase
-        .from('contest_letters')
-        .update({ status: 'hearing_scheduled' })
-        .eq('id', hearingLetter.id);
+      await updateContestLifecycle(supabase as any, {
+        contestLetterId: hearingLetter.id,
+        ticketId: ticket.id,
+        userId: ticket.user_id,
+        lifecycleStatus: 'hearing_scheduled',
+        source: 'portal',
+        rawStatus: details,
+        cityCasePayload: {
+          ticket_queue: 'Hearing',
+          hearing_disposition: null,
+          final_amount: finalAmount,
+        },
+        eventType: 'hearing_scheduled',
+        eventDetails: { portal_status: details, next_check: nextCheckDate.toISOString() },
+        ticketStatusPatch: {
+          last_portal_status: 'hearing',
+          last_portal_check: now,
+          next_portal_check: nextCheckDate.toISOString(),
+        },
+      });
     }
 
     // Audit log
@@ -202,7 +221,7 @@ export async function processOutcomeChange(
   // Fetch the contest letter for this ticket (for letter_id)
   const { data: letter } = await supabase
     .from('contest_letters')
-    .select('id, defense_type, evidence_integrated')
+    .select('id, defense_type, evidence_integrated, autopay_opt_in, autopay_mode, autopay_cap_amount, autopay_payment_method_id')
     .eq('ticket_id', ticket.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -279,18 +298,54 @@ export async function processOutcomeChange(
 
   // Sync outcome to contest_letters table
   if (letter?.id) {
-    const { error: letterUpdateErr } = await supabase
-      .from('contest_letters')
-      .update({
-        contest_outcome: outcomeType,
-        contest_outcome_at: now,
-        final_amount: finalAmount,
-        status: outcome === 'dismissed' ? 'won' : outcome === 'reduced' ? 'reduced' : 'lost',
-      })
-      .eq('id', letter.id);
-    if (letterUpdateErr) {
-      console.error(`    Failed to sync outcome to contest_letters ${letter.id}: ${letterUpdateErr.message}`);
-      // Non-critical — the detected_tickets table is the source of truth
+    const lifecycleStatus = outcome === 'dismissed' ? 'won' : outcome === 'reduced' ? 'reduced' : 'lost';
+    const autopayEligibility = evaluateAutopayEligibility({
+      lifecycleStatus,
+      autopayOptIn: (letter as any).autopay_opt_in,
+      autopayMode: (letter as any).autopay_mode,
+      autopayCapAmount: (letter as any).autopay_cap_amount,
+      paymentMethodId: (letter as any).autopay_payment_method_id,
+      finalAmount,
+    });
+
+    try {
+      await updateContestLifecycle(supabase as any, {
+        contestLetterId: letter.id,
+        ticketId: ticket.id,
+        userId: ticket.user_id,
+        lifecycleStatus,
+        source: 'portal',
+        rawStatus: details,
+        cityCasePayload: {
+          hearing_disposition: details,
+          final_amount: finalAmount,
+          original_amount: ticket.amount,
+          outcome: outcomeType,
+        },
+        eventType: `contest_${outcomeType}`,
+        eventDetails: {
+          finalAmount,
+          originalAmount: ticket.amount,
+          autopayEligibility,
+        },
+        contestLetterPatch: {
+          contest_outcome: outcomeType,
+          contest_outcome_at: now,
+          disposition: outcomeType,
+          disposition_date: now,
+          final_amount: finalAmount,
+          autopay_status: autopayEligibility.status,
+        },
+        ticketStatusPatch: {
+          last_portal_status: outcomeType,
+          last_portal_check: now,
+          contest_outcome: outcomeType,
+          contest_outcome_at: now,
+          final_amount: finalAmount,
+        },
+      });
+    } catch (letterUpdateErr: any) {
+      console.error(`    Failed to sync contest lifecycle ${letter.id}: ${letterUpdateErr.message}`);
     }
   }
 
@@ -318,6 +373,13 @@ export async function processOutcomeChange(
     await notifyUserOfOutcome(supabase, ticket.user_id, ticket.ticket_number, outcome, finalAmount, ticket.amount || 0);
   } catch (notifyErr: any) {
     console.warn(`    Failed to notify user ${ticket.user_id}: ${notifyErr.message}`);
+  }
+
+  // ── Notify admin of every contest outcome ──
+  try {
+    await notifyAdminOfOutcome(supabase, ticket, outcome, finalAmount, details);
+  } catch (adminErr: any) {
+    console.warn(`    Admin outcome notification failed (non-critical): ${adminErr.message}`);
   }
 }
 
@@ -414,6 +476,75 @@ async function notifyUserOfOutcome(
   } catch {
     // notification_logs table may not exist — non-critical
   }
+}
+
+/**
+ * Email the admin every time a contest outcome is detected. Pulls the user's
+ * email/name for context. Non-blocking — caller already wraps in try/catch.
+ */
+async function notifyAdminOfOutcome(
+  supabase: SupabaseClient,
+  ticket: TrackedTicket,
+  outcome: 'dismissed' | 'reduced' | 'upheld' | 'hearing_scheduled',
+  finalAmount: number,
+  details: string,
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('email, first_name, last_name')
+    .eq('user_id', ticket.user_id)
+    .maybeSingle();
+
+  const userEmail = (profile as any)?.email || '(unknown)';
+  const userName = `${(profile as any)?.first_name || ''} ${(profile as any)?.last_name || ''}`.trim() || '(no name)';
+  const original = ticket.amount || 0;
+  const saved = outcome === 'dismissed' ? original : Math.max(0, original - finalAmount);
+
+  const emoji = outcome === 'dismissed' ? '🎉'
+    : outcome === 'reduced' ? '💰'
+    : outcome === 'hearing_scheduled' ? '📅'
+    : '❌';
+  const headline = outcome === 'dismissed' ? 'Ticket dismissed (won)'
+    : outcome === 'reduced' ? 'Ticket reduced'
+    : outcome === 'hearing_scheduled' ? 'Hearing scheduled'
+    : 'Ticket upheld (lost)';
+  const headerColor = outcome === 'dismissed' ? '#0F766E'
+    : outcome === 'reduced' ? '#1D4ED8'
+    : outcome === 'hearing_scheduled' ? '#7C3AED'
+    : '#B91C1C';
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  await resend.emails.send({
+    from: 'Autopilot America <alerts@autopilotamerica.com>',
+    to: getAdminAlertEmails(),
+    subject: `${emoji} ${headline}: ${ticket.ticket_number} — ${userEmail}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px;">
+        <div style="background: ${headerColor}; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0;">${emoji} ${headline}</h2>
+        </div>
+        <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 6px 0; color: #6b7280; width: 160px;">Ticket #</td><td style="padding: 6px 0; font-weight: 600; font-family: monospace;">${ticket.ticket_number}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Violation</td><td style="padding: 6px 0;">${ticket.violation_type}${ticket.violation_code ? ` (${ticket.violation_code})` : ''}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Customer</td><td style="padding: 6px 0;">${userName}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Email</td><td style="padding: 6px 0;">${userEmail}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Plate</td><td style="padding: 6px 0; font-family: monospace;">${ticket.plate || '(unknown)'} ${ticket.state || ''}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Original amount</td><td style="padding: 6px 0;">$${original.toFixed(2)}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Final amount</td><td style="padding: 6px 0; font-weight: 600;">$${finalAmount.toFixed(2)}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Customer saved</td><td style="padding: 6px 0; font-weight: 600; color: ${saved > 0 ? '#0F766E' : '#6b7280'};">$${saved.toFixed(2)}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Officer badge</td><td style="padding: 6px 0; font-family: monospace;">${ticket.officer_badge || '(unknown)'}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Location</td><td style="padding: 6px 0;">${ticket.location || '(unknown)'}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">Portal disposition</td><td style="padding: 6px 0; font-style: italic;">${details}</td></tr>
+            <tr><td style="padding: 6px 0; color: #6b7280;">User ID</td><td style="padding: 6px 0; font-family: monospace; font-size: 12px;">${ticket.user_id}</td></tr>
+          </table>
+        </div>
+      </div>
+    `,
+  });
+  console.log(`    📧 Admin outcome email sent for ticket ${ticket.ticket_number}`);
 }
 
 // ─── Location Pattern Detection ──────────────────────────────

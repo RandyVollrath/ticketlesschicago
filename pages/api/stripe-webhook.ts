@@ -20,6 +20,7 @@ import {
 } from '../../lib/webhook-validator';
 import { ACTIVE_AUTOPILOT_PLAN } from '../../lib/autopilot-plans';
 import { sendWelcomeEmailOnce } from '../../lib/welcome-email';
+import { getAdminAlertEmails } from '../../lib/admin-alert-emails';
 
 const stripe = new Stripe(stripeConfig.secretKey!, {
   // Using older API version for stability - cast to bypass newer type definitions
@@ -2461,6 +2462,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('Reminder error details:', JSON.stringify(reminderError, null, 2));
           } else {
             console.log('Successfully created user and vehicle reminder');
+          }
+
+          // Notify admin: a real customer just paid us. Non-blocking — wrap
+          // in try/catch so a Resend hiccup never fails the webhook.
+          try {
+            if (process.env.RESEND_API_KEY) {
+              const amountDollars = session.amount_total ? (session.amount_total / 100).toFixed(2) : 'unknown';
+              const fullName = `${formData.firstName || ''} ${formData.lastName || ''}`.trim() || '(no name)';
+              const phone = normalizePhoneNumber(formData.phone) || '(none)';
+              const plate = formData.licensePlate || '(none)';
+              const homeAddr = formData.homeAddress || formData.streetAddress || '(none)';
+              await resend.emails.send({
+                from: 'Autopilot America <alerts@autopilotamerica.com>',
+                to: getAdminAlertEmails(),
+                subject: `💰 New customer: ${email} — $${amountDollars}`,
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px;">
+                    <div style="background: #0F766E; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
+                      <h2 style="margin: 0;">New Autopilot customer</h2>
+                    </div>
+                    <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                      <table style="width: 100%; border-collapse: collapse;">
+                        <tr><td style="padding: 6px 0; color: #6b7280; width: 130px;">Name</td><td style="padding: 6px 0; font-weight: 600;">${fullName}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Email</td><td style="padding: 6px 0;">${email}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Phone</td><td style="padding: 6px 0;">${phone}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Plate</td><td style="padding: 6px 0; font-family: monospace;">${plate}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Home address</td><td style="padding: 6px 0;">${homeAddr}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Amount paid</td><td style="padding: 6px 0; font-weight: 600;">$${amountDollars}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Plan</td><td style="padding: 6px 0;">${ACTIVE_AUTOPILOT_PLAN.code}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">User ID</td><td style="padding: 6px 0; font-family: monospace; font-size: 12px;">${authData.user.id}</td></tr>
+                        <tr><td style="padding: 6px 0; color: #6b7280;">Stripe session</td><td style="padding: 6px 0; font-family: monospace; font-size: 12px;">${session.id}</td></tr>
+                      </table>
+                    </div>
+                  </div>
+                `,
+              });
+              console.log('✅ Admin signup notification sent');
+            }
+          } catch (signupAdminErr: any) {
+            console.warn('Admin signup notification failed (non-critical):', signupAdminErr.message);
           }
         }
       } catch (error) {
