@@ -64,6 +64,8 @@ See **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** for full workflow. Summary:
 
 **NEVER claim something is "live" without curling the new alias and seeing the new behavior in the response.** "Saw it work" means saw the new response — not "the deploy succeeded."
 
+**Before cutting a mobile release tag (`git tag v*`), `git status` MUST be clean.** No modified files, no untracked files that should ship. The EAS build is locked to the commit the tag points at — anything uncommitted is invisible to the build and silently missing from the release. If `git status` shows changes, either commit them (if ready), stash them (if not ready), or explicitly confirm they should be excluded — but never tag a dirty tree. This has bitten us multiple times: previous sessions left in-progress edits behind, and without the clean-tree check, those changes either get bundled into the wrong commit or get stranded out of the next release.
+
 Connected devices: Moto G 2025 (`ZT4224LFTZ`), Moto E5 Play (`ZY326L2GKG`)
 
 ## Detailed Reference Docs
