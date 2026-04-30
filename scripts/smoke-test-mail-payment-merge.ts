@@ -150,16 +150,21 @@ async function main(): Promise<void> {
     };
 
     console.log('\n2) Apply the synthetic UPDATE with signature merged in');
-    // NOTE: production code in create-mail-payment.ts also tries to write
-    // mailing_address, mail_status, mail_service_payment_intent, etc. —
-    // none of those columns exist on ticket_contests in the live schema.
-    // The smoke writes only the columns that actually exist (extracted_data)
-    // so we can isolate the merge bug from the broader schema drift.
-    // Schema-drift bug tracked separately; will be caught by the nightly
-    // types regen workflow once it lands.
+    // Replay the full UPDATE the production handler does (now that the
+    // 20260430 migration added the missing mail_service_* / mailing_address
+    // / mail_status columns). Includes everything pages/api/contest/
+    // create-mail-payment.ts writes.
+    const fakePaymentIntent = `pi_qa_${Date.now()}`;
+    const fakeMailingAddress = { name: 'QA Bot', address: '123 QA St', city: 'Chicago', state: 'IL', zip: '60614' };
     const { error: updateErr } = await supabase
       .from('ticket_contests')
       .update({
+        mail_service_requested: true,
+        mail_service_payment_intent: fakePaymentIntent,
+        mail_service_payment_status: 'pending',
+        mail_service_amount: 5,
+        mailing_address: fakeMailingAddress,
+        mail_status: 'pending',
         extracted_data: merged,
       } as any)
       .eq('id', contestId);
@@ -172,7 +177,7 @@ async function main(): Promise<void> {
     console.log('\n3) Verify every prior key survived AND signature is present');
     const { data: after } = await supabase
       .from('ticket_contests')
-      .select('extracted_data')
+      .select('extracted_data, mail_service_requested, mail_service_payment_intent, mail_service_payment_status, mail_service_amount, mailing_address, mail_status')
       .eq('id', contestId)
       .maybeSingle();
     const post = (after?.extracted_data as any) || {};
@@ -182,6 +187,15 @@ async function main(): Promise<void> {
     ok('free-text notes preserved', post.notes === priorExtractedData.notes);
     ok('nested deep_field preserved (verifies real spread, not shallow truncation)', post.nested?.deep_field === priorExtractedData.nested.deep_field);
     ok('signature was added', post.signature === signature);
+    // Mail service columns the migration restored. These were silently
+    // dropped before the migration; if they ever go missing again the
+    // handler payment-intent guard breaks too.
+    ok('mail_service_requested persisted', (after as any)?.mail_service_requested === true);
+    ok('mail_service_payment_intent persisted (also feeds duplicate-payment guard)', (after as any)?.mail_service_payment_intent === fakePaymentIntent);
+    ok('mail_service_payment_status persisted', (after as any)?.mail_service_payment_status === 'pending');
+    ok('mail_service_amount persisted', Number((after as any)?.mail_service_amount) === 5);
+    ok('mailing_address persisted', sameData((after as any)?.mailing_address, fakeMailingAddress));
+    ok('mail_status persisted', (after as any)?.mail_status === 'pending');
   } finally {
     await cleanup();
   }
