@@ -1,0 +1,59 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "description": "QA_REPORT.md net #5 — make every SDK upgrade a visible PR.",
+  "timezone": "America/Chicago",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 8,
+  "rangeStrategy": "pin",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  },
+  "packageRules": [
+    {
+      "description": "High-risk SDKs that have caused customer-visible regressions: separate, never grouped, never auto-merged.",
+      "matchPackageNames": [
+        "stripe",
+        "@stripe/react-stripe-js",
+        "@stripe/stripe-js",
+        "@vercel/blob",
+        "@simplewebauthn/browser",
+        "@simplewebauthn/server",
+        "resend",
+        "@supabase/supabase-js",
+        "@supabase/ssr",
+        "@supabase/auth-helpers-nextjs",
+        "firebase-admin"
+      ],
+      "automerge": false,
+      "groupName": null,
+      "labels": ["dependencies", "needs-review"],
+      "prBodyNotes": [
+        ":warning: This package has historically caused silent regressions on upgrade (Vercel Blob v2 dropped 'private', SimpleWebAuthn v13 nested credential, Resend snake_case → camelCase, etc.). Read the changelog before merging."
+      ]
+    },
+    {
+      "description": "Type-only deps and dev deps can be auto-merged after CI green.",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Pin Node engine major to avoid surprise CI runtime jumps.",
+      "matchPackageNames": ["node"],
+      "matchDepTypes": ["engines"],
+      "enabled": false
+    }
+  ]
+}
