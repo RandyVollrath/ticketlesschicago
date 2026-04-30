@@ -23,7 +23,8 @@
     "qa:auth": "node -r dotenv/config node_modules/.bin/tsx scripts/qa-auth-smoke.ts dotenv_config_path=.env.local",
     "qa:auth:ci": "npx tsx scripts/qa-auth-smoke.ts",
     "qa:setup-bot": "node -r dotenv/config node_modules/.bin/tsx scripts/setup-qa-bot-user.ts dotenv_config_path=.env.local",
-    "types:regen": "supabase gen types typescript --project-id dzhqolbhuqdcpngdayuq --schema public > lib/database.types.ts"
+    "types:regen": "supabase gen types typescript --project-id dzhqolbhuqdcpngdayuq --schema public > lib/database.types.ts",
+    "qa:body-guard": "npx tsx scripts/smoke-test-notification-body-guard.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",

@@ -70,6 +70,23 @@ export async function sendEmailWithRetry(
   maxRetries: number = DEFAULT_MAX_RETRIES,
   baseDelayMs: number = DEFAULT_BASE_DELAY_MS
 ): Promise<SendEmailResult> {
+  // Reliability net: refuse to email rendered "undefined" / empty subjects or
+  // bodies. Strip HTML to plain text for the check so a CSS class named
+  // "undefined-state" doesn't false-positive.
+  const { assertSafeNotificationBody } = await import('./notification-body-guard');
+  const plainHtml = (options.html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const recipient = Array.isArray(options.to) ? options.to[0] : options.to;
+  if (!assertSafeNotificationBody(
+    { subject: options.subject, body: options.text || plainHtml },
+    { channel: 'email', recipient }
+  )) {
+    return {
+      success: false,
+      error: 'Email subject/body failed body-guard check (contained undefined/null/NaN or empty)',
+      retries: 0,
+    };
+  }
+
   let lastError: any = null;
   let retries = 0;
 

@@ -152,6 +152,17 @@ export async function sendPushNotification(
     return { success: false, error: 'Firebase Messaging not available' };
   }
 
+  // Reliability net: refuse to push garbage like "undefined Reply to email…".
+  // Lazy import so this file stays tree-shakable for callers that don't need
+  // it. The guard throws in dev (loud) and returns false in prod (skip send).
+  const { assertSafeNotificationBody } = await import('./notification-body-guard');
+  if (!assertSafeNotificationBody(
+    { title: notification.title, body: notification.body },
+    { channel: 'push', recipient: fcmToken.slice(0, 12) + '…' }
+  )) {
+    return { success: false, error: 'Notification body failed body-guard check (contained undefined/null/NaN or empty)' };
+  }
+
   try {
     const message: admin.messaging.Message = {
       token: fcmToken,

@@ -27,6 +27,16 @@ export async function sendClickSendSMS(
 ): Promise<{success: boolean, error?: string, attempts?: number, messageId?: string, circuitOpen?: boolean}> {
   const maxRetries = options.maxRetries ?? MAX_RETRIES;
 
+  // Reliability net: refuse to text garbage. Most renewal/permit SMS bugs we
+  // shipped were the message rendering as "undefined" or empty. Fail closed.
+  const { assertSafeNotificationBody } = await import('./notification-body-guard');
+  if (!assertSafeNotificationBody(
+    { body: message },
+    { channel: 'sms', recipient: to }
+  )) {
+    return { success: false, error: 'SMS body failed body-guard check (contained undefined/null/NaN or empty)' };
+  }
+
   // Check circuit breaker first (unless bypassed for testing)
   if (!options.bypassCircuitBreaker) {
     try {

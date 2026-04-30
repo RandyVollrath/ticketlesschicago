@@ -23,6 +23,8 @@ These will keep happening unless we put nets in place. **The current state is mo
 | CSP static check | Catches CSP regressions before deploy | `scripts/qa-csp-static.ts` |
 | Auth smoke | End-to-end sign-in flow against prod after deploy | `scripts/qa-auth-smoke.ts`, runs as part of `npm run deploy` |
 | Places geocoder smoke | 22 assertions covering Fullerton/Sheffield/Lakewood/Evanston | `scripts/smoke-test-places-geocoder.ts` |
+| Notification body guard | Refuses to send any push/SMS/email whose rendered body contains literal "undefined", "null", "NaN", or is empty | `lib/notification-body-guard.ts`, smoke at `scripts/smoke-test-notification-body-guard.ts` (15 assertions, run via `npm run qa:body-guard`) |
+| Nightly Supabase types regen | Auto-PR every morning if the live schema drifted from `lib/database.types.ts`. Requires `SUPABASE_ACCESS_TOKEN` repo secret + repo setting "Allow GitHub Actions to create and approve pull requests" | `.github/workflows/types-regen.yml` |
 | `verify-everything` | Branch-scoped ship gate (per CLAUDE.md, "must pass before claiming deployed") | `scripts/verify-everything.ts` (when present) |
 | Ship rules in CLAUDE.md | "I saw it work" not "I think it works." Probe → live smoke → end-to-end → honest ledger | [CLAUDE.md](./CLAUDE.md#review-your-own-work-before-shipping--i-saw-it-work-not-i-think-it-works) |
 
@@ -30,17 +32,18 @@ These will keep happening unless we put nets in place. **The current state is mo
 
 These are listed in priority order — top is highest leverage.
 
-### 1. Nightly Supabase schema regenerate + commit (HIGH leverage)
+### 1. Nightly Supabase schema regenerate + commit ✅ SHIPPED 2026-04-29
 **Catches:** schema drift. The single biggest source of bugs we've seen.
-**How:** GitHub Action runs `supabase gen types typescript --project-id dzhqolbhuqdcpngdayuq > lib/database.types.ts` once a day and opens a PR if the file changes. Our typed Supabase client then surfaces every column rename or drop as a TypeScript error in the next morning's `npx tsc --noEmit`.
-**Why this works:** the bugs we found this week (`evidence_deadline` missing from select, `address` vs `home_address_full`, `mail_service_payment_status` referenced but doesn't exist, `lob_mail_id`, etc.) all become errors immediately when types are fresh.
-**Effort:** ~1 hour. Existing `lib/database.types.ts` regeneration is already supported by the Supabase CLI.
+**How:** `.github/workflows/types-regen.yml` runs daily at 09:00 UTC. Calls `supabase gen types typescript --project-id dzhqolbhuqdcpngdayuq --schema public > lib/database.types.ts` and opens a PR via `peter-evans/create-pull-request` if the file changed. Once merged, every caller of a renamed/dropped column turns into a `tsc` error.
+**Status:** workflow live. Verified on 2026-04-29: token works, ran successfully, detected 156 lines of real schema drift on first run.
+**Pre-req:** repo secret `SUPABASE_ACCESS_TOKEN` (Personal Access Token from supabase.com/dashboard/account/tokens) AND repo setting "Allow GitHub Actions to create and approve pull requests" enabled.
+**Local:** `npm run types:regen`.
 
-### 2. Notification body `"undefined"` / empty guard (HIGH leverage, LOW effort)
-**Catches:** silent string corruption. Every customer-facing message that interpolates a field — push, SMS, email, voice prompt — gets sanity-checked.
-**How:** thin wrapper around `sendPush` / `sendSMS` / `sendEmail` that throws if the rendered body contains the literal string `"undefined"`, `"null"`, `"NaN"`, or is empty. In dev it's a 500; in prod it logs to Sentry/PostHog and fails closed (we'd rather not send than send garbage).
-**Why this works:** the `topQuestion.question` → `topQuestion.text` bug, the renewal-profile SMS that didn't tell users what was missing, and the LLM "undefined/undefined dismissed (NaN%)" prompt would all have been caught before sending.
-**Effort:** 30 minutes.
+### 2. Notification body `"undefined"` / empty guard ✅ SHIPPED 2026-04-29
+**Catches:** silent string corruption. Every customer-facing message that interpolates a field — push, SMS, email — is sanity-checked at the moment of send.
+**How:** `lib/notification-body-guard.ts` exposes `assertSafeNotificationBody(parts, context)`. Wired into `sendPushNotification` (firebase-admin), `sendClickSendSMS` (sms-service), and `sendEmailWithRetry` (resend-with-retry). Looks for the literal tokens `undefined`, `null`, `NaN` as standalone words plus empty/whitespace-only required fields. Word-boundary regex so customer last-name "Null" doesn't false-positive.
+**Behavior:** in dev/test throws (loud); in prod logs at error level and returns `{success: false}` from the sender — we skip sending rather than send garbage.
+**Smoke:** `npm run qa:body-guard` — 15 assertions covering every real shipped pattern (`undefined Reply to email`, `NaN%`, trailing `null`, empty subject, etc.).
 
 ### 3. Synthetic end-to-end monitor (HIGH leverage, MEDIUM effort)
 **Catches:** anything that breaks for a real user, including the bugs the type checker can't see.
