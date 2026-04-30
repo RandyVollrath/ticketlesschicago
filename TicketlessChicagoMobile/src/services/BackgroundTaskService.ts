@@ -686,54 +686,19 @@ class BackgroundTaskServiceClass {
               }
 
               // GUARD: Stop-and-go traffic cooldown.
-              //
-              // Real example 2026-04-29: user parked at Mariano's 12:36
-              // (2124 N Ashland), sat in the lot until 13:42, pulled out and
-              // hit slow Ashland traffic. As they crawled out of the lot,
-              // CoreMotion fired TWO false "parking events" within ~150m of
-              // Mariano's (50m S at 13:50, 120m N at 13:51 — both in the
-              // first ~9 minutes after departure). The third row at Southport
-              // (~13:48 detection, 600m+ away) was actually them arriving
-              // home, which is fine and should not be rejected.
-              //
-              // Right signal: "time since DEPARTURE" (lastIosDrivingStartedAt),
-              // not "time since last accepted park" — the user can sit at a
-              // legitimate parking spot for hours, so time-since-park is
-              // useless for detecting a stop-and-go right after pulling out.
-              //
-              // Two tiers:
-              //   - 500m + just departed (<5 min) → very likely stop-and-go
-              //   - 200m + moderately recent (<15 min) → still in/near the
-              //     lot, also reject (covers the Mariano's case where the
-              //     user was 8-9 min into a slow traffic crawl but had only
-              //     moved 50-120m from the parking spot)
-              //
-              // Real re-parks at a different location (drop-off + drive
-              // somewhere else) clear both gates because they're either
-              // farther (>500m) or have been driving longer (>15 min total).
-              if (
-                this.lastAcceptedParkingCoords &&
-                this.lastIosDrivingStartedAt > this.lastAcceptedParkingEventAt &&
-                event.latitude &&
-                event.longitude
-              ) {
-                const sinceDeparture = Date.now() - this.lastIosDrivingStartedAt;
-                const dist = haversineDistance(
-                  event.latitude, event.longitude,
-                  this.lastAcceptedParkingCoords.lat, this.lastAcceptedParkingCoords.lng
-                );
-                const justPulledOutNearby = dist < 500 && sinceDeparture < 5 * 60 * 1000;
-                const stillStuckInLot = dist < 200 && sinceDeparture < 15 * 60 * 1000;
-                if (justPulledOutNearby || stillStuckInLot) {
-                  const tier = justPulledOutNearby ? 'just_pulled_out_nearby' : 'still_stuck_in_lot';
+              // See checkStopAndGoCooldown() for full explanation.
+              if (event.latitude && event.longitude) {
+                const cd = this.checkStopAndGoCooldown(event.latitude, event.longitude);
+                if (cd.rejected) {
                   log.warn(
-                    `Rejecting parking event (stop-and-go ${tier}): ` +
-                    `${Math.round(sinceDeparture / 1000)}s since departure, ` +
-                    `${dist.toFixed(0)}m from last accepted park — likely traffic, not a real re-park.`
+                    `Rejecting parking event (stop-and-go ${cd.tier}): ` +
+                    `${Math.round((cd.sinceDeparture || 0) / 1000)}s since departure, ` +
+                    `${(cd.dist || 0).toFixed(0)}m from last accepted park — likely traffic, not a real re-park.`
                   );
-                  await this.persistParkingRejection(`stop_and_go_${tier}`, event, {
-                    secondsSinceDeparture: Math.round(sinceDeparture / 1000),
-                    distanceMeters: Math.round(dist),
+                  await this.persistParkingRejection(cd.reason!, event, {
+                    secondsSinceDeparture: Math.round((cd.sinceDeparture || 0) / 1000),
+                    distanceMeters: Math.round(cd.dist || 0),
+                    source: 'onParkingDetected',
                   });
                   return;
                 }
@@ -2245,6 +2210,37 @@ class BackgroundTaskServiceClass {
       if ((!coords.heading || coords.heading < 0) && this.lastDrivingHeading !== null) {
         log.info(`Injecting last driving heading ${this.lastDrivingHeading.toFixed(1)}° into parking coords (original heading: ${coords.heading})`);
         coords = { ...coords, heading: this.lastDrivingHeading };
+      }
+
+      // GUARD: Stop-and-go cooldown applied to ALL paths (periodic / recovery /
+      // manual / iOS native). The onParkingDetected guard at the top of the iOS
+      // auto-detect path catches native CoreMotion repeats, but recovery and
+      // periodic checks call triggerParkingCheck directly and would otherwise
+      // bypass the cooldown — which is what produced the false Mariano's pull-
+      // out events. See checkStopAndGoCooldown() for the full rationale.
+      if (coords.latitude && coords.longitude) {
+        const cd = this.checkStopAndGoCooldown(coords.latitude, coords.longitude);
+        if (cd.rejected) {
+          log.warn(
+            `Rejecting parking check (stop-and-go ${cd.tier}): ` +
+            `${Math.round((cd.sinceDeparture || 0) / 1000)}s since departure, ` +
+            `${(cd.dist || 0).toFixed(0)}m from last accepted park — likely traffic, not a real re-park.`
+          );
+          void BackgroundLocationService.appendToDecisionLog('js_parking_rejected', {
+            reason: cd.reason,
+            tier: cd.tier,
+            lat: coords.latitude,
+            lng: coords.longitude,
+            accuracy: coords.accuracy,
+            secondsSinceDeparture: Math.round((cd.sinceDeparture || 0) / 1000),
+            distanceMeters: Math.round(cd.dist || 0),
+            gpsSource,
+            isRealParkingEvent,
+            source: 'triggerParkingCheck',
+            driveSessionId: this.currentDriveSessionId,
+          });
+          return;
+        }
       }
 
       log.info(`GPS acquired via ${gpsSource}. Heading: ${coords.heading != null && coords.heading >= 0 ? coords.heading.toFixed(1) + '°' : 'none'}. Now calling parking API...`);
@@ -4090,6 +4086,58 @@ class BackgroundTaskServiceClass {
       this.lastIosHealthSnapshotTime = Date.now();
       this.iosHealthSnapshotInFlight = false;
     }
+  }
+
+  /**
+   * Stop-and-go traffic cooldown.
+   *
+   * Real example 2026-04-29: user parked at Mariano's 12:36 (2124 N Ashland),
+   * sat in the lot until 13:42, pulled out and hit slow Ashland traffic. As they
+   * crawled out of the lot, the system fired TWO false "parking events" within
+   * ~150m of Mariano's, in the first ~9 minutes after departure. The third row
+   * at Southport (~13:48 detection, 600m+ away) was actually them arriving home,
+   * which is fine and should not be rejected.
+   *
+   * Right signal: "time since DEPARTURE" (lastIosDrivingStartedAt), not "time
+   * since last accepted park" — the user can sit at a legitimate parking spot
+   * for hours, so time-since-park is useless for detecting a stop-and-go right
+   * after pulling out.
+   *
+   * Two tiers (both 5 min — user request 2026-04-29 to tighten tier 2 from 15→5
+   * because their typical drive home is only 5–6 min and a 15-min tier 2 was
+   * rejecting legit re-parks within 200m):
+   *   - 500m + just departed (<5 min) → very likely stop-and-go
+   *   - 200m + just departed (<5 min) → still in/near the lot
+   *
+   * Real re-parks at a different location clear both gates because they're
+   * either farther (>500m) or have been driving longer (>5 min).
+   *
+   * Called from BOTH onParkingDetected (iOS native auto-detect) AND
+   * triggerParkingCheck (periodic/recovery/manual paths) — the Mariano's
+   * false events had no native metadata, meaning they came from a non-
+   * onParkingDetected path, so guarding only one site missed them.
+   */
+  private checkStopAndGoCooldown(lat: number, lng: number): {
+    rejected: boolean;
+    reason?: string;
+    tier?: string;
+    sinceDeparture?: number;
+    dist?: number;
+  } {
+    if (!this.lastAcceptedParkingCoords) return { rejected: false };
+    if (this.lastIosDrivingStartedAt <= this.lastAcceptedParkingEventAt) return { rejected: false };
+    const sinceDeparture = Date.now() - this.lastIosDrivingStartedAt;
+    const dist = haversineDistance(
+      lat, lng,
+      this.lastAcceptedParkingCoords.lat, this.lastAcceptedParkingCoords.lng,
+    );
+    const justPulledOutNearby = dist < 500 && sinceDeparture < 5 * 60 * 1000;
+    const stillStuckInLot = dist < 200 && sinceDeparture < 5 * 60 * 1000;
+    if (justPulledOutNearby || stillStuckInLot) {
+      const tier = justPulledOutNearby ? 'just_pulled_out_nearby' : 'still_stuck_in_lot';
+      return { rejected: true, reason: `stop_and_go_${tier}`, tier, sinceDeparture, dist };
+    }
+    return { rejected: false };
   }
 
   private async persistParkingRejection(reason: string, event: ParkingDetectedEvent, extra?: Record<string, unknown>): Promise<void> {
