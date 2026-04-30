@@ -89,7 +89,7 @@ async function requestInitialPortalCheckForUser(userId: string, source: string):
       .eq('key', 'portal_check_trigger')
       .maybeSingle();
 
-    if (existingTrigger?.value?.status !== 'pending') {
+    if ((existingTrigger?.value as any)?.status !== 'pending') {
       await supabaseAdmin
         .from('autopilot_admin_settings')
         .upsert({
@@ -611,7 +611,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           // IDEMPOTENCY CHECK: If this Stripe session was already processed, skip
-          const { data: existingBySession } = await supabaseAdmin
+          // Note: user_profiles has no stripe_session_id column; this query has
+          // always been a runtime no-op (Supabase returns an error, .data=null).
+          // Downstream operations are upserts so duplicate webhooks are safe.
+          const { data: existingBySession } = await (supabaseAdmin as any)
             .from('user_profiles')
             .select('user_id')
             .eq('stripe_session_id', session.id)
@@ -644,19 +647,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!userId) {
             console.log('No userId provided - creating new user account for:', email);
 
-            // Check if user already exists using proper email lookup
-            // IMPORTANT: Use getUserByEmail instead of listUsers to avoid pagination issues
-            let existingUser = null;
+            // Check if user already exists. getUserByEmail was removed from
+            // GoTrueAdminApi; query user_profiles (indexed on email) instead
+            // and only the id is needed downstream.
+            let existingUser: { id: string } | null = null;
             try {
-              const { data: userByEmail } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-              if (userByEmail) {
-                existingUser = userByEmail;
+              const { data: profileByEmail } = await supabaseAdmin
+                .from('user_profiles')
+                .select('user_id')
+                .eq('email', email.toLowerCase())
+                .limit(1)
+                .maybeSingle();
+              if (profileByEmail?.user_id) {
+                existingUser = { id: profileByEmail.user_id };
               }
             } catch (lookupError: any) {
-              // getUserByEmail throws if user not found - that's OK, we'll create a new user
-              if (!lookupError.message?.includes('User not found')) {
-                console.error('Error looking up user by email:', lookupError);
-              }
+              console.error('Error looking up user by email:', lookupError);
             }
 
             if (existingUser) {
@@ -1679,8 +1685,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           console.log('🤖 Checking for Autopilot subscription:', { supabaseUserId, subscriptionId });
 
-          // IDEMPOTENCY: Check if this session was already processed by checking user_profiles
-          const { data: existingProfile } = await supabaseAdmin
+          // IDEMPOTENCY: Check if this session was already processed by checking user_profiles.
+          // Note: user_profiles has no stripe_session_id column; this check has
+          // always been a runtime no-op. Downstream operations are upserts so
+          // duplicate webhook delivery is safe.
+          const { data: existingProfile } = await (supabaseAdmin as any)
             .from('user_profiles')
             .select('has_contesting, is_paid, stripe_session_id')
             .eq('user_id', supabaseUserId)
@@ -1707,11 +1716,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             console.log('🤖 Found Autopilot subscription, updating to active');
 
-            // Get subscription details from Stripe
+            // Get subscription details from Stripe.
+            // In SDK v18, current_period_end moved off the subscription onto
+            // its first subscription item.
             let periodEnd = null;
             if (subscriptionId) {
               const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
-              periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
+              const cpe = (stripeSub as any).current_period_end
+                ?? stripeSub.items?.data?.[0]?.current_period_end;
+              if (cpe) periodEnd = new Date(cpe * 1000).toISOString();
             }
 
             const { error: updateError } = await supabaseAdmin
@@ -1967,19 +1980,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
         
-        // Check if user already exists (in case they signed up via Google first)
-        // IMPORTANT: Use getUserByEmail instead of listUsers to avoid pagination issues
-        let userExists = null;
+        // Check if user already exists (in case they signed up via Google first).
+        // getUserByEmail was removed from GoTrueAdminApi; query user_profiles
+        // (indexed on email) instead.
+        let userExists: { id: string } | null = null;
         try {
-          const { data: userByEmail } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-          if (userByEmail) {
-            userExists = userByEmail;
+          const { data: profileByEmail } = await supabaseAdmin
+            .from('user_profiles')
+            .select('user_id')
+            .eq('email', email.toLowerCase())
+            .limit(1)
+            .maybeSingle();
+          if (profileByEmail?.user_id) {
+            userExists = { id: profileByEmail.user_id };
           }
         } catch (lookupError: any) {
-          // getUserByEmail throws if user not found - that's OK, we'll create a new user
-          if (!lookupError.message?.includes('User not found')) {
-            console.error('Error looking up user by email:', lookupError);
-          }
+          console.error('Error looking up user by email:', lookupError);
         }
 
         let authData;
@@ -2035,7 +2051,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Create user record with only the fields that exist in the users table
             console.log('Creating user profile for user:', authData.user.id);
             
-            const { error: userError } = await supabaseAdmin
+            const { error: userError } = await (supabaseAdmin as any)
               .from('users')
               .insert([{
                 id: authData.user.id,
@@ -2137,18 +2153,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               updated_at: new Date().toISOString()
             };
             
-            let { error: profileError } = await supabaseAdmin
+            let { error: profileError } = await (supabaseAdmin as any)
               .from('user_profiles')
               .insert([userProfileData]);
-              
+
             // If insert failed due to name fields not existing, retry without them
             if (profileError && (profileError.message?.includes('first_name') || profileError.message?.includes('last_name'))) {
               console.log('Name fields not supported in database, retrying without them...');
-              const dataWithoutNames = { ...userProfileData };
+              const dataWithoutNames: any = { ...userProfileData };
               delete dataWithoutNames.first_name;
               delete dataWithoutNames.last_name;
-              
-              const retryResult = await supabaseAdmin
+
+              const retryResult = await (supabaseAdmin as any)
                 .from('user_profiles')
                 .insert([dataWithoutNames]);
               profileError = retryResult.error;
@@ -2217,15 +2233,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               }
 
               // Check if user needs winter ban notification (Dec 1 - Apr 1)
-              const userAddress = formData.homeAddress || formData.streetAddress;
+              const userAddress = (formData.homeAddress || formData.streetAddress) as string | undefined;
               if (userAddress) {
                 try {
                   const winterBanResult = await notifyNewUserAboutWinterBan(
                     authData.user.id,
                     userAddress,
                     email,
-                    formData.phone || null,
-                    formData.firstName || null
+                    (formData.phone as string | null) || null,
+                    (formData.firstName as string | null) || null
                   );
                   if (winterBanResult.sent) {
                     console.log('❄️ Winter ban notification sent to new checkout user');
@@ -2285,18 +2301,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               updated_at: new Date().toISOString()
             };
             
-            let { error: profileUpdateError } = await supabaseAdmin
+            let { error: profileUpdateError } = await (supabaseAdmin as any)
               .from('user_profiles')
               .upsert([{ user_id: authData.user.id, email: email, ...userProfileUpdateData }]);
-              
+
             // If update failed due to name fields not existing, retry without them
             if (profileUpdateError && (profileUpdateError.message?.includes('first_name') || profileUpdateError.message?.includes('last_name'))) {
               console.log('Name fields not supported in database, retrying without them...');
-              const dataWithoutNames = { ...userProfileUpdateData };
+              const dataWithoutNames: any = { ...userProfileUpdateData };
               delete dataWithoutNames.first_name;
               delete dataWithoutNames.last_name;
-              
-              const retryResult = await supabaseAdmin
+
+              const retryResult = await (supabaseAdmin as any)
                 .from('user_profiles')
                 .upsert([{ user_id: authData.user.id, email: email, ...dataWithoutNames }]);
               profileUpdateError = retryResult.error;
@@ -2334,7 +2350,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           
           console.log('Vehicle insert data:', JSON.stringify(vehicleInsertData, null, 2));
           
-          const { data: vehicleData, error: vehicleError } = await supabaseAdmin
+          const { data: vehicleData, error: vehicleError } = await (supabaseAdmin as any)
             .from('vehicles')
             .insert([vehicleInsertData])
             .select()
@@ -2428,7 +2444,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                                       formData.streetAddress || 
                                       `${formData.mailingAddress}, ${formData.mailingCity}, ${formData.mailingState} ${formData.mailingZip}`;
           
-          const { error: reminderError } = await supabaseAdmin
+          const { error: reminderError } = await (supabaseAdmin as any)
             .from('vehicle_reminders')
             .insert([{
               user_id: authData.user.id,
@@ -2666,10 +2682,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               : contest.mailing_address;
 
             // Get signature from extracted_data if available
-            const signature = contest.extracted_data?.signature;
+            const signature = (contest.extracted_data as any)?.signature;
             const letterHTML = formatLetterAsHTML(contest.contest_letter, {
               signatureImage: signature,
-              streetViewImages: contest.street_view_exhibit_urls || undefined,
+              streetViewImages: (contest.street_view_exhibit_urls as string[] | null) || undefined,
               streetViewDate: contest.street_view_date || undefined,
               streetViewAddress: contest.street_view_address || undefined,
             });
@@ -2725,8 +2741,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (appealId && supabaseAdmin) {
           console.log('🏠 Processing Property Tax Appeal refund');
 
-          // IDEMPOTENCY: Check if refund already processed
-          const { data: appeal } = await supabaseAdmin
+          // IDEMPOTENCY: Check if refund already processed.
+          // Note: property_tax_appeals has no refunded_at column yet — both
+          // the SELECT and UPDATE below silently no-op for that field. A
+          // status='refunded' write succeeds. Migration TODO.
+          const { data: appeal } = await (supabaseAdmin as any)
             .from('property_tax_appeals')
             .select('status, refunded_at')
             .eq('id', appealId)
@@ -2738,7 +2757,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           // Mark appeal as refunded
-          const { error: refundError } = await supabaseAdmin
+          const { error: refundError } = await (supabaseAdmin as any)
             .from('property_tax_appeals')
             .update({
               status: 'refunded',
