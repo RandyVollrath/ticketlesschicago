@@ -120,6 +120,12 @@ function classify(row: any): FailureSignature {
   if (row.user_feedback_at && row.street_correct === false) return 'user_said_street_wrong';
   if (row.user_feedback_at && row.side_correct === false) return 'user_said_side_wrong';
   if (!row.snap_street_name) return 'no_snap';
+  // nominatim_overrode comes BEFORE snap_far: when the override path adopts
+  // the Nominatim/Apple-identified candidate (e.g. two_source_intersection_override),
+  // the stored snap_distance_meters reflects the adopted perpendicular street at a
+  // corner (typically 25–60m) — large by design, not a failure. Classifying these
+  // rows as snap_far hides successful override events and inflates that bucket.
+  if (row.nominatim_overrode) return 'nominatim_overrode';
   // snap_far means the snap distance is large AND we have no independent
   // confirmation of the street name. When Mapbox-reverse independently
   // agrees with snap (and Nominatim too), a 25-40m snap distance just
@@ -129,7 +135,6 @@ function classify(row: any): FailureSignature {
   const mb = row.native_meta?.mapbox_reverse;
   const mapboxConfirmsSnap = mb && mb.matched && mb.agrees_with_snap === true;
   if ((row.snap_distance_meters || 0) > 20 && !mapboxConfirmsSnap) return 'snap_far';
-  if (row.nominatim_overrode) return 'nominatim_overrode';
   if (row.walkaway_guard_fired) return 'walkaway_guard_fired';
   const al = row.native_meta?.auto_label;
   if (al && al.street_matched === false) return 'autolabel_disagreed';
