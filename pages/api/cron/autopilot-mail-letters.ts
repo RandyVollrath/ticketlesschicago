@@ -1687,6 +1687,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         street_view_address,
         cdot_foia_integrated,
         finance_foia_integrated,
+        using_default_address,
         detected_tickets!inner (
           id,
           ticket_number,
@@ -1729,6 +1730,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Skip test tickets
       if (ticket.is_test) {
         console.log(`  Skipping test ticket ${ticket.ticket_number}`);
+        return false;
+      }
+
+      // Hard gate: never mail a letter that fell back to the default sender address.
+      // Letters with using_default_address=true contain SOMEONE ELSE's address
+      // (the historical company default) — physically mailing them would put the
+      // wrong return address on a sworn contest signed in this user's name and
+      // route the City's response to the wrong person.
+      if (l.using_default_address) {
+        console.error(`  ⚠️ BLOCKED: letter ${l.id} has using_default_address=true — user ${l.user_id} has no mailing_address on file. Will not mail until address is provided.`);
         return false;
       }
 

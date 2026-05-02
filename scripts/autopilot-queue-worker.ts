@@ -95,11 +95,13 @@ const LONG_PAUSE_MIN_MS = 60000; // 1 min
 const LONG_PAUSE_MAX_MS = 180000; // 3 min
 
 // Default sender address
+// See autopilot-check-portal.ts: this sentinel makes draft letters visibly
+// broken when no mailing_address is on file. mail-letters.ts blocks send.
 const DEFAULT_SENDER_ADDRESS = {
-  address: '2434 N Southport Ave, Unit 1R',
-  city: 'Chicago',
-  state: 'IL',
-  zip: '60614',
+  address: '[NO MAILING ADDRESS ON FILE — DO NOT MAIL]',
+  city: '[CITY MISSING]',
+  state: 'XX',
+  zip: '00000',
 };
 
 // Randomized user agents to vary fingerprint
@@ -116,7 +118,9 @@ const USER_AGENTS = [
 
 const VIOLATION_TYPE_MAP: Record<string, string> = {
   'expired plates': 'expired_plates',
+  'expired plate': 'expired_plates',
   'expired registration': 'expired_plates',
+  'temporary registration': 'expired_plates',
   'no city sticker': 'no_city_sticker',
   'city sticker': 'no_city_sticker',
   'wheel tax': 'no_city_sticker',

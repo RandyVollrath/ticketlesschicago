@@ -42,6 +42,8 @@ const VIOLATION_TYPE_MAP: Record<string, string> = {
   'street cleaning': 'street_cleaning',
   'expired meter': 'expired_meter',
   'expired plates': 'expired_plates',
+  'expired plate': 'expired_plates',
+  'temporary registration': 'expired_plates',
   'no city sticker': 'no_city_sticker',
   'fire hydrant': 'fire_hydrant',
   'residential permit': 'residential_permit',

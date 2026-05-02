@@ -124,6 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id, ticket_id, status, defense_type, letter_content, letter_text,
           evidence_integrated, evidence_integrated_at,
           mailed_at, lob_status, lob_expected_delivery, lob_letter_id,
+          econtest_status, econtest_submitted_at, econtest_confirmation_id,
           using_default_address, created_at,
           street_view_exhibit_urls, street_view_date, street_view_address
         `)
@@ -310,6 +311,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mailed_at: letter?.mailed_at || null,
         lob_status: letter?.lob_status || null,
         lob_expected_delivery: letter?.lob_expected_delivery || null,
+        // Online contesting
+        econtest_status: letter?.econtest_status || null,
+        econtest_submitted_at: letter?.econtest_submitted_at || null,
+        econtest_confirmation_id: letter?.econtest_confirmation_id || null,
         // Deadlines
         mail_by_deadline: mailByDeadline,
         days_until_deadline: daysUntilDeadline,
@@ -731,6 +736,10 @@ function inferViolationFromDefense(defenseType: string): string | null {
 }
 
 function computeStage(ticket: any, letter: any): { stage: string; label: string; color: string } {
+  if (letter?.econtest_status === 'submitted' || ticket?.status === 'contested_online') {
+    return { stage: 'contested_online', label: 'Submitted Online (eContest)', color: '#0F766E' };
+  }
+
   if (letter?.lob_status === 'delivered' || letter?.mailed_at) {
     if (letter?.lob_status === 'delivered') {
       return { stage: 'delivered', label: 'Delivered to City Hall', color: '#059669' };
@@ -757,7 +766,7 @@ function normalizeViolationType(description: string | null): string {
   if (!description) return 'other_unknown';
   const desc = description.toLowerCase();
   const MAP: Record<string, string> = {
-    'expired plates': 'expired_plates', 'expired registration': 'expired_plates',
+    'expired plates': 'expired_plates', 'expired plate': 'expired_plates', 'expired registration': 'expired_plates', 'temporary registration': 'expired_plates',
     'no city sticker': 'no_city_sticker', 'city sticker': 'no_city_sticker', 'wheel tax': 'no_city_sticker',
     'expired meter': 'expired_meter', 'parking meter': 'expired_meter', 'overtime': 'expired_meter',
     'street cleaning': 'street_cleaning', 'street sweeping': 'street_cleaning',
@@ -781,7 +790,7 @@ function normalizeViolationType(description: string | null): string {
 function getEmptyStats() {
   return {
     total: 0,
-    by_stage: { detected: 0, evidence_gathering: 0, letter_ready: 0, mailed: 0, delivered: 0 },
+    by_stage: { detected: 0, evidence_gathering: 0, letter_ready: 0, contested_online: 0, mailed: 0, delivered: 0 },
     by_violation: [],
     avg_evidence_count: 0,
     evidence_coverage: [],

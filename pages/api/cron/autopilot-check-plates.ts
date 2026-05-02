@@ -78,6 +78,8 @@ const VIOLATION_DESCRIPTION_MAP: Record<string, string> = {
   'no meter pay': 'expired_meter',
   'meter non-central': 'expired_meter',
   'expired plates': 'expired_plates',
+  'expired plate': 'expired_plates',
+  'temporary registration': 'expired_plates',
   'no city sticker': 'no_city_sticker',
   'fire hydrant': 'fire_hydrant',
   'residential permit': 'residential_permit',
@@ -153,11 +155,13 @@ function isCameraViolation(violationType: string): boolean {
   return violationType === 'red_light' || violationType === 'speed_camera' || violationType.includes('camera');
 }
 
+// Sentinel: see autopilot-check-portal.ts. Letters using this address are
+// gated from physical mailing by autopilot-mail-letters.ts.
 const DEFAULT_SENDER_ADDRESS = {
-  address: '2434 N Southport Ave, Unit 1R',
-  city: 'Chicago',
-  state: 'IL',
-  zip: '60614',
+  address: '[NO MAILING ADDRESS ON FILE — DO NOT MAIL]',
+  city: '[CITY MISSING]',
+  state: 'XX',
+  zip: '00000',
 };
 
 const DEFENSE_TEMPLATES: Record<string, { type: string; template: string }> = {
