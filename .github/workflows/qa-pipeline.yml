@@ -30,7 +30,19 @@ on:
       - 'pages/api/cron/autopilot-check-outcomes.ts'
       - 'scripts/smoke-test-contest-pipeline.ts'
       - 'scripts/smoke-test-portal-canary.ts'
+      - 'scripts/audit-win-rate-stats.ts'
+      - 'pages/start.tsx'
+      - 'pages/settings.tsx'
+      - 'lib/contest-kits/evidence-guidance.ts'
+      - 'scripts/autopilot-check-portal.ts'
       - '.github/workflows/qa-pipeline.yml'
+  pull_request:
+    paths:
+      - 'pages/start.tsx'
+      - 'pages/settings.tsx'
+      - 'lib/contest-kits/evidence-guidance.ts'
+      - 'scripts/audit-win-rate-stats.ts'
+      - 'scripts/autopilot-check-portal.ts'
 
 concurrency:
   group: qa-pipeline
@@ -71,3 +83,13 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           QA_BOT_EMAIL: ${{ secrets.QA_BOT_EMAIL }}
         run: npm run qa:mail-payment:ci
+
+      # Stats-truth audit: every hardcoded win-rate in start.tsx + settings.tsx
+      # + EVIDENCE_GUIDANCE must be within ±2pp of real Chicago FOIA hearing
+      # data (contested_tickets_foia in Supabase). Catches false marketing
+      # numbers + drift from FOIA data updates. See scripts/audit-win-rate-stats.ts.
+      - name: Stats-truth audit (FOIA-vs-claims)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run gate:stats-truth
