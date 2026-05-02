@@ -100,21 +100,24 @@ const VEHICLE_TYPES = [
   'Sedan', 'SUV', 'Truck', 'Van', 'Motorcycle', 'Other'
 ];
 
+// Win rates from City of Chicago FOIA hearing records — Not Liable / (Not
+// Liable + Liable). Verify with `npx tsx scripts/audit-win-rate-stats.ts`
+// before changing. Never invent or estimate these numbers.
 const TICKET_TYPES = [
-  { id: 'expired_plates', label: 'Expired Plates', winRate: 75 },
-  { id: 'no_city_sticker', label: 'No City Sticker', winRate: 70 },
+  { id: 'expired_plates', label: 'Expired Plates', winRate: 76 },
+  { id: 'no_city_sticker', label: 'No City Sticker', winRate: 72 },
   { id: 'expired_meter', label: 'Expired Meter', winRate: 67 },
   { id: 'disabled_zone', label: 'Disabled Zone', winRate: 68 },
-  { id: 'no_standing_time_restricted', label: 'No Standing/Time Restricted', winRate: 58 },
-  { id: 'parking_prohibited', label: 'Parking/Standing Prohibited', winRate: 55 },
+  { id: 'no_standing_time_restricted', label: 'No Standing/Time Restricted', winRate: 59 },
+  { id: 'parking_prohibited', label: 'Parking/Standing Prohibited', winRate: 57 },
   { id: 'residential_permit', label: 'Residential Permit Parking', winRate: 54 },
-  { id: 'missing_plate', label: 'Missing/Noncompliant Plate', winRate: 54 },
-  { id: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 59 },
-  { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44 },
+  { id: 'missing_plate', label: 'Missing/Noncompliant Plate', winRate: 56 },
+  { id: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 61 },
+  { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 46 },
   { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
-  { id: 'bus_lane', label: 'Bus Lane (Smart Streets)', winRate: 25 },
-  { id: 'red_light', label: 'Red Light Camera', winRate: 32, evidenceOnly: true },
-  { id: 'speed_camera', label: 'Speed Camera', winRate: 28, evidenceOnly: true },
+  { id: 'bus_lane', label: 'Bus Lane (Smart Streets)', winRate: 52 },
+  { id: 'red_light', label: 'Red Light Camera', winRate: 21, evidenceOnly: true },
+  { id: 'speed_camera', label: 'Speed Camera', winRate: 19, evidenceOnly: true },
 ];
 
 const NOTIFICATION_DAYS = [30, 14, 7, 3, 1, 0];
