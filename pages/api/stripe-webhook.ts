@@ -19,6 +19,7 @@ import {
   extractFirstPermitZone,
 } from '../../lib/webhook-validator';
 import { ACTIVE_AUTOPILOT_PLAN } from '../../lib/autopilot-plans';
+import { ensureAutopilotEnrollment, requestInitialPortalCheckForUser } from '../../lib/autopilot-enrollment';
 import { sendWelcomeEmailOnce } from '../../lib/welcome-email';
 import { getAdminAlertEmails } from '../../lib/admin-alert-emails';
 
@@ -64,65 +65,6 @@ function normalizePhoneNumber(phone: string | null | undefined): string | null {
 
   // Default: assume 10 digits, add +1
   return `+1${digitsOnly}`;
-}
-
-async function requestInitialPortalCheckForUser(userId: string, source: string): Promise<void> {
-  const now = new Date().toISOString();
-
-  try {
-    await supabaseAdmin
-      .from('monitored_plates')
-      .update({
-        last_checked_at: null,
-        updated_at: now,
-      })
-      .eq('user_id', userId)
-      .eq('status', 'active');
-  } catch (error) {
-    console.error(`Failed to prioritize plate checks for user ${userId}:`, error);
-  }
-
-  try {
-    const { data: existingTrigger } = await supabaseAdmin
-      .from('autopilot_admin_settings')
-      .select('value')
-      .eq('key', 'portal_check_trigger')
-      .maybeSingle();
-
-    if ((existingTrigger?.value as any)?.status !== 'pending') {
-      await supabaseAdmin
-        .from('autopilot_admin_settings')
-        .upsert({
-          key: 'portal_check_trigger',
-          value: {
-            status: 'pending',
-            requested_at: now,
-            requested_by: `signup:${userId}`,
-            source,
-          },
-          updated_at: now,
-        }, { onConflict: 'key' });
-    }
-  } catch (error) {
-    console.error(`Failed to queue portal check trigger for user ${userId}:`, error);
-  }
-
-  try {
-    await supabaseAdmin
-      .from('ticket_audit_log')
-      .insert({
-        ticket_id: null,
-        user_id: userId,
-        action: 'signup_portal_check_requested',
-        details: {
-          source,
-          requested_at: now,
-        },
-        performed_by: 'stripe_webhook',
-      });
-  } catch (error) {
-    console.error(`Failed to write portal-check audit log for user ${userId}:`, error);
-  }
 }
 
 export const config = {
@@ -1365,71 +1307,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } else {
             console.log('✅ User profile updated with Protection status and renewal dates');
 
-            // Add license plate to monitored_plates for ticket contesting (existing user upgrade)
-            // Get plate from profile (existing users already have plate saved)
             const { data: profileForPlate } = await supabaseAdmin
               .from('user_profiles')
-              .select('license_plate')
+              .select('license_plate, license_state')
               .eq('user_id', userId)
               .maybeSingle();
 
-            const plateToMonitor = profileForPlate?.license_plate;
-            if (plateToMonitor) {
-              console.log('📋 Adding existing user plate to monitored_plates:', plateToMonitor);
-              const { error: plateError } = await supabaseAdmin
-                .from('monitored_plates')
-                .upsert({
-                  user_id: userId,
-                  plate: plateToMonitor.toUpperCase().replace(/[^A-Z0-9]/g, ''),
-                  state: 'IL',
-                  status: 'active',
-                  is_leased_or_company: false,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                }, {
-                  onConflict: 'user_id,plate'
-                });
-
-              if (plateError) {
-                console.error('Error adding plate to monitored_plates:', plateError);
-              } else {
-                console.log('✅ License plate added to monitored_plates for existing user');
-              }
-            } else {
-              console.log('⚠️ No license plate found in profile to add to monitored_plates');
-            }
-
-            // Create autopilot_subscriptions record for admin dashboard tracking
-            console.log('📋 Creating autopilot_subscriptions record for user:', userId);
-            const { error: subscriptionError } = await supabaseAdmin
-              .from('autopilot_subscriptions')
-              .upsert({
-                user_id: userId,
-                plan: 'autopilot',
-                plan_code: ACTIVE_AUTOPILOT_PLAN.code,
-                status: 'active',
-                stripe_subscription_id: session.subscription as string || null,
-                stripe_customer_id: session.customer as string || null,
-                letters_included_remaining: 999, // Unlimited — no per-subscription letter cap
-                price_cents: ACTIVE_AUTOPILOT_PLAN.priceCents,
-                price_lock: ACTIVE_AUTOPILOT_PLAN.priceLock,
-                price_lock_cents: ACTIVE_AUTOPILOT_PLAN.priceLockCents,
-                price_lock_expires_at: null,
-                grace_period_days: ACTIVE_AUTOPILOT_PLAN.gracePeriodDays,
-                current_period_start: new Date().toISOString(),
-                current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-                authorized_at: new Date().toISOString(),
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }, {
-                onConflict: 'user_id'
+            try {
+              await ensureAutopilotEnrollment(supabaseAdmin as any, {
+                userId,
+                stripeCustomerId: session.customer as string || null,
+                stripeSubscriptionId: session.subscription as string || null,
+                plate: profileForPlate?.license_plate || null,
+                state: profileForPlate?.license_state || 'IL',
+                source: 'existing_user_upgrade',
+                planCode: ACTIVE_AUTOPILOT_PLAN.code,
+                priceCents: ACTIVE_AUTOPILOT_PLAN.priceCents,
               });
-
-            if (subscriptionError) {
-              console.error('Error creating autopilot_subscriptions:', subscriptionError);
-            } else {
-              console.log('✅ autopilot_subscriptions record created');
-              await requestInitialPortalCheckForUser(userId, 'existing_user_upgrade');
+              console.log('✅ Autopilot enrollment ensured for existing user:', userId);
+            } catch (subscriptionError: any) {
+              console.error('Error ensuring autopilot enrollment for existing user:', subscriptionError.message);
             }
 
             // NOTE: Remitter fee is NOT charged upfront
@@ -1798,26 +1695,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.log('✅ Profile updated for Autopilot user:', supabaseUserId);
               }
 
-                // Add plate to monitored_plates for portal checking
-                if (autopilotPlate) {
-                  console.log('📋 Adding plate to monitored_plates:', autopilotPlate, autopilotState);
-                  const { error: plateError } = await supabaseAdmin
-                    .from('monitored_plates')
-                    .upsert({
-                      user_id: supabaseUserId,
-                      plate: autopilotPlate.toUpperCase().replace(/[^A-Z0-9]/g, ''),
-                      state: autopilotState,
-                      status: 'active',
-                      is_leased_or_company: false,
-                      created_at: new Date().toISOString(),
-                      updated_at: new Date().toISOString(),
-                    }, { onConflict: 'user_id,plate' });
-
-                  if (plateError) {
-                    console.error('❌ Error adding plate to monitored_plates:', plateError);
-                  } else {
-                    console.log('✅ Plate added to monitored_plates');
-                  }
+                try {
+                  await ensureAutopilotEnrollment(supabaseAdmin as any, {
+                    userId: supabaseUserId,
+                    stripeCustomerId: session.customer as string || null,
+                    stripeSubscriptionId: subscriptionId || null,
+                    plate: autopilotPlate,
+                    state: autopilotState,
+                    source: 'autopilot_checkout',
+                    planCode: ACTIVE_AUTOPILOT_PLAN.code,
+                    priceCents: ACTIVE_AUTOPILOT_PLAN.priceCents,
+                  });
+                  console.log('✅ Autopilot enrollment ensured for user:', supabaseUserId);
+                } catch (enrollmentError: any) {
+                  console.error('❌ Error ensuring autopilot enrollment:', enrollmentError.message);
                 }
 
                 // Ensure a vehicles row exists. Several admin endpoints + legacy
@@ -1864,8 +1755,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     console.log('🚗 Vehicles row already exists for Autopilot user, skipping insert');
                   }
                 }
-
-                await requestInitialPortalCheckForUser(supabaseUserId, 'autopilot_checkout');
 
               // Send comprehensive welcome email (idempotent via welcome_email_sent_at)
               const userEmail = session.customer_details?.email || metadata.email;
@@ -2220,61 +2109,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } else {
               console.log('Successfully created user_profiles record');
 
-              // Add license plate to monitored_plates for ticket contesting
-              if (formData.licensePlate) {
-                console.log('📋 Adding license plate to monitored_plates:', formData.licensePlate);
-                const { error: plateError } = await supabaseAdmin
-                  .from('monitored_plates')
-                  .upsert({
-                    user_id: authData.user.id,
-                    plate: formData.licensePlate.toUpperCase().replace(/[^A-Z0-9]/g, ''),
-                    state: 'IL', // Default to IL for Chicago users
-                    status: 'active',
-                    is_leased_or_company: false,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  }, {
-                    onConflict: 'user_id,plate'
-                  });
-
-                if (plateError) {
-                  console.error('Error adding plate to monitored_plates:', plateError);
-                } else {
-                  console.log('✅ License plate added to monitored_plates');
-                }
-              }
-
-              // Create autopilot_subscriptions record for admin dashboard tracking
-              console.log('📋 Creating autopilot_subscriptions record for new user:', authData.user.id);
-              const { error: newUserSubError } = await supabaseAdmin
-                .from('autopilot_subscriptions')
-                .upsert({
-                  user_id: authData.user.id,
-                  plan: 'autopilot',
-                  plan_code: ACTIVE_AUTOPILOT_PLAN.code,
-                  status: 'active',
-                  stripe_subscription_id: session.subscription as string || null,
-                  stripe_customer_id: session.customer as string || null,
-                  letters_included_remaining: 999, // Unlimited — no per-subscription letter cap
-                  price_cents: ACTIVE_AUTOPILOT_PLAN.priceCents,
-                  price_lock: ACTIVE_AUTOPILOT_PLAN.priceLock,
-                  price_lock_cents: ACTIVE_AUTOPILOT_PLAN.priceLockCents,
-                  price_lock_expires_at: null,
-                  grace_period_days: ACTIVE_AUTOPILOT_PLAN.gracePeriodDays,
-                  current_period_start: new Date().toISOString(),
-                  current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-                  authorized_at: new Date().toISOString(),
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                }, {
-                  onConflict: 'user_id'
+              try {
+                await ensureAutopilotEnrollment(supabaseAdmin as any, {
+                  userId: authData.user.id,
+                  stripeCustomerId: session.customer as string || null,
+                  stripeSubscriptionId: session.subscription as string || null,
+                  plate: formData.licensePlate || null,
+                  state: 'IL',
+                  source: 'new_user_checkout',
+                  planCode: ACTIVE_AUTOPILOT_PLAN.code,
+                  priceCents: ACTIVE_AUTOPILOT_PLAN.priceCents,
                 });
-
-              if (newUserSubError) {
-                console.error('Error creating autopilot_subscriptions for new user:', newUserSubError);
-              } else {
-                console.log('✅ autopilot_subscriptions record created for new user');
-                await requestInitialPortalCheckForUser(authData.user.id, 'new_user_checkout');
+                console.log('✅ Autopilot enrollment ensured for new user:', authData.user.id);
+              } catch (newUserEnrollmentError: any) {
+                console.error('Error ensuring autopilot enrollment for new user:', newUserEnrollmentError.message);
               }
 
               // Check if user needs winter ban notification (Dec 1 - Apr 1)
@@ -2720,7 +2568,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           // Import Lob service (note: will need to handle errors if LOB_API_KEY not set)
           try {
-            const { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS } = await import('../../lib/lob-service');
+            const { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS } = await import('../../lib/lob-service.js');
 
             const userAddress = paymentIntent.metadata.mailingAddress
               ? JSON.parse(paymentIntent.metadata.mailingAddress)
