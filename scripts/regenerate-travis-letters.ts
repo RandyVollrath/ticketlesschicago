@@ -133,10 +133,10 @@ function buildLetterPrompt(
     profile.name ||
     'Vehicle Owner';
 
-  const address = profile.mailing_address || '2434 N Southport Ave, Unit 1R';
-  const city = profile.mailing_city || 'Chicago';
-  const state = profile.mailing_state || 'IL';
-  const zip = profile.mailing_zip || '60614';
+  const address = profile.mailing_address || '[NO MAILING ADDRESS ON FILE — DO NOT MAIL]';
+  const city = profile.mailing_city || '[CITY MISSING]';
+  const state = profile.mailing_state || 'XX';
+  const zip = profile.mailing_zip || '00000';
 
   return `You are generating a parking ticket contest letter for submission to the City of Chicago Department of Administrative Hearings.
 

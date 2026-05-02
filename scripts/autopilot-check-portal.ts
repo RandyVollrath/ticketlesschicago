@@ -100,18 +100,24 @@ function getAdaptivePacing(plateCount: number): { delayMs: number; maxPlates: nu
   }
 }
 
-// Default sender address (same as upload-results.ts)
+// Sentinel sender address used ONLY when the user profile has no mailing_address.
+// Letters with using_default_address=true MUST be blocked from physical mailing
+// (autopilot-mail-letters.ts enforces this). The visible placeholder makes any
+// draft that fell through obviously unsendable rather than silently shipping
+// under someone else's address.
 const DEFAULT_SENDER_ADDRESS = {
-  address: '2434 N Southport Ave, Unit 1R',
-  city: 'Chicago',
-  state: 'IL',
-  zip: '60614',
+  address: '[NO MAILING ADDRESS ON FILE — DO NOT MAIL]',
+  city: '[CITY MISSING]',
+  state: 'XX',
+  zip: '00000',
 };
 
 // Violation type mapping from description text
 const VIOLATION_TYPE_MAP: Record<string, string> = {
   'expired plates': 'expired_plates',
+  'expired plate': 'expired_plates',
   'expired registration': 'expired_plates',
+  'temporary registration': 'expired_plates',
   'no city sticker': 'no_city_sticker',
   'city sticker': 'no_city_sticker',
   'wheel tax': 'no_city_sticker',
@@ -2215,6 +2221,23 @@ async function sendEvidenceRequestEmail(
     </div>
   `;
 
+  // Common fields for the notification_logs row, written below regardless of outcome.
+  const baseLog = {
+    user_id: userId || null,
+    email: userEmail,
+    notification_type: 'email',
+    category: 'evidence_request',
+    subject: guidance.emailSubject,
+    content_preview: `Ticket ${ticketNumber} (${violationType})`.substring(0, 200),
+    metadata: {
+      ticket_id: ticketId,
+      ticket_number: ticketNumber,
+      violation_type: violationType,
+      violation_date: violationDate,
+      amount,
+    },
+  };
+
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -2234,11 +2257,31 @@ async function sendEvidenceRequestEmail(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`      Email send error: ${errorText}`);
+      await supabaseAdmin.from('notification_logs').insert({
+        ...baseLog,
+        status: 'failed',
+        last_error: errorText.substring(0, 500),
+        failed_at: new Date().toISOString(),
+      });
       return false;
     }
+
+    const respJson = await response.json().catch(() => ({}));
+    await supabaseAdmin.from('notification_logs').insert({
+      ...baseLog,
+      status: 'sent',
+      external_id: respJson?.id || null,
+      sent_at: new Date().toISOString(),
+    });
     return true;
   } catch (err: any) {
     console.error(`      Email send exception: ${err.message}`);
+    await supabaseAdmin.from('notification_logs').insert({
+      ...baseLog,
+      status: 'failed',
+      last_error: (err.message || 'unknown').substring(0, 500),
+      failed_at: new Date().toISOString(),
+    });
     return false;
   }
 }
@@ -2637,7 +2680,7 @@ async function processFoundTicket(
         window_days: CHICAGO_MAIL_CONTEST_WINDOW_DAYS,
         reason: 'Ticket past Chicago 21-day mail-contest window at detection; no letter will be mailed',
       },
-      performed_by: 'portal_scraper',
+      performed_by: null, // ticket_audit_log.performed_by is uuid; system/cron writes use null
     });
 
     if (process.env.RESEND_API_KEY) {
@@ -2806,9 +2849,9 @@ async function processFoundTicket(
     .from('ticket_audit_log')
     .insert({
       ticket_id: newTicket.id,
-      user_id,
       action: 'automated_evidence_gathered',
       details: {
+        user_id,
         weather: automatedEvidence.weather.checked ? {
           summary: automatedEvidence.weather.data?.summary || null,
           defenseRelevant: automatedEvidence.weather.data?.isRelevantForDefense || false,
@@ -2851,7 +2894,7 @@ async function processFoundTicket(
           summary: vehicleMismatch.summary,
         } : null,
       },
-      performed_by: 'portal_scraper',
+      performed_by: null, // ticket_audit_log.performed_by is uuid; system/cron writes use null
     });
   if (auditLogErr) {
     console.error(`      ⚠️ Failed to write audit log for ticket ${newTicket.id}: ${auditLogErr.message}`);
@@ -2955,7 +2998,7 @@ async function processFoundTicket(
           current_amount: ticket.current_amount_due,
         },
       },
-      performed_by: 'portal_scraper',
+      performed_by: null, // ticket_audit_log.performed_by is uuid; system/cron writes use null
     });
 
   // Send admin notification email for every new ticket
@@ -3040,7 +3083,7 @@ async function processFoundTicket(
           source: 'autopilot_detection',
           reason: 'Filed at detection for early 5-business-day deadline',
         },
-        performed_by: 'portal_scraper',
+        performed_by: null, // ticket_audit_log.performed_by is uuid; system/cron writes use null
       });
     console.log(`      Queued FOIA evidence request for ticket ${ticket.ticket_number}`);
   } catch (foiaErr: any) {
@@ -3340,7 +3383,7 @@ async function main() {
           error: r.error || null,
         })),
       },
-      performed_by: 'portal_scraper',
+      performed_by: null, // ticket_audit_log.performed_by is uuid; system/cron writes use null
     });
 
   // Summary
