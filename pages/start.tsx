@@ -43,21 +43,25 @@ const US_STATES = [
   'VA','WA','WV','WI','WY','DC',
 ];
 
+// Win rates derived from City of Chicago FOIA hearing records:
+// Not Liable / (Not Liable + Liable) per violation_description in
+// contested_tickets_foia. Verify with `npx tsx scripts/audit-win-rate-stats.ts`
+// before changing — never invent or estimate these numbers.
 const TICKET_TYPES = [
-  { key: 'expired_plates', label: 'Expired Plates', winRate: 75, defaultOn: true },
-  { key: 'no_city_sticker', label: 'No City Sticker', winRate: 70, defaultOn: true },
+  { key: 'expired_plates', label: 'Expired Plates', winRate: 76, defaultOn: true },
+  { key: 'no_city_sticker', label: 'No City Sticker', winRate: 72, defaultOn: true },
   { key: 'expired_meter', label: 'Expired Meter', winRate: 67, defaultOn: true },
   { key: 'disabled_zone', label: 'Disabled Zone', winRate: 68, defaultOn: true },
-  { key: 'no_standing_time_restricted', label: 'No Standing / Time Restricted', winRate: 58, defaultOn: true },
-  { key: 'parking_prohibited', label: 'Parking / Standing Prohibited', winRate: 55, defaultOn: true },
+  { key: 'no_standing_time_restricted', label: 'No Standing / Time Restricted', winRate: 59, defaultOn: true },
+  { key: 'parking_prohibited', label: 'Parking / Standing Prohibited', winRate: 57, defaultOn: true },
   { key: 'residential_permit', label: 'Residential Permit Parking', winRate: 54, defaultOn: true },
-  { key: 'missing_plate', label: 'Missing / Noncompliant Plate', winRate: 54, defaultOn: true },
-  { key: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 59, defaultOn: true },
-  { key: 'fire_hydrant', label: 'Fire Hydrant', winRate: 44, defaultOn: false },
+  { key: 'missing_plate', label: 'Missing / Noncompliant Plate', winRate: 56, defaultOn: true },
+  { key: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 61, defaultOn: true },
+  { key: 'fire_hydrant', label: 'Fire Hydrant', winRate: 46, defaultOn: false },
   { key: 'street_cleaning', label: 'Street Cleaning', winRate: 34, defaultOn: true },
-  { key: 'bus_lane', label: 'Bus Lane / Smart Streets', winRate: 25, defaultOn: false },
-  { key: 'red_light', label: 'Red Light Camera', winRate: 32, defaultOn: true },
-  { key: 'speed_camera', label: 'Speed Camera', winRate: 28, defaultOn: true },
+  { key: 'bus_lane', label: 'Bus Lane / Smart Streets', winRate: 52, defaultOn: false },
+  { key: 'red_light', label: 'Red Light Camera', winRate: 21, defaultOn: true },
+  { key: 'speed_camera', label: 'Speed Camera', winRate: 19, defaultOn: true },
 ];
 
 const STATE_KEY = 'start_funnel_state_v2';
@@ -703,9 +707,10 @@ export default function StartFunnel() {
               <ValueCallout>
                 We&apos;ll watch this plate every Monday and Thursday and automatically file
                 contests with supporting evidence. <strong>94% of Chicago parking tickets are
-                never contested</strong> — people just pay. When contested with proof of
-                purchase, city sticker tickets win <strong>85%</strong> of the time and
-                expired-plate tickets win <strong>88%</strong>. A missed city sticker ticket is
+                never contested</strong> — people just pay. When decided, city sticker
+                contests are dismissed <strong>72%</strong> of the time and
+                expired-plate contests are dismissed <strong>76%</strong> of the time.
+                A missed city sticker ticket is
                 <strong> $200</strong> (<strong>$250</strong> with late fee); a missed license
                 plate sticker ticket is <strong>$60</strong> (<strong>$120</strong> with late fee).
                 <em style={{ display: 'block', marginTop: 6, fontSize: 11, color: COLORS.textMuted, fontStyle: 'normal' }}>
@@ -1080,7 +1085,7 @@ export default function StartFunnel() {
                 <ValueItem
                   icon="&#9993;&#65039;"
                   title="Automatic contesting — after a ticket"
-                  desc="Twice-weekly plate checks. Contest letters drafted, printed, and mailed for you. City sticker contests win ~85% with proof of purchase; expired-plate contests ~88% (2025 City of Chicago FOIA data)."
+                  desc="Twice-weekly plate checks. Contest letters drafted, printed, and mailed for you. Of decided contests in City of Chicago hearing data, city sticker tickets are dismissed ~72%, expired-plate ~76% (2025 FOIA)."
                 />
                 <ValueItem
                   icon="&#128205;"

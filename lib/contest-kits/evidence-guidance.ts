@@ -450,10 +450,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   parking_alley: {
     violationType: 'parking_alley',
-    emailSubject: 'Alley Parking Ticket - 71% Win Rate - Were You Loading?',
+    emailSubject: 'Alley Parking Ticket - 67% Win Rate - Were You Loading?',
     title: 'Alley Parking Ticket - Great Odds!',
-    winRate: 0.71,
-    intro: `Alley parking tickets have a 71% success rate when contested! Active loading/unloading is permitted, and many alley tickets are dismissed. If you were loading or had an emergency, we have a strong case.`,
+    winRate: 0.67,
+    intro: `Alley parking tickets are dismissed in 67% of decided contests in City of Chicago hearing data. Active loading/unloading is permitted, and many alley tickets are dismissed. If you were loading or had an emergency, we have a strong case.`,
     questions: [
       {
         text: 'Were you actively loading or unloading items? Describe EXACTLY what you were loading, to/from where, and how long you were stopped.',
@@ -920,9 +920,9 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   bus_lane: {
     violationType: 'bus_lane',
-    emailSubject: 'Bus Lane Ticket ($150) - 56% Win Rate - Were You Loading Passengers?',
+    emailSubject: 'Bus Lane Ticket ($150) - 52% Win Rate - Were You Loading Passengers?',
     title: 'Bus Lane Ticket - Passenger Loading & Lane Markings Are Your Best Defenses',
-    winRate: 0.56,
+    winRate: 0.52,
     intro: `Bus lane tickets have a strong 56% success rate when contested. In FOIA data, the top dismissal reasons are "Violation is Factually Inconsistent" (you weren't actually blocking the bus lane or were legally loading passengers) and "Signs were Missing or Obscured." Smart Streets camera enforcement has specific rules about what constitutes a violation — and passenger loading is explicitly exempt.`,
     questions: [
       {

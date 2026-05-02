@@ -373,43 +373,80 @@ async function gatherAutomatedEvidence(
   }
 
   // 2. FOIA win rate lookup
+  //
+  // CRITICAL — three rules, all learned from a real bug that put 27.1%
+  // into a contest letter when the real number was 76%:
+  //
+  // (1) Search terms must match the EXACT strings Chicago uses in
+  //     violation_description. The City writes singular ("EXPIRED PLATE
+  //     OR TEMPORARY REGISTRATION"), not plural. "BIKE LANE" returns 0
+  //     hits — the term is "BICYCLE PATH". Verify any new entry by
+  //     querying contested_tickets_foia first.
+  //
+  // (2) Win rate denominator must be (Not Liable + Liable) — i.e.
+  //     decided cases. The table also contains Stricken / Withdrawn /
+  //     Continued / Remand etc. Including those in the denominator
+  //     deflates the percentage and makes our defense look weak even
+  //     when ~76% of *decided* cases are dismissed.
+  //
+  // (3) Use Supabase count queries (head:true). The JS client caps
+  //     row fetches at 1000 by default, so the old "fetch all rows
+  //     and count in JS" approach silently sampled 1000 rows out of
+  //     hundreds of thousands.
+  //
+  // To verify these against real data run scripts/audit-win-rate-stats.ts.
   console.log('      [Evidence] Looking up FOIA win rate data...');
   evidence.foiaWinRate.checked = true;
   try {
-    // Map our violation type to FOIA violation description patterns
     const foiaSearchTerms: Record<string, string> = {
-      expired_meter: 'EXP. METER',
+      expired_meter: 'EXP%METER',                       // covers both 'EXP. METER' and 'EXPIRED METER'
       parking_prohibited: 'PARKING/STANDING PROHIBITED',
       street_cleaning: 'STREET CLEANING',
-      expired_plates: 'EXPIRED PLATES',
+      expired_plates: 'EXPIRED PLATE',                  // singular — Chicago string is 'EXPIRED PLATE OR TEMPORARY REGISTRATION'
       no_city_sticker: 'CITY STICKER',
       fire_hydrant: 'FIRE HYDRANT',
       residential_permit: 'RESIDENTIAL PERMIT',
       snow_route: 'SNOW ROUTE',
       double_parking: 'DOUBLE PARK',
       bus_lane: 'BUS LANE',
-      missing_plate: 'PLATE',
-      bike_lane: 'BIKE LANE',
-      bus_stop: 'BUS STOP',
+      bus_stop: 'BUS/TAXI',                             // Chicago: 'PARK OR STAND IN BUS/TAXI/CARRIAGE STAND' — not 'BUS STOP'
+      missing_plate: 'MISSING/NON',                     // 'MISSING/NONCOMPLIANT' — was 'PLATE' (too broad, also matched expired plate)
+      bike_lane: 'BICYCLE PATH',                        // Chicago does not use 'BIKE LANE'
+      disabled_zone: 'DISABLED',                        // Chicago does not use 'HANDICAP'
+      commercial_loading: 'LOADING',
+      parking_alley: 'ALLEY',
+      no_standing_time_restricted: 'NO STANDING',
+      red_light: 'RED LIGHT',
+      speed_camera: 'SPEED VIOLATION',
     };
 
     const searchTerm = foiaSearchTerms[violationType];
     if (searchTerm) {
-      const { data: foiaData } = await supabaseAdmin
-        .from('contested_tickets_foia')
-        .select('disposition')
-        .ilike('violation_description', `%${searchTerm}%`);
+      const pattern = `%${searchTerm}%`;
+      const [{ count: notLiable }, { count: liable }] = await Promise.all([
+        supabaseAdmin
+          .from('contested_tickets_foia')
+          .select('*', { count: 'exact', head: true })
+          .ilike('violation_description', pattern)
+          .eq('disposition', 'Not Liable'),
+        supabaseAdmin
+          .from('contested_tickets_foia')
+          .select('*', { count: 'exact', head: true })
+          .ilike('violation_description', pattern)
+          .eq('disposition', 'Liable'),
+      ]);
 
-      if (foiaData && foiaData.length > 0) {
-        const total = foiaData.length;
-        const notLiable = foiaData.filter((r: any) => r.disposition === 'Not Liable').length;
-        const liable = foiaData.filter((r: any) => r.disposition === 'Liable').length;
-
-        evidence.foiaWinRate.totalContested = total;
-        evidence.foiaWinRate.notLiablePercent = Math.round((notLiable / total) * 1000) / 10;
-        evidence.foiaWinRate.liablePercent = Math.round((liable / total) * 1000) / 10;
+      const decided = (notLiable || 0) + (liable || 0);
+      // Require a meaningful sample so we never ship a sketchy number.
+      const MIN_SAMPLE = 200;
+      if (decided >= MIN_SAMPLE) {
+        evidence.foiaWinRate.totalContested = decided;
+        evidence.foiaWinRate.notLiablePercent = Math.round(((notLiable || 0) / decided) * 1000) / 10;
+        evidence.foiaWinRate.liablePercent = Math.round(((liable || 0) / decided) * 1000) / 10;
         evidence.foiaWinRate.violationDescription = searchTerm;
-        console.log(`      [Evidence] FOIA: ${evidence.foiaWinRate.notLiablePercent}% Not Liable out of ${total.toLocaleString()} contested (${searchTerm})`);
+        console.log(`      [Evidence] FOIA: ${evidence.foiaWinRate.notLiablePercent}% Not Liable out of ${decided.toLocaleString()} decided (${searchTerm})`);
+      } else {
+        console.log(`      [Evidence] FOIA: only ${decided} decided cases for ${searchTerm} — below MIN_SAMPLE=${MIN_SAMPLE}, skipping stat to avoid noisy claim`);
       }
     }
   } catch (err: any) {
@@ -813,7 +850,7 @@ function buildValueDemonstrationHtml(evidence: AutomatedEvidence, violationType:
     checks.push({
       icon: '&#128202;',
       label: 'Hearing Outcome Analysis',
-      result: `We analyzed <strong>${evidence.foiaWinRate.totalContested.toLocaleString()}</strong> similar contested tickets. <strong style="color:${color};">${winRate}% were dismissed</strong> — these are real outcomes from Chicago hearing data.`,
+      result: `We analyzed <strong>${evidence.foiaWinRate.totalContested.toLocaleString()}</strong> similar decided contests. <strong style="color:${color};">${winRate}% were dismissed</strong> — real outcomes from Chicago hearing data (Not Liable / (Not Liable + Liable)).`,
       found: winRate >= 40,
     });
   }
@@ -1683,8 +1720,8 @@ function generateLetterContent(
   // Add FOIA win rate data to strengthen the argument
   if (automatedEvidence?.foiaWinRate.checked && automatedEvidence.foiaWinRate.notLiablePercent) {
     content += `\n\nI would also note that according to City of Chicago administrative hearing records, ` +
-      `${automatedEvidence.foiaWinRate.notLiablePercent}% of contested ${automatedEvidence.foiaWinRate.violationDescription || 'similar'} tickets ` +
-      `resulted in a finding of Not Liable, out of ${automatedEvidence.foiaWinRate.totalContested?.toLocaleString() || 'thousands of'} decided cases. ` +
+      `${automatedEvidence.foiaWinRate.notLiablePercent}% of decided ${automatedEvidence.foiaWinRate.violationDescription || 'similar'} contests ` +
+      `resulted in a finding of Not Liable (out of ${automatedEvidence.foiaWinRate.totalContested?.toLocaleString() || 'thousands of'} decided cases — Not Liable plus Liable). ` +
       `This demonstrates that a significant proportion of these citations are issued in error or are successfully contested on their merits.`;
   }
 
