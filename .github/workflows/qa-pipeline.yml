@@ -88,7 +88,11 @@ jobs:
       # + EVIDENCE_GUIDANCE must be within ±2pp of real Chicago FOIA hearing
       # data (contested_tickets_foia in Supabase). Catches false marketing
       # numbers + drift from FOIA data updates. See scripts/audit-win-rate-stats.ts.
+      #
+      # if: always() — run even if an earlier step (e.g. contest-pipeline smoke)
+      # fails, so a flaky upstream step doesn't silently disable this gate.
       - name: Stats-truth audit (FOIA-vs-claims)
+        if: always()
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
