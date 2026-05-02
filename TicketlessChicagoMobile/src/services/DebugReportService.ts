@@ -140,6 +140,63 @@ async function collectPayload(mode: 'manual' | 'auto' = 'manual'): Promise<Recor
 }
 
 /**
+ * Trim the largest native log files in `payload.native_logs` (in place) until
+ * the JSON-serialized payload fits within `budgetBytes`. Keeps the *tail* of
+ * each file because the most recent log lines describe the incident the user
+ * is reporting. Adds a `payload.payload_truncation` summary so the server can
+ * see what was dropped.
+ *
+ * Vercel rejects request bodies over ~4.5 MB at the edge with 413, so the
+ * default budget is 3.5 MB to leave headroom for the wrapper fields and
+ * JSON overhead from the rest of the payload.
+ */
+function enforcePayloadBudget(payload: Record<string, any>, budgetBytes: number): void {
+  let size = JSON.stringify(payload).length;
+  if (size <= budgetBytes) return;
+
+  const logs = payload.native_logs as Record<string, string> | undefined;
+  if (!logs || typeof logs !== 'object') {
+    payload.payload_truncation = {
+      reason: 'over_budget_no_native_logs',
+      original_bytes: size,
+      budget_bytes: budgetBytes,
+    };
+    return;
+  }
+
+  const truncations: Record<string, { from: number; to: number }> = {};
+
+  // Iteratively halve the largest log file until we fit. Tail-keep so the
+  // most recent log lines (likely covering the incident) survive.
+  for (let i = 0; i < 20 && size > budgetBytes; i++) {
+    let largestKey: string | null = null;
+    let largestLen = 0;
+    for (const k of Object.keys(logs)) {
+      const v = logs[k];
+      if (typeof v === 'string' && v.length > largestLen) {
+        largestLen = v.length;
+        largestKey = k;
+      }
+    }
+    if (!largestKey || largestLen < 50_000) break; // nothing meaningful left to trim
+
+    const original = logs[largestKey];
+    const target = Math.max(50_000, Math.floor(largestLen / 2));
+    const trimmed = original.slice(-target);
+    logs[largestKey] = `[truncated ${original.length - trimmed.length} bytes from head]\n${trimmed}`;
+    truncations[largestKey] = { from: original.length, to: logs[largestKey].length };
+    size = JSON.stringify(payload).length;
+  }
+
+  payload.payload_truncation = {
+    reason: size <= budgetBytes ? 'over_budget_trimmed' : 'over_budget_still_large',
+    final_bytes: size,
+    budget_bytes: budgetBytes,
+    files: truncations,
+  };
+}
+
+/**
  * Package everything and submit to the server. User-facing — returns
  * a success/error result the UI can display.
  */
@@ -159,8 +216,21 @@ export async function submitDebugReport(
 
     log.info(`Collecting debug report payload (mode=${mode})...`);
     const payload = await collectPayload(mode);
+    const initialSize = JSON.stringify(payload).length;
+    log.info(`Debug report collected: ${initialSize} bytes`);
+
+    // Vercel Functions reject request bodies over ~4.5 MB at the edge with 413
+    // before the handler runs. The 1.5 MB-per-file cap on native logs leaves
+    // up to 6 MB of log data alone, so a manual report can blow past the limit
+    // when both .log and .ndjson + .prev variants are full. Trim the largest
+    // native log files in place — keeping the *tail* (most recent activity
+    // around the incident) — until the serialized payload fits comfortably
+    // under Vercel's cap.
+    enforcePayloadBudget(payload, 3_500_000);
     const payloadSize = JSON.stringify(payload).length;
-    log.info(`Debug report collected: ${payloadSize} bytes`);
+    if (payloadSize !== initialSize) {
+      log.info(`Debug report trimmed to fit budget: ${initialSize} → ${payloadSize} bytes`);
+    }
 
     const response = await ApiClient.authPost<{ success: boolean; id: string }>(
       '/api/mobile/submit-debug-report',
