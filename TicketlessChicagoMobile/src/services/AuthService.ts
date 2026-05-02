@@ -308,14 +308,52 @@ class AuthServiceClass {
       // Check if device has Google Play Services (no-op on iOS but required for Android)
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
+      // Clear any cached Google session before signing in. Without this, the
+      // native SDK can resolve signIn() with a previously-cached user whose
+      // idToken is nil/expired (especially on iOS App Store builds), which
+      // surfaces to the user as "Failed to get Google ID token" with no
+      // recovery path. Forcing a fresh interactive sign-in avoids this.
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // signOut throws if no user is signed in — safe to ignore.
+        log.debug('GoogleSignin.signOut() pre-sign-in no-op', e);
+      }
+
       // Sign in with Google natively
       const userInfo = await GoogleSignin.signIn();
 
-      log.info('Google sign-in response received');
+      log.info(`Google sign-in response received: type=${userInfo?.type}`);
 
-      if (!userInfo.data?.idToken) {
-        log.error('No idToken in userInfo');
-        return { success: false, error: 'Failed to get Google ID token. Please try again.' };
+      // v13+ returns { type: 'cancelled' } instead of throwing on user cancel.
+      if (userInfo?.type === 'cancelled') {
+        return { success: false, error: 'Sign in was cancelled' };
+      }
+
+      let idToken = userInfo.data?.idToken ?? null;
+
+      // The Google iOS SDK occasionally returns a successful signIn() result
+      // with a nil idToken (timing race between sign-in and token issuance).
+      // getTokens() forces a network refresh of the current user's tokens.
+      if (!idToken) {
+        log.warn('signIn() returned no idToken, falling back to getTokens()');
+        try {
+          const tokens = await GoogleSignin.getTokens();
+          idToken = tokens?.idToken ?? null;
+        } catch (e) {
+          log.error('getTokens() fallback failed', e);
+        }
+      }
+
+      if (!idToken) {
+        log.error('No idToken after signIn() and getTokens() fallback', {
+          hasUser: !!userInfo.data?.user,
+          email: userInfo.data?.user?.email,
+        });
+        return {
+          success: false,
+          error: 'Google did not return a sign-in token. Please try again, or use Sign in with Apple.',
+        };
       }
 
       log.info('Got Google ID token, authenticating with Supabase');
@@ -323,7 +361,7 @@ class AuthServiceClass {
       // Authenticate with Supabase using the Google ID token
       const { data, error } = await this.supabase.auth.signInWithIdToken({
         provider: 'google',
-        token: userInfo.data.idToken,
+        token: idToken,
       });
 
       if (error) {
