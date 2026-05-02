@@ -37,6 +37,7 @@ import GroundTruthService from '../services/GroundTruthService';
 import AuthService from '../services/AuthService';
 import AppEvents from '../services/AppEvents';
 import CameraAlertService from '../services/CameraAlertService';
+import ApiClient from '../utils/ApiClient';
 import Logger from '../utils/Logger';
 import Config from '../config/config';
 import NetworkStatus from '../utils/NetworkStatus';
@@ -1052,6 +1053,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const markFalsePositiveParking = useCallback(async () => {
     if (!lastParkingCheck) return;
     try {
+      try {
+        await ApiClient.authPost('/api/mobile/parking-feedback', {
+          confirmed_parking: false,
+          feedback_source: 'user_hero_false_positive',
+        }, { showErrorAlert: false });
+      } catch (feedbackErr) {
+        log.warn('Failed to persist false-positive feedback (non-fatal)', feedbackErr);
+      }
       await BackgroundLocationService.reportParkingFalsePositive(
         lastParkingCheck.coords.latitude,
         lastParkingCheck.coords.longitude
@@ -1074,6 +1083,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const confirmParkingHere = useCallback(async () => {
     if (!lastParkingCheck) return;
     try {
+      try {
+        await ApiClient.authPost('/api/mobile/parking-feedback', {
+          confirmed_parking: true,
+          confirmed_block: true,
+          feedback_source: 'user_hero_confirm',
+        }, { showErrorAlert: false });
+      } catch (feedbackErr) {
+        log.warn('Failed to persist confirm feedback (non-fatal)', feedbackErr);
+      }
       await BackgroundLocationService.reportParkingConfirmed(
         lastParkingCheck.coords.latitude,
         lastParkingCheck.coords.longitude
@@ -1223,6 +1241,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           correction_source: source,
         },
       });
+      try {
+        await ApiClient.authPost('/api/mobile/parking-feedback', {
+          confirmed_parking: true,
+          confirmed_block: false,
+          feedback_source: `user_wrong_street_${source}`,
+          corrected_address: authoritativeAddress,
+        }, { showErrorAlert: false });
+      } catch (feedbackErr) {
+        log.warn('Failed to persist street-correction feedback (non-fatal)', feedbackErr);
+      }
       const optimistic: ParkingCheckResult = {
         ...lastParkingCheck,
         address: authoritativeAddress,
@@ -1247,6 +1275,35 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       } catch {
         // Non-fatal: in-memory state still updated.
       }
+
+      // Patch the matching parking-history entry so the History tab and the
+      // server's parking_location_history row reflect the corrected address
+      // (and coords, for pin-drag) instead of the original wrong detect.
+      try {
+        const match = await ParkingHistoryService.findMatchForCorrection(
+          lastParkingCheck.coords,
+          lastParkingCheck.timestamp ?? Date.now(),
+        );
+        if (match) {
+          const historyUpdates: Partial<typeof match> = { address: nextParkingCheck.address };
+          if (correctedCoords) {
+            historyUpdates.coords = {
+              ...match.coords,
+              latitude: correctedCoords.latitude,
+              longitude: correctedCoords.longitude,
+            };
+          }
+          if (nextParkingCheck.rules) {
+            historyUpdates.rules = nextParkingCheck.rules;
+          }
+          await ParkingHistoryService.updateItem(match.id, historyUpdates);
+        } else {
+          log.info('No history entry within 500m/6h of corrected park — skipping history patch');
+        }
+      } catch (histErr) {
+        log.warn('Failed to patch parking history with correction (non-fatal)', histErr);
+      }
+
       setShowWrongStreetModal(false);
       markCorrectionEngaged();
 
@@ -2175,8 +2232,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   or dismissed) — they shouldn't have to re-dismiss the same
                   hint every render. The "Wrong street?" feedback button
                   below stays visible so the modal is always re-openable. */}
-              {typeof lastParkingCheck.rawApiData?.addressConfidence === 'number' &&
-                lastParkingCheck.rawApiData.addressConfidence < 70 &&
+              {lastParkingCheck.rawApiData?.needsVerification === true &&
                 correctionDismissedTs !== lastParkingCheck.timestamp && (
                 <TouchableOpacity
                   style={styles.heroVerifyPrompt}
@@ -2186,7 +2242,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 >
                   <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#FFD700" />
                   <Text style={styles.heroVerifyPromptText}>
-                    Not 100% sure about this address — tap to fix
+                    Verify this block before you trust it
                   </Text>
                 </TouchableOpacity>
               )}
@@ -2207,7 +2263,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   accessibilityRole="button"
                 >
                   <MaterialCommunityIcons name="pencil-outline" size={14} color={colors.white} />
-                  <Text style={styles.heroFeedbackText}>Wrong street?</Text>
+                  <Text style={styles.heroFeedbackText}>
+                    {lastParkingCheck.rawApiData?.needsVerification ? 'Verify block' : 'Wrong street?'}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.heroFeedbackButton}
