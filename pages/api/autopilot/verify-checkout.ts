@@ -1,12 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { ensureAutopilotEnrollment } from '../../../lib/autopilot-enrollment';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { sendWelcomeEmailOnce } from '../../../lib/welcome-email';
 import { ACTIVE_AUTOPILOT_PLAN } from '../../../lib/autopilot-plans';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2025-08-27.basil',
 });
 
 const supabaseAdmin = createClient(
@@ -172,16 +173,22 @@ async function activateUser(userId: string, customerId: string, subscriptionId: 
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
 
-  // Update autopilot_subscriptions
-  await supabaseAdmin
-    .from('autopilot_subscriptions')
-    .upsert({
-      user_id: userId,
-      status: 'active',
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
+  const { data: profileAfterUpdate } = await supabaseAdmin
+    .from('user_profiles')
+    .select('license_plate, license_state')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  await ensureAutopilotEnrollment(supabaseAdmin as any, {
+    userId,
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscriptionId,
+    plate: profileAfterUpdate?.license_plate || null,
+    state: profileAfterUpdate?.license_state || 'IL',
+    source: 'verify_checkout',
+    planCode: ACTIVE_AUTOPILOT_PLAN.code,
+    priceCents: ACTIVE_AUTOPILOT_PLAN.priceCents,
+  });
 
   console.log(`✅ User ${userId} activated successfully`);
 
