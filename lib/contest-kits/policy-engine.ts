@@ -432,7 +432,14 @@ function fillArgumentTemplate(arg: ArgumentTemplate, context: ArgumentContext): 
     '[LICENSE_PLATE]': '[YOUR LICENSE PLATE]',
     '[VIOLATION_CODE]': ticketFacts.violationCode || '[VIOLATION CODE]',
     '[AMOUNT]': `$${ticketFacts.amount || 0}`,
-    '[USER_GROUNDS]': context.selectedGrounds.map(g => `• ${g}`).join('\n') || '• [Your contest grounds]',
+    // When the user hasn't selected grounds (autopilot-generated letters never
+    // do), emit empty string instead of the placeholder `• [Your contest grounds]`.
+    // The placeholder leaked into a real customer letter (Jesse Randall, May
+    // 2026) and would have been auto-mailed verbatim. The website's "Build
+    // Your Own" flow always passes selectedGrounds, so it is unaffected.
+    // The placeholder-guard in lib/contest-letter-validator.ts is the
+    // belt-and-suspenders catch if this ever regresses.
+    '[USER_GROUNDS]': context.selectedGrounds.map(g => `• ${g}`).join('\n'),
   };
 
   // Weather-specific replacements
@@ -601,7 +608,10 @@ Thank you for your consideration.`,
       .replace('[TICKET_NUMBER]', facts.ticketNumber || '[TICKET NUMBER]')
       .replace('[DATE]', facts.ticketDate || '[DATE]')
       .replace('[LOCATION]', facts.location || '[LOCATION]')
-      .replace('[USER_GROUNDS]', '• [Your contest grounds]'),
+      // Same fix as fillArgumentTemplate above — never emit the literal
+      // `• [Your contest grounds]` placeholder. Caller is expected to fill
+      // user grounds when this fallback is used in the website flow.
+      .replace('[USER_GROUNDS]', ''),
     weatherDefense: { applicable: false },
     evidenceChecklist: [],
     warnings: ['No specific contest kit available for this violation type. Using generic template.'],

@@ -5,6 +5,7 @@ import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHt
 import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 import { pushService } from '../../../lib/push-service';
 import { logMessageSent, logMessageError } from '../../../lib/message-audit-logger';
+import { isLetterMailable } from '../../../lib/contest-letter-validator';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -777,6 +778,17 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
         .maybeSingle();
 
       if (!existingLetter) {
+        // Placeholder guard — see lib/contest-letter-validator.ts.
+        const placeholderCheck = isLetterMailable(letterContent);
+        const insertStatus = placeholderCheck.ok ? 'pending_evidence' : 'needs_admin_review';
+        if (!placeholderCheck.ok) {
+          errors.push(
+            `Letter for ${ticket.ticket_number} contains unfilled placeholders ` +
+            `(${placeholderCheck.findings.map(f => f.placeholder).join(', ')}); ` +
+            `quarantined as needs_admin_review`
+          );
+        }
+
         const { error: letterError } = await supabaseAdmin
           .from('contest_letters')
           .insert({
@@ -785,7 +797,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
             letter_content: letterContent,
             letter_text: letterContent,
             defense_type: defenseType,
-            status: 'pending_evidence',
+            status: insertStatus,
             using_default_address: !profileData?.mailing_address,
           });
 
