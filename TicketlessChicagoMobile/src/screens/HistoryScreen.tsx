@@ -26,6 +26,7 @@ import AppEvents from '../services/AppEvents';
 import AnalyticsService from '../services/AnalyticsService';
 import Logger from '../utils/Logger';
 import { isCoordinateAddress, formatCoordinateFallback, resolveAddress } from '../utils/ClientReverseGeocoder';
+import { distanceMeters } from '../utils/geo';
 import Config from '../config/config';
 import { StorageKeys } from '../constants';
 
@@ -108,16 +109,22 @@ const syncAddToServer = async (item: ParkingHistoryItem): Promise<void> => {
  */
 const syncUpdateToServer = async (
   item: ParkingHistoryItem,
-  updates: Partial<Pick<ParkingHistoryItem, 'address'>>
+  updates: Partial<Pick<ParkingHistoryItem, 'address' | 'coords'>>
 ): Promise<void> => {
   try {
     if (!AuthService.isAuthenticated()) return;
     const userId = AuthService.getUser()?.id;
     if (!userId) return;
-    if (!updates.address) return; // nothing server-relevant
+
+    const patch: Record<string, unknown> = {};
+    if (updates.address) patch.address = updates.address;
+    if (updates.coords) {
+      patch.latitude = updates.coords.latitude;
+      patch.longitude = updates.coords.longitude;
+    }
+    if (Object.keys(patch).length === 0) return; // nothing server-relevant
 
     const supabase = AuthService.getSupabaseClient();
-    const parkedAtIso = new Date(item.timestamp).toISOString();
 
     // Match by parked_at within a 10-minute window (in case of ms drift)
     const rangeStart = new Date(item.timestamp - 10 * 60 * 1000).toISOString();
@@ -125,15 +132,15 @@ const syncUpdateToServer = async (
 
     const { error } = await supabase
       .from('parking_location_history')
-      .update({ address: updates.address })
+      .update(patch)
       .eq('user_id', userId)
       .gte('parked_at', rangeStart)
       .lte('parked_at', rangeEnd);
 
     if (error) {
-      log.warn('syncUpdateToServer: address update failed', error.message);
+      log.warn('syncUpdateToServer: update failed', error.message);
     } else {
-      log.info(`syncUpdateToServer: address updated to "${updates.address}" on server`);
+      log.info(`syncUpdateToServer: updated ${Object.keys(patch).join(',')} on server`);
     }
   } catch (e) {
     log.warn('syncUpdateToServer: exception', e);
@@ -540,8 +547,11 @@ export const ParkingHistoryService = {
 
       // Sync ALL server-relevant updates so server doesn't fall behind local.
       // Data protection: every local improvement must reach the DB.
-      if (updates.address) {
-        void syncUpdateToServer(updatedItem, { address: updates.address });
+      if (updates.address || updates.coords) {
+        void syncUpdateToServer(updatedItem, {
+          address: updates.address,
+          coords: updates.coords,
+        });
       }
       if (updates.departure) {
         void syncDepartureToServer(updatedItem);
@@ -559,6 +569,39 @@ export const ParkingHistoryService = {
       return history.length > 0 ? history[0] : null;
     } catch (error) {
       log.error('Error getting most recent history item', error);
+      return null;
+    }
+  },
+
+  /**
+   * Find the history item matching an active parking event so its address can
+   * be patched after a user correction. Match key: most-recent item whose
+   * coords are within 500m of `originalCoords` and whose timestamp is within
+   * the last 6h. The 500m radius mirrors the duplicate-park guard, and the
+   * 6h ceiling avoids rewriting an unrelated old entry on the same block.
+   */
+  async findMatchForCorrection(
+    originalCoords: Coordinates,
+    referenceTimestamp: number,
+  ): Promise<ParkingHistoryItem | null> {
+    try {
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      const history: ParkingHistoryItem[] = stored ? JSON.parse(stored) : [];
+      if (history.length === 0) return null;
+      const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+      const RADIUS_METERS = 500;
+      const candidates = history.filter(item => {
+        if (Math.abs(referenceTimestamp - item.timestamp) > SIX_HOURS_MS) return false;
+        const d = distanceMeters(
+          originalCoords.latitude, originalCoords.longitude,
+          item.coords.latitude, item.coords.longitude,
+        );
+        return d <= RADIUS_METERS;
+      });
+      if (candidates.length === 0) return null;
+      return candidates.sort((a, b) => b.timestamp - a.timestamp)[0];
+    } catch (error) {
+      log.error('Error finding history match for correction', error);
       return null;
     }
   },
