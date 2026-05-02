@@ -46,6 +46,7 @@ import {
   type AnalysisInput,
   type RedLightDefenseAnalysis,
 } from '../../../lib/red-light-defense-analysis';
+import { isLetterMailable } from '../../../lib/contest-letter-validator';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -3291,6 +3292,17 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
     return { success: true, status: 'already_claimed' };
   }
 
+  // Placeholder guard — see lib/contest-letter-validator.ts.
+  // If the LLM left a placeholder in the body, force `needs_admin_review`
+  // regardless of the original `needsApproval` decision.
+  const placeholderCheck = isLetterMailable(letterContent);
+  let insertStatus = needsApproval ? 'pending_approval' : 'draft';
+  if (!placeholderCheck.ok) {
+    insertStatus = 'needs_admin_review';
+    skipReason = `Unfilled placeholders: ${placeholderCheck.findings.map(f => f.placeholder).join(', ')}`;
+    console.log(`    ⚠ Letter has placeholders, quarantining: ${skipReason}`);
+  }
+
   // ── Save letter (ticket is now claimed, safe from duplicates) ──
   const { data: letter, error: letterError } = await supabaseAdmin
     .from('contest_letters')
@@ -3299,7 +3311,7 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
       user_id: ticket.user_id,
       letter_content: letterContent,
       defense_type: defenseType,
-      status: needsApproval ? 'pending_approval' : 'draft',
+      status: insertStatus,
       evidence_integrated: evidenceSources.length > 0,
       evidence_integrated_at: evidenceSources.length > 0 ? new Date().toISOString() : null,
       // Store Street View exhibit data for the mailing step

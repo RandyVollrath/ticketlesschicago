@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS } from '../../../lib/lob-service';
+import { isLetterMailable } from '../../../lib/contest-letter-validator';
 import formidable from 'formidable';
 import fs from 'fs';
 
@@ -399,6 +400,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const template = DEFENSE_TEMPLATES[violationType] || DEFENSE_TEMPLATES.other_unknown;
         const letterContent = generateLetterContent(newTicket, profile as UserProfile, template);
 
+        // Placeholder guard — see lib/contest-letter-validator.ts.
+        const placeholderCheck = isLetterMailable(letterContent);
+        let csvLetterStatus = shouldAutoMail ? 'approved' : 'pending_approval';
+        if (!placeholderCheck.ok) {
+          csvLetterStatus = 'needs_admin_review';
+          results.errors.push(
+            `Letter for ${ticketRow.ticket_number} contains unfilled placeholders ` +
+            `(${placeholderCheck.findings.map(f => f.placeholder).join(', ')}); quarantined`
+          );
+        }
+
         const { data: letter, error: letterError } = await supabaseAdmin
           .from('contest_letters')
           .insert({
@@ -406,7 +418,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             user_id: plate.user_id,
             letter_content: letterContent,
             defense_type: template.type,
-            status: shouldAutoMail ? 'approved' : 'pending_approval',
+            status: csvLetterStatus,
           })
           .select()
           .single();

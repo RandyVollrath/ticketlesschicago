@@ -48,6 +48,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { lookupPlateOnPortal, LookupResult, PortalTicket } from '../lib/chicago-portal-scraper';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../lib/contest-kits/evidence-guidance';
+import { isLetterMailable } from '../lib/contest-letter-validator';
 import { chromium, Browser } from 'playwright';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -793,6 +794,17 @@ async function processFoundTicket(
     letterProfile
   );
 
+  // Placeholder guard — see lib/contest-letter-validator.ts.
+  const placeholderCheck = isLetterMailable(letterContent);
+  const queueLetterStatus = placeholderCheck.ok ? 'pending_evidence' : 'needs_admin_review';
+  if (!placeholderCheck.ok) {
+    console.error(
+      `      ⚠ Queue-worker letter for ticket ${newTicket.id} contains unfilled placeholders ` +
+      `(${placeholderCheck.findings.map(f => f.placeholder).join(', ')}). ` +
+      `Quarantining as needs_admin_review.`
+    );
+  }
+
   await supabaseAdmin
     .from('contest_letters')
     .insert({
@@ -801,7 +813,7 @@ async function processFoundTicket(
       letter_content: letterContent,
       letter_text: letterContent,
       defense_type: defenseType,
-      status: 'pending_evidence',
+      status: queueLetterStatus,
       using_default_address: !profile?.mailing_address,
     });
 

@@ -42,6 +42,7 @@ import type { TicketFacts, UserEvidence, ContestEvaluation } from '../lib/contes
 import { analyzeFactualInconsistency } from '../lib/red-light-defense-analysis';
 import { detectVehicleMismatch, parseVehicleFromDescription, hasVehicleInfoForMismatch, VehicleInfo, MismatchResult } from '../lib/vehicle-mismatch';
 import { sendClickSendSMS } from '../lib/sms-service';
+import { isLetterMailable } from '../lib/contest-letter-validator';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -2836,6 +2837,21 @@ async function processFoundTicket(
     notificationCount > 0 ? { count: notificationCount, summary: notificationSummary } : null,
   );
 
+  // Placeholder guard: refuse to mark a letter `pending_evidence` (user-visible
+  // + headed for the auto-send mail cron) if it still contains template
+  // placeholders. Quarantine to `needs_admin_review` instead so a human notices.
+  // See lib/contest-letter-validator.ts for the rule and the Jesse-shaped bug
+  // that prompted it.
+  const placeholderCheck = isLetterMailable(letterContent);
+  const letterStatus = placeholderCheck.ok ? 'pending_evidence' : 'needs_admin_review';
+  if (!placeholderCheck.ok) {
+    console.error(
+      `      ⚠ Letter for ticket ${newTicket.id} contains unfilled placeholders ` +
+      `(${placeholderCheck.findings.map(f => f.placeholder).join(', ')}). ` +
+      `Quarantining as needs_admin_review.`
+    );
+  }
+
   const { error: letterError } = await supabaseAdmin
     .from('contest_letters')
     .insert({
@@ -2844,14 +2860,14 @@ async function processFoundTicket(
       letter_content: letterContent,
       letter_text: letterContent,
       defense_type: defenseType,
-      status: 'pending_evidence',
+      status: letterStatus,
       using_default_address: !profile?.mailing_address,
     });
 
   if (letterError) {
     console.error(`      Failed to create letter: ${letterError.message}`);
   } else {
-    console.log(`      Generated contest letter (${defenseType})`);
+    console.log(`      Generated contest letter (${defenseType}, status=${letterStatus})`);
   }
 
   // Update ticket with vehicle mismatch results
