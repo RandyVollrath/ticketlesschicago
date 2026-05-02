@@ -1443,7 +1443,7 @@ function SettingsPageInner() {
           supabase.from('detected_tickets')
             .select('id, ticket_number, violation_type, violation_code, violation_date, amount, location, status, skip_reason, created_at, user_id')
             .eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
-          supabase.from('subscriptions')
+          supabase.from('autopilot_subscriptions')
             .select('status, current_period_end').eq('user_id', uid).maybeSingle(),
           (supabase.from as any)('contest_letters')
             .select('id, ticket_id, status, delivery_status, lob_letter_id, letter_pdf_url, mailed_at, expected_delivery_date, delivered_at, returned_at, failed_at, created_at')

@@ -20,10 +20,10 @@
  * letter when the truth was 76%. CLAUDE.md / memory: never make up numbers.
  */
 
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') });
 
@@ -172,9 +172,9 @@ async function main() {
   let unknown = 0;
   // Walk every key with a hardcoded claim AND every key in FOIA_TERMS
   // (so we also flag violations we have FOIA data for but no public claim).
-  const allKeys = new Set<string>([...byKey.keys(), ...Object.keys(FOIA_TERMS)]);
+  const allKeys = new Set<string>([...Array.from(byKey.keys()), ...Object.keys(FOIA_TERMS)]);
 
-  for (const key of [...allKeys].sort()) {
+  for (const key of Array.from(allKeys).sort()) {
     const pattern = FOIA_TERMS[key];
     const claimRows = byKey.get(key) || [];
     const startC = claimRows.find((c) => c.surface === 'start.tsx')?.winRate;
