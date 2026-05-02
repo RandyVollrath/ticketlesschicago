@@ -6230,6 +6230,43 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       locationAtStopStart = nil
       return
     }
+
+    // Engine-idle guard at known signalized intersections (added May 2026 — user
+    // reported false positive at Fullerton/Damen EB at 1:53am, a long off-peak red).
+    // The intersection dwell guard above only blocks stops <18s of zero speed, and
+    // location_stationary is exempt entirely. Long red phases at major arterial
+    // intersections regularly clear those bars: 75s zero speed (longNoWalkingStop)
+    // or 120s phone-stationary (location_stationary) both confirm parking even when
+    // the user is sitting at the light with the engine running.
+    //
+    // The accelerometer already discriminates idling from truly parked: an idling
+    // engine produces continuous low-amplitude vibration (stddev ≥ 0.005g), while
+    // a parked car with the engine off is essentially still (stddev < 0.002g).
+    // The same check already gates the gps_coremotion_agree longNoWalkingStop path.
+    //
+    // Bypass conditions (real-parking signals): walking evidence (user got out) or
+    // CarPlay/BT disconnect within 180s (engine off). EVs without idle vibration
+    // also pass through; they rely on those bypass signals at intersections.
+    if nearIntersectionRisk &&
+       walkingEvidenceSec < minWalkingEvidenceSec &&
+       !hasRecentDisconnectEvidence {
+      let accelAnalysis = self.analyzeAccelForEngineIdle(lastSeconds: 10)
+      if accelAnalysis.idleLikelihood >= 0.5 {
+        self.log("Parking candidate blocked at intersection: engine idle detected (stddev=\(String(format: "%.4f", accelAnalysis.stddev)), likelihood=\(String(format: "%.2f", accelAnalysis.idleLikelihood)), samples=\(accelAnalysis.sampleCount))")
+        decision("confirm_parking_blocked_engine_idle_at_intersection", [
+          "source": source,
+          "zeroDurationSec": zeroDurationSec,
+          "accelStddev": accelAnalysis.stddev,
+          "accelIdleLikelihood": accelAnalysis.idleLikelihood,
+          "accelSampleCount": accelAnalysis.sampleCount,
+          "nearIntersectionRisk": nearIntersectionRisk,
+        ])
+        lastStationaryTime = nil
+        locationAtStopStart = nil
+        return
+      }
+    }
+
     let confidenceScore = self.parkingDecisionConfidenceScore(
       source: source,
       zeroDurationSec: zeroDurationSec,
