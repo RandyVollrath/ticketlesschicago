@@ -1,5 +1,5 @@
 {
-  "errorCount": 508,
-  "capturedAt": "2026-04-30T19:31:34.253Z",
-  "notes": "PR #4 schema regen + stripe-webhook ratchet (-24 errors)"
+  "errorCount": 498,
+  "capturedAt": "2026-05-02T03:47:43.664Z",
+  "notes": "moved mobile-snow-notifications out of pages/api/cron into lib/cron (it's a library, not an API route) — removes 10 stale validator errors"
 }

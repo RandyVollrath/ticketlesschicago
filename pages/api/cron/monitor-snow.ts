@@ -272,7 +272,7 @@ export default async function handler(
         // Also send push notifications to mobile app users parked on snow routes
         let mobileNotifyResult = null;
         try {
-          const { sendMobileSnowBanNotifications } = await import('./mobile-snow-notifications');
+          const { sendMobileSnowBanNotifications } = await import('../../../lib/cron/mobile-snow-notifications');
           mobileNotifyResult = await sendMobileSnowBanNotifications(
             notificationType,
             snowData.snowAmountInches
