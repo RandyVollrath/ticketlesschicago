@@ -11,6 +11,45 @@ import Logger from '../utils/Logger';
 
 const log = Logger.createLogger('AuthService');
 
+/**
+ * Fire-and-forget anonymous auth-failure beacon. Called when sign-in fails
+ * BEFORE the user is authenticated — the standard debug-report endpoint
+ * requires auth, so this is the only signal we get about login bugs hitting
+ * potential new users. Never throws, never blocks the caller.
+ */
+async function reportAuthFailure(payload: {
+  provider: 'google' | 'apple' | 'email' | 'magic_link';
+  stage: string;
+  error_code?: string;
+  error_message?: string;
+  attempted_email?: string;
+  extra?: Record<string, any>;
+}): Promise<void> {
+  try {
+    const url = `${Config.API_BASE_URL}/api/mobile/log-auth-failure`;
+    const body = {
+      ...payload,
+      app_version: Config.APP_VERSION,
+      platform: Platform.OS,
+      os_version: String(Platform.Version),
+    };
+    // 4-second timeout — don't make a failed login wait on the beacon.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    }).catch((e) => {
+      log.debug('auth-failure beacon network error (ignored)', e?.message);
+    });
+    clearTimeout(timeout);
+  } catch (e) {
+    log.debug('auth-failure beacon exception (ignored)', e);
+  }
+}
+
 export interface User {
   id: string;
   email: string;
@@ -350,6 +389,12 @@ class AuthServiceClass {
           hasUser: !!userInfo.data?.user,
           email: userInfo.data?.user?.email,
         });
+        void reportAuthFailure({
+          provider: 'google',
+          stage: 'no_id_token_after_fallback',
+          attempted_email: userInfo.data?.user?.email,
+          extra: { hasUser: !!userInfo.data?.user },
+        });
         return {
           success: false,
           error: 'Google did not return a sign-in token. Please try again, or use Sign in with Apple.',
@@ -366,6 +411,12 @@ class AuthServiceClass {
 
       if (error) {
         log.error('Supabase Google auth error', error);
+        void reportAuthFailure({
+          provider: 'google',
+          stage: 'supabase_signInWithIdToken_error',
+          error_code: error.status ? String(error.status) : undefined,
+          error_message: error.message,
+        });
         return { success: false, error: error.message };
       }
 
@@ -387,9 +438,21 @@ class AuthServiceClass {
       } else if (error.code === statusCodes.IN_PROGRESS) {
         return { success: false, error: 'Sign in is already in progress' };
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        void reportAuthFailure({
+          provider: 'google',
+          stage: 'play_services_unavailable',
+          error_code: String(error.code),
+          error_message: error.message,
+        });
         return { success: false, error: 'Google Play Services not available' };
       }
 
+      void reportAuthFailure({
+        provider: 'google',
+        stage: 'native_signin_threw',
+        error_code: error.code != null ? String(error.code) : undefined,
+        error_message: error.message,
+      });
       return { success: false, error: error.message || 'Google sign-in failed' };
     }
   }
@@ -407,6 +470,10 @@ class AuthServiceClass {
 
         if (!result.identityToken) {
           log.error('No identityToken in Apple auth response');
+          void reportAuthFailure({
+            provider: 'apple',
+            stage: 'no_identity_token',
+          });
           return { success: false, error: 'Failed to get Apple identity token. Please try again.' };
         }
 
@@ -420,6 +487,12 @@ class AuthServiceClass {
 
         if (error) {
           log.error('Supabase Apple auth error', { message: error.message, status: error.status });
+          void reportAuthFailure({
+            provider: 'apple',
+            stage: 'supabase_signInWithIdToken_error',
+            error_code: error.status ? String(error.status) : undefined,
+            error_message: error.message,
+          });
           return { success: false, error: `Apple sign-in failed: ${error.message}` };
         }
 
@@ -439,6 +512,12 @@ class AuthServiceClass {
         log.warn('Native Apple Sign In failed, falling back to OAuth flow', {
           code: nativeError.code,
           message: nativeError.message,
+        });
+        void reportAuthFailure({
+          provider: 'apple',
+          stage: 'native_signin_threw_falling_back_to_oauth',
+          error_code: nativeError.code != null ? String(nativeError.code) : undefined,
+          error_message: nativeError.message,
         });
       }
     }
@@ -464,6 +543,11 @@ class AuthServiceClass {
       return { success: true };
     } catch (error: any) {
       log.error('Apple OAuth sign-in error', { message: error.message });
+      void reportAuthFailure({
+        provider: 'apple',
+        stage: 'oauth_fallback_threw',
+        error_message: error.message,
+      });
       return {
         success: false,
         error: 'Failed to open Apple sign-in. Please try signing in with email instead.',
