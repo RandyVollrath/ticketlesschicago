@@ -1820,6 +1820,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   }
                 }
 
+                // Ensure a vehicles row exists. Several admin endpoints + legacy
+                // queries read from `vehicles`; the autopilot path used to skip
+                // this insert, leaving paid users invisible to those callers.
+                if (autopilotPlate) {
+                  const { data: existingVehicle } = await supabaseAdmin
+                    .from('vehicles')
+                    .select('id')
+                    .eq('user_id', supabaseUserId)
+                    .limit(1);
+
+                  if (!existingVehicle || existingVehicle.length === 0) {
+                    const { data: profileForVehicle } = await supabaseAdmin
+                      .from('user_profiles')
+                      .select('vin, vehicle_year, vehicle_make, vehicle_model, zip_code, mailing_address, mailing_city, mailing_state, mailing_zip')
+                      .eq('user_id', supabaseUserId)
+                      .maybeSingle();
+
+                    const { error: vehicleInsertError } = await supabaseAdmin
+                      .from('vehicles')
+                      .insert([{
+                        user_id: supabaseUserId,
+                        license_plate: autopilotPlate,
+                        vin: profileForVehicle?.vin || null,
+                        year: profileForVehicle?.vehicle_year || null,
+                        make: profileForVehicle?.vehicle_make || null,
+                        model: profileForVehicle?.vehicle_model || null,
+                        zip_code: profileForVehicle?.zip_code || profileForVehicle?.mailing_zip || null,
+                        mailing_address: profileForVehicle?.mailing_address || null,
+                        mailing_city: profileForVehicle?.mailing_city || 'Chicago',
+                        mailing_state: profileForVehicle?.mailing_state || autopilotState || 'IL',
+                        mailing_zip: profileForVehicle?.mailing_zip || profileForVehicle?.zip_code || null,
+                        subscription_id: subscriptionId || 'autopilot_signup',
+                        subscription_status: 'active',
+                      }]);
+
+                    if (vehicleInsertError) {
+                      console.error('❌ Error creating vehicles row for Autopilot user:', vehicleInsertError);
+                    } else {
+                      console.log('✅ Vehicles row created for Autopilot user:', supabaseUserId);
+                    }
+                  } else {
+                    console.log('🚗 Vehicles row already exists for Autopilot user, skipping insert');
+                  }
+                }
+
                 await requestInitialPortalCheckForUser(supabaseUserId, 'autopilot_checkout');
 
               // Send comprehensive welcome email (idempotent via welcome_email_sent_at)
