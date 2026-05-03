@@ -60,6 +60,49 @@ export default function App({ Component, pageProps }: AppProps) {
     }
   }, [router.events])
 
+  // ── Site-wide Rewardful affiliate capture ──
+  // Runs on EVERY page so the moment rw.js initializes (typically on the
+  // first ?via=... landing page), we persist the referral to localStorage.
+  // /start (and any other checkout CTA) reads from this key, so the affiliate
+  // survives the Google-OAuth round-trip that wipes window.Rewardful between
+  // the home page click and the post-OAuth checkout. Skipped in WebView.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const isMobileWebView = window.location.search?.includes('mobile_access_token') ||
+      !!(window as any).ReactNativeWebView
+    if (isMobileWebView) return
+
+    const STORAGE_KEY = 'start_rewardful_referral'
+
+    const captureReferral = () => {
+      try {
+        const ref = (window as any).Rewardful?.referral
+        if (ref && typeof ref === 'string') {
+          localStorage.setItem(STORAGE_KEY, ref)
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    // Try immediately in case rw.js already initialized.
+    captureReferral()
+
+    // Subscribe to Rewardful's ready event (fires when rw.js boots).
+    try {
+      const rewardful = (window as any).rewardful
+      if (typeof rewardful === 'function') {
+        rewardful('ready', captureReferral)
+      }
+    } catch { /* non-fatal */ }
+
+    // Aggressive polling: rw.js loads async from r.wdfl.co and the user can
+    // click a CTA before init completes. Check at multiple intervals so we
+    // win the race even on slow networks.
+    const timers = [200, 500, 1000, 2000, 4000].map((ms) =>
+      window.setTimeout(captureReferral, ms),
+    )
+    return () => { timers.forEach(window.clearTimeout) }
+  }, [])
+
   return (
     <ToastProvider>
       <ToastConnector />
