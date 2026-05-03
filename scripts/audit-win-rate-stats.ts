@@ -64,27 +64,33 @@ const FOIA_TERMS: Record<string, string> = {
 // Source-of-truth queries
 // ───────────────────────────────────────────────────────────────────────
 
-async function countWhere(pattern: string, disposition: string): Promise<number> {
-  // Sequential, with one retry — parallel count queries were flaky against
-  // a 1.18M-row table (one of two parallel calls would intermittently return 0).
-  for (let attempt = 0; attempt < 2; attempt++) {
+// Returns the count, or null if the query failed every retry.
+// IMPORTANT: never silently return 0 on persistent failure — that produced
+// phantom 100% truths when one disposition's count timed out (Supabase exact
+// counts over 1.18M rows take 6-7s each and can hit statement_timeout).
+async function countWhere(pattern: string, disposition: string): Promise<number | null> {
+  const delays = [500, 1000, 2000, 4000, 8000];
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
     const { count, error } = await supabase
       .from('contested_tickets_foia')
       .select('*', { count: 'exact', head: true })
       .ilike('violation_description', pattern)
       .eq('disposition', disposition);
     if (!error && typeof count === 'number') return count;
-    if (attempt === 0) await new Promise((r) => setTimeout(r, 500));
+    if (attempt < delays.length) await new Promise((r) => setTimeout(r, delays[attempt]));
   }
-  return 0;
+  return null;
 }
 
-async function realRate(pattern: string): Promise<{ nl: number; l: number; rate: number | null }> {
+async function realRate(
+  pattern: string,
+): Promise<{ nl: number; l: number; rate: number | null; failed: boolean }> {
   const nl = await countWhere(pattern, 'Not Liable');
   const l = await countWhere(pattern, 'Liable');
+  if (nl === null || l === null) return { nl: nl ?? 0, l: l ?? 0, rate: null, failed: true };
   const decided = nl + l;
-  if (decided < 200) return { nl, l, rate: null };
-  return { nl, l, rate: Math.round((nl / decided) * 1000) / 10 };
+  if (decided < 200) return { nl, l, rate: null, failed: false };
+  return { nl, l, rate: Math.round((nl / decided) * 1000) / 10, failed: false };
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -195,9 +201,9 @@ async function main() {
       continue;
     }
 
-    const { nl, l, rate } = await realRate(pattern);
+    const { nl, l, rate, failed } = await realRate(pattern);
     const decided = nl + l;
-    const truth = rate === null ? '(no sample)' : `${rate}%`;
+    const truth = failed ? '(flake)' : rate === null ? '(no sample)' : `${rate}%`;
 
     const row =
       key.padEnd(32) +
@@ -207,6 +213,10 @@ async function main() {
       ` ${truth.padStart(6)}` +
       ` ${decided.toLocaleString().padStart(7)}`;
 
+    if (failed) {
+      console.log(row + '  ⚠ FOIA query timed out after 5 retries — skipped (rerun to revalidate)');
+      continue;
+    }
     if (rate === null) {
       console.log(row + '  - sample too small to validate');
       continue;
