@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainerRef, CommonActions } from '@react-navigation/native';
 import ApiClient from '../utils/ApiClient';
 import AuthService from './AuthService';
+import AppEvents from './AppEvents';
 import config from '../config/config';
 import Logger from '../utils/Logger';
 
@@ -12,6 +13,31 @@ const log = Logger.createLogger('PushNotifications');
 
 const PUSH_TOKEN_KEY = 'pushNotificationToken';
 const PUSH_PERMISSION_KEY = 'pushNotificationPermissionStatus';
+const PREF_KEY_BY_TYPE: Record<string, string> = {
+  sweeper_passed: 'pushAlert_sweeperPassed',
+  street_cleaning: 'pushAlert_streetCleaning',
+  street_cleaning_reminder: 'pushAlert_streetCleaning',
+  winter_ban_reminder: 'pushAlert_winterOvernight',
+  snow_ban_alert: 'pushAlert_twoInchSnow',
+  snow_ban_reminder: 'pushAlert_twoInchSnow',
+  permit_reminder: 'pushAlert_permitZone',
+  dot_permit_reminder: 'pushAlert_dotPermit',
+  meter_max_expiring: 'meterExpiryAlertsEnabled',
+  meter_zone_active: 'meterExpiryAlertsEnabled',
+};
+
+const PARKING_RISK_TYPES: NotificationType[] = [
+  'parking_alert',
+  'street_cleaning_reminder',
+  'winter_ban_reminder',
+  'snow_ban_alert',
+  'snow_ban_reminder',
+  'permit_reminder',
+  'dot_permit_reminder',
+  'meter_max_expiring',
+  'meter_zone_active',
+  'tow_alert',
+];
 
 export interface PushNotificationPayload {
   title: string;
@@ -23,9 +49,15 @@ export interface PushNotificationPayload {
 export type NotificationType =
   | 'parking_alert'
   | 'street_cleaning_reminder'
+  | 'winter_ban_reminder'
   | 'snow_ban_alert'
+  | 'snow_ban_reminder'
   | 'sweeper_passed'
   | 'permit_reminder'
+  | 'dot_permit_reminder'
+  | 'meter_max_expiring'
+  | 'meter_zone_active'
+  | 'tow_alert'
   | 'general';
 
 export interface NotificationData {
@@ -35,6 +67,12 @@ export interface NotificationData {
   lng?: string;
   checkId?: string;
   screen?: string;
+}
+
+export interface ForegroundBannerPayload {
+  title: string;
+  body: string;
+  data: NotificationData;
 }
 
 class PushNotificationServiceClass {
@@ -265,18 +303,13 @@ class PushNotificationServiceClass {
   private async displayLocalNotification(remoteMessage: any): Promise<void> {
     try {
       const notification = remoteMessage?.notification || {};
-      const data = remoteMessage?.data || {};
+      const data: NotificationData = remoteMessage?.data || {};
 
       // Respect user's per-type push alert preferences for server-sent notifications.
       // The server-side cron does its own preference check, but if the user toggles
       // the pref off AFTER the cron queued the push, this client-side check is the
       // last line of defense.
-      const prefKeyByType: Record<string, string> = {
-        sweeper_passed: 'pushAlert_sweeperPassed',
-        street_cleaning: 'pushAlert_streetCleaning',
-        street_cleaning_reminder: 'pushAlert_streetCleaning',
-      };
-      const prefKey = prefKeyByType[data.type];
+      const prefKey = data.type ? PREF_KEY_BY_TYPE[data.type] : undefined;
       if (prefKey) {
         const pref = await AsyncStorage.getItem(prefKey);
         if (pref === 'false') {
@@ -285,12 +318,31 @@ class PushNotificationServiceClass {
         }
       }
 
+      const isParkingRisk = !!data.type && PARKING_RISK_TYPES.includes(data.type);
+
       // Determine channel based on notification type
       let channelId = 'general';
-      if (data.type === 'parking_alert' || data.type === 'sweeper_passed' || data.severity === 'critical') {
+      if (
+        isParkingRisk ||
+        data.severity === 'critical'
+      ) {
         channelId = 'parking-alerts';
       } else if (data.type === 'reminder' || data.type?.endsWith('_reminder')) {
         channelId = 'reminders';
+      }
+
+      const shouldShowInAppBanner =
+        data.type === 'sweeper_passed' ||
+        (!isParkingRisk && data.severity !== 'critical');
+
+      if (shouldShowInAppBanner) {
+        AppEvents.emit('foreground-notification-banner', {
+          title: notification.title || 'Autopilot',
+          body: notification.body || '',
+          data,
+        } satisfies ForegroundBannerPayload);
+        log.info(`Showing in-app foreground banner for ${data.type || 'general'} notification`);
+        return;
       }
 
       await notifee.displayNotification({
@@ -336,6 +388,15 @@ class PushNotificationServiceClass {
     const data: NotificationData = notification?.data || notification?.notification?.data || {};
 
     log.debug('Handling notification press', data.type);
+
+    this.handleNotificationDataPress(data);
+  }
+
+  /**
+   * Handle a notification tap when only parsed data is available
+   */
+  handleNotificationDataPress(data: NotificationData): void {
+    log.debug('Handling notification data press', data.type);
 
     // If navigation isn't ready yet, store for later
     if (!this.navigationRef) {
@@ -386,12 +447,31 @@ class PushNotificationServiceClass {
 
           this.navigationRef.dispatch(
             CommonActions.navigate({
+              name: 'Map',
+              params: {
+                lat,
+                lng: validLng,
+                fromNotification: true,
+              },
+            })
+          );
+          break;
+
+        case 'street_cleaning_reminder':
+        case 'winter_ban_reminder':
+        case 'snow_ban_reminder':
+        case 'permit_reminder':
+        case 'dot_permit_reminder':
+        case 'meter_max_expiring':
+        case 'meter_zone_active':
+          // Navigate to Home screen to refresh the current parking state.
+          this.navigationRef.dispatch(
+            CommonActions.navigate({
               name: 'MainTabs',
               params: {
-                screen: 'Map',
+                screen: 'Home',
                 params: {
-                  lat,
-                  lng: validLng,
+                  autoCheck: true,
                   fromNotification: true,
                 },
               },
@@ -399,46 +479,29 @@ class PushNotificationServiceClass {
           );
           break;
 
-      case 'street_cleaning_reminder':
-      case 'permit_reminder':
-        // Navigate to Home screen to check parking
-        this.navigationRef.dispatch(
-          CommonActions.navigate({
-            name: 'MainTabs',
-            params: {
-              screen: 'Home',
-              params: {
-                autoCheck: true,
-                fromNotification: true,
-              },
-            },
-          })
-        );
-        break;
-
-      default:
-        // If a specific screen was provided in the data, navigate there
-        if (data.screen) {
-          this.navigationRef.dispatch(
-            CommonActions.navigate({
-              name: 'MainTabs',
-              params: {
-                screen: data.screen,
-              },
-            })
-          );
-        } else {
-          // Default: navigate to History to see past checks
-          this.navigationRef.dispatch(
-            CommonActions.navigate({
-              name: 'MainTabs',
-              params: {
-                screen: 'History',
-              },
-            })
-          );
-        }
-        break;
+        default:
+          // If a specific screen was provided in the data, navigate there
+          if (data.screen) {
+            this.navigationRef.dispatch(
+              CommonActions.navigate({
+                name: 'MainTabs',
+                params: {
+                  screen: data.screen,
+                },
+              })
+            );
+          } else {
+            // Default: navigate to History to see past checks
+            this.navigationRef.dispatch(
+              CommonActions.navigate({
+                name: 'MainTabs',
+                params: {
+                  screen: 'History',
+                },
+              })
+            );
+          }
+          break;
       }
     } catch (error) {
       log.error('Error navigating from notification', error);

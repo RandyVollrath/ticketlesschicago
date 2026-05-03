@@ -24,6 +24,9 @@ export interface ParkingFeedback {
   streetDirection: string;  // N, S, E, W
   resolvedSide: string;     // N, S, E, W — what the system determined
   timestamp: number;        // When parking was detected
+  verifyRecommended?: boolean;
+  addressConfidence?: number | null;
+  alternatesCount?: number;
 
   // User responses (null = not yet answered)
   confirmedParking: boolean | null;   // Q1: Did parking occur?
@@ -46,6 +49,9 @@ class ParkingFeedbackServiceClass {
     streetName: string;
     streetDirection: string;
     resolvedSide: string;
+    verifyRecommended?: boolean;
+    addressConfidence?: number | null;
+    alternatesCount?: number;
   }): Promise<void> {
     this.pending = {
       address: params.address,
@@ -53,6 +59,9 @@ class ParkingFeedbackServiceClass {
       streetDirection: params.streetDirection,
       resolvedSide: params.resolvedSide,
       timestamp: Date.now(),
+      verifyRecommended: params.verifyRecommended === true,
+      addressConfidence: params.addressConfidence ?? null,
+      alternatesCount: params.alternatesCount ?? 0,
       confirmedParking: null,
       confirmedBlock: null,
       reportedSide: null,
@@ -139,6 +148,7 @@ class ParkingFeedbackServiceClass {
         confirmed_parking: this.pending.confirmedParking,
         confirmed_block: this.pending.confirmedBlock,
         reported_side: this.pending.reportedSide,
+        feedback_source: this.pending.verifyRecommended ? 'user_feedback_card_verify' : 'user_feedback_card',
       });
 
       this.pending.submitted = true;
