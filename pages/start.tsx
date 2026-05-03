@@ -67,6 +67,12 @@ const TICKET_TYPES = [
 const STATE_KEY = 'start_funnel_state_v2';
 const SESSION_KEY = 'start_funnel_session_id';
 const PENDING_CHECKOUT_KEY = 'start_pending_checkout';
+// Rewardful affiliate referral ID, persisted to localStorage so it survives the
+// Google-OAuth round-trip (which navigates away from /start entirely). rw.js
+// drops a cookie too, but we read window.Rewardful.referral and pass it to
+// Stripe as client_reference_id, which is the field Rewardful's Stripe
+// integration auto-watches for conversions.
+const REWARDFUL_REFERRAL_KEY = 'start_rewardful_referral';
 
 function getOrCreateSessionId(): string {
   if (typeof window === 'undefined') return '';
@@ -142,6 +148,36 @@ export default function StartFunnel() {
       body: JSON.stringify({ session_id: sid, ...fields }),
     }).catch(() => { /* non-fatal */ });
   };
+
+  // ── Capture Rewardful affiliate referral (survives OAuth via localStorage) ──
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const captureReferral = () => {
+      try {
+        const ref = (window as any).Rewardful?.referral;
+        if (ref && typeof ref === 'string') {
+          localStorage.setItem(REWARDFUL_REFERRAL_KEY, ref);
+        }
+      } catch { /* non-fatal */ }
+    };
+
+    // Try immediately in case rw.js already initialized.
+    captureReferral();
+
+    // Also subscribe to Rewardful's "ready" event for the common case where
+    // rw.js loads asynchronously after this component mounts.
+    try {
+      const rewardful = (window as any).rewardful;
+      if (typeof rewardful === 'function') {
+        rewardful('ready', captureReferral);
+      }
+    } catch { /* non-fatal */ }
+
+    // Belt-and-suspenders: re-check after a short delay in case neither path fired.
+    const t = setTimeout(captureReferral, 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   // ── Init: session id + restore local state ──
   useEffect(() => {
@@ -274,6 +310,7 @@ export default function StartFunnel() {
         try {
           localStorage.removeItem(STATE_KEY);
           localStorage.removeItem(SESSION_KEY);
+          localStorage.removeItem(REWARDFUL_REFERRAL_KEY);
         } catch { /* ignore */ }
         router.replace('/start', undefined, { shallow: true });
       } catch (err: any) {
@@ -470,6 +507,16 @@ export default function StartFunnel() {
       const cleanPlate = plate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
       const meta = (session.user?.user_metadata || {}) as Record<string, any>;
       const signatureName = (meta.full_name || meta.name || session.user?.email?.split('@')[0] || '').toString().trim();
+      // Read the affiliate referral captured on mount. Prefer the live value
+      // (cookie may have refreshed) and fall back to the persisted one we
+      // saved before the OAuth redirect.
+      let rewardfulReferral: string | null = null;
+      try {
+        const live = (window as any).Rewardful?.referral;
+        rewardfulReferral = (live && typeof live === 'string')
+          ? live
+          : localStorage.getItem(REWARDFUL_REFERRAL_KEY);
+      } catch { /* non-fatal */ }
       const checkoutRes = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
         headers: {
@@ -483,6 +530,7 @@ export default function StartFunnel() {
           billingPlan,
           contestConsent: consentOverride ?? consentChecked,
           consentSignature: signatureName,
+          rewardfulReferral,
         }),
       });
 

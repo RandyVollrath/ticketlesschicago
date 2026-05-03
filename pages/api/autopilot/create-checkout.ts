@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { ACTIVE_AUTOPILOT_PLAN, ACTIVE_MONTHLY_PLAN, AUTOPILOT_PRICE_ID, AUTOPILOT_MONTHLY_PRICE_ID } from '../../../lib/autopilot-plans';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { validateClientReferenceId } from '../../../lib/webhook-validator';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -31,8 +32,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const userId = authUser.id;
 
-    const { licensePlate, plateState, billingPlan, contestConsent, consentSignature } = req.body;
+    const { licensePlate, plateState, billingPlan, contestConsent, consentSignature, rewardfulReferral } = req.body;
     const isMonthly = billingPlan === 'monthly';
+
+    // Rewardful affiliate attribution. The referral comes from rw.js on the
+    // /start page via window.Rewardful.referral. We validate the format here
+    // (UUID or short string the affiliate cookie actually carries) before
+    // handing it to Stripe as client_reference_id, which is the field
+    // Rewardful's Stripe integration auto-watches for conversions.
+    const validatedReferralId = validateClientReferenceId(
+      typeof rewardfulReferral === 'string' ? rewardfulReferral : null
+    );
 
     if (!licensePlate) {
       return res.status(400).json({ error: 'License plate required' });
@@ -155,6 +165,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       customer: customerId,
       mode: 'subscription',
       allow_promotion_codes: true,
+      // Pass the Rewardful referral ID as Stripe's client_reference_id so
+      // Rewardful's Stripe integration auto-creates the lead + conversion.
+      // Falls back to userId if no affiliate referral is present.
+      client_reference_id: validatedReferralId || userId,
       line_items: [
         {
           price: priceId,
@@ -169,6 +183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           service: 'autopilot',
           plan_code: selectedPlan.code,
           price_lock: String(selectedPlan.priceLock),
+          rewardful_referral_id: validatedReferralId || '',
         },
       },
       metadata: {
@@ -177,6 +192,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         plan_code: selectedPlan.code,
         license_plate_number: cleanPlate,
         license_plate_state: cleanState,
+        rewardful_referral_id: validatedReferralId || '',
       },
     });
 
