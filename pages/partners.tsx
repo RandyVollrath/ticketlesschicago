@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import Footer from '../components/Footer';
 
 const COLORS = {
@@ -100,6 +101,7 @@ function Field({
 }
 
 export default function PartnersSignup() {
+  const router = useRouter();
   const [form, setForm] = useState<FormState>(INITIAL);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,8 +111,60 @@ export default function PartnersSignup() {
     created: boolean;
   } | null>(null);
 
+  // Two-step gate: code first, full form second.
+  const [gatePassed, setGatePassed] = useState(false);
+  const [gateLoading, setGateLoading] = useState(false);
+  const [gateError, setGateError] = useState<string | null>(null);
+
+  // Auto-validate ?code=XXX from the URL so partners can have one-click links.
+  useEffect(() => {
+    if (!router.isReady || gatePassed) return;
+    const urlCode = (router.query.code as string | undefined)?.trim();
+    if (!urlCode) return;
+    setForm((f) => ({ ...f, accessCode: urlCode }));
+    (async () => {
+      setGateLoading(true);
+      try {
+        const res = await fetch('/api/partners/validate-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessCode: urlCode }),
+        });
+        if (res.ok) setGatePassed(true);
+      } catch {
+        // Stay on the gate; user can re-enter manually.
+      } finally {
+        setGateLoading(false);
+      }
+    })();
+  }, [router.isReady, router.query.code, gatePassed]);
+
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const handleGateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGateError(null);
+    setGateLoading(true);
+    try {
+      const res = await fetch('/api/partners/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessCode: form.accessCode }),
+      });
+      if (res.ok) {
+        setGatePassed(true);
+      } else if (res.status === 429) {
+        setGateError('Too many attempts. Try again in a few minutes.');
+      } else {
+        setGateError('That code isn\'t valid. Check with the partner who shared it with you.');
+      }
+    } catch {
+      setGateError('Network error. Try again.');
+    } finally {
+      setGateLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,7 +270,83 @@ export default function PartnersSignup() {
       </header>
 
       <main style={{ maxWidth: '720px', margin: '0 auto', padding: '32px 20px 80px' }}>
-        {!result ? (
+        {!gatePassed ? (
+          <div>
+            <h1
+              style={{
+                fontSize: '32px',
+                fontWeight: 700,
+                color: COLORS.graphite,
+                marginBottom: '12px',
+                fontFamily: '"Space Grotesk", sans-serif',
+                letterSpacing: '-0.5px',
+              }}
+            >
+              Partner access
+            </h1>
+            <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: 1.6, marginBottom: '28px' }}>
+              This page is for approved Autopilot America partners. Enter the access code you were
+              given to continue. If you don't have a code, this isn't the page for you — head to{' '}
+              <a href="/" style={{ color: COLORS.regulatory }}>autopilotamerica.com</a> instead.
+            </p>
+            <form
+              onSubmit={handleGateSubmit}
+              style={{
+                backgroundColor: 'white',
+                padding: '28px',
+                borderRadius: '12px',
+                border: `1px solid ${COLORS.border}`,
+              }}
+            >
+              <Field label="Access code" required>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={form.accessCode}
+                  onChange={(e) => update('accessCode', e.target.value)}
+                  style={inputStyle}
+                  autoComplete="off"
+                  placeholder="e.g. AUTOPILOT-PARTNER-2026"
+                />
+              </Field>
+              {gateError && (
+                <div
+                  style={{
+                    marginTop: '8px',
+                    padding: '12px 16px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
+                    color: '#991b1b',
+                    fontSize: '14px',
+                  }}
+                >
+                  {gateError}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={gateLoading || !form.accessCode.trim()}
+                style={{
+                  marginTop: '16px',
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor:
+                    gateLoading || !form.accessCode.trim() ? COLORS.slate : COLORS.regulatory,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  cursor: gateLoading || !form.accessCode.trim() ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {gateLoading ? 'Checking…' : 'Continue'}
+              </button>
+            </form>
+          </div>
+        ) : !result ? (
           <>
             <h1
               style={{
@@ -231,9 +361,9 @@ export default function PartnersSignup() {
               Partner signup
             </h1>
             <p style={{ fontSize: '15px', color: COLORS.slate, lineHeight: 1.6, marginBottom: '24px' }}>
-              For approved partners only. Fill this out and you'll get full Autopilot access — automatic
-              ticket contesting, street-cleaning + snow alerts, and the mobile app — at no charge. No
-              credit card required. You'll get a sign-in link by email as soon as you submit.
+              Fill this out and you'll get full Autopilot access — automatic ticket contesting,
+              street-cleaning + snow alerts, and the mobile app — at no charge. No credit card
+              required. You'll get a sign-in link by email as soon as you submit.
             </p>
 
             <div
@@ -260,19 +390,9 @@ export default function PartnersSignup() {
                 border: `1px solid ${COLORS.border}`,
               }}
             >
-              {/* Access */}
-              <h2 style={sectionHeader}>1. Partner access</h2>
-              <Field label="Partner access code" required>
-                <input
-                  type="text"
-                  required
-                  value={form.accessCode}
-                  onChange={(e) => update('accessCode', e.target.value)}
-                  style={inputStyle}
-                  autoComplete="off"
-                />
-              </Field>
-              <Field label="Partner organization (optional)" hint="Helps us track which partner referred you.">
+              {/* Partner org */}
+              <h2 style={sectionHeader}>1. Partner organization (optional)</h2>
+              <Field label="Partner organization" hint="Who referred you? Helps us track partner activity.">
                 <input
                   type="text"
                   value={form.partnerOrg}

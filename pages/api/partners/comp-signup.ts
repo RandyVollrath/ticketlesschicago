@@ -286,6 +286,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Welcome email failed (non-blocking):', emailErr);
     }
 
+    // 6b) Admin notification email (best-effort)
+    try {
+      const adminTo = process.env.ADMIN_NOTIFICATION_EMAIL || 'ticketlessamerica@gmail.com';
+      await resend.emails.send({
+        from: 'Autopilot America <hello@autopilotamerica.com>',
+        to: adminTo,
+        subject: `🎫 New partner signup: ${firstName} ${lastName}${partnerOrg ? ` (${partnerOrg})` : ''}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="margin: 0 0 16px 0;">New partner comp signup</h2>
+            <p style="margin: 0 0 20px 0; color: #475569;">Someone just created a comp account at <a href="https://autopilotamerica.com/partners">/partners</a>.</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <tr><td style="padding: 6px 0; color: #64748b; width: 160px;">Name</td><td style="padding: 6px 0;"><strong>${firstName} ${lastName}</strong></td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;">Email</td><td style="padding: 6px 0;">${email}</td></tr>
+              ${phone ? `<tr><td style="padding: 6px 0; color: #64748b;">Phone</td><td style="padding: 6px 0;">${phone}</td></tr>` : ''}
+              ${partnerOrg ? `<tr><td style="padding: 6px 0; color: #64748b;">Partner org</td><td style="padding: 6px 0;">${partnerOrg}</td></tr>` : ''}
+              <tr><td style="padding: 6px 0; color: #64748b;">Access code</td><td style="padding: 6px 0;"><code>${matchedCode}</code></td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;">Plate</td><td style="padding: 6px 0;">${licensePlate} / ${licenseState}</td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;">Vehicle</td><td style="padding: 6px 0;">${[vehicleYear, vehicleColor, vehicleMake, vehicleModel].filter(Boolean).join(' ') || '—'}</td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;">Mailing</td><td style="padding: 6px 0;">${mailingAddress}, ${mailingCity}, ${mailingState} ${mailingZip}</td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;">Affiliate link</td><td style="padding: 6px 0;">${referralLink ? `<a href="${referralLink}">${referralLink}</a>` : '— (not requested)'}</td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;">New account?</td><td style="padding: 6px 0;">${createdAccount ? 'Yes — created' : 'No — upgraded existing'}</td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;">User ID</td><td style="padding: 6px 0;"><code>${authUser.id}</code></td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;">IP</td><td style="padding: 6px 0;">${ip}</td></tr>
+            </table>
+          </div>
+        `,
+      });
+    } catch (adminEmailErr) {
+      console.error('Admin notification email failed (non-blocking):', adminEmailErr);
+    }
+
     // 7) Audit log
     try {
       await (supabaseAdmin.from('audit_logs') as any).insert({
