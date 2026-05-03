@@ -48,20 +48,20 @@ const US_STATES = [
 // contested_tickets_foia. Verify with `npx tsx scripts/audit-win-rate-stats.ts`
 // before changing — never invent or estimate these numbers.
 const TICKET_TYPES = [
-  { key: 'expired_plates', label: 'Expired Plates', winRate: 76, defaultOn: true },
-  { key: 'no_city_sticker', label: 'No City Sticker', winRate: 72, defaultOn: true },
-  { key: 'expired_meter', label: 'Expired Meter', winRate: 67, defaultOn: true },
-  { key: 'disabled_zone', label: 'Disabled Zone', winRate: 68, defaultOn: true },
-  { key: 'no_standing_time_restricted', label: 'No Standing / Time Restricted', winRate: 59, defaultOn: true },
-  { key: 'parking_prohibited', label: 'Parking / Standing Prohibited', winRate: 57, defaultOn: true },
-  { key: 'residential_permit', label: 'Residential Permit Parking', winRate: 54, defaultOn: true },
-  { key: 'missing_plate', label: 'Missing / Noncompliant Plate', winRate: 56, defaultOn: true },
-  { key: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 61, defaultOn: true },
-  { key: 'fire_hydrant', label: 'Fire Hydrant', winRate: 46, defaultOn: false },
-  { key: 'street_cleaning', label: 'Street Cleaning', winRate: 34, defaultOn: true },
-  { key: 'bus_lane', label: 'Bus Lane / Smart Streets', winRate: 52, defaultOn: false },
-  { key: 'red_light', label: 'Red Light Camera', winRate: 21, defaultOn: true },
-  { key: 'speed_camera', label: 'Speed Camera', winRate: 19, defaultOn: true },
+  { key: 'expired_plates', label: 'Expired Plates' },
+  { key: 'no_city_sticker', label: 'No City Sticker' },
+  { key: 'expired_meter', label: 'Expired Meter' },
+  { key: 'disabled_zone', label: 'Disabled Zone' },
+  { key: 'no_standing_time_restricted', label: 'No Standing / Time Restricted' },
+  { key: 'parking_prohibited', label: 'Parking / Standing Prohibited' },
+  { key: 'residential_permit', label: 'Residential Permit Parking' },
+  { key: 'missing_plate', label: 'Missing / Noncompliant Plate' },
+  { key: 'commercial_loading', label: 'Commercial Loading Zone' },
+  { key: 'fire_hydrant', label: 'Fire Hydrant' },
+  { key: 'street_cleaning', label: 'Street Cleaning' },
+  { key: 'bus_lane', label: 'Bus Lane / Smart Streets' },
+  { key: 'red_light', label: 'Red Light Camera' },
+  { key: 'speed_camera', label: 'Speed Camera' },
 ];
 
 const STATE_KEY = 'start_funnel_state_v2';
@@ -117,7 +117,7 @@ export default function StartFunnel() {
   const [cityStickerExpiry, setCityStickerExpiry] = useState('');
   const [plateExpiry, setPlateExpiry] = useState('');
   const [selectedTicketTypes, setSelectedTicketTypes] = useState<string[]>(
-    TICKET_TYPES.filter(t => t.defaultOn).map(t => t.key)
+    TICKET_TYPES.map(t => t.key)
   );
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
@@ -463,12 +463,6 @@ export default function StartFunnel() {
       email_on_approval_needed: emailNotifications,
       phone_number: smsNotifications && phone.trim() ? phone.trim() : undefined,
     });
-  };
-
-  const toggleTicketType = (key: string) => {
-    setSelectedTicketTypes(prev =>
-      prev.includes(key) ? prev.filter(t => t !== key) : [...prev, key]
-    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, handler: () => void) => {
@@ -1040,39 +1034,42 @@ export default function StartFunnel() {
             </StepContainer>
           )}
 
-          {/* ── Step 8: Ticket Type Preferences ── */}
+          {/* ── Step 8: Ticket Types We Contest ── */}
           {step === 'tickets' && (
             <StepContainer>
-              <StepLabel>Which tickets should we contest?</StepLabel>
-              <StepSubtext>We&apos;ll automatically contest these ticket types when found. You can change this anytime in Settings.</StepSubtext>
+              <StepLabel>We contest {TICKET_TYPES.length} ticket types for you</StepLabel>
+              <StepSubtext>
+                If any of these show up on your plate, we draft, print, and mail the
+                contest letter automatically — no action needed from you.
+              </StepSubtext>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: '10px 16px',
+                padding: '16px 18px', borderRadius: 12,
+                border: `1px solid ${COLORS.border}`, backgroundColor: COLORS.card,
+                margin: '8px 0 14px',
+              }}>
                 {TICKET_TYPES.map((t) => (
-                  <label
-                    key={t.key}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '12px 16px', borderRadius: 10,
-                      border: `1px solid ${selectedTicketTypes.includes(t.key) ? COLORS.primary : COLORS.border}`,
-                      backgroundColor: selectedTicketTypes.includes(t.key) ? COLORS.primaryLight : COLORS.card,
-                      cursor: 'pointer', transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedTicketTypes.includes(t.key)}
-                      onChange={() => toggleTicketType(t.key)}
-                      style={{ width: 18, height: 18, accentColor: COLORS.primary, cursor: 'pointer', flexShrink: 0 }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: COLORS.text }}>{t.label}</span>
-                    </div>
-                    <span style={{ fontSize: 12, color: COLORS.success, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {t.winRate}% win
-                    </span>
-                  </label>
+                  <div key={t.key} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    fontSize: 13, color: COLORS.text, lineHeight: 1.3,
+                  }}>
+                    <span style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      backgroundColor: COLORS.success, flexShrink: 0,
+                    }} />
+                    <span>{t.label}</span>
+                  </div>
                 ))}
               </div>
+
+              <p style={{
+                fontSize: 12, color: COLORS.textMuted, margin: '0 0 12px',
+                textAlign: 'center',
+              }}>
+                Want to exclude any? You can turn types off anytime in Settings.
+              </p>
 
               <ContinueButton onClick={handleTicketsSubmit}>Continue</ContinueButton>
             </StepContainer>
