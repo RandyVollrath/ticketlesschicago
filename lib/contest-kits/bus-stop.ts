@@ -154,16 +154,19 @@ I respectfully request that this citation be dismissed.`,
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for parking in a bus stop.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged bus stop parking violation under Chicago Municipal Code § 9-64-050.
 
-I believe this citation was issued in error because:
 [USER_GROUNDS]
 
 [SUPPORTING_INFO]
 
-I request a hearing to present my case and ask that this citation be dismissed.
+1. PROOF OF DESIGNATED BUS STOP. Establishing this violation requires that the cited location was a properly posted, actively designated CTA bus stop at the time of citation. I request the following records: (a) the CTA stop designation and active service record for the cited location on [DATE], (b) the most recent sign maintenance / replacement record for bus stop signs within 100 feet of the cited location, and (c) any curb-marking maintenance record for the cited block face.
 
-Thank you for your consideration.`,
+2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request the issuing officer's contemporaneous field notes, the handheld citation device data with GPS coordinates and timestamp, and any photographs taken by the issuing officer at the time of citation showing the vehicle's position relative to the bus stop signage.
+
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that the cited location was a properly posted, active bus stop and that my vehicle was within its boundaries, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.15,
       supportingEvidence: [],

@@ -142,16 +142,21 @@ I respectfully request that this citation be dismissed.`,
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for a commercial loading zone violation.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged commercial loading zone violation under Chicago Municipal Code § 9-64-160.
 
-I believe this citation was issued in error because:
 [USER_GROUNDS]
 
 [SUPPORTING_INFO]
 
-I request a hearing to present my case and ask that this citation be dismissed.
+1. PROOF OF POSTED RESTRICTION AND PROHIBITED CONDUCT. Establishing this violation requires that the restriction was lawfully posted and in effect, and that the cited vehicle was not engaged in permitted loading activity. I request the following records: (a) the City's record of the posted loading-zone restriction (hours, vehicle type, exemptions) for the cited block, (b) the most recent sign maintenance / replacement record for loading zone signs within 100 feet of the cited location, and (c) the issuing officer's contemporaneous field notes describing the duration and conduct observed.
 
-Thank you for your consideration.`,
+2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request the handheld citation device data with GPS coordinates and timestamp, and any photographs taken by the issuing officer at the time of citation.
+
+3. LOADING / UNLOADING EXCEPTION. A vehicle briefly stopped to expeditiously load or unload passengers or property is generally permitted under 625 ILCS 5/11-1305.
+
+4. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that the restriction was posted and in effect and that the cited vehicle was not actively loading or unloading, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.40,
       supportingEvidence: [],

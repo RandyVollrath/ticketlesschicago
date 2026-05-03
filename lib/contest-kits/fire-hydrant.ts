@@ -148,16 +148,19 @@ I believe there was an error in the officer's measurement or estimation of dista
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for parking near a fire hydrant.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged fire hydrant violation under Chicago Municipal Code § 9-64-130.
 
-I believe this citation was issued in error because:
 [USER_GROUNDS]
 
 [SUPPORTING_INFO]
 
-I request a hearing to present my case and ask that this citation be dismissed.
+1. PROOF OF DISTANCE. Establishing this violation requires that the cited vehicle was within 15 feet of a fire hydrant. I request the following records: (a) the issuing officer's contemporaneous field notes, including how distance was measured or estimated, (b) the handheld citation device data with GPS coordinates and timestamp, and (c) any photographs taken by the issuing officer at the time of citation showing the vehicle's position relative to the hydrant.
 
-Thank you for your consideration.`,
+2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance.
+
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that the cited vehicle was in fact within 15 feet of an unobstructed, visible hydrant, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.30,
       supportingEvidence: [],

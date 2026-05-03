@@ -49,6 +49,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { lookupPlateOnPortal, LookupResult, PortalTicket } from '../lib/chicago-portal-scraper';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../lib/contest-kits/evidence-guidance';
 import { isLetterMailable } from '../lib/contest-letter-validator';
+import { DEFENSE_TEMPLATES } from '../lib/contest-templates';
 import { chromium, Browser } from 'playwright';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -146,94 +147,6 @@ function mapViolationType(description: string): string {
   return 'other_unknown';
 }
 
-// ─── Defense templates ───────────────────────────────────────────────────────
-
-const DEFENSE_TEMPLATES: Record<string, { type: string; template: string }> = {
-  expired_plates: {
-    type: 'registration_challenge',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly expired registration.
-
-I respectfully request that this citation be DISMISSED for the following reasons:
-
-1. BURDEN OF PROOF: Under Illinois law, the City bears the burden of proving the violation occurred. I request the City provide documentation showing the officer verified the registration status through the Illinois Secretary of State database at the time of citation.
-
-2. PROCEDURAL REQUIREMENTS: Chicago Municipal Code Section 9-100-050 requires that parking violations be properly documented. I request copies of any photographs or documentation taken at the time of the alleged violation.
-
-3. REGISTRATION VERIFICATION: Vehicle registration status can change rapidly due to online renewals, grace periods, and processing delays. Without verification through official state records at the exact time of citation, the violation cannot be conclusively established.
-
-I request that this ticket be dismissed. If the City cannot provide adequate documentation supporting this citation, dismissal is the appropriate remedy.`,
-  },
-  no_city_sticker: {
-    type: 'sticker_challenge',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly lacking a Chicago city vehicle sticker.
-
-I respectfully request that this citation be DISMISSED for the following reasons:
-
-1. EXEMPTION VERIFICATION: Under Chicago Municipal Code § 9-64-125(b) and § 9-100-060(a)(7), several exemptions to the wheel tax obligation exist (out-of-state residents, brand-new vehicles within the grace period, business-fleet exemptions). The issuing officer cannot determine exemption status by visual inspection alone.
-
-2. BURDEN OF PROOF: The City must prove that the vehicle was required to display a city sticker AND that no valid sticker existed.
-
-3. TIMING CONSIDERATIONS: City sticker purchases may not immediately appear in City systems.
-
-I request that this ticket be dismissed.`,
-  },
-  expired_meter: {
-    type: 'meter_challenge',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for an allegedly expired parking meter.
-
-I respectfully request that this citation be DISMISSED for the following reasons:
-
-1. METER FUNCTIONALITY: Chicago parking meters are known to malfunction. I request maintenance records for this meter.
-
-2. PAYMENT VERIFICATION: If payment was made via the ParkChicago app, there may be a discrepancy.
-
-3. SIGNAGE REQUIREMENTS: Metered parking zones must have clear signage indicating hours and rates.
-
-I request that this ticket be dismissed.`,
-  },
-  street_cleaning: {
-    type: 'signage_challenge',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
-
-I respectfully request that this citation be DISMISSED for the following reasons:
-
-1. SIGNAGE REQUIREMENTS: Street cleaning restrictions must be posted with visible, legible, and accurate signs.
-
-2. SCHEDULE VERIFICATION: I request documentation that street cleaning actually occurred on this date.
-
-3. WEATHER CANCELLATION: Street cleaning is often cancelled due to weather conditions.
-
-I request that this ticket be dismissed.`,
-  },
-  fire_hydrant: {
-    type: 'distance_challenge',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date} for allegedly parking too close to a fire hydrant.
-
-I respectfully request that this citation be DISMISSED for the following reasons:
-
-1. DISTANCE MEASUREMENT: Illinois law requires vehicles to park at least 15 feet from a fire hydrant. I request documentation of how the distance was measured.
-
-2. PHOTOGRAPHIC EVIDENCE: I request any photographs taken at the time of citation.
-
-3. HYDRANT VISIBILITY: If the hydrant was obscured, I could not have reasonably known of its location.
-
-I request that this ticket be dismissed.`,
-  },
-  other_unknown: {
-    type: 'general_challenge',
-    template: `I am writing to formally contest parking ticket #{ticket_number} issued on {violation_date}.
-
-I respectfully request that this citation be DISMISSED for the following reasons:
-
-1. BURDEN OF PROOF: The City bears the burden of proving the alleged violation occurred.
-
-2. PROCEDURAL REQUIREMENTS: Parking violations must be properly documented at the time of citation.
-
-3. EVIDENCE REQUEST: I request copies of any photographs taken, officer notes, and all documentation related to this citation.
-
-I request that this ticket be dismissed.`,
-  },
-};
 
 // ─── Utility functions ───────────────────────────────────────────────────────
 

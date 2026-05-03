@@ -182,16 +182,19 @@ I respectfully request that this citation be dismissed based on my non-resident 
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] for violation of Chicago Municipal Code Section 9-100-010 (City Vehicle Sticker).
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] for an alleged violation of Chicago Municipal Code § 9-64-125(b) (City Vehicle Sticker).
 
-I believe this citation was issued in error for the following reason:
 [USER_GROUNDS]
 
 [SUPPORTING_INFO]
 
-I request the opportunity to present my case and respectfully ask that this citation be dismissed or reduced.
+1. PROOF OF NON-DISPLAY AT MOMENT OF CITATION. Establishing this violation requires that no valid city sticker was displayed at the time the citation was issued. I request the following records: (a) the issuing officer's contemporaneous field notes describing the windshield inspection, (b) the handheld citation device data with GPS coordinates and timestamp, and (c) any photographs taken by the issuing officer of the windshield at the time of citation.
 
-Thank you for your consideration.`,
+2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance.
+
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that no valid sticker was displayed at the moment of citation, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date'],
       winRate: 0.50, // Even generic contests do well for stickers
       supportingEvidence: [],

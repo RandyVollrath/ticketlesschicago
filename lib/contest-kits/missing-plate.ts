@@ -138,16 +138,19 @@ The obstruction was not intentional and has been corrected. I respectfully reque
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] for a license plate violation.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] for an alleged missing or noncompliant license plate violation under Chicago Municipal Code § 9-80-040.
 
-I believe this citation was issued in error because:
 [USER_GROUNDS]
 
 [SUPPORTING_INFO]
 
-I request a hearing to present my case and ask that this citation be dismissed.
+1. PROOF OF NONCOMPLIANCE AT MOMENT OF CITATION. Establishing this violation requires that the plate was in fact missing, obscured, or noncompliant at the moment of citation. I request the issuing officer's contemporaneous field notes describing the specific defect observed, the handheld citation device data with GPS coordinates and timestamp, and any photographs taken by the issuing officer of the plate(s) at the time of citation.
 
-Thank you for your consideration.`,
+2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance.
+
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot produce a photograph or contemporaneous record establishing the alleged defect at the moment of citation, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date'],
       winRate: 0.35,
       supportingEvidence: [],

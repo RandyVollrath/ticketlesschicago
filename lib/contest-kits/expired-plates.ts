@@ -154,16 +154,15 @@ I respectfully request that this citation be dismissed or reduced.`,
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] for expired registration/plates.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] for allegedly expired vehicle registration.
 
-I believe this citation was issued in error because:
-[USER_GROUNDS]
+1. CONTEMPORANEOUS VERIFICATION REQUIRED. The City must establish that the vehicle's registration was in fact expired at the moment of citation. I request: (a) the issuing officer's contemporaneous record of how registration status was verified at the time of citation, and (b) an Illinois Secretary of State registration-status query result for this license plate at the violation date. Online renewals, processing delays, and the IL Secretary of State grace period routinely cause apparent expirations that are not actual violations.
 
-[SUPPORTING_INFO]
+2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request copies of any photographs, handheld device data, and field notes recorded for this citation.
 
-I request a hearing to present my case and ask that this citation be dismissed.
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
 
-Thank you for your consideration.`,
+If the City cannot produce documentation that establishes expired registration at the moment of citation, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date'],
       winRate: 0.50,
       supportingEvidence: [],

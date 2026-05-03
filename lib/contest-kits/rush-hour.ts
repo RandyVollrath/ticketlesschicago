@@ -170,18 +170,17 @@ Without proper signage, I had no reasonable way to know that rush hour parking r
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for a rush hour parking violation.
-
-I request that the City provide evidence establishing:
-1. The exact time the violation was observed
-2. That proper rush hour restriction signage was posted and visible at the location
-3. That the restriction was in effect on this date (not a weekend or city holiday)
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged rush hour parking violation under Chicago Municipal Code § 9-64-190.
 
 [WEATHER_CONTEXT]
 
-I request a hearing to present my case and ask that this citation be dismissed.
+1. PROOF OF POSTED RESTRICTION AND EFFECTIVE WINDOW. Establishing this violation requires that a rush hour restriction was lawfully posted at the cited location and in effect at the moment of citation. Rush hour restrictions apply only on weekdays and are suspended on official City of Chicago holidays. I request the following records: (a) the City's record of the posted rush hour restriction (hours, days) for the cited block, (b) the most recent sign maintenance / replacement record for rush hour signs within 100 feet of the cited location, and (c) confirmation that [DATE] was a weekday on which the restriction was in effect.
 
-Thank you for your consideration.`,
+2. PROOF OF NOTICE AND TIMING. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request the issuing officer's contemporaneous field notes, the handheld citation device data with GPS coordinates and timestamp, and any photographs taken by the issuing officer at the time of citation.
+
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that the restriction was posted, in effect on [DATE], and violated by my vehicle within the posted window, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.15,
       supportingEvidence: [],

@@ -54,6 +54,7 @@ export { doubleParkingKit } from './double-parking';
 export { commercialLoadingKit } from './commercial-loading';
 export { missingPlateKit } from './missing-plate';
 export { busLaneKit } from './bus-lane';
+export { parkingProhibitedKit } from './parking-prohibited';
 
 // Kit exports - Time/weather-based restrictions
 export { rushHourKit } from './rush-hour';
@@ -80,6 +81,7 @@ import { doubleParkingKit } from './double-parking';
 import { commercialLoadingKit } from './commercial-loading';
 import { missingPlateKit } from './missing-plate';
 import { busLaneKit } from './bus-lane';
+import { parkingProhibitedKit } from './parking-prohibited';
 import { rushHourKit } from './rush-hour';
 import { winterParkingBanKit } from './winter-parking-ban';
 import { redLightKit } from './red-light';
@@ -119,6 +121,9 @@ export const CONTEST_KITS: Record<string, ContestKit> = {
   '9-12-060': busLaneKit,
   '9-12-060(b)': busLaneKit, // Subsection alias
 
+  // Prohibited-area parking (broad family — signs, tow zones, temp restrictions)
+  '9-64-040': parkingProhibitedKit,
+
   // Camera enforcement
   '9-102-010': redLightKit,
   '9-102-020': speedCameraKit,
@@ -146,7 +151,7 @@ export const VIOLATION_NAME_TO_CODE: Record<string, string> = {
   'double_parking': '9-64-110',
   'commercial_loading': '9-64-160',
   'missing_plate': '9-80-040',
-  'parking_prohibited': '9-64-140', // Same as no standing
+  'parking_prohibited': '9-64-040', // Dedicated kit for posted no-parking / tow / temp-restriction zones
   'bus_lane': '9-12-060',
   'rush_hour': '9-64-190',
   'winter_parking_ban': '9-64-081',
