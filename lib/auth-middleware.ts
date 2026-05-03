@@ -7,7 +7,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 /**
  * Timing-safe string comparison to prevent timing attacks on secrets.
