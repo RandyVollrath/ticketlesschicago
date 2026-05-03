@@ -784,6 +784,89 @@ export type Database = {
         }
         Relationships: []
       }
+      city_payment_queue: {
+        Row: {
+          amount_cents: number
+          attempts: number
+          city_payment_reference: string | null
+          city_response_payload: Json | null
+          contest_letter_id: string
+          created_at: string
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          paid_at: string | null
+          plate: string
+          refund_reason: string | null
+          refunded_at: string | null
+          state: string
+          status: string
+          stripe_payment_intent_id: string
+          ticket_id: string
+          ticket_number: string
+          updated_at: string
+          user_id: string
+          worker_claimed_at: string | null
+          worker_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          attempts?: number
+          city_payment_reference?: string | null
+          city_response_payload?: Json | null
+          contest_letter_id: string
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          paid_at?: string | null
+          plate: string
+          refund_reason?: string | null
+          refunded_at?: string | null
+          state?: string
+          status?: string
+          stripe_payment_intent_id: string
+          ticket_id: string
+          ticket_number: string
+          updated_at?: string
+          user_id: string
+          worker_claimed_at?: string | null
+          worker_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          attempts?: number
+          city_payment_reference?: string | null
+          city_response_payload?: Json | null
+          contest_letter_id?: string
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          paid_at?: string | null
+          plate?: string
+          refund_reason?: string | null
+          refunded_at?: string | null
+          state?: string
+          status?: string
+          stripe_payment_intent_id?: string
+          ticket_id?: string
+          ticket_number?: string
+          updated_at?: string
+          user_id?: string
+          worker_claimed_at?: string | null
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_payment_queue_contest_letter_id_fkey"
+            columns: ["contest_letter_id"]
+            isOneToOne: false
+            referencedRelation: "contest_letters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       city_sticker_receipts: {
         Row: {
           created_at: string
@@ -3816,6 +3899,42 @@ export type Database = {
           synced_at?: string | null
           total_imported?: number | null
           total_spaces?: number | null
+        }
+        Relationships: []
+      }
+      mobile_ground_truth_events: {
+        Row: {
+          created_at: string
+          drive_session_id: string | null
+          event_ts: string
+          event_type: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          drive_session_id?: string | null
+          event_ts: string
+          event_type: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          drive_session_id?: string | null
+          event_ts?: string
+          event_type?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          metadata?: Json | null
+          user_id?: string
         }
         Relationships: []
       }
