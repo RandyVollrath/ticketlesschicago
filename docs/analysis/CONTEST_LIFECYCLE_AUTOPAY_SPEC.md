@@ -108,6 +108,16 @@ Suggested modes:
 4. Persist submission receipts
 5. Emit normalized lifecycle events from portal / AHMS trackers
 6. Add autopay executor scaffolding
+7. **NOT YET BUILT — Actual city payment execution.** The executor cron
+   currently evaluates eligibility, updates `autopay_status`, and emails an
+   operator alert that says "execution_not_implemented." It does not charge
+   the user's stored card, does not call the City of Chicago payment portal,
+   and does not transition the letter to `paid`. To complete the user
+   promise ("we pay automatically if you opted in"), this step needs:
+   a Stripe `paymentIntents.create` against the resolved payment method,
+   a portal-side payment submission (or hand-off to the existing payment
+   flow), idempotent reconciliation against `paid_at`, and rollback handling
+   if either side fails.
 
 ### Current Code Anchors
 
