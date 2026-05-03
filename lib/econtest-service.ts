@@ -30,6 +30,8 @@ export interface EContestSubmissionParams {
   evidenceFiles?: string[];
   /** For logging */
   letterId?: string;
+  /** Stop on the evidence page before final submit for operator review */
+  stopBeforeSubmit?: boolean;
 }
 
 export interface EContestResult {
@@ -48,6 +50,18 @@ export interface EContestResult {
   contestMethod?: string;
   /** Screenshot path for debugging (only on failure) */
   screenshotPath?: string;
+  /** True when we reached a pre-submit review checkpoint */
+  previewReady?: boolean;
+  /** Structured data captured at the preview checkpoint */
+  previewPayload?: {
+    url: string;
+    visibleButtons: Array<{ tag: string; type: string; name: string; id: string; value: string; text?: string }>;
+    fileInputs: Array<{ name: string; id: string; accept: string }>;
+    textareas: Array<{ name: string; id: string; maxLength: number; placeholder: string }>;
+    uploadedCount: number;
+    requestedEvidenceCount: number;
+    defenseTextLength: number;
+  };
 }
 
 /**
@@ -56,7 +70,7 @@ export interface EContestResult {
  * Caller should fall back to Lob mail if this fails.
  */
 export async function submitEContest(params: EContestSubmissionParams): Promise<EContestResult> {
-  const { ticketNumber, defenseText, evidenceFiles, letterId } = params;
+  const { ticketNumber, defenseText, evidenceFiles, letterId, stopBeforeSubmit } = params;
   const logPrefix = `[eContest ${ticketNumber}${letterId ? ` letter=${letterId}` : ''}]`;
 
   let browser: Browser | null = null;
@@ -141,9 +155,26 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
     if (hasMethodSelect) {
       console.log(`${logPrefix} Found method select with options: ${hasMethodSelect.options.join(', ')}`);
       const selSelector = hasMethodSelect.id ? `#${hasMethodSelect.id}` : `select[name="${hasMethodSelect.name}"]`;
-      // Prefer "Correspondence" — that's the mail-in equivalent
+      // Only pick "Correspondence". Per the City's own Terms-and-Conditions
+      // text on the post-Continue page, the four method options mean:
+      //   - Correspondence       — submit evidence online, decision arrives
+      //                            by U.S. mail. NO HEARING. This is the only
+      //                            method we can actually automate.
+      //   - Online Hearing       — book an in-person hearing online. Our user
+      //                            still has to show up at City Hall.
+      //   - In-Person Hearing    — same; show up.
+      //   - Virtual In-Person    — show up to a video hearing on a date the
+      //                            City picks.
+      // If "Correspondence" isn't offered (e.g. street-cleaning May 2026 ticket
+      // — only Online/In-Person/Virtual In-Person were listed), we deliberately
+      // do nothing here. The upstream caller will see no submission and fall
+      // back to Lob, which mails the letter to P.O. Box 88292 — that IS the
+      // Correspondence channel by other means.
       if (hasMethodSelect.options.includes('Correspondence')) {
         await page.selectOption(selSelector, 'Correspondence');
+        console.log(`${logPrefix} Selected method: Correspondence`);
+      } else {
+        console.log(`${logPrefix} Correspondence not offered (options: ${hasMethodSelect.options.filter(o => o && o.trim()).join(', ')}); will fall back to Lob mail (P.O. Box 88292).`);
       }
     }
 
@@ -183,7 +214,7 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
     const evidenceText = await page.evaluate(() => document.body.innerText);
     console.log(`${logPrefix} Evidence page URL: ${evidenceUrl}`);
 
-    if (!evidenceFiles || evidenceFiles.length === 0) {
+    if ((!evidenceFiles || evidenceFiles.length === 0) && !stopBeforeSubmit) {
       const screenshotPath = `/tmp/econtest-error-${ticketNumber}-${Date.now()}.png`;
       await page.screenshot({ path: screenshotPath, fullPage: true });
       await browser.close();
@@ -219,7 +250,7 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
     });
     console.log(`${logPrefix} Textareas found: ${JSON.stringify(textareas)}`);
 
-    if (fileInputs.length === 0) {
+    if (fileInputs.length === 0 && !stopBeforeSubmit) {
       const screenshotPath = `/tmp/econtest-error-${ticketNumber}-${Date.now()}.png`;
       await page.screenshot({ path: screenshotPath, fullPage: true });
       await browser.close();
@@ -235,12 +266,12 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
 
     // Upload the full packet and fail closed if it cannot be attached.
     let uploadedCount = 0;
-    for (let i = 0; i < Math.min(fileInputs.length, evidenceFiles.length); i++) {
+    for (let i = 0; i < Math.min(fileInputs.length, evidenceFiles?.length || 0); i++) {
       const selector = fileInputs[i].id ? `#${fileInputs[i].id}` : `input[name="${fileInputs[i].name}"]`;
       try {
-        await page.setInputFiles(selector, evidenceFiles[i]);
+        await page.setInputFiles(selector, evidenceFiles![i]);
         uploadedCount++;
-        console.log(`${logPrefix} Uploaded evidence file ${i + 1}: ${evidenceFiles[i]}`);
+        console.log(`${logPrefix} Uploaded evidence file ${i + 1}: ${evidenceFiles![i]}`);
       } catch (err: any) {
         const screenshotPath = `/tmp/econtest-error-${ticketNumber}-${Date.now()}.png`;
         await page.screenshot({ path: screenshotPath, fullPage: true });
@@ -256,7 +287,7 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
       }
     }
 
-    if (uploadedCount < evidenceFiles.length) {
+    if (!stopBeforeSubmit && evidenceFiles && uploadedCount < evidenceFiles.length) {
       const screenshotPath = `/tmp/econtest-error-${ticketNumber}-${Date.now()}.png`;
       await page.screenshot({ path: screenshotPath, fullPage: true });
       await browser.close();
@@ -297,6 +328,30 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
         }));
     });
     console.log(`${logPrefix} Visible buttons: ${JSON.stringify(visibleElements)}`);
+
+    if (stopBeforeSubmit) {
+      const screenshotPath = `/tmp/econtest-preview-${ticketNumber}-${Date.now()}.png`;
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      console.log(`${logPrefix} Preview checkpoint reached. Screenshot: ${screenshotPath}`);
+      await browser.close();
+      return {
+        success: true,
+        step: 'evidence',
+        eligible: true,
+        contestMethod: contestMethod || 'Correspondence',
+        screenshotPath,
+        previewReady: true,
+        previewPayload: {
+          url: evidenceUrl,
+          visibleButtons: visibleElements,
+          fileInputs,
+          textareas,
+          uploadedCount,
+          requestedEvidenceCount: evidenceFiles?.length || 0,
+          defenseTextLength: defenseText.length,
+        },
+      };
+    }
 
     // Find the submit/contest button
     const submitBtn = await page.$('input[type="submit"][value*="Submit"], input[type="submit"][value*="Contest"], input[type="submit"][name="continue"], button[type="submit"]');
