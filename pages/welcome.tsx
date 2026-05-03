@@ -207,12 +207,25 @@ export default function Welcome() {
               One more thing
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.text, marginBottom: 8, lineHeight: 1.25 }}>
-              Install the mobile app for live car-location alerts
+              Get protected wherever you park, not just at home
             </h2>
-            <p style={{ fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.55, marginBottom: 16 }}>
-              When you download the mobile app, we&apos;ll detect where you&apos;ve parked
-              and alert you before your car is at risk of getting ticketed — wherever you
-              park, not just at your home address.
+            <p style={{ fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.55, marginBottom: 12 }}>
+              You&apos;re already covered for street cleaning at your home address. Install the
+              mobile app and that protection follows you to every block in the city:
+            </p>
+            <ul style={{ fontSize: 14, color: COLORS.textSecondary, lineHeight: 1.55, marginBottom: 16, paddingLeft: 20 }}>
+              <li style={{ marginBottom: 6 }}>
+                <strong>Auto-detects where you parked</strong>, then checks that exact spot for street cleaning, snow bans, and permit zones
+              </li>
+              <li style={{ marginBottom: 6 }}>
+                <strong>Meter alerts</strong> — know the moment you&apos;re in a paid zone, plus a warning before your time runs out
+              </li>
+              <li style={{ marginBottom: 6 }}>
+                <strong>Red-light and speed camera alerts</strong> as you drive
+              </li>
+            </ul>
+            <p style={{ fontSize: 14, color: COLORS.text, fontWeight: 600, lineHeight: 1.55, marginBottom: 16 }}>
+              Most tickets don&apos;t happen at home — this is how you actually avoid them.
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <a
