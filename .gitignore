@@ -95,6 +95,8 @@ qa-auth-failure.png
 /setup-*.ts
 /reclassify-*.js
 /reclassify-*.ts
+/jesse-*.js
+/jesse-*.ts
 
 # Local analysis log dump
 /logs/
