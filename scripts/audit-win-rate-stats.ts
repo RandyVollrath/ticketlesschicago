@@ -6,6 +6,7 @@
  * Surfaces checked:
  *   - pages/start.tsx           (TICKET_TYPES.winRate)
  *   - pages/settings.tsx        (TICKET_TYPES.winRate)
+ *   - TicketlessChicagoMobile/src/screens/NativeAlertsScreen.tsx (mobile)
  *   - lib/contest-kits/evidence-guidance.ts  (EVIDENCE_GUIDANCE[].winRate)
  *
  * Truth source — one of:
@@ -214,6 +215,9 @@ async function main() {
   const claims: Claim[] = [
     ...parseTicketTypesWinRates(path.join(root, 'pages/start.tsx')),
     ...parseTicketTypesWinRates(path.join(root, 'pages/settings.tsx')),
+    ...parseTicketTypesWinRates(
+      path.join(root, 'TicketlessChicagoMobile/src/screens/NativeAlertsScreen.tsx'),
+    ),
     ...parseEvidenceGuidance(path.join(root, 'lib/contest-kits/evidence-guidance.ts')),
   ];
 

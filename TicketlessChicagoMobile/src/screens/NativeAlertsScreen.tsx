@@ -46,21 +46,26 @@ const US_STATES = [
   { code: 'WV', name: 'West Virginia' }, { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' },
 ];
 
+// Win rates from City of Chicago Administrative Hearings (FOIA): Not Liable /
+// (Not Liable + Liable), decided cases only. Numbers must stay within ±2pp of
+// FOIA truth — verify with `npx tsx scripts/audit-win-rate-stats.ts` before
+// changing. Never invent or estimate these. (other_unknown has no FOIA bucket
+// — value matches the contest-kit guidance default.)
 const TICKET_TYPES = [
-  { id: 'expired_plates', label: 'Expired Plates', winRate: 75 },
-  { id: 'no_city_sticker', label: 'No City Sticker', winRate: 70 },
-  { id: 'expired_meter', label: 'Expired Meter', winRate: 45 },
-  { id: 'no_standing_time_restricted', label: 'No Standing/Time Restricted', winRate: 40 },
-  { id: 'parking_prohibited', label: 'Parking Prohibited', winRate: 35 },
-  { id: 'street_cleaning', label: 'Street Cleaning', winRate: 55 },
-  { id: 'residential_permit', label: 'Residential Permit', winRate: 50 },
-  { id: 'snow_route', label: 'Snow Route', winRate: 30 },
-  { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 15 },
-  { id: 'disabled_zone', label: 'Disabled Zone', winRate: 60 },
-  { id: 'double_parking', label: 'Double Parking', winRate: 20 },
-  { id: 'missing_plate', label: 'Missing/Obscured Plate', winRate: 65 },
-  { id: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 40 },
-  { id: 'other_unknown', label: 'Other / Unknown', winRate: 25 },
+  { id: 'expired_plates', label: 'Expired Plates', winRate: 76 },
+  { id: 'no_city_sticker', label: 'No City Sticker', winRate: 72 },
+  { id: 'expired_meter', label: 'Expired Meter', winRate: 67 },
+  { id: 'no_standing_time_restricted', label: 'No Standing/Time Restricted', winRate: 59 },
+  { id: 'parking_prohibited', label: 'Parking Prohibited', winRate: 57 },
+  { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
+  { id: 'residential_permit', label: 'Residential Permit', winRate: 54 },
+  { id: 'snow_route', label: 'Snow Route', winRate: 38 },
+  { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 46 },
+  { id: 'disabled_zone', label: 'Disabled Zone', winRate: 68 },
+  { id: 'double_parking', label: 'Double Parking', winRate: 71 },
+  { id: 'missing_plate', label: 'Missing/Obscured Plate', winRate: 56 },
+  { id: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 61 },
+  { id: 'other_unknown', label: 'Other / Unknown', winRate: 40 },
 ];
 
 const NOTIFICATION_DAYS = [30, 14, 7, 3, 1, 0];
@@ -1176,6 +1181,11 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           )}
 
           <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Ticket types to auto-contest</Text>
+          <Text style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 10, lineHeight: 16 }}>
+            Percentages show the historical dismissal rate when contested.
+            {'\n'}
+            Source: City of Chicago Administrative Hearings (FOIA, 2018–2025).
+          </Text>
           {TICKET_TYPES.map(type => {
             const isChecked = allowedTicketTypes.includes(type.id);
             return (
