@@ -1,7 +1,7 @@
 /**
  * Bus Stop Parking Contest Kit (9-64-050)
  *
- * Win Rate: 59% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 57% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Primary defenses: No signage, faded markings, vehicle disabled
  */
 

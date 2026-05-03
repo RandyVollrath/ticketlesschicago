@@ -1,7 +1,7 @@
 /**
  * Double Parking Contest Kit (9-64-110)
  *
- * Win Rate: ~55% overall FOIA average; individual defenses range 30-35%
+ * Win Rate: 70% (FOIA, 2023–2025 trailing, all decided contest methods); individual defenses range 30-35%
  * Primary defenses: Active loading, emergency, vehicle disabled
  */
 

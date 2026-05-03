@@ -3,30 +3,31 @@
  *
  * Central export point for all contest kits and the policy engine.
  *
- * Win rates from FOIA data (1.18M records, decided cases, all contest methods):
- * - Expired Plates: 76%
- * - Double Parking: 72%
- * - City Sticker: 72%
- * - Parking in Alley: 71%
- * - Handicapped Zone: 69%
- * - Expired Meter (CBD): 68%
- * - Expired Meter (non-CBD): 67%
- * - Commercial Loading: 60%
- * - Bus/Taxi Stand: 59%
+ * Win rates from FOIA Administrative Hearings data — Not Liable / (Not Liable
+ * + Liable), 2023–2025 trailing, all decided contest methods (Mail +
+ * In-Person + Virtual In-Person). Verified against
+ * `npx tsx scripts/audit-win-rate-stats.ts`. ±2pp tolerance enforced.
+ * - Expired Plates: 89%
+ * - City Sticker: 86%
+ * - Disabled / Handicapped Zone: 71%
+ * - Double Parking: 70%
+ * - Expired Meter: 68%
+ * - Parking in Alley: 66%
+ * - Commercial Loading: 61%
  * - No Standing/Time Restricted: 59%
- * - No Parking Anytime: 57%
- * - Bus Lane: 56%
- * - Missing Plate: 55%
+ * - Bus/Taxi Stand: 57%
+ * - Parking Prohibited (No Parking Anytime): 55%
+ * - Missing Plate: 54%
  * - Residential Permit: 54%
- * - Bike Lane: 50%
- * - Fire Hydrant: 46%
- * - Rush Hour: 38%
- * - Snow Route: 38%
- * - Street Cleaning: 34%
- * - Red Light Camera: 21%
- * - Speed Camera (11+ over): 20%
- * - Speed Camera (6-10 over): 17%
- * - Overall: 55%
+ * - Bike Lane: 47%
+ * - Bus Lane: 44%
+ * - Fire Hydrant: 40%
+ * - Snow Route: 38% (longer window — 2023–2025 sample too sparse)
+ * - Rush Hour: 38% (longer window)
+ * - Red Light Camera: 32%
+ * - Street Cleaning: 32%
+ * - Speed Camera: 24%
+ * - Headline mail-only (what Autopilot does): 59%
  */
 
 // Type exports

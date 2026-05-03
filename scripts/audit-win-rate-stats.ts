@@ -84,16 +84,28 @@ const FOIA_TERMS: Record<string, string> = {
 
 type Counts = { nl: number; l: number };
 
-// SQLite: one grouped scan over `hearings`, then pattern-match in JS.
-// ~0.6s on 1.2M rows; no flake, no retries needed.
+// SQLite: one grouped scan over `hearings` filtered to the 2023-2025
+// trailing window, then pattern-match in JS. ~0.6s on 1.2M rows.
+//
+// Methodology lock-in (2026-05-03): we use 2023-2025 trailing, ALL contest
+// methods (Mail + In-Person + Virtual In-Person). This represents the
+// historical population-level dismissal rate when contested by any method
+// — the right citation for marketing copy like "expired plates are
+// dismissed 88% of the time when contested." Year filter avoids the 2021
+// post-pandemic backlog dip and 17 years of stale older data; method blend
+// reflects FOIA hearing data as a whole. The product-specific rate (mail
+// only) is separately tracked at 59% in the marketing-numbers memory file.
 function countsFromSqlite(): Map<string, Counts> {
   const tsv = execFileSync(
     'sqlite3',
     [
       FOIA_SQLITE_PATH,
       "SELECT violation_desc || char(9) || disposition || char(9) || COUNT(*) " +
-        "FROM hearings " +
+        'FROM hearings ' +
         "WHERE disposition IN ('Liable', 'Not Liable') " +
+        // Year extracted from the M/D/YYYY date string. Filter to the
+        // 2023-2025 trailing 3-year window.
+        "AND CAST(substr(issue_datetime, instr(issue_datetime, '/')+1+instr(substr(issue_datetime, instr(issue_datetime,'/')+1), '/'), 4) AS INTEGER) BETWEEN 2023 AND 2025 " +
         'GROUP BY violation_desc, disposition;',
     ],
     { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },

@@ -1,7 +1,7 @@
 /**
  * Handicapped Zone Parking Contest Kit (9-64-180)
  *
- * Win Rate: 69% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 71% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Primary defenses: Valid placard displayed, no signage, emergency
  * Note: High fine ($350) - worth contesting
  */

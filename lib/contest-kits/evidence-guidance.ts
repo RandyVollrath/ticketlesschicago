@@ -46,10 +46,10 @@ export interface EvidenceQuestion {
 export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
   expired_plates: {
     violationType: 'expired_plates',
-    emailSubject: 'Expired Plates Ticket - 76% Win Rate - We Need Your Renewal Info!',
+    emailSubject: 'Expired Plates Ticket - 89% Win Rate - We Need Your Renewal Info!',
     title: 'Your Expired Plates Ticket Has Great Odds!',
-    winRate: 0.76,
-    intro: `Great news - expired plates tickets have a 76% success rate when contested with the right evidence. The key is proving you either renewed on time or renewed promptly after. Let's get the evidence that wins.`,
+    winRate: 0.89,
+    intro: `Great news - expired plates tickets have an 89% success rate when contested with the right evidence. The key is proving you either renewed on time or renewed promptly after. Let's get the evidence that wins.`,
     questions: [
       {
         text: 'Did you renew your registration BEFORE or within a few days AFTER the ticket date? Please send a screenshot of your renewal confirmation email or receipt showing the exact renewal date.',
@@ -84,10 +84,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   no_city_sticker: {
     violationType: 'no_city_sticker',
-    emailSubject: 'City Sticker Ticket ($200) - 72% Win Rate - Action Required!',
-    title: 'Your City Sticker Ticket — 72% Win Rate With the Right Defense!',
-    winRate: 0.72,
-    intro: `City sticker tickets have a 72% success rate when properly contested. The key: you must select one of the legally codified defenses under Chicago Municipal Code § 9-100-060 — without one, you automatically lose (this accounts for 13.6% of all city sticker losses). We select the right defense for you. If you already have a sticker, send us the receipt. If you don't, read on — buying one now and using the right legal defense can still save you the $200 fine.`,
+    emailSubject: 'City Sticker Ticket ($200) - 86% Win Rate - Action Required!',
+    title: 'Your City Sticker Ticket — 86% Win Rate With the Right Defense!',
+    winRate: 0.86,
+    intro: `City sticker tickets have an 86% success rate when properly contested. The key: you must select one of the legally codified defenses under Chicago Municipal Code § 9-100-060 — without one, you automatically lose (this accounts for 13.6% of all city sticker losses). We select the right defense for you. If you already have a sticker, send us the receipt. If you don't, read on — buying one now and using the right legal defense can still save you the $200 fine.`,
     questions: [
       {
         text: 'Do you already have a current Chicago city vehicle sticker? If yes, please send us your purchase receipt — a confirmation email, online receipt, or credit card statement showing the purchase date.',
@@ -125,7 +125,7 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
       'Note: a city sticker (Chicago wheel tax) is different from your IL license plate renewal sticker',
     ],
     pitfalls: [
-      'Don\'t ignore this $200 ticket — the 72% win rate makes contesting worthwhile',
+      'Don\'t ignore this $200 ticket — the 86% win rate makes contesting worthwhile',
       'Don\'t write a free-form letter without selecting a codified defense — the hearing officer MUST dismiss if you don\'t pick one',
       'Don\'t confuse the city sticker with your Illinois license plate renewal — they\'re separate',
       'Don\'t pay the ticket without trying to contest first — you have 21 days',
@@ -135,10 +135,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   expired_meter: {
     violationType: 'expired_meter',
-    emailSubject: 'Expired Meter Ticket - 67% Win Rate - Did the Meter Work?',
+    emailSubject: 'Expired Meter Ticket - 68% Win Rate - Did the Meter Work?',
     title: 'Your Meter Ticket Has Good Odds!',
-    winRate: 0.67,
-    intro: `Expired meter tickets have a 67% success rate! The best defenses are: (1) you paid via the ParkChicago app, (2) the meter was malfunctioning, or (3) there was a timing discrepancy. Check your payment app NOW — screenshots expire!`,
+    winRate: 0.68,
+    intro: `Expired meter tickets have a 68% success rate! The best defenses are: (1) you paid via the ParkChicago app, (2) the meter was malfunctioning, or (3) there was a timing discrepancy. Check your payment app NOW — screenshots expire!`,
     questions: [
       {
         text: 'Did you pay via ParkChicago app or any mobile payment? Open your ParkChicago app → tap History → screenshot the session for this date. Include the ZONE NUMBER, start time, and end time.',
@@ -185,8 +185,8 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     violationType: 'street_cleaning',
     emailSubject: 'Street Cleaning Ticket - Important: Did You See the Signs?',
     title: 'Street Cleaning Ticket - Signage Is Key!',
-    winRate: 0.34,
-    intro: `Street cleaning tickets have about a 34% success rate. The most successful defense is proving the signage was missing, obscured, or confusing. We also check weather data automatically - if it rained or snowed, that's a valid defense! If you use the Autopilot app, we'll automatically check your GPS history for departure proof.`,
+    winRate: 0.32,
+    intro: `Street cleaning tickets have about a 32% success rate. The most successful defense is proving the signage was missing, obscured, or confusing. We also check weather data automatically - if it rained or snowed, that's a valid defense! If you use the Autopilot app, we'll automatically check your GPS history for departure proof.`,
     questions: [
       {
         text: 'Do you have ANY photos of the street where you parked? Even if you didn\'t take them that day - can you go back and photograph the signage (or lack of signage)?',
@@ -229,10 +229,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   fire_hydrant: {
     violationType: 'fire_hydrant',
-    emailSubject: 'Fire Hydrant Ticket - 46% Win Rate - Was the Hydrant Visible?',
+    emailSubject: 'Fire Hydrant Ticket - 40% Win Rate - Was the Hydrant Visible?',
     title: 'Fire Hydrant Ticket - Visibility Matters!',
-    winRate: 0.46,
-    intro: `Fire hydrant tickets have a 46% success rate! The best defenses are: (1) the hydrant was obscured by snow/vegetation, (2) you were actually more than 15 feet away, or (3) there were no curb markings.`,
+    winRate: 0.40,
+    intro: `Fire hydrant tickets have a 40% success rate. The best defenses are: (1) the hydrant was obscured by snow/vegetation, (2) you were actually more than 15 feet away, or (3) there were no curb markings.`,
     questions: [
       {
         text: 'Was the fire hydrant hidden or obscured by snow, bushes, parked cars, or anything else when you parked?',
@@ -274,10 +274,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   disabled_zone: {
     violationType: 'disabled_zone',
-    emailSubject: 'Handicapped Zone Ticket - 69% Win Rate - Placard Documentation Needed!',
+    emailSubject: 'Handicapped Zone Ticket - 71% Win Rate - Placard Documentation Needed!',
     title: 'Handicapped Zone Ticket Has HIGH Win Rate!',
-    winRate: 0.69,
-    intro: `Handicapped zone tickets have a 69% success rate - one of the highest! If you have a valid disability placard or plate, we have a strong case. The $350 fine makes this VERY worth contesting.`,
+    winRate: 0.71,
+    intro: `Handicapped zone tickets have a 71% success rate - one of the highest! If you have a valid disability placard or plate, we have a strong case. The $350 fine makes this VERY worth contesting.`,
     questions: [
       {
         text: 'Do you have a valid disability parking placard or disability plates? What is your placard/plate number and expiration date?',
@@ -364,8 +364,8 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     violationType: 'bus_stop',
     emailSubject: 'Bus Stop Ticket - Was the Stop Clearly Marked?',
     title: 'Bus Stop Ticket - Signage Matters!',
-    winRate: 0.59,
-    intro: `Bus stop tickets have a 59% success rate! If the signage was missing or unclear, or if your vehicle was disabled, you have a strong case worth pursuing.`,
+    winRate: 0.57,
+    intro: `Bus stop tickets have a 57% success rate! If the signage was missing or unclear, or if your vehicle was disabled, you have a strong case worth pursuing.`,
     questions: [
       {
         text: 'Was there a clear bus stop sign visible where you parked? Go photograph the exact location NOW — include a wide shot showing signage (or lack of it) and any bus shelter/markings.',
@@ -408,10 +408,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   bike_lane: {
     violationType: 'bike_lane',
-    emailSubject: 'Bike Lane Ticket - 50% Win Rate - Were the Markings Visible?',
+    emailSubject: 'Bike Lane Ticket - 47% Win Rate - Were the Markings Visible?',
     title: 'Bike Lane Ticket - Lane Markings Key!',
-    winRate: 0.50,
-    intro: `Bike lane tickets have a 50% success rate when contested. If the lane markings were faded or obscured, you have a strong case. The $150 fine makes it very worth contesting.`,
+    winRate: 0.47,
+    intro: `Bike lane tickets have a 47% success rate when contested. If the lane markings were faded or obscured, you have a strong case. The $150 fine makes it very worth contesting.`,
     questions: [
       {
         text: 'Were the bike lane markings (green paint, bike symbols, "BIKE ONLY" text) clearly visible, or were they faded/covered? Go photograph the lane markings NOW.',
@@ -450,10 +450,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   parking_alley: {
     violationType: 'parking_alley',
-    emailSubject: 'Alley Parking Ticket - 67% Win Rate - Were You Loading?',
+    emailSubject: 'Alley Parking Ticket - 66% Win Rate - Were You Loading?',
     title: 'Alley Parking Ticket - Great Odds!',
-    winRate: 0.67,
-    intro: `Alley parking tickets are dismissed in 67% of decided contests in City of Chicago hearing data. Active loading/unloading is permitted, and many alley tickets are dismissed. If you were loading or had an emergency, we have a strong case.`,
+    winRate: 0.66,
+    intro: `Alley parking tickets are dismissed in 66% of decided contests in City of Chicago hearing data. Active loading/unloading is permitted, and many alley tickets are dismissed. If you were loading or had an emergency, we have a strong case.`,
     questions: [
       {
         text: 'Were you actively loading or unloading items? Describe EXACTLY what you were loading, to/from where, and how long you were stopped.',
@@ -540,10 +540,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   double_parking: {
     violationType: 'double_parking',
-    emailSubject: 'Double Parking Ticket - 72% Win Rate - Were You Loading or in an Emergency?',
+    emailSubject: 'Double Parking Ticket - 70% Win Rate - Were You Loading or in an Emergency?',
     title: 'Double Parking Ticket - Great Odds!',
-    winRate: 0.72,
-    intro: `Double parking tickets have a 72% success rate when contested! The main defenses are active loading/unloading, emergency, or vehicle breakdown.`,
+    winRate: 0.70,
+    intro: `Double parking tickets have a 70% success rate when contested! The main defenses are active loading/unloading, emergency, or vehicle breakdown.`,
     questions: [
       {
         text: 'Were you actively loading or unloading? Describe EXACTLY what you were loading, to/from where, and how long. Were your hazard lights on?',
@@ -585,10 +585,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   commercial_loading: {
     violationType: 'commercial_loading',
-    emailSubject: 'Commercial Loading Zone Ticket - 60% Win Rate - Loading Proof Needed!',
+    emailSubject: 'Commercial Loading Zone Ticket - 61% Win Rate - Loading Proof Needed!',
     title: 'Commercial Loading Ticket - Good Odds!',
-    winRate: 0.60,
-    intro: `Commercial loading zone tickets have a 60% success rate! If you were actively loading/unloading for commercial purposes, we have a strong case.`,
+    winRate: 0.61,
+    intro: `Commercial loading zone tickets have a 61% success rate! If you were actively loading/unloading for commercial purposes, we have a strong case.`,
     questions: [
       {
         text: 'Were you actively loading or unloading commercial goods? For which business? Describe exactly what you were loading/unloading, the business name and address, and how long you were stopped.',
@@ -630,10 +630,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   missing_plate: {
     violationType: 'missing_plate',
-    emailSubject: 'License Plate Ticket - 55% Win Rate - Plate Documentation!',
+    emailSubject: 'License Plate Ticket - 54% Win Rate - Plate Documentation!',
     title: 'License Plate Ticket - Good Odds!',
-    winRate: 0.55,
-    intro: `Missing/obscured plate tickets have a 55% success rate! If your plate was visible (or temporarily obscured by weather), we can contest.`,
+    winRate: 0.54,
+    intro: `Missing/obscured plate tickets have a 54% success rate! If your plate was visible (or temporarily obscured by weather), we can contest.`,
     questions: [
       {
         text: 'Take a clear photo of your license plate RIGHT NOW from the same angle a parking officer would see it. Is it clearly visible and readable?',
@@ -677,10 +677,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   red_light: {
     violationType: 'red_light',
-    emailSubject: 'Red Light Camera Ticket - 21% Win Rate - Review Your Violation Photos NOW',
+    emailSubject: 'Red Light Camera Ticket - 32% Win Rate - Review Your Violation Photos NOW',
     title: 'Red Light Camera Ticket - Your Best Defenses Based on Real Hearing Data',
-    winRate: 0.21,
-    intro: `Red light camera tickets are tough (21% success rate), but the wins that DO happen come from specific, provable defenses. In FOIA hearing data, the #1 dismissal reason is "Violation is Factually Inconsistent" — meaning the photos/video don't actually prove a violation. The #2 reason is "Prima Facie Case Not Established by City." Both require you to carefully review the violation footage and build your case around what the evidence actually shows.`,
+    winRate: 0.32,
+    intro: `Red light camera tickets are contestable (32% success rate), and the wins come from specific, provable defenses. In FOIA hearing data, the #1 dismissal reason is "Violation is Factually Inconsistent" — meaning the photos/video don't actually prove a violation. The #2 reason is "Prima Facie Case Not Established by City." Both require you to carefully review the violation footage and build your case around what the evidence actually shows.`,
     questions: [
       {
         text: 'CRITICAL: Go to chicago.gov/finance and review your violation photos/video RIGHT NOW. Is the vehicle in the photos definitely yours? Check the make, model, color, and license plate carefully.',
@@ -754,8 +754,8 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
     violationType: 'speed_camera',
     emailSubject: 'Speed Camera Ticket - Review Your Violation Photos & Check the Speed Limit Signs',
     title: 'Speed Camera Ticket - Tough but Not Impossible',
-    winRate: 0.18,
-    intro: `Speed camera tickets are the hardest to beat (17-20% success rate), but the wins that DO happen are almost always from two causes: "Violation is Factually Inconsistent" (wrong vehicle, camera error) or signage problems. The fine is $35 for 6-10mph over, $100 for 11+ over. Even at low odds, contesting is worth it because the process costs nothing but 10 minutes of your time.`,
+    winRate: 0.24,
+    intro: `Speed camera tickets are tough (24% success rate), but the wins that DO happen are almost always from two causes: "Violation is Factually Inconsistent" (wrong vehicle, camera error) or signage problems. The fine is $35 for 6-10mph over, $100 for 11+ over. Even at low odds, contesting is worth it because the process costs nothing but 10 minutes of your time.`,
     questions: [
       {
         text: 'FIRST: Review your violation photos at chicago.gov/finance. Is that definitely YOUR vehicle? Check the make, model, color, and license plate number in the photos carefully.',
@@ -865,10 +865,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   parking_prohibited: {
     violationType: 'parking_prohibited',
-    emailSubject: 'Parking Prohibited Ticket ($75) - 57% Win Rate - Signage & Circumstances Matter!',
+    emailSubject: 'Parking Prohibited Ticket ($75) - 55% Win Rate - Signage & Circumstances Matter!',
     title: 'Parking Prohibited Ticket - Signage Is Your Best Defense!',
-    winRate: 0.57,
-    intro: `"Parking/Standing Prohibited" tickets have a solid 57% success rate when contested with the right evidence. These tickets are often issued in areas with confusing or missing signage, temporary restrictions, or where you had a legitimate reason to stop. The key is documenting the signs (or lack thereof) and your circumstances.`,
+    winRate: 0.55,
+    intro: `"Parking/Standing Prohibited" tickets have a solid 55% success rate when contested with the right evidence. These tickets are often issued in areas with confusing or missing signage, temporary restrictions, or where you had a legitimate reason to stop. The key is documenting the signs (or lack thereof) and your circumstances.`,
     questions: [
       {
         text: 'Was there a clearly visible "No Parking" or "No Standing" sign where you parked? Can you go back and photograph the signage (or lack of it)?',
@@ -920,10 +920,10 @@ export const EVIDENCE_GUIDANCE: Record<string, EvidenceGuidance> = {
 
   bus_lane: {
     violationType: 'bus_lane',
-    emailSubject: 'Bus Lane Ticket ($150) - 52% Win Rate - Were You Loading Passengers?',
+    emailSubject: 'Bus Lane Ticket ($150) - 44% Win Rate - Were You Loading Passengers?',
     title: 'Bus Lane Ticket - Passenger Loading & Lane Markings Are Your Best Defenses',
-    winRate: 0.52,
-    intro: `Bus lane tickets have a strong 56% success rate when contested. In FOIA data, the top dismissal reasons are "Violation is Factually Inconsistent" (you weren't actually blocking the bus lane or were legally loading passengers) and "Signs were Missing or Obscured." Smart Streets camera enforcement has specific rules about what constitutes a violation — and passenger loading is explicitly exempt.`,
+    winRate: 0.44,
+    intro: `Bus lane tickets have a 44% success rate when contested. In FOIA data, the top dismissal reasons are "Violation is Factually Inconsistent" (you weren't actually blocking the bus lane or were legally loading passengers) and "Signs were Missing or Obscured." Smart Streets camera enforcement has specific rules about what constitutes a violation — and passenger loading is explicitly exempt.`,
     questions: [
       {
         text: 'Were you briefly stopped to load or unload passengers? Describe EXACTLY what happened — who was getting in/out, how long you stopped, and whether any bus was blocked.',

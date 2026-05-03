@@ -1,7 +1,7 @@
 /**
  * Rush Hour Parking Contest Kit (9-64-190)
  *
- * Win Rate: 38% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 38% (FOIA, longer window — 2023–2025 sample too sparse)
  * Primary defenses: Not during rush hour, signage unclear, emergency/breakdown
  * Key: Time-based violation — ticket time vs. actual rush hour window is critical
  *

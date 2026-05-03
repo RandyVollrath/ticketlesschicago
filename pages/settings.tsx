@@ -100,24 +100,26 @@ const VEHICLE_TYPES = [
   'Sedan', 'SUV', 'Truck', 'Van', 'Motorcycle', 'Other'
 ];
 
-// Win rates from City of Chicago FOIA hearing records — Not Liable / (Not
-// Liable + Liable). Verify with `npx tsx scripts/audit-win-rate-stats.ts`
-// before changing. Never invent or estimate these numbers.
+// Win rates from City of Chicago Administrative Hearings (FOIA): Not Liable
+// / (Not Liable + Liable), 2023–2025 trailing window, all decided contests
+// (mail + in-person + virtual). Verify with
+// `npx tsx scripts/audit-win-rate-stats.ts` before changing. Never invent
+// or estimate these numbers — the audit enforces ±2pp tolerance.
 const TICKET_TYPES = [
-  { id: 'expired_plates', label: 'Expired Plates', winRate: 76 },
-  { id: 'no_city_sticker', label: 'No City Sticker', winRate: 72 },
-  { id: 'expired_meter', label: 'Expired Meter', winRate: 67 },
-  { id: 'disabled_zone', label: 'Disabled Zone', winRate: 68 },
+  { id: 'expired_plates', label: 'Expired Plates', winRate: 89 },
+  { id: 'no_city_sticker', label: 'No City Sticker', winRate: 86 },
+  { id: 'expired_meter', label: 'Expired Meter', winRate: 68 },
+  { id: 'disabled_zone', label: 'Disabled Zone', winRate: 71 },
   { id: 'no_standing_time_restricted', label: 'No Standing/Time Restricted', winRate: 59 },
-  { id: 'parking_prohibited', label: 'Parking/Standing Prohibited', winRate: 57 },
+  { id: 'parking_prohibited', label: 'Parking/Standing Prohibited', winRate: 55 },
   { id: 'residential_permit', label: 'Residential Permit Parking', winRate: 54 },
-  { id: 'missing_plate', label: 'Missing/Noncompliant Plate', winRate: 56 },
+  { id: 'missing_plate', label: 'Missing/Noncompliant Plate', winRate: 54 },
   { id: 'commercial_loading', label: 'Commercial Loading Zone', winRate: 61 },
-  { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 46 },
-  { id: 'street_cleaning', label: 'Street Cleaning', winRate: 34 },
-  { id: 'bus_lane', label: 'Bus Lane (Smart Streets)', winRate: 52 },
-  { id: 'red_light', label: 'Red Light Camera', winRate: 21, evidenceOnly: true },
-  { id: 'speed_camera', label: 'Speed Camera', winRate: 19, evidenceOnly: true },
+  { id: 'fire_hydrant', label: 'Fire Hydrant', winRate: 40 },
+  { id: 'street_cleaning', label: 'Street Cleaning', winRate: 32 },
+  { id: 'bus_lane', label: 'Bus Lane (Smart Streets)', winRate: 44 },
+  { id: 'red_light', label: 'Red Light Camera', winRate: 32, evidenceOnly: true },
+  { id: 'speed_camera', label: 'Speed Camera', winRate: 24, evidenceOnly: true },
 ];
 
 const NOTIFICATION_DAYS = [30, 14, 7, 3, 1, 0];
@@ -3271,7 +3273,7 @@ function SettingsPageInner() {
             <p style={{ margin: '0 0 12px', fontSize: 12, color: COLORS.textMuted }}>
               Percentages show the historical dismissal rate when contested.
               <br />
-              Source: City of Chicago Administrative Hearings (FOIA, 2018–2025).
+              Source: City of Chicago Administrative Hearings (FOIA, 2023–2025 trailing).
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
               {TICKET_TYPES.map(type => {

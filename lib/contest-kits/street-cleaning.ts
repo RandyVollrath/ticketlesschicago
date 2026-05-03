@@ -1,7 +1,7 @@
 /**
  * Street Cleaning Contest Kit (9-64-010)
  *
- * Win Rate: 34% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 32% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Primary defenses: Signage issues, weather conditions, street cleaning didn't occur
  */
 

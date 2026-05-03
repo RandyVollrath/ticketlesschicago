@@ -151,7 +151,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "59% of mail-in contested parking tickets get dismissed — based on 35.7M ticket records from Chicago FOIA data (2023–2025 mail contests). By category: expired plates 87%, city sticker 79%, disabled zone 63%, expired meter 68%, residential permit 49%. Camera tickets are harder at 21–28%. These are real rates from actual hearings — not estimates."
+      a: "59% of mail-in contested parking tickets get dismissed — based on 35.7M ticket records from Chicago FOIA data (2023–2025 mail contests). When you include all decided contests (mail + in-person + virtual hearings), category dismissal rates are even higher: expired plates 89%, city sticker 86%, disabled zone 71%, expired meter 68%, residential permit 54%. Camera tickets are tougher at 24–32%. These are real rates from actual hearings — not estimates."
     },
     {
       q: "Can I review letters before they're sent?",

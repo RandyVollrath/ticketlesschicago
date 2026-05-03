@@ -1,7 +1,7 @@
 /**
  * Speed Camera Contest Kit (9-102-020)
  *
- * Win Rate: 17-20% depending on speed bracket
+ * Win Rate: 24% (FOIA, 2023–2025 trailing, all decided contest methods)
  *   - 6-10 mph over: 17% win rate, $35 fine
  *   - 11+ mph over: 20% win rate, $100 fine
  * From 1.18M FOIA records, decided cases, all contest methods

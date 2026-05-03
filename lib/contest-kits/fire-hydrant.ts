@@ -1,7 +1,7 @@
 /**
  * Fire Hydrant Contest Kit (9-64-130)
  *
- * Win Rate: 46% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 40% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Primary defenses: Hydrant not visible, distance measurement error, no curb markings
  */
 

@@ -102,7 +102,7 @@ npm run dev
 open http://localhost:3000/foia-test
 
 # Try different violation codes:
-- 0976160B (Expired Plate) - 76% win rate
+- 0976160B (Expired Plate) - 89% win rate
 - 0964190A (Expired Meter) - see real stats
 - 0964040B (Street Cleaning) - see real stats
 ```
@@ -144,7 +144,7 @@ and here's what we found..."
 
 | Code | Description | Sample Size | Win Rate |
 |------|-------------|-------------|----------|
-| 0976160B | Expired Plate | 173,111 | 76% |
+| 0976160B | Expired Plate | 73,567 | 89% |
 | 0964190A | Expired Meter (Non-CBD) | 165,851 | TBD |
 | 0964190B | Expired Meter (CBD) | 107,221 | TBD |
 | 0964040B | Street Cleaning | 73,196 | TBD |

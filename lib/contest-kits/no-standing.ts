@@ -1,7 +1,7 @@
 /**
  * No Standing/Time Restricted Parking Contest Kit (9-64-140)
  *
- * Win Rate: 59% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 59% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Primary defenses: Signage issues, time discrepancy, active loading
  */
 

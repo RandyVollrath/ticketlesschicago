@@ -227,11 +227,11 @@ function pillarCameraTrap(db) {
 function pillarContestSecret(db) {
   // Pick a random violation with high win rate
   const violations = [
-    { code: "EXPIRED PLATE%", name: "expired plates", winRate: "76%", fine: "$60" },
-    { code: "NO CITY STICKER%", name: "no city sticker", winRate: "72%", fine: "$200" },
-    { code: "EXP. METER%", name: "expired meter", winRate: "67%", fine: "$50-70" },
+    { code: "EXPIRED PLATE%", name: "expired plates", winRate: "89%", fine: "$60" },
+    { code: "NO CITY STICKER%", name: "no city sticker", winRate: "86%", fine: "$200" },
+    { code: "EXP. METER%", name: "expired meter", winRate: "68%", fine: "$50-70" },
     { code: "RESIDENTIAL PERMIT%", name: "residential permit parking", winRate: "54%", fine: "$75" },
-    { code: "DISABLED%", name: "disabled parking zone", winRate: "68%", fine: "$250" },
+    { code: "DISABLED%", name: "disabled parking zone", winRate: "71%", fine: "$250" },
   ];
 
   const v = violations[Math.floor(Math.random() * violations.length)];
