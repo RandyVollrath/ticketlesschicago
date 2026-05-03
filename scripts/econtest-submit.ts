@@ -20,14 +20,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { submitEContest, checkEContestEligibility } from '../lib/econtest-service';
+import { updateContestLifecycle } from '../lib/contest-lifecycle';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -159,14 +156,30 @@ async function main() {
       console.log(`   ✅ Submitted! Confirmation: ${result.confirmationId || 'none'}`);
       console.log(`   Screenshot: ${result.screenshotPath || 'none'}`);
 
-      // Update letter as sent via eContest
-      await supabase
-        .from('contest_letters')
-        .update({
-          status: 'sent',
-          sent_at: new Date().toISOString(),
+      const now = new Date().toISOString();
+      await updateContestLifecycle(supabase as any, {
+        contestLetterId: letter.id,
+        ticketId: letter.ticket_id,
+        userId: letter.user_id,
+        lifecycleStatus: 'submission_confirmed',
+        source: 'econtest',
+        rawStatus: result.contestMethod || 'Correspondence',
+        cityCasePayload: {
+          step: result.step,
+          contestMethod: result.contestMethod,
+          confirmationText: result.confirmationText,
+          screenshotPath: result.screenshotPath,
+          confirmationId: result.confirmationId || null,
+        },
+        eventType: 'submission_confirmed',
+        eventDetails: {
+          confirmationId: result.confirmationId || null,
+          confirmationText: result.confirmationText || null,
+        },
+        contestLetterPatch: {
+          sent_at: now,
           econtest_status: 'submitted',
-          econtest_submitted_at: new Date().toISOString(),
+          econtest_submitted_at: now,
           econtest_confirmation_id: result.confirmationId || null,
           econtest_response: {
             step: result.step,
@@ -174,14 +187,17 @@ async function main() {
             confirmationText: result.confirmationText,
             screenshotPath: result.screenshotPath,
           },
-        })
-        .eq('id', letter.id);
-
-      // Also update detected_ticket status
-      await supabase
-        .from('detected_tickets')
-        .update({ status: 'contested_online' })
-        .eq('id', letter.ticket_id);
+          submission_channel: 'econtest',
+          submission_state: 'confirmed',
+          submission_confirmed_at: now,
+          submission_confirmation_id: result.confirmationId || null,
+          submission_receipt_source: 'portal_confirmation',
+          submission_receipt_payload: {
+            confirmationText: result.confirmationText,
+            screenshotPath: result.screenshotPath,
+          },
+        },
+      });
 
       submitted++;
     } else {
@@ -195,6 +211,8 @@ async function main() {
         .from('contest_letters')
         .update({
           econtest_status: 'failed',
+          submission_channel: 'econtest',
+          submission_state: 'failed',
           econtest_response: {
             step: result.step,
             error: result.error,
@@ -205,6 +223,30 @@ async function main() {
           },
         })
         .eq('id', letter.id);
+
+      await updateContestLifecycle(supabase as any, {
+        contestLetterId: letter.id,
+        ticketId: letter.ticket_id,
+        userId: letter.user_id,
+        lifecycleStatus: 'approved',
+        source: 'econtest',
+        rawStatus: result.error || result.step,
+        cityCasePayload: {
+          step: result.step,
+          error: result.error,
+          eligible: result.eligible ?? null,
+        },
+        eventType: 'submission_failed',
+        eventDetails: {
+          step: result.step,
+          error: result.error,
+          eligible: result.eligible ?? null,
+        },
+        contestLetterPatch: {
+          submission_channel: 'econtest',
+          submission_state: 'failed',
+        },
+      });
 
       failed++;
     }

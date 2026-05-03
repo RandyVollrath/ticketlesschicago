@@ -19,6 +19,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { fetchAhmsDocketDetails } from '../../../lib/ahms-fetcher';
+import { normalizeDispositionToLifecycleStatus, updateContestLifecycle } from '../../../lib/contest-lifecycle';
 
 export const config = { maxDuration: 120 };
 
@@ -97,17 +98,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const updatePayload: Record<string, any> = {
         ahms_last_checked_at: new Date().toISOString(),
       };
+      let disposition: string | null = null;
+      let dispositionDate: string | null = null;
 
       if (details) {
         updatePayload.ahms_payload = details.raw || null;
         if (details.hearingDate) updatePayload.hearing_date = details.hearingDate;
         // Pull disposition out of the AHMS payload if present.
         // Field name varies across datasets — check a few common keys.
-        const disposition =
+        disposition =
           details.raw?.documentsResponse?.data?.disposition ||
           details.raw?.documentsResponse?.data?.hearing_disposition ||
           null;
-        const dispositionDate =
+        dispositionDate =
           details.raw?.documentsResponse?.data?.disposition_date ||
           details.raw?.documentsResponse?.data?.hearing_end_date ||
           null;
@@ -123,6 +126,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('contest_letters')
         .update(updatePayload)
         .eq('id', letter.id);
+
+      if (details) {
+        const lifecycleStatus = normalizeDispositionToLifecycleStatus({
+          hearingDisposition:
+            details.raw?.documentsResponse?.data?.disposition ||
+            details.raw?.documentsResponse?.data?.hearing_disposition ||
+            null,
+          ticketQueue: details.hearingDate ? 'Hearing' : null,
+        });
+
+        if (lifecycleStatus) {
+          await updateContestLifecycle(supabaseAdmin as any, {
+            contestLetterId: letter.id,
+            ticketId: letter.ticket_id,
+            userId: letter.user_id,
+            lifecycleStatus,
+            source: 'ahms',
+            rawStatus: disposition || details.hearingDate || 'ahms_update',
+            cityCasePayload: {
+              docketNumber: letter.docket_number,
+              hearingDate: details.hearingDate,
+              disposition,
+              dispositionDate,
+              imageCount: details.imageUrls.length,
+            },
+            eventType: disposition ? 'ahms_disposition_detected' : 'ahms_hearing_update',
+            eventDetails: {
+              hearingDate: details.hearingDate,
+              disposition,
+              dispositionDate,
+            },
+            contestLetterPatch: {
+              ahms_last_checked_at: updatePayload.ahms_last_checked_at,
+              ahms_payload: details.raw || null,
+              hearing_date: details.hearingDate || null,
+              disposition: disposition || null,
+              disposition_date: dispositionDate || null,
+            },
+          });
+        }
+      }
 
     } catch (e: any) {
       results.errors.push(`${letter.id}: ${e?.message || String(e)}`);

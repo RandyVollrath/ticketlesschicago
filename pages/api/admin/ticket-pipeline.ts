@@ -36,12 +36,18 @@ export interface TicketPipelineItem {
   mailed_at: string | null;
   lob_status: string | null;
   lob_expected_delivery: string | null;
+  econtest_status?: string | null;
+  econtest_submitted_at?: string | null;
   // Computed stage
-  stage: 'ticket_detected' | 'letter_generated' | 'evidence_letter_generated' | 'letter_sent';
+  stage: 'ticket_detected' | 'letter_generated' | 'evidence_letter_generated' | 'letter_sent' | 'contested_online';
   stage_label: string;
 }
 
 function computeStage(item: any): { stage: string; stage_label: string } {
+  if (item.econtest_status === 'submitted' || item.ticket_status === 'contested_online') {
+    return { stage: 'contested_online', stage_label: 'Submitted Online (eContest)' };
+  }
+
   // If mailed, it's sent
   if (item.mailed_at || item.lob_status) {
     return { stage: 'letter_sent', stage_label: 'Letter Sent to City Hall' };
@@ -111,7 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({
         success: true,
         tickets: [],
-        stats: { total: 0, ticket_detected: 0, letter_generated: 0, evidence_letter_generated: 0, letter_sent: 0 }
+        stats: { total: 0, ticket_detected: 0, letter_generated: 0, evidence_letter_generated: 0, letter_sent: 0, contested_online: 0 }
       });
     }
 
@@ -128,6 +134,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mailed_at,
         lob_status,
         lob_expected_delivery,
+        econtest_status,
+        econtest_submitted_at,
         letter_content,
         defense_type
       `)
@@ -214,6 +222,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         mailed_at: letter?.mailed_at || null,
         lob_status: letter?.lob_status || null,
         lob_expected_delivery: letter?.lob_expected_delivery || null,
+        econtest_status: letter?.econtest_status || null,
+        econtest_submitted_at: letter?.econtest_submitted_at || null,
         stage: '' as any,
         stage_label: '',
       };
@@ -238,6 +248,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       letter_generated: pipelineItems.filter(i => i.stage === 'letter_generated').length,
       evidence_letter_generated: pipelineItems.filter(i => i.stage === 'evidence_letter_generated').length,
       letter_sent: pipelineItems.filter(i => i.stage === 'letter_sent').length,
+      contested_online: pipelineItems.filter(i => i.stage === 'contested_online').length,
     };
 
     return res.status(200).json({
