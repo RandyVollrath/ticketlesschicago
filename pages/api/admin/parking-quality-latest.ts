@@ -57,6 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       total_rows: fresh.total_rows,
       total_users: fresh.total_users,
       overall_failure_counts: fresh.overall_failure_counts,
+      truth_metrics: fresh.truth_metrics,
       top_signatures: fresh.top_signatures,
       prior_reports: fresh.prior_reports,
     },
