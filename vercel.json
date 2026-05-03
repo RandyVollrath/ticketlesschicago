@@ -122,9 +122,16 @@
     },
     "pages/api/cron/cleanup-push-tokens.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/paid-user-health-check.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
+    {
+      "path": "/api/cron/paid-user-health-check",
+      "schedule": "0 13 * * *"
+    },
     {
       "path": "/api/cron/build-gps-corrections",
       "schedule": "30 9 * * *"
