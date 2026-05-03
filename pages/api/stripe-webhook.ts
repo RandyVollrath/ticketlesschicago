@@ -1772,6 +1772,71 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
               }
 
+              // Rewardful affiliate attribution for Autopilot signups (parity
+              // with the Protection path at ~line 1873). Rewardful's Stripe
+              // integration auto-tracks the conversion via client_reference_id;
+              // this block additionally logs the sale to affiliate_commission_tracker
+              // and emails for the manual commission adjustment that Rewardful's
+              // Stripe integration alone doesn't handle for our pricing model.
+              const autopilotRewardfulReferralId = session.client_reference_id;
+              const autopilotIsRealReferral = autopilotRewardfulReferralId
+                && autopilotRewardfulReferralId !== supabaseUserId; // create-checkout falls back to userId
+
+              if (autopilotIsRealReferral) {
+                console.log('Rewardful referral on Autopilot signup:', autopilotRewardfulReferralId);
+                const autopilotPlanLabel = metadata.plan_code || ACTIVE_AUTOPILOT_PLAN.code;
+                const autopilotTotalAmount = session.amount_total ? (session.amount_total / 100) : 0;
+                const autopilotExpectedCommission = autopilotTotalAmount * 0.20;
+
+                try {
+                  const { error: trackerError } = await supabaseAdmin
+                    .from('affiliate_commission_tracker')
+                    .insert({
+                      stripe_session_id: session.id,
+                      customer_email: userEmail || 'Unknown',
+                      plan: autopilotPlanLabel,
+                      total_amount: autopilotTotalAmount,
+                      expected_commission: autopilotExpectedCommission,
+                      referral_id: autopilotRewardfulReferralId,
+                      commission_adjusted: false,
+                    });
+
+                  if (trackerError) {
+                    console.error('❌ Failed to save Autopilot affiliate commission:', trackerError);
+                  } else {
+                    console.log('✅ Autopilot affiliate commission saved');
+                  }
+                } catch (trackerCatch) {
+                  console.error('❌ Error saving Autopilot affiliate commission:', trackerCatch);
+                }
+
+                try {
+                  await resend.emails.send({
+                    from: 'Autopilot America <hello@autopilotamerica.com>',
+                    to: ['randyvollrath@gmail.com', 'ticketlessamerica@gmail.com'],
+                    subject: '🎉 Affiliate Sale (Autopilot via Stripe) — Verify Commission',
+                    html: `
+                      <h2>Autopilot Sale via Affiliate</h2>
+                      <p>An Autopilot subscription was just purchased through an affiliate referral.</p>
+                      <h3>Sale Details</h3>
+                      <ul>
+                        <li><strong>Customer:</strong> ${userEmail || 'Unknown'}</li>
+                        <li><strong>Plan:</strong> ${autopilotPlanLabel}</li>
+                        <li><strong>Total Charge:</strong> $${autopilotTotalAmount.toFixed(2)}</li>
+                        <li><strong>Referral ID:</strong> ${autopilotRewardfulReferralId}</li>
+                        <li><strong>Expected Commission (20%):</strong> $${autopilotExpectedCommission.toFixed(2)}</li>
+                      </ul>
+                      <p>Rewardful's Stripe integration should auto-track this. Confirm in dashboard.</p>
+                      <p><a href="https://app.getrewardful.com/dashboard" style="display: inline-block; padding: 10px 20px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Open Rewardful Dashboard</a></p>
+                    `,
+                  });
+                  console.log('✅ Autopilot affiliate sale notification email sent');
+                } catch (emailError) {
+                  console.error('❌ Failed to send Autopilot affiliate sale email:', emailError);
+                }
+              } else {
+                console.log('No Rewardful referral ID on Autopilot session (or fell back to userId)');
+              }
 
             // Exit - this was an autopilot subscription
             break;
