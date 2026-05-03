@@ -92,6 +92,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to update notification status
+-- NOTE: Postgres disallows assigning the same column twice in one UPDATE, so
+-- we resolve the final status (and next_retry_at) in PL/pgSQL locals first.
 CREATE OR REPLACE FUNCTION update_notification_status(
   p_id UUID,
   p_status TEXT,
@@ -99,25 +101,31 @@ CREATE OR REPLACE FUNCTION update_notification_status(
   p_error TEXT DEFAULT NULL
 )
 RETURNS VOID AS $$
+DECLARE
+  v_attempt_count INTEGER;
+  v_max_attempts INTEGER;
+  v_should_retry BOOLEAN;
+  v_final_status TEXT;
 BEGIN
+  SELECT attempt_count, max_attempts
+    INTO v_attempt_count, v_max_attempts
+    FROM notification_logs WHERE id = p_id;
+
+  v_should_retry := p_status = 'failed' AND v_attempt_count < COALESCE(v_max_attempts, 3);
+  v_final_status := CASE WHEN v_should_retry THEN 'retry_scheduled' ELSE p_status END;
+
   UPDATE notification_logs
   SET
-    status = p_status,
+    status = v_final_status,
     external_id = COALESCE(p_external_id, external_id),
     last_error = p_error,
     sent_at = CASE WHEN p_status = 'sent' THEN NOW() ELSE sent_at END,
     delivered_at = CASE WHEN p_status = 'delivered' THEN NOW() ELSE delivered_at END,
     failed_at = CASE WHEN p_status IN ('failed', 'bounced') THEN NOW() ELSE failed_at END,
-    -- Schedule retry if failed and under max attempts
     next_retry_at = CASE
-      WHEN p_status = 'failed' AND attempt_count < max_attempts
-      THEN NOW() + (POWER(2, attempt_count) * INTERVAL '5 minutes') -- Exponential backoff: 5min, 10min, 20min
+      WHEN v_should_retry
+      THEN NOW() + (POWER(2, v_attempt_count) * INTERVAL '5 minutes') -- Exponential backoff: 5min, 10min, 20min
       ELSE NULL
-    END,
-    status = CASE
-      WHEN p_status = 'failed' AND attempt_count < max_attempts
-      THEN 'retry_scheduled'
-      ELSE p_status
     END
   WHERE id = p_id;
 END;
