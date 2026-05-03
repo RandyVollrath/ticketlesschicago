@@ -1,1 +1,1 @@
-{"detail":{"status":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 105 credits remaining, while 141 credits are required for this request."}}
+{"detail":{"status":"invalid_api_key","message":"Invalid API key"}}

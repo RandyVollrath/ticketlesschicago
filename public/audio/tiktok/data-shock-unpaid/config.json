@@ -10,8 +10,7 @@
         "color": "#ff1a1a",
         "glitch": true
       },
-      "durationFrames": 465,
-      "voFile": "audio/tiktok/data-shock-unpaid/vo-0.mp3"
+      "durationFrames": 300
     },
     {
       "type": "two-stat",
