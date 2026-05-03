@@ -1,17 +1,22 @@
 #!/usr/bin/env tsx
 /**
  * Audit every hardcoded win-rate stat in user-facing surfaces against the
- * real City of Chicago FOIA hearing data in contested_tickets_foia.
+ * real City of Chicago FOIA hearing data.
  *
  * Surfaces checked:
  *   - pages/start.tsx           (TICKET_TYPES.winRate)
  *   - pages/settings.tsx        (TICKET_TYPES.winRate)
  *   - lib/contest-kits/evidence-guidance.ts  (EVIDENCE_GUIDANCE[].winRate)
  *
- * Truth source:
- *   contested_tickets_foia, with Not Liable / (Not Liable + Liable) per
- *   the violation_description LIKE pattern that matches the City's actual
- *   strings (singular "EXPIRED PLATE", "BICYCLE PATH" not "BIKE LANE", etc).
+ * Truth source — one of:
+ *   1. Local SQLite at ~/Documents/FOIA/foia.db (table `hearings`).
+ *      Preferred when present: one ~0.6s grouped scan covers all 19 keys.
+ *   2. Supabase `contested_tickets_foia` (CI fallback when SQLite isn't
+ *      on the machine). Slower (6s/query × 38 queries) and occasionally
+ *      times out; per-query retry with exponential backoff handles flake.
+ *
+ * Truth = Not Liable / (Not Liable + Liable), decided cases only,
+ * MIN_SAMPLE=200, matched by violation_description LIKE pattern.
  *
  * Run:    npx tsx scripts/audit-win-rate-stats.ts
  * CI:     exits non-zero if any claim is more than TOLERANCE_PP off truth.
@@ -21,19 +26,28 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
+import { execFileSync } from 'child_process';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') });
 
+const FOIA_SQLITE_PATH = path.join(os.homedir(), 'Documents/FOIA/foia.db');
+const HAS_SQLITE = fs.existsSync(FOIA_SQLITE_PATH);
+
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !serviceKey) {
-  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
+if (!HAS_SQLITE && (!url || !serviceKey)) {
+  console.error(
+    `No truth source available: SQLite db not found at ${FOIA_SQLITE_PATH} ` +
+      'and NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are unset.',
+  );
   process.exit(1);
 }
-const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
+const supabase =
+  url && serviceKey ? createClient(url, serviceKey, { auth: { persistSession: false } }) : null;
 
 // Map violation key → FOIA violation_description ILIKE pattern.
 // Mirrored from autopilot-check-portal.ts foiaSearchTerms; if you add a
@@ -62,16 +76,63 @@ const FOIA_TERMS: Record<string, string> = {
 
 // ───────────────────────────────────────────────────────────────────────
 // Source-of-truth queries
+//
+// Both backends return a Map<key, { nl, l }> covering every key in
+// FOIA_TERMS. The main loop turns those into the rate + comparison.
 // ───────────────────────────────────────────────────────────────────────
 
-// Returns the count, or null if the query failed every retry.
+type Counts = { nl: number; l: number };
+
+// SQLite: one grouped scan over `hearings`, then pattern-match in JS.
+// ~0.6s on 1.2M rows; no flake, no retries needed.
+function countsFromSqlite(): Map<string, Counts> {
+  const tsv = execFileSync(
+    'sqlite3',
+    [
+      FOIA_SQLITE_PATH,
+      "SELECT violation_desc || char(9) || disposition || char(9) || COUNT(*) " +
+        "FROM hearings " +
+        "WHERE disposition IN ('Liable', 'Not Liable') " +
+        'GROUP BY violation_desc, disposition;',
+    ],
+    { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
+  );
+
+  // Convert each FOIA LIKE pattern (e.g. '%EXPIRED PLATE%') into a regex
+  // that matches the same strings, so we can apply the same match logic
+  // in JS that Supabase's ILIKE applies in SQL.
+  const patterns: { key: string; rx: RegExp }[] = Object.entries(FOIA_TERMS).map(([key, p]) => {
+    const escaped = p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*');
+    return { key, rx: new RegExp('^' + escaped + '$', 'i') };
+  });
+
+  const out = new Map<string, Counts>();
+  for (const key of Object.keys(FOIA_TERMS)) out.set(key, { nl: 0, l: 0 });
+
+  for (const line of tsv.split('\n')) {
+    if (!line) continue;
+    const [desc, dispo, nStr] = line.split('\t');
+    const n = Number(nStr);
+    if (!Number.isFinite(n)) continue;
+    for (const { key, rx } of patterns) {
+      if (rx.test(desc)) {
+        const c = out.get(key)!;
+        if (dispo === 'Not Liable') c.nl += n;
+        else if (dispo === 'Liable') c.l += n;
+      }
+    }
+  }
+  return out;
+}
+
+// Supabase fallback: per-disposition exact count, retried with backoff.
 // IMPORTANT: never silently return 0 on persistent failure — that produced
-// phantom 100% truths when one disposition's count timed out (Supabase exact
-// counts over 1.18M rows take 6-7s each and can hit statement_timeout).
-async function countWhere(pattern: string, disposition: string): Promise<number | null> {
+// phantom 100% truths when one disposition's count timed out. Returning
+// null lets the caller skip the violation with a clear "(flake)" marker.
+async function supabaseCount(pattern: string, disposition: string): Promise<number | null> {
   const delays = [500, 1000, 2000, 4000, 8000];
   for (let attempt = 0; attempt <= delays.length; attempt++) {
-    const { count, error } = await supabase
+    const { count, error } = await supabase!
       .from('contested_tickets_foia')
       .select('*', { count: 'exact', head: true })
       .ilike('violation_description', pattern)
@@ -82,15 +143,20 @@ async function countWhere(pattern: string, disposition: string): Promise<number 
   return null;
 }
 
-async function realRate(
-  pattern: string,
-): Promise<{ nl: number; l: number; rate: number | null; failed: boolean }> {
-  const nl = await countWhere(pattern, 'Not Liable');
-  const l = await countWhere(pattern, 'Liable');
-  if (nl === null || l === null) return { nl: nl ?? 0, l: l ?? 0, rate: null, failed: true };
-  const decided = nl + l;
-  if (decided < 200) return { nl, l, rate: null, failed: false };
-  return { nl, l, rate: Math.round((nl / decided) * 1000) / 10, failed: false };
+async function countsFromSupabase(): Promise<Map<string, Counts | null>> {
+  const out = new Map<string, Counts | null>();
+  for (const [key, pattern] of Object.entries(FOIA_TERMS)) {
+    const nl = await supabaseCount(pattern, 'Not Liable');
+    const l = await supabaseCount(pattern, 'Liable');
+    out.set(key, nl === null || l === null ? null : { nl, l });
+  }
+  return out;
+}
+
+function rateOf(c: Counts): { rate: number | null; decided: number } {
+  const decided = c.nl + c.l;
+  if (decided < 200) return { rate: null, decided };
+  return { rate: Math.round((c.nl / decided) * 1000) / 10, decided };
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -158,9 +224,16 @@ async function main() {
     byKey.get(c.key)!.push(c);
   }
 
-  console.log('\nAuditing hardcoded win-rate claims against contested_tickets_foia');
+  const sourceLabel = HAS_SQLITE
+    ? `local SQLite (${FOIA_SQLITE_PATH})`
+    : 'Supabase contested_tickets_foia';
+  console.log(`\nAuditing hardcoded win-rate claims against ${sourceLabel}`);
   console.log('Truth = Not Liable / (Not Liable + Liable), decided cases only, MIN_SAMPLE=200');
   console.log('TOLERANCE: any claim more than ±' + TOLERANCE_PP + 'pp off truth fails\n');
+
+  const counts: Map<string, Counts | null> = HAS_SQLITE
+    ? countsFromSqlite()
+    : await countsFromSupabase();
 
   const head = [
     'violation_key'.padEnd(32),
@@ -201,8 +274,9 @@ async function main() {
       continue;
     }
 
-    const { nl, l, rate, failed } = await realRate(pattern);
-    const decided = nl + l;
+    const c = counts.get(key);
+    const failed = c === null;
+    const { rate, decided } = c ? rateOf(c) : { rate: null, decided: 0 };
     const truth = failed ? '(flake)' : rate === null ? '(no sample)' : `${rate}%`;
 
     const row =
