@@ -165,6 +165,52 @@ function renderHtml(
     `;
   }).join('');
 
+  const tm = report.truth_metrics;
+  const bySourceRows = Object.entries(tm.by_feedback_source)
+    .sort((a, b) => (b[1].labeled_count - a[1].labeled_count))
+    .slice(0, 6)
+    .map(([source, bucket]) => `
+      <tr>
+        <td style="padding: 6px 10px; text-align: left;"><code>${escapeHtml(source)}</code></td>
+        <td style="padding: 6px 10px; text-align: center;">${bucket.labeled_count}</td>
+        <td style="padding: 6px 10px; text-align: center;">${bucket.street_correct_count}</td>
+        <td style="padding: 6px 10px; text-align: center;">${bucket.street_wrong_count}</td>
+        <td style="padding: 6px 10px; text-align: center;">${bucket.pct_street_correct != null ? `${bucket.pct_street_correct}%` : '—'}</td>
+      </tr>
+    `).join('');
+
+  const accuracyBlock = `
+    <h3 style="margin-top: 24px; color: #0f172a;">Truth-backed accuracy</h3>
+    <div style="border-left: 4px solid #0f766e; padding: 10px 14px; margin: 10px 0; background: #f0fdfa;">
+      <div style="font-size: 13px; color: #134e4a;">
+        Explicit parking confirms: <strong>${tm.parking_confirmed_feedback_count}</strong> ·
+        False positives: <strong>${tm.false_positive_feedback_count}</strong>
+      </div>
+      <div style="font-size: 13px; color: #134e4a; margin-top: 6px;">
+        High-confidence block accuracy: <strong>${tm.confidence_buckets.high.pct_street_correct != null ? `${tm.confidence_buckets.high.pct_street_correct}%` : '—'}</strong>
+        (${tm.confidence_buckets.high.street_correct_count}/${tm.confidence_buckets.high.labeled_count}) ·
+        Low-confidence block accuracy: <strong>${tm.confidence_buckets.low.pct_street_correct != null ? `${tm.confidence_buckets.low.pct_street_correct}%` : '—'}</strong>
+        (${tm.confidence_buckets.low.street_correct_count}/${tm.confidence_buckets.low.labeled_count})
+      </div>
+      <div style="font-size: 13px; color: #134e4a; margin-top: 6px;">
+        Verify-recommended block accuracy: <strong>${tm.verify_recommended_bucket.pct_street_correct != null ? `${tm.verify_recommended_bucket.pct_street_correct}%` : '—'}</strong>
+        (${tm.verify_recommended_bucket.street_correct_count}/${tm.verify_recommended_bucket.labeled_count})
+      </div>
+    </div>
+    <table style="border-collapse: collapse; font-size: 13px; width: 100%;">
+      <thead>
+        <tr style="background: #f3f4f6;">
+          <th style="padding: 6px 10px; text-align: left;">Feedback source</th>
+          <th style="padding: 6px 10px;">Labeled</th>
+          <th style="padding: 6px 10px;">Correct</th>
+          <th style="padding: 6px 10px;">Wrong</th>
+          <th style="padding: 6px 10px;">Block accuracy</th>
+        </tr>
+      </thead>
+      <tbody>${bySourceRows || '<tr><td colspan="5"><em>no labeled truth in this window</em></td></tr>'}</tbody>
+    </table>
+  `;
+
   const aiBlock = ai ? `
     <h2 style="color: #1e3a8a;">Today's digest</h2>
     <p style="font-size: 15px;"><strong>${escapeHtml(ai.headline)}</strong></p>
@@ -193,6 +239,7 @@ function renderHtml(
         <strong>${report.total_rows - report.overall_failure_counts.healthy}</strong> failures
       </p>
       ${aiBlock}
+      ${accuracyBlock}
       ${renderVerificationsHtml(verifications)}
       <h3 style="margin-top: 24px; color: #0f172a;">Top failure signatures</h3>
       <table style="border-collapse: collapse; font-size: 13px;">
@@ -235,13 +282,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // DiagnosisReport failure_counts + per-user aggregates.
     try {
       const c = report.overall_failure_counts;
+      const tm = report.truth_metrics;
       const allFeedback = report.per_user.reduce((sum, u) => sum + u.user_feedback_rows, 0);
-      const streetCorrect = report.per_user.reduce(
-        (sum, u) => sum + (u.failure_counts.user_said_street_wrong === 0 ? u.user_feedback_rows : 0),
-        0,
-      );
-      const streetWrong = c.user_said_street_wrong;
+      const streetCorrect = Object.values(tm.by_feedback_source).reduce((sum, b) => sum + b.street_correct_count, 0);
+      const streetWrong = Object.values(tm.by_feedback_source).reduce((sum, b) => sum + b.street_wrong_count, 0);
       const sideWrong = c.user_said_side_wrong;
+      const overallStreetCorrectPct = streetCorrect + streetWrong > 0
+        ? Math.round((streetCorrect / (streetCorrect + streetWrong)) * 1000) / 10
+        : null;
       const snapshot = {
         window_start: report.window_start,
         window_end: report.window_end,
@@ -265,14 +313,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pct_parity_forced: report.total_rows
           ? Math.round((c.parity_forced / report.total_rows) * 1000) / 10
           : 0,
+        pct_street_correct_when_confirmed: overallStreetCorrectPct,
         user_feedback_count: allFeedback,
         street_correct_count: streetCorrect,
         street_wrong_count: streetWrong,
+        side_correct_count: 0,
         side_wrong_count: sideWrong,
         autolabel_mismatch_count: c.autolabel_disagreed,
         raw_metrics: {
           overall_failure_counts: report.overall_failure_counts,
           top_signatures: report.top_signatures,
+          truth_metrics: report.truth_metrics,
           ai_headline: ai?.headline || null,
         },
       };
