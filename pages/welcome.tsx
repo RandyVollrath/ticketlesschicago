@@ -161,7 +161,7 @@ export default function Welcome() {
             textAlign: 'center',
           }}>
             <div style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 4 }}>
-              Chicago drivers pay
+              Chicago drivers are issued
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, color: COLORS.text, letterSpacing: '-0.02em' }}>
               $420,000,000
