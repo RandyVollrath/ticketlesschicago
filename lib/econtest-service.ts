@@ -73,6 +73,38 @@ export async function submitEContest(params: EContestSubmissionParams): Promise<
   const { ticketNumber, defenseText, evidenceFiles, letterId, stopBeforeSubmit } = params;
   const logPrefix = `[eContest ${ticketNumber}${letterId ? ` letter=${letterId}` : ''}]`;
 
+  // Pre-flight: refuse to start a real submission with no attachment.
+  // The City's correspondence channel relies on the contest letter PDF being
+  // physically uploaded — the textarea fallback alone leaves the case naked.
+  // Allow stopBeforeSubmit dry-runs to proceed for portal mapping.
+  if (!stopBeforeSubmit) {
+    if (!evidenceFiles || evidenceFiles.length === 0) {
+      return {
+        success: false,
+        step: 'eligibility',
+        error: 'Refusing to submit — no evidence files supplied (caller must build the contest letter PDF first)',
+      };
+    }
+    const fs = await import('fs');
+    for (const filePath of evidenceFiles) {
+      if (!fs.existsSync(filePath)) {
+        return {
+          success: false,
+          step: 'eligibility',
+          error: `Refusing to submit — evidence file does not exist on disk: ${filePath}`,
+        };
+      }
+      const stat = fs.statSync(filePath);
+      if (stat.size < 500) {
+        return {
+          success: false,
+          step: 'eligibility',
+          error: `Refusing to submit — evidence file is suspiciously small (${stat.size}B): ${filePath}`,
+        };
+      }
+    }
+  }
+
   let browser: Browser | null = null;
 
   try {
