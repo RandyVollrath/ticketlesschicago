@@ -156,13 +156,13 @@ export const streetCleaningKit: ContestKit = {
     primary: {
       id: 'inadequate_signage',
       name: 'Inadequate or Missing Signage',
-      template: `I respectfully contest this citation on the grounds that the street cleaning signage at [LOCATION] was [SIGNAGE_ISSUE].
+      template: `I contest this citation on the grounds that the street cleaning signage at [LOCATION] was [SIGNAGE_ISSUE].
 
-Chicago Municipal Code requires that street cleaning signs be clearly visible and posted at regular intervals not exceeding 500 feet. Upon inspection of the location where my vehicle was parked, I found that [SPECIFIC_SIGNAGE_PROBLEM].
+Under Chicago Municipal Code § 9-64-010 and Department of Streets and Sanitation rules, "No Parking — Street Cleaning" signs must be visible and legible to a parked motorist before the restricted period begins. Upon inspection of the location where my vehicle was parked, I found that [SPECIFIC_SIGNAGE_PROBLEM].
 
 [EVIDENCE_REFERENCE]
 
-Without adequate notice of the street cleaning restrictions, motorists cannot reasonably be expected to comply with parking prohibitions. I respectfully request that this citation be dismissed.`,
+I request that the City produce: (1) the Bureau of Street Operations sweeper GPS log for the cited ward and section on the violation date, (2) any 311 cancellation or weather-suspension record affecting this route on that date, and (3) the most recent maintenance / replacement record for the signs governing this block face. Without adequate, visible notice of the restriction, the violation cannot be sustained. I request that this citation be dismissed.`,
       requiredFacts: ['location', 'signageIssue', 'specificSignageProblem'],
       winRate: 0.45, // Signage is strongest argument
       conditions: [
