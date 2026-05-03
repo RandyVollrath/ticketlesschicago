@@ -118,10 +118,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await alertOps(`[ALERT] ${issues.length} recent paid user${issues.length === 1 ? '' : 's'} half-set-up`, body);
   }
 
+  // ─── Late Fee Protection: stuck autopay charges ───
+  // A letter that's been autopay_status='charged_pending_city' for more
+  // than 6 hours means the city payment worker is offline or stuck.
+  // Flag these so we can investigate before the timeout-refund cron acts.
+  const stuckCutoffIso = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+  const { data: stuckCharges } = await supabaseAdmin
+    .from('contest_letters')
+    .select('id, user_id, autopay_attempted_at, autopay_status, stripe_payment_intent_id')
+    .eq('autopay_status', 'charged_pending_city')
+    .lte('autopay_attempted_at', stuckCutoffIso);
+
+  if (stuckCharges && stuckCharges.length > 0) {
+    const lines = stuckCharges.map(c =>
+      `• letter=${c.id} | charged ${c.autopay_attempted_at} | PI=${c.stripe_payment_intent_id}`
+    );
+    await alertOps(
+      `[ALERT] ${stuckCharges.length} autopay charge${stuckCharges.length === 1 ? '' : 's'} stuck >6h pending city payment`,
+      `These contest letters had Stripe charge succeed but the city_payment_queue worker has not completed payment within 6 hours. The auto-refund cron will refund automatically after 48h, but investigate sooner if this is unexpected.\n\n${lines.join('\n')}\n\nLikely causes: city_payment_queue worker offline, City of Chicago portal down, payment-form selectors broke.`,
+    );
+  }
+
   return res.status(200).json({
-    status: issues.length === 0 ? 'healthy' : 'issues_found',
+    status: (issues.length === 0 && (!stuckCharges || stuckCharges.length === 0)) ? 'healthy' : 'issues_found',
     checked: totalChecked,
     issuesFound: issues.length,
+    stuckAutopayCharges: stuckCharges?.length || 0,
     issues,
   });
 }

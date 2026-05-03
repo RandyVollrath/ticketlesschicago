@@ -2603,6 +2603,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       console.log('Payment intent succeeded:', paymentIntent.id);
 
+      // Late Fee Protection: defense-in-depth check that the executor's
+      // DB write actually landed. Executor charges Stripe synchronously
+      // and updates the contest_letter in the same request, but if that
+      // DB write failed we'd want to know about it here.
+      if (paymentIntent.metadata?.autopay === 'true') {
+        const letterId = paymentIntent.metadata.contest_letter_id;
+        if (letterId) {
+          const { data: letter } = await supabaseAdmin
+            .from('contest_letters')
+            .select('id, stripe_payment_intent_id, autopay_status')
+            .eq('id', letterId)
+            .maybeSingle();
+          if (!letter) {
+            console.error(`[autopay-webhook] PI ${paymentIntent.id} succeeded but contest_letter ${letterId} not found`);
+          } else if (letter.stripe_payment_intent_id !== paymentIntent.id) {
+            console.error(`[autopay-webhook] PI ${paymentIntent.id} succeeded but contest_letter ${letterId} has stripe_payment_intent_id=${letter.stripe_payment_intent_id} — patching`);
+            await supabaseAdmin
+              .from('contest_letters')
+              .update({ stripe_payment_intent_id: paymentIntent.id })
+              .eq('id', letterId);
+          } else {
+            console.log(`[autopay-webhook] PI ${paymentIntent.id} succeeded, contest_letter ${letterId} already in sync (autopay_status=${letter.autopay_status})`);
+          }
+        }
+        break;
+      }
+
       // Check if this is a contest letter mailing payment
       if (paymentIntent.metadata?.service === 'contest_letter_mailing') {
         console.log('📮 Processing contest letter mailing payment');
@@ -2688,6 +2715,78 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
       break;
+
+    case 'payment_intent.payment_failed': {
+      const failedPi = event.data.object as Stripe.PaymentIntent;
+      console.log('Payment intent failed:', failedPi.id);
+      if (failedPi.metadata?.autopay === 'true') {
+        const letterId = failedPi.metadata.contest_letter_id;
+        const reason = failedPi.last_payment_error?.message || 'unknown';
+        console.error(`[autopay-webhook] PI ${failedPi.id} FAILED for letter ${letterId}: ${reason}`);
+        if (letterId) {
+          await supabaseAdmin
+            .from('contest_letters')
+            .update({
+              autopay_status: 'payment_failed',
+              lifecycle_status: 'payment_failed',
+              lifecycle_status_changed_at: new Date().toISOString(),
+            })
+            .eq('id', letterId);
+          await supabaseAdmin.from('contest_status_events').insert([{
+            contest_letter_id: letterId,
+            ticket_id: failedPi.metadata.ticket_id || null,
+            user_id: failedPi.metadata.user_id || null,
+            event_type: 'autopay_stripe_failed_late',
+            source: 'stripe_webhook',
+            normalized_status: 'payment_failed',
+            raw_status: reason,
+            details: { stripePaymentIntentId: failedPi.id, error: reason },
+          }]);
+        }
+      }
+      break;
+    }
+
+    case 'charge.dispute.created': {
+      const dispute = event.data.object as Stripe.Dispute;
+      console.log('⚠️ Charge dispute created:', dispute.id, 'reason:', dispute.reason);
+      // Pull the PaymentIntent to check if this was an autopay charge.
+      let pi: Stripe.PaymentIntent | null = null;
+      if (typeof dispute.payment_intent === 'string') {
+        try {
+          pi = await stripe.paymentIntents.retrieve(dispute.payment_intent);
+        } catch (e: any) {
+          console.error('Failed to retrieve PI for dispute:', e.message);
+        }
+      }
+      if (pi?.metadata?.autopay === 'true') {
+        const letterId = pi.metadata.contest_letter_id;
+        await supabaseAdmin.from('contest_status_events').insert([{
+          contest_letter_id: letterId || null,
+          ticket_id: pi.metadata.ticket_id || null,
+          user_id: pi.metadata.user_id || null,
+          event_type: 'autopay_charge_disputed',
+          source: 'stripe_webhook',
+          normalized_status: 'disputed',
+          raw_status: dispute.reason || 'unknown',
+          details: { stripePaymentIntentId: pi.id, disputeId: dispute.id, reason: dispute.reason, amount: dispute.amount },
+        }]);
+        // Don't auto-refund or auto-anything. Disputes are operator-handled.
+        try {
+          const { Resend } = await import('resend');
+          const resendClient = new Resend(process.env.RESEND_API_KEY!);
+          await resendClient.emails.send({
+            from: 'Autopilot Alerts <alerts@autopilotamerica.com>',
+            to: (process.env.AUTOPAY_ALERT_EMAILS || 'randyvollrath@gmail.com').split(',').map(s => s.trim()),
+            subject: `[Autopay] Chargeback dispute on ${pi.id} — manual review`,
+            text: `Dispute ${dispute.id} created on autopay PaymentIntent ${pi.id}.\nReason: ${dispute.reason}\nAmount: $${(dispute.amount / 100).toFixed(2)}\nContest letter: ${letterId}\n\nGo to https://dashboard.stripe.com/disputes/${dispute.id} to respond.`,
+          });
+        } catch (e) {
+          console.error('Failed to send dispute alert:', e);
+        }
+      }
+      break;
+    }
 
     case 'charge.refunded':
       const refundedCharge = event.data.object as Stripe.Charge;
