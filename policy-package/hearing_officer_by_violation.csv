@@ -1,0 +1,608 @@
+hearing_officer,category,hearings,liable,not_liable,liable_pct
+"Alfred Quijano","Expired Meter",8091,2362,5665,29.19
+"Alfred Quijano","Expired Plate",4430,500,3895,11.29
+"Alfred Quijano","Fire Hydrant",358,200,150,55.87
+"Alfred Quijano","No City Sticker",2619,734,1859,28.03
+"Alfred Quijano","No Parking Anytime",1298,704,582,54.24
+"Alfred Quijano",Other,5274,2393,2817,45.37
+"Alfred Quijano","Red Light Camera",3192,2620,517,82.08
+"Alfred Quijano","Residential Permit",1793,874,908,48.75
+"Alfred Quijano","Speed Camera",2313,1844,406,79.72
+"Alfred Quijano","Street Cleaning",2072,1310,738,63.22
+"Barbara J. Bell","Expired Meter",2308,656,1623,28.42
+"Barbara J. Bell","Expired Plate",1554,382,1162,24.58
+"Barbara J. Bell","Fire Hydrant",109,69,40,63.3
+"Barbara J. Bell","No City Sticker",968,200,762,20.66
+"Barbara J. Bell","No Parking Anytime",447,140,301,31.32
+"Barbara J. Bell",Other,1818,644,1156,35.42
+"Barbara J. Bell","Red Light Camera",969,652,301,67.29
+"Barbara J. Bell","Residential Permit",644,242,397,37.58
+"Barbara J. Bell","Speed Camera",912,615,272,67.43
+"Barbara J. Bell","Street Cleaning",620,365,250,58.87
+"Bernadette Freeman","Expired Meter",3757,860,2887,22.89
+"Bernadette Freeman","Expired Plate",3204,265,2923,8.27
+"Bernadette Freeman","Fire Hydrant",186,87,98,46.77
+"Bernadette Freeman","No City Sticker",2202,266,1927,12.08
+"Bernadette Freeman","No Parking Anytime",691,277,412,40.09
+"Bernadette Freeman",Other,3080,894,2171,29.03
+"Bernadette Freeman","Red Light Camera",2181,1530,627,70.15
+"Bernadette Freeman","Residential Permit",972,212,755,21.81
+"Bernadette Freeman","Speed Camera",2577,1925,630,74.7
+"Bernadette Freeman","Street Cleaning",1412,749,658,53.05
+"Boye Akinwande","Expired Meter",185,75,110,40.54
+"Boye Akinwande","Expired Plate",234,24,209,10.26
+"Boye Akinwande",Other,155,99,55,63.87
+"Casandra Watson","Expired Meter",173,25,148,14.45
+"Daniel Ruiz","Expired Meter",1634,664,944,40.64
+"Daniel Ruiz","Expired Plate",1086,464,556,42.73
+"Daniel Ruiz","No City Sticker",821,352,398,42.87
+"Daniel Ruiz","No Parking Anytime",362,120,233,33.15
+"Daniel Ruiz",Other,1627,622,943,38.23
+"Daniel Ruiz","Red Light Camera",1006,845,99,84.0
+"Daniel Ruiz","Residential Permit",452,189,256,41.81
+"Daniel Ruiz","Speed Camera",855,738,57,86.32
+"Daniel Ruiz","Street Cleaning",439,237,183,53.99
+"David Badillo","Expired Meter",5924,2267,3623,38.27
+"David Badillo","Expired Plate",3917,1383,2478,35.31
+"David Badillo","Fire Hydrant",363,176,177,48.48
+"David Badillo","No City Sticker",2172,812,1303,37.38
+"David Badillo","No Parking Anytime",1167,621,518,53.21
+"David Badillo",Other,4759,2404,2286,50.51
+"David Badillo","Red Light Camera",3462,2866,517,82.78
+"David Badillo","Residential Permit",1599,844,724,52.78
+"David Badillo","Speed Camera",2929,2489,353,84.98
+"David Badillo","Street Cleaning",1794,1345,418,74.97
+"Denis E. Guest","Expired Meter",5064,1797,3211,35.49
+"Denis E. Guest","Expired Plate",3036,1025,1965,33.76
+"Denis E. Guest","Fire Hydrant",271,145,122,53.51
+"Denis E. Guest","No City Sticker",1773,779,965,43.94
+"Denis E. Guest","No Parking Anytime",913,385,504,42.17
+"Denis E. Guest",Other,3883,1734,2087,44.66
+"Denis E. Guest","Red Light Camera",2890,2335,466,80.8
+"Denis E. Guest","Residential Permit",1265,688,558,54.39
+"Denis E. Guest","Speed Camera",2197,1748,361,79.56
+"Denis E. Guest","Street Cleaning",1249,747,483,59.81
+"Donna Rizzuto","Expired Meter",1765,661,1066,37.45
+"Donna Rizzuto","Expired Plate",1012,501,471,49.51
+"Donna Rizzuto","Fire Hydrant",127,79,39,62.2
+"Donna Rizzuto","No City Sticker",600,335,223,55.83
+"Donna Rizzuto","No Parking Anytime",481,244,217,50.73
+"Donna Rizzuto",Other,1649,979,589,59.37
+"Donna Rizzuto","Red Light Camera",748,648,43,86.63
+"Donna Rizzuto","Residential Permit",537,333,182,62.01
+"Donna Rizzuto","Speed Camera",474,388,38,81.86
+"Donna Rizzuto","Street Cleaning",363,284,62,78.24
+"Dyahanne Ware","Expired Meter",4582,1479,3038,32.28
+"Dyahanne Ware","Expired Plate",2368,1131,1196,47.76
+"Dyahanne Ware","Fire Hydrant",298,150,142,50.34
+"Dyahanne Ware","No City Sticker",1653,866,751,52.39
+"Dyahanne Ware","No Parking Anytime",1008,414,560,41.07
+"Dyahanne Ware",Other,3854,1629,2109,42.27
+"Dyahanne Ware","Red Light Camera",2424,1889,453,77.93
+"Dyahanne Ware","Residential Permit",1407,580,806,41.22
+"Dyahanne Ware","Speed Camera",1284,1072,151,83.49
+"Dyahanne Ware","Street Cleaning",1296,825,452,63.66
+"Eileen McHugh","Expired Meter",11202,3332,7776,29.74
+"Eileen McHugh","Expired Plate",8183,1142,6919,13.96
+"Eileen McHugh","Fire Hydrant",614,296,309,48.21
+"Eileen McHugh","No City Sticker",5363,1156,4091,21.56
+"Eileen McHugh","No Parking Anytime",2264,868,1331,38.34
+"Eileen McHugh",Other,9559,3088,6268,32.3
+"Eileen McHugh","Red Light Camera",6004,4513,1291,75.17
+"Eileen McHugh","Residential Permit",2749,1127,1567,41.0
+"Eileen McHugh","Speed Camera",5544,4497,869,81.11
+"Eileen McHugh","Street Cleaning",3290,1819,1430,55.29
+"Eli R. Johnson","Expired Meter",1850,340,1490,18.38
+"Eli R. Johnson","Expired Plate",1286,313,955,24.34
+"Eli R. Johnson","Fire Hydrant",106,40,65,37.74
+"Eli R. Johnson","No City Sticker",782,188,583,24.04
+"Eli R. Johnson","No Parking Anytime",402,101,291,25.12
+"Eli R. Johnson",Other,1613,391,1197,24.24
+"Eli R. Johnson","Red Light Camera",1012,752,234,74.31
+"Eli R. Johnson","Residential Permit",512,160,351,31.25
+"Eli R. Johnson","Speed Camera",789,524,218,66.41
+"Eli R. Johnson","Street Cleaning",545,317,220,58.17
+"Elreta C. Dickinson","Expired Meter",8181,2822,5219,34.49
+"Elreta C. Dickinson","Expired Plate",5238,744,4348,14.2
+"Elreta C. Dickinson","Fire Hydrant",445,228,193,51.24
+"Elreta C. Dickinson","No City Sticker",3560,705,2725,19.8
+"Elreta C. Dickinson","No Parking Anytime",1705,616,1031,36.13
+"Elreta C. Dickinson",Other,6496,2247,4086,34.59
+"Elreta C. Dickinson","Red Light Camera",3366,2389,783,70.97
+"Elreta C. Dickinson","Residential Permit",2044,853,1152,41.73
+"Elreta C. Dickinson","Speed Camera",2898,2156,551,74.4
+"Elreta C. Dickinson","Street Cleaning",2280,1264,955,55.44
+"Evelyn Ginger Mance","Expired Meter",4425,1353,2936,30.58
+"Evelyn Ginger Mance","Expired Plate",3151,489,2513,15.52
+"Evelyn Ginger Mance","Fire Hydrant",232,100,117,43.1
+"Evelyn Ginger Mance","No City Sticker",2018,366,1555,18.14
+"Evelyn Ginger Mance","No Parking Anytime",841,340,483,40.43
+"Evelyn Ginger Mance",Other,3429,1394,1881,40.65
+"Evelyn Ginger Mance","Red Light Camera",1866,1414,304,75.78
+"Evelyn Ginger Mance","Residential Permit",1143,461,648,40.33
+"Evelyn Ginger Mance","Speed Camera",1688,1270,230,75.24
+"Evelyn Ginger Mance","Street Cleaning",1324,956,317,72.21
+"Ewa B. Price","Expired Meter",760,297,437,39.08
+"Ewa B. Price","Expired Plate",375,202,146,53.87
+"Ewa B. Price","No City Sticker",304,151,138,49.67
+"Ewa B. Price","No Parking Anytime",238,116,107,48.74
+"Ewa B. Price",Other,821,415,362,50.55
+"Ewa B. Price","Red Light Camera",503,417,52,82.9
+"Ewa B. Price","Residential Permit",272,150,107,55.15
+"Ewa B. Price","Speed Camera",246,215,23,87.4
+"Ewa B. Price","Street Cleaning",196,136,46,69.39
+"Gia L. Morris","Expired Meter",12538,5420,7029,43.23
+"Gia L. Morris","Expired Plate",8390,2164,6138,25.79
+"Gia L. Morris","Fire Hydrant",560,293,249,52.32
+"Gia L. Morris","No City Sticker",4868,1540,3254,31.64
+"Gia L. Morris","No Parking Anytime",1982,843,1091,42.53
+"Gia L. Morris",Other,8169,3591,4439,43.96
+"Gia L. Morris","Red Light Camera",4340,3301,904,76.06
+"Gia L. Morris","Residential Permit",2886,1607,1260,55.68
+"Gia L. Morris","Speed Camera",4043,2961,923,73.24
+"Gia L. Morris","Street Cleaning",3198,2126,1039,66.48
+"Gregory G. Plesha","Expired Meter",1441,520,898,36.09
+"Gregory G. Plesha","Expired Plate",893,398,457,44.57
+"Gregory G. Plesha","No City Sticker",638,277,321,43.42
+"Gregory G. Plesha","No Parking Anytime",261,110,145,42.15
+"Gregory G. Plesha",Other,1199,442,694,36.86
+"Gregory G. Plesha","Red Light Camera",712,579,99,81.32
+"Gregory G. Plesha","Residential Permit",385,187,185,48.57
+"Gregory G. Plesha","Speed Camera",363,285,46,78.51
+"Gregory G. Plesha","Street Cleaning",409,244,158,59.66
+"Harriet J. Parker","Expired Meter",1210,556,644,45.95
+"Harriet J. Parker","Expired Plate",786,534,228,67.94
+"Harriet J. Parker","No City Sticker",493,294,182,59.63
+"Harriet J. Parker","No Parking Anytime",218,153,58,70.18
+"Harriet J. Parker",Other,1078,725,324,67.25
+"Harriet J. Parker","Red Light Camera",594,564,12,94.95
+"Harriet J. Parker","Residential Permit",426,311,111,73.0
+"Harriet J. Parker","Speed Camera",366,318,39,86.89
+"Harriet J. Parker","Street Cleaning",275,243,30,88.36
+"Heather Neaveill","Expired Meter",586,184,397,31.4
+"Heather Neaveill","Expired Plate",479,258,214,53.86
+"Heather Neaveill","No City Sticker",233,132,98,56.65
+"Heather Neaveill","No Parking Anytime",113,34,77,30.09
+"Heather Neaveill",Other,491,160,316,32.59
+"Heather Neaveill","Red Light Camera",384,288,77,75.0
+"Heather Neaveill","Residential Permit",152,66,83,43.42
+"Heather Neaveill","Speed Camera",396,296,73,74.75
+"Heather Neaveill","Street Cleaning",258,145,112,56.2
+"Heather Neaveill-Kramer","Expired Meter",1979,646,1298,32.64
+"Heather Neaveill-Kramer","Expired Plate",852,428,400,50.23
+"Heather Neaveill-Kramer","Fire Hydrant",133,48,80,36.09
+"Heather Neaveill-Kramer","No City Sticker",709,337,332,47.53
+"Heather Neaveill-Kramer","No Parking Anytime",549,101,430,18.4
+"Heather Neaveill-Kramer",Other,1830,539,1233,29.45
+"Heather Neaveill-Kramer","Red Light Camera",1296,1133,122,87.42
+"Heather Neaveill-Kramer","Residential Permit",522,178,328,34.1
+"Heather Neaveill-Kramer","Speed Camera",678,585,65,86.28
+"Heather Neaveill-Kramer","Street Cleaning",612,326,269,53.27
+"Hugo Chaviano","Expired Meter",7078,2634,4415,37.21
+"Hugo Chaviano","Expired Plate",4342,562,3741,12.94
+"Hugo Chaviano","Fire Hydrant",240,189,48,78.75
+"Hugo Chaviano","No City Sticker",2599,437,2125,16.81
+"Hugo Chaviano","No Parking Anytime",1126,694,411,61.63
+"Hugo Chaviano",Other,4230,2822,1368,66.71
+"Hugo Chaviano","Red Light Camera",1568,1027,516,65.5
+"Hugo Chaviano","Residential Permit",1448,913,522,63.05
+"Hugo Chaviano","Speed Camera",1705,1319,354,77.36
+"Hugo Chaviano","Street Cleaning",1656,1443,201,87.14
+"J. Paula Roderick","Expired Meter",1751,503,1242,28.73
+"J. Paula Roderick","Expired Plate",1062,212,838,19.96
+"J. Paula Roderick","No City Sticker",496,100,380,20.16
+"J. Paula Roderick","No Parking Anytime",293,123,158,41.98
+"J. Paula Roderick",Other,1084,407,665,37.55
+"J. Paula Roderick","Red Light Camera",630,489,128,77.62
+"J. Paula Roderick","Residential Permit",405,152,252,37.53
+"J. Paula Roderick","Speed Camera",472,366,97,77.54
+"J. Paula Roderick","Street Cleaning",397,269,118,67.76
+"Jamar Orr","Expired Meter",106,41,65,38.68
+"James Reilly","Expired Meter",4616,1248,3253,27.04
+"James Reilly","Expired Plate",2901,631,2189,21.75
+"James Reilly","Fire Hydrant",234,123,97,52.56
+"James Reilly","No City Sticker",1710,310,1348,18.13
+"James Reilly","No Parking Anytime",1007,310,656,30.78
+"James Reilly",Other,3447,1361,1969,39.48
+"James Reilly","Red Light Camera",1715,1154,435,67.29
+"James Reilly","Residential Permit",1081,396,655,36.63
+"James Reilly","Speed Camera",1656,1193,339,72.04
+"James Reilly","Street Cleaning",1041,668,333,64.17
+"Jean M. Brabeck","Expired Meter",8162,2590,5432,31.73
+"Jean M. Brabeck","Expired Plate",5700,786,4757,13.79
+"Jean M. Brabeck","Fire Hydrant",439,280,144,63.78
+"Jean M. Brabeck","No City Sticker",3309,554,2613,16.74
+"Jean M. Brabeck","No Parking Anytime",1741,660,1015,37.91
+"Jean M. Brabeck",Other,6464,2679,3546,41.44
+"Jean M. Brabeck","Red Light Camera",3537,2528,765,71.47
+"Jean M. Brabeck","Residential Permit",2040,702,1280,34.41
+"Jean M. Brabeck","Speed Camera",3206,2135,837,66.59
+"Jean M. Brabeck","Street Cleaning",1703,1456,190,85.5
+"Jewel Klein","Expired Meter",4855,1490,3365,30.69
+"Jewel Klein","Expired Plate",2298,864,1434,37.6
+"Jewel Klein","Fire Hydrant",177,140,37,79.1
+"Jewel Klein","No City Sticker",1327,519,808,39.11
+"Jewel Klein","No Parking Anytime",564,347,217,61.52
+"Jewel Klein",Other,2507,1178,1329,46.99
+"Jewel Klein","Red Light Camera",1642,1364,278,83.07
+"Jewel Klein","Residential Permit",1055,496,559,47.01
+"Jewel Klein","Speed Camera",1201,977,224,81.35
+"Jewel Klein","Street Cleaning",1164,922,242,79.21
+"Joan T. Alvarez","Expired Meter",7714,2810,4640,36.43
+"Joan T. Alvarez","Expired Plate",5326,1541,3568,28.93
+"Joan T. Alvarez","Fire Hydrant",507,222,260,43.79
+"Joan T. Alvarez","No City Sticker",3264,960,2123,29.41
+"Joan T. Alvarez","No Parking Anytime",1896,719,1089,37.92
+"Joan T. Alvarez",Other,6832,2949,3622,43.16
+"Joan T. Alvarez","Red Light Camera",3962,3031,659,76.5
+"Joan T. Alvarez","Residential Permit",1884,1052,785,55.84
+"Joan T. Alvarez","Speed Camera",3454,2579,540,74.67
+"Joan T. Alvarez","Street Cleaning",2315,1335,898,57.67
+"Jorge Cazares","Expired Meter",1688,644,1041,38.15
+"Jorge Cazares","Expired Plate",1475,491,982,33.29
+"Jorge Cazares","No City Sticker",810,212,590,26.17
+"Jorge Cazares","No Parking Anytime",372,185,187,49.73
+"Jorge Cazares",Other,1382,779,598,56.37
+"Jorge Cazares","Red Light Camera",352,242,103,68.75
+"Jorge Cazares","Residential Permit",447,272,172,60.85
+"Jorge Cazares","Speed Camera",411,321,88,78.1
+"Jorge Cazares","Street Cleaning",472,318,153,67.37
+"Jose Padilla","Expired Meter",10212,3958,6115,38.76
+"Jose Padilla","Expired Plate",6730,1682,4917,24.99
+"Jose Padilla","Fire Hydrant",568,294,263,51.76
+"Jose Padilla","No City Sticker",4629,1249,3259,26.98
+"Jose Padilla","No Parking Anytime",2921,843,2004,28.86
+"Jose Padilla",Other,9291,3701,5388,39.83
+"Jose Padilla","Red Light Camera",4713,3285,1222,69.7
+"Jose Padilla","Residential Permit",2751,1164,1534,42.31
+"Jose Padilla","Speed Camera",3936,2896,840,73.58
+"Jose Padilla","Street Cleaning",2979,2189,736,73.48
+"Joseph Chico","Expired Meter",1275,242,1031,18.98
+"Joseph Chico","Expired Plate",1011,107,904,10.58
+"Joseph Chico","No City Sticker",601,98,503,16.31
+"Joseph Chico","No Parking Anytime",301,82,219,27.24
+"Joseph Chico",Other,1168,290,876,24.83
+"Joseph Chico","Red Light Camera",686,504,182,73.47
+"Joseph Chico","Residential Permit",360,128,231,35.56
+"Joseph Chico","Speed Camera",623,482,138,77.37
+"Joseph Chico","Street Cleaning",427,255,172,59.72
+"Julie G. Davis","Expired Meter",467,161,293,34.48
+"Julie G. Davis","Expired Plate",316,111,196,35.13
+"Julie G. Davis","No City Sticker",164,64,90,39.02
+"Julie G. Davis","No Parking Anytime",103,36,61,34.95
+"Julie G. Davis",Other,400,181,197,45.25
+"Julie G. Davis","Red Light Camera",234,183,41,78.21
+"Julie G. Davis","Residential Permit",133,76,54,57.14
+"Julie G. Davis","Speed Camera",220,155,57,70.45
+"Julie Haran-King","Expired Meter",7445,3272,4084,43.95
+"Julie Haran-King","Expired Plate",5421,1433,3899,26.43
+"Julie Haran-King","Fire Hydrant",353,212,131,60.06
+"Julie Haran-King","No City Sticker",2894,922,1913,31.86
+"Julie Haran-King","No Parking Anytime",1256,695,514,55.33
+"Julie Haran-King",Other,5112,2585,2434,50.57
+"Julie Haran-King","Red Light Camera",2460,1857,503,75.49
+"Julie Haran-King","Residential Permit",1819,1036,764,56.95
+"Julie Haran-King","Speed Camera",2293,1813,318,79.07
+"Julie Haran-King","Street Cleaning",2003,1722,234,85.97
+"Karen B. Breashears","Expired Meter",1971,639,1315,32.42
+"Karen B. Breashears","Expired Plate",1160,214,919,18.45
+"Karen B. Breashears","Fire Hydrant",142,65,74,45.77
+"Karen B. Breashears","No City Sticker",754,216,506,28.65
+"Karen B. Breashears","No Parking Anytime",482,210,253,43.57
+"Karen B. Breashears",Other,1802,785,986,43.56
+"Karen B. Breashears","Red Light Camera",725,644,56,88.83
+"Karen B. Breashears","Residential Permit",617,366,246,59.32
+"Karen B. Breashears","Speed Camera",498,427,38,85.74
+"Karen B. Breashears","Street Cleaning",359,279,72,77.72
+"Karen L. Riley","Expired Meter",3031,723,2275,23.85
+"Karen L. Riley","Expired Plate",2082,157,1900,7.54
+"Karen L. Riley","Fire Hydrant",127,67,56,52.76
+"Karen L. Riley","No City Sticker",1148,111,1010,9.67
+"Karen L. Riley","No Parking Anytime",495,169,308,34.14
+"Karen L. Riley",Other,1909,676,1190,35.41
+"Karen L. Riley","Red Light Camera",778,466,268,59.9
+"Karen L. Riley","Residential Permit",603,242,348,40.13
+"Karen L. Riley","Speed Camera",881,567,274,64.36
+"Karen L. Riley","Street Cleaning",666,232,428,34.83
+"Kathryn Bailey","Expired Meter",2993,882,2069,29.47
+"Kathryn Bailey","Expired Plate",2490,280,2141,11.24
+"Kathryn Bailey","Fire Hydrant",140,79,57,56.43
+"Kathryn Bailey","No City Sticker",1422,168,1223,11.81
+"Kathryn Bailey","No Parking Anytime",663,277,373,41.78
+"Kathryn Bailey",Other,2177,964,1164,44.28
+"Kathryn Bailey","Red Light Camera",617,448,129,72.61
+"Kathryn Bailey","Residential Permit",727,392,325,53.92
+"Kathryn Bailey","Speed Camera",903,735,108,81.4
+"Kathryn Bailey","Street Cleaning",832,548,259,65.87
+"Katie Diggins","Expired Meter",556,232,322,41.73
+"Katie Diggins","Expired Plate",402,73,316,18.16
+"Katie Diggins","No City Sticker",242,49,191,20.25
+"Katie Diggins",Other,383,202,174,52.74
+"Katie Diggins","Residential Permit",117,74,42,63.25
+"Katie Diggins","Street Cleaning",130,83,45,63.85
+"Kyra G. Payne","Expired Meter",750,313,414,41.73
+"Kyra G. Payne","Expired Plate",614,142,454,23.13
+"Kyra G. Payne","No City Sticker",352,110,216,31.25
+"Kyra G. Payne","No Parking Anytime",165,110,47,66.67
+"Kyra G. Payne",Other,605,354,219,58.51
+"Kyra G. Payne","Red Light Camera",404,290,87,71.78
+"Kyra G. Payne","Residential Permit",182,123,51,67.58
+"Kyra G. Payne","Speed Camera",455,354,71,77.8
+"Kyra G. Payne","Street Cleaning",246,208,33,84.55
+"Laurie Samuels","Expired Meter",1365,547,774,40.07
+"Laurie Samuels","Expired Plate",1066,510,503,47.84
+"Laurie Samuels","Fire Hydrant",112,45,61,40.18
+"Laurie Samuels","No City Sticker",831,341,432,41.03
+"Laurie Samuels","No Parking Anytime",404,141,251,34.9
+"Laurie Samuels",Other,1480,583,825,39.39
+"Laurie Samuels","Red Light Camera",1129,978,66,86.63
+"Laurie Samuels","Residential Permit",418,242,158,57.89
+"Laurie Samuels","Speed Camera",860,756,31,87.91
+"Laurie Samuels","Street Cleaning",566,274,273,48.41
+"Lonathan D. Hurse","Expired Meter",1930,1043,864,54.04
+"Lonathan D. Hurse","Expired Plate",1312,1086,194,82.77
+"Lonathan D. Hurse","Fire Hydrant",159,130,21,81.76
+"Lonathan D. Hurse","No City Sticker",858,666,161,77.62
+"Lonathan D. Hurse","No Parking Anytime",434,378,50,87.1
+"Lonathan D. Hurse",Other,1831,1603,211,87.55
+"Lonathan D. Hurse","Red Light Camera",1067,997,36,93.44
+"Lonathan D. Hurse","Residential Permit",729,609,112,83.54
+"Lonathan D. Hurse","Speed Camera",749,725,10,96.8
+"Lonathan D. Hurse","Street Cleaning",394,367,17,93.15
+"Mable Taylor","Expired Meter",2930,1165,1748,39.76
+"Mable Taylor","Expired Plate",1499,249,1220,16.61
+"Mable Taylor","Fire Hydrant",115,95,19,82.61
+"Mable Taylor","No City Sticker",990,194,776,19.6
+"Mable Taylor","No Parking Anytime",450,276,165,61.33
+"Mable Taylor",Other,1682,892,773,53.03
+"Mable Taylor","Red Light Camera",657,472,170,71.84
+"Mable Taylor","Residential Permit",634,382,242,60.25
+"Mable Taylor","Speed Camera",669,529,135,79.07
+"Mable Taylor","Street Cleaning",598,498,92,83.28
+"Mamie Alexander","Expired Meter",8418,2545,5820,30.23
+"Mamie Alexander","Expired Plate",4487,1086,3334,24.2
+"Mamie Alexander","Fire Hydrant",353,178,161,50.42
+"Mamie Alexander","No City Sticker",2841,974,1794,34.28
+"Mamie Alexander","No Parking Anytime",1341,552,757,41.16
+"Mamie Alexander",Other,5537,1995,3456,36.03
+"Mamie Alexander","Red Light Camera",4060,3566,386,87.83
+"Mamie Alexander","Residential Permit",1934,593,1320,30.66
+"Mamie Alexander","Speed Camera",2974,2632,264,88.5
+"Mamie Alexander","Street Cleaning",2437,1221,1194,50.1
+"Marcia K. Johnson","Expired Meter",295,149,146,50.51
+"Marcia K. Johnson","Expired Plate",233,129,104,55.36
+"Marcia K. Johnson","No City Sticker",149,80,69,53.69
+"Marcia K. Johnson",Other,277,145,132,52.35
+"Marcia K. Johnson","Red Light Camera",217,122,95,56.22
+"Marcia K. Johnson","Residential Permit",118,66,52,55.93
+"Marcia K. Johnson","Speed Camera",122,82,40,67.21
+"Marcia K. Johnson","Street Cleaning",106,55,51,51.89
+"Mark Moreno","Expired Meter",5646,2042,3555,36.17
+"Mark Moreno","Expired Plate",3535,695,2770,19.66
+"Mark Moreno","Fire Hydrant",269,186,77,69.14
+"Mark Moreno","No City Sticker",2270,418,1817,18.41
+"Mark Moreno","No Parking Anytime",933,483,435,51.77
+"Mark Moreno",Other,3859,1993,1791,51.65
+"Mark Moreno","Red Light Camera",1373,901,419,65.62
+"Mark Moreno","Residential Permit",1173,643,515,54.82
+"Mark Moreno","Speed Camera",1514,1056,401,69.75
+"Mark Moreno","Street Cleaning",1409,1085,307,77.0
+"Mark S. Boyle","Expired Meter",6376,2228,4040,34.94
+"Mark S. Boyle","Expired Plate",4187,815,3250,19.47
+"Mark S. Boyle","Fire Hydrant",269,149,108,55.39
+"Mark S. Boyle","No City Sticker",2342,448,1823,19.13
+"Mark S. Boyle","No Parking Anytime",1094,593,455,54.2
+"Mark S. Boyle",Other,4393,1936,2343,44.07
+"Mark S. Boyle","Red Light Camera",2978,2158,675,72.46
+"Mark S. Boyle","Residential Permit",1406,722,653,51.35
+"Mark S. Boyle","Speed Camera",2750,1974,595,71.78
+"Mark S. Boyle","Street Cleaning",1671,1103,535,66.01
+"Martin J. Kennelly Jr.","Expired Meter",9050,1878,7104,20.75
+"Martin J. Kennelly Jr.","Expired Plate",6037,1136,4828,18.82
+"Martin J. Kennelly Jr.","Fire Hydrant",448,142,303,31.7
+"Martin J. Kennelly Jr.","No City Sticker",3647,752,2837,20.62
+"Martin J. Kennelly Jr.","No Parking Anytime",1660,519,1117,31.27
+"Martin J. Kennelly Jr.",Other,6687,2084,4527,31.16
+"Martin J. Kennelly Jr.","Red Light Camera",3639,2557,1001,70.27
+"Martin J. Kennelly Jr.","Residential Permit",2142,827,1292,38.61
+"Martin J. Kennelly Jr.","Speed Camera",3343,2383,884,71.28
+"Martin J. Kennelly Jr.","Street Cleaning",2380,1399,958,58.78
+"Mary Jo Strusz","Expired Meter",1755,758,989,43.19
+"Mary Jo Strusz","Expired Plate",1063,402,645,37.82
+"Mary Jo Strusz","No City Sticker",577,230,333,39.86
+"Mary Jo Strusz","No Parking Anytime",294,167,122,56.8
+"Mary Jo Strusz",Other,1124,571,530,50.8
+"Mary Jo Strusz","Red Light Camera",851,691,140,81.2
+"Mary Jo Strusz","Residential Permit",411,217,192,52.8
+"Mary Jo Strusz","Speed Camera",633,510,88,80.57
+"Mary Jo Strusz","Street Cleaning",439,337,96,76.77
+"Melissa Ortiz","Expired Meter",696,215,475,30.89
+"Melissa Ortiz","Expired Plate",404,171,215,42.33
+"Melissa Ortiz","No City Sticker",293,112,171,38.23
+"Melissa Ortiz","No Parking Anytime",234,59,171,25.21
+"Melissa Ortiz",Other,782,293,477,37.47
+"Melissa Ortiz","Red Light Camera",341,289,36,84.75
+"Melissa Ortiz","Residential Permit",228,101,120,44.3
+"Melissa Ortiz","Speed Camera",164,132,27,80.49
+"Melissa Ortiz","Street Cleaning",148,83,54,56.08
+"Michael E. Connelly","Expired Meter",8060,2048,5921,25.41
+"Michael E. Connelly","Expired Plate",5122,1426,3600,27.84
+"Michael E. Connelly","Fire Hydrant",366,181,170,49.45
+"Michael E. Connelly","No City Sticker",2930,784,2063,26.76
+"Michael E. Connelly","No Parking Anytime",1470,537,887,36.53
+"Michael E. Connelly",Other,5740,1663,3912,28.97
+"Michael E. Connelly","Red Light Camera",3059,2318,620,75.78
+"Michael E. Connelly","Residential Permit",1930,746,1158,38.65
+"Michael E. Connelly","Speed Camera",2343,1868,375,79.73
+"Michael E. Connelly","Street Cleaning",2018,1015,957,50.3
+"Michael G. Cawley","Expired Meter",6772,2453,4273,36.22
+"Michael G. Cawley","Expired Plate",4830,1364,3414,28.24
+"Michael G. Cawley","Fire Hydrant",314,166,139,52.87
+"Michael G. Cawley","No City Sticker",2652,734,1871,27.68
+"Michael G. Cawley","No Parking Anytime",1191,623,549,52.31
+"Michael G. Cawley",Other,4692,2304,2319,49.1
+"Michael G. Cawley","Red Light Camera",2802,2122,611,75.73
+"Michael G. Cawley","Residential Permit",1623,898,705,55.33
+"Michael G. Cawley","Speed Camera",2545,1952,516,76.7
+"Michael G. Cawley","Street Cleaning",1904,1420,452,74.58
+"Michael J. Dudek","Expired Meter",9920,2919,6900,29.43
+"Michael J. Dudek","Expired Plate",5731,1486,4118,25.93
+"Michael J. Dudek","Fire Hydrant",406,201,178,49.51
+"Michael J. Dudek","No City Sticker",3309,980,2220,29.62
+"Michael J. Dudek","No Parking Anytime",1653,709,875,42.89
+"Michael J. Dudek",Other,6761,3008,3629,44.49
+"Michael J. Dudek","Red Light Camera",4411,3271,1021,74.16
+"Michael J. Dudek","Residential Permit",2139,969,1146,45.3
+"Michael J. Dudek","Speed Camera",3627,2818,647,77.7
+"Michael J. Dudek","Street Cleaning",2628,2096,495,79.76
+"Michael Quinn","Expired Meter",23484,3595,19713,15.31
+"Michael Quinn","Expired Plate",15215,1057,13918,6.95
+"Michael Quinn","Fire Hydrant",979,418,539,42.7
+"Michael Quinn","No City Sticker",8934,1502,7263,16.81
+"Michael Quinn","No Parking Anytime",3866,1035,2773,26.77
+"Michael Quinn",Other,15782,3505,12011,22.21
+"Michael Quinn","Red Light Camera",9282,6415,2510,69.11
+"Michael Quinn","Residential Permit",5431,954,4423,17.57
+"Michael Quinn","Speed Camera",9232,6630,2085,71.82
+"Michael Quinn","Street Cleaning",5633,1465,4065,26.01
+"Mitchell C. Ex","Expired Meter",1732,566,1141,32.68
+"Mitchell C. Ex","Expired Plate",978,362,585,37.01
+"Mitchell C. Ex","Fire Hydrant",104,42,54,40.38
+"Mitchell C. Ex","No City Sticker",645,229,392,35.5
+"Mitchell C. Ex","No Parking Anytime",355,150,193,42.25
+"Mitchell C. Ex",Other,1310,513,752,39.16
+"Mitchell C. Ex","Red Light Camera",902,674,192,74.72
+"Mitchell C. Ex","Residential Permit",444,190,248,42.79
+"Mitchell C. Ex","Speed Camera",642,466,144,72.59
+"Mitchell C. Ex","Street Cleaning",557,367,176,65.89
+"Philip L. Bernstein","Expired Meter",2764,1065,1644,38.53
+"Philip L. Bernstein","Expired Plate",1940,577,1309,29.74
+"Philip L. Bernstein","Fire Hydrant",219,131,83,59.82
+"Philip L. Bernstein","No City Sticker",1571,458,1087,29.15
+"Philip L. Bernstein","No Parking Anytime",913,483,418,52.9
+"Philip L. Bernstein",Other,2845,1670,1114,58.7
+"Philip L. Bernstein","Red Light Camera",1608,1278,262,79.48
+"Philip L. Bernstein","Residential Permit",893,499,373,55.88
+"Philip L. Bernstein","Speed Camera",1439,1184,194,82.28
+"Philip L. Bernstein","Street Cleaning",815,621,177,76.2
+"Rachel L. Berger","Expired Meter",411,111,293,27.01
+"Rachel L. Berger","Expired Plate",386,132,245,34.2
+"Rachel L. Berger","No City Sticker",181,61,107,33.7
+"Rachel L. Berger","No Parking Anytime",163,59,98,36.2
+"Rachel L. Berger",Other,551,179,356,32.49
+"Rachel L. Berger","Red Light Camera",239,200,23,83.68
+"Rachel L. Berger","Residential Permit",172,60,108,34.88
+"Rachel L. Berger","Speed Camera",165,135,20,81.82
+"Ralph Reyna","Expired Meter",670,213,457,31.79
+"Ralph Reyna","Expired Plate",436,282,154,64.68
+"Ralph Reyna","No City Sticker",212,107,105,50.47
+"Ralph Reyna",Other,506,288,218,56.92
+"Ralph Reyna","Red Light Camera",258,209,49,81.01
+"Ralph Reyna","Residential Permit",253,111,142,43.87
+"Ralph Reyna","Speed Camera",145,143,2,98.62
+"Ralph Reyna","Street Cleaning",138,117,21,84.78
+"Rhonda L. Walker","Expired Meter",608,190,414,31.25
+"Rhonda L. Walker","Expired Plate",436,146,288,33.49
+"Rhonda L. Walker","No City Sticker",211,63,146,29.86
+"Rhonda L. Walker","No Parking Anytime",141,56,81,39.72
+"Rhonda L. Walker",Other,514,166,339,32.3
+"Rhonda L. Walker","Red Light Camera",306,242,51,79.08
+"Rhonda L. Walker","Residential Permit",206,82,122,39.81
+"Rhonda L. Walker","Speed Camera",184,130,47,70.65
+"Rhonda L. Walker","Street Cleaning",166,112,52,67.47
+"Rhonda Sallee","Expired Meter",427,143,273,33.49
+"Rhonda Sallee","Expired Plate",338,168,154,49.7
+"Rhonda Sallee","No City Sticker",299,126,151,42.14
+"Rhonda Sallee","No Parking Anytime",134,60,69,44.78
+"Rhonda Sallee",Other,541,194,319,35.86
+"Rhonda Sallee","Red Light Camera",334,285,29,85.33
+"Rhonda Sallee","Residential Permit",159,89,66,55.97
+"Rhonda Sallee","Speed Camera",246,213,14,86.59
+"Rhonda Sallee","Street Cleaning",128,74,49,57.81
+"Ricardo Lugo","Expired Meter",5934,2334,3533,39.33
+"Ricardo Lugo","Expired Plate",3538,706,2726,19.95
+"Ricardo Lugo","Fire Hydrant",320,231,78,72.19
+"Ricardo Lugo","No City Sticker",2361,572,1705,24.23
+"Ricardo Lugo","No Parking Anytime",1148,838,264,73.0
+"Ricardo Lugo",Other,4475,2630,1740,58.77
+"Ricardo Lugo","Red Light Camera",2631,1929,574,73.32
+"Ricardo Lugo","Residential Permit",1541,975,530,63.27
+"Ricardo Lugo","Speed Camera",2364,1752,458,74.11
+"Ricardo Lugo","Street Cleaning",1497,1177,281,78.62
+"Robert A. Sussman","Expired Meter",7910,3338,4572,42.2
+"Robert A. Sussman","Expired Plate",5166,2412,2754,46.69
+"Robert A. Sussman","Fire Hydrant",455,314,141,69.01
+"Robert A. Sussman","No City Sticker",3237,2002,1235,61.85
+"Robert A. Sussman","No Parking Anytime",1466,881,585,60.1
+"Robert A. Sussman",Other,6398,3484,2914,54.45
+"Robert A. Sussman","Red Light Camera",6714,6095,619,90.78
+"Robert A. Sussman","Residential Permit",2210,1260,950,57.01
+"Robert A. Sussman","Speed Camera",5880,5419,461,92.16
+"Robert A. Sussman","Street Cleaning",2241,1797,444,80.19
+"Robert W. Barber","Expired Meter",2460,865,1561,35.16
+"Robert W. Barber","Expired Plate",1604,349,1195,21.76
+"Robert W. Barber","Fire Hydrant",123,50,68,40.65
+"Robert W. Barber","No City Sticker",1163,261,867,22.44
+"Robert W. Barber","No Parking Anytime",565,203,341,35.93
+"Robert W. Barber",Other,2089,861,1164,41.22
+"Robert W. Barber","Red Light Camera",1599,1229,318,76.86
+"Robert W. Barber","Residential Permit",724,241,470,33.29
+"Robert W. Barber","Speed Camera",1314,1031,225,78.46
+"Robert W. Barber","Street Cleaning",1069,793,256,74.18
+"Robert W. Soelter","Expired Meter",890,450,431,50.56
+"Robert W. Soelter","Expired Plate",433,225,198,51.96
+"Robert W. Soelter","No City Sticker",330,148,174,44.85
+"Robert W. Soelter","No Parking Anytime",422,87,330,20.62
+"Robert W. Soelter",Other,1170,397,751,33.93
+"Robert W. Soelter","Red Light Camera",354,315,27,88.98
+"Robert W. Soelter","Residential Permit",307,156,146,50.81
+"Robert W. Soelter","Speed Camera",220,191,18,86.82
+"Robert W. Soelter","Street Cleaning",188,144,41,76.6
+"Rodney Stewart","Expired Meter",3144,1456,1632,46.31
+"Rodney Stewart","Expired Plate",2033,765,1194,37.63
+"Rodney Stewart","Fire Hydrant",196,140,50,71.43
+"Rodney Stewart","No City Sticker",1424,528,855,37.08
+"Rodney Stewart","No Parking Anytime",707,392,279,55.45
+"Rodney Stewart",Other,2711,1652,977,60.94
+"Rodney Stewart","Red Light Camera",1451,1063,300,73.26
+"Rodney Stewart","Residential Permit",903,555,334,61.46
+"Rodney Stewart","Speed Camera",1249,938,229,75.1
+"Rodney Stewart","Street Cleaning",884,716,148,81.0
+"Taryn Springs","Expired Meter",1391,267,1103,19.19
+"Taryn Springs","Expired Plate",973,210,724,21.58
+"Taryn Springs","No City Sticker",593,184,379,31.03
+"Taryn Springs","No Parking Anytime",209,95,107,45.45
+"Taryn Springs",Other,1035,459,519,44.35
+"Taryn Springs","Red Light Camera",773,625,94,80.85
+"Taryn Springs","Residential Permit",331,151,170,45.62
+"Taryn Springs","Speed Camera",638,529,63,82.92
+"Taryn Springs","Street Cleaning",391,248,136,63.43
+"Urie R.Clark","Expired Meter",12695,4312,8331,33.97
+"Urie R.Clark","Expired Plate",7761,1224,6461,15.77
+"Urie R.Clark","Fire Hydrant",654,329,313,50.31
+"Urie R.Clark","No City Sticker",5260,1228,3961,23.35
+"Urie R.Clark","No Parking Anytime",2438,957,1465,39.25
+"Urie R.Clark",Other,9250,3535,5607,38.22
+"Urie R.Clark","Red Light Camera",5282,3958,1177,74.93
+"Urie R.Clark","Residential Permit",3069,1271,1776,41.41
+"Urie R.Clark","Speed Camera",5224,4312,718,82.54
+"Urie R.Clark","Street Cleaning",3806,2897,877,76.12
+"Zedrick T. Braden ","Expired Meter",1501,467,1031,31.11
+"Zedrick T. Braden ","Expired Plate",833,241,592,28.93
+"Zedrick T. Braden ","Fire Hydrant",100,16,84,16.0
+"Zedrick T. Braden ","No City Sticker",638,163,475,25.55
+"Zedrick T. Braden ","No Parking Anytime",420,70,349,16.67
+"Zedrick T. Braden ",Other,1489,355,1133,23.84
+"Zedrick T. Braden ","Red Light Camera",806,649,151,80.52
+"Zedrick T. Braden ","Residential Permit",459,141,318,30.72
+"Zedrick T. Braden ","Speed Camera",477,394,83,82.6
+"Zedrick T. Braden ","Street Cleaning",389,146,240,37.53
+"Zipporah J. Lewis","Expired Meter",1283,383,900,29.85
+"Zipporah J. Lewis","Expired Plate",708,141,567,19.92
+"Zipporah J. Lewis","No City Sticker",382,152,228,39.79
+"Zipporah J. Lewis","No Parking Anytime",174,91,83,52.3
+"Zipporah J. Lewis",Other,788,291,497,36.93
+"Zipporah J. Lewis","Red Light Camera",434,342,92,78.8
+"Zipporah J. Lewis","Residential Permit",339,155,184,45.72
+"Zipporah J. Lewis","Speed Camera",280,204,76,72.86
+"Zipporah J. Lewis","Street Cleaning",273,133,140,48.72
