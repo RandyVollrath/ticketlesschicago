@@ -158,6 +158,8 @@ interface ContestLetterTracking {
 interface AutopilotSubscription {
   status: string;
   current_period_end: string | null;
+  authorized_at: string | null;
+  created_at: string | null;
 }
 
 const VIOLATION_LABELS: Record<string, string> = {
@@ -866,9 +868,18 @@ const DashboardContent = React.memo(function DashboardContent({
             }}>
               <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6, textTransform: 'uppercase', fontWeight: 600 }}>Next Billing</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.primary, fontFamily: FONTS.heading }}>
-                {subscription.current_period_end
-                  ? new Date(subscription.current_period_end).toLocaleDateString()
-                  : 'N/A'}
+                {(() => {
+                  if (subscription.current_period_end) {
+                    return new Date(subscription.current_period_end).toLocaleDateString();
+                  }
+                  const purchase = subscription.authorized_at || subscription.created_at;
+                  if (purchase) {
+                    const next = new Date(purchase);
+                    next.setFullYear(next.getFullYear() + 1);
+                    return next.toLocaleDateString();
+                  }
+                  return 'N/A';
+                })()}
               </div>
             </div>
             <div style={{
@@ -1463,7 +1474,7 @@ function SettingsPageInner() {
             .select('id, ticket_number, violation_type, violation_code, violation_date, amount, location, status, skip_reason, created_at, user_id')
             .eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
           supabase.from('autopilot_subscriptions')
-            .select('status, current_period_end').eq('user_id', uid).maybeSingle(),
+            .select('status, current_period_end, authorized_at, created_at').eq('user_id', uid).maybeSingle(),
           (supabase.from as any)('contest_letters')
             .select('id, ticket_id, status, delivery_status, lob_letter_id, letter_pdf_url, mailed_at, expected_delivery_date, delivered_at, returned_at, failed_at, created_at')
             .eq('user_id', uid)
@@ -1520,6 +1531,8 @@ function SettingsPageInner() {
           setAutopilotSubscription({
             status: subResult.data.status,
             current_period_end: subResult.data.current_period_end,
+            authorized_at: (subResult.data as any).authorized_at ?? null,
+            created_at: (subResult.data as any).created_at ?? null,
           });
         }
       }
