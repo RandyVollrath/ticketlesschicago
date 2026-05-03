@@ -70,15 +70,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   for (const letter of (data || []) as PayableLetter[]) {
     results.checked++;
     try {
-      const eligibility = evaluateAutopayEligibility({
-        lifecycleStatus: (letter.lifecycle_status as any) || 'lost',
-        autopayOptIn: letter.autopay_opt_in,
-        autopayMode: letter.autopay_mode,
-        autopayCapAmount: letter.autopay_cap_amount,
-        paymentMethodId: letter.autopay_payment_method_id,
-        finalAmount: letter.final_amount,
-      });
-
       let resolvedPaymentMethodId = letter.autopay_payment_method_id;
       let resolvedSource = resolvedPaymentMethodId ? 'stored_on_letter' : 'none';
       let profile: { stripe_customer_id: string | null; email: string | null } | null = null;
@@ -124,6 +115,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         finalEligibility.status === 'eligible' && !betaAllowance.allowed
           ? betaAllowance.reason
           : finalEligibility.reason;
+
+      // Skip the UPDATE + audit-event write entirely when nothing has changed
+      // since the last evaluation. Without this guard the cron would write a
+      // duplicate `autopay_evaluated` event into contest_status_events on every
+      // run for every payable letter, polluting the audit trail.
+      const statusUnchanged = letter.autopay_status === effectiveStatus;
+      const pmUnchanged = (letter.autopay_payment_method_id || null) === (resolvedPaymentMethodId || null);
+      if (statusUnchanged && pmUnchanged) {
+        if (finalEligibility.status === 'eligible' && betaAllowance.allowed) {
+          results.eligible++;
+          if (!enableCityAutopay) results.readyButNotExecuted++;
+        } else if (effectiveStatus === 'blocked') {
+          results.blocked++;
+        } else {
+          results.notEnabled++;
+        }
+        continue;
+      }
 
       const patch = {
         autopay_payment_method_id: resolvedPaymentMethodId,
