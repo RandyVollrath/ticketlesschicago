@@ -174,7 +174,7 @@ export default function CameraTicketWarning({
                 <div className="text-2xl font-bold text-red-600">
                   {guidance.winProbability}%
                 </div>
-                <div className="text-xs text-gray-500">vs. 25-57% for parking</div>
+                <div className="text-xs text-gray-500">vs. 34-76% for parking</div>
               </div>
               <div>
                 <div className="text-sm text-gray-600">Difficulty</div>

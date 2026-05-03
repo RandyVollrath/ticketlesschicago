@@ -380,7 +380,7 @@ const DashboardContent = React.memo(function DashboardContent({
   const avgTicketAmount = tickets.length > 0
     ? Math.round(tickets.filter(t => t.amount).reduce((sum, t) => sum + (t.amount || 0), 0) / Math.max(tickets.filter(t => t.amount).length, 1))
     : 0;
-  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.57);
+  const estimatedSavings = Math.round(lettersMailed * avgTicketAmount * 0.59);
 
   if (!isPaidUser) {
     return (
@@ -495,7 +495,7 @@ const DashboardContent = React.memo(function DashboardContent({
           label="Estimated Savings"
           value={`$${estimatedSavings}`}
           color={COLORS.accent}
-          subtext="Based on 57% mail-in win rate"
+          subtext="Based on 59% mail-in win rate"
         />
         <StatCard label="Next Check" value={nextCheckDate} />
       </div>

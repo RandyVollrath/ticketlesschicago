@@ -159,7 +159,7 @@ export default function FlyerLanding({ flyerKey, eyebrow, headline, subhead, sta
             <SectionTitle>The math (Chicago FOIA data)</SectionTitle>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
               <Stat value="$234" label="avg avoidable/year per Chicago driver" />
-              <Stat value="57%" label="mail-in contested parking tickets dismissed" />
+              <Stat value="59%" label="mail-in contested parking tickets dismissed" />
               <Stat value="94%" label="tickets never contested" />
               <Stat value="~7 hrs" label="DIY contest time per year" />
               <Stat value="51,000" label="Chicago boots issued in 2024" />
