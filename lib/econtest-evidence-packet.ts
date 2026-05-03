@@ -131,6 +131,18 @@ export async function buildEcontestEvidencePacket(params: {
   const pdfBytes = await finalPdf.save();
   const pageCount = finalPdf.getPageCount();
   const byteSize = pdfBytes.length;
+
+  // Refuse to hand back a degenerate packet. A 0-page or near-empty PDF
+  // would still upload "successfully" to the City and leave the customer
+  // contesting with literally nothing in evidence — see the broader concern
+  // about no-bad-runs that fail to attach the letter.
+  if (pageCount < 1) {
+    throw new Error(`Evidence packet for ${ticketNumber} has 0 pages — refusing to write`);
+  }
+  if (byteSize < 500) {
+    throw new Error(`Evidence packet for ${ticketNumber} is only ${byteSize} bytes — refusing to write (too small to contain a real letter)`);
+  }
+
   const dir = '/tmp/econtest-packets';
   await mkdir(dir, { recursive: true });
   const packetPath = path.join(

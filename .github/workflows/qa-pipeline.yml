@@ -79,6 +79,14 @@ jobs:
         if: always()
         run: npm run qa:letter-placeholders
 
+      # eContest attachment guard — refuses to submit a contest with no PDF
+      # attached, with a missing file path, or with a suspiciously small file.
+      # Origin: a dry-run on Jesse Randall's ticket revealed an empty
+      # `evidenceFiles: []` could walk all the way to the submit button.
+      - name: eContest attachment guard
+        if: always()
+        run: npm run qa:econtest-attach
+
       - name: Synthetic contest pipeline (live DB, QA bot user)
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
