@@ -29,7 +29,13 @@ const REQUIRED_CONNECT_SRC: { pattern: RegExp; label: string }[] = [
   { pattern: /https:\/\/\*\.sentry\.io\b/, label: 'Sentry' },
   { pattern: /https:\/\/api\.resend\.com\b/, label: 'Resend' },
   { pattern: /https:\/\/maps\.googleapis\.com\b/, label: 'Google Maps' },
-  { pattern: /https:\/\/r\.wdfl\.co\b/, label: 'Rewardful' },
+  { pattern: /https:\/\/r\.wdfl\.co\b/, label: 'Rewardful (rw.js script host)' },
+  // rw.js POSTs leads/conversions to api.getrewardful.com — without this
+  // entry the script loads but every tracking call is blocked at the browser,
+  // so Stripe webhook conversions never have a matching lead in Rewardful.
+  // This is exactly how the bug shipped on 2026-05-03 — the gate above was
+  // satisfied by the script-host domain while the API domain was missing.
+  { pattern: /https:\/\/api\.getrewardful\.com\b|https:\/\/\*\.getrewardful\.com\b/, label: 'Rewardful tracking API (api.getrewardful.com)' },
 ];
 
 function extractConnectSrc(configSource: string): string | null {
