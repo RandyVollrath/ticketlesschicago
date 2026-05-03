@@ -32,6 +32,7 @@
     "gate:letter-placeholders": "npx tsx scripts/smoke-test-letter-placeholder-guard.ts",
     "qa:econtest-attach": "npx tsx scripts/smoke-test-econtest-attachment-guard.ts",
     "gate:econtest-attach": "npx tsx scripts/smoke-test-econtest-attachment-guard.ts",
+    "report:channel-mix": "npx tsx scripts/report-contest-channel-mix.ts",
     "qa:portal-canary": "npx tsx scripts/smoke-test-portal-canary.ts",
     "qa:contest-pipeline": "node -r dotenv/config node_modules/.bin/tsx scripts/smoke-test-contest-pipeline.ts dotenv_config_path=.env.local",
     "qa:contest-pipeline:ci": "npx tsx scripts/smoke-test-contest-pipeline.ts",
