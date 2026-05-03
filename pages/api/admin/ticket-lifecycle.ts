@@ -575,11 +575,21 @@ function buildLetterLifecycle(letter: any, auditLogs: any[]) {
       ['approved', 'sent', 'mailed'].includes(letter.status),
   });
 
+  const isSubmittedOnline = letter.econtest_status === 'submitted';
+  if (isSubmittedOnline) {
+    steps.push({
+      step: 'online_submitted',
+      label: 'Submitted Online (eContest)',
+      date: letter.econtest_submitted_at || letter.sent_at || null,
+      completed: true,
+    });
+  }
+
   steps.push({
     step: 'mailed',
     label: 'Mailed via Lob',
     date: letter.mailed_at,
-    completed: !!letter.mailed_at,
+    completed: !!letter.mailed_at && !isSubmittedOnline,
   });
 
   const deliveryStatus = letter.delivery_status || letter.lob_status;
@@ -587,14 +597,14 @@ function buildLetterLifecycle(letter: any, auditLogs: any[]) {
     step: 'in_transit',
     label: 'In Transit',
     date: auditLogs.find(a => a.action === 'letter_in_transit')?.created_at || null,
-    completed: ['in_transit', 'in_local_area', 'out_for_delivery', 'delivered'].includes(deliveryStatus),
+    completed: !isSubmittedOnline && ['in_transit', 'in_local_area', 'out_for_delivery', 'delivered'].includes(deliveryStatus),
   });
 
   steps.push({
     step: 'delivered',
     label: 'Delivered to City Hall',
     date: letter.delivered_at || null,
-    completed: deliveryStatus === 'delivered' || !!letter.delivered_at,
+    completed: !isSubmittedOnline && (deliveryStatus === 'delivered' || !!letter.delivered_at),
   });
 
   return steps;
@@ -606,6 +616,10 @@ function computeLifecycleStage(ticket: any, letter: any, outcome: any) {
       outcome.outcome === 'reduced' ? '#3B82F6' :
         outcome.outcome === 'upheld' ? '#EF4444' : '#6B7280';
     return { key: 'outcome', label: `Outcome: ${outcome.outcome}`, color };
+  }
+
+  if (letter?.econtest_status === 'submitted' || ticket?.status === 'contested_online') {
+    return { key: 'contested_online', label: 'Submitted Online (eContest)', color: '#0F766E' };
   }
 
   const deliveryStatus = letter?.delivery_status || letter?.lob_status;
@@ -679,7 +693,7 @@ function getEmptySummary() {
     total_tickets: 0,
     total_amount_at_stake: 0,
     total_saved: 0,
-    by_stage: { detected: 0, evidence_gathering: 0, letter_ready: 0, mailed: 0, delivered: 0, outcome: 0 },
+    by_stage: { detected: 0, evidence_gathering: 0, letter_ready: 0, contested_online: 0, mailed: 0, delivered: 0, outcome: 0 },
     outcomes: { dismissed: 0, reduced: 0, upheld: 0, pending: 0 },
     urgent_tickets: 0,
   };

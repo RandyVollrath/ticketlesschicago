@@ -28,7 +28,14 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
     } else if (req.method === 'GET') {
       // List all contest letters
-      const { status, evidence_integrated, limit: limitStr = '50', offset: offsetStr = '0' } = req.query;
+      const {
+        status,
+        lifecycle_status,
+        autopay_status,
+        evidence_integrated,
+        limit: limitStr = '50',
+        offset: offsetStr = '0'
+      } = req.query;
       const parsedLimit = Math.min(Math.max(parseInt(limitStr as string) || 50, 1), 200);
       const parsedOffset = Math.max(parseInt(offsetStr as string) || 0, 0);
 
@@ -54,6 +61,28 @@ export default withAdminAuth(async (req, res, adminUser) => {
           evidence_integrated,
           evidence_integrated_at,
           mailed_at,
+          econtest_status,
+          econtest_submitted_at,
+          econtest_confirmation_id,
+          econtest_response,
+          submission_channel,
+          submission_state,
+          submission_confirmed_at,
+          lifecycle_status,
+          lifecycle_status_changed_at,
+          last_status_source,
+          last_status_check_at,
+          city_case_status_raw,
+          final_amount,
+          autopay_opt_in,
+          autopay_mode,
+          autopay_cap_amount,
+          autopay_payment_method_id,
+          autopay_status,
+          autopay_attempted_at,
+          payment_amount,
+          payment_reference,
+          paid_at,
           disposition,
           disposition_reason,
           disposition_date,
@@ -65,6 +94,12 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
       if (status) {
         query = query.eq('status', status);
+      }
+      if (lifecycle_status) {
+        query = query.eq('lifecycle_status', lifecycle_status);
+      }
+      if (autopay_status) {
+        query = query.eq('autopay_status', autopay_status);
       }
 
       if (evidence_integrated === 'true') {
@@ -168,6 +203,12 @@ export default withAdminAuth(async (req, res, adminUser) => {
 
       if (status) {
         countQuery = countQuery.eq('status', status);
+      }
+      if (lifecycle_status) {
+        countQuery = countQuery.eq('lifecycle_status', lifecycle_status);
+      }
+      if (autopay_status) {
+        countQuery = countQuery.eq('autopay_status', autopay_status);
       }
       if (evidence_integrated === 'true') {
         countQuery = countQuery.eq('evidence_integrated', true);
