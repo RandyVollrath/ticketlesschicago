@@ -1,119 +1,75 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '/home/randy-vollrath/ticketless-chicago/.env.local' });
+const { createClient } = require('/home/randy-vollrath/ticketless-chicago/node_modules/@supabase/supabase-js');
+const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+(async () => {
+  const emails = ['hellodolldarlings@gmail.com', 'heyliberalname@gmail.com'];
 
-const TEST_EMAILS = [
-  'heyliberalname@gmail.com',
-  'hellodolldarlings@gmail.com',
-  'thechicagoapp@gmail.com',
-  'principleddating@gmail.com',
-  'ticketlessamerica@gmail.com',
-  'ticketlesschicago@gmail.com',
-  'hellosexdollnow@gmail.com',
-  'mystreetcleaning@gmail.com'
-];
+  // find all matching auth users (paging so we cover larger user bases)
+  const matches = [];
+  let page = 1;
+  while (true) {
+    const { data, error } = await s.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) { console.error('listUsers error:', error); process.exit(1); }
+    for (const u of data.users) {
+      if (emails.includes((u.email || '').toLowerCase())) matches.push(u);
+    }
+    if (!data.users.length || data.users.length < 200) break;
+    page++;
+  }
 
-async function deleteTestUsers() {
-  console.log('🗑️  Starting test user deletion...\n');
+  if (!matches.length) { console.log('no matching users found'); return; }
 
-  for (const email of TEST_EMAILS) {
-    console.log(`\n📧 Processing: ${email}`);
+  for (const u of matches) {
+    console.log('='.repeat(60));
+    console.log(`FOUND  ${u.email}  id=${u.id}`);
+    console.log(`  created=${u.created_at}  last_sign_in=${u.last_sign_in_at}`);
 
-    try {
-      // 1. Find user in auth
-      const { data: users } = await supabase.auth.admin.listUsers();
-      const user = users?.users.find(u => u.email === email);
-
-      if (!user) {
-        console.log(`  ⏭️  User not found in auth, skipping`);
-        continue;
-      }
-
-      const userId = user.id;
-      console.log(`  ✓ Found user ID: ${userId}`);
-
-      // 2. Delete from vehicles table
-      const { error: vehiclesError } = await supabase
-        .from('vehicles')
-        .delete()
-        .eq('user_id', userId);
-
-      if (vehiclesError) {
-        console.log(`  ⚠️  Error deleting vehicles:`, vehiclesError.message);
-      } else {
-        console.log(`  ✓ Deleted vehicles`);
-      }
-
-      // 3. Delete from user_profiles table
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .delete()
-        .eq('user_id', userId);
-
-      if (profileError) {
-        console.log(`  ⚠️  Error deleting profile:`, profileError.message);
-      } else {
-        console.log(`  ✓ Deleted profile`);
-      }
-
-      // 4. Delete from users table
-      const { error: usersError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
-
-      if (usersError) {
-        console.log(`  ⚠️  Error deleting from users table:`, usersError.message);
-      } else {
-        console.log(`  ✓ Deleted from users table`);
-      }
-
-      // 5. Delete from drip_campaign_status (if exists)
-      const { error: dripError } = await supabase
-        .from('drip_campaign_status')
-        .delete()
-        .eq('user_id', userId);
-
-      if (dripError && !dripError.message.includes('does not exist')) {
-        console.log(`  ⚠️  Error deleting drip campaign:`, dripError.message);
-      } else {
-        console.log(`  ✓ Deleted drip campaign status`);
-      }
-
-      // 6. Delete from pending_signup (if exists)
-      const { error: pendingError } = await supabase
-        .from('pending_signup')
-        .delete()
-        .eq('email', email);
-
-      if (pendingError && !pendingError.message.includes('does not exist')) {
-        console.log(`  ⚠️  Error deleting pending signup:`, pendingError.message);
-      } else {
-        console.log(`  ✓ Deleted pending signup`);
-      }
-
-      // 7. Delete from Supabase Auth (last step)
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-
-      if (authError) {
-        console.log(`  ❌ Error deleting auth user:`, authError.message);
-      } else {
-        console.log(`  ✓ Deleted from auth`);
-      }
-
-      console.log(`  ✅ FULLY DELETED: ${email}`);
-
-    } catch (error) {
-      console.error(`  ❌ Error processing ${email}:`, error.message);
+    const tables = [
+      'user_profiles',
+      'autopilot_subscriptions',
+      'autopilot_settings',
+      'funnel_leads',
+      'monitored_plates',
+      'detected_tickets',
+      'contest_letters',
+      'ticket_foia_requests',
+      'ticket_audit_log',
+      'user_consents',
+    ];
+    for (const t of tables) {
+      const { count } = await s.from(t).select('*', { count: 'exact', head: true }).eq('user_id', u.id);
+      if ((count || 0) > 0) console.log(`  ${t}: ${count} row(s)`);
     }
   }
 
-  console.log('\n\n🎉 Test user deletion complete!');
-  console.log('These emails can now be used for fresh signup testing.\n');
-}
+  console.log('\nDeleting now...\n');
 
-deleteTestUsers();
+  for (const u of matches) {
+    // delete dependent rows first (in case FKs aren't set to cascade)
+    const cascadeTables = [
+      'ticket_audit_log',
+      'ticket_foia_requests',
+      'contest_letters',
+      'detected_tickets',
+      'monitored_plates',
+      'funnel_leads',
+      'user_consents',
+      'autopilot_settings',
+      'autopilot_subscriptions',
+      'user_profiles',
+    ];
+    for (const t of cascadeTables) {
+      const { error } = await s.from(t).delete().eq('user_id', u.id);
+      if (error && !/no rows/.test(error.message)) {
+        console.log(`  ${t}: delete err = ${error.message}`);
+      }
+    }
+
+    const { error } = await s.auth.admin.deleteUser(u.id);
+    if (error) console.log(`  auth.users delete err: ${error.message}`);
+    else console.log(`  DELETED auth user ${u.email} (${u.id})`);
+  }
+
+  console.log('\ndone.');
+})();
