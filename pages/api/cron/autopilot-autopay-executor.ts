@@ -4,6 +4,8 @@ import { sendAutopayOperatorAlert } from '../../../lib/autopay-alerts';
 import { getAutopayBetaConfig, isAutopayBetaAllowed } from '../../../lib/autopay-beta';
 import { evaluateAutopayEligibility, recordContestStatusEvent } from '../../../lib/contest-lifecycle';
 import { resolveDefaultStripePaymentMethod } from '../../../lib/stripe-default-payment-method';
+import { executeSimulatedAutopay, getAutopayExecutionMode } from '../../../lib/autopay-execute';
+import { sendAutopayFailedEmail, sendAutopayPaidEmail } from '../../../lib/autopay-user-emails';
 
 export const config = { maxDuration: 60 };
 
@@ -11,6 +13,11 @@ const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
+
+// Cooldown: if an attempt was made within this window, don't try again.
+// Protects against the cron firing twice in close succession (or a half-
+// completed prior run leaving the row in a transitional state).
+const ATTEMPT_COOLDOWN_MS = 5 * 60 * 1000;
 
 type PayableLetter = {
   id: string;
@@ -23,7 +30,14 @@ type PayableLetter = {
   autopay_cap_amount: number | null;
   autopay_payment_method_id: string | null;
   autopay_status: string | null;
+  autopay_attempted_at: string | null;
   paid_at: string | null;
+};
+
+type Profile = {
+  stripe_customer_id: string | null;
+  email: string | null;
+  first_name: string | null;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -33,16 +47,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const isAuthorized = isVercelCron || (secret ? authHeader === `Bearer ${secret}` : false);
   if (!isAuthorized) return res.status(401).json({ error: 'Unauthorized' });
 
-  const enableCityAutopay = process.env.ENABLE_CITY_AUTOPAY === '1';
+  const executionMode = getAutopayExecutionMode();
   const betaConfig = getAutopayBetaConfig();
 
   const results = {
+    mode: executionMode,
     checked: 0,
     eligible: 0,
     blocked: 0,
     notEnabled: 0,
     betaBlocked: 0,
     readyButNotExecuted: 0,
+    executedSimulated: 0,
+    executionFailed: 0,
+    cooldownSkipped: 0,
     errors: [] as string[],
   };
 
@@ -58,6 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       autopay_cap_amount,
       autopay_payment_method_id,
       autopay_status,
+      autopay_attempted_at,
       paid_at
     `)
     .in('lifecycle_status', ['lost', 'reduced'])
@@ -70,20 +89,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   for (const letter of (data || []) as PayableLetter[]) {
     results.checked++;
     try {
+      // Always fetch the profile up front — we may need email + first_name
+      // for the user-facing notification, not just stripe_customer_id for
+      // payment method resolution.
+      const { data: profileData } = await supabaseAdmin
+        .from('user_profiles')
+        .select('stripe_customer_id, email, first_name')
+        .eq('user_id', letter.user_id)
+        .maybeSingle();
+      const profile: Profile = profileData || { stripe_customer_id: null, email: null, first_name: null };
+
       let resolvedPaymentMethodId = letter.autopay_payment_method_id;
-      let resolvedSource = resolvedPaymentMethodId ? 'stored_on_letter' : 'none';
-      let profile: { stripe_customer_id: string | null; email: string | null } | null = null;
+      let resolvedSource: string = resolvedPaymentMethodId ? 'stored_on_letter' : 'none';
 
-      if (!resolvedPaymentMethodId) {
-        const { data: profileData } = await supabaseAdmin
-          .from('user_profiles')
-          .select('stripe_customer_id, email')
-          .eq('user_id', letter.user_id)
-          .maybeSingle();
-        profile = profileData || null;
-      }
-
-      if (!resolvedPaymentMethodId && profile?.stripe_customer_id) {
+      if (!resolvedPaymentMethodId && profile.stripe_customer_id) {
         try {
           const resolved = await resolveDefaultStripePaymentMethod(profile.stripe_customer_id);
           resolvedPaymentMethodId = resolved.paymentMethodId;
@@ -103,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       const betaAllowance = isAutopayBetaAllowed({
         userId: letter.user_id,
-        userEmail: profile?.email || null,
+        userEmail: profile.email || null,
         contestLetterId: letter.id,
         ticketId: letter.ticket_id,
       });
@@ -116,16 +135,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ? betaAllowance.reason
           : finalEligibility.reason;
 
-      // Skip the UPDATE + audit-event write entirely when nothing has changed
-      // since the last evaluation. Without this guard the cron would write a
-      // duplicate `autopay_evaluated` event into contest_status_events on every
-      // run for every payable letter, polluting the audit trail.
+      const willExecute =
+        executionMode === 'simulate' &&
+        finalEligibility.status === 'eligible' &&
+        betaAllowance.allowed;
+
+      // Cooldown guard: skip if we already tried recently. Only matters when
+      // we're about to execute — pure evaluations are safe to repeat.
+      if (willExecute && letter.autopay_attempted_at) {
+        const last = new Date(letter.autopay_attempted_at).getTime();
+        if (Number.isFinite(last) && Date.now() - last < ATTEMPT_COOLDOWN_MS) {
+          results.cooldownSkipped++;
+          continue;
+        }
+      }
+
+      // Skip the no-op evaluation write when nothing has changed and we're
+      // not about to execute. Without this the cron would write a duplicate
+      // `autopay_evaluated` event into contest_status_events on every run.
       const statusUnchanged = letter.autopay_status === effectiveStatus;
       const pmUnchanged = (letter.autopay_payment_method_id || null) === (resolvedPaymentMethodId || null);
-      if (statusUnchanged && pmUnchanged) {
+      if (!willExecute && statusUnchanged && pmUnchanged) {
         if (finalEligibility.status === 'eligible' && betaAllowance.allowed) {
           results.eligible++;
-          if (!enableCityAutopay) results.readyButNotExecuted++;
+          if (executionMode === 'disabled') results.readyButNotExecuted++;
         } else if (effectiveStatus === 'blocked') {
           results.blocked++;
         } else {
@@ -134,14 +167,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
-      const patch = {
+      const evaluationPatch: Record<string, any> = {
         autopay_payment_method_id: resolvedPaymentMethodId,
         autopay_status: effectiveStatus,
         autopay_result_payload: {
           reason: effectiveReason,
           evaluatedAt: new Date().toISOString(),
           executor: 'autopilot-autopay-executor',
-          executionEnabled: enableCityAutopay,
+          executionMode,
           resolvedPaymentMethodSource: resolvedSource,
           resolvedPaymentMethodId: resolvedPaymentMethodId || null,
           betaAllowed: betaAllowance.allowed,
@@ -157,9 +190,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
 
       const { error: updateErr } = await (supabaseAdmin.from('contest_letters') as any)
-        .update(patch)
+        .update(evaluationPatch)
         .eq('id', letter.id);
-
       if (updateErr) throw new Error(updateErr.message);
 
       await recordContestStatusEvent(supabaseAdmin as any, {
@@ -175,7 +207,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           autopayMode: letter.autopay_mode,
           eligibility: finalEligibility,
           betaAllowance,
-          executionEnabled: enableCityAutopay,
+          executionMode,
           resolvedPaymentMethodSource: resolvedSource,
         },
       });
@@ -184,73 +216,184 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results.betaBlocked++;
       }
 
-      if (finalEligibility.status === 'eligible' && betaAllowance.allowed) {
-        results.eligible++;
-        if (!enableCityAutopay) {
-          results.readyButNotExecuted++;
+      if (!willExecute) {
+        if (finalEligibility.status === 'eligible' && betaAllowance.allowed) {
+          results.eligible++;
+          if (executionMode === 'disabled') results.readyButNotExecuted++;
+        } else if (effectiveStatus === 'blocked') {
+          results.blocked++;
         } else {
-          await recordContestStatusEvent(supabaseAdmin as any, {
-            contestLetterId: letter.id,
-            ticketId: letter.ticket_id,
-            userId: letter.user_id,
-            eventType: 'autopay_execution_deferred',
-            source: 'autopay_executor',
-            normalizedStatus: letter.lifecycle_status,
-            rawStatus: 'execution_not_implemented',
-            details: {
-              reason: 'City payment execution not implemented yet',
-              finalAmount: letter.final_amount,
-              email: profile?.email || null,
-            },
-          });
-          await sendAutopayOperatorAlert({
-            subject: `[Autopay beta] Execution deferred for contest letter ${letter.id}`,
-            text: [
-              `Contest letter: ${letter.id}`,
-              `Ticket: ${letter.ticket_id}`,
-              `User: ${letter.user_id}`,
-              `Email: ${profile?.email || 'unknown'}`,
-              `Amount: ${letter.final_amount ?? 'unknown'}`,
-              `Reason: City payment execution not implemented yet`,
-            ].join('\n'),
-            html: `
-              <p><strong>Autopay beta execution deferred</strong></p>
-              <p>Contest letter: <code>${letter.id}</code></p>
-              <p>Ticket: <code>${letter.ticket_id}</code></p>
-              <p>User: <code>${letter.user_id}</code></p>
-              <p>Email: ${profile?.email || 'unknown'}</p>
-              <p>Amount: ${letter.final_amount ?? 'unknown'}</p>
-              <p>Reason: City payment execution not implemented yet.</p>
-            `,
-          }).catch((err) => {
-            console.error(`Failed to send autopay deferred alert for ${letter.id}: ${err.message}`);
+          results.notEnabled++;
+        }
+        continue;
+      }
+
+      // ─── EXECUTION PATH (currently simulate-only) ───
+      results.eligible++;
+
+      // Stamp the attempt timestamp BEFORE running the execution so the
+      // cooldown protects subsequent runs even if execution crashes mid-way.
+      const attemptedAt = new Date().toISOString();
+      await (supabaseAdmin.from('contest_letters') as any)
+        .update({ autopay_attempted_at: attemptedAt })
+        .eq('id', letter.id);
+
+      const execResult = executeSimulatedAutopay({
+        contestLetterId: letter.id,
+        finalAmount: letter.final_amount,
+        paymentMethodId: resolvedPaymentMethodId,
+      });
+
+      if (execResult.success) {
+        const successPatch = {
+          paid_at: new Date().toISOString(),
+          payment_amount: execResult.amountCharged,
+          payment_reference: execResult.cityPaymentReference,
+          stripe_payment_intent_id: execResult.stripePaymentIntentId,
+          payment_source: 'autopay_simulated',
+          lifecycle_status: 'paid',
+          lifecycle_status_changed_at: new Date().toISOString(),
+          autopay_status: 'paid',
+          autopay_result_payload: {
+            ...evaluationPatch.autopay_result_payload,
+            executedAt: new Date().toISOString(),
+            executionResult: execResult,
+          },
+        };
+        const { error: payUpdateErr } = await (supabaseAdmin.from('contest_letters') as any)
+          .update(successPatch)
+          .eq('id', letter.id);
+        if (payUpdateErr) throw new Error(`Paid-update failed: ${payUpdateErr.message}`);
+
+        results.executedSimulated++;
+
+        await recordContestStatusEvent(supabaseAdmin as any, {
+          contestLetterId: letter.id,
+          ticketId: letter.ticket_id,
+          userId: letter.user_id,
+          eventType: 'autopay_executed_simulated',
+          source: 'autopay_executor',
+          normalizedStatus: 'paid',
+          rawStatus: execResult.cityPaymentReference,
+          details: {
+            stripePaymentIntentId: execResult.stripePaymentIntentId,
+            cityPaymentReference: execResult.cityPaymentReference,
+            amountCharged: execResult.amountCharged,
+            email: profile.email,
+          },
+        });
+
+        if (profile.email) {
+          await sendAutopayPaidEmail({
+            to: profile.email,
+            firstName: profile.first_name,
+            ticketNumber: null,
+            amountCharged: execResult.amountCharged,
+            cityPaymentReference: execResult.cityPaymentReference,
+            isSimulated: true,
+          }).catch((emailErr) => {
+            console.error(`Failed to send autopay-paid user email for ${letter.id}: ${emailErr.message}`);
           });
         }
-      } else if (effectiveStatus === 'blocked') {
-        results.blocked++;
-        if (finalEligibility.status === 'eligible' && !betaAllowance.allowed) {
-          await recordContestStatusEvent(supabaseAdmin as any, {
-            contestLetterId: letter.id,
-            ticketId: letter.ticket_id,
-            userId: letter.user_id,
-            eventType: 'autopay_beta_blocked',
-            source: 'autopay_executor',
-            normalizedStatus: letter.lifecycle_status,
-            rawStatus: betaAllowance.reason,
-            details: {
-              email: profile?.email || null,
-              betaAllowance,
-              finalAmount: letter.final_amount,
-            },
-          });
-        }
+
+        await sendAutopayOperatorAlert({
+          subject: `[Autopay simulate] Executed for contest letter ${letter.id}`,
+          text: [
+            `Contest letter: ${letter.id}`,
+            `Ticket: ${letter.ticket_id}`,
+            `User: ${letter.user_id}`,
+            `Email: ${profile.email || 'unknown'}`,
+            `Amount: $${execResult.amountCharged.toFixed(2)}`,
+            `Stripe (simulated): ${execResult.stripePaymentIntentId}`,
+            `City (simulated): ${execResult.cityPaymentReference}`,
+          ].join('\n'),
+          html: `
+            <p><strong>Autopay simulated execution complete</strong></p>
+            <p>Contest letter: <code>${letter.id}</code></p>
+            <p>Ticket: <code>${letter.ticket_id}</code></p>
+            <p>User: <code>${letter.user_id}</code></p>
+            <p>Email: ${profile.email || 'unknown'}</p>
+            <p>Amount: $${execResult.amountCharged.toFixed(2)}</p>
+            <p>Stripe (simulated): <code>${execResult.stripePaymentIntentId}</code></p>
+            <p>City (simulated): <code>${execResult.cityPaymentReference}</code></p>
+          `,
+        }).catch((alertErr) => {
+          console.error(`Failed to send autopay-executed operator alert for ${letter.id}: ${alertErr.message}`);
+        });
       } else {
-        results.notEnabled++;
+        results.executionFailed++;
+        // TS narrowing on `execResult` is unreliable across the awaits in
+        // the success branch above; pull `error` out explicitly to keep
+        // the rest of this block clean.
+        const failError = (execResult as { success: false; error: string; mode: string }).error;
+        const failMode = (execResult as { success: false; error: string; mode: string }).mode;
+
+        const failPatch = {
+          autopay_status: 'payment_failed',
+          lifecycle_status: 'payment_failed',
+          lifecycle_status_changed_at: new Date().toISOString(),
+          autopay_result_payload: {
+            ...evaluationPatch.autopay_result_payload,
+            executionAttemptedAt: attemptedAt,
+            executionResult: execResult,
+          },
+        };
+        await (supabaseAdmin.from('contest_letters') as any)
+          .update(failPatch)
+          .eq('id', letter.id);
+
+        await recordContestStatusEvent(supabaseAdmin as any, {
+          contestLetterId: letter.id,
+          ticketId: letter.ticket_id,
+          userId: letter.user_id,
+          eventType: 'autopay_execution_failed',
+          source: 'autopay_executor',
+          normalizedStatus: 'payment_failed',
+          rawStatus: failError,
+          details: {
+            error: failError,
+            mode: failMode,
+            email: profile.email,
+          },
+        });
+
+        if (profile.email) {
+          await sendAutopayFailedEmail({
+            to: profile.email,
+            firstName: profile.first_name,
+            ticketNumber: null,
+            finalAmount: letter.final_amount,
+            errorMessage: failError,
+          }).catch((emailErr) => {
+            console.error(`Failed to send autopay-failed user email for ${letter.id}: ${emailErr.message}`);
+          });
+        }
+
+        await sendAutopayOperatorAlert({
+          subject: `[Autopay simulate] Execution failed for contest letter ${letter.id}`,
+          text: [
+            `Contest letter: ${letter.id}`,
+            `Ticket: ${letter.ticket_id}`,
+            `User: ${letter.user_id}`,
+            `Email: ${profile.email || 'unknown'}`,
+            `Error: ${failError}`,
+          ].join('\n'),
+          html: `
+            <p><strong>Autopay simulated execution failed</strong></p>
+            <p>Contest letter: <code>${letter.id}</code></p>
+            <p>Ticket: <code>${letter.ticket_id}</code></p>
+            <p>User: <code>${letter.user_id}</code></p>
+            <p>Email: ${profile.email || 'unknown'}</p>
+            <p>Error: ${failError}</p>
+          `,
+        }).catch((alertErr) => {
+          console.error(`Failed to send autopay-failed operator alert for ${letter.id}: ${alertErr.message}`);
+        });
       }
     } catch (e: any) {
       results.errors.push(`${letter.id}: ${e?.message || String(e)}`);
       await sendAutopayOperatorAlert({
-        subject: `[Autopay beta] Executor failure for contest letter ${letter.id}`,
+        subject: `[Autopay] Executor failure for contest letter ${letter.id}`,
         text: [
           `Contest letter: ${letter.id}`,
           `Ticket: ${letter.ticket_id}`,
@@ -258,7 +401,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           `Error: ${e?.message || String(e)}`,
         ].join('\n'),
         html: `
-          <p><strong>Autopay beta executor failure</strong></p>
+          <p><strong>Autopay executor failure</strong></p>
           <p>Contest letter: <code>${letter.id}</code></p>
           <p>Ticket: <code>${letter.ticket_id}</code></p>
           <p>User: <code>${letter.user_id}</code></p>
@@ -272,7 +415,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(200).json({
     success: true,
-    executionEnabled: enableCityAutopay,
     ...results,
   });
 }
