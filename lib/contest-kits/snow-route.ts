@@ -1,7 +1,7 @@
 /**
  * Snow Route Parking Contest Kit (9-64-100)
  *
- * Win Rate: 38% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 38% (FOIA, longer window — 2023–2025 sample too sparse)
  * Primary defenses: No snow emergency declared, weather threshold not met, signage issues
  * Key: Weather data is CRITICAL for this violation type
  */

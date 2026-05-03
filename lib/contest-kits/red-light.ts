@@ -1,7 +1,7 @@
 /**
  * Red Light Camera Contest Kit (9-102-010)
  *
- * Win Rate: 21% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 32% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Fine: $100
  * Red light cameras photograph vehicles entering intersections after the light turns red.
  * Primary defenses: yellow light timing, right turn on red, vehicle identification, stolen vehicle

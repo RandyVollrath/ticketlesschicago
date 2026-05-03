@@ -1,7 +1,7 @@
 /**
  * Commercial Loading Zone Contest Kit (9-64-160)
  *
- * Win Rate: 60% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 61% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Primary defenses: Active loading, permit displayed, signage issues
  */
 

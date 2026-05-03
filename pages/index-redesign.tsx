@@ -151,7 +151,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "Based on 35.7M ticket records: expired plates have 76% dismissal, no city sticker 72%, expired meters 67%. Camera tickets are lower at 19–21%."
+      a: "Based on 35.7M ticket records (2023–2025 hearings, all methods): expired plates 89%, no city sticker 86%, expired meters 68%. Camera tickets are lower at 24–32%."
     },
     {
       q: "Can I review letters before they're sent?",

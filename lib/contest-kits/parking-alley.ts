@@ -1,7 +1,7 @@
 /**
  * Parking in Alley Contest Kit (9-64-020)
  *
- * Win Rate: 71% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 66% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Primary defenses: Active loading/unloading, not a public alley, vehicle disabled
  */
 

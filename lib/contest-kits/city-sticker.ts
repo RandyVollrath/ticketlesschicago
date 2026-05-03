@@ -1,7 +1,7 @@
 /**
  * City Sticker Contest Kit (9-64-125(b))
  *
- * Win Rate: 72% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 86% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Fine: $200 for vehicles ≤16,000 lbs
  * City sticker (Chicago wheel tax) is separate from IL license plate registration renewal
  * Primary defenses: Sticker was displayed, purchased after ticket, recently purchased vehicle, non-resident, stolen

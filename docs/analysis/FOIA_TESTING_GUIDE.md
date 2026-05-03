@@ -71,7 +71,7 @@ Win Rate: 57.2% ⭐
 
 | Code | Description | Click Button |
 |------|-------------|--------------|
-| 0976160B | Expired Plate | Should show ~76% win rate |
+| 0976160B | Expired Plate | Should show ~89% win rate |
 | 0964190A | Expired Meter (Non-CBD) | Should show data |
 | 0964040B | Street Cleaning | Should show data |
 | 0964125B | No City Sticker | Should show data |

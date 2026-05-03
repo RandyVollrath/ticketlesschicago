@@ -42,7 +42,7 @@ Win Rate: 57.2% ⭐
 
 | Code | What You Should See |
 |------|---------------------|
-| `0976160B` | ~76% win rate |
+| `0976160B` | ~89% win rate |
 | `0964190A` | Win rate data |
 | `0964040B` | Win rate data |
 | `0964125B` | Win rate data |

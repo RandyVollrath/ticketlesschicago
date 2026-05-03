@@ -1,7 +1,7 @@
 /**
  * Expired Plates/Registration Contest Kit (9-76-160 / 9-80-190)
  *
- * Win Rate: 76% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 89% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Primary defenses: Registration was valid, recently renewed, non-resident
  */
 

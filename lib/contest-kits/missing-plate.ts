@@ -1,7 +1,7 @@
 /**
  * Missing/Noncompliant Plate Contest Kit (9-80-040)
  *
- * Win Rate: 55% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 54% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Primary defenses: Plate was visible, temporary obstruction, recently repaired
  */
 

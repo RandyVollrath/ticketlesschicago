@@ -1,7 +1,7 @@
 /**
  * Bus Lane Violation Contest Kit (9-12-060)
  *
- * Win Rate: 56% (from 1.18M FOIA records, decided cases, all contest methods)
+ * Win Rate: 44% (FOIA, 2023–2025 trailing, all decided contest methods)
  * Fine: $90 (doubles to $180 if not paid/contested within 25 days)
  *
  * Enforcement: Automated camera (Hayden AI "Smart Streets" program)
