@@ -1130,7 +1130,7 @@ export default function StartFunnel() {
                 <ValueItem
                   icon="&#9993;&#65039;"
                   title="Automatic contesting — after a ticket"
-                  desc="Twice-weekly plate checks. Contest letters drafted, printed, and mailed for you. Of decided contests in City of Chicago hearing data, city sticker tickets are dismissed ~72%, expired-plate ~76% (2025 FOIA)."
+                  desc="Twice-weekly plate checks. Contest letters drafted, printed, and mailed for you. Of decided contests in City of Chicago hearing data (2023–2025 FOIA), city sticker tickets are dismissed ~86%, expired-plate ~89%."
                 />
                 <ValueItem
                   icon="&#128205;"
