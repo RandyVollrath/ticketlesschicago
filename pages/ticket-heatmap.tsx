@@ -263,7 +263,7 @@ export default function TicketHeatmap() {
               API integration for car sharing, rental, and fleet management platforms
             </p>
             <button
-              onClick={() => router.push('/partners')}
+              onClick={() => router.push('/fleet')}
               style={{
                 backgroundColor: '#16a34a',
                 color: 'white',
