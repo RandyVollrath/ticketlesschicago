@@ -1,0 +1,50 @@
+{
+  "scenes": [
+    {
+      "type": "big-number",
+      "props": {
+        "preText": "One speed camera in Chicago",
+        "number": "324,184",
+        "postText": "tickets written",
+        "subText": "8020 W FOREST PRESERVE AV",
+        "color": "#ff1a1a",
+        "glitch": true
+      },
+      "durationFrames": 300
+    },
+    {
+      "type": "stat-stack",
+      "props": {
+        "stats": [
+          {
+            "number": "$10.9M",
+            "label": "revenue from this camera",
+            "color": "#ff1a1a"
+          },
+          {
+            "number": "148/day",
+            "label": "tickets per day",
+            "color": "#ff6b2b"
+          },
+          {
+            "number": "$35",
+            "label": "per ticket",
+            "sublabel": "doubles to $100 if you miss the notice",
+            "color": "#ffd700"
+          }
+        ]
+      },
+      "durationFrames": 360
+    },
+    {
+      "type": "cta",
+      "props": {
+        "headline": "We alert you before every camera",
+        "headlineSub": "speed cameras and red light cameras"
+      },
+      "durationFrames": 240
+    }
+  ],
+  "musicFile": "audio/bg-music.mp3",
+  "musicVolume": 0.1
+}
