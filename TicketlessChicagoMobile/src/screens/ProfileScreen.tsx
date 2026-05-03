@@ -53,6 +53,27 @@ interface CallAlertPreferences {
   dot_permit: CallAlertPref;
 }
 
+interface NotificationHistoryItem {
+  id?: string;
+  notification_type: 'email' | 'sms' | 'voice' | 'push';
+  category: string;
+  subject?: string;
+  content_preview?: string;
+  status?: 'pending' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'retry_scheduled';
+  created_at?: string;
+  last_error?: string;
+  details?: string;
+  address?: string;
+  urgency?: 'critical' | 'warning' | 'info';
+}
+
+interface NotificationHistoryStats {
+  total: number;
+  sent: number;
+  failed: number;
+  by_type: Record<string, number>;
+}
+
 type CallAlertType = keyof CallAlertPreferences;
 
 const DEFAULT_CALL_ALERT_PREFS: CallAlertPreferences = {
@@ -234,6 +255,10 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [phoneNumberEditing, setPhoneNumberEditing] = useState(false);
   const [phoneNumberInput, setPhoneNumberInput] = useState('');
   const [callAlertPrefs, setCallAlertPrefs] = useState<CallAlertPreferences>({ ...DEFAULT_CALL_ALERT_PREFS });
+  const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryItem[]>([]);
+  const [notificationHistoryStats, setNotificationHistoryStats] = useState<NotificationHistoryStats | null>(null);
+  const [notificationHistoryLoading, setNotificationHistoryLoading] = useState(false);
+  const [isRepairingPushAlerts, setIsRepairingPushAlerts] = useState(false);
 
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const feedbackOpacity = useRef(new RNAnimated.Value(0)).current;
@@ -276,6 +301,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     loadMeterExpiryAlertSetting();
     loadParkingAlertSettings();
     loadPhoneCallAlertSettings();
+    loadNotificationHistory();
     const unsubscribe = AuthService.subscribe((state: AuthState) => {
       if (isMountedRef.current) setUser(state.user);
     });
@@ -286,6 +312,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadSavedCar();
       loadCameraAlertSettings();
+      loadNotificationHistory();
     });
     return unsubscribe;
   }, [navigation]);
@@ -316,6 +343,184 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       log.error('Error loading saved car', error);
     }
   }, []);
+
+  const loadNotificationHistory = useCallback(async () => {
+    if (!AuthService.isAuthenticated()) {
+      if (isMountedRef.current) setNotificationHistory([]);
+      if (isMountedRef.current) setNotificationHistoryStats(null);
+      return;
+    }
+    try {
+      if (isMountedRef.current) setNotificationHistoryLoading(true);
+      const response = await ApiClient.authGet<{ success: boolean; items?: NotificationHistoryItem[]; stats?: NotificationHistoryStats | null }>(
+        '/api/mobile/notification-history?limit=8',
+        { retries: 1, timeout: 10000, showErrorAlert: false }
+      );
+      if (isMountedRef.current && response.success) {
+        setNotificationHistory(response.data?.items || []);
+        setNotificationHistoryStats(response.data?.stats || null);
+      }
+    } catch (error) {
+      log.error('Error loading notification history', error);
+    } finally {
+      if (isMountedRef.current) setNotificationHistoryLoading(false);
+    }
+  }, []);
+
+  const formatNotificationTimestamp = useCallback((value?: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }, []);
+
+  const formatNotificationCategory = useCallback((category: string) => {
+    return category
+      .split('_')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }, []);
+
+  const formatNotificationChannel = useCallback((channel: NotificationHistoryItem['notification_type']) => {
+    if (channel === 'push') return 'Push alert';
+    if (channel === 'sms') return 'Text message';
+    if (channel === 'voice') return 'Phone call';
+    return 'Email';
+  }, []);
+
+  const getNotificationUrgencyLabel = useCallback((item: NotificationHistoryItem) => {
+    if (item.urgency === 'critical') return 'Move now';
+    if (item.urgency === 'warning') return 'Starts soon';
+    if (item.urgency === 'info') return 'FYI';
+    return '';
+  }, []);
+
+  const formatNotificationReason = useCallback((item: NotificationHistoryItem) => {
+    const details = item.details?.trim();
+    const address = item.address?.trim();
+    if (details && address && !details.includes(address)) {
+      return `${details} Near ${address}.`;
+    }
+    if (details) return details;
+    if (address) return `Near ${address}.`;
+    return '';
+  }, []);
+
+  const getNotificationStatusLabel = useCallback((item: NotificationHistoryItem) => {
+    if (item.status === 'delivered') return 'Delivered';
+    if (item.status === 'failed' || item.status === 'bounced') return 'Failed';
+    if (item.status === 'retry_scheduled') return 'Retrying';
+    if (item.status === 'pending') return 'Pending';
+    return 'Sent';
+  }, []);
+
+  const formatNotificationError = useCallback((error?: string) => {
+    const value = error?.trim();
+    if (!value) return '';
+
+    const lower = value.toLowerCase();
+    if (lower.includes('no push tokens registered')) {
+      return 'Push alerts are not connected on this device yet. Open the app with notifications enabled to reconnect.';
+    }
+    if (lower.includes('firebase messaging not available')) {
+      return 'Push service is temporarily unavailable. Try again later.';
+    }
+    if (
+      lower.includes('registration-token-not-registered') ||
+      lower.includes('invalid-registration-token') ||
+      lower.includes('requested entity was not found')
+    ) {
+      return 'This device needs to reconnect push alerts. Open the app once while online to refresh notification delivery.';
+    }
+    if (lower.includes('failed to send to')) {
+      return 'We could not reach one or more of your devices for this alert.';
+    }
+    if (lower.includes('network') || lower.includes('timeout')) {
+      return 'Delivery ran into a network issue. We will try again when service is stable.';
+    }
+
+    return value;
+  }, []);
+
+  const getNotificationAttentionAction = useCallback((error?: string) => {
+    const value = error?.trim().toLowerCase();
+    if (!value) return null;
+    if (
+      value.includes('no push tokens registered') ||
+      value.includes('registration-token-not-registered') ||
+      value.includes('invalid-registration-token') ||
+      value.includes('requested entity was not found')
+    ) {
+      return {
+        label: 'Reconnect Push Alerts',
+        action: 'reconnect_push' as const,
+      };
+    }
+    return null;
+  }, []);
+
+  const getNotificationHealthSummary = useCallback(() => {
+    if (!notificationHistoryStats || notificationHistoryStats.total === 0) {
+      return null;
+    }
+    const successRate = Math.round((notificationHistoryStats.sent / notificationHistoryStats.total) * 100);
+    return {
+      successRate,
+      total: notificationHistoryStats.total,
+      sent: notificationHistoryStats.sent,
+      failed: notificationHistoryStats.failed,
+    };
+  }, [notificationHistoryStats]);
+
+  const getNotificationAttentionMessage = useCallback(() => {
+    const failedItem = notificationHistory.find(item =>
+      (item.status === 'failed' || item.status === 'bounced' || item.status === 'retry_scheduled') &&
+      !!item.last_error
+    );
+    if (!failedItem?.last_error) return '';
+    return formatNotificationError(failedItem.last_error);
+  }, [formatNotificationError, notificationHistory]);
+
+  const getLatestNotificationAttentionAction = useCallback(() => {
+    const failedItem = notificationHistory.find(item =>
+      (item.status === 'failed' || item.status === 'bounced' || item.status === 'retry_scheduled') &&
+      !!item.last_error
+    );
+    return getNotificationAttentionAction(failedItem?.last_error);
+  }, [getNotificationAttentionAction, notificationHistory]);
+
+  const notificationHealthSummary = getNotificationHealthSummary();
+  const notificationAttentionMessage = getNotificationAttentionMessage();
+  const notificationAttentionAction = getLatestNotificationAttentionAction();
+
+  const handleNotificationAttentionAction = useCallback(async () => {
+    if (!notificationAttentionAction || isRepairingPushAlerts) return;
+    if (notificationAttentionAction.action !== 'reconnect_push') return;
+
+    try {
+      setIsRepairingPushAlerts(true);
+      const granted = await PushNotificationService.requestPermissionAndRegister();
+      if (granted) {
+        await loadNotificationHistory();
+        showFeedback('Push alerts reconnected');
+      } else {
+        Alert.alert(
+          'Enable Notifications',
+          'Push alerts are still off. Enable notifications in your device settings, then reopen the app.'
+        );
+      }
+    } catch (error) {
+      log.error('Error repairing push alerts', error);
+      Alert.alert('Could Not Reconnect', 'We could not reconnect push alerts right now. Please try again while online.');
+    } finally {
+      if (isMountedRef.current) setIsRepairingPushAlerts(false);
+    }
+  }, [isRepairingPushAlerts, loadNotificationHistory, notificationAttentionAction, showFeedback]);
 
   const loadCameraAlertSettings = useCallback(async () => {
     try {
@@ -442,6 +647,23 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setter(value);
       await AsyncStorage.setItem(key, String(value));
       showFeedback(value ? `${label} enabled` : `${label} disabled`);
+
+      const serverPrefByKey: Record<string, string> = {
+        pushAlert_twoInchSnow: 'snow_route',
+        pushAlert_winterOvernight: 'winter_ban',
+        pushAlert_permitZone: 'permit_zone',
+        pushAlert_dotPermit: 'dot_permit',
+      };
+      const serverPrefKey = serverPrefByKey[key];
+      if (serverPrefKey && AuthService.isAuthenticated()) {
+        try {
+          await ApiClient.authPost('/api/mobile/update-push-alert-settings', {
+            push_alert_preferences: { [serverPrefKey]: value },
+          }, { retries: 1, timeout: 10000, showErrorAlert: false });
+        } catch {
+          log.debug(`Failed to sync ${serverPrefKey} alert pref to server (non-fatal)`);
+        }
+      }
     } catch (error) {
       log.error(`Error toggling ${label}`, error);
     }
@@ -1098,6 +1320,128 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </Section>
         </View>
 
+        <Section title="Recent Alerts">
+          {notificationHealthSummary && (
+            <View style={styles.notificationHealthCard}>
+              <View style={styles.notificationHealthHeader}>
+                <Text style={styles.notificationHealthTitle}>Last 30 days</Text>
+                <Text
+                  style={[
+                    styles.notificationHealthRate,
+                    notificationHealthSummary.failed > 0
+                      ? styles.notificationHealthRateWarn
+                      : styles.notificationHealthRateGood,
+                  ]}
+                >
+                  {notificationHealthSummary.successRate}% sent
+                </Text>
+              </View>
+              <Text style={styles.notificationHealthBody}>
+                {notificationHealthSummary.sent} sent
+                {notificationHealthSummary.failed > 0
+                  ? ` • ${notificationHealthSummary.failed} failed`
+                  : ' • No recent failures'}
+                {` • ${notificationHealthSummary.total} total`}
+              </Text>
+              {!!notificationAttentionMessage && (
+                <Text style={styles.notificationHealthAttention}>
+                  {notificationAttentionMessage}
+                </Text>
+              )}
+              {notificationAttentionAction && (
+                <TouchableOpacity
+                  style={[
+                    styles.notificationHealthAction,
+                    isRepairingPushAlerts && { opacity: 0.6 },
+                  ]}
+                  onPress={handleNotificationAttentionAction}
+                  disabled={isRepairingPushAlerts}
+                  accessibilityRole="button"
+                  accessibilityLabel={notificationAttentionAction.label}
+                >
+                  {isRepairingPushAlerts ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="bell-ring-outline" size={16} color={colors.white} />
+                      <Text style={styles.notificationHealthActionText}>
+                        {notificationAttentionAction.label}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          {notificationHistoryLoading ? (
+            <View style={styles.notificationHistoryEmpty}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.notificationHistoryEmptyText}>Loading recent alert history...</Text>
+            </View>
+          ) : notificationHistory.length === 0 ? (
+            <View style={styles.notificationHistoryEmpty}>
+              <MaterialCommunityIcons name="history" size={18} color={colors.textTertiary} />
+              <Text style={styles.notificationHistoryEmptyText}>No recent alert history yet.</Text>
+            </View>
+          ) : (
+            notificationHistory.map((item, index) => (
+              <View key={item.id || `${item.category}-${item.created_at || index}`}>
+                {index > 0 && <Divider />}
+                <View style={styles.notificationHistoryRow}>
+                  <View style={styles.notificationHistoryHeader}>
+                    <Text style={styles.notificationHistoryTitle}>{formatNotificationCategory(item.category)}</Text>
+                    <Text
+                      style={[
+                        styles.notificationHistoryStatus,
+                        item.status === 'failed' || item.status === 'bounced'
+                          ? styles.notificationHistoryStatusFailed
+                          : item.status === 'retry_scheduled' || item.status === 'pending'
+                            ? styles.notificationHistoryStatusPending
+                            : styles.notificationHistoryStatusSent,
+                      ]}
+                    >
+                      {getNotificationStatusLabel(item)}
+                    </Text>
+                  </View>
+                  <Text style={styles.notificationHistoryMeta}>
+                    {formatNotificationChannel(item.notification_type)}
+                    {item.created_at ? ` • ${formatNotificationTimestamp(item.created_at)}` : ''}
+                  </Text>
+                  {!!getNotificationUrgencyLabel(item) && (
+                    <Text
+                      style={[
+                        styles.notificationHistoryUrgency,
+                        item.urgency === 'critical'
+                          ? styles.notificationHistoryUrgencyCritical
+                          : item.urgency === 'warning'
+                            ? styles.notificationHistoryUrgencyWarning
+                            : styles.notificationHistoryUrgencyInfo,
+                      ]}
+                    >
+                      {getNotificationUrgencyLabel(item)}
+                    </Text>
+                  )}
+                  {!!formatNotificationReason(item) && (
+                    <Text style={styles.notificationHistoryBody} numberOfLines={2}>
+                      {formatNotificationReason(item)}
+                    </Text>
+                  )}
+                  {!!item.content_preview && item.content_preview !== formatNotificationReason(item) && (
+                    <Text style={styles.notificationHistoryBody} numberOfLines={2}>
+                      {item.content_preview}
+                    </Text>
+                  )}
+                  {(item.status === 'failed' || item.status === 'bounced' || item.status === 'retry_scheduled') && !!item.last_error && (
+                    <Text style={styles.notificationHistoryError} numberOfLines={2}>
+                      {formatNotificationError(item.last_error)}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ))
+          )}
+        </Section>
+
         {/* Phone Call Alerts */}
         <View onLayout={e => { sectionLayoutsRef.current['call_alerts'] = e.nativeEvent.layout.y; }} style={highlightedSection === 'call_alerts' ? { borderRadius: 12, borderWidth: 2, borderColor: colors.primary } : undefined}>
         <Section title="Call Alerts">
@@ -1636,6 +1980,149 @@ const styles = StyleSheet.create({
   slider: {
     width: '100%',
     height: 32,
+  },
+  notificationHistoryEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+  },
+  notificationHealthCard: {
+    marginHorizontal: spacing.base,
+    marginTop: spacing.base,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primaryTint,
+    borderWidth: 1,
+    borderColor: '#D6E5FF',
+  },
+  notificationHealthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  notificationHealthTitle: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  notificationHealthRate: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+  },
+  notificationHealthRateGood: {
+    color: colors.success,
+  },
+  notificationHealthRateWarn: {
+    color: colors.warning,
+  },
+  notificationHealthBody: {
+    marginTop: 6,
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  notificationHealthAttention: {
+    marginTop: 8,
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  notificationHealthAction: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: borderRadius.full,
+    ...shadows.sm,
+  },
+  notificationHealthActionText: {
+    color: colors.white,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+  },
+  notificationHistoryEmptyText: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
+  notificationHistoryRow: {
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+  },
+  notificationHistoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  notificationHistoryTitle: {
+    flex: 1,
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  notificationHistoryStatus: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    textTransform: 'uppercase',
+  },
+  notificationHistoryStatusSent: {
+    color: colors.success,
+  },
+  notificationHistoryStatusFailed: {
+    color: colors.error,
+  },
+  notificationHistoryStatusPending: {
+    color: colors.warning,
+  },
+  notificationHistoryMeta: {
+    marginTop: 4,
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+  },
+  notificationHistoryUrgency: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    overflow: 'hidden',
+  },
+  notificationHistoryUrgencyCritical: {
+    backgroundColor: '#FEE2E2',
+    color: '#B91C1C',
+  },
+  notificationHistoryUrgencyWarning: {
+    backgroundColor: '#FFF4D6',
+    color: '#B45309',
+  },
+  notificationHistoryUrgencyInfo: {
+    backgroundColor: '#E0F2FE',
+    color: '#0369A1',
+  },
+  notificationHistoryBody: {
+    marginTop: 6,
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  notificationHistoryError: {
+    marginTop: 6,
+    fontSize: typography.sizes.xs,
+    color: colors.error,
+    lineHeight: 18,
   },
 
   // Divider

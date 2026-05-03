@@ -33,6 +33,7 @@ export const ParkingFeedbackCard: React.FC<Props> = ({ onDismiss }) => {
 
   const streetLabel = [feedback.streetDirection, feedback.streetName]
     .filter(Boolean).join(' ');
+  const verifyMode = feedback.verifyRecommended === true;
 
   // Determine which side options to show based on street orientation
   const isNSStreet = feedback.streetDirection === 'N' || feedback.streetDirection === 'S';
@@ -82,7 +83,7 @@ export const ParkingFeedbackCard: React.FC<Props> = ({ onDismiss }) => {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.title}>Quick check</Text>
+        <Text style={styles.title}>{verifyMode ? 'Verify block' : 'Quick check'}</Text>
         <TouchableOpacity onPress={handleSkip} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={styles.skip}>Skip</Text>
         </TouchableOpacity>
@@ -104,13 +105,22 @@ export const ParkingFeedbackCard: React.FC<Props> = ({ onDismiss }) => {
 
       {step === 'block' && (
         <View>
-          <Text style={styles.question}>Are you on {streetLabel}?</Text>
+          <Text style={styles.question}>
+            {verifyMode ? `Please verify this block: are you on ${streetLabel}?` : `Are you on ${streetLabel}?`}
+          </Text>
+          {verifyMode && (
+            <Text style={styles.subtext}>
+              {feedback.alternatesCount && feedback.alternatesCount > 0
+                ? `This parking result looked ambiguous. If this block is wrong, tap "Wrong street" and use one of the suggested fixes.`
+                : 'This parking result looked ambiguous. If this block is wrong, tap "Wrong street" on the main card to correct it.'}
+            </Text>
+          )}
           <View style={styles.buttons}>
             <TouchableOpacity style={styles.btnYes} onPress={() => handleBlock(true)}>
-              <Text style={styles.btnText}>Yes</Text>
+              <Text style={styles.btnText}>{verifyMode ? 'Yes, correct' : 'Yes'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.btnNo} onPress={() => handleBlock(false)}>
-              <Text style={styles.btnText}>Wrong street</Text>
+              <Text style={styles.btnText}>{verifyMode ? 'No, wrong block' : 'Wrong street'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -170,6 +180,13 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '500',
+    marginBottom: 12,
+  },
+  subtext: {
+    color: '#b6bdd6',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: -4,
     marginBottom: 12,
   },
   buttons: {

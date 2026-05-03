@@ -15,6 +15,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { getChicagoTime } from '../../../lib/chicago-timezone-utils';
 import { sendPushNotification, isFirebaseConfigured, cleanupInvalidTokens } from '../../../lib/firebase-admin';
+import { notificationLogger } from '../../../lib/notification-logger';
 import { sendClickSendVoiceCall } from '../../../lib/sms-service';
 
 interface ParkedVehicle {
@@ -98,6 +99,15 @@ function getChicagoDateString(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function formatChicagoTime(date: Date): string {
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'America/Chicago',
+  });
+}
+
 const ADVANCE_WARNING_MINUTES = 30;
 
 /** Map rule type aliases to the 5 canonical call alert preference keys. */
@@ -130,30 +140,71 @@ interface ReminderUserProfile {
   call_alert_preferences: Record<string, CallAlertPref> | null;
 }
 
-/**
- * Resolve the freshest active FCM token for a user at send time.
- * Falls back to the token snapshot stored on the parking session.
- */
-async function getFreshFcmToken(userId: string, staleFallback?: string | null): Promise<string | null> {
-  if (!supabaseAdmin) return staleFallback || null;
-  try {
-    const { data, error } = await supabaseAdmin.rpc('get_user_push_tokens', {
-      p_user_id: userId,
-    });
-    if (error || !data || !Array.isArray(data) || data.length === 0) {
-      return staleFallback || null;
-    }
-    return data[0]?.token || staleFallback || null;
-  } catch {
-    return staleFallback || null;
-  }
-}
+type LoggedParkingPushParams = {
+  userId: string;
+  parkingSessionId: string;
+  fcmToken: string;
+  category: string;
+  title: string;
+  body: string;
+  data: Record<string, string | undefined>;
+  address: string;
+  metadata?: Record<string, unknown>;
+};
 
 function isPushAlertEnabled(
   prefs: Record<string, boolean> | null | undefined,
   key: 'street_cleaning' | 'winter_ban' | 'snow_route' | 'permit_zone' | 'dot_permit' | 'meter_max_expiring' | 'meter_zone_active'
 ): boolean {
   return prefs?.[key] !== false;
+}
+
+async function sendLoggedParkingPush({
+  userId,
+  parkingSessionId,
+  fcmToken,
+  category,
+  title,
+  body,
+  data,
+  address,
+  metadata,
+}: LoggedParkingPushParams): Promise<{ success: boolean; error?: string; invalidToken?: boolean }> {
+  const logId = await notificationLogger.log({
+    user_id: userId,
+    notification_type: 'push',
+    category,
+    subject: title,
+    content_preview: body,
+    status: 'pending',
+    metadata: {
+      parking_session_id: parkingSessionId,
+      address,
+      severity: data.severity || null,
+      ...(metadata || {}),
+    },
+  });
+
+  const pushData = Object.fromEntries(
+    Object.entries(data).filter(([, value]) => typeof value === 'string')
+  ) as Record<string, string>;
+
+  const result = await sendPushNotification(fcmToken, { title, body, data: pushData });
+
+  if (logId) {
+    if (result.success) {
+      await notificationLogger.updateStatus(logId, 'sent');
+    } else {
+      await notificationLogger.updateStatus(
+        logId,
+        'failed',
+        undefined,
+        result.error || 'Failed to send push notification'
+      );
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -509,6 +560,7 @@ export default async function handler(
     // and call-alert settings all use the same authoritative snapshot.
     const uniqueUserIds = Array.from(new Set(parkedVehicles.map((v: any) => v.user_id)));
     const userProfiles = new Map<string, ReminderUserProfile>();
+    const freshTokenByUserId = new Map<string, string>();
     if (uniqueUserIds.length > 0) {
       const { data: profiles } = await supabaseAdmin
         .from('user_profiles')
@@ -527,6 +579,20 @@ export default async function handler(
           });
         }
       }
+
+      const { data: tokens } = await supabaseAdmin
+        .from('push_tokens')
+        .select('user_id, token, last_used_at')
+        .in('user_id', uniqueUserIds)
+        .eq('is_active', true)
+        .order('last_used_at', { ascending: false });
+      if (tokens) {
+        for (const tokenRow of tokens as Array<{ user_id: string; token: string }>) {
+          if (!freshTokenByUserId.has(tokenRow.user_id) && tokenRow.token) {
+            freshTokenByUserId.set(tokenRow.user_id, tokenRow.token);
+          }
+        }
+      }
     }
 
     // Collect invalid FCM tokens for batch cleanup at end
@@ -535,7 +601,7 @@ export default async function handler(
     for (const vehicle of parkedVehicles as unknown as ParkedVehicle[]) {
       try {
         const userProfile = userProfiles.get(vehicle.user_id);
-        const freshFcmToken = await getFreshFcmToken(vehicle.user_id, vehicle.fcm_token);
+        const freshFcmToken = freshTokenByUserId.get(vehicle.user_id) || vehicle.fcm_token || null;
 
         // ——————————————————————————————————————————————
         // PUSH NOTIFICATIONS (unchanged timing windows)
@@ -554,13 +620,23 @@ export default async function handler(
             .is('winter_ban_notified_at', null)
             .select('id');
           if (claimed && claimed.length > 0) {
-            const result = await sendPushNotification(freshFcmToken, {
+            const result = await sendLoggedParkingPush({
+              userId: vehicle.user_id,
+              parkingSessionId: vehicle.id,
+              fcmToken: freshFcmToken,
+              category: 'winter_ban_reminder',
               title: 'Winter Parking Ban Reminder',
               body: `Your car at ${vehicle.address} is on a winter ban street. Move before 3am to avoid towing ($150+).`,
               data: {
                 type: 'winter_ban_reminder',
+                severity: 'critical',
                 lat: vehicle.latitude?.toString(),
                 lng: vehicle.longitude?.toString(),
+              },
+              address: vehicle.address,
+              metadata: {
+                user_reason: 'Winter overnight ban starts at 3:00 AM on posted streets.',
+                enforcement_time: '3:00 AM',
               },
             });
             if (result.success) {
@@ -598,13 +674,23 @@ export default async function handler(
               .select('id');
             if (claimed && claimed.length > 0) {
               const snowAmount = activeSnowEvent.snow_amount_inches || 2;
-              const result = await sendPushNotification(freshFcmToken, {
+              const result = await sendLoggedParkingPush({
+                userId: vehicle.user_id,
+                parkingSessionId: vehicle.id,
+                fcmToken: freshFcmToken,
+                category: 'snow_ban_reminder',
                 title: '2-Inch Snow Ban — Move Your Car!',
                 body: `${snowAmount}" of snow detected. Your car at ${vehicle.address} is on a snow route and may be towed ($150+). Move now!`,
                 data: {
                   type: 'snow_ban_reminder',
+                  severity: 'critical',
                   lat: vehicle.latitude?.toString(),
                   lng: vehicle.longitude?.toString(),
+                },
+                address: vehicle.address,
+                metadata: {
+                  user_reason: `${snowAmount}" of snow is active and snow-route towing may be in effect.`,
+                  snow_amount_inches: snowAmount,
                 },
               });
               if (result.success) {
@@ -650,13 +736,25 @@ export default async function handler(
           freshFcmToken &&
           isPushAlertEnabled(userProfile?.push_alert_preferences, 'street_cleaning')
         ) {
-          const result = await sendPushNotification(freshFcmToken, {
+          const cleaningStart = '9:00 AM';
+          const result = await sendLoggedParkingPush({
+            userId: vehicle.user_id,
+            parkingSessionId: vehicle.id,
+            fcmToken: freshFcmToken,
+            category: 'street_cleaning_reminder',
             title: 'Street Cleaning Tomorrow!',
-            body: `Street cleaning scheduled tomorrow at ${vehicle.address}. Consider moving your car tonight to avoid a $60 ticket.`,
+            body: `Street cleaning starts tomorrow at ${cleaningStart} near ${vehicle.address}. Move tonight so you are clear before morning enforcement and avoid a $60 ticket.`,
             data: {
               type: 'street_cleaning_reminder',
+              severity: 'warning',
               lat: vehicle.latitude?.toString(),
               lng: vehicle.longitude?.toString(),
+            },
+            address: vehicle.address,
+            metadata: {
+              user_reason: `Street cleaning starts tomorrow at ${cleaningStart}.`,
+              enforcement_time: cleaningStart,
+              reminder_timing: 'night_before',
             },
           });
           if (result.success) {
@@ -685,13 +783,25 @@ export default async function handler(
           freshFcmToken &&
           isPushAlertEnabled(userProfile?.push_alert_preferences, 'street_cleaning')
         ) {
-          const result = await sendPushNotification(freshFcmToken, {
+          const cleaningStart = '9:00 AM';
+          const result = await sendLoggedParkingPush({
+            userId: vehicle.user_id,
+            parkingSessionId: vehicle.id,
+            fcmToken: freshFcmToken,
+            category: 'street_cleaning_reminder',
             title: 'Street Cleaning Today - Move Now!',
-            body: `Street cleaning starts at 9am at ${vehicle.address}. Move your car NOW to avoid a $60 ticket.`,
+            body: `Street cleaning starts today at ${cleaningStart} near ${vehicle.address}. Move now before enforcement begins and avoid a $60 ticket.`,
             data: {
               type: 'street_cleaning_reminder',
+              severity: 'critical',
               lat: vehicle.latitude?.toString(),
               lng: vehicle.longitude?.toString(),
+            },
+            address: vehicle.address,
+            metadata: {
+              user_reason: `Street cleaning starts today at ${cleaningStart}.`,
+              enforcement_time: cleaningStart,
+              reminder_timing: 'day_of',
             },
           });
           if (result.success) {
@@ -731,13 +841,24 @@ export default async function handler(
             }
 
             if (!isOwnZone) {
-              const result = await sendPushNotification(freshFcmToken, {
+              const result = await sendLoggedParkingPush({
+                userId: vehicle.user_id,
+                parkingSessionId: vehicle.id,
+                fcmToken: freshFcmToken,
+                category: 'permit_reminder',
                 title: 'Permit Zone Alert',
-                body: `Your car at ${vehicle.address} is in ${vehicle.permit_zone}. Permit rules may be active. Check posted signs to avoid a ticket.`,
+                body: `Permit enforcement for ${vehicle.permit_zone} starts around ${enforcement.enforcementTimeStr} near ${vehicle.address}. Move or display a valid permit to avoid a ticket.`,
                 data: {
                   type: 'permit_reminder',
+                  severity: 'warning',
                   lat: vehicle.latitude?.toString(),
                   lng: vehicle.longitude?.toString(),
+                },
+                address: vehicle.address,
+                metadata: {
+                  user_reason: `Permit enforcement for zone ${vehicle.permit_zone} starts around ${enforcement.enforcementTimeStr}.`,
+                  permit_zone: vehicle.permit_zone,
+                  enforcement_time: enforcement.enforcementTimeStr,
                 },
               });
               if (result.success) {
@@ -776,12 +897,12 @@ export default async function handler(
               // Night before notification
               shouldNotify = true;
               notifTitle = `${permitType} Tomorrow on Your Block`;
-              notifBody = `A ${permitType.toLowerCase()} permit starts tomorrow at ${vehicle.address}. Consider moving your car tonight to avoid towing.`;
+              notifBody = `A ${permitType.toLowerCase()} restriction starts tomorrow near ${vehicle.address}. Move tonight so your car is clear before towing begins.`;
             } else if (chicagoHour >= 6 && chicagoHour <= 8 && isPermitToday) {
               // Morning of notification
               shouldNotify = true;
               notifTitle = `${permitType} Active Today - Move Now!`;
-              notifBody = `A ${permitType.toLowerCase()} permit is active today at ${vehicle.address}. Move your car NOW to avoid towing.`;
+              notifBody = `A ${permitType.toLowerCase()} restriction is active today near ${vehicle.address}. Move now before crews arrive to avoid towing.`;
             }
           } else {
             // No specific start date — permit was already active when user parked
@@ -789,18 +910,33 @@ export default async function handler(
             if (chicagoHour >= 6 && chicagoHour <= 8) {
               shouldNotify = true;
               notifTitle = `${permitType} Active on Your Block`;
-              notifBody = `A ${permitType.toLowerCase()} permit is active at ${vehicle.address}. Check posted signs — risk of towing.`;
+              notifBody = `A ${permitType.toLowerCase()} restriction is active near ${vehicle.address}. Check posted signs and move your car if needed to avoid towing.`;
             }
           }
 
           if (shouldNotify) {
-            const result = await sendPushNotification(freshFcmToken, {
+            const result = await sendLoggedParkingPush({
+              userId: vehicle.user_id,
+              parkingSessionId: vehicle.id,
+              fcmToken: freshFcmToken,
+              category: 'dot_permit_reminder',
               title: notifTitle,
               body: notifBody,
               data: {
                 type: 'dot_permit_reminder',
+                severity: notifTitle.includes('Move Now') || notifTitle.includes('Active Today') ? 'critical' : 'warning',
                 lat: vehicle.latitude?.toString(),
                 lng: vehicle.longitude?.toString(),
+              },
+              address: vehicle.address,
+              metadata: {
+                user_reason: permitStartDate
+                  ? (permitStartDate === tomorrowStr
+                    ? `${permitType} starts tomorrow on this block.`
+                    : `${permitType} is active today on this block.`)
+                  : `${permitType} is currently active on this block.`,
+                permit_type: permitType,
+                permit_start_date: permitStartDate,
               },
             });
             if (result.success) {
@@ -868,13 +1004,25 @@ export default async function handler(
           })();
 
           if (inWindow && stillEnforced) {
-            const result = await sendPushNotification(freshFcmToken, {
+            const expiresAtStr = formatChicagoTime(new Date(expiresAtMs));
+            const result = await sendLoggedParkingPush({
+              userId: vehicle.user_id,
+              parkingSessionId: vehicle.id,
+              fcmToken: freshFcmToken,
+              category: 'meter_max_expiring',
               title: 'Meter Expiring Soon',
-              body: `Your meter at ${vehicle.address} hits its ${vehicle.meter_max_time_minutes / 60}-hour max in 30 min. Head back to your car or feed the meter to avoid a $50 ticket.`,
+              body: `Your meter maxes out around ${expiresAtStr} near ${vehicle.address}. You have about 30 minutes left to move or pay before a $50 ticket risk.`,
               data: {
                 type: 'meter_max_expiring',
+                severity: 'warning',
                 lat: vehicle.latitude?.toString(),
                 lng: vehicle.longitude?.toString(),
+              },
+              address: vehicle.address,
+              metadata: {
+                user_reason: `Meter max time runs out around ${expiresAtStr}.`,
+                enforcement_time: expiresAtStr,
+                meter_max_time_minutes: vehicle.meter_max_time_minutes,
               },
             });
             if (result.success) {
@@ -912,16 +1060,24 @@ export default async function handler(
             const nowMs = chicagoTime.getTime();
             // 15-min cron window — fire if within ±7.5 min of fireAt
             if (Math.abs(nowMs - fireAtMs) <= 7.5 * 60 * 1000) {
-              const startStr = enforcementStart.toLocaleTimeString('en-US', {
-                hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago'
-              });
-              const result = await sendPushNotification(freshFcmToken, {
+              const startStr = formatChicagoTime(enforcementStart);
+              const result = await sendLoggedParkingPush({
+                userId: vehicle.user_id,
+                parkingSessionId: vehicle.id,
+                fcmToken: freshFcmToken,
+                category: 'meter_zone_active',
                 title: 'Meter Zone Activates Soon',
-                body: `Meters at ${vehicle.address} start enforcing at ${startStr}. Pay the meter or move to avoid a $50 ticket.`,
+                body: `Free overnight parking ends around ${startStr} near ${vehicle.address}. Pay the meter or move before enforcement starts to avoid a $50 ticket.`,
                 data: {
                   type: 'meter_zone_active',
+                  severity: 'warning',
                   lat: vehicle.latitude?.toString(),
                   lng: vehicle.longitude?.toString(),
+                },
+                address: vehicle.address,
+                metadata: {
+                  user_reason: `Free overnight parking ends around ${startStr}.`,
+                  enforcement_time: startStr,
                 },
               });
               if (result.success) {

@@ -281,12 +281,10 @@ class DeepLinkingServiceClass {
       }
 
       if (this.navigationRef?.isReady()) {
-        this.navigationRef.navigate('MainTabs', {
-          screen: 'Map',
-          params: {
-            latitude: lat,
-            longitude: lng,
-          },
+        this.navigationRef.navigate('Map', {
+          lat,
+          lng,
+          fromNotification: true,
         });
       }
     });
@@ -446,12 +444,14 @@ class DeepLinkingServiceClass {
         screens: {
           Onboarding: 'onboarding',
           Login: 'login',
+          Map: 'map',
           MainTabs: {
             screens: {
               Home: 'home',
-              Map: 'map',
+              Search: 'search',
               History: 'history',
-              Profile: 'profile',
+              Manage: 'manage',
+              Settings: 'settings',
             },
           },
           BluetoothSettings: 'settings/bluetooth',

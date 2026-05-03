@@ -37,6 +37,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     confirmed_parking,    // boolean: did parking actually occur?
     confirmed_block,      // boolean: is the street/block correct?
     reported_side,        // 'N' | 'S' | 'E' | 'W' | null: which side of the street?
+    feedback_source,      // string: where this truth came from (hero, card, chat, etc.)
+    corrected_address,    // string: optional authoritative address when block was wrong
+    note,                 // string: optional human note
   } = req.body;
 
   try {
@@ -78,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Fetch the diagnostic row to compare
     const { data: diagRow } = await supabaseAdmin
       .from('parking_diagnostics')
-      .select('resolved_side, resolved_street_name')
+      .select('resolved_side, resolved_street_name, native_meta')
       .eq('id', targetId)
       .single();
 
@@ -89,6 +92,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (reported_side && diagRow.resolved_side) {
         update.side_correct = reported_side.toUpperCase() === diagRow.resolved_side;
       }
+      const existingMeta = (diagRow.native_meta && typeof diagRow.native_meta === 'object')
+        ? diagRow.native_meta as Record<string, any>
+        : {};
+      update.native_meta = {
+        ...existingMeta,
+        feedback_source: typeof feedback_source === 'string' && feedback_source.trim().length > 0
+          ? feedback_source.trim().slice(0, 80)
+          : (existingMeta.feedback_source ?? 'user_feedback'),
+        corrected_address: typeof corrected_address === 'string' && corrected_address.trim().length > 0
+          ? corrected_address.trim().slice(0, 200)
+          : (existingMeta.corrected_address ?? null),
+        feedback_note: typeof note === 'string' && note.trim().length > 0
+          ? note.trim().slice(0, 500)
+          : (existingMeta.feedback_note ?? null),
+      };
     }
 
     const { error: updateErr } = await supabaseAdmin

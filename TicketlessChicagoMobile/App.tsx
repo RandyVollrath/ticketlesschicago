@@ -9,11 +9,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Services
 import AuthService from './src/services/AuthService';
 import type { AuthState } from './src/services/AuthService';
+import AppEvents from './src/services/AppEvents';
 import ApiClient from './src/utils/ApiClient';
 
 // Components
 import TabBar from './src/navigation/TabBar';
 import { ErrorBoundary } from './src/components';
+import ForegroundNotificationBanner from './src/components/alerts/ForegroundNotificationBanner';
 
 // Theme
 import { colors, typography } from './src/theme';
@@ -22,6 +24,7 @@ import { colors, typography } from './src/theme';
 import Logger from './src/utils/Logger';
 import { setupGlobalErrorHandler } from './src/utils/errorHandler';
 import { StorageKeys } from './src/constants';
+import type { ForegroundBannerPayload } from './src/services/PushNotificationService';
 
 const log = Logger.createLogger('App');
 
@@ -34,6 +37,11 @@ export type RootStackParamList = {
   Login: undefined;
   AccountInactive: undefined;
   MainTabs: undefined;
+  Map: {
+    lat?: number;
+    lng?: number;
+    fromNotification?: boolean;
+  } | undefined;
   BluetoothSettings: undefined;
   CheckDestination: undefined;
   ReportZoneHours: {
@@ -108,7 +116,9 @@ function App(): React.JSX.Element {
   const [authState, setAuthState] = useState<AuthState | null>(null);
   const [isPaidUser, setIsPaidUser] = useState<boolean | null>(null); // null = not checked yet
   const [linkingConfig, setLinkingConfig] = useState<any>(undefined);
+  const [foregroundBanner, setForegroundBanner] = useState<ForegroundBannerPayload | null>(null);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+  const foregroundBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Subscribe to auth state changes FIRST before initializing
@@ -121,6 +131,25 @@ function App(): React.JSX.Element {
     initializeApp();
 
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = AppEvents.on('foreground-notification-banner', (payload: ForegroundBannerPayload) => {
+      if (foregroundBannerTimerRef.current) {
+        clearTimeout(foregroundBannerTimerRef.current);
+      }
+      setForegroundBanner(payload);
+      foregroundBannerTimerRef.current = setTimeout(() => {
+        setForegroundBanner(null);
+      }, 7000);
+    });
+
+    return () => {
+      unsubscribe();
+      if (foregroundBannerTimerRef.current) {
+        clearTimeout(foregroundBannerTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -355,6 +384,26 @@ function App(): React.JSX.Element {
     }
   };
 
+  const dismissForegroundBanner = () => {
+    if (foregroundBannerTimerRef.current) {
+      clearTimeout(foregroundBannerTimerRef.current);
+      foregroundBannerTimerRef.current = null;
+    }
+    setForegroundBanner(null);
+  };
+
+  const openForegroundBanner = async () => {
+    if (!foregroundBanner) return;
+    const data = foregroundBanner.data;
+    dismissForegroundBanner();
+    try {
+      const { default: PushNotificationService } = await import('./src/services/PushNotificationService');
+      PushNotificationService.handleNotificationDataPress(data);
+    } catch (error) {
+      log.error('Error opening foreground notification banner', error);
+    }
+  };
+
   if (isLoading || !authState || authState.isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -461,6 +510,14 @@ function App(): React.JSX.Element {
             </Stack.Screen>
             <Stack.Screen name="MainTabs" component={MainTabNavigator} />
             <Stack.Screen
+              name="Map"
+              getComponent={() => getScreen(() => require('./src/screens/MapScreen').default)}
+              options={{
+                headerShown: false,
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen
               name="CheckDestination"
               getComponent={() => getScreen(() => require('./src/screens/CheckDestinationScreen').default)}
               options={{
@@ -494,6 +551,15 @@ function App(): React.JSX.Element {
             />
           </Stack.Navigator>
         </NavigationContainer>
+        {foregroundBanner && (
+          <ForegroundNotificationBanner
+            title={foregroundBanner.title}
+            body={foregroundBanner.body}
+            data={foregroundBanner.data}
+            onDismiss={dismissForegroundBanner}
+            onPress={openForegroundBanner}
+          />
+        )}
       </ErrorBoundary>
     </SafeAreaProvider>
   );
