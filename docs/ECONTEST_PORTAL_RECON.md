@@ -90,4 +90,4 @@ Zero captcha of any kind — no hCaptcha, no reCAPTCHA, no Turnstile. Form is co
 - Portal could add captcha later (monitor for changes)
 - Portal could change form structure (add format drift detection like payment scraper)
 - Session management more complex than stateless API call
-- "Correspondence" contest method win rate unknown (could be same as mail-in 57%, or different)
+- "Correspondence" contest method win rate unknown (could be same as mail-in 59%, or different)
