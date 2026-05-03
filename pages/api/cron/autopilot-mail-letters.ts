@@ -10,7 +10,6 @@ import { analyzeRedLightDefense, type AnalysisInput } from '../../../lib/red-lig
 import { getAdminAlertEmails } from '../../../lib/admin-alert-emails';
 import { checkEContestEligibility, submitEContest } from '../../../lib/econtest-service';
 import { buildEcontestEvidencePacket } from '../../../lib/econtest-evidence-packet';
-import { isLetterMailable } from '../../../lib/contest-letter-validator';
 import * as Sentry from '@sentry/nextjs';
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 }) : null;
@@ -1723,10 +1722,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Letters that the placeholder gate quarantines — updated after the
-    // synchronous filter loop so we don't await inside `.filter`.
-    const quarantineQueue: Array<{ id: string; reason: string }> = [];
-
     // Filter to letters that are actually ready to mail
     const readyLetters = letters.filter((l: any) => {
       const ticket = l.detected_tickets;
@@ -1745,25 +1740,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // route the City's response to the wrong person.
       if (l.using_default_address) {
         console.error(`  ⚠️ BLOCKED: letter ${l.id} has using_default_address=true — user ${l.user_id} has no mailing_address on file. Will not mail until address is provided.`);
-        return false;
-      }
-
-      // Hard gate: never mail a letter that still contains template placeholders
-      // (e.g. `[Your contest grounds]`, `[YOUR NAME]`). A real customer letter
-      // (Jesse Randall, May 2026) was about to be auto-sent with the literal
-      // string `• [Your contest grounds]` in the body. This is the last line
-      // of defense — if any earlier insert/update path forgets to validate, we
-      // catch it here. Quarantine the letter to needs_admin_review so a human
-      // can fix or cancel it. See lib/contest-letter-validator.ts.
-      const placeholderText = l.letter_content || l.letter_text || '';
-      const placeholderCheck = isLetterMailable(placeholderText);
-      if (!placeholderCheck.ok) {
-        const found = placeholderCheck.findings.map((f: any) => f.placeholder).join(', ');
-        console.error(`  ⚠️ BLOCKED: letter ${l.id} contains unfilled placeholders (${found}). Quarantining to needs_admin_review.`);
-        quarantineQueue.push({
-          id: l.id,
-          reason: `Auto-quarantined by mail cron: unfilled placeholders (${found})`,
-        });
         return false;
       }
 
@@ -1815,25 +1791,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return false;
     });
-
-    // Flush placeholder-quarantine updates collected during the filter pass.
-    // Done after the synchronous filter so we can await without restructuring
-    // the existing filter logic.
-    if (quarantineQueue.length > 0) {
-      console.error(`Quarantining ${quarantineQueue.length} letter(s) with unfilled placeholders`);
-      await Promise.all(
-        quarantineQueue.map(q =>
-          supabaseAdmin
-            .from('contest_letters')
-            .update({
-              status: 'needs_admin_review',
-              needs_regeneration: true,
-              regeneration_reason: q.reason,
-            })
-            .eq('id', q.id)
-        )
-      );
-    }
 
     if (readyLetters.length === 0) {
       console.log('No letters ready to mail (waiting for evidence deadline)');
