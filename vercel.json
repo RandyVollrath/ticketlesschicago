@@ -125,6 +125,9 @@
     },
     "pages/api/cron/paid-user-health-check.ts": {
       "maxDuration": 120
+    },
+    "pages/api/cron/autopay-city-payment-timeout.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -135,6 +138,10 @@
     {
       "path": "/api/cron/autopilot-autopay-executor",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/autopay-city-payment-timeout",
+      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/cron/build-gps-corrections",
