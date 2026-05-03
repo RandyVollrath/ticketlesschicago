@@ -130,8 +130,8 @@ export default function CityTicketStats({ compact = false }: { compact?: boolean
         />
         <StatBox
           label="Contest Win Rate"
-          value="57%"
-          subtext="mail-in decided parking ticket cases, 2025 FOIA data"
+          value="59%"
+          subtext="mail-in decided parking ticket cases, 2023–2025 FOIA data"
           color={COLORS.signal}
         />
       </div>

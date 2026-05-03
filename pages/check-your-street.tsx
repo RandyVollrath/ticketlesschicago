@@ -1072,7 +1072,7 @@ export default function CheckYourStreet() {
                           backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center',
                         }}>
                           <div style={{ fontSize: '24px', fontWeight: '700', color: '#6EE7B7', fontFamily: '"Space Grotesk", sans-serif' }}>
-                            57%
+                            59%
                           </div>
                           <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '2px' }}>dismissed via mail-in contest</div>
                         </div>
@@ -1226,7 +1226,7 @@ export default function CheckYourStreet() {
                 <h3 style={{ fontSize: '15px', fontWeight: '700', color: COLORS.graphite, margin: 0, fontFamily: '"Space Grotesk", sans-serif' }}>Hands-Off Ticket Defense</h3>
               </div>
               <p style={{ fontSize: '13px', color: COLORS.slate, margin: 0, lineHeight: '1.55' }}>
-                Get a ticket anyway? We pull Street View photos of your actual signage, cross-reference weather records, attach any FOIA responses we&apos;ve gotten back from City agencies, and USPS-mail a real defense letter <span style={{ color: COLORS.graphite, fontWeight: '600' }}>before the city&apos;s deadline — every time</span>. Zero forms. No phone calls. No hearings to show up to. <span style={{ color: COLORS.graphite, fontWeight: '600' }}>57% of mail-in contests win.</span> <span style={{ fontSize: '11px', color: COLORS.slate }}>(Camera tickets excluded.)</span>
+                Get a ticket anyway? We pull Street View photos of your actual signage, cross-reference weather records, attach any FOIA responses we&apos;ve gotten back from City agencies, and USPS-mail a real defense letter <span style={{ color: COLORS.graphite, fontWeight: '600' }}>before the city&apos;s deadline — every time</span>. Zero forms. No phone calls. No hearings to show up to. <span style={{ color: COLORS.graphite, fontWeight: '600' }}>59% of mail-in contests win.</span> <span style={{ fontSize: '11px', color: COLORS.slate }}>(Camera tickets excluded.)</span>
               </p>
             </div>
 

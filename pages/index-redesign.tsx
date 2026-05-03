@@ -151,7 +151,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "Based on 35.7M ticket records: expired plates have 75% dismissal, no city sticker 70%, expired meters 57%. Camera tickets are lower at 18-20%."
+      a: "Based on 35.7M ticket records: expired plates have 76% dismissal, no city sticker 72%, expired meters 67%. Camera tickets are lower at 19–21%."
     },
     {
       q: "Can I review letters before they're sent?",
@@ -433,7 +433,7 @@ export default function LandingPage() {
                 'Full dashboard access',
                 'Contest letter approval system',
                 'Email notifications on ticket status',
-                '57% mail-in parking ticket dismissal rate',
+                '59% mail-in parking ticket dismissal rate',
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
                   <div style={{ color: COLORS.accent, flexShrink: 0, marginTop: '2px' }}><CheckIcon /></div>

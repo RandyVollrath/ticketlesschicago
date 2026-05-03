@@ -1384,7 +1384,7 @@ export default function SettingsPage() {
                 Upgrade to Autopilot - $79/year
               </p>
               <p style={{ margin: '0 0 12px', fontSize: 14, color: '#9A3412' }}>
-                Automatic ticket detection and contesting with 57% mail-in parking ticket dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
+                Automatic ticket detection and contesting with 59% mail-in parking ticket dismissal rate. We monitor your plate twice a week and mail contest letters automatically.
               </p>
               <Link href="/get-started" style={{
                 display: 'inline-block',
