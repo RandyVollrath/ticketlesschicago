@@ -79,11 +79,11 @@ function pillarDataShock(db) {
             type: "brand-reveal",
             props: {
               tagline1: "We fight your tickets automatically.",
-              tagline2: "57% of mail-in contested tickets get dismissed.",
+              tagline2: "59% of mail-in contested tickets get dismissed.",
             },
             durationFrames: 270,
             voScript:
-              "That's why we built Autopilot America. We contest your tickets automatically. And fifty seven percent of mail-in contested parking tickets get dismissed. Link in bio.",
+              "That's why we built Autopilot America. We contest your tickets automatically. And fifty nine percent of mail-in contested parking tickets get dismissed. Link in bio.",
           },
           {
             type: "cta",
@@ -227,11 +227,11 @@ function pillarCameraTrap(db) {
 function pillarContestSecret(db) {
   // Pick a random violation with high win rate
   const violations = [
-    { code: "EXPIRED PLATE%", name: "expired plates", winRate: "89%", fine: "$60" },
-    { code: "NO CITY STICKER%", name: "no city sticker", winRate: "85%", fine: "$200" },
-    { code: "EXP. METER%", name: "expired meter", winRate: "57%", fine: "$50-70" },
-    { code: "RESIDENTIAL PERMIT%", name: "residential permit parking", winRate: "52%", fine: "$75" },
-    { code: "DISABLED%", name: "disabled parking zone", winRate: "72%", fine: "$250" },
+    { code: "EXPIRED PLATE%", name: "expired plates", winRate: "76%", fine: "$60" },
+    { code: "NO CITY STICKER%", name: "no city sticker", winRate: "72%", fine: "$200" },
+    { code: "EXP. METER%", name: "expired meter", winRate: "67%", fine: "$50-70" },
+    { code: "RESIDENTIAL PERMIT%", name: "residential permit parking", winRate: "54%", fine: "$75" },
+    { code: "DISABLED%", name: "disabled parking zone", winRate: "68%", fine: "$250" },
   ];
 
   const v = violations[Math.floor(Math.random() * violations.length)];
@@ -350,11 +350,11 @@ function pillarVehicleMake(db) {
           stats: [
             { number: make.cnt.toLocaleString(), label: `${fullName} tickets issued`, color: "#ff6b2b" },
             { number: `$${millions}M`, label: "in fines", color: "#ff1a1a" },
-            { number: "57%", label: "get dismissed via mail-in contest", color: "#00e676" },
+            { number: "59%", label: "get dismissed via mail-in contest", color: "#00e676" },
           ],
         },
         durationFrames: 330,
-        voScript: `${make.cnt.toLocaleString()} tickets. ${millions} million dollars. But here's the thing: fifty seven percent of mail-in contested parking tickets get dismissed. You just need to actually fight back.`,
+        voScript: `${make.cnt.toLocaleString()} tickets. ${millions} million dollars. But here's the thing: fifty nine percent of mail-in contested parking tickets get dismissed. You just need to actually fight back.`,
       },
       {
         type: "cta",
