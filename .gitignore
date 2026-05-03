@@ -77,3 +77,24 @@ __pycache__/
 data/tow-portal-monitor.json
 
 qa-auth-failure.png
+
+# Throwaway debug scripts at repo root — keep reusable scripts under scripts/ instead.
+/check-*.js
+/check-*.ts
+/fix-*.js
+/fix-*.ts
+/probe-*.js
+/probe-*.ts
+/audit-*.js
+/audit-*.ts
+/find-*.js
+/find-*.ts
+/try-*.js
+/try-*.ts
+/setup-*.js
+/setup-*.ts
+/reclassify-*.js
+/reclassify-*.ts
+
+# Local analysis log dump
+/logs/
