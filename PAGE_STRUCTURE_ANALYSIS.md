@@ -90,7 +90,7 @@ The website has **TWO COMPLETELY SEPARATE SIGNUP FUNNELS** that lead to differen
 - **OAuth redirect:** Saves funnel state to localStorage, survives OAuth redirect to `/start`
 - **Stripe checkout:** Once on `price` step, clicking "Start my protection" redirects to Stripe
 - **Post-payment:** On Stripe success redirect (`?checkout=success`), immediately jumps to `confirmed` step
-- **Ticket types:** 12 types selectable, defaults to 8 high-win-rate ones (expired plates 76%, city sticker 72%, etc.)
+- **Ticket types:** 14 types, all on by default (expired plates 89%, city sticker 86%, etc.)
 - **Skip options:** Can skip address, ticket types, receipt forwarding, notifications
 
 ### Database Operations
