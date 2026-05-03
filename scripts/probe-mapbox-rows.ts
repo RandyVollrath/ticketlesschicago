@@ -36,6 +36,12 @@ async function main() {
     } else {
       console.log(`   mapbox: <none>`);
     }
+    const mbRev = (r.native_meta as any)?.mapbox_reverse ?? null;
+    if (mbRev) {
+      console.log(`   mapbox_reverse: ${JSON.stringify(mbRev, null, 2).split('\n').join('\n   ')}`);
+    } else {
+      console.log(`   mapbox_reverse: <none>`);
+    }
     console.log('');
   }
 }
