@@ -970,10 +970,13 @@ const Card = React.memo(function Card({ title, children, badge, greyed, upgradeC
   );
 });
 
-function CollapsibleCard({ title, summary, children, defaultOpen = false }: { title: string; summary?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
+function CollapsibleCard({ title, summary, children, defaultOpen = false, highlighted = false, recommendedLabel }: { title: string; summary?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; highlighted?: boolean; recommendedLabel?: string }) {
   const [open, setOpen] = useState(defaultOpen);
+  const containerStyle = highlighted
+    ? { ...CARD_STYLES.container, border: `2px solid ${COLORS.accent}`, boxShadow: '0 2px 12px rgba(16,185,129,0.18)' }
+    : CARD_STYLES.container;
   return (
-    <div style={CARD_STYLES.container}>
+    <div style={containerStyle}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -995,9 +998,25 @@ function CollapsibleCard({ title, summary, children, defaultOpen = false }: { ti
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ ...CARD_STYLES.title, marginBottom: !open && summary ? 2 : 0 }}>
-            {title}
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <h3 style={{ ...CARD_STYLES.title, marginBottom: !open && summary ? 2 : 0 }}>
+              {title}
+            </h3>
+            {recommendedLabel && (
+              <span style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '3px 8px',
+                borderRadius: 4,
+                backgroundColor: COLORS.successLight,
+                color: COLORS.accent,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}>
+                {recommendedLabel}
+              </span>
+            )}
+          </div>
           {!open && summary && (
             <div style={{
               fontSize: 13,
@@ -3105,14 +3124,16 @@ function SettingsPageInner() {
 
         <CollapsibleCard
           title="Receipt Forwarding"
+          highlighted={!(receiptCount !== null && receiptCount > 0)}
+          recommendedLabel={!(receiptCount !== null && receiptCount > 0) ? 'Recommended' : undefined}
           summary={
             receiptCount !== null && receiptCount > 0
-              ? `${receiptCount} receipt${receiptCount === 1 ? '' : 's'} on file — sticker proof protects against ticket losses`
-              : 'Forward sticker purchase receipts so we can prove you paid — 70% win rate on sticker tickets'
+              ? `${receiptCount} receipt${receiptCount === 1 ? '' : 's'} on file`
+              : 'One-time setup → 70% win rate on sticker tickets'
           }
         >
           <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
-            Set up a one-time email filter so your city sticker and plate sticker purchase receipts forward to us automatically. If you ever get a sticker ticket, your receipt is proof you already paid — 70% win rate.
+            One-time email filter. We hold your sticker receipts as proof you paid.
           </p>
           {userId && (
             <RegistrationForwardingSetup
@@ -3235,7 +3256,9 @@ function SettingsPageInner() {
               Ticket types to auto-contest
             </label>
             <p style={{ margin: '0 0 12px', fontSize: 12, color: COLORS.textMuted }}>
-              Percentages show the historical win rate when contested.
+              Percentages show the historical dismissal rate when contested.
+              <br />
+              Source: City of Chicago Administrative Hearings (FOIA, 2018–2025).
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
               {TICKET_TYPES.map(type => {
