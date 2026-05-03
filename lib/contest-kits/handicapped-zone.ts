@@ -157,16 +157,19 @@ I respectfully request that this citation be dismissed.`,
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for parking in a handicapped zone.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged handicapped zone parking violation under Chicago Municipal Code § 9-64-180.
 
-I believe this citation was issued in error because:
 [USER_GROUNDS]
 
 [SUPPORTING_INFO]
 
-Given the significant $350 fine, I request a hearing to present my case and ask that this citation be dismissed.
+1. PROOF OF DESIGNATED HANDICAPPED ZONE. Establishing this violation requires that the cited space was a properly posted, marked handicapped space. I request the following records: (a) the most recent sign maintenance / replacement record for handicapped signs at the cited location, (b) any pavement-marking maintenance record for the cited space, and (c) the official designation record showing this space as a reserved handicapped space on [DATE].
 
-Thank you for your consideration.`,
+2. PROOF OF NO VALID PLACARD. The City must establish that no valid handicapped placard or plate was associated with the cited vehicle at the moment of citation. I request the issuing officer's contemporaneous field notes describing the inspection of the vehicle interior, the handheld citation device data with GPS coordinates and timestamp, and any photographs taken by the issuing officer at the time of citation showing the vehicle dashboard, rearview mirror, and license plate.
+
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that the space was properly designated and that no valid placard was displayed, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.40,
       supportingEvidence: [],

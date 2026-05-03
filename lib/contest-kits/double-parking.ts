@@ -139,16 +139,17 @@ I respectfully request that this citation be dismissed.`,
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for double parking.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for allegedly double parking under Chicago Municipal Code § 9-64-110.
 
-I believe this citation was issued in error because:
-[USER_GROUNDS]
+1. PROOF OF DOUBLE-PARKING CONDITION. Double parking requires the cited vehicle to have been stopped abreast of another vehicle parked at the curb. I request any photograph taken by the issuing officer documenting this condition, plus the officer's contemporaneous field notes describing the curb-side parking arrangement at the moment of citation.
 
-[SUPPORTING_INFO]
+2. LOADING / UNLOADING EXCEPTION. A vehicle briefly stopped to expeditiously load or unload passengers or property is generally permitted under 625 ILCS 5/11-1305 even where parking would be prohibited. If applicable, I assert this defense.
 
-I request a hearing to present my case and ask that this citation be dismissed.
+3. EMERGENCY OR DISABLED VEHICLE. If the cited vehicle was disabled, in an emergency condition, or yielding to an emergency vehicle, those facts defeat the violation.
 
-Thank you for your consideration.`,
+4. PROOF OF NOTICE. I request the handheld citation device data and timestamps, including any GPS coordinates, to establish the precise location and duration of the alleged condition.
+
+Without a contemporaneous photograph showing the cited vehicle stopped abreast of a curb-parked vehicle, the violation cannot be sustained. Dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.15,
       supportingEvidence: [],

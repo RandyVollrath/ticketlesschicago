@@ -175,18 +175,19 @@ I request that the City produce: (1) the Bureau of Street Operations sweeper GPS
     secondary: {
       id: 'weather_cancellation',
       name: 'Weather Conditions',
-      template: `I respectfully contest this citation based on weather conditions that would have prevented effective street cleaning operations on [DATE].
+      template: `I contest this citation based on weather conditions that would have prevented effective street cleaning operations on [DATE].
 
 According to historical weather records for Chicago, [WEATHER_CONDITION] occurred on the date of this citation. The City of Chicago typically suspends street cleaning operations during [WEATHER_TYPE] conditions, as sweeping equipment cannot effectively operate and cleaning would be ineffective.
 
 [WEATHER_DATA]
 
-Given these documented weather conditions, I respectfully submit that:
+Given these documented weather conditions:
 1. Street cleaning operations were likely cancelled or ineffective on this date
 2. Citations should not be issued when weather prevents the purpose of the restriction
-3. This ticket should be dismissed in the interest of fairness
 
-I request that this citation be dismissed.`,
+I request the following records: (a) the Bureau of Street Operations sweeper GPS log for the cited ward and section on [DATE], (b) the 311 service request log for [DATE] showing any weather-related cancellations of this route, and (c) the issuing officer's contemporaneous field notes describing weather conditions at the time of citation.
+
+If the City cannot establish that street cleaning operations actually occurred at this location on [DATE], dismissal is the appropriate remedy.`,
       requiredFacts: ['date', 'weatherCondition', 'weatherType'],
       winRate: 0.40, // Weather is strong when applicable
       conditions: [
@@ -199,14 +200,17 @@ I request that this citation be dismissed.`,
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest parking citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for violation of street cleaning parking restrictions.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged street cleaning parking violation under Chicago Municipal Code § 9-64-010.
 
-I believe this citation was issued in error for the following reasons:
 [USER_GROUNDS]
 
-I have reviewed Chicago Municipal Code Section 9-64-010 and believe that the circumstances of this citation do not warrant a fine. I respectfully request an opportunity to present my case at a hearing and ask that this citation be dismissed or reduced.
+1. PROOF THAT CLEANING WAS SCHEDULED AND OCCURRED. Enforcement of a street cleaning restriction requires that cleaning was in fact scheduled and carried out. I request the following records: (a) the posted street cleaning schedule and hours for the cited block on [DATE], (b) the Bureau of Street Operations sweeper GPS log for the cited ward and section on [DATE], and (c) the 311 service request log for [DATE] showing any cancellations affecting this route.
 
-Thank you for your consideration of this matter.`,
+2. PROOF OF ADEQUATE NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request the issuing officer's contemporaneous field notes, the handheld citation device data with GPS coordinates and timestamp, and any photographs taken by the issuing officer at the time of citation. I also request the most recent sign maintenance / replacement record for street cleaning signs within 100 feet of the cited location.
+
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that the restriction was posted, that cleaning actually occurred, and that my vehicle was present in violation, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.20,
       supportingEvidence: [],
@@ -217,13 +221,15 @@ Thank you for your consideration of this matter.`,
       {
         id: 'vehicle_moved',
         name: 'Vehicle Was Moved Before Cleaning',
-        template: `I respectfully contest this citation on the grounds that my vehicle was moved from [LOCATION] before street cleaning operations began.
+        template: `I contest this citation on the grounds that my vehicle was moved from [LOCATION] before street cleaning operations began.
 
 The posted street cleaning hours for this location are [POSTED_HOURS]. My vehicle was moved at [MOVE_TIME], which was before the posted start time.
 
 [TIMESTAMP_EVIDENCE]
 
-As my vehicle was not present during the actual street cleaning period, I should not be subject to this citation. I respectfully request dismissal.`,
+I request the following records to confirm my vehicle was not present during the restricted period: (a) the issuing officer's contemporaneous field notes, (b) the handheld citation device data with GPS coordinates and timestamp, and (c) any photographs taken by the issuing officer at the time of citation.
+
+If the City cannot establish that my vehicle was present at [LOCATION] during the posted street cleaning hours, dismissal is the appropriate remedy.`,
         requiredFacts: ['location', 'postedHours', 'moveTime'],
         winRate: 0.42,
         conditions: [
@@ -235,17 +241,15 @@ As my vehicle was not present during the actual street cleaning period, I should
       {
         id: 'cleaning_did_not_occur',
         name: 'Street Cleaning Did Not Occur / Not Scheduled',
-        template: `I respectfully contest this citation on the grounds that street cleaning was not scheduled and did not occur on [DATE] at [LOCATION].
+        template: `I contest this citation on the grounds that street cleaning was not scheduled and did not occur on [DATE] at [LOCATION].
 
 According to the City of Chicago's official published street cleaning schedule, no cleaning operations were listed for this zone on the date of this citation. The city's own records show this area was not subject to street cleaning restrictions on [DATE].
 
 [CLEANING_EVIDENCE]
 
-The purpose of street cleaning parking restrictions is to allow city sweeping equipment unobstructed access to clean the street. When cleaning is not even scheduled for a location on a given date, there is no lawful basis for enforcing parking restrictions or issuing citations. Ticketing vehicles when no cleaning is planned serves no public purpose and unfairly penalizes motorists.
+I request the following records: (a) the official sweep route schedule and posted hours for the cited block on [DATE], (b) the Bureau of Street Operations sweeper GPS log for the cited ward and section on [DATE], and (c) the 311 service request log for [DATE] showing any cancellations affecting this route.
 
-I request the City provide its official street cleaning schedule for this ward and section, as well as GPS tracking data for street sweepers on this date, to confirm that no cleaning took place.
-
-I respectfully request that this citation be dismissed.`,
+If the City cannot establish that street cleaning was scheduled and actually occurred at this location on [DATE], dismissal is the appropriate remedy.`,
         requiredFacts: ['date', 'location'],
         winRate: 0.50,
         conditions: [
@@ -257,7 +261,7 @@ I respectfully request that this citation be dismissed.`,
       {
         id: 'emergency',
         name: 'Emergency Situation',
-        template: `I respectfully contest this citation due to emergency circumstances that prevented me from moving my vehicle before the street cleaning period.
+        template: `I contest this citation due to emergency circumstances that prevented me from moving my vehicle before the street cleaning period.
 
 On [DATE], I experienced [EMERGENCY_TYPE], which made it impossible for me to relocate my vehicle from [LOCATION] before street cleaning hours.
 

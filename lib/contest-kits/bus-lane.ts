@@ -184,18 +184,21 @@ I respectfully request that this citation be dismissed.`,
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for a bus lane violation.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged bus lane violation under Chicago Municipal Code § 9-12-060.
 
-I believe this citation was issued in error because:
 [USER_GROUNDS]
-
-If this citation was issued by an automated camera system, I request the full video evidence, camera calibration records, and confirmation that the Hayden AI system was functioning correctly at the time of the alleged violation.
 
 [SUPPORTING_INFO]
 
-I request a hearing to present my case and ask that this citation be dismissed.
+1. PROOF FROM AUTOMATED ENFORCEMENT SYSTEM. This citation was issued through the Smart Streets / Hayden AI automated camera program. I request the following records: (a) the full video evidence (not only still photographs) for this citation, (b) calibration and certification records for the camera unit that issued this citation, including the most recent self-test and field certification, and (c) the manual review documentation for this specific citation.
 
-Thank you for your consideration.`,
+2. PROOF OF POSTED RESTRICTION. I request the City's record of the posted bus lane restriction (hours, exemptions) for the cited block, and the most recent sign and pavement-marking maintenance record for the cited corridor.
+
+3. STATUTORY DEFENSES UNDER CMC § 9-103-020(a). I assert all applicable codified defenses, including: the facts alleged in the citation do not support a finding of violation; the respondent was not the registered owner; and the cited vehicle was expeditiously loading or unloading passengers without interfering with bus operations.
+
+4. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot produce calibrated, certified video evidence establishing that the cited vehicle was unlawfully in a properly posted bus lane, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.18,
       supportingEvidence: [],

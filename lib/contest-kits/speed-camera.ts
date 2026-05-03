@@ -191,16 +191,21 @@ Without proper signage, drivers cannot be expected to know the applicable speed 
     fallback: {
       id: 'general_contest',
       name: 'General Speed Camera Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] for violation of Chicago Municipal Code Section 9-102-020 (Automated Speed Enforcement) at [LOCATION].
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged automated speed enforcement violation under Chicago Municipal Code § 9-102-020.
 
-I believe this citation was issued in error for the following reason:
 [USER_GROUNDS]
 
 [SUPPORTING_INFO]
 
-I request the opportunity to present my case and respectfully ask that this citation be dismissed or reduced.
+1. PROOF FROM CAMERA SYSTEM. I request the following records: (a) the full violation photographs and any video for this citation, (b) the most recent calibration and certification records for the speed camera unit at this location, including the field test record nearest in time to [DATE], and (c) the manual review documentation for this specific citation.
 
-Thank you for your consideration.`,
+2. PROOF OF AUTHORIZED SAFETY ZONE AND POSTED SIGNAGE. Speed cameras are authorized only in designated Children's Safety Zones under Illinois Vehicle Code § 11-605.1 and Chicago Municipal Code § 9-102-020. I request the City's record establishing that the camera at [LOCATION] is within an authorized safety zone, the most recent sign maintenance / replacement record for the speed limit and safety-zone signs at the cited location, and (for school zone cameras) the school calendar and authorized enforcement hours for [DATE].
+
+3. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that violations be properly documented at the time of issuance.
+
+4. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot produce calibrated camera evidence, proof of an authorized and posted safety zone, and proof that the cited vehicle exceeded the posted limit during authorized enforcement hours, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.12,
       supportingEvidence: [],

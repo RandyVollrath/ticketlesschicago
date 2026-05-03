@@ -180,16 +180,19 @@ I respectfully request that this citation be dismissed due to insufficient signa
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for residential permit parking violation.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for allegedly parking without a valid residential permit.
 
-I believe this citation was issued in error because:
-[USER_GROUNDS]
+1. ZONE BOUNDARY VERIFICATION. Residential permit zones have specific block-by-block boundaries that are not always intuitive at the parker's location. I request the current residential permit zone map and boundary documentation for this location, and the specific zone number governing the cited block face.
 
-[SUPPORTING_INFO]
+2. SIGNAGE. Residential permit restrictions must be posted with signs that are visible, legible, and clearly state the zone number, hours, and any exceptions. I request the most recent sign survey and any sign maintenance / replacement record for the signs governing this block.
 
-I request a hearing to present my case and ask that this citation be dismissed or reduced.
+3. VISITOR / TEMPORARY PERMIT RECORDS. I request any visitor or temporary permits that may have been associated with this address or this vehicle on the violation date.
 
-Thank you for your consideration.`,
+4. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request the issuing officer's contemporaneous field notes documenting the position of the vehicle relative to the zone boundary and the nearest posted permit-zone sign, the handheld citation device data with GPS coordinates and timestamp, and any photographs taken by the issuing officer at the time of citation.
+
+5. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that the cited vehicle was within a properly signed permit zone AND lacked a valid permit (resident or visitor) at the time of citation, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.35, // Base rate still decent
       supportingEvidence: [],

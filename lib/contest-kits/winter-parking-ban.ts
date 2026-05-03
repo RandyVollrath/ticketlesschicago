@@ -186,19 +186,17 @@ I respectfully request that this citation be dismissed.`,
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for a winter overnight parking ban violation.
-
-I request that the City provide evidence establishing:
-1. That the winter overnight parking ban was officially declared for the night of [DATE]
-2. That snowfall met the 2-inch threshold required for ban activation
-3. That proper winter ban signage was posted at [LOCATION]
-4. That [LOCATION] is on the official list of designated winter ban streets
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged winter overnight parking ban violation under Chicago Municipal Code § 9-64-081.
 
 [WEATHER_CONTEXT]
 
-I request a hearing to present my case and ask that this citation be dismissed.
+1. PROOF THE BAN WAS LAWFULLY ACTIVATED. The winter overnight parking ban applies only to designated streets, only during the 3:00 AM - 7:00 AM window between December 1 and April 1, and only when 2 or more inches of snow have fallen and the ban has been officially declared. I request the following records: (a) the National Weather Service / NOAA snowfall record for [DATE] at the nearest official measurement station, (b) the City's official declaration record showing the ban was activated for the night of [DATE], and (c) the City's designated winter ban street list confirming [LOCATION] is a designated winter ban street.
 
-Thank you for your consideration.`,
+2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request the issuing officer's contemporaneous field notes, the handheld citation device data with GPS coordinates and timestamp, any photographs taken by the issuing officer at the time of citation, and the most recent sign maintenance / replacement record for winter ban signs within 100 feet of the cited location.
+
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that the snow threshold was met, the ban was declared, the cited block is a designated winter ban street, and proper notice was posted, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.15,
       supportingEvidence: [],

@@ -162,16 +162,19 @@ Without an official snow emergency declaration, parking on designated snow route
     fallback: {
       id: 'general_contest',
       name: 'General Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for snow route parking violation.
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] for an alleged snow route parking violation under Chicago Municipal Code § 9-64-100.
 
-I believe this citation was issued in error because:
 [USER_GROUNDS]
 
 [WEATHER_CONTEXT]
 
-I request a hearing to present my case and ask that this citation be dismissed.
+1. PROOF THAT RESTRICTION WAS IN EFFECT. Snow route parking restrictions become enforceable only when snow accumulation reaches the threshold and/or a snow emergency is declared. I request the following records: (a) the National Weather Service / NOAA snowfall record for [DATE] at the nearest official measurement station, (b) any City snow-emergency declaration in effect for [DATE], and (c) the plow / snow operations dispatch log for the cited route on [DATE].
 
-Thank you for your consideration.`,
+2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request the issuing officer's contemporaneous field notes, the handheld citation device data with GPS coordinates and timestamp, any photographs taken by the issuing officer at the time of citation, and the most recent sign maintenance / replacement record for snow route signs within 100 feet of the cited location.
+
+3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot establish that the snow route restriction was activated and properly posted, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.15,
       supportingEvidence: [],

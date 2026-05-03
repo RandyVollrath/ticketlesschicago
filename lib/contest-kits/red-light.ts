@@ -195,16 +195,21 @@ I respectfully request that this citation be dismissed on the grounds that the t
     fallback: {
       id: 'general_contest',
       name: 'General Red Light Contest',
-      template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] for violation of Chicago Municipal Code Section 9-102-010 (Red Light Camera) at [INTERSECTION].
+      template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [INTERSECTION] for an alleged red light camera violation under Chicago Municipal Code § 9-102-010 and Illinois Vehicle Code 625 ILCS 5/11-306.
 
-I believe this citation was issued in error for the following reason:
 [USER_GROUNDS]
 
 [SUPPORTING_INFO]
 
-I have reviewed the violation footage and believe the evidence does not support a finding that a red light violation occurred. I request the opportunity to present my case and respectfully ask that this citation be dismissed.
+1. PROOF FROM CAMERA SYSTEM. I request the following records: (a) the full violation video (not only the still photographs), (b) the most recent calibration and certification records for the red light camera unit at this intersection, including the field test record nearest in time to [DATE], and (c) the manual review documentation for this specific citation.
 
-Thank you for your consideration.`,
+2. PROOF OF YELLOW LIGHT INTERVAL. Illinois Vehicle Code 625 ILCS 5/11-306(c-5) requires that camera-enforced intersections have a yellow change interval of at least the MUTCD minimum plus one additional second. I request the CDOT signal timing plan in effect at [INTERSECTION] on [DATE], including the programmed yellow change interval.
+
+3. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that violations be properly documented at the time of issuance.
+
+4. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(2) (the respondent was not the owner or lessee of the cited vehicle at the time of the violation, where applicable) and § 9-100-060(a)(7) (the violation did not in fact occur as charged).
+
+If the City cannot produce calibrated camera evidence and signal-timing records establishing that a red light violation in fact occurred at a properly timed intersection, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'intersection'],
       winRate: 0.15,
       supportingEvidence: [],

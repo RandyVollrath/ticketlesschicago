@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendLetter, formatLetterAsHTML, CHICAGO_PARKING_CONTEST_ADDRESS } from '../../../lib/lob-service';
 import { isLetterMailable } from '../../../lib/contest-letter-validator';
+import { DEFENSE_TEMPLATES } from '../../../lib/contest-templates';
 import formidable from 'formidable';
 import fs from 'fs';
 
@@ -17,68 +18,6 @@ export const config = {
   },
 };
 
-// Defense templates by violation type
-const DEFENSE_TEMPLATES: Record<string, { type: string; template: string }> = {
-  expired_plates: {
-    type: 'registration_renewed',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for expired registration.
-
-At the time this ticket was issued, my vehicle registration had recently been renewed. I have attached documentation showing that my registration was valid at the time of the citation, or that I renewed it within the grace period allowed by Illinois law.
-
-Under Chicago Municipal Code, a vehicle owner has a reasonable period to update their registration after renewal. I believe this citation was issued in error.
-
-I respectfully request that this ticket be dismissed.`,
-  },
-  no_city_sticker: {
-    type: 'sticker_purchased',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for lack of a Chicago city vehicle sticker.
-
-At the time this ticket was issued, I had purchased my city sticker but had not yet received it in the mail / had not yet affixed it to my vehicle. I have attached proof of purchase showing the sticker was purchased prior to the citation.
-
-Under Chicago Municipal Code § 9-64-125(b) and Department of Finance practice, recently-purchased city stickers are subject to a display grace period from the purchase date. I believe this citation was issued during that grace period.
-
-I respectfully request that this ticket be dismissed.`,
-  },
-  expired_meter: {
-    type: 'meter_malfunction',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for an expired parking meter.
-
-I believe the parking meter at this location was malfunctioning at the time of this citation. The meter may not have properly displayed the time remaining, or may have failed to accept payment correctly.
-
-Additionally, signage at this location may have been unclear or obscured, making it difficult to determine the correct parking regulations.
-
-I respectfully request that this ticket be dismissed or reduced due to the possibility of meter malfunction.`,
-  },
-  disabled_zone: {
-    type: 'disability_documentation',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for parking in a disabled zone.
-
-I am a person with a disability and possess a valid disability parking placard/plate. At the time this ticket was issued, my placard may not have been visible to the parking enforcement officer, but it was present in my vehicle.
-
-I have attached documentation of my valid disability parking authorization.
-
-I respectfully request that this ticket be dismissed.`,
-  },
-  street_cleaning: {
-    type: 'signage_issue',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date} for a street cleaning violation.
-
-I believe the signage indicating street cleaning restrictions at this location was either missing, obscured, damaged, or contradictory. I made a good faith effort to comply with posted regulations but the signage was not clear.
-
-I respectfully request that this ticket be dismissed or reduced.`,
-  },
-  other_unknown: {
-    type: 'general_contest',
-    template: `I am writing to contest parking ticket #{ticket_number} issued on {violation_date}.
-
-I believe this ticket was issued in error for the following reasons:
-1. The signage at this location may have been unclear, missing, or contradictory
-2. There may have been extenuating circumstances at the time
-3. The violation may not have occurred as described
-
-I respectfully request a hearing to present my case and ask that this ticket be dismissed or reduced.`,
-  },
-};
 
 interface TicketRow {
   plate: string;
