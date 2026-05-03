@@ -35,7 +35,7 @@ I respectfully request that this ticket be dismissed.`,
 
 At the time this ticket was issued, I had purchased my city sticker but had not yet received it in the mail / had not yet affixed it to my vehicle. I have attached proof of purchase showing the sticker was purchased prior to the citation.
 
-Under Chicago Municipal Code Section 3-56-030, the city allows a grace period for displaying newly purchased stickers. I believe this citation was issued during that grace period.
+Under Chicago Municipal Code § 9-64-125(b) and Department of Finance practice, recently-purchased city stickers are subject to a display grace period from the purchase date. I believe this citation was issued during that grace period.
 
 I respectfully request that this ticket be dismissed.`,
   },

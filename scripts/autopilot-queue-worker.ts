@@ -169,7 +169,7 @@ I request that this ticket be dismissed. If the City cannot provide adequate doc
 
 I respectfully request that this citation be DISMISSED for the following reasons:
 
-1. EXEMPTION VERIFICATION: Under Chicago Municipal Code Section 3-56-020, numerous exemptions exist for the wheel tax requirement. The issuing officer cannot determine exemption status by visual inspection alone.
+1. EXEMPTION VERIFICATION: Under Chicago Municipal Code § 9-64-125(b) and § 9-100-060(a)(7), several exemptions to the wheel tax obligation exist (out-of-state residents, brand-new vehicles within the grace period, business-fleet exemptions). The issuing officer cannot determine exemption status by visual inspection alone.
 
 2. BURDEN OF PROOF: The City must prove that the vehicle was required to display a city sticker AND that no valid sticker existed.
 

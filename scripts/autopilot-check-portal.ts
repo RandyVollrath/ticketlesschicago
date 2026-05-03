@@ -1282,7 +1282,7 @@ I request that this ticket be dismissed. If the City cannot provide adequate doc
 
 I respectfully request that this citation be DISMISSED for the following reasons:
 
-1. EXEMPTION VERIFICATION: Under Chicago Municipal Code Section 3-56-020, numerous exemptions exist for the wheel tax requirement. The issuing officer cannot determine exemption status by visual inspection alone.
+1. EXEMPTION VERIFICATION: Under Chicago Municipal Code § 9-64-125(b) and § 9-100-060(a)(7), several exemptions to the wheel tax obligation exist (out-of-state residents, brand-new vehicles within the grace period, business-fleet exemptions). The issuing officer cannot determine exemption status by visual inspection alone.
 
 2. BURDEN OF PROOF: The City must prove that the vehicle was required to display a city sticker AND that no valid sticker existed.
 
@@ -1368,7 +1368,7 @@ I request that this ticket be dismissed.`,
 
 I respectfully request that this citation be DISMISSED for the following reasons:
 
-1. SIGNAGE REQUIREMENTS: Under Chicago Municipal Code Section 9-64-190, parking restrictions must be clearly posted with visible, legible, and properly positioned signs. I request the City provide documentation that adequate signage was posted at the exact location where my vehicle was parked, including photographs of the signs and their proximity to my vehicle.
+1. SIGNAGE REQUIREMENTS: Under Chicago Municipal Code chapter 9-64 and the City's signage standards, parking restrictions must be posted with signs that are visible, legible, properly positioned, and not obstructed at the time of the alleged violation. I request the City produce: (a) photographs of every sign within 100 feet of the vehicle's location, (b) the most recent maintenance / replacement record for those signs, and (c) the ordinance section number that the cited violation rests on so the asserted restriction can be matched to a posted notice.
 
 2. TEMPORARY RESTRICTION NOTICE: If this was a temporary restriction (construction, special event, or film permit), Chicago Municipal Code requires that temporary "No Parking" signs be posted at least 24 hours in advance of enforcement. I request documentation of when any temporary signs were posted and the permit authorizing the restriction.
 
