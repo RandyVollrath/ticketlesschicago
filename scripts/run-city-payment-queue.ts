@@ -33,11 +33,20 @@
  * never charged without their ticket being paid.
  */
 
-import 'dotenv/config';
+import { config as dotenvConfig } from 'dotenv';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
 import { sendAutopayPaidEmail, sendAutopayFailedEmail } from '../lib/autopay-user-emails';
 import { sendAutopayOperatorAlert } from '../lib/autopay-alerts';
+
+// Manual runs: load Supabase + Resend secrets from .env.local AND ops-card from .env.city-payment.
+// Systemd runs: EnvironmentFile= already injects ops-card vars; .env.local is also loaded here.
+for (const f of ['.env.local', '.env.city-payment']) {
+  const p = path.resolve(process.cwd(), f);
+  if (fs.existsSync(p)) dotenvConfig({ path: p, override: false });
+}
 
 const MAX_ATTEMPTS = 3;
 const WORKER_ID = `city-payment-${process.pid}-${randomUUID().slice(0, 8)}`;
@@ -198,6 +207,26 @@ async function payViaCityPortal(params: {
     throw new Error('ownerLastName required for portal lookup (pulled from user_profiles.last_name)');
   }
 
+  // Card UIs (Citi, Apple, etc.) often display numbers with spaces — strip them.
+  // Trim everything else too so a stray trailing space in the env file doesn't poison values.
+  const cardNumber = process.env.CITY_PAYMENT_CARD_NUMBER!.replace(/\s+/g, '');
+  const cardExp = process.env.CITY_PAYMENT_CARD_EXP!.trim();
+  const cardCvv = process.env.CITY_PAYMENT_CARD_CVV!.trim();
+  const billFirst = process.env.CITY_PAYMENT_BILLING_FIRST_NAME!.trim();
+  const billLast = process.env.CITY_PAYMENT_BILLING_LAST_NAME!.trim();
+  const billAddr = process.env.CITY_PAYMENT_BILLING_ADDRESS1!.trim();
+  const billCity = process.env.CITY_PAYMENT_BILLING_CITY!.trim();
+  const billState = process.env.CITY_PAYMENT_BILLING_STATE!.trim().toUpperCase();
+  const billZip = process.env.CITY_PAYMENT_BILLING_ZIP!.trim();
+  const billEmail = process.env.CITY_PAYMENT_BILLING_EMAIL!.trim();
+
+  if (cardNumber.length < 13 || cardNumber.length > 19) {
+    throw new Error(`CITY_PAYMENT_CARD_NUMBER appears malformed (length ${cardNumber.length} after stripping spaces)`);
+  }
+  if (!/^\d{2}\/\d{4}$/.test(cardExp)) {
+    throw new Error(`CITY_PAYMENT_CARD_EXP must be MM/YYYY (got "${cardExp.length} chars")`);
+  }
+
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({
     headless: true,
@@ -323,17 +352,17 @@ async function payViaCityPortal(params: {
 
     // 8. Wait for card form to render, then fill it
     await page.waitForSelector('#cardNumber', { timeout: 15000 });
-    await page.locator('#cardNumber').fill(process.env.CITY_PAYMENT_CARD_NUMBER!);
-    await page.locator('#firstName').fill(process.env.CITY_PAYMENT_BILLING_FIRST_NAME!);
-    await page.locator('#lastName').fill(process.env.CITY_PAYMENT_BILLING_LAST_NAME!);
-    await page.locator('#expirydate').fill(process.env.CITY_PAYMENT_CARD_EXP!);
-    await page.locator('#cvv').fill(process.env.CITY_PAYMENT_CARD_CVV!);
-    await page.locator('#address1').fill(process.env.CITY_PAYMENT_BILLING_ADDRESS1!);
-    await page.locator('#city').fill(process.env.CITY_PAYMENT_BILLING_CITY!);
-    await page.locator('#state').selectOption(process.env.CITY_PAYMENT_BILLING_STATE!);
-    await page.locator('#zip').fill(process.env.CITY_PAYMENT_BILLING_ZIP!);
-    await page.locator('#email').fill(process.env.CITY_PAYMENT_BILLING_EMAIL!);
-    await page.locator('#confirmEmail').fill(process.env.CITY_PAYMENT_BILLING_EMAIL!);
+    await page.locator('#cardNumber').fill(cardNumber);
+    await page.locator('#firstName').fill(billFirst);
+    await page.locator('#lastName').fill(billLast);
+    await page.locator('#expirydate').fill(cardExp);
+    await page.locator('#cvv').fill(cardCvv);
+    await page.locator('#address1').fill(billAddr);
+    await page.locator('#city').fill(billCity);
+    await page.locator('#state').selectOption(billState);
+    await page.locator('#zip').fill(billZip);
+    await page.locator('#email').fill(billEmail);
+    await page.locator('#confirmEmail').fill(billEmail);
     // Service fee agreement checkbox — required to enable Continue
     await page.locator('#serviceAgreementBox').check();
     await page.waitForTimeout(2000);
