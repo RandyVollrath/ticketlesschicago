@@ -92,10 +92,19 @@ export default function AdminContestLetters() {
       if (evidence) url.searchParams.append('evidence_integrated', evidence);
       url.searchParams.append('limit', '100');
 
-      const response = await fetch(url.toString(), { credentials: 'include' });
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch(url.toString(), {
+        credentials: 'include',
+        headers,
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch contest letters');
+        throw new Error(`Failed to fetch contest letters (${response.status})`);
       }
 
       const data = await response.json();
