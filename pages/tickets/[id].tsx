@@ -636,6 +636,35 @@ export default function TicketDetailPage() {
               )}
             </div>
 
+            {letter.mailed_at && !letter.delivered_at && letter.delivery_status !== 'returned' && (
+              <div style={{
+                backgroundColor: 'rgba(37, 99, 235, 0.06)',
+                border: `1px solid rgba(37, 99, 235, 0.25)`,
+                borderRadius: 10,
+                padding: 16,
+                marginBottom: 20,
+                display: 'flex',
+                gap: 12,
+                alignItems: 'flex-start',
+              }}>
+                <span style={{ fontSize: 22, lineHeight: 1 }}>📬</span>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: COLORS.deepHarbor, margin: '0 0 6px 0' }}>
+                    Letter in transit — you don't need to do anything
+                  </p>
+                  <p style={{ fontSize: 13, color: COLORS.graphite, margin: '0 0 6px 0', lineHeight: 1.55 }}>
+                    Mailed {new Date(letter.mailed_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    {letter.expected_delivery_date && (
+                      <> · expected at the City of Chicago Department of Administrative Hearings around {new Date(letter.expected_delivery_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</>
+                    )}.
+                  </p>
+                  <p style={{ fontSize: 12, color: COLORS.slate, margin: 0, lineHeight: 1.55 }}>
+                    The City may still show this ticket as unpaid while your letter is in the mail — that's normal. The postmark date is what counts for your contest deadline, and we mail well before it. We'll email you when the City marks the letter as received.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
               <div>
                 <p style={{ fontSize: 13, color: COLORS.slate, margin: '0 0 4px 0' }}>Status</p>
@@ -823,6 +852,22 @@ export default function TicketDetailPage() {
                   <TimelineItem
                     label="Letter Mailed"
                     date={letter.mailed_at}
+                    active={true}
+                  />
+                )}
+                {letter.mailed_at && !letter.delivered_at && letter.delivery_status !== 'returned' && (
+                  <TimelineItem
+                    label={letter.expected_delivery_date
+                      ? `In Transit — expected ${new Date(letter.expected_delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                      : 'In Transit to City Hall'}
+                    active={true}
+                    current={true}
+                  />
+                )}
+                {letter.delivered_at && (
+                  <TimelineItem
+                    label="Delivered to City Hall"
+                    date={letter.delivered_at}
                     active={true}
                   />
                 )}
