@@ -64,6 +64,12 @@ jobs:
       - name: Install deps
         run: npm ci --ignore-scripts
 
+      # qa:econtest-attach launches headless Chromium to assert
+      # buildEcontestEvidencePacket produces a real PDF. `npm ci --ignore-scripts`
+      # skips Playwright's postinstall, so we have to install Chromium explicitly.
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
       - name: Portal disposition canary (no DB)
         run: npm run qa:portal-canary
 

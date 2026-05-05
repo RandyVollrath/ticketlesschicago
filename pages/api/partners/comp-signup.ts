@@ -288,7 +288,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 6b) Admin notification email (best-effort)
     try {
-      const adminTo = process.env.ADMIN_NOTIFICATION_EMAIL || 'ticketlessamerica@gmail.com';
+      const adminTo = process.env.ADMIN_NOTIFICATION_EMAIL || 'randyvollrath@gmail.com';
       await resend.emails.send({
         from: 'Autopilot America <hello@autopilotamerica.com>',
         to: adminTo,
