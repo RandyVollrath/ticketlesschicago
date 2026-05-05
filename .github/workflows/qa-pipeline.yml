@@ -98,6 +98,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           QA_BOT_EMAIL: ${{ secrets.QA_BOT_EMAIL }}
+          # Required so emailUserOfWin in lib/contest-outcome-tracker.ts actually
+          # sends + logs to notification_logs. Without this the smoke test sees
+          # 0 rows and fails. The win email goes to the QA bot's mailbox.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: npm run qa:contest-pipeline:ci
 
       - name: Mail-letter payment merge smoke (live DB, QA bot user)
