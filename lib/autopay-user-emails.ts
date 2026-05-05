@@ -113,6 +113,21 @@ Questions? ${SUPPORT_EMAIL}`;
     html,
     text,
   });
+
+  // Admin notification: every pre-charge email gets a CC to randyvollrath@gmail.com
+  // so a real autopay about to fire is visible. Lets us intervene during the
+  // 24h grace window if anything looks wrong.
+  await sendResendEmail({
+    to: 'randyvollrath@gmail.com',
+    subject: `[Autopay heads-up] ${params.to} - ${amount} in 24h`,
+    html: `<p><strong>Pre-charge notice sent to user.</strong></p>
+      <p>User: ${params.to}</p>
+      <p>Ticket: ${ticketLabel}</p>
+      <p>Amount: ${amount}</p>
+      <p>Scheduled charge: ${chargeDate}</p>
+      <p>This is the 24h heads-up. The user has until then to opt out via /account/autopay.</p>`,
+    text: `Pre-charge notice sent to ${params.to} for ${amount} (${ticketLabel}). Scheduled charge: ${chargeDate}. User can opt out within 24h.`,
+  }).catch((e) => console.error('admin pre-charge cc failed:', e?.message || e));
 }
 
 export async function sendAutopayPaidEmail(params: {

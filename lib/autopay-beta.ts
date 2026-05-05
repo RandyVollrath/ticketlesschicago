@@ -8,6 +8,10 @@ export function parseCsvEnv(value: string | undefined | null): string[] {
 export function getAutopayBetaConfig() {
   return {
     enabled: process.env.ENABLE_CITY_AUTOPAY === '1',
+    // When AUTOPAY_BETA_OPEN=true the allowlist is dropped and ANY user who
+    // toggles autopay on can have it executed. Set this when you're ready to
+    // launch to all users. Leave unset (or false) to keep the allowlist gate.
+    open: (process.env.AUTOPAY_BETA_OPEN || '').trim().toLowerCase() === 'true',
     allowlistedUserIds: parseCsvEnv(process.env.AUTOPAY_BETA_USER_IDS),
     allowlistedEmails: parseCsvEnv(process.env.AUTOPAY_BETA_EMAILS).map(v => v.toLowerCase()),
     allowlistedContestLetterIds: parseCsvEnv(process.env.AUTOPAY_BETA_CONTEST_LETTER_IDS),
@@ -30,6 +34,11 @@ export function isAutopayBetaAllowed(params: {
 
   if (config.singleExecutionContestLetterId && config.singleExecutionContestLetterId !== params.contestLetterId) {
     return { allowed: false, reason: 'Single-execution guardrail enabled for a different contest letter' };
+  }
+
+  // Open beta — allowlist is dropped, anyone who opted in can be executed.
+  if (config.open) {
+    return { allowed: true, reason: 'Beta open to all users' };
   }
 
   if (config.allowlistedContestLetterIds.includes(params.contestLetterId)) {
