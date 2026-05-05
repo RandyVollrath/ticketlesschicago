@@ -1935,6 +1935,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
         if (!validation.pass) {
+          // Admin-approved letters (auto_deadline_safety_net or admin_review)
+          // have already been signed off — the validator is informational
+          // for these, not blocking. Otherwise an off-by-one date mismatch
+          // (often a UTC vs CST timezone artifact) would silently strand a
+          // letter past its deadline with the admin none the wiser.
+          if (adminApproved) {
+            console.log(`    ⚠️ Letter quality issues found (mailing anyway — admin approved): ${validation.issues.join('; ')}`);
+            await supabaseAdmin.from('ticket_audit_log').insert({
+              ticket_id: letter.ticket_id,
+              user_id: letter.user_id,
+              action: 'letter_quality_issues_admin_override',
+              details: {
+                validation_issues: validation.issues,
+                approved_via: (letter as any).approved_via,
+                performed_by_system: 'autopilot_cron',
+              },
+              performed_by: null,
+            });
+            // Fall through to mailing path — do NOT continue.
+          } else {
           console.log(`    ⚠️ Letter quality issues found: ${validation.issues.join('; ')}`);
 
           // Skip AI review for unfixable issues — saves API tokens and cron time.
@@ -2025,6 +2045,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
           // Either way, don't mail yet — admin must review
           continue;
+          } // end else (non-admin-approved)
         }
 
         if (adminApproved) {
