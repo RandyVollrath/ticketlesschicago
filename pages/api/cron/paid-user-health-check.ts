@@ -139,6 +139,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
   }
 
+  // ─── Late Fee Protection: untested liable verdict reminder ───
+  // We have ALL the autopay code shipped (Stripe charge + queue + city
+  // payment worker), but autopay has never run end-to-end against a real
+  // liable verdict. AUTOPAY_EXECUTION_MODE on Vercel is still
+  // disabled/simulate — flipping it to 'live' without testing is risky.
+  //
+  // Fire as soon as we see the FIRST real liable verdict so the operator
+  // can run the worker manually with a card+plate they control before
+  // any user is auto-charged.
+  const autopayMode = (process.env.AUTOPAY_EXECUTION_MODE || '').trim().toLowerCase();
+  if (autopayMode !== 'live') {
+    const { data: liablePending } = await supabaseAdmin
+      .from('contest_letters')
+      .select('id, user_id, ticket_id, lifecycle_status, lifecycle_status_changed_at, autopay_opt_in')
+      .in('lifecycle_status', ['lost', 'reduced'])
+      .is('paid_at', null)
+      .order('lifecycle_status_changed_at', { ascending: false })
+      .limit(20);
+
+    if (liablePending && liablePending.length > 0) {
+      const lines = liablePending.map(l =>
+        `• letter=${l.id} | verdict=${l.lifecycle_status} | flipped ${l.lifecycle_status_changed_at} | opted_in=${l.autopay_opt_in ? 'yes' : 'no'}`
+      );
+      await alertOps(
+        `[Late Fee Protection] ${liablePending.length} unpaid liable verdict${liablePending.length === 1 ? '' : 's'} — TIME TO TEST AUTOPAY`,
+        `AUTOPAY_EXECUTION_MODE is currently "${autopayMode || 'disabled'}". We now have real liable verdicts in the system that autopay was built to handle. Before flipping the mode to 'live':\n\n` +
+        `1. Pick ONE of the letters below (preferably a low-amount one — $25-$60).\n` +
+        `2. Manually enqueue it into city_payment_queue with the correct ticket_number/plate/state and your ops Stripe payment intent id.\n` +
+        `3. Run \`npx tsx scripts/run-city-payment-queue.ts\` on the worker machine and watch it pay.\n` +
+        `4. Verify city emailed receipt + portal shows ticket as paid.\n` +
+        `5. Only then: enable the systemd timer and flip AUTOPAY_EXECUTION_MODE=live.\n\n` +
+        `Liable verdicts waiting:\n${lines.join('\n')}`,
+      );
+    }
+  }
+
   return res.status(200).json({
     status: (issues.length === 0 && (!stuckCharges || stuckCharges.length === 0)) ? 'healthy' : 'issues_found',
     checked: totalChecked,
