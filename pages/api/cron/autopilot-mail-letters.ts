@@ -1106,6 +1106,8 @@ async function mailLetter(
     const letterUpdatePayload = {
       status: 'sent',
       lob_letter_id: result.id,
+      lob_status: 'mailed',
+      lob_expected_delivery: result.expected_delivery_date || null,
       letter_pdf_url: result.url,
       tracking_number: result.tracking_number || null,
       mailed_at: new Date().toISOString(),

@@ -240,12 +240,16 @@ export default function ContestPipelineAdmin() {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session || !ADMIN_EMAILS.includes(session.user.email || '')) {
+    // Use getUser() (network-validated) to match the working /admin/dashboard
+    // pattern. getSession() returns null briefly while localStorage hydrates,
+    // which was bouncing logged-in admins straight to '/' on first load.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !ADMIN_EMAILS.includes(user.email || '')) {
       router.push('/');
       return;
     }
-    _cachedAccessToken = session.access_token;
+    const { data: { session } } = await supabase.auth.getSession();
+    _cachedAccessToken = session?.access_token ?? null;
     setAuthed(true);
   };
 
