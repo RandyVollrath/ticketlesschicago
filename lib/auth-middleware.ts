@@ -297,16 +297,45 @@ export function withAdminAuth(
 ) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     try {
-      // CSRF defense: cookie-authenticated mutations must come from an allowed origin.
+      // Method 1: Bearer token (no CSRF risk — browsers don't auto-send Authorization headers)
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+
+        if (!error && user) {
+          const userEmail = user.email || '';
+          let isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+          if (!isAdmin) {
+            const { data: profile } = await supabase
+              .from('user_profiles')
+              .select('is_admin')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            isAdmin = profile?.is_admin === true;
+          }
+
+          if (isAdmin) {
+            return handler(req, res, { id: user.id, email: userEmail });
+          }
+
+          console.warn(`Non-admin user ${userEmail} attempted to access admin route: ${req.url}`);
+          return res.status(403).json({
+            error: 'Forbidden',
+            message: 'Admin access required'
+          });
+        }
+        // Bearer present but invalid — fall through to cookie check
+      }
+
+      // Method 2: Session cookies. Enforce same-origin for cookie-authenticated requests.
       if (!verifySameOrigin(req)) {
         console.warn(`Admin route blocked for cross-origin request: ${req.headers.origin || req.headers.referer || '<no origin>'} ${req.method} ${req.url}`);
         return res.status(403).json({ error: 'Forbidden', message: 'Cross-origin request blocked' });
       }
 
-      // Create Supabase client with cookie-based session
       const supabaseServer = createPagesServerClient({ req, res });
-
-      // Get session from cookies
       const { data: { session }, error: sessionError } = await supabaseServer.auth.getSession();
 
       if (sessionError || !session) {
