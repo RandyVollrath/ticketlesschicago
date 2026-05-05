@@ -149,7 +149,7 @@ export default async function handler(
             <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Location</th>
             <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">User</th>
             <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Evidence</th>
-            <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Deadline</th>
+            <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Auto-Send</th>
             <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Action</th>
           </tr>
       `;
@@ -167,14 +167,20 @@ export default async function handler(
           ? new Date(ticket.auto_send_deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
           : 'N/A';
 
-        // Calculate urgency
+        // Calculate urgency. The "deadline" we render is auto_send_deadline —
+        // the day the cron will mail the letter on its own. Negative values
+        // mean we're already past that date, so the previous (URGENT) tag
+        // was misleading. Surface "OVERDUE Nd" for past dates instead.
         let urgencyColor = '#6b7280'; // gray
         let urgencyLabel = '';
         if (ticket.auto_send_deadline) {
           const daysUntilAutoSend = Math.ceil(
             (new Date(ticket.auto_send_deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
           );
-          if (daysUntilAutoSend <= 1) {
+          if (daysUntilAutoSend < 0) {
+            urgencyColor = '#dc2626'; // red
+            urgencyLabel = ` (OVERDUE ${Math.abs(daysUntilAutoSend)}d)`;
+          } else if (daysUntilAutoSend <= 1) {
             urgencyColor = '#dc2626'; // red
             urgencyLabel = ' (URGENT)';
           } else if (daysUntilAutoSend <= 3) {

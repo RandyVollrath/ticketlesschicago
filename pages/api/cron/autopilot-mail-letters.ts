@@ -773,15 +773,20 @@ async function mailLetter(
       };
     }
 
-    // Atomically claim this letter for mailing without changing status.
-    // We use updated_at as the optimistic-lock token because the DB constraint
-    // does not allow a transient "mailing" status.
+    // Claim this letter for mailing by status alone. We previously also locked
+    // on updated_at as an optimistic-lock token, but the timestamp round-trip
+    // through PostgREST + supabase-js was sometimes silently mismatching in the
+    // Vercel runtime (claim returned 0 rows, letters got skipped, nothing
+    // mailed). Double-mail protection is handled by:
+    //   1. The lob_letter_id guard above — already-mailed letters short-circuit.
+    //   2. Lob's 24h idempotency key (`letter_${letter.id}`) on sendLetter.
+    // So a status-only claim is sufficient — at worst two concurrent runs
+    // attempt the same Lob call and Lob returns the same letter ID for both.
     const { data: claimedLetter, error: claimError } = await supabaseAdmin
       .from('contest_letters')
       .update({ updated_at: new Date().toISOString() })
       .eq('id', letter.id)
       .eq('status', letter.status)
-      .eq('updated_at', letter.updated_at)
       .select('id')
       .maybeSingle();
 
