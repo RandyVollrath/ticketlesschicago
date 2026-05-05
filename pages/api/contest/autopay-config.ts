@@ -78,13 +78,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const { data: letter, error } = await supabaseAdmin
         .from('contest_letters')
-        .select('id, user_id, ticket_id, lifecycle_status, final_amount, autopay_payment_method_id')
+        .select('id, user_id, ticket_id, lifecycle_status, final_amount, autopay_payment_method_id, autopay_opt_in, autopay_mode, autopay_cap_amount')
         .eq('id', contestLetterId)
         .maybeSingle();
 
       if (error || !letter || letter.user_id !== user.id) {
         return res.status(404).json({ error: 'Contest letter not found' });
       }
+
+      // Snapshot previous state BEFORE we mutate, for the consent audit log.
+      const previousState = {
+        autopay_opt_in: letter.autopay_opt_in,
+        autopay_mode: letter.autopay_mode,
+        autopay_cap_amount: letter.autopay_cap_amount,
+      };
 
       const { data: profile } = await supabaseAdmin
         .from('user_profiles')
@@ -155,6 +162,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           resolvedSource,
         },
       });
+
+      // Consent audit log — captures IP + user-agent for chargeback defense.
+      // The toggle on /account/autopay is the legal authorization; this row
+      // is the proof we collected it from this user, on this device, at this
+      // moment in time.
+      const newState = {
+        autopay_opt_in: !!autopayOptIn,
+        autopay_mode: autopayMode || null,
+        autopay_cap_amount: autopayCapAmount ?? null,
+      };
+      const eventType =
+        previousState.autopay_opt_in !== newState.autopay_opt_in
+          ? (newState.autopay_opt_in ? 'opt_in' : 'opt_out')
+          : previousState.autopay_mode !== newState.autopay_mode
+            ? 'mode_change'
+            : previousState.autopay_cap_amount !== newState.autopay_cap_amount
+              ? 'cap_change'
+              : 'no_change';
+
+      if (eventType !== 'no_change') {
+        const ipAddress =
+          (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+          (req.headers['x-real-ip'] as string) ||
+          req.socket?.remoteAddress ||
+          null;
+        const userAgent = (req.headers['user-agent'] as string) || null;
+        const referer = (req.headers['referer'] as string) || null;
+
+        const consentInsert = await (supabaseAdmin as any)
+          .from('autopay_consent_events')
+          .insert([{
+            user_id: letter.user_id,
+            contest_letter_id: letter.id,
+            event_type: eventType,
+            previous_state: previousState,
+            new_state: newState,
+            ip_address: ipAddress,
+            user_agent: userAgent,
+            page_url: referer,
+          }]);
+        if (consentInsert?.error) {
+          console.error('autopay_consent_events insert failed:', consentInsert.error.message);
+        }
+      }
 
       return res.status(200).json({
         success: true,

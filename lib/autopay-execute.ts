@@ -123,6 +123,16 @@ export async function executeLiveStripeCharge(params: {
   paymentMethodId: string | null;
   stripeCustomerId: string | null;
   userEmail: string | null;
+  // Consent metadata — passed to Stripe's mandate_data so they have a
+  // defensible record of when/where/how the user authorized this charge.
+  // Pulled from the most recent autopay_consent_events.opt_in row for
+  // this letter; if absent, falls back to the autopay_authorized_at
+  // timestamp on the letter itself.
+  consent?: {
+    acceptedAt: number;       // Unix epoch seconds
+    ipAddress: string | null;
+    userAgent: string | null;
+  };
 }): Promise<ExecutionResult> {
   if (params.finalAmount == null || params.finalAmount <= 0) {
     return {
@@ -161,6 +171,28 @@ export async function executeLiveStripeCharge(params: {
     // double-charging.
     const idempotencyKey = `autopay_${params.contestLetterId}`;
 
+    // mandate_data: Stripe's recommended way to attach the consent record.
+    // For online MIT (merchant-initiated transactions), Stripe expects:
+    //   accepted_at:  when the user clicked the authorization
+    //   ip_address:   IP at time of authorization
+    //   user_agent:   browser at time of authorization
+    // If we don't have explicit consent metadata, we fall back to "now" with
+    // null IP/UA — still a valid online mandate per Stripe but weaker for
+    // disputes. The autopay-config endpoint captures all three at toggle
+    // time and stores them in autopay_consent_events.
+    const mandateData = params.consent
+      ? {
+          customer_acceptance: {
+            type: 'online' as const,
+            accepted_at: params.consent.acceptedAt,
+            online: {
+              ip_address: params.consent.ipAddress || '0.0.0.0',
+              user_agent: params.consent.userAgent || 'unknown',
+            },
+          },
+        }
+      : undefined;
+
     const paymentIntent = await stripe.paymentIntents.create(
       {
         amount: amountCents,
@@ -171,11 +203,13 @@ export async function executeLiveStripeCharge(params: {
         confirm: true,
         description: `Autopilot Late Fee Protection — contest letter ${params.contestLetterId}`,
         receipt_email: params.userEmail || undefined,
+        ...(mandateData ? { mandate_data: mandateData } : {}),
         metadata: {
           autopay: 'true',
           contest_letter_id: params.contestLetterId,
           ticket_id: params.ticketId,
           user_id: params.userId,
+          consent_captured: params.consent ? 'true' : 'false',
         },
       },
       { idempotencyKey },
