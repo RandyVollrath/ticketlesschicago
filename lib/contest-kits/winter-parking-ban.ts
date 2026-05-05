@@ -2,17 +2,16 @@
  * Winter Overnight Parking Ban Contest Kit (9-64-081)
  *
  * Win Rate: ~38% (estimated from similar time-restricted violations in FOIA data)
- * Primary defenses: Ban not declared, vehicle moved before enforcement, weather threshold not met
+ * Primary defenses: not on designated street, cited outside 3-7 AM window, signage issue
  *
- * Chicago Winter Overnight Parking Ban:
+ * Chicago Winter Overnight Parking Ban (per chicago.gov + § 9-64-081):
  * - Season: December 1 through April 1
  * - Hours: 3:00 AM to 7:00 AM daily
- * - Activation: Only when 2+ inches of snow has fallen
+ * - Automatic on ~107 miles of designated arterial streets — regardless of snow
+ *   (do NOT confuse with the separate snow-route ban at § 9-64-070, which is
+ *    triggered by >2" snow depth on a different set of streets)
  * - Fine: $175 (+ potential tow)
- * - Designated streets only (not all streets)
- *
- * Key: The ban must be ACTIVATED — it's not automatic even during the season.
- * The City must declare the ban via 311/alerts when snowfall meets the threshold.
+ * - Permanent signs are posted along affected routes
  */
 
 import { ContestKit } from './types';
@@ -34,15 +33,8 @@ export const winterParkingBanKit: ContestKit = {
         failureAction: 'disqualify',
         failureMessage: 'The 21-day contest deadline has passed.',
       },
-      {
-        id: 'weather_check',
-        description: 'Check if snowfall met the 2-inch activation threshold',
-        check: 'checkWeatherData',
-        failureAction: 'warn',
-        failureMessage: 'Weather records show 2+ inches of snow on this date. Focus on timing or signage defenses.',
-      },
     ],
-    weatherRelevance: 'primary', // Snow threshold is THE key defense
+    weatherRelevance: false, // 9-64-081 ban is automatic regardless of snow
     maxContestDays: 21,
   },
 
@@ -50,29 +42,27 @@ export const winterParkingBanKit: ContestKit = {
     required: [],
     recommended: [
       {
-        id: 'weather_records',
-        name: 'Official Weather Data',
-        description: 'Historical weather data showing snowfall amounts on the ticket date',
+        id: 'street_designation',
+        name: 'Street Designation Check',
+        description: 'Evidence that the cited block is or is not on the City\'s designated § 9-64-081 winter ban street list',
         impactScore: 0.40,
-        example: 'NOAA/NWS data showing only 1.2 inches of snow fell (below the 2-inch activation threshold)',
+        example: 'Chicago Data Portal map / published list showing your block is not a designated winter ban street',
         tips: [
-          'We automatically pull weather data for your ticket date',
-          'The winter ban requires 2+ inches of accumulated snow to be activated',
-          'Weather.gov archives are official and admissible',
-          'Even if snow was on the ground, the BAN must have been declared for that specific night',
+          'The 3-7 AM ban applies ONLY to specifically designated arterial streets',
+          'Not all streets in Chicago have the winter overnight ban',
+          'Check the City\'s published winter ban street list before contesting',
         ],
       },
       {
-        id: 'ban_declaration_status',
-        name: 'Winter Ban Declaration Status',
-        description: 'Documentation of whether the winter parking ban was officially declared for that night',
+        id: 'timestamp_evidence',
+        name: 'Time-of-Citation Evidence',
+        description: 'The exact timestamp on the citation, to confirm whether the alleged violation fell inside the 3 AM – 7 AM window',
         impactScore: 0.35,
-        example: 'City 311 records showing no winter parking ban was declared for that date',
+        example: 'Citation photo / handheld device data showing timestamp of 2:55 AM (before the ban window)',
         tips: [
-          'The ban is NOT automatic — the City must declare it each time',
-          'Check Chicago 311, @ChicagoDOT Twitter, or city website for historical declarations',
-          'No declaration = no enforcement, even if there was snow',
-          'Save screenshots with dates visible',
+          'The ban only applies between 3:00 AM and 7:00 AM',
+          'A citation issued at 2:59 AM or 7:01 AM is outside the enforcement window',
+          'Request the issuing officer\'s handheld device data for the precise timestamp',
         ],
       },
       {
@@ -115,19 +105,6 @@ export const winterParkingBanKit: ContestKit = {
         ],
       },
       {
-        id: 'street_designation',
-        name: 'Street Designation Verification',
-        description: 'Evidence that your street is NOT a designated winter ban street',
-        impactScore: 0.35,
-        example: 'Chicago Data Portal map showing your block is not on the winter overnight parking ban street list',
-        tips: [
-          'Not all streets have the winter ban — only designated ones',
-          'Check the Chicago Data Portal winter ban street list',
-          'Side streets and residential streets are often NOT designated',
-          'We can cross-reference your location against the ban database',
-        ],
-      },
-      {
         id: 'emergency_evidence',
         name: 'Emergency Documentation',
         description: 'Documentation of an emergency that prevented vehicle movement',
@@ -144,43 +121,35 @@ export const winterParkingBanKit: ContestKit = {
 
   arguments: {
     primary: {
-      id: 'ban_not_declared',
-      name: 'Ban Not Declared for This Date',
-      template: `I respectfully contest this citation on the grounds that the City of Chicago winter overnight parking ban was not officially declared for the night of [DATE].
+      id: 'street_not_designated',
+      name: 'Block Not on Designated Winter Ban Street List',
+      template: `I respectfully contest this citation on the grounds that [LOCATION] is not on the City of Chicago's published list of designated winter overnight parking ban streets.
 
-The winter overnight parking ban (December 1 - April 1, 3:00 AM - 7:00 AM) is not automatic — it must be declared by the City each time when 2 or more inches of snow have fallen. I request that the City provide documentation that the winter parking ban was officially declared and publicly announced for the night this citation was issued.
+The 3:00 AM - 7:00 AM overnight parking ban under Chicago Municipal Code § 9-64-081 applies only to specifically designated arterial streets, not to all streets within the City. According to the City's published winter ban street database, the block where my vehicle was parked is not a designated winter ban street.
 
-[WEATHER_DATA]
+I request: (a) the City's current list of designated § 9-64-081 winter ban streets, and (b) the most recent sign maintenance / replacement record for any "Winter Overnight Parking Ban" signs within 100 feet of the cited location.
 
-If the ban was not officially declared for this specific date, the citation was issued in error and should be dismissed.
-
-I respectfully request that this citation be dismissed.`,
-      requiredFacts: ['date'],
+If [LOCATION] is not on the designated street list, or if no compliant sign was posted within reasonable proximity, the citation was issued in error and should be dismissed.`,
+      requiredFacts: ['date', 'location'],
       winRate: 0.42,
       conditions: [],
-      supportingEvidence: ['ban_declaration_status', 'weather_records'],
+      supportingEvidence: ['ban_declaration_status'],
       category: 'procedural',
     },
 
     secondary: {
-      id: 'insufficient_snowfall',
-      name: 'Snowfall Below 2-Inch Threshold',
-      template: `I respectfully contest this citation on the grounds that the snowfall on [DATE] did not meet the 2-inch threshold required to activate the winter overnight parking ban.
+      id: 'outside_ban_window',
+      name: 'Cited Outside the 3 AM – 7 AM Window',
+      template: `I respectfully contest this citation on the grounds that the alleged violation falls outside the 3:00 AM - 7:00 AM enforcement window of the winter overnight parking ban under Chicago Municipal Code § 9-64-081.
 
-According to official weather records from the National Weather Service, only [SNOWFALL_AMOUNT] inches of snow fell on [DATE] in Chicago. The City of Chicago's winter overnight parking ban requires 2 or more inches of accumulated snowfall before it can be activated.
+Per the City's published rule, the ban applies only between 3:00 AM and 7:00 AM on designated streets between December 1 and April 1. The time of issuance recorded on this citation is [TICKET_TIME]. If that time is before 3:00 AM or at/after 7:00 AM, the ban was not in effect and the violation cannot be sustained.
 
-[WEATHER_DATA]
-
-Since the snowfall did not reach the required 2-inch threshold, the winter parking ban should not have been activated, and this citation was issued in error.
-
-I respectfully request that this citation be dismissed.`,
-      requiredFacts: ['date', 'snowfallAmount'],
-      winRate: 0.40,
-      conditions: [
-        { field: 'snowfallInches', operator: 'lessThan', value: 2 },
-      ],
-      supportingEvidence: ['weather_records'],
-      category: 'weather',
+I request the issuing officer's handheld citation device data with the precise GPS coordinates and timestamp of issuance, and the contemporaneous field notes for this citation, so the time of the alleged violation can be verified.`,
+      requiredFacts: ['date', 'ticketTime'],
+      winRate: 0.50,
+      conditions: [],
+      supportingEvidence: ['officer_field_notes'],
+      category: 'procedural',
     },
 
     fallback: {
@@ -190,13 +159,13 @@ I respectfully request that this citation be dismissed.`,
 
 [WEATHER_CONTEXT]
 
-1. PROOF THE BAN WAS LAWFULLY ACTIVATED. The winter overnight parking ban applies only to designated streets, only during the 3:00 AM - 7:00 AM window between December 1 and April 1, and only when 2 or more inches of snow have fallen and the ban has been officially declared. I request the following records: (a) the National Weather Service / NOAA snowfall record for [DATE] at the nearest official measurement station, (b) the City's official declaration record showing the ban was activated for the night of [DATE], and (c) the City's designated winter ban street list confirming [LOCATION] is a designated winter ban street.
+1. PROOF THE STREET IS DESIGNATED AND THE BAN WAS IN EFFECT. The winter overnight parking ban applies only to streets specifically designated by the City under § 9-64-081, only during the 3:00 AM - 7:00 AM window, and only between December 1 and April 1. I request the following records: (a) the City's published list of designated winter ban streets confirming [LOCATION] is on it, (b) the issuing officer's handheld citation device data with GPS coordinates and exact timestamp, and (c) the calendar date confirmation that [DATE] falls within the December 1 to April 1 enforcement period.
 
-2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request the issuing officer's contemporaneous field notes, the handheld citation device data with GPS coordinates and timestamp, any photographs taken by the issuing officer at the time of citation, and the most recent sign maintenance / replacement record for winter ban signs within 100 feet of the cited location.
+2. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that parking violations be properly documented at the time of issuance. I request the issuing officer's contemporaneous field notes, any photographs taken by the issuing officer at the time of citation, and the most recent sign maintenance / replacement record for permanent winter ban signs within 100 feet of the cited location.
 
 3. CODIFIED DEFENSES. Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(7) (the violation did not in fact occur as charged).
 
-If the City cannot establish that the snow threshold was met, the ban was declared, the cited block is a designated winter ban street, and proper notice was posted, dismissal is the appropriate remedy.`,
+If the City cannot establish that [LOCATION] is a designated winter ban street, that the cited time fell within the 3:00 AM - 7:00 AM window, and that proper signage was posted, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.15,
       supportingEvidence: [],
@@ -325,20 +294,18 @@ The emergency circumstances were beyond my control and prevented me from complyi
   },
 
   tips: [
-    'The winter ban is NOT automatic — the City must declare it each time snow hits 2+ inches',
-    'The ban only applies Dec 1 - Apr 1, and only during 3:00 AM - 7:00 AM',
-    'Only DESIGNATED streets have the winter ban — check if your street is on the list',
-    'We automatically check weather data to verify if the 2-inch threshold was actually met',
+    'The 3-7 AM winter overnight ban (§ 9-64-081) is automatic on designated arterial streets — regardless of snow',
+    'Only DESIGNATED streets have the overnight ban — check the City\'s published list before contesting',
+    'The ban applies only Dec 1 - Apr 1 and only between 3:00 AM and 7:00 AM',
+    'A citation outside the 3-7 AM window is contestable on its face — request the handheld device timestamp',
     'If you got towed, contest both the ticket AND the tow charges separately',
-    'Save any 311 alerts or city notifications about the ban for your records',
-    'The $175 fine is one of the highest — it\'s worth contesting even at 38% odds',
+    'The $175 fine is one of the highest — it\'s worth contesting even at modest odds',
   ],
 
   pitfalls: [
-    'Don\'t contest if there was obviously heavy snow (4+ inches) and the ban was declared — weather data will confirm it',
-    'Don\'t claim you didn\'t know about the ban if you received city alerts or if signs are clearly posted',
-    'Don\'t wait until deadline — weather data is easier to verify sooner',
-    'Don\'t assume the ban wasn\'t declared just because you didn\'t receive a notification — check official city records',
+    'Do NOT confuse this with the snow-route ban (§ 9-64-070) — that one is triggered by >2" snow depth on different streets; this one is automatic on its designated streets',
+    'Don\'t claim "the ban wasn\'t declared" — the City does not declare this ban; it is in effect every night during the season',
+    'Don\'t claim you didn\'t know about the ban if signs are clearly posted',
     'Don\'t ignore tow charges — they\'re separate from the ticket and must be contested separately',
     'Don\'t park on the same street again during winter ban season without checking — repeat violations may face harsher treatment',
   ],

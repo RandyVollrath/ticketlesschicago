@@ -122,13 +122,13 @@ export const snowRouteKit: ContestKit = {
     primary: {
       id: 'insufficient_snowfall',
       name: 'Snowfall Below Threshold',
-      template: `I respectfully contest this citation on the grounds that the snowfall on [DATE] did not meet the threshold required to activate snow route parking restrictions.
+      template: `I respectfully contest this citation on the grounds that the snowfall on [DATE] did not meet the threshold required to activate snow route parking restrictions under Chicago Municipal Code § 9-64-070.
 
-According to official weather records from the National Weather Service, only [SNOWFALL_AMOUNT] inches of snow fell on [DATE] in Chicago. The City of Chicago's snow route parking ban typically requires 2 or more inches of accumulated snow to be activated.
+Section 9-64-070 prohibits parking on a designated Snow Route only "at any time the snow on the street exceeds two inches in depth." According to official weather records from the National Weather Service, only [SNOWFALL_AMOUNT] inches of snow fell on [DATE] in Chicago.
 
 [WEATHER_DATA]
 
-Since the snowfall did not reach the required threshold, the snow route parking restriction should not have been in effect, and this citation was issued in error.
+Since the snow on the street did not exceed the two-inch depth required by the ordinance, the snow route prohibition was not in effect at the time of citation, and the violation cannot be sustained.
 
 I respectfully request that this citation be dismissed.`,
       requiredFacts: ['date', 'snowfallAmount'],
@@ -141,21 +141,19 @@ I respectfully request that this citation be dismissed.`,
     },
 
     secondary: {
-      id: 'no_emergency_declared',
-      name: 'No Snow Emergency Declared',
-      template: `I respectfully contest this citation on the grounds that no official snow emergency was declared by the City of Chicago on [DATE].
+      id: 'street_not_designated',
+      name: 'Block Not on Designated Snow Route',
+      template: `I respectfully contest this citation on the grounds that [LOCATION] is not on the City of Chicago's published list of designated Snow Routes under Chicago Municipal Code § 9-64-070.
 
-Snow route parking restrictions are only enforceable during a declared snow emergency. According to city records, a snow emergency was not declared on the date this citation was issued.
+Section 9-64-070 prohibits parking only on streets "designated by appropriate signs as a 'Snow Route.'" If the cited block is not a designated Snow Route, or if no compliant Snow Route sign was posted within reasonable proximity to the cited location, the prohibition could not have been in effect against this vehicle.
 
-[EMERGENCY_STATUS_EVIDENCE]
+I request: (a) the City's current list of designated Snow Route streets confirming whether [LOCATION] is on it, and (b) the most recent sign survey and sign maintenance / replacement record for any "Snow Route" signs within 100 feet of the cited location.
 
-Without an official snow emergency declaration, parking on designated snow routes is permitted. I respectfully request that this citation be dismissed.`,
-      requiredFacts: ['date'],
+If the cited block is not a designated Snow Route, or signage was not properly posted, the citation was issued in error and should be dismissed.`,
+      requiredFacts: ['date', 'location'],
       winRate: 0.35,
-      conditions: [
-        { field: 'snowEmergencyDeclared', operator: 'equals', value: false },
-      ],
-      supportingEvidence: ['snow_emergency_status'],
+      conditions: [],
+      supportingEvidence: ['signage_photos'],
       category: 'procedural',
     },
 

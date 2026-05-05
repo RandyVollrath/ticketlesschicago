@@ -175,15 +175,13 @@ I request that the City produce: (1) the Bureau of Street Operations sweeper GPS
     secondary: {
       id: 'weather_cancellation',
       name: 'Weather Conditions',
-      template: `I contest this citation based on weather conditions that would have prevented effective street cleaning operations on [DATE].
+      template: `I contest this citation based on weather conditions on [DATE] that may have prevented street cleaning operations from occurring.
 
-According to historical weather records for Chicago, [WEATHER_CONDITION] occurred on the date of this citation. The City of Chicago typically suspends street cleaning operations during [WEATHER_TYPE] conditions, as sweeping equipment cannot effectively operate and cleaning would be ineffective.
+The City's published street sweeping program operates "weather permitting." According to National Weather Service records, [WEATHER_CONDITION] occurred on [DATE].
 
 [WEATHER_DATA]
 
-Given these documented weather conditions:
-1. Street cleaning operations were likely cancelled or ineffective on this date
-2. Citations should not be issued when weather prevents the purpose of the restriction
+I do not assert as fact that the City cancelled sweeping for these conditions; the City has not published a fixed weather threshold. I assert that the City has the burden to establish that sweeping in fact occurred at the cited block on [DATE], and that under the City's own "weather permitting" policy a documented weather event on the date of citation puts that fact in question.
 
 I request the following records: (a) the Bureau of Street Operations sweeper GPS log for the cited ward and section on [DATE], (b) the 311 service request log for [DATE] showing any weather-related cancellations of this route, and (c) the issuing officer's contemporaneous field notes describing weather conditions at the time of citation.
 
