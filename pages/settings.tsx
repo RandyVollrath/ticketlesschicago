@@ -1986,6 +1986,41 @@ function SettingsPageInner() {
         position: 'relative',
         zIndex: 1,
       }}>
+        {/* Late Fee Protection — prominent CTA for paid users */}
+        {isPaidUser && (
+          <a
+            href="/account/autopay"
+            style={{
+              display: 'block',
+              textDecoration: 'none',
+              backgroundColor: '#eef2ff',
+              borderRadius: 12,
+              border: '2px solid #6366f1',
+              padding: 20,
+              marginBottom: 20,
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.15)',
+              transition: 'transform 0.15s ease',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)'; }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ fontSize: 32 }}>🛡️</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: '#6366f1', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  NEW · Late Fee Protection
+                </div>
+                <h3 style={{ margin: '4px 0', fontSize: 18, fontWeight: 700, color: '#3730a3', fontFamily: FONTS.heading }}>
+                  Never let a parking ticket double again
+                </h3>
+                <p style={{ margin: 0, fontSize: 14, color: '#4338ca', lineHeight: 1.5 }}>
+                  If you lose a contest, miss the 25-day window and your fine doubles. We&apos;ll auto-pay before the deadline so you never face a late fee. <strong>Tap to turn on →</strong>
+                </p>
+              </div>
+            </div>
+          </a>
+        )}
+
         {/* Welcome Banner for New Users */}
         {showWelcome && (
           <div style={{
