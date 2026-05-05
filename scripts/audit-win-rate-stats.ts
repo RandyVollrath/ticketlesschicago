@@ -142,6 +142,11 @@ function countsFromSqlite(): Map<string, Counts> {
 // IMPORTANT: never silently return 0 on persistent failure — that produced
 // phantom 100% truths when one disposition's count timed out. Returning
 // null lets the caller skip the violation with a clear "(flake)" marker.
+//
+// Year filter MUST mirror the SQLite path (2023-2025 trailing) — otherwise
+// Supabase counts span 2007-2025 and rates diverge from local truth by
+// 5-15pp on high-volume keys (e.g. expired_plates 76% Supabase-all-years
+// vs 88% local-2023-2025), failing the audit.
 async function supabaseCount(pattern: string, disposition: string): Promise<number | null> {
   const delays = [500, 1000, 2000, 4000, 8000];
   for (let attempt = 0; attempt <= delays.length; attempt++) {
@@ -149,7 +154,9 @@ async function supabaseCount(pattern: string, disposition: string): Promise<numb
       .from('contested_tickets_foia')
       .select('*', { count: 'exact', head: true })
       .ilike('violation_description', pattern)
-      .eq('disposition', disposition);
+      .eq('disposition', disposition)
+      .gte('violation_date', '2023-01-01')
+      .lt('violation_date', '2026-01-01');
     if (!error && typeof count === 'number') return count;
     if (attempt < delays.length) await new Promise((r) => setTimeout(r, delays[attempt]));
   }
