@@ -519,7 +519,8 @@ async function markFailed(
     // after CITY_PAYMENT_REFUND_TIMEOUT_HOURS so we don't refund a
     // payment that the local script COULD have completed manually.
     await sendAutopayOperatorAlert({
-      subject: `[Autopay live] City payment failed ${MAX_ATTEMPTS}x for ${job.contest_letter_id} — manual review`,
+      severity: 'emergency',
+      subject: `City payment failed ${MAX_ATTEMPTS}x for ${job.contest_letter_id} — manual review`,
       text: [
         `Contest letter: ${job.contest_letter_id}`,
         `Ticket: ${job.ticket_number} (${job.plate}/${job.state})`,

@@ -137,7 +137,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       results.refundFailed++;
       results.errors.push(`${job.id}: ${err.message || String(err)}`);
       await sendAutopayOperatorAlert({
-        subject: `[Autopay live] Refund FAILED for ${job.contest_letter_id} — manual reconciliation`,
+        severity: 'emergency',
+        subject: `Refund FAILED for ${job.contest_letter_id} — manual reconciliation`,
         text: `Stripe PI: ${job.stripe_payment_intent_id}\nError: ${err.message || String(err)}\n\nThe queue row is still in its prior status. Refund the charge manually via the Stripe dashboard.`,
         html: `<p><strong>Refund failed</strong></p><p>Letter: <code>${job.contest_letter_id}</code></p><p>Stripe PI: <code>${job.stripe_payment_intent_id}</code></p><p>Error: ${err.message || String(err)}</p>`,
       }).catch(() => undefined);

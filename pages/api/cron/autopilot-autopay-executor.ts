@@ -324,9 +324,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // the city payment. Operator alert + flag for manual.
             console.error(`Stripe charged for ${letter.id} but ticket lookup failed for city queue`);
             await sendAutopayOperatorAlert({
-              subject: `[Autopay live] Stripe charged but city queue insert blocked for ${letter.id}`,
-              text: `Stripe PI ${execResult.stripePaymentIntentId} succeeded but detected_tickets lookup for ticket_id=${letter.ticket_id} found no ticket_number/plate. Letter is in autopay_status='charged_pending_city' and needs manual reconciliation.`,
-              html: `<p><strong>Manual reconciliation needed</strong></p><p>Letter: <code>${letter.id}</code></p><p>Stripe PI: <code>${execResult.stripePaymentIntentId}</code></p><p>The Stripe charge succeeded but we could not enqueue the city payment because detected_tickets has no ticket_number/plate for ticket_id=<code>${letter.ticket_id}</code>.</p>`,
+              severity: 'emergency',
+              subject: `Stripe charged but city queue insert blocked for ${letter.id}`,
+              text: `Stripe PI ${execResult.stripePaymentIntentId} succeeded but detected_tickets lookup for ticket_id=${letter.ticket_id} found no ticket_number/plate. The 48h auto-refund cron will refund the user — but investigate now to either fix the queue insert or refund immediately so the user isn't waiting.`,
+              html: `<p><strong>Manual reconciliation needed</strong></p><p>Letter: <code>${letter.id}</code></p><p>Stripe PI: <code>${execResult.stripePaymentIntentId}</code></p><p>The Stripe charge succeeded but we could not enqueue the city payment because detected_tickets has no ticket_number/plate for ticket_id=<code>${letter.ticket_id}</code>.</p><p>48h auto-refund cron will protect the user — investigate now.</p>`,
             }).catch((e) => console.error(`Failed to send city-queue-blocked alert: ${e.message}`));
           }
         }
@@ -473,7 +474,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (e: any) {
       results.errors.push(`${letter.id}: ${e?.message || String(e)}`);
       await sendAutopayOperatorAlert({
-        subject: `[Autopay] Executor failure for contest letter ${letter.id}`,
+        severity: 'emergency',
+        subject: `Executor failure for contest letter ${letter.id}`,
         text: [
           `Contest letter: ${letter.id}`,
           `Ticket: ${letter.ticket_id}`,
