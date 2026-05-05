@@ -141,13 +141,20 @@ export default function AutopayPage() {
         <title>Late Fee Protection — Autopilot America</title>
       </Head>
       <main style={{ maxWidth: 760, margin: '40px auto', padding: '0 20px', color: COLORS.text, fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif' }}>
-        <h1 style={{ fontSize: 28, marginBottom: 8 }}>Late Fee Protection</h1>
-        <p style={{ color: COLORS.textMuted, fontSize: 15, lineHeight: 1.6 }}>
-          If you lose a contested ticket, the City of Chicago gives you a deadline to pay the fine — miss it and they tack on late fees that often double the bill. Late Fee Protection lets us pay the fine for you automatically before that deadline. We only charge you the exact fine amount; we never add a service fee.
+        <h1 style={{ fontSize: 32, marginBottom: 8, fontWeight: 700 }}>Late Fee Protection</h1>
+        <p style={{ color: COLORS.text, fontSize: 17, lineHeight: 1.55, fontWeight: 500 }}>
+          Never let a Chicago parking ticket double on you again.
         </p>
 
-        <div style={{ background: COLORS.warningBg, border: `1px solid ${COLORS.warning}`, padding: 14, borderRadius: 8, marginTop: 16, fontSize: 14, color: '#78350f' }}>
-          <strong>How it works:</strong> Toggle this on per-ticket. We'll wait for the city to decide your contest. If you lose, we charge the card you have on file with us, then pay the City of Chicago payment portal on your behalf and email you the receipt.
+        <div style={{ background: '#eef2ff', border: `1px solid #6366f1`, padding: 18, borderRadius: 10, marginTop: 18 }}>
+          <div style={{ fontSize: 14, color: '#3730a3', lineHeight: 1.6 }}>
+            <strong style={{ fontSize: 15 }}>Why this matters:</strong> Chicagoans currently owe <strong>$1.155 billion</strong> in unpaid parking-ticket debt that&apos;s already been doubled by late fees. The average late penalty is <strong>$67.56 per ticket</strong>. Miss the city&apos;s 25-day pay-or-contest window and your fine doubles automatically — no warning, no exceptions. Late Fee Protection makes sure you never miss the window.
+            <div style={{ fontSize: 11, color: '#6366f1', marginTop: 6 }}>Source: City of Chicago FOIA data, 31.4M parking tickets analyzed</div>
+          </div>
+        </div>
+
+        <div style={{ background: COLORS.warningBg, border: `1px solid ${COLORS.warning}`, padding: 14, borderRadius: 8, marginTop: 16, fontSize: 14, color: '#78350f', lineHeight: 1.6 }}>
+          <strong>How it works:</strong> Flip the switch below for any ticket you want protected. We wait for the city to rule on your contest. If you lose or get a reduced fine, we charge the card you used to sign up — only for the exact final amount the city says you owe — and pay the City of Chicago payment portal for you. You get an email receipt the same day. <strong>If anything goes wrong on our end, you&apos;re automatically refunded — you never lose money.</strong>
         </div>
 
         {errorMessage && (
