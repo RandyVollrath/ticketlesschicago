@@ -55,7 +55,6 @@ export default withAdminAuth(async (req, res, adminUser) => {
           expected_delivery_date,
           delivered_at,
           returned_at,
-          failed_at,
           last_tracking_update,
           defense_type,
           evidence_integrated,

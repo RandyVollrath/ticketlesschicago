@@ -1478,7 +1478,7 @@ function SettingsPageInner() {
           supabase.from('autopilot_subscriptions')
             .select('status, current_period_end, authorized_at, created_at').eq('user_id', uid).maybeSingle(),
           (supabase.from as any)('contest_letters')
-            .select('id, ticket_id, status, delivery_status, lob_letter_id, letter_pdf_url, mailed_at, expected_delivery_date, delivered_at, returned_at, failed_at, created_at')
+            .select('id, ticket_id, status, delivery_status, lob_letter_id, letter_pdf_url, mailed_at, expected_delivery_date, delivered_at, returned_at, created_at')
             .eq('user_id', uid)
             .not('mailed_at', 'is', null)
             .order('mailed_at', { ascending: false })
