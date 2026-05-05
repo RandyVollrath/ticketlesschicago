@@ -154,7 +154,7 @@ export default function AutopayPage() {
         </div>
 
         <div style={{ background: COLORS.warningBg, border: `1px solid ${COLORS.warning}`, padding: 14, borderRadius: 8, marginTop: 16, fontSize: 14, color: '#78350f', lineHeight: 1.6 }}>
-          <strong>How it works:</strong> Flip the switch below for any ticket you want protected. We wait for the city to rule on your contest. If you lose or get a reduced fine, we charge the card you used to sign up — only for the exact final amount the city says you owe — and pay the City of Chicago payment portal for you. You get an email receipt the same day. <strong>If anything goes wrong on our end, you&apos;re automatically refunded — you never lose money.</strong>
+          <strong>How it works:</strong> Flip the switch below for any ticket you want protected. We wait for the city to rule on your contest. If you lose or get a reduced fine, <strong>we email you 24 hours before charging your card</strong> — that&apos;s your chance to turn this off if you&apos;d rather pay the city yourself. After 24 hours we charge the card you used to sign up (only for the exact final amount), pay the City of Chicago portal for you, and email you a receipt. <strong>If anything goes wrong on our end, you&apos;re automatically refunded — you never lose money.</strong>
         </div>
 
         {errorMessage && (
@@ -184,7 +184,7 @@ export default function AutopayPage() {
         </div>
 
         <div style={{ marginTop: 40, padding: 16, background: COLORS.bgSection, borderRadius: 8, fontSize: 13, color: COLORS.textMuted, lineHeight: 1.6 }}>
-          <strong>Authorization:</strong> By turning on Late Fee Protection for a ticket, you authorize Autopilot America to charge the credit card on file for the exact final amount of the City of Chicago fine for that ticket — but only if the contest is decided as a loss or reduction. You can turn it off anytime before the contest is decided. We will email you before and after every charge.
+          <strong>Authorization:</strong> By turning on Late Fee Protection for a ticket, you authorize Autopilot America to charge the credit card on file for the exact final amount of the City of Chicago fine for that ticket — but only if the contest is decided as a loss or reduction. You can turn it off anytime before the charge fires (we email you 24 hours before charging). We email you a receipt after every charge. Your IP, browser, and the time you toggled this on are logged as proof of authorization in case of a payment dispute.
         </div>
       </main>
     </>

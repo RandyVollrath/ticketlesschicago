@@ -5,7 +5,7 @@ import { getAutopayBetaConfig, isAutopayBetaAllowed } from '../../../lib/autopay
 import { evaluateAutopayEligibility, recordContestStatusEvent } from '../../../lib/contest-lifecycle';
 import { resolveDefaultStripePaymentMethod } from '../../../lib/stripe-default-payment-method';
 import { executeLiveStripeCharge, executeSimulatedAutopay, getAutopayExecutionMode } from '../../../lib/autopay-execute';
-import { sendAutopayFailedEmail, sendAutopayPaidEmail } from '../../../lib/autopay-user-emails';
+import { sendAutopayFailedEmail, sendAutopayPaidEmail, sendAutopayPreChargeEmail } from '../../../lib/autopay-user-emails';
 import { enqueueCityPayment } from '../../../lib/city-payment-queue';
 
 export const config = { maxDuration: 60 };
@@ -32,6 +32,7 @@ type PayableLetter = {
   autopay_payment_method_id: string | null;
   autopay_status: string | null;
   autopay_attempted_at: string | null;
+  autopay_pre_charge_notified_at: string | null;
   paid_at: string | null;
 };
 
@@ -78,6 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       autopay_payment_method_id,
       autopay_status,
       autopay_attempted_at,
+      autopay_pre_charge_notified_at,
       paid_at
     `)
     .in('lifecycle_status', ['lost', 'reduced'])
@@ -232,12 +234,85 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // ─── EXECUTION PATH (simulate or live) ───
       results.eligible++;
 
+      // 24-hour pre-charge grace: in LIVE mode, give the user a real
+      // chance to cancel before money moves. The flow:
+      //   1. First time we see this letter as ready: send pre-charge email,
+      //      stamp autopay_pre_charge_notified_at = NOW, exit (don't charge).
+      //   2. Next executor runs: if notified < 24h ago, skip (still in grace).
+      //   3. After 24h: proceed to charge.
+      // Simulate mode bypasses the gate so test runs fire end-to-end immediately.
+      if (executionMode === 'live') {
+        const PRE_CHARGE_GRACE_MS = 24 * 60 * 60 * 1000;
+        const notifiedAt = letter.autopay_pre_charge_notified_at
+          ? new Date(letter.autopay_pre_charge_notified_at).getTime()
+          : null;
+
+        if (notifiedAt === null) {
+          // First sighting — send the pre-charge email and stamp the timestamp.
+          if (profile.email && letter.final_amount) {
+            const scheduledChargeAt = new Date(Date.now() + PRE_CHARGE_GRACE_MS);
+            try {
+              await sendAutopayPreChargeEmail({
+                to: profile.email,
+                firstName: profile.first_name,
+                ticketNumber: null, // executor doesn't have ticket_number handy; user knows the context
+                finalAmount: letter.final_amount,
+                scheduledChargeAt,
+                cancelUrl: 'https://www.autopilotamerica.com/account/autopay',
+              });
+            } catch (e: any) {
+              console.error(`[autopay-executor] pre-charge email failed for ${letter.id}: ${e?.message || e}`);
+            }
+          }
+          await (supabaseAdmin.from('contest_letters') as any)
+            .update({ autopay_pre_charge_notified_at: new Date().toISOString() })
+            .eq('id', letter.id);
+          results.notEnabled++; // counted as "deferred" — bookkeeping
+          continue;
+        }
+
+        const elapsed = Date.now() - notifiedAt;
+        if (elapsed < PRE_CHARGE_GRACE_MS) {
+          // Still in the 24h grace window — skip this run.
+          results.cooldownSkipped++;
+          continue;
+        }
+        // Notified > 24h ago: proceed to charge.
+      }
+
       // Stamp the attempt timestamp BEFORE running the execution so the
       // cooldown protects subsequent runs even if execution crashes mid-way.
       const attemptedAt = new Date().toISOString();
       await (supabaseAdmin.from('contest_letters') as any)
         .update({ autopay_attempted_at: attemptedAt })
         .eq('id', letter.id);
+
+      // Pull the most recent opt-in consent event for this letter so we can
+      // hand Stripe the IP+UA+timestamp where the user authorized the charge.
+      // Stripe records this in mandate_data; if the user disputes, we can
+      // point to it as defensible proof of authorization.
+      let consent: { acceptedAt: number; ipAddress: string | null; userAgent: string | null } | undefined;
+      try {
+        const { data: consentRow } = await supabaseAdmin
+          .from('autopay_consent_events')
+          .select('created_at, ip_address, user_agent')
+          .eq('contest_letter_id', letter.id)
+          .eq('event_type', 'opt_in')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (consentRow) {
+          consent = {
+            acceptedAt: Math.floor(new Date(consentRow.created_at).getTime() / 1000),
+            ipAddress: consentRow.ip_address,
+            userAgent: consentRow.user_agent,
+          };
+        }
+      } catch (e: any) {
+        // autopay_consent_events table may not exist yet (pre-migration).
+        // Don't block the charge — fall back to no-consent-metadata path.
+        console.warn(`[autopay-executor] consent lookup failed (non-fatal): ${e?.message || e}`);
+      }
 
       const execResult = executionMode === 'live'
         ? await executeLiveStripeCharge({
@@ -248,6 +323,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             paymentMethodId: resolvedPaymentMethodId,
             stripeCustomerId: profile.stripe_customer_id,
             userEmail: profile.email,
+            consent,
           })
         : executeSimulatedAutopay({
             contestLetterId: letter.id,
