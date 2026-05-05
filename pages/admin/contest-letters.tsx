@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
 
+const ADMIN_EMAILS = [
+  'randy@autopilotamerica.com',
+  'admin@autopilotamerica.com',
+  'randyvollrath@gmail.com',
+  'carenvollrath@gmail.com',
+];
+
 interface RedLightEvidence {
   receipt_id: string;
   camera_address: string;
@@ -55,7 +62,6 @@ export default function AdminContestLetters() {
   const [letters, setLetters] = useState<ContestLetter[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLetter, setSelectedLetter] = useState<ContestLetter | null>(null);
-  const [adminToken, setAdminToken] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [evidenceFilter, setEvidenceFilter] = useState<string>('');
 
@@ -70,28 +76,15 @@ export default function AdminContestLetters() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (profile?.role !== 'admin') {
+    if (!ADMIN_EMAILS.includes(user.email || '')) {
       router.push('/');
       return;
     }
 
-    const token = prompt('Enter admin API token:');
-    if (!token) {
-      router.push('/');
-      return;
-    }
-
-    setAdminToken(token);
-    fetchLetters(token);
+    fetchLetters();
   }
 
-  async function fetchLetters(token: string, status?: string, evidence?: string) {
+  async function fetchLetters(status?: string, evidence?: string) {
     setLoading(true);
     try {
       const url = new URL('/api/admin/contest-letters', window.location.origin);
@@ -99,11 +92,7 @@ export default function AdminContestLetters() {
       if (evidence) url.searchParams.append('evidence_integrated', evidence);
       url.searchParams.append('limit', '100');
 
-      const response = await fetch(url.toString(), {
-        headers: {
-          'x-admin-token': token
-        }
-      });
+      const response = await fetch(url.toString(), { credentials: 'include' });
 
       if (!response.ok) {
         throw new Error('Failed to fetch contest letters');
@@ -113,7 +102,7 @@ export default function AdminContestLetters() {
       setLetters(data.letters || []);
     } catch (error) {
       console.error('Error fetching letters:', error);
-      alert('Failed to load contest letters. Check your admin token.');
+      alert('Failed to load contest letters.');
     } finally {
       setLoading(false);
     }
@@ -349,7 +338,7 @@ export default function AdminContestLetters() {
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
-                  fetchLetters(adminToken, e.target.value || undefined, evidenceFilter || undefined);
+                  fetchLetters(e.target.value || undefined, evidenceFilter || undefined);
                 }}
                 style={{
                   padding: '10px',
@@ -382,7 +371,7 @@ export default function AdminContestLetters() {
                 value={evidenceFilter}
                 onChange={(e) => {
                   setEvidenceFilter(e.target.value);
-                  fetchLetters(adminToken, statusFilter || undefined, e.target.value || undefined);
+                  fetchLetters(statusFilter || undefined, e.target.value || undefined);
                 }}
                 style={{
                   padding: '10px',

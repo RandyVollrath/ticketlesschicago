@@ -201,9 +201,13 @@ export default async function handler(
       return res.status(200).json({ received: true, note: 'Unknown event type' });
     }
 
-    // Update letter with tracking info
+    // Update letter with tracking info. Mirror to both delivery_status and
+    // lob_status because different admin views read different columns;
+    // historically only delivery_status was written, so lob_status was always
+    // null even on delivered letters.
     const updateData: Record<string, any> = {
       delivery_status: newStatus,
+      lob_status: newStatus,
       last_tracking_update: new Date().toISOString(),
     };
 
@@ -215,6 +219,7 @@ export default async function handler(
     // Update expected delivery if present
     if (event.body.expected_delivery_date) {
       updateData.expected_delivery_date = event.body.expected_delivery_date;
+      updateData.lob_expected_delivery = event.body.expected_delivery_date;
     }
 
     // Mark as delivered if that's the event
